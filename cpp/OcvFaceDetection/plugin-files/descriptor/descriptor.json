@@ -1,0 +1,263 @@
+{
+  "componentName": "OcvFaceDetection",
+  "componentVersion": "0.9.0",
+  "middlewareVersion": "0.9.0",
+  "sourceLanguage": "c++",
+  "pathName": "amq_detection_component",
+  "launchArgs": [
+    "${MPF_HOME}/plugins/OcvFaceDetection/lib/libmpfOcvFaceDetection.so"
+  ],
+  "environmentVariables": [
+    {
+      "name": "LD_LIBRARY_PATH",
+      "value": "${MPF_HOME}/plugins/OcvFaceDetection/lib:${LD_LIBRARY_PATH}"
+    }
+  ],
+  "algorithm": {
+    "name": "FACECV",
+    "description": "Detects faces in images and videos using the Open Computer Vision (OCV) library.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_FACE",
+        "DETECTION_FACE_OCV"
+      ],
+      "properties": [
+        {
+          "name": "TARGET_SEGMENT_LENGTH",
+          "description": "In the context of videos, the preferred length of segments which are to be processed by this algorithm. Value is expected to be greater than 10. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.target.length"
+        },
+        {
+          "name": "MIN_SEGMENT_LENGTH",
+          "description": "In the context of videos, the minimum length of a segment which will be processed by this algorithm. Value must be greater than 0. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.length"
+        },
+        {
+          "name": "MIN_GAP_BETWEEN_SEGMENTS",
+          "description": "In the context of videos, the minimum number of frames or time between segments which are not adjacent. Value must be greater than or equal to 1. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.gap"
+        },
+        {
+          "name": "FRAME_INTERVAL",
+          "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval. Must be greater than or equal to 0. If the frame_interval is set to 0 or 1, a frame_interval of 1 will be used, so that detections are performed on every frame. For a frame interval N > 1, every N-1 frames will be skipped.",
+          "type": "INT",
+          "defaultValue": "1"
+        },
+        {
+          "name": "MERGE_TRACKS",
+          "description": "When set to true, the detection response handler will merge tracks spanning segment boundaries.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
+          "type": "DOUBLE",
+          "defaultValue": "-2"
+        },
+        {
+          "name": "MIN_INITIAL_CONFIDENCE",
+          "description": "Minimum face detection confidence value needed to start a track, must be greater than 0.",
+          "type": "FLOAT",
+          "defaultValue": "10"
+        },
+        {
+          "name": "MIN_FACE_SIZE",
+          "description": "Minimum x and y pixel size passed to the opencv face detector.",
+          "type": "INT",
+          "defaultValue": "48"
+        },
+        {
+          "name": "MAX_FEATURE",
+          "description": "Max feature points calculated when detecting features on the face.",
+          "type": "INT",
+          "defaultValue": "250"
+        },
+        {
+          "name": "MIN_INIT_POINT_COUNT",
+          "description": "Minimum points needed by feature detector within detected face bounding box.",
+          "type": "INT",
+          "defaultValue": "45"
+        },
+        {
+          "name": "MIN_POINT_PERCENT",
+          "description": "Min point percentage when comparing current feature points to initial feature points - when the ratio drops below 0.70 the track could be lost.",
+          "type": "FLOAT",
+          "defaultValue": "0.70"
+        },
+        {
+          "name": "MAX_OPTICAL_FLOW_ERROR",
+          "description": "(UNUSED) Option to ignore certain points that do not meet a certain quality when using the calcopticalflow algorithm.",
+          "type": "FLOAT",
+          "defaultValue": "4.7"
+        },
+        {
+          "name": "SEARCH_REGION_ENABLE_DETECTION",
+          "description": "Enable cropping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_X_DETECTION",
+          "description": "X coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_Y_DETECTION",
+          "description": "Y coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION",
+          "description": "X coordinate for bottom right corner of cropped frame. If negative, bottom right X of input media will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION",
+          "description": "Y coordinate for bottom right corner of cropped frame. If negative, bottom right Y of input media. will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "ROTATION",
+          "description": "Specifies the number of degrees in the clockwise direction that the media will be rotated. Only 90, 180 and 270 degrees are supported.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "HORIZONTAL_FLIP",
+          "description": "Specifies whether or not the original media is flipped. Rotation occurs before flipping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_ROTATE",
+          "description": "Specifies whether not to rotate media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_FLIP",
+          "description": "Specifies whether or not to flip media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "VERBOSE",
+          "description": "VERBOSE = 1: print settings and detection results and VERBOSE = 0: no debugging output.",
+          "type": "INT",
+          "defaultValue": "0"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "OCV FACE DETECTION ACTION",
+      "description": "Executes the OpenCV face detection algorithm using the default parameters.",
+      "algorithm": "FACECV",
+      "properties": []
+    },
+    {
+      "name": "OCV FACE DETECTION WITH AUTO ORIENTATION ACTION",
+      "description": "Executes the OpenCV face detection algorithm and rotates and/or flips media based on EXIF data.",
+      "algorithm": "FACECV",
+      "properties": [
+        {
+          "name": "AUTO_ROTATE",
+          "value": "true"
+        },
+        {
+          "name": "AUTO_FLIP",
+          "value": "true"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "OCV FACE DETECTION TASK",
+      "description": "Performs OpenCV face detection.",
+      "actions": [
+        "OCV FACE DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "OCV FACE DETECTION WITH AUTO ORIENTATION TASK",
+      "description": "Executes the OpenCV face detection algorithm and rotates and/or flips media based on EXIF data.",
+      "actions": [
+        "OCV FACE DETECTION WITH AUTO ORIENTATION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "OCV FACE DETECTION PIPELINE",
+      "description": "Performs OpenCV face detection.",
+      "tasks": [
+        "OCV FACE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV FACE DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Performs OpenCV face detection and marks up the results.",
+      "tasks": [
+        "OCV FACE DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OCV FACE DETECTION (WITH MOG MOTION PREPROCESSOR) PIPELINE",
+      "description": "Performs MOG motion preprocessing and OpenCV face detection.",
+      "tasks": [
+        "MOG MOTION DETECTION PREPROCESSOR TASK",
+        "OCV FACE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV FACE DETECTION (WITH SUBSENSE MOTION PREPROCESSOR) PIPELINE",
+      "description": "Performs SuBSENSE motion preprocessing and OpenCV face detection.",
+      "tasks": [
+        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
+        "OCV FACE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV FACE DETECTION (WITH MOG MOTION PREPROCESSOR AND MARKUP) PIPELINE",
+      "description": "Performs MOG motion preprocessing, OpenCV face detection, and markup.",
+      "tasks": [
+        "MOG MOTION DETECTION PREPROCESSOR TASK",
+        "OCV FACE DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OCV FACE DETECTION (WITH SUBSENSE MOTION PREPROCESSOR AND MARKUP) PIPELINE",
+      "description": "Performs SuBSENSE motion preprocessing, OpenCV face detection, and markup.",
+      "tasks": [
+        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
+        "OCV FACE DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OCV FACE DETECTION WITH AUTO ORIENTATION PIPELINE",
+      "description": "Executes the OpenCV face detection algorithm and rotates and/or flips media based on EXIF data.",
+      "tasks": [
+        "OCV FACE DETECTION WITH AUTO ORIENTATION TASK"
+      ]
+    }
+  ]
+}
+

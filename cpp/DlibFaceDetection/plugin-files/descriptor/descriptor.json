@@ -1,0 +1,198 @@
+{
+  "componentName": "DlibFaceDetection",
+  "componentVersion": "0.9.0",
+  "middlewareVersion": "0.9.0",
+  "sourceLanguage": "c++",
+  "pathName": "amq_detection_component",
+  "launchArgs": [
+    "${MPF_HOME}/plugins/DlibFaceDetection/lib/libmpfDlibFaceDetection.so"
+  ],
+  "environmentVariables": [
+    {
+      "name": "LD_LIBRARY_PATH",
+      "value": "${MPF_HOME}/plugins/DlibFaceDetection/lib:${LD_LIBRARY_PATH}"
+    }
+  ],
+  "algorithm": {
+    "name": "DLIB",
+    "description": "Detects faces in images and videos using the dlib library.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_FACE",
+        "DETECTION_FACE_DLIB"
+      ],
+      "properties": [
+        {
+          "name": "FRAME_INTERVAL",
+          "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval.  Must be greater than or equal to 0.  If the frame_interval is set to 0 or 1, a frame_interval of 1 will be used, so that detections are performed on every frame. For a frame interval N > 1, every N-1 frames will be skipped.",
+          "type": "INT",
+          "defaultValue": "1"
+        },
+        {
+          "name": "MIN_DETECTION_CONFIDENCE",
+          "description": "This is the minimum dlib object detection confidence needed to start a new track.",
+          "type": "DOUBLE",
+          "defaultValue": "0.1"
+        },
+        {
+          "name": "MAX_INTERSECTION_OVERLAP_AREA_PCT",
+          "description": "(UNUSED: Not currently allowing any overlap.) The maximum allowable overlap rate between a new detection rect and any existing track rects.",
+          "type": "FLOAT",
+          "defaultValue": "0.2"
+        },
+        {
+          "name": "MIN_OBJECT_DETECTIONS_COUNT",
+          "description": "The minumum amount of frame locations required to save a track.",
+          "type": "INT",
+          "defaultValue": "3"
+        },
+        {
+          "name": "MIN_TRACK_OBJECT_SIMILARITY_VALUE",
+          "description": "The minimum amount of similarity required by a detection to be matched with an existing track.",
+          "type": "FLOAT",
+          "defaultValue": "0.6"
+        },
+        {
+          "name": "MIN_UPDATE_CORRELATION",
+          "description": "The minimum amount of correlation between frames needed to continue tracking.",
+          "type": "DOUBLE",
+          "defaultValue": "6.5"
+        },
+        {
+          "name": "SEARCH_REGION_ENABLE_DETECTION",
+          "description": "Enable cropping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_X_DETECTION",
+          "description": "X coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_Y_DETECTION",
+          "description": "Y coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION",
+          "description": "X coordinate for bottom right corner of cropped frame. If negative, bottom right X of input media will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION",
+          "description": "Y coordinate for bottom right corner of cropped frame. If negative, bottom right Y of input media. will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "ROTATION",
+          "description": "Specifies the number of degrees in the clockwise direction that the media will be rotated. Only 90, 180 and 270 degrees are supported.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "HORIZONTAL_FLIP",
+          "description": "Specifies whether or not the original media is flipped. Rotation occurs before flipping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_ROTATE",
+          "description": "Specifies whether not to rotate media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_FLIP",
+          "description": "Specifies whether or not to flip media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "VERBOSE",
+          "description": "VERBOSE = 0: no debugging output and VERBOSE = 1: print settings and detection results.",
+          "type": "INT",
+          "defaultValue": "0"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "DLIB FACE DETECTION ACTION",
+      "description": "Executes the dlib face detection algorithm using the default parameters.",
+      "algorithm": "DLIB",
+      "properties": []
+    }
+  ],
+  "tasks": [
+    {
+      "name": "DLIB FACE DETECTION TASK",
+      "description": "Performs dlib face detection.",
+      "actions": [
+        "DLIB FACE DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "DLIB FACE DETECTION PIPELINE",
+      "description": "Performs dlib face detection.",
+      "tasks": [
+        "DLIB FACE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "DLIB FACE DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Performs dlib face detection and marks up the results.",
+      "tasks": [
+        "DLIB FACE DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "DLIB FACE DETECTION (WITH MOG MOTION PREPROCESSOR) PIPELINE",
+      "description": "Performs MOG motion preprocessing and dlib face detection.",
+      "tasks": [
+        "MOG MOTION DETECTION PREPROCESSOR TASK",
+        "DLIB FACE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "DLIB FACE DETECTION (WITH SUBSENSE MOTION PREPROCESSOR) PIPELINE",
+      "description": "Performs SuBSENSE motion preprocessing and dlib face detection.",
+      "tasks": [
+        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
+        "DLIB FACE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "DLIB FACE DETECTION (WITH MOG MOTION PREPROCESSOR AND MARKUP) PIPELINE",
+      "description": "Performs MOG motion preprocessing, dlib face detection, and markup.",
+      "tasks": [
+        "MOG MOTION DETECTION PREPROCESSOR TASK",
+        "DLIB FACE DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "DLIB FACE DETECTION (WITH SUBSENSE MOTION PREPROCESSOR AND MARKUP) PIPELINE",
+      "description": "Performs SuBSENSE motion preprocessing, dlib face detection, and markup.",
+      "tasks": [
+        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
+        "DLIB FACE DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    }
+  ]
+}
+

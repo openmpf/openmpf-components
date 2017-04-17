@@ -1,0 +1,210 @@
+{
+  "componentName": "OalprLicensePlateTextDetection",
+  "componentVersion": "0.9.0",
+  "middlewareVersion": "0.9.0",
+  "sourceLanguage": "c++",
+  "pathName": "amq_detection_component",
+  "setupFile" : "setup/componentSetup.yml",
+  "launchArgs": [
+    "${MPF_HOME}/plugins/OalprLicensePlateTextDetection/lib/libmpfOALPRLicensePlateTextDetection.so"
+  ],
+  "environmentVariables": [
+    {
+      "name": "LD_LIBRARY_PATH",
+      "value": "${MPF_HOME}/plugins/OalprLicensePlateTextDetection/lib:${LD_LIBRARY_PATH}"
+    }
+  ],
+  "algorithm": {
+    "name": "OALPR",
+    "description": "Detects license plate text in images and videos using the Open Automatic License Plate Recognition (OALPR) Library.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TEXT",
+        "DETECTION_TEXT_OALPR"
+      ],
+      "properties": [
+        {
+          "name": "TARGET_SEGMENT_LENGTH",
+          "description": "In the context of videos, the preferred length of segments which are to be processed by this algorithm. Value is expected to be greater than 10. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.target.length"
+        },
+        {
+          "name": "MIN_SEGMENT_LENGTH",
+          "description": "In the context of videos, the minimum length of a segment which will be processed by this algorithm. Value must be greater than 0. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.length"
+        },
+        {
+          "name": "MIN_GAP_BETWEEN_SEGMENTS",
+          "description": "In the context of videos, the minimum number of frames or time between segments which are not adjacent. Value must be greater than or equal to 1. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.gap"
+        },
+        {
+          "name": "MIN_OVERLAP",
+          "description": "In the context of videos, the minimum overlap between detection bounding boxes for adjacent segments to be considered continuous. Value is expected to be between 0 and 1. Default value is defined by the MPF properties file.",
+          "type": "DOUBLE",
+          "propertiesKey": "detection.track.overlap.threshold"
+        },
+        {
+          "name": "FRAME_INTERVAL",
+          "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval. Must be greater than or equal to 0. If the frame_interval is set to 0 or 1, a frame_interval of 1 will be used, so that detections are performed on every frame. For a frame interval N > 1, every N-1 frames will be skipped.",
+          "type": "INT",
+          "defaultValue": "1"
+        },
+        {
+          "name": "MERGE_TRACKS",
+          "description": "When set to true, the detection response handler will merge tracks spanning segment boundaries.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "EXTRACT_TRACK_DATA_FROM_MEDIA",
+          "description": "When set to true, track frames will be extracted from images and videos.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
+          "type": "DOUBLE",
+          "defaultValue": "-2"
+        },
+        {
+          "name": "SEARCH_REGION_ENABLE_DETECTION",
+          "description": "Enable cropping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_X_DETECTION",
+          "description": "X coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_Y_DETECTION",
+          "description": "Y coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION",
+          "description": "X coordinate for bottom right corner of cropped frame. If negative, bottom right X of input media will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION",
+          "description": "Y coordinate for bottom right corner of cropped frame. If negative, bottom right Y of input media. will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "ROTATION",
+          "description": "Specifies the number of degrees in the clockwise direction that the media will be rotated. Only 90, 180 and 270 degrees are supported.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "HORIZONTAL_FLIP",
+          "description": "Specifies whether or not the original media is flipped. Rotation occurs before flipping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_ROTATE",
+          "description": "Specifies whether not to rotate media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_FLIP",
+          "description": "Specifies whether or not to flip media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "OALPR LICENSE PLATE TEXT DETECTION ACTION",
+      "description": "Executes the OALPR license plate text detection algorithm using the default parameters.",
+      "algorithm": "OALPR",
+      "properties": [
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "value": "80"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "OALPR LICENSE PLATE TEXT DETECTION TASK",
+      "description": "Performs OALPR license plate text detection.",
+      "actions": [
+        "OALPR LICENSE PLATE TEXT DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "OALPR LICENSE PLATE TEXT DETECTION PIPELINE",
+      "description": "Performs OALPR license plate text detection.",
+      "tasks": [
+        "OALPR LICENSE PLATE TEXT DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OALPR LICENSE PLATE TEXT DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Performs OALPR license plate text detection and marks up the results.",
+      "tasks": [
+        "OALPR LICENSE PLATE TEXT DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OALPR LICENSE PLATE TEXT DETECTION (WITH MOG MOTION PREPROCESSOR) PIPELINE",
+      "description": "Performs MOG motion preprocessing and OALPR license plate text detection.",
+      "tasks": [
+        "MOG MOTION DETECTION PREPROCESSOR TASK",
+        "OALPR LICENSE PLATE TEXT DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OALPR LICENSE PLATE TEXT DETECTION (WITH SUBSENSE MOTION PREPROCESSOR) PIPELINE",
+      "description": "Performs SuBSENSE motion preprocessing and OALPR license plate text detection.",
+      "tasks": [
+        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
+        "OALPR LICENSE PLATE TEXT DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OALPR LICENSE PLATE TEXT DETECTION (WITH MOG MOTION PREPROCESSOR AND MARKUP) PIPELINE",
+      "description": "Performs MOG motion preprocessing, OALPR license plate text detection, and markup.",
+      "tasks": [
+        "MOG MOTION DETECTION PREPROCESSOR TASK",
+        "OALPR LICENSE PLATE TEXT DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OALPR LICENSE PLATE TEXT DETECTION (WITH SUBSENSE MOTION PREPROCESSOR AND MARKUP) PIPELINE",
+      "description": "Performs SuBSENSE motion preprocessing, OALPR license plate text detection, and markup.",
+      "tasks": [
+        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
+        "OALPR LICENSE PLATE TEXT DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    }
+  ]
+}
+

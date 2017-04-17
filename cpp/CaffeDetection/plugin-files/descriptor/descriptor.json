@@ -1,0 +1,104 @@
+{
+  "componentName" : "CaffeDetection",
+  "componentVersion" : "0.9.0",
+  "middlewareVersion" :  "0.9.0",
+  "sourceLanguage" : "c++",
+  "pathName" : "amq_detection_component",
+  "launchArgs" : ["${MPF_HOME}/plugins/CaffeDetection/lib/libcaffe.so"],
+  "environmentVariables" : [ {
+    "name" : "LD_LIBRARY_PATH",
+    "value" : "${MPF_HOME}/plugins/CaffeDetection/lib:${LD_LIBRARY_PATH}"
+  } ],
+  "algorithm" : {
+    "name" : "Caffe",
+    "description" : "Returns a semantic description and a confidence score when provided with an input image.",
+    "actionType" : "DETECTION",
+    "requiresCollection" : {
+      "states" : []
+    },
+    "providesCollection" : {
+      "states" : [],
+      "properties" : [
+       {
+         "name" : "MODEL_NAME",
+         "description" : "The model to be used with Caffe. 'googlenet' is provided by default. Other models can be provided separately.",
+         "type" : "STRING",
+         "defaultValue" : "googlenet"
+       },
+       {
+         "name" : "MODEL_OUTPUT_LAYER",
+         "description" : "The name of the layer within the specified model for which output should be reported. The model layer names are defined in the .prototxt file associated with the model.",
+         "type" : "STRING",
+	 "defaultValue" : "prob"
+       },
+       {
+         "name" : "NUMBER_OF_CLASSIFICATIONS",
+         "description" : "The number of classifications, N, to be returned. The N highest confidence classifications found by the network will be returned with their associated confidence values. The value must be greater than 0, and less than the size of the model output layer.",
+         "type" : "INT",
+	 "defaultValue" : "1"
+       },
+       {
+         "name" : "CONFIDENCE_THRESHOLD",
+         "description" : "The confidence threshold for returning a classification result. No classifications lower than this threshold will be returned, even if that means returning fewer classifications than the number of classifications requested. The value must be greater than or equal to 0.0.",
+         "type" : "DOUBLE",
+	 "defaultValue" : "0.0"
+       },
+       {
+         "name": "SEARCH_REGION_ENABLE_DETECTION",
+         "description": "Enable cropping.",
+         "type": "BOOLEAN",
+         "defaultValue": "false"
+       },
+       {
+         "name": "SEARCH_REGION_TOP_LEFT_X_DETECTION",
+         "description": "X coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+         "type": "INT",
+         "defaultValue": "-1"
+       },
+       {
+         "name": "SEARCH_REGION_TOP_LEFT_Y_DETECTION",
+         "description": "Y coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+         "type": "INT",
+         "defaultValue": "-1"
+       },
+       {
+         "name": "SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION",
+         "description": "X coordinate for bottom right corner of cropped frame. If negative, bottom right X of input media will be used.",
+         "type": "INT",
+         "defaultValue": "-1"
+       },
+       {
+         "name": "SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION",
+         "description": "Y coordinate for bottom right corner of cropped frame. If negative, bottom right Y of input media. will be used.",
+         "type": "INT",
+         "defaultValue": "-1"
+       },
+       {
+         "name": "ROTATION",
+         "description": "Specifies the number of degrees in the clockwise direction that the media will be rotated. Only 90, 180 and 270 degrees are supported.",
+         "type": "INT",
+         "defaultValue": "0"
+       },
+       {
+         "name": "HORIZONTAL_FLIP",
+         "description": "Specifies whether or not the original media is flipped. Rotation occurs before flipping.",
+         "type": "BOOLEAN",
+         "defaultValue": "false"
+       },
+       {
+         "name": "AUTO_ROTATE",
+         "description": "Specifies whether not to rotate media based on EXIF data.",
+         "type": "BOOLEAN",
+         "defaultValue": "false"
+       },
+       {
+         "name": "AUTO_FLIP",
+         "description": "Specifies whether or not to flip media based on EXIF data.",
+         "type": "BOOLEAN",
+         "defaultValue": "false"
+       }
+      ]
+    }
+  }
+}
+

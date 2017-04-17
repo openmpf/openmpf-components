@@ -1,0 +1,84 @@
+{
+  "componentName" : "SphinxSpeechDetection",
+  "componentVersion" : "0.9.0",
+  "middlewareVersion" :  "0.9.0",
+  "sourceLanguage" : "java",
+  "pathName" : "mpf-sphinx-speech-detection-component-0.9.0.jar",
+  "launchArgs" : [],
+  "environmentVariables" : [],
+  "algorithm" : {
+    "name" : "SPHINX",
+    "description" : "Detects and transcribes English language speech in audio and video files.",
+    "actionType" : "DETECTION",
+    "requiresCollection" : {
+      "states" : []
+    },
+    "providesCollection" : {
+      "states" : [
+        "DETECTION",
+        "DETECTION_SPEECH",
+        "DETECTION_SPEECH_SPHINX"
+      ],
+      "properties" : [
+        {
+          "name": "FRAME_INTERVAL",
+          "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval. Must be greater than or equal to 0. If the frame_interval is set to 0 or 1, a frame_interval of 1 will be used, so that detections are performed on every frame. For a frame interval N > 1, every N-1 frames will be skipped.",
+          "type": "INT",
+          "defaultValue": "1"
+        },
+        {
+          "name": "MERGE_TRACKS",
+          "description": "When set to true, the detection response handler will merge tracks spanning segment boundaries.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "EXTRACT_TRACK_DATA_FROM_MEDIA",
+          "description": "When set to true, track frames will be extracted from images and videos..",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
+          "type": "DOUBLE",
+          "defaultValue": "-2"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "SPHINX SPEECH DETECTION ACTION",
+      "description": "Executes the Sphinx speech detection algorithm using the default parameters.",
+      "algorithm": "SPHINX",
+      "properties": []
+    }
+  ],
+  "tasks": [
+    {
+      "name": "SPHINX SPEECH DETECTION TASK",
+      "description": "Performs Sphinx speech detection.",
+      "actions": [
+        "SPHINX SPEECH DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "SPHINX SPEECH DETECTION PIPELINE",
+      "description": "Performs Sphinx speech detection.",
+      "tasks": [
+        "SPHINX SPEECH DETECTION TASK"
+      ]
+    },
+    {
+      "name": "SPHINX SPEECH DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Performs OpenCV face detection and marks up the results.",
+      "tasks": [
+        "SPHINX SPEECH DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    }
+  ]
+}

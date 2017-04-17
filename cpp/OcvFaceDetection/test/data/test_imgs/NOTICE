@@ -1,0 +1,10 @@
+# S001-01-t10_01.jpg, S008-01-t10_01.jpg
+# meds_faces_image.png is a combination of scaled and rotated S001* images
+
+The dataset and other related information can be acquired at http://www.nist.gov/itl/iad/ig/sd32.cfm
+
+From the Dataset Acknowledgement from the NIST Special Database 32 Multiple Encounter Dataset II (MEDS-II) Data Description Document
+"This dataset is being released (as prepared by MITRE Corporation) to support the NIST MultipleBiometric
+Evaluation 2010 (MBE). In addition, this dataset is available to any user interested in
+biometric research."
+
