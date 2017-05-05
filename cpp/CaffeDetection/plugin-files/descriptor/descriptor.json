@@ -1,6 +1,6 @@
 {
   "componentName" : "CaffeDetection",
-  "componentVersion" : "0.9.0",
+  "componentVersion" : "0.9.1",
   "middlewareVersion" :  "0.9.0",
   "sourceLanguage" : "c++",
   "pathName" : "amq_detection_component",
@@ -42,6 +42,18 @@
          "description" : "The confidence threshold for returning a classification result. No classifications lower than this threshold will be returned, even if that means returning fewer classifications than the number of classifications requested. The value must be greater than or equal to 0.0.",
          "type" : "DOUBLE",
 	 "defaultValue" : "0.0"
+       },
+       {
+         "name" : "FRAME_HEIGHT",
+         "description" : "The height, in pixels, of the images on which the selected Caffe model has been trained. The default value (224) is for the default model (googlenet).",
+         "type" : "INT",
+	 "defaultValue" : "224"
+       },
+       {
+         "name" : "FRAME_WIDTH",
+         "description" : "The width, in pixels, of the images on which the selected Caffe model has been trained. The default value (224) is for the default model (googlenet).",
+         "type" : "INT",
+	 "defaultValue" : "224"
        },
        {
          "name": "SEARCH_REGION_ENABLE_DETECTION",
