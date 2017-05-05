@@ -45,13 +45,13 @@
        },
        {
          "name" : "FRAME_HEIGHT",
-         "description" : "The height, in pixels, of the images on which the selected Caffe model has been trained. If using the default model (googlenet), this value is set to 224.",
+         "description" : "The height, in pixels, of the images on which the selected Caffe model has been trained. The default value (224) is for the default model (googlenet).",
          "type" : "INT",
 	 "defaultValue" : "224"
        },
        {
          "name" : "FRAME_WIDTH",
-         "description" : "The width, in pixels, of the images on which the selected Caffe model has been trained. If using the default model (googlenet), this value is set to 224.",
+         "description" : "The width, in pixels, of the images on which the selected Caffe model has been trained. The default value (224) is for the default model (googlenet).",
          "type" : "INT",
 	 "defaultValue" : "224"
        },
