@@ -188,9 +188,14 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
             LOG4CXX_ERROR(logger_, "Could not read image file: " << job.data_uri);
             return MPF_IMAGE_READ_ERROR;
         }
-        LOG4CXX_DEBUG(logger_, "img mat total is " << img.total());
+        LOG4CXX_DEBUG(logger_, "img mat rows = " << img.rows << " cols = " << img.cols);
+        int frame_width = DetectionComponentUtils::GetProperty<int>(job.job_properties,
+                                                                    "FRAME_WIDTH", 224);
+        int frame_height = DetectionComponentUtils::GetProperty<int>(job.job_properties,
+                                                                     "FRAME_HEIGHT", 224);
 
-        cv::resize(img, img, cv::Size(224, 224)); // models accept only 224x224 RGB-images
+        cv::resize(img, img, cv::Size(frame_width, frame_height));
+        LOG4CXX_DEBUG(logger_, "img mat rows = " << img.rows << " cols = " << img.cols);
         LOG4CXX_DEBUG(logger_, "img mat total is " << img.total());
 
         cv::dnn::Blob input_blob = cv::dnn::Blob(img, -1); // convert Mat to dnn::Blob image batch

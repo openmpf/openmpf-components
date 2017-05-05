@@ -44,6 +44,18 @@
 	 "defaultValue" : "0.0"
        },
        {
+         "name" : "FRAME_HEIGHT",
+         "description" : "The height, in pixels, of the images on which the selected Caffe model has been trained. If using the default model (googlenet), this value is set to 224.",
+         "type" : "INT",
+	 "defaultValue" : "224"
+       },
+       {
+         "name" : "FRAME_WIDTH",
+         "description" : "The width, in pixels, of the images on which the selected Caffe model has been trained. If using the default model (googlenet), this value is set to 224.",
+         "type" : "INT",
+	 "defaultValue" : "224"
+       },
+       {
          "name": "SEARCH_REGION_ENABLE_DETECTION",
          "description": "Enable cropping.",
          "type": "BOOLEAN",
