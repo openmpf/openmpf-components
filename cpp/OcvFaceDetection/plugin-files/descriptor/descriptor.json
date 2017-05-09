@@ -143,7 +143,7 @@
         },
         {
           "name": "AUTO_ROTATE",
-          "description": "Specifies whether not to rotate media based on EXIF data.",
+          "description": "Specifies whether not to rotate media based on EXIF data or video metadata.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
@@ -171,7 +171,7 @@
     },
     {
       "name": "OCV FACE DETECTION WITH AUTO ORIENTATION ACTION",
-      "description": "Executes the OpenCV face detection algorithm and rotates and/or flips media based on EXIF data.",
+      "description": "Executes the OpenCV face detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
       "algorithm": "FACECV",
       "properties": [
         {
@@ -195,7 +195,7 @@
     },
     {
       "name": "OCV FACE DETECTION WITH AUTO ORIENTATION TASK",
-      "description": "Executes the OpenCV face detection algorithm and rotates and/or flips media based on EXIF data.",
+      "description": "Executes the OpenCV face detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
       "actions": [
         "OCV FACE DETECTION WITH AUTO ORIENTATION ACTION"
       ]
@@ -253,7 +253,7 @@
     },
     {
       "name": "OCV FACE DETECTION WITH AUTO ORIENTATION PIPELINE",
-      "description": "Executes the OpenCV face detection algorithm and rotates and/or flips media based on EXIF data.",
+      "description": "Executes the OpenCV face detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
       "tasks": [
         "OCV FACE DETECTION WITH AUTO ORIENTATION TASK"
       ]

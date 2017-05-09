@@ -99,7 +99,7 @@
        },
        {
          "name": "AUTO_ROTATE",
-         "description": "Specifies whether not to rotate media based on EXIF data.",
+         "description": "Specifies whether not to rotate media based on EXIF data or video metadata.",
          "type": "BOOLEAN",
          "defaultValue": "false"
        },
