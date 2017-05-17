@@ -43,6 +43,24 @@
          "type" : "DOUBLE",
 	 "defaultValue" : "0.0"
        },
+        {
+          "name": "MERGE_TRACKS",
+          "description": "When set to true, the detection response handler will merge tracks spanning segment boundaries.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "MIN_GAP_BETWEEN_TRACKS",
+          "description": "When merge tracks is set to true, this defines the minimum number of distance in frames to allow between similar tracks before merging. A value of 2 or less indicates that adjacent frames will be merged.",
+          "type": "INT",
+          "defaultValue": "2"
+        },
+        {
+          "name": "MIN_TRACK_LENGTH",
+          "description": "The smallest track size to return to the user.  All tracks shorter than the specified number of frames will be discarded.",
+          "type": "INT",
+          "defaultValue": "1"
+        },
        {
          "name" : "FRAME_HEIGHT",
          "description" : "The height, in pixels, of the images on which the selected Caffe model has been trained. The default value (224) is for the default model (googlenet).",
