@@ -43,6 +43,24 @@
          "type" : "DOUBLE",
 	 "defaultValue" : "0.0"
        },
+        {
+          "name": "MERGE_TRACKS",
+          "description": "In the context of videos, when set to true, attempt to merge tracks spanning segment boundaries.",
+          "type": "BOOLEAN",
+          "propertiesKey": "detection.track.merging.enabled"
+        },
+        {
+          "name": "MIN_GAP_BETWEEN_TRACKS",
+          "description": "In the context of videos, similar tracks with less than this number of frames between them will be merged into a single track. If MERGE_TRACKS is false, this has no effect.",
+          "type": "INT",
+          "propertiesKey": "detection.track.min.gap"
+        },
+        {
+          "name": "MIN_TRACK_LENGTH",
+          "description": "In the context of videos, defines the minimum track length in frames. Tracks shorter than this minimum length will be silently discarded.",
+          "type": "INT",
+          "propertiesKey": "detection.track.minimum.length"
+        },
        {
          "name" : "FRAME_HEIGHT",
          "description" : "The height, in pixels, of the images on which the selected Caffe model has been trained. The default value (224) is for the default model (googlenet).",
