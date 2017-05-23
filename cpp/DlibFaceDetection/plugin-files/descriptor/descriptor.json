@@ -64,12 +64,6 @@
           "defaultValue": "0.2"
         },
         {
-          "name": "MIN_OBJECT_DETECTIONS_COUNT",
-          "description": "The minumum amount of frame locations required to save a track.",
-          "type": "INT",
-          "defaultValue": "3"
-        },
-        {
           "name": "MIN_TRACK_OBJECT_SIMILARITY_VALUE",
           "description": "The minimum amount of similarity required by a detection to be matched with an existing track.",
           "type": "FLOAT",

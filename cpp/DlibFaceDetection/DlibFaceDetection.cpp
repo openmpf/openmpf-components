@@ -234,9 +234,6 @@ void DlibFaceDetection::GetPropertySettings(const map <string, string> &algorith
         else if (property == "MAX_INTERSECTION_OVERLAP_AREA_PCT") { //FLOAT
             max_intersection_overlap_pct = atof(str_value.c_str());
         }
-        else if (property == "MIN_OBJECT_DETECTIONS_COUNT") { //INT
-            min_object_detections_count = atoi(str_value.c_str());
-        }
         else if (property == "MIN_TRACK_OBJECT_SIMILARITY_VALUE") { //FLOAT
             min_track_object_similarity_value = atof(str_value.c_str());
         }
