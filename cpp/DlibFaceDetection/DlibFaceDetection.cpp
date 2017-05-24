@@ -150,7 +150,7 @@ void DlibFaceDetection::SetDefaultParameters() {
 
     //the amount of frame locations required
     //to save a track
-    min_object_detections_count = 3;
+    min_track_length = 3;
 
     //the minimum amount of similary required
     //by a detection to be matched with an
@@ -197,8 +197,8 @@ void DlibFaceDetection::SetReadConfigParameters() {
         max_intersection_overlap_pct = parameters["MAX_INTERSECTION_OVERLAP_AREA_PCT"].toFloat();
     }
 
-    if(parameters.contains("MIN_OBJECT_DETECTIONS_COUNT")) {
-        min_object_detections_count = parameters["MIN_OBJECT_DETECTIONS_COUNT"].toInt();
+    if(parameters.contains("MIN_TRACK_LENGTH")) {
+        min_track_length = parameters["MIN_TRACK_LENGTH"].toInt();
     }
 
     if(parameters.contains("MIN_TRACK_OBJECT_SIMILARITY_VALUE")) {
@@ -233,9 +233,6 @@ void DlibFaceDetection::GetPropertySettings(const map <string, string> &algorith
         }
         else if (property == "MAX_INTERSECTION_OVERLAP_AREA_PCT") { //FLOAT
             max_intersection_overlap_pct = atof(str_value.c_str());
-        }
-        else if (property == "MIN_OBJECT_DETECTIONS_COUNT") { //INT
-            min_object_detections_count = atoi(str_value.c_str());
         }
         else if (property == "MIN_TRACK_OBJECT_SIMILARITY_VALUE") { //FLOAT
             min_track_object_similarity_value = atof(str_value.c_str());
@@ -324,9 +321,9 @@ void DlibFaceDetection::CloseAnyOpenTracks() {
         for(auto &current_track : current_tracks) {
 
             //should never happen - but ignoring the track if stop frame already modified or
-            //there are less than MIN_OBJECT_DETECTIONS_COUNT frame locations
+            //there are less than MIN_TRACK_LENGTH frame locations
             if (current_track.mpf_video_track.stop_frame != -1
-                || current_track.mpf_video_track.frame_locations.size() < min_object_detections_count) {
+                || current_track.mpf_video_track.frame_locations.size() < min_track_length) {
                 continue;
             }
 
@@ -459,7 +456,7 @@ void DlibFaceDetection::UpdateTracks(const dlib::cv_image<dlib::uint8> &next_fra
         } else {
             //stop the track, save if meets requirements, and delete from current tracks
 
-            if(current_track->mpf_video_track.frame_locations.size() > min_object_detections_count) {
+            if(current_track->mpf_video_track.frame_locations.size() > min_track_length) {
                 //since the frame interval can be adjusted it makes sense to grab the index from the last frame location
                 current_track->mpf_video_track.stop_frame = current_track->mpf_video_track.frame_locations.rbegin()->first;
                 saved_tracks.push_back(*current_track);

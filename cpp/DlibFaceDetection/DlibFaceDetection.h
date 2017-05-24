@@ -89,7 +89,7 @@ private:
 
     double min_detection_confidence;
     float max_intersection_overlap_pct;
-    int min_object_detections_count;
+    int min_track_length;
     float min_track_object_similarity_value;
     double min_update_correlation;
 
