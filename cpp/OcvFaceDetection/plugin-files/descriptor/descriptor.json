@@ -1,6 +1,6 @@
 {
   "componentName": "OcvFaceDetection",
-  "componentVersion": "0.9.0",
+  "componentVersion": "0.9.1",
   "middlewareVersion": "0.9.0",
   "sourceLanguage": "c++",
   "pathName": "amq_detection_component",
