@@ -29,51 +29,57 @@
       "properties": [
         {
           "name": "FRAME_INTERVAL",
-          "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval.  Must be greater than or equal to 0.  If the frame_interval is set to 0 or 1, a frame_interval of 1 will be used, so that detections are performed on every frame. For a frame interval N > 1, every N-1 frames will be skipped.",
+          "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval. Must be greater than or equal to 0. If the frame_interval is set to 0 or 1, a frame_interval of 1 will be used, so that detections are performed on every frame. For a frame interval N > 1, every N-1 frames will be skipped. Default value is defined by the MPF properties file.",
           "type": "INT",
-          "defaultValue": "1"
+          "propertiesKey": "detection.sampling.interval"
+        },
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded. Default value is defined by the MPF properties file.",
+          "type": "DOUBLE",
+          "propertiesKey": "detection.confidence.threshold"
+        },
+        {
+          "name": "MIN_GAP_BETWEEN_SEGMENTS",
+          "description": "In the context of videos, the minimum number of frames between segments which are not adjacent. Value must be greater than or equal to 1. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.gap"
+        },
+        {
+          "name": "TARGET_SEGMENT_LENGTH",
+          "description": "In the context of videos, the preferred length of segments which are to be processed by this algorithm. Value is expected to be greater than 10. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.target.length"
+        },
+        {
+          "name": "MIN_SEGMENT_LENGTH",
+          "description": "In the context of videos, the minimum length of a segment which will be processed by this algorithm. Value must be greater than 0. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.length"
         },
         {
           "name": "MERGE_TRACKS",
-          "description": "In the context of videos, when set to true, attempt to merge tracks spanning segment boundaries.",
+          "description": "In the context of videos, when set to true, attempt to merge tracks spanning segment boundaries. Default value is defined by the MPF properties file.",
           "type": "BOOLEAN",
           "propertiesKey": "detection.track.merging.enabled"
         },
         {
           "name": "MIN_GAP_BETWEEN_TRACKS",
-          "description": "In the context of videos, similar tracks with less than this number of frames between them will be merged into a single track. If MERGE_TRACKS is false, this has no effect.",
+          "description": "In the context of videos, similar tracks with less than this number of frames between them will be merged into a single track. If MERGE_TRACKS is false, this has no effect. Default value is defined by the MPF properties file.",
           "type": "INT",
           "propertiesKey": "detection.track.min.gap"
         },
         {
           "name": "MIN_TRACK_LENGTH",
-          "description": "In the context of videos, defines the minimum track length in frames. Tracks shorter than this minimum length will be silently discarded.",
+          "description": "In the context of videos, defines the minimum track length in frames. Tracks shorter than this minimum length will be silently discarded. Default value is defined by the MPF properties file.",
           "type": "INT",
           "propertiesKey": "detection.track.minimum.length"
         },
         {
-          "name": "MIN_DETECTION_CONFIDENCE",
-          "description": "This is the minimum dlib object detection confidence needed to start a new track.",
+          "name": "MIN_OVERLAP",
+          "description": "In the context of videos, the minimum overlap between detection bounding boxes for adjacent tracks to be considered continuous. Value is expected to be between 0 and 1. Default value is defined by the MPF properties file.",
           "type": "DOUBLE",
-          "defaultValue": "0.1"
-        },
-        {
-          "name": "MAX_INTERSECTION_OVERLAP_AREA_PCT",
-          "description": "(UNUSED: Not currently allowing any overlap.) The maximum allowable overlap rate between a new detection rect and any existing track rects.",
-          "type": "FLOAT",
-          "defaultValue": "0.2"
-        },
-        {
-          "name": "MIN_TRACK_OBJECT_SIMILARITY_VALUE",
-          "description": "The minimum amount of similarity required by a detection to be matched with an existing track.",
-          "type": "FLOAT",
-          "defaultValue": "0.6"
-        },
-        {
-          "name": "MIN_UPDATE_CORRELATION",
-          "description": "The minimum amount of correlation between frames needed to continue tracking.",
-          "type": "DOUBLE",
-          "defaultValue": "6.5"
+          "propertiesKey": "detection.track.overlap.threshold"
         },
         {
           "name": "SEARCH_REGION_ENABLE_DETECTION",
@@ -128,6 +134,24 @@
           "description": "Specifies whether or not to flip media based on EXIF data.",
           "type": "BOOLEAN",
           "defaultValue": "false"
+        },
+        {
+          "name": "MIN_DETECTION_CONFIDENCE",
+          "description": "This is the minimum dlib object detection confidence needed to start a new track.",
+          "type": "DOUBLE",
+          "defaultValue": "0.1"
+        },
+        {
+          "name": "MIN_TRACK_OBJECT_SIMILARITY_VALUE",
+          "description": "The minimum amount of similarity required by a detection to be matched with an existing track.",
+          "type": "FLOAT",
+          "defaultValue": "0.6"
+        },
+        {
+          "name": "MIN_UPDATE_CORRELATION",
+          "description": "The minimum amount of correlation between frames needed to continue tracking.",
+          "type": "DOUBLE",
+          "defaultValue": "6.5"
         },
         {
           "name": "VERBOSE",
