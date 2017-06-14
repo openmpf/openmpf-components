@@ -1,6 +1,6 @@
 {
   "componentName": "CaffeDetection",
-  "componentVersion": "0.9.2",
+  "componentVersion": "0.9.3",
   "middlewareVersion": "0.9.0",
   "sourceLanguage": "c++",
   "pathName": "amq_detection_component",
@@ -151,26 +151,50 @@
         },
         {
           "name": "RESIZE_HEIGHT",
-          "description": "The height, in pixels, to resize an input image before cropping it and then running it through the network. The default value (224) is for the default model (googlenet).",
+          "description": "The height, in pixels, to resize an input image before cropping it. The default value (224) is for the default model (googlenet).",
           "type": "INT",
           "defaultValue": "224"
         },
         {
           "name": "RESIZE_WIDTH",
-          "description": "The width, in pixels, to resize an input image before cropping it and then running it through the network. The default value (224) is for the default model (googlenet).",
+          "description": "The width, in pixels, to resize an input image before cropping it. The default value (224) is for the default model (googlenet).",
           "type": "INT",
           "defaultValue": "224"
         },
         {
           "name": "TOP_AND_BOTTOM_CROP",
-          "description": "The number of pixels to crop from the top and bottom of the image after it is resized to RESIZE_HEIGHT. For example, if set to 5 then 5 pixels are removed from the top and 5 pixels are removed from the bottom of the resized image before running it through the network. The default value (0) is for the default model (googlenet).",
+          "description": "The number of pixels to crop from the top and bottom of the image after it is resized to RESIZE_HEIGHT. For example, if set to 5 then 5 pixels are removed from the top and 5 pixels are removed from the bottom of the resized image. The default value (0) is for the default model (googlenet).",
           "type": "INT",
           "defaultValue": "0"
         },
         {
           "name": "LEFT_AND_RIGHT_CROP",
-          "description": "The number of pixels to crop from the left and right of the image after it is resized to RESIZE_WIDTH. For example, if set to 5 then 5 pixels are removed from the left and 5 pixels are removed from the right of the resized image before running it through the network. The default value (0) is for the default model (googlenet).",
+          "description": "The number of pixels to crop from the left and right of the image after it is resized to RESIZE_WIDTH. For example, if set to 5 then 5 pixels are removed from the left and 5 pixels are removed from the right of the resized image. The default value (0) is for the default model (googlenet).",
           "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "TRANSPOSE",
+          "description": "After the input image is resized and cropped, swap the X and Y coordinates. The default value (false) is for the default model (googlenet).",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "description": "After the input image is resized, cropped, and transposed, subtract this value from the blue color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
+          "type": "int",
+          "defaultValue": "0"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "description": "After the input image is resized, cropped, and transposed, subtract this value from the green color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
+          "type": "int",
+          "defaultValue": "0"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "description": "After the input image is resized, cropped, and transposed, subtract this value from the red color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
+          "type": "int",
           "defaultValue": "0"
         }
       ]
@@ -193,6 +217,10 @@
           "value": "yahoo_nsfw"
         },
         {
+          "name": "NUMBER_OF_CLASSIFICATIONS",
+          "value": "2"
+        },
+        {
           "name": "RESIZE_HEIGHT",
           "value": "256"
         },
@@ -209,8 +237,20 @@
           "value": "16"
         },
         {
-          "name": "NUMBER_OF_CLASSIFICATIONS",
-          "value": "2"
+          "name": "TRANSPOSE",
+          "value": "true"
+        },
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "104"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "117"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "123"
         }
       ]
     }
