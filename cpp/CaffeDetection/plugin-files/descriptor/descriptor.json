@@ -14,7 +14,7 @@
     }
   ],
   "algorithm": {
-    "name": "Caffe",
+    "name": "CAFFE",
     "description": "Returns a semantic description and a confidence score when provided with an input image.",
     "actionType": "DETECTION",
     "requiresCollection": {
@@ -150,19 +150,102 @@
           "defaultValue": "1"
         },
         {
-          "name": "FRAME_HEIGHT",
-          "description": "The height, in pixels, of the images on which the selected Caffe model has been trained. The default value (224) is for the default model (googlenet).",
+          "name": "RESIZE_HEIGHT",
+          "description": "The height, in pixels, to resize an input image before cropping it and then running it through the network. The default value (224) is for the default model (googlenet).",
           "type": "INT",
           "defaultValue": "224"
         },
         {
-          "name": "FRAME_WIDTH",
-          "description": "The width, in pixels, of the images on which the selected Caffe model has been trained. The default value (224) is for the default model (googlenet).",
+          "name": "RESIZE_WIDTH",
+          "description": "The width, in pixels, to resize an input image before cropping it and then running it through the network. The default value (224) is for the default model (googlenet).",
           "type": "INT",
           "defaultValue": "224"
+        },
+        {
+          "name": "TOP_AND_BOTTOM_CROP",
+          "description": "The number of pixels to crop from the top and bottom of the image after it is resized to RESIZE_HEIGHT. For example, if set to 5 then 5 pixels are removed from the top and 5 pixels are removed from the bottom of the resized image before running it through the network. The default value (0) is for the default model (googlenet).",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "LEFT_AND_RIGHT_CROP",
+          "description": "The number of pixels to crop from the left and right of the image after it is resized to RESIZE_WIDTH. For example, if set to 5 then 5 pixels are removed from the left and 5 pixels are removed from the right of the resized image before running it through the network. The default value (0) is for the default model (googlenet).",
+          "type": "INT",
+          "defaultValue": "0"
         }
       ]
     }
-  }
+  },
+  "actions": [
+    {
+      "name": "CAFFE GOOGLENET DETECTION ACTION",
+      "description": "Performs caffe detection using the 'googlenet' model.",
+      "algorithm": "CAFFE",
+      "properties": []
+    },
+    {
+      "name": "CAFFE YAHOO NSFW DETECTION ACTION",
+      "description": "Performs caffe detection using the 'yahoo_nsfw' model.",
+      "algorithm": "CAFFE",
+      "properties": [
+        {
+          "name": "MODEL_NAME",
+          "value": "yahoo_nsfw"
+        },
+        {
+          "name": "RESIZE_HEIGHT",
+          "value": "256"
+        },
+        {
+          "name": "RESIZE_WIDTH",
+          "value": "256"
+        },
+        {
+          "name": "TOP_AND_BOTTOM_CROP",
+          "value": "16"
+        },
+        {
+          "name": "LEFT_AND_RIGHT_CROP",
+          "value": "16"
+        },
+        {
+          "name": "NUMBER_OF_CLASSIFICATIONS",
+          "value": "2"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "CAFFE GOOGLENET DETECTION TASK",
+      "description": "Performs caffe detection using the 'googlenet' model.",
+      "actions": [
+        "CAFFE GOOGLENET DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "CAFFE YAHOO NSFW DETECTION TASK",
+      "description": "Performs caffe detection using the 'yahoo_nsfw' model.",
+      "actions": [
+        "CAFFE YAHOO NSFW DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "CAFFE GOOGLENET DETECTION PIPELINE",
+      "description": "Performs caffe detection using the 'googlenet' model.",
+      "tasks": [
+        "CAFFE GOOGLENET DETECTION TASK"
+      ]
+    },
+    {
+      "name": "CAFFE YAHOO NSFW DETECTION PIPELINE",
+      "description": "Performs caffe detection using the 'yahoo_nsfw' model.",
+      "tasks": [
+        "CAFFE YAHOO NSFW DETECTION TASK"
+      ]
+    }
+  ]
 }
 

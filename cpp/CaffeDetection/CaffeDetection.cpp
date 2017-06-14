@@ -33,6 +33,10 @@
 #include <opencv2/videoio.hpp>
 #include <opencv2/dnn.hpp>
 
+// imshow
+#include <opencv2/highgui/highgui.hpp>
+#include <iostream>
+
 #include <log4cxx/logmanager.h>
 #include <log4cxx/xml/domconfigurator.h>
 
@@ -82,10 +86,8 @@ bool CaffeDetection::Init() {
     LOG4CXX_INFO(logger_, "Initializing Caffe");
 
     // Load model info from config file
-    // A model is defined by a txt file, a bin file, and a synset
-    // The only provided model is GoogLeNet
+    // A model is defined by a txt file, a bin file, and an optional synset
 
-    ModelFiles model_files;
     ModelFileParser* parser;
     StringVector model_scopes;
     const char* scope = "";
@@ -104,9 +106,10 @@ bool CaffeDetection::Init() {
             return false;
         } else {
             for (int i = 0; i < len; i++) {
+                ModelFiles model_files;
                 model_files.model_txt = model_path + parser->getModelTxt(model_scopes[i]);
                 model_files.model_bin = model_path + parser->getModelBin(model_scopes[i]);
-                model_files.synset_file = model_path + parser->getSynsetTxt(model_scopes[i]);
+		model_files.synset_file = model_path + parser->getSynsetTxt(model_scopes[i]);
                 model_defs_.insert(std::pair<std::string, ModelFiles>(
                         parser->getName(model_scopes[i]),
                         model_files));
@@ -181,25 +184,142 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
             LOG4CXX_ERROR(logger_, "Could not read image file: " << job.data_uri);
             return MPF_IMAGE_READ_ERROR;
         }
+
+        cv::namedWindow("original", CV_WINDOW_AUTOSIZE); // DEBUG
+        cv::imshow("original", img); // DEBUG
+        //cv::waitKey(0); // DEBUG
+
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "!!! img.size = " << img.size);
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "!!! img.channels = " << img.channels());
+
         /*DEBUG*/ LOG4CXX_INFO(logger_, "original img mat rows = " << img.rows << " cols = " << img.cols);
-        int frame_width = DetectionComponentUtils::GetProperty<int>(job.job_properties,
-                                                                    "FRAME_WIDTH", 224);
-        int frame_height = DetectionComponentUtils::GetProperty<int>(job.job_properties,
-                                                                     "FRAME_HEIGHT", 224);
+        int resize_width = DetectionComponentUtils::GetProperty<int>(job.job_properties,
+                                                                    "RESIZE_WIDTH", 224);
+        int resize_height = DetectionComponentUtils::GetProperty<int>(job.job_properties,
+                                                                     "RESIZE_HEIGHT", 224);
 
-        cv::resize(img, img, cv::Size(frame_width, frame_height));
+        cv::resize(img, img, cv::Size(resize_width, resize_height));
         /*DEBUG*/ LOG4CXX_INFO(logger_, "resized img mat rows = " << img.rows << " cols = " << img.cols);
-        /*DEBUG*/ LOG4CXX_INFO(logger_, "resized img mat total is " << img.total());
 
-	cv::Mat input_blob = cv::dnn::blobFromImage(img); // convert Mat to batch of images
 
+        cv::namedWindow("resized", CV_WINDOW_AUTOSIZE); // DEBUG
+        cv::imshow("resized", img); // DEBUG
+        //cv::waitKey(0); // DEBUG
+
+       
+        int left_and_right_crop = DetectionComponentUtils::GetProperty<int>(job.job_properties,
+                                                                           "LEFT_AND_RIGHT_CROP", 0);
+        int top_and_bottom_crop = DetectionComponentUtils::GetProperty<int>(job.job_properties,
+                                                                           "TOP_AND_BOTTOM_CROP", 0);
+        if (left_and_right_crop > 0 || top_and_bottom_crop > 0) {
+            cv::Rect roi(left_and_right_crop, top_and_bottom_crop,
+                         img.cols - (2 * left_and_right_crop), img.rows - (2 * top_and_bottom_crop));
+            img = img(roi);
+            /*DEBUG*/ LOG4CXX_INFO(logger_, "cropped img mat rows = " << img.rows << " cols = " << img.cols);
+        }
+
+
+        cv::namedWindow("cropped", CV_WINDOW_AUTOSIZE); // DEBUG
+        cv::imshow("cropped", img); // DEBUG
+        //cv::waitKey(0); // DEBUG
+
+
+        cv::Mat transposed =  cv::Mat(img.cols, img.rows, img.type()); 
+        cv::transpose(img, transposed);
+        img = transposed;
+        cv::namedWindow("transposed", CV_WINDOW_AUTOSIZE); // DEBUG
+        cv::imshow("transposed", img); // DEBUG
+        //cv::waitKey(0); // DEBUG
+
+
+
+        // subtract mean
+        // caffe_transformer.set_mean('data', np.array([104, 117, 123]))  # subtract the dataset-mean value in each channel
+        
+        /*
+        Format input for Caffe:
+        - convert to single
+        - resize to input dimensions (preserving number of channels)
+        - transpose dimensions to K x H x W
+        - reorder channels (for instance color to BGR)
+        - scale raw input (e.g. from [0, 1] to [0, 255] for ImageNet models)
+        - subtract mean
+        - scale feature
+        */
+
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "transposed M = \n " << img << "\n\n");
+
+        cv::Mat means(img.cols, img.rows, img.type(), cv::Scalar(104, 117, 123)); // BGR
+        img = img - means;
+
+        cv::namedWindow("-mean", CV_WINDOW_AUTOSIZE); // DEBUG
+        cv::imshow("-mean", img); // DEBUG
+        cv::waitKey(0); // DEBUG
+
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "-mean M = \n " << img << "\n\n");
+
+
+        /*
+        // normalize color ranges to [0, 255]
+        cv::Mat colors[3];
+        cv::split(img, colors);  // colors[0] is blue, colors[1] is green, colors[2] is red
+        double min_b, max_b;
+        cv::minMaxLoc(colors[0], &min_b, &max_b);
+        double min_g, max_g;
+        cv::minMaxLoc(colors[1], &min_g, &max_g);
+        double min_r, max_r;
+        cv::minMaxLoc(colors[2], &min_r, &max_r);
+        cv::Mat mins(img.cols, img.rows, img.type(), cv::Scalar(min_b, min_g, min_r)); // BGR
+        img = img - mins;
+        / *DEBUG* / LOG4CXX_INFO(logger_, "mins M = \n " << mins << "\n\n");
+        / *DEBUG* / LOG4CXX_INFO(logger_, "-mins M = \n " << img << "\n\n");
+        cv::Mat scales(img.cols, img.rows, CV_64FC3,
+                       cv::Scalar((float)(255.0/(max_b-min_b)), (float)(255.0/(max_g-min_g)), (float)(255.0/(max_r-min_r)))); // BGR
+        img.convertTo(img, CV_64FC3); 
+        img = img.mul(scales); // element-wise multiplication
+        img.convertTo(img, means.type());
+        / *DEBUG* / LOG4CXX_INFO(logger_, "scales M = \n " << scales << "\n\n");
+        / *DEBUG* / LOG4CXX_INFO(logger_, "*scales M = \n " << img << "\n\n");
+        cv::namedWindow("norm", CV_WINDOW_AUTOSIZE); // DEBUG
+        cv::imshow("norm", img); // DEBUG
+        cv::waitKey(0); // DEBUG
+        */      
+
+        /*
+        // normalize color ranges to [0, 255]
+        double min_c, max_c;
+        cv::minMaxLoc(img, &min_c, &max_c);
+        cv::Mat mins(img.cols, img.rows, img.type(), cv::Scalar(min_c, min_c, min_c)); // BGR
+        img = img - mins;
+        / *DEBUG* / LOG4CXX_INFO(logger_, "mins M = \n " << mins << "\n\n");
+        / *DEBUG* / LOG4CXX_INFO(logger_, "-mins M = \n " << img << "\n\n");
+        cv::Mat scales(img.cols, img.rows, CV_64FC3,
+                       cv::Scalar((float)(255.0/(max_c-min_c)), (float)(255.0/(max_c-min_c)), (float)(255.0/(max_c-min_c)))); // BGR
+        img.convertTo(img, CV_64FC3); 
+        img = img.mul(scales); // element-wise multiplication
+        img.convertTo(img, means.type());
+        / *DEBUG* / LOG4CXX_INFO(logger_, "scales M = \n " << scales << "\n\n");
+        / *DEBUG* / LOG4CXX_INFO(logger_, "*scales M = \n " << img << "\n\n");
+        cv::namedWindow("norm", CV_WINDOW_AUTOSIZE); // DEBUG
+        cv::imshow("norm", img); // DEBUG
+        cv::waitKey(0); // DEBUG
+        */
+
+
+        // convert Mat to batch of images
+	cv::Mat input_blob = cv::dnn::blobFromImage(img, 1.0, false); // swapRB = false
+
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "!!! BEFORE SETBLOB");
         net.setBlob(".data", input_blob); // set the network input
 
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "!!! BEFORE FORWARD");
         net.forward(); // compute output
 
         /*DEBUG*/ LOG4CXX_INFO(logger_, "Gather output of layer named \"" << output_layer_name << "\"");
         // gather output of last layer
         cv::Mat prob = net.getBlob(output_layer_name);
+
+        LOG4CXX_INFO(logger_, "!!! prob.size = " << prob.size); // DEBUG // HERE
 
         std::vector<std::string> class_names;
         MPFDetectionError rc = readClassNames(class_names);
@@ -288,7 +408,12 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
 void CaffeDetection::getTopNClasses(cv::Mat &prob_blob,
                                     int num_classes, double threshold,
                                     std::vector< std::pair<int, float> > &classes) {
-    cv::Mat prob_mat = prob_blob.reshape(1, 1); // reshape the blob to 1x1000 matrix
+
+    /*DEBUG*/ LOG4CXX_INFO(logger_, "prob blob mat rows = " << prob_blob.rows << " cols = " << prob_blob.cols);
+
+    cv::Mat prob_mat = prob_blob.reshape(1, 1); // reshape the blob to 1x1000 matrix (googlenet)
+
+    /*DEBUG*/ LOG4CXX_INFO(logger_, "reshaped prob blob mat rows = " << prob_blob.rows << " cols = " << prob_blob.cols);
 
     cv::Mat sort_mat;
     cv::sortIdx(prob_mat, sort_mat, cv::SORT_EVERY_ROW + cv::SORT_DESCENDING);
@@ -303,6 +428,8 @@ void CaffeDetection::getTopNClasses(cv::Mat &prob_blob,
 
 //-----------------------------------------------------------------------------
 MPFDetectionError CaffeDetection::readClassNames(std::vector<std::string> &class_names) {
+
+    LOG4CXX_INFO(logger_, "!!! readClassNames 1, synset_file_:" << synset_file_ << "!!!!"); // DEBUG
 
     std::ifstream fp(synset_file_);
     if (!fp.is_open())

@@ -96,6 +96,15 @@ int main(int argc, char* argv[]) {
     Properties media_properties;
     std::string job_name("Testing Caffe");
 
+
+    // NSFW
+    algorithm_properties["MODEL_NAME"] = "yahoo_nsfw";
+    algorithm_properties["RESIZE_HEIGHT"] = std::to_string(256);
+    algorithm_properties["RESIZE_WIDTH"] = std::to_string(256);
+    algorithm_properties["TOP_AND_BOTTOM_CROP"] = std::to_string(16);
+    algorithm_properties["LEFT_AND_RIGHT_CROP"] = std::to_string(16);
+    algorithm_properties["NUMBER_OF_CLASSIFICATIONS"] = std::to_string(2);
+
     std::vector<MPFImageLocation> detections;
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
     caffe_component.GetDetections(job, detections);
@@ -109,7 +118,7 @@ int main(int argc, char* argv[]) {
                   << " classifications list: "
                   << detections[i].detection_properties["CLASSIFICATION LIST"]
                   << std::endl
-                  << "classifications confidence list: "
+                  << " classifications confidence list: "
                   << detections[i].detection_properties["CLASSIFICATION CONFIDENCE LIST"]
                   << std::endl;
     }
