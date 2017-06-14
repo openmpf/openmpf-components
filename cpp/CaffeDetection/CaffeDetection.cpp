@@ -31,7 +31,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
-#include <opencv2/dnn/blob.hpp>
+#include <opencv2/dnn.hpp>
 
 #include <log4cxx/logmanager.h>
 #include <log4cxx/xml/domconfigurator.h>
@@ -77,7 +77,7 @@ bool CaffeDetection::Init() {
     log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("CaffeDetection");
 
-    LOG4CXX_DEBUG(logger_, "Plugin path: " << plugin_path);
+    /*DEBUG*/ LOG4CXX_INFO(logger_, "Plugin path: " << plugin_path);
 
     LOG4CXX_INFO(logger_, "Initializing Caffe");
 
@@ -131,7 +131,7 @@ bool CaffeDetection::Close() {
 MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
 
     try {
-        LOG4CXX_DEBUG(logger_, "Data URI = " << job.data_uri);
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "Data URI = " << job.data_uri);
 
         if (job.data_uri.empty()) {
             LOG4CXX_ERROR(logger_, "Invalid image file");
@@ -152,23 +152,16 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
         synset_file_ = model_files.synset_file;
 
         // try to import Caffe model
-        cv::Ptr<cv::dnn::Importer> importer;
-        try {
-            importer = cv::dnn::createCaffeImporter(model_files.model_txt, model_files.model_bin);
-        }
-        catch (const cv::Exception &err) {
-            LOG4CXX_ERROR(logger_, err.msg);
-        }
-        if (!importer) {
+        cv::dnn::Net net = cv::dnn::readNetFromCaffe(model_files.model_txt, model_files.model_bin);
+
+        if (net.empty()) {
             LOG4CXX_ERROR(logger_, "Can't load network specified by the following files: ");
             LOG4CXX_ERROR(logger_, "prototxt:   " << model_files.model_txt);
             LOG4CXX_ERROR(logger_, "caffemodel: " << model_files.model_bin);
             return MPF_DETECTION_NOT_INITIALIZED;
         }
-        cv::dnn::Net net;
-        importer->populateNet(net);
-        LOG4CXX_DEBUG(logger_, "Created neural network");
-        importer.release();
+        
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "Created neural network");
 
         // TODO: Revert to this after upgrading to OpenCV 3.2
         //  MPFImageReader image_reader(job);
@@ -188,23 +181,25 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
             LOG4CXX_ERROR(logger_, "Could not read image file: " << job.data_uri);
             return MPF_IMAGE_READ_ERROR;
         }
-        LOG4CXX_DEBUG(logger_, "img mat rows = " << img.rows << " cols = " << img.cols);
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "original img mat rows = " << img.rows << " cols = " << img.cols);
         int frame_width = DetectionComponentUtils::GetProperty<int>(job.job_properties,
                                                                     "FRAME_WIDTH", 224);
         int frame_height = DetectionComponentUtils::GetProperty<int>(job.job_properties,
                                                                      "FRAME_HEIGHT", 224);
 
         cv::resize(img, img, cv::Size(frame_width, frame_height));
-        LOG4CXX_DEBUG(logger_, "img mat rows = " << img.rows << " cols = " << img.cols);
-        LOG4CXX_DEBUG(logger_, "img mat total is " << img.total());
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "resized img mat rows = " << img.rows << " cols = " << img.cols);
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "resized img mat total is " << img.total());
 
-        cv::dnn::Blob input_blob = cv::dnn::Blob(img, -1); // convert Mat to dnn::Blob image batch
+	cv::Mat input_blob = cv::dnn::blobFromImage(img); // convert Mat to batch of images
+
         net.setBlob(".data", input_blob); // set the network input
-        net.forward();                   // compute output
-        cv::dnn::Blob prob;
-        LOG4CXX_DEBUG(logger_, "Gather output of layer named \"" << output_layer_name << "\"");
+
+        net.forward(); // compute output
+
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "Gather output of layer named \"" << output_layer_name << "\"");
         // gather output of last layer
-        prob = net.getBlob(output_layer_name);
+        cv::Mat prob = net.getBlob(output_layer_name);
 
         std::vector<std::string> class_names;
         MPFDetectionError rc = readClassNames(class_names);
@@ -217,20 +212,19 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
             return MPF_DETECTION_FAILED;
         }
 
-        cv::dnn::BlobShape prob_shape = prob.shape();
-        LOG4CXX_DEBUG(logger_, "Output blob shape:" << prob_shape);
-        LOG4CXX_DEBUG(logger_, "Output blob total:" << prob_shape.total());
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "output prob mat rows = " << prob.rows << " cols = " << prob.cols);
+        /*DEBUG*/ LOG4CXX_INFO(logger_, "output prob mat total: " << prob.total());
         int num_classes =
                 DetectionComponentUtils::GetProperty<int>(job.job_properties,
                                                           "NUMBER_OF_CLASSIFICATIONS", 1);
 
         // The number of classifications requested must be greater
         // than 0 and less than the total size of the output blob.
-        if ((num_classes <= 0) || (num_classes > prob_shape.total())) {
+        if ((num_classes <= 0) || (num_classes > prob.total())) {
             LOG4CXX_ERROR(logger_, "Number of classifications requested: "
                     << num_classes
                     << " is invalid. It must be greater than 0, and less than the total returned by the net output layer = "
-                    << prob_shape.total());
+                    << prob.total());
             return MPF_INVALID_PROPERTY;
         }
 
@@ -256,8 +250,8 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
             // Save the highest confidence classification as the
             // "CLASSIFICATION" property, and its corresponding confidence
             // as the MPFImageLocation confidence.
-            LOG4CXX_DEBUG(logger_, "class id #0: " << class_info[0].first);
-            LOG4CXX_DEBUG(logger_, "confidence: " << class_info[0].second);
+            /*DEBUG*/ LOG4CXX_INFO(logger_, "class id #0: " << class_info[0].first);
+            /*DEBUG*/ LOG4CXX_INFO(logger_, "confidence: " << class_info[0].second);
             detection.confidence = class_info[0].second;
             det_prop["CLASSIFICATION"] = class_names.at(class_info[0].first);
 
@@ -272,8 +266,8 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
             ss_conf << class_info[0].second;
 
             for (int i = 1; i < class_info.size(); i++) {
-                LOG4CXX_DEBUG(logger_, "class id #" << i << ": " << class_info[i].first);
-                LOG4CXX_DEBUG(logger_, "confidence: " << class_info[i].second);
+                /*DEBUG*/ LOG4CXX_INFO(logger_, "class id #" << i << ": " << class_info[i].first);
+                /*DEBUG*/ LOG4CXX_INFO(logger_, "confidence: " << class_info[i].second);
                 ss_ids << "; " << class_names.at(class_info[i].first);
                 ss_conf << "; " << class_info[i].second;
             }
@@ -291,10 +285,10 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
 
 
 //-----------------------------------------------------------------------------
-void CaffeDetection::getTopNClasses(cv::dnn::Blob &prob_blob,
+void CaffeDetection::getTopNClasses(cv::Mat &prob_blob,
                                     int num_classes, double threshold,
                                     std::vector< std::pair<int, float> > &classes) {
-    cv::Mat prob_mat = prob_blob.matRefConst().reshape(1, 1); // reshape the blob to 1x1000 matrix
+    cv::Mat prob_mat = prob_blob.reshape(1, 1); // reshape the blob to 1x1000 matrix
 
     cv::Mat sort_mat;
     cv::sortIdx(prob_mat, sort_mat, cv::SORT_EVERY_ROW + cv::SORT_DESCENDING);
