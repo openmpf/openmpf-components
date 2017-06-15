@@ -182,19 +182,19 @@
         {
           "name": "SUBTRACT_BLUE_VALUE",
           "description": "After the input image is resized, cropped, and transposed, subtract this value from the blue color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "int",
+          "type": "INT",
           "defaultValue": "0"
         },
         {
           "name": "SUBTRACT_GREEN_VALUE",
           "description": "After the input image is resized, cropped, and transposed, subtract this value from the green color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "int",
+          "type": "INT",
           "defaultValue": "0"
         },
         {
           "name": "SUBTRACT_RED_VALUE",
           "description": "After the input image is resized, cropped, and transposed, subtract this value from the red color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "int",
+          "type": "INT",
           "defaultValue": "0"
         }
       ]
