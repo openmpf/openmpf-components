@@ -38,7 +38,7 @@
 
 #include <Utils.h>
 #include <detectionComponentUtils.h>
-#include <MPFVideoCapture.h>
+#include <MPFImageReader.h>
 
 #include "ModelFileParser.h"
 
@@ -162,21 +162,10 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
 
         LOG4CXX_DEBUG(logger_, "Created neural network");
 
-        // TODO: Revert to this after upgrading to OpenCV 3.2
-        //  MPFImageReader image_reader(job);
-        //  cv::Mat img = image_reader.GetImage();
-        //  if (img.empty()) {
-        //     LOG4CXX_ERROR(logger_, "Could not read image file: " << job.data_uri);
-        //     return MPF_IMAGE_READ_ERROR;
-        //  }
+        MPFImageReader image_reader(job);
+        cv::Mat img = image_reader.GetImage();
 
-        cv::Mat img;
-        MPFVideoCapture cap(job);
-        bool success = false;
-        if (cap.IsOpened()) {
-            success = cap.Read(img);
-        }
-        if (!success) {
+        if (img.empty()) {
             LOG4CXX_ERROR(logger_, "Could not read image file: " << job.data_uri);
             return MPF_IMAGE_READ_ERROR;
         }
