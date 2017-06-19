@@ -4,6 +4,11 @@ Unrestricted use.
 https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet
 
 
+# synset_words.txt
+Unrestricted use.
+http://dl.caffe.berkeleyvision.org/caffe_ilsvrc12.tar.gz
+
+
 # yahoo_nsfw.caffemodel
 Copyright 2016, Yahoo Inc.
 https://github.com/yahoo/open_nsfw
