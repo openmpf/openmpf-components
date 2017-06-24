@@ -61,7 +61,7 @@ public:
 
 private:
 
-    void getTopNClasses(cv::Mat &prob_blob, int num_classes, double threshold,
+    void getTopNClasses(cv::dnn::Blob &prob_blob, int num_classes, double threshold,
                         std::vector< std::pair<int,float> > &classes);
 
     MPF::COMPONENT::MPFDetectionError readClassNames(std::vector<std::string> &class_names);

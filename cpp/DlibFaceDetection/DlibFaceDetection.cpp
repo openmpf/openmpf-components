@@ -44,6 +44,7 @@
 #include <cassert>
 #include <stdexcept>
 
+#include "MPFVideoCapture.h"
 #include "MPFImageReader.h"
 #include "MPFSimpleConfigLoader.h"
 #include "detectionComponentUtils.h"
@@ -797,18 +798,26 @@ MPFDetectionError DlibFaceDetection::GetDetections(const MPFImageJob &job, vecto
             return MPF_INVALID_DATAFILE_URI;
         }
 
-        MPFImageReader image_reader(job);
-        cv::Mat image = image_reader.GetImage();
+        // TODO: Revert this after upgrading to OpenCV 3.2
+        // MPFImageReader image_reader(job);
+        // cv::Mat image = image_reader.GetImage();
 
+        MPFVideoCapture cap(job);
+        cv::Mat image;
+        bool success = false;
+        if (cap.IsOpened()) {
+            success = cap.Read(image);
+        }
         //need to make sure it is a valid image
-        if (image.empty()) {
+        if (!success || !image.data) {
             LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not open image and will not return detections");
             return MPF_IMAGE_READ_ERROR;
         }
 
         MPFDetectionError detections_result = GetDetectionsFromImageData(job, image, locations);
         for (auto &location : locations) {
-            image_reader.ReverseTransform(location);
+            // image_reader.ReverseTransform(location);
+            cap.ReverseTransform(location);
         }
 
         return detections_result;
