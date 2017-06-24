@@ -119,18 +119,25 @@ TEST(OcvFaceDetection, VerifyQuality) {
     if(test_image_path.find_first_of('.') == 0) {
         test_image_path = current_working_dir + "/" + test_image_path;
     }
+    // TODO: Revert this after upgrading to OpenCV 3.2
+    // cv::Mat image = cv::imread(test_image_path);
+    cv::Mat image;
+    cv::VideoCapture cap(test_image_path);
+    bool success = false;
+    if (cap.isOpened()) {
+        success = cap.read(image);
+    }
+    ASSERT_TRUE(success);
 
-    cv::Mat image = cv::imread(test_image_path, CV_LOAD_IMAGE_IGNORE_ORIENTATION + CV_LOAD_IMAGE_COLOR);
-    ASSERT_TRUE(!image.empty());
-
+    ASSERT_TRUE(image.cols > 0);
     cv::Mat image_gray = Utils::ConvertToGray(image);
+
     vector<pair<cv::Rect,int>> face_rects = ocv_detection->DetectFaces(image_gray, 10);
     ASSERT_TRUE(face_rects.size() == 1);
 
     float detection_confidence = static_cast<float>(face_rects[0].second);
     std::cout << "Ocv Detection Confidence Score: " << detection_confidence << std::endl;
     ASSERT_TRUE(detection_confidence > 30);
-
     delete ocv_detection;
 }
 

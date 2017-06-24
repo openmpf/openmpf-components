@@ -1096,10 +1096,25 @@ MPFDetectionError OCVFaceDetection::GetDetections(
             return MPF_INVALID_DATAFILE_URI;
         }
 
-        MPFImageReader imreader(job);
-        cv::Mat image_data(imreader.GetImage());
+        // With OpenCV 3.1, there is a bug that causes imread() to
+        // hang for jpeg files. see
+        // https://github.com/opencv/opencv/issues/6641
+        // The same problem does not happen with VideoCapture, which
+        // also works for image files, so we use that instead.
 
-        if (image_data.empty()) {
+        // TODO: Revert this after upgrading to OpenCV 3.2
+        // MPFImageReader imreader(job);
+        // cv::Mat image_data(imreader.GetImage());
+
+        MPFVideoCapture video_capture(job);
+        cv::Mat image_data;
+        bool success = false;
+        if (video_capture.IsOpened()) {
+            success = video_capture.Read(image_data);
+        }
+
+        if( !success || !image_data.data )
+        {
             LOG4CXX_ERROR(OpenFaceDetectionLogger, "[" << job.job_name << "] Could not open image and will not return detections");
             return MPF_IMAGE_READ_ERROR;
         }
@@ -1107,7 +1122,8 @@ MPFDetectionError OCVFaceDetection::GetDetections(
         MPFDetectionError detections_result = GetDetectionsFromImageData(job, image_data, locations);
 
         for (auto &location : locations) {
-            imreader.ReverseTransform(location);
+            // imreader.ReverseTransform(location);
+            video_capture.ReverseTransform(location);
         }
         return detections_result;
     }

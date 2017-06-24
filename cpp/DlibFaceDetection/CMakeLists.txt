@@ -37,7 +37,7 @@ set_property(TARGET dlib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 include(../ComponentSetup.cmake)
 
-find_package(OpenCV 3.2 EXACT REQUIRED PATHS /opt/opencv-3.2.0 COMPONENTS opencv_highgui)
+find_package(OpenCV 3.1 EXACT REQUIRED PATHS /opt/opencv-3.1.0 COMPONENTS opencv_highgui)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)

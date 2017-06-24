@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
                   << " classifications list: "
                   << detections[i].detection_properties["CLASSIFICATION LIST"]
                   << std::endl
-                  << " classifications confidence list: "
+                  << "classifications confidence list: "
                   << detections[i].detection_properties["CLASSIFICATION CONFIDENCE LIST"]
                   << std::endl;
     }
