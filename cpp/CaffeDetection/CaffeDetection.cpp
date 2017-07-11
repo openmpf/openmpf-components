@@ -181,10 +181,9 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
         }
 
         std::vector< std::pair<int,float> > class_info;
-        MPFDetectionError retval = GetDetections(job, net, img, class_info);
-
-        if (retval != MPF_DETECTION_SUCCESS) {
-            return retval;
+        rc = GetDetections(job, net, img, class_info);
+        if (rc != MPF_DETECTION_SUCCESS) {
+            return rc;
         }
 
         if (!class_info.empty()) {
