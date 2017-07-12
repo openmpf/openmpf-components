@@ -138,7 +138,6 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
         }
 
         std::string model_name = DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODEL_NAME", "googlenet");
-        std::string output_layer_name = DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODEL_OUTPUT_LAYER", "prob");
 
         std::map<std::string, ModelFiles>::iterator iter = model_defs_.find(model_name);
         if (iter == model_defs_.end()) {
@@ -149,6 +148,17 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
 
         ModelFiles model_files = model_defs_.find(model_name)->second;
         synset_file_ = model_files.synset_file;
+
+        std::vector<std::string> class_names;
+        MPFDetectionError rc = readClassNames(class_names);
+        if (rc != MPF_DETECTION_SUCCESS) {
+            LOG4CXX_ERROR(logger_, "Failed to read class labels for the network");
+            return rc;
+        }
+        if (class_names.size() <= 0) {
+            LOG4CXX_ERROR(logger_, "No network class labels found");
+            return MPF_DETECTION_FAILED;
+        }
 
         // try to import Caffe model
         cv::dnn::Net net = cv::dnn::readNetFromCaffe(model_files.model_txt, model_files.model_bin);
@@ -170,91 +180,11 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
             return MPF_IMAGE_READ_ERROR;
         }
 
-        LOG4CXX_DEBUG(logger_, "original img mat rows = " << img.rows << " cols = " << img.cols);
-
-        int resize_width = DetectionComponentUtils::GetProperty<int>(job.job_properties, "RESIZE_WIDTH", 224);
-        int resize_height = DetectionComponentUtils::GetProperty<int>(job.job_properties, "RESIZE_HEIGHT", 224);
-
-        cv::resize(img, img, cv::Size(resize_width, resize_height));
-        LOG4CXX_DEBUG(logger_, "resized img mat rows = " << img.rows << " cols = " << img.cols);
-
-        int left_and_right_crop = DetectionComponentUtils::GetProperty<int>(job.job_properties, "LEFT_AND_RIGHT_CROP", 0);
-        int top_and_bottom_crop = DetectionComponentUtils::GetProperty<int>(job.job_properties, "TOP_AND_BOTTOM_CROP", 0);
-
-        if (left_and_right_crop > 0 || top_and_bottom_crop > 0) {
-            cv::Rect roi(left_and_right_crop, top_and_bottom_crop,
-                         img.cols - (2 * left_and_right_crop), img.rows - (2 * top_and_bottom_crop));
-            img = img(roi);
-            LOG4CXX_DEBUG(logger_, "cropped img mat rows = " << img.rows << " cols = " << img.cols);
-        }
-
-        bool transpose = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "TRANSPOSE", false);
-
-        if (transpose) {
-            cv::Mat transposed =  cv::Mat(img.cols, img.rows, img.type());
-            cv::transpose(img, transposed);
-            img = transposed;
-        }
-
-        int sub_blue = DetectionComponentUtils::GetProperty<int>(job.job_properties, "SUBTRACT_BLUE_VALUE", 0);
-        int sub_green = DetectionComponentUtils::GetProperty<int>(job.job_properties, "SUBTRACT_GREEN_VALUE", 0);
-        int sub_red = DetectionComponentUtils::GetProperty<int>(job.job_properties, "SUBTRACT_RED_VALUE", 0);
-
-        if (sub_blue != 0 || sub_green != 0 || sub_red != 0) {
-            cv::Mat sub_colors(img.cols, img.rows, img.type(), cv::Scalar(sub_blue, sub_green, sub_red)); // BGR
-            img = img - sub_colors;
-        }
-
-        // convert Mat to batch of images
-        cv::Mat input_blob = cv::dnn::blobFromImage(img, 1.0, false); // swapRB = false
-
-        net.setBlob(".data", input_blob); // set the network input
-
-        net.forward(); // compute output
-
-        LOG4CXX_DEBUG(logger_, "Gather output of layer named \"" << output_layer_name << "\"");
-
-        // gather output of last layer
-        cv::Mat prob = net.getBlob(output_layer_name);
-
-        std::vector<std::string> class_names;
-        MPFDetectionError rc = readClassNames(class_names);
+        std::vector< std::pair<int,float> > class_info;
+        rc = GetDetections(job, net, img, class_info);
         if (rc != MPF_DETECTION_SUCCESS) {
-            LOG4CXX_ERROR(logger_, "Failed to read class labels for the network");
             return rc;
         }
-        if (class_names.size() <= 0) {
-            LOG4CXX_ERROR(logger_, "No network class labels found");
-            return MPF_DETECTION_FAILED;
-        }
-
-        LOG4CXX_DEBUG(logger_, "output prob mat rows = " << prob.rows << " cols = " << prob.cols);
-        LOG4CXX_DEBUG(logger_, "output prob mat total: " << prob.total());
-
-        int num_classes = DetectionComponentUtils::GetProperty<int>(job.job_properties, "NUMBER_OF_CLASSIFICATIONS", 1);
-
-        // The number of classifications requested must be greater
-        // than 0 and less than the total size of the output blob.
-        if ((num_classes <= 0) || (num_classes > prob.total())) {
-            LOG4CXX_ERROR(logger_, "Number of classifications requested: "
-                    << num_classes
-                    << " is invalid. It must be greater than 0, and less than the total returned by the net output layer = "
-                    << prob.total());
-            return MPF_INVALID_PROPERTY;
-        }
-
-        double threshold = DetectionComponentUtils::GetProperty<double>(job.job_properties, "CONFIDENCE_THRESHOLD", 0.0);
-
-        // The threshold must be greater than or equal to 0.0.
-        if (threshold < 0.0) {
-            LOG4CXX_ERROR(logger_, "The confidence threshold requested: "
-                    << threshold
-                    << " is invalid. It must be greater than 0.0.");
-            return MPF_INVALID_PROPERTY;
-        }
-
-        std::vector< std::pair<int,float> > class_info;
-        getTopNClasses(prob, num_classes, threshold, class_info);
 
         if (!class_info.empty()) {
             Properties det_prop;
@@ -289,6 +219,7 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
             detection.detection_properties = det_prop;
             locations.push_back(detection);
         }
+
         return MPF_DETECTION_SUCCESS;
     }
     catch (...) {
@@ -296,6 +227,87 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
     }
 }
 
+//-----------------------------------------------------------------------------
+MPFDetectionError CaffeDetection::GetDetections(const MPFJob &job, cv::dnn::Net &net,
+                                                cv::Mat &frame, std::vector< std::pair<int,float> > &classes) {
+
+    LOG4CXX_DEBUG(logger_, "original frame mat rows = " << frame.rows << " cols = " << frame.cols);
+
+    int resize_width = DetectionComponentUtils::GetProperty<int>(job.job_properties, "RESIZE_WIDTH", 224);
+    int resize_height = DetectionComponentUtils::GetProperty<int>(job.job_properties, "RESIZE_HEIGHT", 224);
+
+    cv::resize(frame, frame, cv::Size(resize_width, resize_height));
+    LOG4CXX_DEBUG(logger_, "resized frame mat rows = " << frame.rows << " cols = " << frame.cols);
+
+    int left_and_right_crop = DetectionComponentUtils::GetProperty<int>(job.job_properties, "LEFT_AND_RIGHT_CROP", 0);
+    int top_and_bottom_crop = DetectionComponentUtils::GetProperty<int>(job.job_properties, "TOP_AND_BOTTOM_CROP", 0);
+
+    if (left_and_right_crop > 0 || top_and_bottom_crop > 0) {
+        cv::Rect roi(left_and_right_crop, top_and_bottom_crop,
+                     frame.cols - (2 * left_and_right_crop), frame.rows - (2 * top_and_bottom_crop));
+        frame = frame(roi);
+        LOG4CXX_DEBUG(logger_, "cropped frame mat rows = " << frame.rows << " cols = " << frame.cols);
+    }
+
+    bool transpose = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "TRANSPOSE", false);
+
+    if (transpose) {
+        cv::Mat transposed =  cv::Mat(frame.cols, frame.rows, frame.type());
+        cv::transpose(frame, transposed);
+        frame = transposed;
+    }
+
+    int sub_blue = DetectionComponentUtils::GetProperty<int>(job.job_properties, "SUBTRACT_BLUE_VALUE", 0);
+    int sub_green = DetectionComponentUtils::GetProperty<int>(job.job_properties, "SUBTRACT_GREEN_VALUE", 0);
+    int sub_red = DetectionComponentUtils::GetProperty<int>(job.job_properties, "SUBTRACT_RED_VALUE", 0);
+
+    if (sub_blue != 0 || sub_green != 0 || sub_red != 0) {
+        cv::Mat sub_colors(frame.cols, frame.rows, frame.type(), cv::Scalar(sub_blue, sub_green, sub_red)); // BGR
+        frame = frame - sub_colors;
+    }
+
+    // convert Mat to batch of images
+    cv::Mat input_blob = cv::dnn::blobFromImage(frame, 1.0, false); // swapRB = false
+
+    net.setBlob(".data", input_blob); // set the network input
+
+    net.forward(); // compute output
+
+    std::string output_layer_name = DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODEL_OUTPUT_LAYER", "prob");
+    LOG4CXX_DEBUG(logger_, "Gather output of layer named \"" << output_layer_name << "\"");
+
+    // gather output of last layer
+    cv::Mat prob = net.getBlob(output_layer_name);
+
+    LOG4CXX_DEBUG(logger_, "output prob mat rows = " << prob.rows << " cols = " << prob.cols);
+    LOG4CXX_DEBUG(logger_, "output prob mat total: " << prob.total());
+
+    int num_classes = DetectionComponentUtils::GetProperty<int>(job.job_properties, "NUMBER_OF_CLASSIFICATIONS", 1);
+
+    // The number of classifications requested must be greater
+    // than 0 and less than the total size of the output blob.
+    if ((num_classes <= 0) || (num_classes > prob.total())) {
+        LOG4CXX_ERROR(logger_, "Number of classifications requested: "
+                << num_classes
+                << " is invalid. It must be greater than 0, and less than the total returned by the net output layer = "
+                << prob.total());
+        return MPF_INVALID_PROPERTY;
+    }
+
+    double threshold = DetectionComponentUtils::GetProperty<double>(job.job_properties, "CONFIDENCE_THRESHOLD", 0.0);
+
+    // The threshold must be greater than or equal to 0.0.
+    if (threshold < 0.0) {
+        LOG4CXX_ERROR(logger_, "The confidence threshold requested: "
+                << threshold
+                << " is invalid. It must be greater than 0.0.");
+        return MPF_INVALID_PROPERTY;
+    }
+
+    getTopNClasses(prob, num_classes, threshold, classes);
+
+    return MPF_DETECTION_SUCCESS;
+}
 
 //-----------------------------------------------------------------------------
 void CaffeDetection::getTopNClasses(cv::Mat &prob_blob,
@@ -338,7 +350,6 @@ MPFDetectionError CaffeDetection::readClassNames(std::vector<std::string> &class
     fp.close();
     return MPF_DETECTION_SUCCESS;
 }
-
 
 //-----------------------------------------------------------------------------
 
