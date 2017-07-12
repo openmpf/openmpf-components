@@ -62,7 +62,7 @@ public:
 private:
 
     MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFImageJob &job, cv::dnn::Net &net,
+            const MPF::COMPONENT::MPFJob &job, cv::dnn::Net &net,
             cv::Mat &frame, std::vector< std::pair<int,float> > &classes);
 
     void getTopNClasses(cv::Mat &prob_blob, int num_classes, double threshold,

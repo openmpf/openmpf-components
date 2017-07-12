@@ -228,7 +228,7 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
 }
 
 //-----------------------------------------------------------------------------
-MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, cv::dnn::Net &net,
+MPFDetectionError CaffeDetection::GetDetections(const MPFJob &job, cv::dnn::Net &net,
                                                 cv::Mat &frame, std::vector< std::pair<int,float> > &classes) {
 
     LOG4CXX_DEBUG(logger_, "original frame mat rows = " << frame.rows << " cols = " << frame.cols);
