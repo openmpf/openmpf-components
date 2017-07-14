@@ -26,17 +26,33 @@
 
 
 cmake_minimum_required(VERSION 3.6)
-project(openmpf-components)
+project(ocv-frame-reader)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_subdirectory(OcvFaceDetection)
-add_subdirectory(DlibFaceDetection)
-add_subdirectory(OalprLicensePlateTextDetection)
-add_subdirectory(CaffeDetection)
-add_subdirectory(OcvFrameReader)
+include(../ComponentSetup.cmake)
+
+find_package(OpenCV 3.1 EXACT REQUIRED PATHS /opt/opencv-3.1.0
+    COMPONENTS opencv_highgui opencv_objdetect opencv_features2d opencv_ml opencv_flann opencv_video)
+
+find_package(mpfComponentInterface REQUIRED)
+find_package(mpfDetectionComponentApi REQUIRED)
+find_package(mpfComponentUtils REQUIRED)
+find_package(Qt4 REQUIRED)
 
 
+set(OCV_FRAME_READER_SOURCE_FILES
+        OcvFrameReader.cpp OcvFrameReader.h)
+
+add_library(mpfOcvFrameReader SHARED ${OCV_FRAME_READER_SOURCE_FILES})
+target_link_libraries(mpfOcvFrameReader mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS})
 
 
+configure_mpf_component(OcvFrameReader mpfOcvFrameReader)
+
+
+#add_subdirectory(test)
+
+#add_executable(sample_ocv_face_detector sample_ocv_face_detector.cpp)
+#target_link_libraries(sample_ocv_face_detector mpfOcvFaceDetection)
 

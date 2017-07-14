@@ -1,0 +1,17 @@
+{
+  "componentName": "OcvFrameReader",
+  "componentVersion": "0.10.0",
+  "middlewareVersion": "0.10.0",
+  "sourceLanguage": "c++",
+  "pathName": "amq_frame_reader_component",
+  "launchArgs": [
+    "${MPF_HOME}/plugins/OcvFrameReader/lib/libmpfOcvFrameReader.so"
+  ],
+  "environmentVariables": [
+    {
+      "name": "LD_LIBRARY_PATH",
+      "value": "${MPF_HOME}/plugins/OcvFrameReader/lib:${LD_LIBRARY_PATH}"
+    }
+  ]
+}
+
