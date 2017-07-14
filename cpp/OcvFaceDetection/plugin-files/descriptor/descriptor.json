@@ -17,6 +17,7 @@
     "name": "FACECV",
     "description": "Detects faces in images and videos using the Open Computer Vision (OCV) library.",
     "actionType": "DETECTION",
+    "supportsBatchProcessing": true,
     "requiresCollection": {
       "states": []
     },
