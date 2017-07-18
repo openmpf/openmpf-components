@@ -17,6 +17,7 @@
     "name": "CAFFE",
     "description": "Returns a semantic description and a confidence score when provided with an input image.",
     "actionType": "DETECTION",
+    "supportsBatchProcessing": true,
     "requiresCollection": {
       "states": []
     },
