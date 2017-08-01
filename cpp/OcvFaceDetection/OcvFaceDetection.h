@@ -114,7 +114,7 @@ private:
     cv::Mat GetMask(const cv::Mat &frame, const cv::Rect &face, bool copy_face_rect = false);
     bool IsBadFaceRatio(const cv::Rect &face);
 
-    void CloseAnyOpenTracks(int frame_index, int segment_end);
+    void CloseAnyOpenTracks(int frame_index);
 
     void AdjustRectToEdges(cv::Rect &rect, const cv::Mat &src);
 
@@ -125,7 +125,6 @@ private:
 
     MPF::COMPONENT::MPFDetectionError GetDetectionsFromVideoCapture(
             const MPF::COMPONENT::MPFVideoJob &job,
-            const int frame_skip,
             MPF::COMPONENT::MPFVideoCapture &video_capture,
             std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks);
 
