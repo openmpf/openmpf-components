@@ -135,7 +135,6 @@ private:
 
     MPF::COMPONENT::MPFDetectionError GetDetectionsFromVideoCapture(
             const MPF::COMPONENT::MPFVideoJob &job,
-            const int frame_skip,
             MPF::COMPONENT::MPFVideoCapture &video_capture,
             std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks);
 
