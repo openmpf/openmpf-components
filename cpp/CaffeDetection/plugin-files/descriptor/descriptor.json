@@ -1,104 +1,291 @@
 {
-  "componentName" : "CaffeDetection",
-  "componentVersion" : "0.9.0",
-  "middlewareVersion" :  "0.9.0",
-  "sourceLanguage" : "c++",
-  "pathName" : "amq_detection_component",
-  "launchArgs" : ["${MPF_HOME}/plugins/CaffeDetection/lib/libcaffe.so"],
-  "environmentVariables" : [ {
-    "name" : "LD_LIBRARY_PATH",
-    "value" : "${MPF_HOME}/plugins/CaffeDetection/lib:${LD_LIBRARY_PATH}"
-  } ],
-  "algorithm" : {
-    "name" : "Caffe",
-    "description" : "Returns a semantic description and a confidence score when provided with an input image.",
-    "actionType" : "DETECTION",
-    "requiresCollection" : {
-      "states" : []
+  "componentName": "CaffeDetection",
+  "componentVersion": "0.10.0",
+  "middlewareVersion": "0.10.0",
+  "sourceLanguage": "c++",
+  "pathName": "amq_detection_component",
+  "launchArgs": [
+    "${MPF_HOME}/plugins/CaffeDetection/lib/libcaffe.so"
+  ],
+  "environmentVariables": [
+    {
+      "name": "LD_LIBRARY_PATH",
+      "value": "${MPF_HOME}/plugins/CaffeDetection/lib:${LD_LIBRARY_PATH}"
+    }
+  ],
+  "algorithm": {
+    "name": "CAFFE",
+    "description": "Returns a semantic description and a confidence score when provided with an input image.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
     },
-    "providesCollection" : {
-      "states" : [],
-      "properties" : [
-       {
-         "name" : "MODEL_NAME",
-         "description" : "The model to be used with Caffe. 'googlenet' is provided by default. Other models can be provided separately.",
-         "type" : "STRING",
-         "defaultValue" : "googlenet"
-       },
-       {
-         "name" : "MODEL_OUTPUT_LAYER",
-         "description" : "The name of the layer within the specified model for which output should be reported. The model layer names are defined in the .prototxt file associated with the model.",
-         "type" : "STRING",
-	 "defaultValue" : "prob"
-       },
-       {
-         "name" : "NUMBER_OF_CLASSIFICATIONS",
-         "description" : "The number of classifications, N, to be returned. The N highest confidence classifications found by the network will be returned with their associated confidence values. The value must be greater than 0, and less than the size of the model output layer.",
-         "type" : "INT",
-	 "defaultValue" : "1"
-       },
-       {
-         "name" : "CONFIDENCE_THRESHOLD",
-         "description" : "The confidence threshold for returning a classification result. No classifications lower than this threshold will be returned, even if that means returning fewer classifications than the number of classifications requested. The value must be greater than or equal to 0.0.",
-         "type" : "DOUBLE",
-	 "defaultValue" : "0.0"
-       },
-       {
-         "name": "SEARCH_REGION_ENABLE_DETECTION",
-         "description": "Enable cropping.",
-         "type": "BOOLEAN",
-         "defaultValue": "false"
-       },
-       {
-         "name": "SEARCH_REGION_TOP_LEFT_X_DETECTION",
-         "description": "X coordinate for top left corner of cropped frame. If negative, 0 will be used.",
-         "type": "INT",
-         "defaultValue": "-1"
-       },
-       {
-         "name": "SEARCH_REGION_TOP_LEFT_Y_DETECTION",
-         "description": "Y coordinate for top left corner of cropped frame. If negative, 0 will be used.",
-         "type": "INT",
-         "defaultValue": "-1"
-       },
-       {
-         "name": "SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION",
-         "description": "X coordinate for bottom right corner of cropped frame. If negative, bottom right X of input media will be used.",
-         "type": "INT",
-         "defaultValue": "-1"
-       },
-       {
-         "name": "SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION",
-         "description": "Y coordinate for bottom right corner of cropped frame. If negative, bottom right Y of input media. will be used.",
-         "type": "INT",
-         "defaultValue": "-1"
-       },
-       {
-         "name": "ROTATION",
-         "description": "Specifies the number of degrees in the clockwise direction that the media will be rotated. Only 90, 180 and 270 degrees are supported.",
-         "type": "INT",
-         "defaultValue": "0"
-       },
-       {
-         "name": "HORIZONTAL_FLIP",
-         "description": "Specifies whether or not the original media is flipped. Rotation occurs before flipping.",
-         "type": "BOOLEAN",
-         "defaultValue": "false"
-       },
-       {
-         "name": "AUTO_ROTATE",
-         "description": "Specifies whether not to rotate media based on EXIF data.",
-         "type": "BOOLEAN",
-         "defaultValue": "false"
-       },
-       {
-         "name": "AUTO_FLIP",
-         "description": "Specifies whether or not to flip media based on EXIF data.",
-         "type": "BOOLEAN",
-         "defaultValue": "false"
-       }
+    "providesCollection": {
+      "states": [],
+      "properties": [
+        {
+          "name": "FRAME_INTERVAL",
+          "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval. Must be greater than or equal to 0. If the frame_interval is set to 0 or 1, a frame_interval of 1 will be used, so that detections are performed on every frame. For a frame interval N > 1, every N-1 frames will be skipped. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.sampling.interval"
+        },
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "description": "The confidence threshold for returning a classification result. No classifications lower than this threshold will be returned, even if that means returning fewer classifications than the number of classifications requested. The value must be greater than or equal to 0.0.",
+          "type": "DOUBLE",
+          "defaultValue": "0.0"
+        },
+        {
+          "name": "MIN_GAP_BETWEEN_SEGMENTS",
+          "description": "In the context of videos, the minimum number of frames between segments which are not adjacent. Value must be greater than or equal to 1. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.gap"
+        },
+        {
+          "name": "TARGET_SEGMENT_LENGTH",
+          "description": "In the context of videos, the preferred length of segments which are to be processed by this algorithm. Value is expected to be greater than 10. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.target.length"
+        },
+        {
+          "name": "MIN_SEGMENT_LENGTH",
+          "description": "In the context of videos, the minimum length of a segment which will be processed by this algorithm. Value must be greater than 0. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.length"
+        },
+        {
+          "name": "MERGE_TRACKS",
+          "description": "In the context of videos, when set to true, attempt to merge tracks spanning segment boundaries. Default value is defined by the MPF properties file.",
+          "type": "BOOLEAN",
+          "propertiesKey": "detection.track.merging.enabled"
+        },
+        {
+          "name": "MIN_GAP_BETWEEN_TRACKS",
+          "description": "In the context of videos, similar tracks with less than this number of frames between them will be merged into a single track. If MERGE_TRACKS is false, this has no effect. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.track.min.gap"
+        },
+        {
+          "name": "MIN_TRACK_LENGTH",
+          "description": "In the context of videos, defines the minimum track length in frames. Tracks shorter than this minimum length will be silently discarded. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.track.minimum.length"
+        },
+        {
+          "name": "MIN_OVERLAP",
+          "description": "In the context of videos, the minimum overlap between detection bounding boxes for adjacent tracks to be considered continuous. Value is expected to be between 0 and 1. Default value is defined by the MPF properties file.",
+          "type": "DOUBLE",
+          "propertiesKey": "detection.track.overlap.threshold"
+        },
+        {
+          "name": "SEARCH_REGION_ENABLE_DETECTION",
+          "description": "Enable cropping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_X_DETECTION",
+          "description": "X coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_Y_DETECTION",
+          "description": "Y coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION",
+          "description": "X coordinate for bottom right corner of cropped frame. If negative, bottom right X of input media will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION",
+          "description": "Y coordinate for bottom right corner of cropped frame. If negative, bottom right Y of input media. will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "ROTATION",
+          "description": "Specifies the number of degrees in the clockwise direction that the media will be rotated. Only 90, 180 and 270 degrees are supported.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "HORIZONTAL_FLIP",
+          "description": "Specifies whether or not the original media is flipped. Rotation occurs before flipping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_ROTATE",
+          "description": "Specifies whether not to rotate media based on EXIF data or video metadata.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_FLIP",
+          "description": "Specifies whether or not to flip media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "MODEL_NAME",
+          "description": "The model to be used with Caffe. 'googlenet' is provided by default. Other models can be provided separately.",
+          "type": "STRING",
+          "defaultValue": "googlenet"
+        },
+        {
+          "name": "MODEL_OUTPUT_LAYER",
+          "description": "The name of the layer within the specified model for which output should be reported. The model layer names are defined in the .prototxt file associated with the model.",
+          "type": "STRING",
+          "defaultValue": "prob"
+        },
+        {
+          "name": "NUMBER_OF_CLASSIFICATIONS",
+          "description": "The number of classifications, N, to be returned. The N highest confidence classifications found by the network will be returned with their associated confidence values. The value must be greater than 0, and less than the size of the model output layer.",
+          "type": "INT",
+          "defaultValue": "1"
+        },
+        {
+          "name": "RESIZE_HEIGHT",
+          "description": "The height, in pixels, to resize an input image before cropping it. The default value (224) is for the default model (googlenet).",
+          "type": "INT",
+          "defaultValue": "224"
+        },
+        {
+          "name": "RESIZE_WIDTH",
+          "description": "The width, in pixels, to resize an input image before cropping it. The default value (224) is for the default model (googlenet).",
+          "type": "INT",
+          "defaultValue": "224"
+        },
+        {
+          "name": "TOP_AND_BOTTOM_CROP",
+          "description": "The number of pixels to crop from the top and bottom of the image after it is resized to RESIZE_HEIGHT. For example, if set to 5 then 5 pixels are removed from the top and 5 pixels are removed from the bottom of the resized image. The default value (0) is for the default model (googlenet).",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "LEFT_AND_RIGHT_CROP",
+          "description": "The number of pixels to crop from the left and right of the image after it is resized to RESIZE_WIDTH. For example, if set to 5 then 5 pixels are removed from the left and 5 pixels are removed from the right of the resized image. The default value (0) is for the default model (googlenet).",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "TRANSPOSE",
+          "description": "After the input image is resized and cropped, swap the X and Y coordinates. The default value (false) is for the default model (googlenet).",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "description": "After the input image is resized, cropped, and transposed, subtract this value from the blue color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "description": "After the input image is resized, cropped, and transposed, subtract this value from the green color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "description": "After the input image is resized, cropped, and transposed, subtract this value from the red color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
+          "type": "INT",
+          "defaultValue": "0"
+        }
       ]
     }
-  }
+  },
+  "actions": [
+    {
+      "name": "CAFFE GOOGLENET DETECTION ACTION",
+      "description": "Performs caffe detection using the 'googlenet' model.",
+      "algorithm": "CAFFE",
+      "properties": []
+    },
+    {
+      "name": "CAFFE YAHOO NSFW DETECTION ACTION",
+      "description": "Performs caffe detection using the 'yahoo_nsfw' model.",
+      "algorithm": "CAFFE",
+      "properties": [
+        {
+          "name": "MODEL_NAME",
+          "value": "yahoo_nsfw"
+        },
+        {
+          "name": "NUMBER_OF_CLASSIFICATIONS",
+          "value": "2"
+        },
+        {
+          "name": "RESIZE_HEIGHT",
+          "value": "256"
+        },
+        {
+          "name": "RESIZE_WIDTH",
+          "value": "256"
+        },
+        {
+          "name": "TOP_AND_BOTTOM_CROP",
+          "value": "16"
+        },
+        {
+          "name": "LEFT_AND_RIGHT_CROP",
+          "value": "16"
+        },
+        {
+          "name": "TRANSPOSE",
+          "value": "true"
+        },
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "104"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "117"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "123"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "CAFFE GOOGLENET DETECTION TASK",
+      "description": "Performs caffe detection using the 'googlenet' model.",
+      "actions": [
+        "CAFFE GOOGLENET DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "CAFFE YAHOO NSFW DETECTION TASK",
+      "description": "Performs caffe detection using the 'yahoo_nsfw' model.",
+      "actions": [
+        "CAFFE YAHOO NSFW DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "CAFFE GOOGLENET DETECTION PIPELINE",
+      "description": "Performs caffe detection using the 'googlenet' model.",
+      "tasks": [
+        "CAFFE GOOGLENET DETECTION TASK"
+      ]
+    },
+    {
+      "name": "CAFFE YAHOO NSFW DETECTION PIPELINE",
+      "description": "Performs caffe detection using the 'yahoo_nsfw' model.",
+      "tasks": [
+        "CAFFE YAHOO NSFW DETECTION TASK"
+      ]
+    }
+  ]
 }
 

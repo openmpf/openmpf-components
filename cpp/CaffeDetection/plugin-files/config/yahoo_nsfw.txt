@@ -1,0 +1,2 @@
+0 safe for work
+1 not safe for work

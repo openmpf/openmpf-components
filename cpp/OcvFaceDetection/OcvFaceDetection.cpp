@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2016 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2017 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2016 The MITRE Corporation                                       *
+ * Copyright 2017 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -1096,25 +1096,10 @@ MPFDetectionError OCVFaceDetection::GetDetections(
             return MPF_INVALID_DATAFILE_URI;
         }
 
-        // With OpenCV 3.1, there is a bug that causes imread() to
-        // hang for jpeg files. see
-        // https://github.com/opencv/opencv/issues/6641
-        // The same problem does not happen with VideoCapture, which
-        // also works for image files, so we use that instead.
+        MPFImageReader imreader(job);
+        cv::Mat image_data(imreader.GetImage());
 
-        // TODO: Revert this after upgrading to OpenCV 3.2
-        // MPFImageReader imreader(job);
-        // cv::Mat image_data(imreader.GetImage());
-
-        MPFVideoCapture video_capture(job);
-        cv::Mat image_data;
-        bool success = false;
-        if (video_capture.IsOpened()) {
-            success = video_capture.Read(image_data);
-        }
-
-        if( !success || !image_data.data )
-        {
+        if (image_data.empty()) {
             LOG4CXX_ERROR(OpenFaceDetectionLogger, "[" << job.job_name << "] Could not open image and will not return detections");
             return MPF_IMAGE_READ_ERROR;
         }
@@ -1122,8 +1107,7 @@ MPFDetectionError OCVFaceDetection::GetDetections(
         MPFDetectionError detections_result = GetDetectionsFromImageData(job, image_data, locations);
 
         for (auto &location : locations) {
-            // imreader.ReverseTransform(location);
-            video_capture.ReverseTransform(location);
+            imreader.ReverseTransform(location);
         }
         return detections_result;
     }

@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2016 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2017 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2016 The MITRE Corporation                                       *
+ * Copyright 2017 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -194,17 +194,10 @@ MPFDetectionError LicensePlateTextDetection::GetDetections(const MPFImageJob &jo
             return MPF_INVALID_DATAFILE_URI;
         }
 
-        // TODO: Revert this after upgrading to OpenCV 3.2
-        // MPFImageReader image_reader(job);
-        // cv::Mat frame = image_reader.GetImage();
+        MPFImageReader image_reader(job);
+        cv::Mat frame = image_reader.GetImage();
 
-        MPFVideoCapture cap(job);
-        cv::Mat frame;
-        bool success = false;
-        if (cap.IsOpened()) {
-            success = cap.Read(frame);
-        }
-        if (!success || frame.empty()) {
+        if (frame.empty()) {
             LOG4CXX_ERROR(td_logger_, "[" << job.job_name << "] Failed to read image.");
             return MPF_IMAGE_READ_ERROR;
         }
@@ -272,8 +265,7 @@ MPFDetectionError LicensePlateTextDetection::GetDetections(const MPFImageJob &jo
         }
 
         for (auto &location : locations) {
-            // image_reader.ReverseTransform(location);
-            cap.ReverseTransform(location);
+            image_reader.ReverseTransform(location);
         }
 
         LOG4CXX_INFO(td_logger_,
