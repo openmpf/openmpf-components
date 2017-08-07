@@ -55,13 +55,13 @@ int main(int argc, char* argv[]) {
     string app_dir = (this_app->applicationDirPath()).toStdString();
     delete this_app;
 
-    DlibFaceDetection *dlib_detection = new DlibFaceDetection();
-    MPFDetectionComponent *detection_engine = dlib_detection;
+    DlibFaceDetection dlib_detection;
+    MPFDetectionComponent *detection_engine = &dlib_detection;
     detection_engine->SetRunDirectory(app_dir + "/plugin");
 
     if (!detection_engine->Init()) {
-        printf("Failed to initialize");
-        return -1;
+        printf("Failed to initialize.\n");
+        return 1;
     }
 
     int rc;
@@ -72,10 +72,8 @@ int main(int argc, char* argv[]) {
     }
 
     if (!detection_engine->Close()) {
-        printf("Failed to close");
+        printf("Failed to close.\n");
     }
-
-    delete detection_engine;
 
     return rc;
 }
