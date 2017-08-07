@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2 || argc > 5) {
         printf("Usage (IMAGE): %s <uri>\n", argv[0]);
         printf("Usage (VIDEO): %s <uri> <start_index> <end_index> <detection_interval (optional)>\n", argv[0]);
-        return -1;
+        return 1;
     }
 
     QCoreApplication *this_app = new QCoreApplication(argc, argv);
