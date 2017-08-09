@@ -70,7 +70,7 @@ struct Track {
             track_lost(false) { }
 };
 
-class OCVFaceDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
+class OcvFaceDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
 private:
     OcvDetection ocv_detection;

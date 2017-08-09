@@ -28,7 +28,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <string>
+#include <iostream>
 
 #include <QCoreApplication>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
@@ -55,8 +56,8 @@ int main(int argc, char* argv[]) {
     string app_dir = (this_app->applicationDirPath()).toStdString();
     delete this_app;
 
-    DlibFaceDetection dlib_detection;
-    MPFDetectionComponent *detection_engine = &dlib_detection;
+    DlibFaceDetection dlib_face_detection;
+    MPFDetectionComponent *detection_engine = &dlib_face_detection;
     detection_engine->SetRunDirectory(app_dir + "/plugin");
 
     if (!detection_engine->Init()) {
