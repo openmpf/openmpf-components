@@ -350,7 +350,7 @@ bool OCVFaceDetection::IsBadFaceRatio(const Rect &face_rect) {
     return false;
 }
 
-void OCVFaceDetection::CloseAnyOpenTracks(int frame_index,int segment_end) {
+void OCVFaceDetection::CloseAnyOpenTracks(int frame_index) {
     if (!current_tracks.empty()) {
         //need to stop all current tracks!
         for (vector<Track>::iterator it = current_tracks.begin(); it != current_tracks.end(); it++) {
@@ -363,7 +363,7 @@ void OCVFaceDetection::CloseAnyOpenTracks(int frame_index,int segment_end) {
 
             //track is still going at end index
             //set the stopFrame for this track!!!
-            track.face_track.stop_frame = std::min(frame_index - 1,segment_end); //-1 since we've gone to next frame at the end of the loop
+            track.face_track.stop_frame = frame_index;
 
             //now the track can be saved
             saved_tracks.push_back(track);
@@ -432,13 +432,6 @@ OCVFaceDetection::GetDetections(const MPFVideoJob &job, vector<MPFVideoTrack> &t
         SetDefaultParameters();
         SetReadConfigParameters();
         GetPropertySettings(job.job_properties);
-        int detection_interval = DetectionComponentUtils::GetProperty<int>(job.job_properties, "FRAME_INTERVAL", 1);
-        if (detection_interval < 0) {
-            LOG4CXX_ERROR(OpenFaceDetectionLogger, "[" << job.job_name
-                                                       << "] Frame interval parameter is out of bounds: must be greater than or equal to 0: value given is "
-                                                       << detection_interval << ". Setting frame interval to its default value = 1");
-            detection_interval = 1;
-        }
 
 
         if (job.data_uri.empty()) {
@@ -446,16 +439,15 @@ OCVFaceDetection::GetDetections(const MPFVideoJob &job, vector<MPFVideoTrack> &t
             return MPF_INVALID_DATAFILE_URI;
         }
 
-        MPFVideoCapture video_capture(job);
+        MPFVideoCapture video_capture(job, true, true);
 
         if( !video_capture.IsOpened() )
         {
             LOG4CXX_ERROR(OpenFaceDetectionLogger, "[" << job.job_name << "] Could not initialize capturing");
             return MPF_COULD_NOT_OPEN_DATAFILE;
         }
-        int frame_skip = (detection_interval > 0) ? detection_interval : 1;
 
-        MPFDetectionError detections_result = GetDetectionsFromVideoCapture(job, frame_skip, video_capture, tracks);
+        MPFDetectionError detections_result = GetDetectionsFromVideoCapture(job, video_capture, tracks);
 
         for (auto &track : tracks) {
             video_capture.ReverseTransform(track);
@@ -471,28 +463,14 @@ OCVFaceDetection::GetDetections(const MPFVideoJob &job, vector<MPFVideoTrack> &t
 
 MPFDetectionError OCVFaceDetection::GetDetectionsFromVideoCapture(
         const MPFVideoJob &job,
-        const int frame_skip,
         MPFVideoCapture &video_capture,
         vector<MPFVideoTrack> &tracks) {
 
 
-    //get frame count -  use total_frames to check the start_frame and stop_frame
-    //to make sure they are within the video bounds
     long total_frames = video_capture.GetFrameCount();
     LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Total video frames: " << total_frames);
 
     int frame_index = 0;
-    int start_frame_cpy = job.start_frame;
-    //try to set start frame if start_frame != 0
-    if (job.start_frame > 0 && job.stop_frame < total_frames) {
-        video_capture.SetFramePosition(job.start_frame);
-        //track result start and stop indexes are now 0 based rather than relative to the start_frame
-        frame_index = job.start_frame;
-    }
-    else {
-        //can now set start_frame equal to 0 for comparing frame_index to start_frame later on
-        start_frame_cpy = 0;
-    }
 
     if (imshow_on) {
         namedWindow("Open Tracker", 0);
@@ -502,54 +480,7 @@ MPFDetectionError OCVFaceDetection::GetDetectionsFromVideoCapture(
     //need to store the previous frame
     Mat gray, prev_gray;
 
-    for (; ;) {
-        if (frame_index == start_frame_cpy) {
-            //push frame to image
-            video_capture.Read(frame);
-        }
-        else {
-            if (frame_skip > 1) {
-                //subtracting one because of iterating by at the end of the for(;;) loop
-                frame_index = frame_index + frame_skip - 1;
-            }
-        }
-
-        // check to see if adding on the detection interval has pushed the
-        // frame index out of bounds of the end frame or total frame
-        // Use > stop_frame to include the last frame, but >= to total_frames
-        // since it is a count not an index
-        if (frame_skip > 1) {
-            if ((job.stop_frame > 0 && frame_index > job.stop_frame) || frame_index >= total_frames) {
-                //there can still be running tracks in this case
-                CloseAnyOpenTracks(frame_index, job.stop_frame);
-                break;
-            }
-            else {
-                video_capture.SetFramePosition(frame_index);
-            }
-        }
-
-        //now can read the frame - for handling of any frame beyond the first read frame and detection_interval frames
-        if (frame_index != start_frame_cpy) {
-            //push frame to image
-            video_capture.Read(frame);
-        }
-
-        //still need to make sure the frame isn't empty or beyond the stop index
-        //should also check total frames and combine with the detection_interval logic!!!
-
-        if (frame.empty() || frame.rows == 0 || frame.cols == 0) {
-            LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Empty frame encountered at frame " <<
-                                                       video_capture.GetCurrentFramePosition());
-            CloseAnyOpenTracks(frame_index, job.stop_frame);
-            break;
-        }
-        if (job.stop_frame > 0 && frame_index > job.stop_frame) {
-            //there can still be running tracks when the video ends or the
-            // stop index has been hit
-            CloseAnyOpenTracks(frame_index, job.stop_frame);
-            break;
-        }
+    while (video_capture.Read(frame)) {
 
         if (imshow_on) {
             //create copy of frame to draw on for display
@@ -1015,8 +946,8 @@ MPFDetectionError OCVFaceDetection::GetDetectionsFromVideoCapture(
                 //did not pass the rules to continue this frame_index, it ended on the previous index
                 track->face_track.stop_frame = frame_index - 1;
 
-                //only saving tracks lasting more than 4 frames to eliminate badly started tracks
-                if (track->face_track.stop_frame - track->face_track.start_frame > 4) {
+                //only saving tracks lasting more than 1 frame to eliminate badly started tracks
+                if (track->face_track.stop_frame - track->face_track.start_frame > 1) {
                     saved_tracks.push_back(*track);
                 }
             }
@@ -1040,6 +971,8 @@ MPFDetectionError OCVFaceDetection::GetDetectionsFromVideoCapture(
 
         ++frame_index;
     }
+
+    CloseAnyOpenTracks(video_capture.GetFrameCount() - 1);
 
     //set tracks reference!
     for (unsigned int i = 0; i < saved_tracks.size(); i++) {
