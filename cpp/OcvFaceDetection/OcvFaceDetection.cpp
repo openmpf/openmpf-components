@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2016 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2017 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2016 The MITRE Corporation                                       *
+ * Copyright 2017 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -72,11 +72,11 @@ using namespace COMPONENT;
 
 
 
-string OCVFaceDetection::GetDetectionType() {
+string OcvFaceDetection::GetDetectionType() {
     return "FACE";
 }
 
-void OCVFaceDetection::SetModes(bool display_window, bool print_debug_info) {
+void OcvFaceDetection::SetModes(bool display_window, bool print_debug_info) {
     imshow_on = display_window;
 
     if (print_debug_info && OpenFaceDetectionLogger != NULL) {
@@ -84,7 +84,7 @@ void OCVFaceDetection::SetModes(bool display_window, bool print_debug_info) {
     }
 }
 
-bool OCVFaceDetection::Init() {
+bool OcvFaceDetection::Init() {
     string run_dir = GetRunDirectory();
     string plugin_path = run_dir + "/OcvFaceDetection";
     string config_path = plugin_path + "/config";
@@ -116,7 +116,7 @@ bool OCVFaceDetection::Init() {
     string config_params_path = config_path + "/mpfOcvFaceDetection.ini";
     int rc = LoadConfig(config_params_path, parameters);
     if (rc) {
-        LOG4CXX_ERROR(OpenFaceDetectionLogger, "Failed to load the OCVFaceDetection config from: " << config_params_path);
+        LOG4CXX_ERROR(OpenFaceDetectionLogger, "Failed to load the OcvFaceDetection config from: " << config_params_path);
         return (false);
     }
 
@@ -125,12 +125,12 @@ bool OCVFaceDetection::Init() {
     return true;
 }
 
-bool OCVFaceDetection::Close() {
+bool OcvFaceDetection::Close() {
     CloseWindows();
     return true;
 }
 
-void OCVFaceDetection::SetDefaultParameters() {
+void OcvFaceDetection::SetDefaultParameters() {
     max_features = 250;
 
     //limiting the number of corners to 250 by default
@@ -154,7 +154,7 @@ void OCVFaceDetection::SetDefaultParameters() {
     max_optical_flow_error = 4.7;;
 }
 
-void OCVFaceDetection::SetReadConfigParameters() {
+void OcvFaceDetection::SetReadConfigParameters() {
     //make sure none of the parameters are missed in the config file - double check
     imshow_on = parameters["IMSHOW_ON"].toInt();
 
@@ -175,7 +175,7 @@ void OCVFaceDetection::SetReadConfigParameters() {
 }
 
 /* This function reads a property value map and adjusts the settings for this component. */
-void OCVFaceDetection::GetPropertySettings(const map <string, string> &algorithm_properties) {
+void OcvFaceDetection::GetPropertySettings(const map <string, string> &algorithm_properties) {
     string property;
     string str_value;
     int ivalue;
@@ -211,14 +211,14 @@ void OCVFaceDetection::GetPropertySettings(const map <string, string> &algorithm
     return;
 }
 
-void OCVFaceDetection::Display(const string title, const Mat &img) {
+void OcvFaceDetection::Display(const string title, const Mat &img) {
     if (imshow_on) {
         imshow(title, img);
         waitKey(5);
     }
 }
 
-Rect OCVFaceDetection::GetMatch(const Mat &frame_rgb_display, const Mat &frame_gray, const Mat &templ) {
+Rect OcvFaceDetection::GetMatch(const Mat &frame_rgb_display, const Mat &frame_gray, const Mat &templ) {
     //no clue what method is best - default of the opencv demo
     int match_method = CV_TM_CCOEFF_NORMED;
 
@@ -257,7 +257,7 @@ Rect OCVFaceDetection::GetMatch(const Mat &frame_rgb_display, const Mat &frame_g
     return match_rect;
 }
 
-bool OCVFaceDetection::IsExistingTrackIntersection(const Rect new_rect, int &intersection_index) {
+bool OcvFaceDetection::IsExistingTrackIntersection(const Rect new_rect, int &intersection_index) {
     intersection_index = -1;
 
     for (vector<Track>::iterator track = current_tracks.begin(); track != current_tracks.end(); ++track) {
@@ -282,7 +282,7 @@ bool OCVFaceDetection::IsExistingTrackIntersection(const Rect new_rect, int &int
     return false;
 }
 
-Rect OCVFaceDetection::GetUpscaledFaceRect(const Rect &face_rect) {
+Rect OcvFaceDetection::GetUpscaledFaceRect(const Rect &face_rect) {
     return Rect(
             face_rect.x + static_cast<int>( -0.214 * static_cast<float>(face_rect.width)),
             face_rect.y + static_cast<int>( -0.055 * static_cast<float>(face_rect.height)),
@@ -290,7 +290,7 @@ Rect OCVFaceDetection::GetUpscaledFaceRect(const Rect &face_rect) {
             static_cast<int>( 1.11 * static_cast<float>(face_rect.height)));
 }
 
-Mat OCVFaceDetection::GetMask(const Mat &frame, const Rect &face_rect, bool copy_face_rect) {
+Mat OcvFaceDetection::GetMask(const Mat &frame, const Rect &face_rect, bool copy_face_rect) {
     //create a single channel zero matrix the size of the frame
     Mat image_mask;
     image_mask = Mat::zeros(frame.size(), CV_8UC1);
@@ -328,7 +328,7 @@ Mat OCVFaceDetection::GetMask(const Mat &frame, const Rect &face_rect, bool copy
     return image_mask;
 }
 
-bool OCVFaceDetection::IsBadFaceRatio(const Rect &face_rect) {
+bool OcvFaceDetection::IsBadFaceRatio(const Rect &face_rect) {
     //trying to find a way to kill tracks when points grab onto something outside of the face and the face
     //bounding box ratio becomes odd
     //if bounding rect width is much more than the height there is an issue or if the area of the enclosing circle
@@ -350,7 +350,7 @@ bool OCVFaceDetection::IsBadFaceRatio(const Rect &face_rect) {
     return false;
 }
 
-void OCVFaceDetection::CloseAnyOpenTracks(int frame_index,int segment_end) {
+void OcvFaceDetection::CloseAnyOpenTracks(int frame_index) {
     if (!current_tracks.empty()) {
         //need to stop all current tracks!
         for (vector<Track>::iterator it = current_tracks.begin(); it != current_tracks.end(); it++) {
@@ -363,7 +363,7 @@ void OCVFaceDetection::CloseAnyOpenTracks(int frame_index,int segment_end) {
 
             //track is still going at end index
             //set the stopFrame for this track!!!
-            track.face_track.stop_frame = std::min(frame_index - 1,segment_end); //-1 since we've gone to next frame at the end of the loop
+            track.face_track.stop_frame = frame_index;
 
             //now the track can be saved
             saved_tracks.push_back(track);
@@ -371,7 +371,7 @@ void OCVFaceDetection::CloseAnyOpenTracks(int frame_index,int segment_end) {
     }
 }
 
-void OCVFaceDetection::AdjustRectToEdges(Rect &rect, const Mat &src) {
+void OcvFaceDetection::AdjustRectToEdges(Rect &rect, const Mat &src) {
     if (!src.empty()) {
         //check corners and edges and resize appropriately!
 
@@ -427,18 +427,11 @@ void OCVFaceDetection::AdjustRectToEdges(Rect &rect, const Mat &src) {
 }
 
 MPFDetectionError
-OCVFaceDetection::GetDetections(const MPFVideoJob &job, vector<MPFVideoTrack> &tracks) {
+OcvFaceDetection::GetDetections(const MPFVideoJob &job, vector<MPFVideoTrack> &tracks) {
     try {
         SetDefaultParameters();
         SetReadConfigParameters();
         GetPropertySettings(job.job_properties);
-        int detection_interval = DetectionComponentUtils::GetProperty<int>(job.job_properties, "FRAME_INTERVAL", 1);
-        if (detection_interval < 0) {
-            LOG4CXX_ERROR(OpenFaceDetectionLogger, "[" << job.job_name
-                                                       << "] Frame interval parameter is out of bounds: must be greater than or equal to 0: value given is "
-                                                       << detection_interval << ". Setting frame interval to its default value = 1");
-            detection_interval = 1;
-        }
 
 
         if (job.data_uri.empty()) {
@@ -446,16 +439,15 @@ OCVFaceDetection::GetDetections(const MPFVideoJob &job, vector<MPFVideoTrack> &t
             return MPF_INVALID_DATAFILE_URI;
         }
 
-        MPFVideoCapture video_capture(job);
+        MPFVideoCapture video_capture(job, true, true);
 
         if( !video_capture.IsOpened() )
         {
             LOG4CXX_ERROR(OpenFaceDetectionLogger, "[" << job.job_name << "] Could not initialize capturing");
             return MPF_COULD_NOT_OPEN_DATAFILE;
         }
-        int frame_skip = (detection_interval > 0) ? detection_interval : 1;
 
-        MPFDetectionError detections_result = GetDetectionsFromVideoCapture(job, frame_skip, video_capture, tracks);
+        MPFDetectionError detections_result = GetDetectionsFromVideoCapture(job, video_capture, tracks);
 
         for (auto &track : tracks) {
             video_capture.ReverseTransform(track);
@@ -469,30 +461,16 @@ OCVFaceDetection::GetDetections(const MPFVideoJob &job, vector<MPFVideoTrack> &t
 
 
 
-MPFDetectionError OCVFaceDetection::GetDetectionsFromVideoCapture(
+MPFDetectionError OcvFaceDetection::GetDetectionsFromVideoCapture(
         const MPFVideoJob &job,
-        const int frame_skip,
         MPFVideoCapture &video_capture,
         vector<MPFVideoTrack> &tracks) {
 
 
-    //get frame count -  use total_frames to check the start_frame and stop_frame
-    //to make sure they are within the video bounds
     long total_frames = video_capture.GetFrameCount();
     LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Total video frames: " << total_frames);
 
     int frame_index = 0;
-    int start_frame_cpy = job.start_frame;
-    //try to set start frame if start_frame != 0
-    if (job.start_frame > 0 && job.stop_frame < total_frames) {
-        video_capture.SetFramePosition(job.start_frame);
-        //track result start and stop indexes are now 0 based rather than relative to the start_frame
-        frame_index = job.start_frame;
-    }
-    else {
-        //can now set start_frame equal to 0 for comparing frame_index to start_frame later on
-        start_frame_cpy = 0;
-    }
 
     if (imshow_on) {
         namedWindow("Open Tracker", 0);
@@ -502,54 +480,7 @@ MPFDetectionError OCVFaceDetection::GetDetectionsFromVideoCapture(
     //need to store the previous frame
     Mat gray, prev_gray;
 
-    for (; ;) {
-        if (frame_index == start_frame_cpy) {
-            //push frame to image
-            video_capture.Read(frame);
-        }
-        else {
-            if (frame_skip > 1) {
-                //subtracting one because of iterating by at the end of the for(;;) loop
-                frame_index = frame_index + frame_skip - 1;
-            }
-        }
-
-        // check to see if adding on the detection interval has pushed the
-        // frame index out of bounds of the end frame or total frame
-        // Use > stop_frame to include the last frame, but >= to total_frames
-        // since it is a count not an index
-        if (frame_skip > 1) {
-            if ((job.stop_frame > 0 && frame_index > job.stop_frame) || frame_index >= total_frames) {
-                //there can still be running tracks in this case
-                CloseAnyOpenTracks(frame_index, job.stop_frame);
-                break;
-            }
-            else {
-                video_capture.SetFramePosition(frame_index);
-            }
-        }
-
-        //now can read the frame - for handling of any frame beyond the first read frame and detection_interval frames
-        if (frame_index != start_frame_cpy) {
-            //push frame to image
-            video_capture.Read(frame);
-        }
-
-        //still need to make sure the frame isn't empty or beyond the stop index
-        //should also check total frames and combine with the detection_interval logic!!!
-
-        if (frame.empty() || frame.rows == 0 || frame.cols == 0) {
-            LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Empty frame encountered at frame " <<
-                                                       video_capture.GetCurrentFramePosition());
-            CloseAnyOpenTracks(frame_index, job.stop_frame);
-            break;
-        }
-        if (job.stop_frame > 0 && frame_index > job.stop_frame) {
-            //there can still be running tracks when the video ends or the
-            // stop index has been hit
-            CloseAnyOpenTracks(frame_index, job.stop_frame);
-            break;
-        }
+    while (video_capture.Read(frame)) {
 
         if (imshow_on) {
             //create copy of frame to draw on for display
@@ -1015,8 +946,8 @@ MPFDetectionError OCVFaceDetection::GetDetectionsFromVideoCapture(
                 //did not pass the rules to continue this frame_index, it ended on the previous index
                 track->face_track.stop_frame = frame_index - 1;
 
-                //only saving tracks lasting more than 4 frames to eliminate badly started tracks
-                if (track->face_track.stop_frame - track->face_track.start_frame > 4) {
+                //only saving tracks lasting more than 1 frame to eliminate badly started tracks
+                if (track->face_track.stop_frame - track->face_track.start_frame > 1) {
                     saved_tracks.push_back(*track);
                 }
             }
@@ -1040,6 +971,8 @@ MPFDetectionError OCVFaceDetection::GetDetectionsFromVideoCapture(
 
         ++frame_index;
     }
+
+    CloseAnyOpenTracks(video_capture.GetFrameCount() - 1);
 
     //set tracks reference!
     for (unsigned int i = 0; i < saved_tracks.size(); i++) {
@@ -1084,7 +1017,7 @@ MPFDetectionError OCVFaceDetection::GetDetectionsFromVideoCapture(
 }
 
 
-MPFDetectionError OCVFaceDetection::GetDetections(
+MPFDetectionError OcvFaceDetection::GetDetections(
         const MPFImageJob &job,
         vector<MPFImageLocation> &locations) {
     try {
@@ -1117,7 +1050,7 @@ MPFDetectionError OCVFaceDetection::GetDetections(
 }
 
 MPFDetectionError
-OCVFaceDetection::GetDetectionsFromImageData(const MPFImageJob &job,
+OcvFaceDetection::GetDetectionsFromImageData(const MPFImageJob &job,
                                              cv::Mat &image_data,
                                              vector<MPFImageLocation> &locations) {
     int frame_width = 0;
@@ -1207,7 +1140,7 @@ OCVFaceDetection::GetDetectionsFromImageData(const MPFImageJob &job,
 }
 
 
-void OCVFaceDetection::LogDetection(const MPFImageLocation& face, const string& job_name)
+void OcvFaceDetection::LogDetection(const MPFImageLocation& face, const string& job_name)
 {
     LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job_name << "] XLeftUpper: " << face.x_left_upper);
     LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job_name << "] YLeftUpper: " << face.y_left_upper);
@@ -1217,7 +1150,7 @@ void OCVFaceDetection::LogDetection(const MPFImageLocation& face, const string& 
 }
 
 
-void OCVFaceDetection::CloseWindows() {
+void OcvFaceDetection::CloseWindows() {
     if(imshow_on) {
         destroyAllWindows();
         waitKey(5); //waitKey might need to be called to actually kill the windows?
@@ -1225,5 +1158,5 @@ void OCVFaceDetection::CloseWindows() {
 }
 
 
-MPF_COMPONENT_CREATOR(OCVFaceDetection);
+MPF_COMPONENT_CREATOR(OcvFaceDetection);
 MPF_COMPONENT_DELETER();

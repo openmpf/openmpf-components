@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2016 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2017 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2016 The MITRE Corporation                                       *
+ * Copyright 2017 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -70,7 +70,7 @@ struct Track {
             track_lost(false) { }
 };
 
-class OCVFaceDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
+class OcvFaceDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
 private:
     OcvDetection ocv_detection;
@@ -114,7 +114,7 @@ private:
     cv::Mat GetMask(const cv::Mat &frame, const cv::Rect &face, bool copy_face_rect = false);
     bool IsBadFaceRatio(const cv::Rect &face);
 
-    void CloseAnyOpenTracks(int frame_index, int segment_end);
+    void CloseAnyOpenTracks(int frame_index);
 
     void AdjustRectToEdges(cv::Rect &rect, const cv::Mat &src);
 
@@ -125,7 +125,6 @@ private:
 
     MPF::COMPONENT::MPFDetectionError GetDetectionsFromVideoCapture(
             const MPF::COMPONENT::MPFVideoJob &job,
-            const int frame_skip,
             MPF::COMPONENT::MPFVideoCapture &video_capture,
             std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks);
 

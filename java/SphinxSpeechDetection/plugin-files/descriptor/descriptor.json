@@ -1,15 +1,16 @@
 {
   "componentName" : "SphinxSpeechDetection",
-  "componentVersion" : "0.9.1",
-  "middlewareVersion" :  "0.9.0",
+  "componentVersion" : "0.10.0",
+  "middlewareVersion" :  "0.10.0",
   "sourceLanguage" : "java",
-  "pathName" : "mpf-sphinx-speech-detection-component-0.9.0.jar",
+  "pathName" : "mpf-sphinx-speech-detection-component-0.10.0.jar",
   "launchArgs" : [],
   "environmentVariables" : [],
   "algorithm" : {
     "name" : "SPHINX",
     "description" : "Detects and transcribes English language speech in audio and video files.",
     "actionType" : "DETECTION",
+    "supportsBatchProcessing": true,
     "requiresCollection" : {
       "states" : []
     },

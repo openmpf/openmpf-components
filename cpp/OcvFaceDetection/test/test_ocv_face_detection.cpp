@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2016 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2017 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2016 The MITRE Corporation                                       *
+ * Copyright 2017 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -73,7 +73,7 @@ TEST(Detection, Init) {
 
     string current_working_dir = GetCurrentWorkingDirectory();
 
-    OCVFaceDetection *ocv_face_detection = new OCVFaceDetection();
+    OcvFaceDetection *ocv_face_detection = new OcvFaceDetection();
     ASSERT_TRUE(NULL != ocv_face_detection);
 
     string dir_input(current_working_dir + "/../plugin");
@@ -174,7 +174,7 @@ TEST(VideoGeneration, TestOnKnownVideo) {
 
     // 	Create an OCV face detection object.
     std::cout << "\tCreating OCV Face Detection" << std::endl;
-    OCVFaceDetection *ocv_face_detection = new OCVFaceDetection();
+    OcvFaceDetection *ocv_face_detection = new OcvFaceDetection();
     ASSERT_TRUE(NULL != ocv_face_detection);
     ocv_face_detection->SetRunDirectory(current_working_dir + "/../plugin");
     ASSERT_TRUE(ocv_face_detection->Init());
@@ -248,7 +248,7 @@ TEST(ImageGeneration, TestOnKnownImage) {
     comparison_score_threshold = parameters["OCV_FACE_COMPARISON_SCORE_IMAGE"].toFloat();
 
     // 	Create an OCV face detection object.
-    OCVFaceDetection *ocv_face_detection = new OCVFaceDetection();
+    OcvFaceDetection *ocv_face_detection = new OcvFaceDetection();
     ASSERT_TRUE(NULL != ocv_face_detection);
 
     ocv_face_detection->SetRunDirectory(current_working_dir + "/../plugin");

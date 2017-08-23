@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2016 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2017 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2016 The MITRE Corporation                                       *
+ * Copyright 2017 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -501,26 +501,13 @@ void DlibFaceDetection::UpdateTracks(const dlib::cv_image<dlib::uint8> &next_fra
 }
 
 MPFDetectionError DlibFaceDetection::GetDetectionsFromVideoCapture(const MPFVideoJob &job,
-                                                                   const int frame_skip,
                                                                    MPFVideoCapture &video_capture,
                                                                    vector<MPFVideoTrack> &tracks) {
-    //get frame count -  use total_frames to check the start_frame and stop_frame
-    //to make sure they are within the video bounds
+
     int total_frames = video_capture.GetFrameCount();
     LOG4CXX_INFO(logger_, "[" << job.job_name << "] Total video frames: " << total_frames);
 
     int frame_index = 0;
-    int start_frame_cpy = job.start_frame;
-    //try to set start frame if start_frame != 0
-    if (job.start_frame > 0 && job.stop_frame < total_frames) {
-        video_capture.SetFramePosition(job.start_frame);
-        //track result start and stop indexes are now 0 based rather than relative to the start_frame
-        frame_index = job.start_frame;
-    }
-    else {
-        //can now set start_frame equal to 0 for comparing frame_index to start_frame later on
-        start_frame_cpy = 0;
-    }
 
     Mat frame, gray;
 
@@ -528,54 +515,8 @@ MPFDetectionError DlibFaceDetection::GetDetectionsFromVideoCapture(const MPFVide
         namedWindow("Tracker Window", cv::WINDOW_AUTOSIZE );
     }
 
-    for (; ;) {
-        if (frame_index == start_frame_cpy) {
-            //push frame to image
-            video_capture.Read(frame);
-        }
-        else {
-            if (frame_skip > 1) {
-                //subtracting one because of iterating by at the end of the for(;;) loop
-                frame_index = frame_index + frame_skip - 1;
-            }
-        }
+    while (video_capture.Read(frame)) {
 
-        // check to see if adding on the detection interval has pushed the
-        // frame index out of bounds of the end frame or total frame
-        // Use > end_frame to include the last frame, but >= to total_frames
-        // since it is a count not an index
-        if (frame_skip > 1) {
-            if ((job.stop_frame > 0 && frame_index > job.stop_frame) || frame_index >= total_frames) {
-                //there can still be running tracks in this case
-                CloseAnyOpenTracks();
-                break;
-            }
-            else {
-                video_capture.SetFramePosition(frame_index);
-            }
-        }
-
-        //now can read the frame - for handling of any frame beyond the first read frame and detection_interval frames
-        if (frame_index != start_frame_cpy) {
-            //push frame to image
-            video_capture.Read(frame);
-        }
-
-        //still need to make sure the frame isn't empty or beyond the stop index
-        //should also check total frames and combine with the detection_interval logic!!!
-
-        if (frame.empty() || frame.rows == 0 || frame.cols == 0) {
-            LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Empty frame encountered at frame "
-                                       << video_capture.GetCurrentFramePosition());
-            CloseAnyOpenTracks();
-            break;
-        }
-        if (job.stop_frame > 0 && frame_index > job.stop_frame) {
-            //there can still be running tracks when the video ends or the
-            // stop index has been hit
-            CloseAnyOpenTracks();
-            break;
-        }
 
         //Convert to grayscale - make sure not to duplicate this step in detection
         gray = Utils::ConvertToGray(frame);
@@ -609,6 +550,7 @@ MPFDetectionError DlibFaceDetection::GetDetectionsFromVideoCapture(const MPFVide
 
         ++frame_index;
     }
+    CloseAnyOpenTracks();
 
     //set tracks reference!
     for (unsigned int i = 0; i < saved_tracks.size(); i++) {
@@ -663,28 +605,19 @@ MPFDetectionError DlibFaceDetection::GetDetections(const MPFVideoJob &job, vecto
         /* Use the algorithm properties map to adjust the settings, if not empty */
         GetPropertySettings(job.job_properties);
 
-        int frame_interval = DetectionComponentUtils::GetProperty<int>(job.job_properties, "FRAME_INTERVAL", 1);
-        if (frame_interval < 0) {
-            LOG4CXX_ERROR(logger_,
-                          "[" << job.job_name << "] Frame interval parameter is out of bounds: must be greater " <<
-                              "than or equal to 0: value given is " << frame_interval
-                              << ". Setting frame interval to its default value = 1");
-            frame_interval = 1;
-        }
 
         if (job.data_uri.empty()) {
             LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Input video file path is empty");
             return MPF_INVALID_DATAFILE_URI;
         }
 
-        int frame_skip = (frame_interval > 0) ? frame_interval : 1;
-        MPFVideoCapture video_capture(job);
+        MPFVideoCapture video_capture(job, true, true);
         if (!video_capture.IsOpened()) {
             LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not initialize capturing");
             return MPF_COULD_NOT_OPEN_DATAFILE;
         }
 
-        MPFDetectionError detection_result = GetDetectionsFromVideoCapture(job, frame_skip, video_capture, tracks);
+        MPFDetectionError detection_result = GetDetectionsFromVideoCapture(job, video_capture, tracks);
         for (auto &track : tracks) {
             video_capture.ReverseTransform(track);
         }
