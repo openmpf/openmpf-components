@@ -1,34 +1,37 @@
-# Overview
+## Getting Started
 
-This repository contains source code for Open Media Processing Framework (OpenMPF) components 
-licensed under an Apache 2.0 or compatible license.
+### To start using OpenMPF
 
+1. Download and build the source using the [OpenMPF Build Guide](https://openmpf.github.io/docs/site/Build-Environment-Setup-Guide/)
+2. Follow the OpenMPF [Installation Guide](https://openmpf.github.io/docs/site/Installation-Guide/)
 
-# Building the C++ Components
-* In order to build the C++ components you must first install the 
-  [OpenMPF C++ Component SDK](https://github.com/openmpf/openmpf-cpp-component-sdk).
-* cd into the `openmpf-components/cpp` directory.
-* Run the following commands:
-```
-mkdir build
-cd build
-cmake3 ..
-make install
-```
-* The built plugin packages will be created in `openmpf-components/cpp/build/plugin-packages`.
+### Project Website
 
-### Building Individual C++ Components
-If you would like to only build a single component, you can cd into that component's directory and run the
-build commands listed above.
+For more information about OpenMPF, including documentation, guides, and other material, visit our [website](https://openmpf.github.io/)
 
+### Project Workboard
 
+For a latest snapshot of what tasks are being worked on, what's available to pick up, and where the project stands as a whole, check out our   [workboard](https://overv.io/~/openmpf/).
 
-# Building the Java Components
-* In order to build the Java components you must first install the 
-  [OpenMPF Java Components SDK](https://github.com/openmpf/openmpf-java-component-sdk)
-* cd into the `openmpf-components/java` directory.
-* Run `mvn package`.
-* The built plugin packages will be in each components' `target/plugin-packages` directory.
+# OpenMPF Components
 
-### Building Individual Java Components
-If you would like to only build a single components, you can cd into that component's directory and run `mvn package`.
+Welcome to the Open Media Processing Framework (OpenMPF) Component Project!
+
+## What is OpenMPF?
+
+OpenMPF performs content detection and extraction (such as face detection, text extraction, and object classification) on bulk image, video, and audio files, enabling content analysis and search through the extraction of objects, keywords, thumbnails, and other contextual information.
+
+This scalable, web-friendly platform enables users to build configurable multimedia processing pipelines, enabling the rapid development and deployment of analytic algorithms and large-scale media processing applications.
+
+## Overview
+
+This repository contains source code for Open Media Processing Framework (OpenMPF) components licensed under an Apache 2.0 or compatible license.
+
+Included in this repository are the following C++ Components:
+- Caffe Object Classification
+- DLIB Face Detection
+- OpenCV LBP Face Detection
+- OpenALPR Text Detection
+
+And the following Java Components:
+- Sphinx Speech Detection
