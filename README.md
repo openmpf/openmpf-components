@@ -1,25 +1,10 @@
-## Getting Started
-
-### To start using OpenMPF
-
-1. Download and build the source using the [OpenMPF Build Guide](https://openmpf.github.io/docs/site/Build-Environment-Setup-Guide/)
-2. Follow the OpenMPF [Installation Guide](https://openmpf.github.io/docs/site/Installation-Guide/)
-
-### Project Website
-
-For more information about OpenMPF, including documentation, guides, and other material, visit our [website](https://openmpf.github.io/)
-
-### Project Workboard
-
-For a latest snapshot of what tasks are being worked on, what's available to pick up, and where the project stands as a whole, check out our   [workboard](https://overv.io/~/openmpf/).
-
 # OpenMPF Components
 
 Welcome to the Open Media Processing Framework (OpenMPF) Component Project!
 
-## What is OpenMPF?
+## What is the OpenMPF?
 
-OpenMPF performs content detection and extraction (such as face detection, text extraction, and object classification) on bulk image, video, and audio files, enabling content analysis and search through the extraction of objects, keywords, thumbnails, and other contextual information.
+The OpenMPF performs content detection and extraction (such as face detection, text extraction, and object classification) on bulk image, video, and audio files, enabling content analysis and search through the extraction of objects, keywords, thumbnails, and other contextual information.
 
 This scalable, web-friendly platform enables users to build configurable multimedia processing pipelines, enabling the rapid development and deployment of analytic algorithms and large-scale media processing applications.
 
@@ -35,3 +20,59 @@ Included in this repository are the following C++ Components:
 
 And the following Java Components:
 - Sphinx Speech Detection
+
+## Where Am I?
+
+- [Parent OpenMPF Project](https://github.com/openmpf/openmpf-projects)
+- [OpenMPF Core](https://github.com/openmpf/openmpf)
+- Components
+    * [Openmpf Standard Components](https://github.com/openmpf/openmpf-components) ( **You are here** )
+    * [Openmpf Contributed Components](https://github.com/openmpf/openmpf-contrib-components)
+- Component APIs:
+    * [Openmpf C++ Component sdk](https://github.com/openmpf/openmpf-cpp-component-sdk)
+    * [Openmpf Java Component sdk](https://github.com/openmpf/openmpf-java-component-sdk)
+- [Openmpf Build Tools](https://github.com/openmpf/openmpf-build-tools)
+- [OpenMPF Web Site Source](https://github.com/openmpf/openmpf.github.io)
+
+## Getting Started
+
+### Building the C++ Components
+
+- In order to build the C++ components you must first install the [OpenMPF C++ Component SDK](https://github.com/openmpf/openmpf-cpp-component-sdk).
+- cd into the `openmpf-components/cpp` directory.
+- Run the following commands:
+```
+mkdir build
+cd build
+cmake3 ..
+make install
+```
+
+- The built plugin packages will be created in: `openmpf-components/cpp/build/plugin-packages`.
+
+**Building Individual C++ Components**
+
+If you would like to only build a single component, you can cd into that component's directory and run the build commands listed above.
+
+### Building the Java Components
+
+- In order to build the Java components you must first install the [OpenMPF Java Components SDK](https://github.com/openmpf/openmpf-java-component-sdk)
+- cd into the `openmpf-components/java` directory.
+- Run `mvn package`.
+- The built plugin packages will be in each components' `target/plugin-packages` directory.
+
+**Building Individual Java Components**
+
+If you would like to only build a single component, you can cd into that component's directory and run `mvn package`.
+
+### Installing and Registering a Component
+
+Once a component is built, follow the [Installing and Registering a Component](https://openmpf.github.io/docs/site/Packaging-and-Registering-a-Component/#installing-and-registering-a-component) instructions to utilize the component in OpenMPF
+
+### Project Website
+
+For more information about OpenMPF, including documentation, guides, and other material, visit our website: [https://openmpf.github.io/](https://openmpf.github.io/)
+
+### Project Workboard
+
+For a latest snapshot of what tasks are being worked on, what's available to pick up, and where the project stands as a whole, check out our [workboard](https://overv.io/~/openmpf/).
