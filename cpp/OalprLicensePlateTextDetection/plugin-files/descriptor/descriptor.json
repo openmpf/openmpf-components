@@ -18,6 +18,7 @@
     "name": "OALPR",
     "description": "Detects license plate text in images and videos using the Open Automatic License Plate Recognition (OALPR) Library.",
     "actionType": "DETECTION",
+    "supportsBatchProcessing": true,
     "requiresCollection": {
       "states": []
     },

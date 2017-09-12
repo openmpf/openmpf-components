@@ -10,6 +10,7 @@
     "name" : "SPHINX",
     "description" : "Detects and transcribes English language speech in audio and video files.",
     "actionType" : "DETECTION",
+    "supportsBatchProcessing": true,
     "requiresCollection" : {
       "states" : []
     },

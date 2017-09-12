@@ -56,4 +56,4 @@ configure_mpf_component(DlibFaceDetection mpfDlibFaceDetection)
 add_subdirectory(test)
 
 add_executable(sample_dlib_face_detector sample_dlib_face_detector.cpp)
-target_link_libraries(sample_dlib_face_detector mpfDlibFaceDetection libdl.so)
+target_link_libraries(sample_dlib_face_detector mpfDlibFaceDetection)

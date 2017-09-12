@@ -17,6 +17,7 @@
     "name": "DLIB",
     "description": "Detects faces in images and videos using the dlib library.",
     "actionType": "DETECTION",
+    "supportsBatchProcessing": true,
     "requiresCollection": {
       "states": []
     },
