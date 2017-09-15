@@ -175,26 +175,20 @@
           "defaultValue": "0"
         },
         {
-          "name": "TRANSPOSE",
-          "description": "After the input image is resized and cropped, swap the X and Y coordinates. The default value (false) is for the default model (googlenet).",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
           "name": "SUBTRACT_BLUE_VALUE",
-          "description": "After the input image is resized, cropped, and transposed, subtract this value from the blue color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
+          "description": "After the input image is resized and cropped, subtract this value from the blue color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
           "type": "INT",
           "defaultValue": "0"
         },
         {
           "name": "SUBTRACT_GREEN_VALUE",
-          "description": "After the input image is resized, cropped, and transposed, subtract this value from the green color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
+          "description": "After the input image is resized and cropped, subtract this value from the green color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
           "type": "INT",
           "defaultValue": "0"
         },
         {
           "name": "SUBTRACT_RED_VALUE",
-          "description": "After the input image is resized, cropped, and transposed, subtract this value from the red color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
+          "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
           "type": "INT",
           "defaultValue": "0"
         }
@@ -206,7 +200,20 @@
       "name": "CAFFE GOOGLENET DETECTION ACTION",
       "description": "Performs caffe detection using the 'googlenet' model.",
       "algorithm": "CAFFE",
-      "properties": []
+      "properties": [
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "104"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "117"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "123"
+        }
+      ]
     },
     {
       "name": "CAFFE YAHOO NSFW DETECTION ACTION",
@@ -236,10 +243,6 @@
         {
           "name": "LEFT_AND_RIGHT_CROP",
           "value": "16"
-        },
-        {
-          "name": "TRANSPOSE",
-          "value": "true"
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",
