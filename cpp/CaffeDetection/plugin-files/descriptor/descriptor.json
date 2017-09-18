@@ -176,21 +176,21 @@
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",
-          "description": "After the input image is resized and cropped, subtract this value from the blue color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "INT",
-          "defaultValue": "0"
+          "description": "After the input image is resized and cropped, subtract this value from the blue color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
         },
         {
           "name": "SUBTRACT_GREEN_VALUE",
-          "description": "After the input image is resized and cropped, subtract this value from the green color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "INT",
-          "defaultValue": "0"
+          "description": "After the input image is resized and cropped, subtract this value from the green color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
         },
         {
           "name": "SUBTRACT_RED_VALUE",
-          "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "INT",
-          "defaultValue": "0"
+          "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
         }
       ]
     }
@@ -203,15 +203,15 @@
       "properties": [
         {
           "name": "SUBTRACT_BLUE_VALUE",
-          "value": "104"
+          "value": "104.0"
         },
         {
           "name": "SUBTRACT_GREEN_VALUE",
-          "value": "117"
+          "value": "117.0"
         },
         {
           "name": "SUBTRACT_RED_VALUE",
-          "value": "123"
+          "value": "123.0"
         }
       ]
     },
@@ -246,15 +246,15 @@
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",
-          "value": "104"
+          "value": "104.0"
         },
         {
           "name": "SUBTRACT_GREEN_VALUE",
-          "value": "117"
+          "value": "117.0"
         },
         {
           "name": "SUBTRACT_RED_VALUE",
-          "value": "123"
+          "value": "123.0"
         }
       ]
     }
