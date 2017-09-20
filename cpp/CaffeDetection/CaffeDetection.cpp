@@ -335,7 +335,6 @@ CaffeDetection::GetDetections(const MPFJob &job,
                                                                            "ACTIVATION_LAYER_LIST",
                                                                            "");
     LOG4CXX_DEBUG(logger_, "layers_list = " << layers_list);
-    MPFDetectionError rc = MPF_DETECTION_SUCCESS;
 
     if (!layers_list.empty()) {
         std::vector<std::string> layer_names;
@@ -349,23 +348,23 @@ CaffeDetection::GetDetections(const MPFJob &job,
                 continue;
             else {
                 LOG4CXX_DEBUG(logger_, "name = " << name);
+                std::string name_upper(name);
+                std::transform(name_upper.begin(), name_upper.end(), name_upper.begin(), ::toupper);
+                name_upper += " ACTIVATION LIST";
                 if (std::find(net_layers.begin(), net_layers.end(), name) != net_layers.end()) {
                     
                     std::string activations;
                     getActivationLayer(net, name, activations);
-                    boost::to_upper(name);
-                    activation_layers.push_back(std::make_pair(name, activations));
+                    activation_layers.push_back(std::make_pair(name_upper, activations));
                 }
                 else {
-                    LOG4CXX_ERROR(logger_, "layer name \"" << name << "\" not found in the network.");
-                    rc = MPF_INVALID_PROPERTY;
-                    break;
+                    activation_layers.push_back(std::make_pair(name_upper, "NOT FOUND"));
                 }
             }
         }
     }
 
-    return rc;
+    return MPF_DETECTION_SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
