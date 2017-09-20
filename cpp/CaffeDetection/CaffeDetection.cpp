@@ -28,6 +28,7 @@
 
 #include <unistd.h>
 #include <fstream>
+#include <sstream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
@@ -35,6 +36,8 @@
 
 #include <log4cxx/logmanager.h>
 #include <log4cxx/xml/domconfigurator.h>
+
+#include <boost/algorithm/string.hpp>
 
 #include <Utils.h>
 #include <detectionComponentUtils.h>
@@ -181,14 +184,15 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
         }
 
         std::vector< std::pair<int,float> > class_info;
-        rc = GetDetections(job, net, img, class_info);
+        std::vector< std::pair<std::string,std::string> > activation_info;
+        rc = GetDetections(job, net, img, class_info, activation_info);
         if (rc != MPF_DETECTION_SUCCESS) {
             return rc;
         }
 
+        Properties det_prop;
+        MPFImageLocation detection(0,0,0,0);
         if (!class_info.empty()) {
-            Properties det_prop;
-            MPFImageLocation detection(0,0,0,0);
 
             // Save the highest confidence classification as the
             // "CLASSIFICATION" property, and its corresponding confidence
@@ -216,9 +220,19 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
             }
             det_prop["CLASSIFICATION LIST"] = ss_ids.str();
             det_prop["CLASSIFICATION CONFIDENCE LIST"] = ss_conf.str();
+        }
+        // Now put any activation layers in the detection properties
+        if (!activation_info.empty()) {
+            for (std::pair<std::string,std::string> activation : activation_info) {
+                det_prop[activation.first] = activation.second;
+            }
+        }
+
+        if (!class_info.empty() || !activation_info.empty()) {
             detection.detection_properties = det_prop;
             locations.push_back(detection);
         }
+        
 
         return MPF_DETECTION_SUCCESS;
     }
@@ -228,16 +242,23 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
 }
 
 //-----------------------------------------------------------------------------
-MPFDetectionError CaffeDetection::GetDetections(const MPFJob &job, cv::dnn::Net &net,
-                                                cv::Mat &frame, std::vector< std::pair<int,float> > &classes) {
+MPFDetectionError 
+CaffeDetection::GetDetections(const MPFJob &job,
+                              cv::dnn::Net &net,
+                              cv::Mat &frame,
+                              std::vector< std::pair<int,float> > &classes,
+                              std::vector< std::pair<std::string, std::string> > &activation_layers) {
 
     LOG4CXX_DEBUG(logger_, "original frame mat rows = " << frame.rows << " cols = " << frame.cols);
 
     int resize_width = DetectionComponentUtils::GetProperty<int>(job.job_properties, "RESIZE_WIDTH", 224);
     int resize_height = DetectionComponentUtils::GetProperty<int>(job.job_properties, "RESIZE_HEIGHT", 224);
 
-    cv::resize(frame, frame, cv::Size(resize_width, resize_height));
-    LOG4CXX_DEBUG(logger_, "resized frame mat rows = " << frame.rows << " cols = " << frame.cols);
+    cv::Mat float_frame;
+    frame.convertTo(float_frame,CV_32F);
+
+    cv::resize(float_frame, float_frame, cv::Size(resize_width, resize_height),0,0,cv::INTER_LINEAR);
+    LOG4CXX_DEBUG(logger_, "resized frame mat rows = " << float_frame.rows << " cols = " << float_frame.cols);
 
     int left_and_right_crop = DetectionComponentUtils::GetProperty<int>(job.job_properties, "LEFT_AND_RIGHT_CROP", 0);
     int top_and_bottom_crop = DetectionComponentUtils::GetProperty<int>(job.job_properties, "TOP_AND_BOTTOM_CROP", 0);
@@ -257,17 +278,20 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFJob &job, cv::dnn::Net 
         frame = transposed;
     }
 
-    int sub_blue = DetectionComponentUtils::GetProperty<int>(job.job_properties, "SUBTRACT_BLUE_VALUE", 0);
-    int sub_green = DetectionComponentUtils::GetProperty<int>(job.job_properties, "SUBTRACT_GREEN_VALUE", 0);
-    int sub_red = DetectionComponentUtils::GetProperty<int>(job.job_properties, "SUBTRACT_RED_VALUE", 0);
+    float sub_blue = DetectionComponentUtils::GetProperty<float>(job.job_properties, "SUBTRACT_BLUE_VALUE", 0.0);
+    float sub_green = DetectionComponentUtils::GetProperty<float>(job.job_properties, "SUBTRACT_GREEN_VALUE", 0.0);
+    float sub_red = DetectionComponentUtils::GetProperty<float>(job.job_properties, "SUBTRACT_RED_VALUE", 0.0);
 
-    if (sub_blue != 0 || sub_green != 0 || sub_red != 0) {
-        cv::Mat sub_colors(frame.cols, frame.rows, frame.type(), cv::Scalar(sub_blue, sub_green, sub_red)); // BGR
-        frame = frame - sub_colors;
-    }
+    // cv::Mat float_frame;
+    // frame.convertTo(float_frame,CV_32F);
+
+    // cv::Scalar sub_colors(sub_blue, sub_green, sub_red);
+    // float_frame -= sub_colors;
+
+    float_frame -= cv::Scalar(104.0, 117.0, 123.0);
 
     // convert Mat to batch of images
-    cv::Mat input_blob = cv::dnn::blobFromImage(frame, 1.0, false); // swapRB = false
+    cv::Mat input_blob = cv::dnn::blobFromImage(float_frame, 1.0, false); // swapRB = false
 
     net.setBlob(".data", input_blob); // set the network input
 
@@ -306,7 +330,42 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFJob &job, cv::dnn::Net 
 
     getTopNClasses(prob, num_classes, threshold, classes);
 
-    return MPF_DETECTION_SUCCESS;
+    // See if we need to output any internal activation layers
+    std::string layers_list = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,
+                                                                           "ACTIVATION_LAYER_LIST",
+                                                                           "");
+    LOG4CXX_DEBUG(logger_, "layers_list = " << layers_list);
+    MPFDetectionError rc = MPF_DETECTION_SUCCESS;
+
+    if (!layers_list.empty()) {
+        std::vector<std::string> layer_names;
+        boost::split(layer_names, layers_list,
+                     boost::is_any_of(" ;"), boost::token_compress_on);
+        // get the layers in the net and check that the layer
+        // requested is actually part of the net
+        std::vector<cv::String> net_layers = net.getLayerNames();
+        for (std::string name : layer_names) {
+            if (name.empty())
+                continue;
+            else {
+                LOG4CXX_DEBUG(logger_, "name = " << name);
+                if (std::find(net_layers.begin(), net_layers.end(), name) != net_layers.end()) {
+                    
+                    std::string activations;
+                    getActivationLayer(net, name, activations);
+                    boost::to_upper(name);
+                    activation_layers.push_back(std::make_pair(name, activations));
+                }
+                else {
+                    LOG4CXX_ERROR(logger_, "layer name \"" << name << "\" not found in the network.");
+                    rc = MPF_INVALID_PROPERTY;
+                    break;
+                }
+            }
+        }
+    }
+
+    return rc;
 }
 
 //-----------------------------------------------------------------------------
@@ -350,6 +409,34 @@ MPFDetectionError CaffeDetection::readClassNames(std::vector<std::string> &class
     fp.close();
     return MPF_DETECTION_SUCCESS;
 }
+
+//-----------------------------------------------------------------------------
+void CaffeDetection::getActivationLayer(cv::dnn::Net &net,
+                                        const std::string &layer_name,
+                                        std::string &activations)
+{
+    cv::Mat act = net.getBlob("loss3/classifier");
+    if (!act.empty()) {
+        LOG4CXX_DEBUG(logger_, "act rows = " << act.rows << " cols = " << act.cols);
+        LOG4CXX_DEBUG(logger_, "act:\n" << act);
+
+        std::stringstream ss;
+        if (act.cols > 0) {
+            ss << act.at<float>(0,0);
+            for (int i = 1; i < act.cols; i++) {
+                ss << ";";
+                ss << act.at<float>(0,i);
+            }
+        }
+        activations = ss.str();
+    }
+    // DEBUG
+    // std::vector<std::string> act_strings;
+    // boost::split(act_strings, activations,
+    //                  boost::is_any_of(" ;"), boost::token_compress_on);
+    // LOG4CXX_DEBUG(logger_, "number of activations in layer \"" << layer_name << "\" = " << act_strings.size());
+}
+
 
 //-----------------------------------------------------------------------------
 

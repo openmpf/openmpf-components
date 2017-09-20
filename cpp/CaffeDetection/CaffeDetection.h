@@ -62,13 +62,21 @@ public:
 private:
 
     MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFJob &job, cv::dnn::Net &net,
-            cv::Mat &frame, std::vector< std::pair<int,float> > &classes);
+            const MPF::COMPONENT::MPFJob &job,
+            cv::dnn::Net &net,
+            cv::Mat &frame,
+            std::vector< std::pair<int,float> > &classes,
+            std::vector< std::pair<std::string, std::string> > &activation_layers);
 
     void getTopNClasses(cv::Mat &prob_blob, int num_classes, double threshold,
                         std::vector< std::pair<int,float> > &classes);
 
     MPF::COMPONENT::MPFDetectionError readClassNames(std::vector<std::string> &class_names);
+
+    // Return activations as a comma separated list in a string
+    void getActivationLayer(cv::dnn::Net &net,
+                            const std::string &layer_name,
+                            std::string &activations);
 
     std::string synset_file_;
     std::map<std::string, ModelFiles> model_defs_;
