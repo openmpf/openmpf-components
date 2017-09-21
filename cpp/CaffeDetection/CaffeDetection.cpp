@@ -270,38 +270,21 @@ CaffeDetection::GetDetections(const MPFJob &job,
         LOG4CXX_DEBUG(logger_, "cropped frame mat rows = " << frame.rows << " cols = " << frame.cols);
     }
 
-    bool transpose = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "TRANSPOSE", false);
+    float sub_blue = DetectionComponentUtils::GetProperty<float>(job.job_properties, "SUBTRACT_BLUE_VALUE", 0);
+    float sub_green = DetectionComponentUtils::GetProperty<float>(job.job_properties, "SUBTRACT_GREEN_VALUE", 0);
+    float sub_red = DetectionComponentUtils::GetProperty<float>(job.job_properties, "SUBTRACT_RED_VALUE", 0);
 
-    if (transpose) {
-        cv::Mat transposed =  cv::Mat(frame.cols, frame.rows, frame.type());
-        cv::transpose(frame, transposed);
-        frame = transposed;
-    }
+    cv::Scalar sub_colors(sub_blue, sub_green, sub_red); // BGR
 
-    float sub_blue = DetectionComponentUtils::GetProperty<float>(job.job_properties, "SUBTRACT_BLUE_VALUE", 0.0);
-    float sub_green = DetectionComponentUtils::GetProperty<float>(job.job_properties, "SUBTRACT_GREEN_VALUE", 0.0);
-    float sub_red = DetectionComponentUtils::GetProperty<float>(job.job_properties, "SUBTRACT_RED_VALUE", 0.0);
+    // convert Mat to batch of images (BGR)
+    cv::Mat input_blob = cv::dnn::blobFromImage(frame, 1.0, cv::Size(), sub_colors, false); // swapRB = false
 
-    // cv::Mat float_frame;
-    // frame.convertTo(float_frame,CV_32F);
-
-    // cv::Scalar sub_colors(sub_blue, sub_green, sub_red);
-    // float_frame -= sub_colors;
-
-    float_frame -= cv::Scalar(104.0, 117.0, 123.0);
-
-    // convert Mat to batch of images
-    cv::Mat input_blob = cv::dnn::blobFromImage(float_frame, 1.0, false); // swapRB = false
-
-    net.setBlob(".data", input_blob); // set the network input
-
-    net.forward(); // compute output
+    net.setInput(input_blob, "data"); // set the network input
 
     std::string output_layer_name = DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODEL_OUTPUT_LAYER", "prob");
-    LOG4CXX_DEBUG(logger_, "Gather output of layer named \"" << output_layer_name << "\"");
+    LOG4CXX_DEBUG(logger_, "Compute and gather output of layer named \"" << output_layer_name << "\"");
 
-    // gather output of last layer
-    cv::Mat prob = net.getBlob(output_layer_name);
+    cv::Mat prob = net.forward(output_layer_name); // compute output
 
     LOG4CXX_DEBUG(logger_, "output prob mat rows = " << prob.rows << " cols = " << prob.cols);
     LOG4CXX_DEBUG(logger_, "output prob mat total: " << prob.total());
