@@ -28,7 +28,6 @@
 #ifndef OPENMPF_COMPONENTS_CAFFEDETECTION_H
 #define OPENMPF_COMPONENTS_CAFFEDETECTION_H
 
-
 #include <log4cxx/logger.h>
 #include <opencv2/dnn.hpp>
 
@@ -73,10 +72,14 @@ private:
 
     MPF::COMPONENT::MPFDetectionError readClassNames(std::vector<std::string> &class_names);
 
-    // Return activations as a comma separated list in a string
-    void getActivationLayer(cv::dnn::Net &net,
-                            const std::string &layer_name,
-                            std::string &activations);
+    // Return a vector of pairs of strings. The first string in each
+    // pair contains the name of the activation layer, and the second
+    // string contains a semi-colon separated list of activation
+    // values.
+    void getActivationLayers(std::vector<cv::Mat> &mats,
+                             std::vector<std::string> &good_names,
+                             std::vector<std::string> &bad_names,
+                             std::vector<std::pair<std::string,std::string> > &activations);
 
     std::string synset_file_;
     std::map<std::string, ModelFiles> model_defs_;

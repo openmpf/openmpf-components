@@ -254,11 +254,8 @@ CaffeDetection::GetDetections(const MPFJob &job,
     int resize_width = DetectionComponentUtils::GetProperty<int>(job.job_properties, "RESIZE_WIDTH", 224);
     int resize_height = DetectionComponentUtils::GetProperty<int>(job.job_properties, "RESIZE_HEIGHT", 224);
 
-    cv::Mat float_frame;
-    frame.convertTo(float_frame,CV_32F);
-
-    cv::resize(float_frame, float_frame, cv::Size(resize_width, resize_height),0,0,cv::INTER_LINEAR);
-    LOG4CXX_DEBUG(logger_, "resized frame mat rows = " << float_frame.rows << " cols = " << float_frame.cols);
+    cv::resize(frame, frame, cv::Size(resize_width, resize_height));
+    LOG4CXX_DEBUG(logger_, "resized frame mat rows = " << frame.rows << " cols = " << frame.cols);
 
     int left_and_right_crop = DetectionComponentUtils::GetProperty<int>(job.job_properties, "LEFT_AND_RIGHT_CROP", 0);
     int top_and_bottom_crop = DetectionComponentUtils::GetProperty<int>(job.job_properties, "TOP_AND_BOTTOM_CROP", 0);
@@ -284,10 +281,53 @@ CaffeDetection::GetDetections(const MPFJob &job,
     std::string output_layer_name = DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODEL_OUTPUT_LAYER", "prob");
     LOG4CXX_DEBUG(logger_, "Compute and gather output of layer named \"" << output_layer_name << "\"");
 
-    cv::Mat prob = net.forward(output_layer_name); // compute output
+    // See if we need to output any internal activation layers. If so
+    // add them to the list of layers passed to the forward() method.
+    std::string layers_list = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,
+                                                                           "ACTIVATION_LAYER_LIST",
+                                                                           "");
+
+    std::vector<cv::String> output_layers;
+    output_layers.push_back(cv::String(output_layer_name));
+
+    // Get the layers in the net and check that each layer
+    // requested is actually part of the net. If it is, add it to the
+    // vector of layer names for which we need the layer output. If
+    // not, remember the name so that we can indicate in the output
+    // that it was not found.
+    std::vector<cv::String> net_layers = net.getLayerNames();
+    std::vector<std::string> good_layer_names;
+    std::vector<std::string> bad_layer_names;
+
+    if (!layers_list.empty()) {
+        boost::trim(layers_list);
+        std::vector<std::string> act_layer_names;
+        boost::split(act_layer_names, layers_list,
+                     boost::is_any_of(" ;"), boost::token_compress_on);
+        for (std::string name : act_layer_names) {
+            if (!name.empty()) {
+                if (std::find(net_layers.begin(), net_layers.end(), name) != net_layers.end()) {
+                    output_layers.push_back(cv::String(name));
+                    good_layer_names.push_back(name);
+                }
+                else {
+                    bad_layer_names.push_back(name);
+                }
+            }
+        }
+    }
+
+    // This form of the forward() function retrieves the output from
+    // each of the layers in the name list. The name of the
+    // classification output layer is the first in the list (or the
+    // only one, if no activation layers were requested).
+    std::vector<cv::Mat> out_mats;
+    net.forward(out_mats, output_layers); // compute output
+    cv::Mat prob = out_mats.front();
 
     LOG4CXX_DEBUG(logger_, "output prob mat rows = " << prob.rows << " cols = " << prob.cols);
     LOG4CXX_DEBUG(logger_, "output prob mat total: " << prob.total());
+    LOG4CXX_DEBUG(logger_, "number of output mats = " << out_mats.size());
 
     int num_classes = DetectionComponentUtils::GetProperty<int>(job.job_properties, "NUMBER_OF_CLASSIFICATIONS", 1);
 
@@ -313,39 +353,8 @@ CaffeDetection::GetDetections(const MPFJob &job,
 
     getTopNClasses(prob, num_classes, threshold, classes);
 
-    // See if we need to output any internal activation layers
-    std::string layers_list = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,
-                                                                           "ACTIVATION_LAYER_LIST",
-                                                                           "");
-    LOG4CXX_DEBUG(logger_, "layers_list = " << layers_list);
-
-    if (!layers_list.empty()) {
-        std::vector<std::string> layer_names;
-        boost::split(layer_names, layers_list,
-                     boost::is_any_of(" ;"), boost::token_compress_on);
-        // get the layers in the net and check that the layer
-        // requested is actually part of the net
-        std::vector<cv::String> net_layers = net.getLayerNames();
-        for (std::string name : layer_names) {
-            if (name.empty())
-                continue;
-            else {
-                LOG4CXX_DEBUG(logger_, "name = " << name);
-                std::string name_upper(name);
-                std::transform(name_upper.begin(), name_upper.end(), name_upper.begin(), ::toupper);
-                name_upper += " ACTIVATION LIST";
-                if (std::find(net_layers.begin(), net_layers.end(), name) != net_layers.end()) {
-                    
-                    std::string activations;
-                    getActivationLayer(net, name, activations);
-                    activation_layers.push_back(std::make_pair(name_upper, activations));
-                }
-                else {
-                    activation_layers.push_back(std::make_pair(name_upper, "NOT FOUND"));
-                }
-            }
-        }
-    }
+    // Create the activation layers output
+    getActivationLayers(out_mats, good_layer_names, bad_layer_names, activation_layers);
 
     return MPF_DETECTION_SUCCESS;
 }
@@ -393,30 +402,43 @@ MPFDetectionError CaffeDetection::readClassNames(std::vector<std::string> &class
 }
 
 //-----------------------------------------------------------------------------
-void CaffeDetection::getActivationLayer(cv::dnn::Net &net,
-                                        const std::string &layer_name,
-                                        std::string &activations)
+void CaffeDetection::getActivationLayers(std::vector<cv::Mat> &mats,
+                                         std::vector<std::string> &good_names,
+                                         std::vector<std::string> &bad_names,
+                                         std::vector<std::pair<std::string,std::string> > &activations)
 {
-    cv::Mat act = net.getBlob("loss3/classifier");
-    if (!act.empty()) {
-        LOG4CXX_DEBUG(logger_, "act rows = " << act.rows << " cols = " << act.cols);
-        LOG4CXX_DEBUG(logger_, "act:\n" << act);
+    assert(mats.size()-1 == good_names.size());
+    for (int i = 0; i < good_names.size(); i++) {
+        // Skip the first entry in mats, which corresponds to the
+        // final output layer that was used to get the list of
+        // classifications. The rest are output for the activation layers.
+        cv::Mat act = mats[i+1];
+        std::string name = good_names[i];
 
+        // Flatten the output Mat into a list of floats and convert to
+        // a string.
         std::stringstream ss;
-        if (act.cols > 0) {
-            ss << act.at<float>(0,0);
-            for (int i = 1; i < act.cols; i++) {
-                ss << ";";
-                ss << act.at<float>(0,i);
-            }
+        cv::MatIterator_<float> it = act.begin<float>();
+        ss << (*it);
+        it++;
+        while (it != act.end<float>()) {
+            ss << ";";
+            ss << (*it);
+            it++;
         }
-        activations = ss.str();
+
+        std::transform(name.begin(), name.end(), name.begin(), ::toupper);
+        name += " ACTIVATION LIST";
+        activations.push_back(std::make_pair(name, ss.str()));
+
     }
-    // DEBUG
-    // std::vector<std::string> act_strings;
-    // boost::split(act_strings, activations,
-    //                  boost::is_any_of(" ;"), boost::token_compress_on);
-    // LOG4CXX_DEBUG(logger_, "number of activations in layer \"" << layer_name << "\" = " << act_strings.size());
+
+    for (std::string name : bad_names) {
+        LOG4CXX_DEBUG(logger_, "bad name = " << name);
+        std::transform(name.begin(), name.end(), name.begin(), ::toupper);
+        name += " ACTIVATION LIST";
+        activations.push_back(std::make_pair(name, "NOT FOUND"));
+    }
 }
 
 
