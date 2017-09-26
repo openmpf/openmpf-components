@@ -402,12 +402,11 @@ MPFDetectionError CaffeDetection::readClassNames(std::vector<std::string> &class
 }
 
 //-----------------------------------------------------------------------------
-void CaffeDetection::getActivationLayers(std::vector<cv::Mat> &mats,
-                                         std::vector<std::string> &good_names,
-                                         std::vector<std::string> &bad_names,
+void CaffeDetection::getActivationLayers(const std::vector<cv::Mat> &mats,
+                                         const std::vector<std::string> &good_names,
+                                         const std::vector<std::string> &bad_names,
                                          std::vector<std::pair<std::string,std::string> > &activations)
 {
-    assert(mats.size()-1 == good_names.size());
     for (int i = 0; i < good_names.size(); i++) {
         // Skip the first entry in mats, which corresponds to the
         // final output layer that was used to get the list of

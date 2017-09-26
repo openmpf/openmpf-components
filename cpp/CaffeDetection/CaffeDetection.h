@@ -76,9 +76,9 @@ private:
     // pair contains the name of the activation layer, and the second
     // string contains a semi-colon separated list of activation
     // values.
-    void getActivationLayers(std::vector<cv::Mat> &mats,
-                             std::vector<std::string> &good_names,
-                             std::vector<std::string> &bad_names,
+    void getActivationLayers(const std::vector<cv::Mat> &mats,
+                             const std::vector<std::string> &good_names,
+                             const std::vector<std::string> &bad_names,
                              std::vector<std::pair<std::string,std::string> > &activations);
 
     std::string synset_file_;
