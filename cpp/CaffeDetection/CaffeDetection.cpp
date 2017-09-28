@@ -28,6 +28,7 @@
 
 #include <unistd.h>
 #include <fstream>
+#include <sstream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
@@ -35,6 +36,8 @@
 
 #include <log4cxx/logmanager.h>
 #include <log4cxx/xml/domconfigurator.h>
+
+#include <boost/algorithm/string.hpp>
 
 #include <Utils.h>
 #include <detectionComponentUtils.h>
@@ -181,14 +184,15 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
         }
 
         std::vector< std::pair<int,float> > class_info;
-        rc = GetDetections(job, net, img, class_info);
+        std::vector< std::pair<std::string,std::string> > activation_info;
+        rc = GetDetections(job, net, img, class_info, activation_info);
         if (rc != MPF_DETECTION_SUCCESS) {
             return rc;
         }
 
+        Properties det_prop;
+        MPFImageLocation detection(0,0,0,0);
         if (!class_info.empty()) {
-            Properties det_prop;
-            MPFImageLocation detection(0,0,0,0);
 
             // Save the highest confidence classification as the
             // "CLASSIFICATION" property, and its corresponding confidence
@@ -216,9 +220,19 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
             }
             det_prop["CLASSIFICATION LIST"] = ss_ids.str();
             det_prop["CLASSIFICATION CONFIDENCE LIST"] = ss_conf.str();
+        }
+        // Now put any activation layers in the detection properties
+        if (!activation_info.empty()) {
+            for (const std::pair<std::string,std::string> &activation : activation_info) {
+                det_prop[activation.first] = activation.second;
+            }
+        }
+
+        if (!class_info.empty() || !activation_info.empty()) {
             detection.detection_properties = det_prop;
             locations.push_back(detection);
         }
+        
 
         return MPF_DETECTION_SUCCESS;
     }
@@ -228,8 +242,12 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
 }
 
 //-----------------------------------------------------------------------------
-MPFDetectionError CaffeDetection::GetDetections(const MPFJob &job, cv::dnn::Net &net,
-                                                cv::Mat &frame, std::vector< std::pair<int,float> > &classes) {
+MPFDetectionError 
+CaffeDetection::GetDetections(const MPFJob &job,
+                              cv::dnn::Net &net,
+                              cv::Mat &frame,
+                              std::vector< std::pair<int,float> > &classes,
+                              std::vector< std::pair<std::string, std::string> > &activation_layers) {
 
     LOG4CXX_DEBUG(logger_, "original frame mat rows = " << frame.rows << " cols = " << frame.cols);
 
@@ -263,10 +281,53 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFJob &job, cv::dnn::Net 
     std::string output_layer_name = DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODEL_OUTPUT_LAYER", "prob");
     LOG4CXX_DEBUG(logger_, "Compute and gather output of layer named \"" << output_layer_name << "\"");
 
-    cv::Mat prob = net.forward(output_layer_name); // compute output
+    // See if we need to output any internal activation layers. If so
+    // add them to the list of layers passed to the forward() method.
+    std::string layers_list = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,
+                                                                           "ACTIVATION_LAYER_LIST",
+                                                                           "");
+
+    std::vector<cv::String> output_layers;
+    output_layers.push_back(cv::String(output_layer_name));
+
+    // Get the layers in the net and check that each layer
+    // requested is actually part of the net. If it is, add it to the
+    // vector of layer names for which we need the layer output. If
+    // not, remember the name so that we can indicate in the output
+    // that it was not found.
+    std::vector<cv::String> net_layers = net.getLayerNames();
+    std::vector<std::string> good_layer_names;
+    std::vector<std::string> bad_layer_names;
+
+    if (!layers_list.empty()) {
+        boost::trim(layers_list);
+        std::vector<std::string> act_layer_names;
+        boost::split(act_layer_names, layers_list,
+                     boost::is_any_of(" ;"), boost::token_compress_on);
+        for (const std::string &name : act_layer_names) {
+            if (!name.empty()) {
+                if (std::find(net_layers.begin(), net_layers.end(), name) != net_layers.end()) {
+                    output_layers.push_back(cv::String(name));
+                    good_layer_names.push_back(name);
+                }
+                else {
+                    bad_layer_names.push_back(name);
+                }
+            }
+        }
+    }
+
+    // This form of the forward() function retrieves the output from
+    // each of the layers in the name list. The name of the
+    // classification output layer is the first in the list (or the
+    // only one, if no activation layers were requested).
+    std::vector<cv::Mat> out_mats;
+    net.forward(out_mats, output_layers); // compute output
+    cv::Mat prob = out_mats.front();
 
     LOG4CXX_DEBUG(logger_, "output prob mat rows = " << prob.rows << " cols = " << prob.cols);
     LOG4CXX_DEBUG(logger_, "output prob mat total: " << prob.total());
+    LOG4CXX_DEBUG(logger_, "number of output mats = " << out_mats.size());
 
     int num_classes = DetectionComponentUtils::GetProperty<int>(job.job_properties, "NUMBER_OF_CLASSIFICATIONS", 1);
 
@@ -291,6 +352,9 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFJob &job, cv::dnn::Net 
     }
 
     getTopNClasses(prob, num_classes, threshold, classes);
+
+    // Create the activation layers output
+    getActivationLayers(out_mats, good_layer_names, bad_layer_names, activation_layers);
 
     return MPF_DETECTION_SUCCESS;
 }
@@ -336,6 +400,46 @@ MPFDetectionError CaffeDetection::readClassNames(std::vector<std::string> &class
     fp.close();
     return MPF_DETECTION_SUCCESS;
 }
+
+//-----------------------------------------------------------------------------
+void CaffeDetection::getActivationLayers(const std::vector<cv::Mat> &mats,
+                                         const std::vector<std::string> &good_names,
+                                         const std::vector<std::string> &bad_names,
+                                         std::vector<std::pair<std::string,std::string> > &activations)
+{
+    for (int i = 0; i < good_names.size(); i++) {
+        // Skip the first entry in mats, which corresponds to the
+        // final output layer that was used to get the list of
+        // classifications. The rest are output for the activation layers.
+        cv::Mat act = mats[i+1];
+        std::string name = good_names[i];
+
+        // Flatten the output Mat into a list of floats and convert to
+        // a string.
+        std::stringstream ss;
+        cv::MatIterator_<float> it = act.begin<float>();
+        ss << (*it);
+        it++;
+        while (it != act.end<float>()) {
+            ss << ";";
+            ss << (*it);
+            it++;
+        }
+
+        std::transform(name.begin(), name.end(), name.begin(), ::toupper);
+        name += " ACTIVATION LIST";
+        activations.push_back(std::make_pair(name, ss.str()));
+
+    }
+
+    for (std::string name : bad_names) {
+        LOG4CXX_DEBUG(logger_, "bad name = " << name);
+        std::transform(name.begin(), name.end(), name.begin(), ::toupper);
+        name += " ACTIVATION LIST";
+        activations.push_back(std::make_pair(name, "INVALID"));
+    }
+}
+
 
 //-----------------------------------------------------------------------------
 
