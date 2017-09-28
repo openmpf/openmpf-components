@@ -223,7 +223,7 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
         }
         // Now put any activation layers in the detection properties
         if (!activation_info.empty()) {
-            for (std::pair<std::string,std::string> activation : activation_info) {
+            for (const std::pair<std::string,std::string> &activation : activation_info) {
                 det_prop[activation.first] = activation.second;
             }
         }
@@ -304,7 +304,7 @@ CaffeDetection::GetDetections(const MPFJob &job,
         std::vector<std::string> act_layer_names;
         boost::split(act_layer_names, layers_list,
                      boost::is_any_of(" ;"), boost::token_compress_on);
-        for (std::string name : act_layer_names) {
+        for (const std::string &name : act_layer_names) {
             if (!name.empty()) {
                 if (std::find(net_layers.begin(), net_layers.end(), name) != net_layers.end()) {
                     output_layers.push_back(cv::String(name));
@@ -436,7 +436,7 @@ void CaffeDetection::getActivationLayers(const std::vector<cv::Mat> &mats,
         LOG4CXX_DEBUG(logger_, "bad name = " << name);
         std::transform(name.begin(), name.end(), name.begin(), ::toupper);
         name += " ACTIVATION LIST";
-        activations.push_back(std::make_pair(name, "NOT FOUND"));
+        activations.push_back(std::make_pair(name, "INVALID"));
     }
 }
 
