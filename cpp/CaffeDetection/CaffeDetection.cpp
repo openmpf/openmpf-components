@@ -413,22 +413,13 @@ void CaffeDetection::getActivationLayers(const std::vector<cv::Mat> &mats,
         // classifications. The rest are output for the activation layers.
         cv::Mat act = mats[i+1];
         std::string name = good_names[i];
-
-        // Flatten the output Mat into a list of floats and convert to
-        // a string.
-        std::stringstream ss;
-        cv::MatIterator_<float> it = act.begin<float>();
-        ss << (*it);
-        it++;
-        while (it != act.end<float>()) {
-            ss << ";";
-            ss << (*it);
-            it++;
-        }
-
+        std::string filename = name + ".json";
+        cv::FileStorage actStore(filename, cv::FileStorage::WRITE | cv::FileStorage::MEMORY);
+        actStore << "activation values" << act;
+        std::string actString = actStore.releaseAndGetString();
         std::transform(name.begin(), name.end(), name.begin(), ::toupper);
         name += " ACTIVATION LIST";
-        activations.push_back(std::make_pair(name, ss.str()));
+        activations.push_back(std::make_pair(name, actString));
 
     }
 
