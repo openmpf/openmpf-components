@@ -418,7 +418,7 @@ void CaffeDetection::getActivationLayers(const std::vector<cv::Mat> &mats,
         actStore << "activation values" << act;
         std::string actString = actStore.releaseAndGetString();
         std::transform(name.begin(), name.end(), name.begin(), ::toupper);
-        name += " ACTIVATION LIST";
+        name += " ACTIVATION MATRIX";
         activations.push_back(std::make_pair(name, actString));
 
     }
@@ -426,7 +426,7 @@ void CaffeDetection::getActivationLayers(const std::vector<cv::Mat> &mats,
     for (std::string name : bad_names) {
         LOG4CXX_DEBUG(logger_, "bad name = " << name);
         std::transform(name.begin(), name.end(), name.begin(), ::toupper);
-        name += " ACTIVATION LIST";
+        name += " ACTIVATION MATRIX";
         activations.push_back(std::make_pair(name, "INVALID"));
     }
 }
