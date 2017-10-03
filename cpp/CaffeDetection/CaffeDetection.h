@@ -34,10 +34,20 @@
 #include <adapters/MPFImageDetectionComponentAdapter.h>
 #include <MPFDetectionComponent.h>
 
+
 struct ModelFiles {
     cv::String model_txt;
     cv::String model_bin;
     std::string synset_file;
+};
+
+struct SpectralHashInfo {
+    std::string layer_name;
+    int nbits;
+    cv::Mat mx;
+    cv::Mat mn;
+    cv::Mat modes;
+    cv::Mat pc;
 };
 
 class CaffeDetection : public MPF::COMPONENT::MPFImageDetectionComponentAdapter {
@@ -65,7 +75,8 @@ private:
             cv::dnn::Net &net,
             cv::Mat &frame,
             std::vector< std::pair<int,float> > &classes,
-            std::vector< std::pair<std::string, std::string> > &activation_layers);
+            std::vector< std::pair<std::string, std::string> > &activation_layers,
+            std::vector< std::pair<std::string, std::string> > &spectral_hash_values);
 
     void getTopNClasses(cv::Mat &prob_blob, int num_classes, double threshold,
                         std::vector< std::pair<int,float> > &classes);
@@ -81,8 +92,26 @@ private:
                              const std::vector<std::string> &bad_names,
                              std::vector<std::pair<std::string,std::string> > &activations);
 
+    // Read the files containing information on spectral hash
+    // computations. This list of file names is specified by the user
+    // as a job property.
+    MPF::COMPONENT::MPFDetectionError
+    getSpectralHashInfo(const std::vector<cv::String> &names_to_search,
+                        std::string &hash_file_list,
+                        std::vector<std::string> &good_names,
+                        std::vector<std::string> &bad_names,
+                        std::vector<SpectralHashInfo> &hashInfo_);
+
+    // Computes the spectral hash for the activation values in a given
+    // layer. Returns a pair containing the name of the layer, and a
+    // string containing the spectral hash as a sequence of 1's and 0's.
+    std::pair<std::string,std::string> computeSpectralHash(const cv::Mat &activations,
+                                                             const SpectralHashInfo &hash_data);
+
     std::string synset_file_;
     std::map<std::string, ModelFiles> model_defs_;
+    std::vector<SpectralHashInfo> hashInfo_;
+
     log4cxx::LoggerPtr logger_;
 };
 
