@@ -146,7 +146,7 @@
         },
         {
           "name": "ACTIVATION_LAYER_LIST",
-          "description": "The list of names of layers within the specified model for which activation values should be reported in the output. The model activation layer names are defined in the .prototxt file associated with the model.",
+          "description": "The semicolon-delimited list of names of layers within the specified model for which activation values should be reported in the output. The model activation layer names are defined in the .prototxt file associated with the model.",
           "type": "STRING",
           "defaultValue": ""
         },
