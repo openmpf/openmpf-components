@@ -42,7 +42,7 @@
         },
         {
           "name": "USE_KEY_FRAMES",
-          "description": "When true the component will only look at key frames (I-frames) from the input video",
+          "description": "When true the component will only look at key frames (I-frames) from the input video.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
