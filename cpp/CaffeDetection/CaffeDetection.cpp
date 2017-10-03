@@ -261,6 +261,7 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
 
         std::vector< std::pair<int,float> > class_info;
         std::vector< std::pair<std::string,std::string> > activation_info;
+
         std::vector< std::pair<std::string,std::string> > hash_info;
         rc = GetDetections(job, net, img, class_info, activation_info, hash_info);
         if (rc != MPF_DETECTION_SUCCESS) {
@@ -368,6 +369,7 @@ CaffeDetection::GetDetections(const MPFJob &job,
 
     // See if we need to output any internal activation layers. If so
     // add them to the list of layers passed to the forward() method.
+
     std::string act_layers_list = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,
                                                                            "ACTIVATION_LAYER_LIST",
                                                                            "");
@@ -380,6 +382,7 @@ CaffeDetection::GetDetections(const MPFJob &job,
     // not, remember the name so that we can indicate in the output
     // that it was not found.
     std::vector<cv::String> net_layers = net.getLayerNames();
+
     std::vector<std::string> good_act_layer_names;
     std::vector<std::string> bad_act_layer_names;
 
@@ -425,6 +428,7 @@ CaffeDetection::GetDetections(const MPFJob &job,
 
     LOG4CXX_DEBUG(logger_, "output prob mat rows = " << prob.rows << " cols = " << prob.cols);
     LOG4CXX_DEBUG(logger_, "output prob mat total: " << prob.total());
+    LOG4CXX_DEBUG(logger_, "number of output mats = " << out_mats.size());
 
     int num_classes = DetectionComponentUtils::GetProperty<int>(job.job_properties, "NUMBER_OF_CLASSIFICATIONS", 1);
 
@@ -519,6 +523,7 @@ void CaffeDetection::getActivationLayers(const std::vector<cv::Mat> &mats,
         // Skip the first entry in mats, which corresponds to the
         // final output layer that was used to get the list of
         // classifications. The rest are output for the activation layers.
+
         cv::Mat act = mats[i];
         std::string name = good_names[i];
 
@@ -543,7 +548,7 @@ void CaffeDetection::getActivationLayers(const std::vector<cv::Mat> &mats,
     for (std::string name : bad_names) {
         LOG4CXX_DEBUG(logger_, "bad name = " << name);
         std::transform(name.begin(), name.end(), name.begin(), ::toupper);
-        name += " ACTIVATION LIST";
+        name += " ACTIVATION MATRIX";
         activations.push_back(std::make_pair(name, "INVALID"));
     }
 }
@@ -583,7 +588,6 @@ CaffeDetection::computeSpectralHash(const cv::Mat &activations,
     return(std::make_pair(name, bitset));
     // return  bits.to_ulong();
 }
-
 
 //-----------------------------------------------------------------------------
 
