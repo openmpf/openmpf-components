@@ -145,6 +145,12 @@
           "defaultValue": "prob"
         },
         {
+          "name": "ACTIVATION_LAYER_LIST",
+          "description": "The semicolon-delimited list of names of layers within the specified model for which activation values should be reported in the output. The model activation layer names are defined in the .prototxt file associated with the model.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
           "name": "NUMBER_OF_CLASSIFICATIONS",
           "description": "The number of classifications, N, to be returned. The N highest confidence classifications found by the network will be returned with their associated confidence values. The value must be greater than 0, and less than the size of the model output layer.",
           "type": "INT",
