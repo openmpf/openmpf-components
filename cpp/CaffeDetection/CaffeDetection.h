@@ -89,7 +89,6 @@ private:
     // values.
     void getActivationLayers(const std::vector<cv::Mat> &mats,
                              const std::vector<std::string> &good_names,
-                             const std::vector<std::string> &bad_names,
                              std::vector<std::pair<std::string,std::string> > &activations);
 
     // Read the files containing information on spectral hash
@@ -99,7 +98,8 @@ private:
     getSpectralHashInfo(const std::vector<cv::String> &names_to_search,
                         std::string &hash_file_list,
                         std::vector<std::string> &good_names,
-                        std::vector<std::string> &bad_names,
+                        std::vector<std::string> &bad_layer_names,
+                        std::vector<std::string> &bad_file_names,
                         std::vector<SpectralHashInfo> &hashInfo_);
 
     // Computes the spectral hash for the activation values in a given
