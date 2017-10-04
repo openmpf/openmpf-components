@@ -43,7 +43,7 @@
         },
         {
           "name": "USE_KEY_FRAMES",
-          "description": "When true the component will only look at key frames (I-frames) from the input video.",
+          "description": "When true the component will only look at key frames (I-frames) from the input video. Can be used in conjunction with FRAME_INTERVAL. For example, when USE_KEY_FRAMES is true, and FRAME_INTERVAL is set to \"2\", then every other key frame will be processed.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
