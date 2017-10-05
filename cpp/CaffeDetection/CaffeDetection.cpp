@@ -79,7 +79,7 @@ CaffeDetection::getSpectralHashInfo(const std::vector<cv::String> &names_to_sear
                                     std::string &hash_file_list,
                                     std::vector<std::string> &good_names,
                                     std::vector<std::string> &bad_layer_names,
-                                    std::vector<std::string> &bad_file_names,
+                                    std::vector<std::string> &bad_hash_file_names,
                                     std::vector<SpectralHashInfo> &hashInfo_) {
 
     LOG4CXX_DEBUG(logger_, "Loading spectral hash parameters");
@@ -96,7 +96,7 @@ CaffeDetection::getSpectralHashInfo(const std::vector<cv::String> &names_to_sear
             try{
                 cv::FileStorage spParams(filename, cv::FileStorage::READ);
                 if (!spParams.isOpened()) {
-                    bad_file_names.push_back(filename);
+                    bad_hash_file_names.push_back(filename);
                 }
                 else {
                     spParams["layer_name"] >> hash_info.layer_name;
@@ -118,7 +118,7 @@ CaffeDetection::getSpectralHashInfo(const std::vector<cv::String> &names_to_sear
                     }
                 }
             } catch(const cv::Exception &err){
-                bad_file_names.push_back(filename);
+                bad_hash_file_names.push_back(filename);
             }
         }
     }
@@ -473,6 +473,15 @@ CaffeDetection::GetDetections(const MPFJob &job,
             std::make_pair("INVALID SPECTRAL HASH FILENAME LIST", prop_val));
     }
 
+    // Notify the user if any of the spectral hash layer names were
+    // not found in the model.
+
+    if (!bad_hash_layer_names.empty()) {
+        std::string prop_val = boost::algorithm::join(bad_hash_layer_names, "; ");
+        spectral_hash_values.push_back(
+            std::make_pair("INVALID SPECTRAL HASH LAYER_NAME LIST", prop_val));
+    }
+
     // Create the activation layers output
     if (!good_act_layer_names.empty()) {
         getActivationLayers(out_mats, good_act_layer_names, activation_layers);
@@ -569,9 +578,8 @@ CaffeDetection::computeSpectralHash(const cv::Mat &activations,
     for(int r=0;r<x.rows;r++){
         int bit=1;
         for(int c=0;c<x.cols;c++){
-            bit *= ((cos(xPtr[x.cols * r + c])>0) ? 1 : -1);
+            bit *= ((cos(x.at<float>(r,c)) > 0) ? 1 : -1);
         }
-        // if(bit > 0){ bits.set(63-r); }
         if(bit > 0) {
             bitset += "1";
         } else {
