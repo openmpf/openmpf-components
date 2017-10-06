@@ -105,7 +105,7 @@
     },
     {
       "name": "SPHINX SPEECH DETECTION (WITH MARKUP) PIPELINE",
-      "description": "Performs OpenCV face detection and marks up the results.",
+      "description": "Performs Sphinx speech detection and marks up the results.",
       "tasks": [
         "SPHINX SPEECH DETECTION TASK",
         "OCV GENERIC MARKUP TASK"

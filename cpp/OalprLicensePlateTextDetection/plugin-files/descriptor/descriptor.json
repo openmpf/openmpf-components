@@ -42,6 +42,12 @@
           "defaultValue": "0"
         },
         {
+          "name": "USE_KEY_FRAMES",
+          "description": "When true the component will only look at key frames (I-frames) from the input video. Can be used in conjunction with FRAME_INTERVAL. For example, when USE_KEY_FRAMES is true, and FRAME_INTERVAL is set to \"2\", then every other key frame will be processed.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
           "name": "FRAME_INTERVAL",
           "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval. Must be greater than or equal to 0. If the frame_interval is set to 0 or 1, a frame_interval of 1 will be used, so that detections are performed on every frame. For a frame interval N > 1, every N-1 frames will be skipped. Default value is defined by the MPF properties file.",
           "type": "INT",
