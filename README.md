@@ -4,9 +4,21 @@ Welcome to the Open Media Processing Framework (OpenMPF) Component Project!
 
 ## What is the OpenMPF?
 
-The OpenMPF performs content detection and extraction (such as face detection, text extraction, and object classification) on bulk image, video, and audio files, enabling content analysis and search through the extraction of objects, keywords, thumbnails, and other contextual information.
+OpenMPF provides a platform to perform content detection and extraction on bulk multimedia, enabling users to analyze, search, and share information through the extraction of objects, keywords, thumbnails, and other contextual data.
 
-This scalable, web-friendly platform enables users to build configurable multimedia processing pipelines, enabling the rapid development and deployment of analytic algorithms and large-scale media processing applications.
+OpenMPF enables users to build configurable media processing pipelines, enabling the rapid development and deployment of analytic algorithms and large-scale media processing applications.
+
+### Search and Share
+
+Simplify large-scale media processing and enable the extraction of meaningful content
+
+### Open API
+
+Apply cutting-edge algorithms such as face detection and object classification
+
+### Flexible Architecture
+
+Integrate into your existing environment or use OpenMPF as a standalone application
 
 ## Overview
 
