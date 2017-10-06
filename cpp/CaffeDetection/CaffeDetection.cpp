@@ -76,9 +76,9 @@ void getLayerNameLists(const std::vector<cv::String> &names_to_search,
 
 MPFDetectionError 
 CaffeDetection::getSpectralHashInfo(const std::vector<cv::String> &names_to_search,
+                                    const std::string &model_name,
                                     std::string &hash_file_list,
                                     std::vector<std::string> &good_names,
-                                    std::vector<std::string> &bad_layer_names,
                                     std::vector<std::string> &bad_hash_file_names,
                                     std::vector<SpectralHashInfo> &hashInfo_) {
 
@@ -96,6 +96,7 @@ CaffeDetection::getSpectralHashInfo(const std::vector<cv::String> &names_to_sear
             try{
                 cv::FileStorage spParams(filename, cv::FileStorage::READ);
                 if (!spParams.isOpened()) {
+                    LOG4CXX_WARN(logger_, "Failed to open spectral hash file named \"" << filename << "\"");
                     bad_hash_file_names.push_back(filename);
                 }
                 else {
@@ -114,10 +115,12 @@ CaffeDetection::getSpectralHashInfo(const std::vector<cv::String> &names_to_sear
                         good_names.push_back(hash_info.layer_name);
                     }
                     else {
-                        bad_layer_names.push_back(hash_info.layer_name);
+                        LOG4CXX_WARN(logger_, "Layer named \"" << hash_info.layer_name << "\" was not found in the model named \"" << model_name << "\"");
+                        bad_hash_file_names.push_back(filename);
                     }
                 }
             } catch(const cv::Exception &err){
+                LOG4CXX_WARN(logger_, "Exception caught when processing spectral hash file named \"" << filename << "\": " << err.what());
                 bad_hash_file_names.push_back(filename);
             }
         }
@@ -402,12 +405,12 @@ CaffeDetection::GetDetections(const MPFJob &job,
                                                                            "SPECTRAL_HASH_FILE_LIST",
                                                                            "");
     std::vector<std::string> good_hash_layer_names;
-    std::vector<std::string> bad_hash_layer_names;
     std::vector<std::string> bad_hash_file_names;
+    std::string model_name = DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODEL_NAME", "googlenet");
 
-    MPFDetectionError rc = getSpectralHashInfo(net_layers, hash_file_list,
+    MPFDetectionError rc = getSpectralHashInfo(net_layers, model_name,
+                                               hash_file_list,
                                                good_hash_layer_names,
-                                               bad_hash_layer_names,
                                                bad_hash_file_names,
                                                hashInfo_);
     if (rc != MPF_DETECTION_SUCCESS) return rc;
@@ -458,28 +461,21 @@ CaffeDetection::GetDetections(const MPFJob &job,
 
     // Compute the spectral hash values
     if (!out_mats.empty()) {
-        for (const SpectralHashInfo &info : hashInfo_) {
-            spectral_hash_values.push_back(computeSpectralHash(out_mats.back(),info));
+        for (int i = 0; i < hashInfo_.size(); i++) {
+            spectral_hash_values.push_back(computeSpectralHash(out_mats.back(), hashInfo_.back()));
             out_mats.pop_back();
+            hashInfo_.pop_back();
         }
+        assert(hashInfo_.size() == 0);
     }
 
     // Notify the user if any of the spectral hash input files could
-    // not be read.
+    // not be read or contained invalid information
 
     if (!bad_hash_file_names.empty()) {
         std::string prop_val = boost::algorithm::join(bad_hash_file_names, "; ");
         spectral_hash_values.push_back(
             std::make_pair("INVALID SPECTRAL HASH FILENAME LIST", prop_val));
-    }
-
-    // Notify the user if any of the spectral hash layer names were
-    // not found in the model.
-
-    if (!bad_hash_layer_names.empty()) {
-        std::string prop_val = boost::algorithm::join(bad_hash_layer_names, "; ");
-        spectral_hash_values.push_back(
-            std::make_pair("INVALID SPECTRAL HASH LAYER_NAME LIST", prop_val));
     }
 
     // Create the activation layers output

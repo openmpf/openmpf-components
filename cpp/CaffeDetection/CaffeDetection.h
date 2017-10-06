@@ -96,9 +96,9 @@ private:
     // as a job property.
     MPF::COMPONENT::MPFDetectionError
     getSpectralHashInfo(const std::vector<cv::String> &names_to_search,
+                        const std::string &model_name,
                         std::string &hash_file_list,
                         std::vector<std::string> &good_names,
-                        std::vector<std::string> &bad_layer_names,
                         std::vector<std::string> &bad_file_names,
                         std::vector<SpectralHashInfo> &hashInfo_);
 
