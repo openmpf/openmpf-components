@@ -45,14 +45,16 @@
 
 #include "ModelFileParser.h"
 
+#undef NDEBUG
 
 using CONFIG4CPP_NAMESPACE::StringVector;
 using namespace MPF::COMPONENT;
 
-void getLayerNameLists(const std::vector<cv::String> &names_to_search,
-                       std::string &name_list,
-                       std::vector<std::string> &good_names, 
-                       std::vector<std::string> &bad_names) {
+void CaffeDetection::getLayerNameLists(const std::vector<cv::String> &names_to_search,
+                                       const std::string &model_name,
+                                       std::string &name_list,
+                                       std::vector<std::string> &good_names,
+                                       std::vector<std::string> &bad_names) {
 
     if (!name_list.empty()) {
         boost::trim(name_list);
@@ -67,6 +69,7 @@ void getLayerNameLists(const std::vector<cv::String> &names_to_search,
                     good_names.push_back(name);
                 }
                 else {
+                    LOG4CXX_WARN(logger_, "Layer named \"" << name << "\" was not found in model named \"" << model_name << "\"");
                     bad_names.push_back(name);
                 }
             }
@@ -74,11 +77,48 @@ void getLayerNameLists(const std::vector<cv::String> &names_to_search,
     }
 }
 
+bool CaffeDetection::parseAndValidateHashInfo(const std::string filename,
+                                              cv::FileStorage &spParams,
+                                              SpectralHashInfo &hash_info) {
+    bool is_good_file_name = true;
+
+    spParams["nbits"] >> hash_info.nbits;
+    spParams["mx"]    >> hash_info.mx;
+    spParams["mn"]    >> hash_info.mn;
+    spParams["modes"] >> hash_info.modes;
+    spParams["pc"]    >> hash_info.pc;
+    spParams.release();
+
+    if (hash_info.nbits <= 0) {
+        LOG4CXX_WARN(logger_, "The \"nbits\" field in file \"" << filename << "\" is less than or equal to zero.");
+        is_good_file_name = false;
+    }
+    if (hash_info.mx.empty()) {
+        LOG4CXX_WARN(logger_, "The \"mx\" matrix in file \"" << filename << "\" is missing or empty.");
+        is_good_file_name = false;
+    }
+    if (hash_info.mn.empty()) {
+        LOG4CXX_WARN(logger_, "The \"mn\" matrix in file \"" << filename << "\" is missing or empty.");
+        is_good_file_name = false;
+    }
+    if (hash_info.modes.empty()) {
+        LOG4CXX_WARN(logger_, "The \"modes\" matrix in file \"" << filename << "\" is missing or empty.");
+        is_good_file_name = false;
+    }
+    if (hash_info.pc.empty()) {
+        LOG4CXX_WARN(logger_, "The \"pc\" matrix in file \"" << filename << "\" is missing or empty.");
+        is_good_file_name = false;
+    }
+
+    return is_good_file_name;
+}
+
+
 MPFDetectionError 
 CaffeDetection::getSpectralHashInfo(const std::vector<cv::String> &names_to_search,
                                     const std::string &model_name,
                                     std::string &hash_file_list,
-                                    std::vector<std::string> &good_names,
+                                    std::vector<std::string> &good_hash_layer_names,
                                     std::vector<std::string> &bad_hash_file_names,
                                     std::vector<SpectralHashInfo> &hashInfo_) {
 
@@ -105,17 +145,21 @@ CaffeDetection::getSpectralHashInfo(const std::vector<cv::String> &names_to_sear
                     if (std::find(names_to_search.begin(),
                                   names_to_search.end(),
                                   hash_info.layer_name) != names_to_search.end()) {
-                        spParams["nbits"] >> hash_info.nbits;
-                        spParams["mx"]    >> hash_info.mx;
-                        spParams["mn"]    >> hash_info.mn;
-                        spParams["modes"] >> hash_info.modes;
-                        spParams["pc"]    >> hash_info.pc;
-                        spParams.release();
-                        hashInfo_.push_back(hash_info);
-                        good_names.push_back(hash_info.layer_name);
+                        bool is_good_file = parseAndValidateHashInfo(filename,
+                                                                     spParams,
+                                                                     hash_info);
+                        if (is_good_file) {
+                            // Everything checks out ok, so save the
+                            // hash info and the layer name.
+                            hashInfo_.push_back(hash_info);
+                            good_hash_layer_names.push_back(hash_info.layer_name);
+                        }
+                        else {
+                            bad_hash_file_names.push_back(filename);
+                        }
                     }
                     else {
-                        LOG4CXX_WARN(logger_, "Layer named \"" << hash_info.layer_name << "\" was not found in the model named \"" << model_name << "\"");
+                        LOG4CXX_WARN(logger_, "Layer named \"" << hash_info.layer_name << "\" was not found in the model named \"" << model_name << "\" from spectral hash file \"" << filename << "\"");
                         bad_hash_file_names.push_back(filename);
                     }
                 }
@@ -386,17 +430,19 @@ CaffeDetection::GetDetections(const MPFJob &job,
     // not, remember the name so that we can indicate in the output
     // that it was not found.
     std::vector<cv::String> net_layers = net.getLayerNames();
+    std::string model_name = DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODEL_NAME", "googlenet");
 
     std::vector<std::string> good_act_layer_names;
     std::vector<std::string> bad_act_layer_names;
 
-    getLayerNameLists(net_layers, act_layers_list,
+    getLayerNameLists(net_layers,
+                      model_name,
+                      act_layers_list,
                       good_act_layer_names,
                       bad_act_layer_names);
     for (std::string name : good_act_layer_names) {
         output_layers.push_back(cv::String(name));
     }
-    int act_layers_size = good_act_layer_names.size();
 
     // See if we need to compute the spectral hash of any internal
     // activation layers. If so add their names to the list of layers
@@ -406,7 +452,6 @@ CaffeDetection::GetDetections(const MPFJob &job,
                                                                            "");
     std::vector<std::string> good_hash_layer_names;
     std::vector<std::string> bad_hash_file_names;
-    std::string model_name = DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODEL_NAME", "googlenet");
 
     MPFDetectionError rc = getSpectralHashInfo(net_layers, model_name,
                                                hash_file_list,

@@ -83,6 +83,12 @@ private:
 
     MPF::COMPONENT::MPFDetectionError readClassNames(std::vector<std::string> &class_names);
 
+void getLayerNameLists(const std::vector<cv::String> &names_to_search,
+                       const std::string &model_name,
+                       std::string &name_list,
+                       std::vector<std::string> &good_names,
+                       std::vector<std::string> &bad_names);
+
     // Return a vector of pairs of strings. The first string in each
     // pair contains the name of the activation layer, and the second
     // string contains a semi-colon separated list of activation
@@ -90,6 +96,10 @@ private:
     void getActivationLayers(const std::vector<cv::Mat> &mats,
                              const std::vector<std::string> &good_names,
                              std::vector<std::pair<std::string,std::string> > &activations);
+
+bool parseAndValidateHashInfo(const std::string filename,
+                              cv::FileStorage &spParams,
+                              SpectralHashInfo &hash_info);
 
     // Read the files containing information on spectral hash
     // computations. This list of file names is specified by the user
