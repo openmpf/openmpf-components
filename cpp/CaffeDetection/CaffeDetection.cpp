@@ -183,6 +183,7 @@ CaffeDetection::initHashInfoList(const std::vector<cv::String> &names_to_search,
                             if (is_good_file) {
                                 // Everything checks out ok, so save the
                                 // hash info and the layer name.
+                                hash_info.model_name = model_name;
                                 hashInfoList_.push_back(hash_info);
                                 good_hash_layer_names.push_back(hash_info.layer_name);
                             }
@@ -648,6 +649,9 @@ CaffeDetection::computeSpectralHash(const cv::Mat &activations,
 
     std::string bitset;
     float* xPtr = (float*) x.data;
+    if (hash_info.nbits != x.rows) {
+        LOG4CXX_WARN(logger_, "Number of bits in the spectral hash for layer \"" << hash_info.layer_name << "\" in model named \"" << hash_info.model_name << "\" is not equal to the input nbits value: nbits = " << hash_info.nbits << ", spectral hash size = " << x.rows);
+    }
     for(int r=0;r<x.rows;r++){
         int bit=1;
         for(int c=0;c<x.cols;c++){

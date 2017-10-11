@@ -42,6 +42,7 @@ struct ModelFiles {
 };
 
 struct SpectralHashInfo {
+    std::string model_name;
     std::string layer_name;
     int nbits;
     cv::Mat mx;
