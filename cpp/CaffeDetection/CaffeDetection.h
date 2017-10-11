@@ -51,7 +51,6 @@ struct SpectralHashInfo {
 };
 
 class CaffeDetection : public MPF::COMPONENT::MPFImageDetectionComponentAdapter {
-
 public:
 
     CaffeDetection();
@@ -67,7 +66,6 @@ public:
             std::vector<MPF::COMPONENT::MPFImageLocation> &locations) override;
 
     std::string GetDetectionType();
-
 private:
 
     MPF::COMPONENT::MPFDetectionError GetDetections(
@@ -83,11 +81,11 @@ private:
 
     MPF::COMPONENT::MPFDetectionError readClassNames(std::vector<std::string> &class_names);
 
-void getLayerNameLists(const std::vector<cv::String> &names_to_search,
-                       const std::string &model_name,
-                       std::string &name_list,
-                       std::vector<std::string> &good_names,
-                       std::vector<std::string> &bad_names);
+    void getLayerNameLists(const std::vector<cv::String> &names_to_search,
+                           const std::string &model_name,
+                           std::string &name_list,
+                           std::vector<std::string> &good_names,
+                           std::vector<std::string> &bad_names);
 
     // Return a vector of pairs of strings. The first string in each
     // pair contains the name of the activation layer, and the second
@@ -97,30 +95,29 @@ void getLayerNameLists(const std::vector<cv::String> &names_to_search,
                              const std::vector<std::string> &good_names,
                              std::vector<std::pair<std::string,std::string> > &activations);
 
-bool parseAndValidateHashInfo(const std::string filename,
-                              cv::FileStorage &spParams,
-                              SpectralHashInfo &hash_info);
+    bool parseAndValidateHashInfo(const std::string filename,
+                                  cv::FileStorage &spParams,
+                                  SpectralHashInfo &hash_info);
 
     // Read the files containing information on spectral hash
     // computations. This list of file names is specified by the user
     // as a job property.
     MPF::COMPONENT::MPFDetectionError
-    getSpectralHashInfo(const std::vector<cv::String> &names_to_search,
-                        const std::string &model_name,
-                        std::string &hash_file_list,
-                        std::vector<std::string> &good_names,
-                        std::vector<std::string> &bad_file_names,
-                        std::vector<SpectralHashInfo> &hashInfo_);
+    initHashInfoList(const std::vector<cv::String> &names_to_search,
+                     const std::string &model_name,
+                     std::string &hash_file_list,
+                     std::vector<std::string> &good_names,
+                     std::vector<std::string> &bad_file_names);
 
     // Computes the spectral hash for the activation values in a given
     // layer. Returns a pair containing the name of the layer, and a
     // string containing the spectral hash as a sequence of 1's and 0's.
     std::pair<std::string,std::string> computeSpectralHash(const cv::Mat &activations,
-                                                             const SpectralHashInfo &hash_data);
+                                                           const SpectralHashInfo &hash_data);
 
     std::string synset_file_;
     std::map<std::string, ModelFiles> model_defs_;
-    std::vector<SpectralHashInfo> hashInfo_;
+    std::vector<SpectralHashInfo> hashInfoList_;
 
     log4cxx::LoggerPtr logger_;
 };
