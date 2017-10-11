@@ -151,6 +151,13 @@
           "defaultValue": ""
         },
         {
+          "name": "SPECTRAL_HASH_FILE_LIST",
+          "description": "A semicolon-delimited list of paths to files. Each file contains JSON formatted data to be used in computing the spectral hash of the activation values in one of the layers in the model. The list contains the following: the name of the model layer, the number of bits in the spectral hash, the max and min matrices, the modes matrix, and the principal components matrix.",
+          "type": "STRING",
+          "defaultValue": ""
+        }
+,
+        {
           "name": "NUMBER_OF_CLASSIFICATIONS",
           "description": "The number of classifications, N, to be returned. The N highest confidence classifications found by the network will be returned with their associated confidence values. The value must be greater than 0, and less than the size of the model output layer.",
           "type": "INT",
@@ -197,8 +204,7 @@
           "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0.0, 255.0].",
           "type": "FLOAT",
           "defaultValue": "0.0"
-        }
-      ]
+        }      ]
     }
   },
   "actions": [

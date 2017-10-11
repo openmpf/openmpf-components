@@ -45,9 +45,167 @@
 
 #include "ModelFileParser.h"
 
-
 using CONFIG4CPP_NAMESPACE::StringVector;
 using namespace MPF::COMPONENT;
+
+void CaffeDetection::getLayerNameLists(const std::vector<cv::String> &names_to_search,
+                                       const std::string &model_name,
+                                       std::string &name_list,
+                                       std::vector<std::string> &good_names,
+                                       std::vector<std::string> &bad_names) {
+
+    if (!name_list.empty()) {
+        boost::trim(name_list);
+        std::vector<std::string> names;
+        boost::split(names, name_list,
+                     boost::is_any_of(" ;"),
+                     boost::token_compress_on);
+        for (const std::string &name : names) {
+            if (!name.empty()) {
+                if (std::find(names_to_search.begin(),
+                              names_to_search.end(), name) != names_to_search.end()) {
+                    good_names.push_back(name);
+                }
+                else {
+                    LOG4CXX_WARN(logger_, "Layer named \"" << name << "\" was not found in model named \"" << model_name << "\"");
+                    bad_names.push_back(name);
+                }
+            }
+        }
+    }
+}
+
+bool CaffeDetection::parseAndValidateHashInfo(const std::string filename,
+                                              cv::FileStorage &spParams,
+                                              SpectralHashInfo &hash_info) {
+    bool is_good_file_name = true;
+
+    if (spParams["nbits"].empty()) {
+        LOG4CXX_WARN(logger_, "The \"nbits\" field in file \"" << filename << "\" is missing.");
+        is_good_file_name = false;
+    }
+    else {
+        spParams["nbits"] >> hash_info.nbits;
+        if (hash_info.nbits <= 0) {
+            LOG4CXX_WARN(logger_, "The \"nbits\" value in file \"" << filename << "\" is less than or equal to zero.");
+            is_good_file_name = false;
+        }
+    }
+
+    if (spParams["mx"].empty()) {
+        LOG4CXX_WARN(logger_, "The \"mx\" field in file \"" << filename << "\" is missing.");
+        is_good_file_name = false;
+    }
+    else {
+        spParams["mx"]    >> hash_info.mx;
+        if (hash_info.mx.empty()) {
+            LOG4CXX_WARN(logger_, "The \"mx\" matrix in file \"" << filename << "\" is empty.");
+            is_good_file_name = false;
+        }
+    }
+    if (spParams["mn"].empty()) {
+        LOG4CXX_WARN(logger_, "The \"mn\" field in file \"" << filename << "\" is missing.");
+        is_good_file_name = false;
+    }
+    else {
+        spParams["mn"]    >> hash_info.mn;
+        if (hash_info.mn.empty()) {
+            LOG4CXX_WARN(logger_, "The \"mn\" matrix in file \"" << filename << "\" is empty.");
+            is_good_file_name = false;
+        }
+    }
+    if (spParams["modes"].empty()) {
+        LOG4CXX_WARN(logger_, "The \"modes\" field in file \"" << filename << "\" is missing.");
+        is_good_file_name = false;
+    }
+    else {
+        spParams["modes"] >> hash_info.modes;
+        if (hash_info.modes.empty()) {
+            LOG4CXX_WARN(logger_, "The \"modes\" matrix in file \"" << filename << "\" is empty.");
+            is_good_file_name = false;
+        }
+    }
+    if(spParams["pc"].empty()) {
+        LOG4CXX_WARN(logger_, "The \"pc\" field in file \"" << filename << "\" is missing.");
+        is_good_file_name = false;
+    }
+    else {
+        spParams["pc"]    >> hash_info.pc;
+        if (hash_info.pc.empty()) {
+            LOG4CXX_WARN(logger_, "The \"pc\" matrix in file \"" << filename << "\" is empty.");
+            is_good_file_name = false;
+        }
+    }
+    spParams.release();
+
+    return is_good_file_name;
+}
+
+
+MPFDetectionError 
+CaffeDetection::initHashInfoList(const std::vector<cv::String> &names_to_search,
+                                 const std::string &model_name,
+                                 std::string &hash_file_list,
+                                 std::vector<std::string> &good_hash_layer_names,
+                                 std::vector<std::string> &bad_hash_file_names) {
+
+    LOG4CXX_DEBUG(logger_, "Loading spectral hash parameters");
+    if (!hash_file_list.empty()) {
+        boost::trim(hash_file_list);
+        std::vector<std::string> files;
+        boost::split(files, hash_file_list,
+                     boost::is_any_of(" ;"),
+                     boost::token_compress_on);
+
+        for (const std::string &filename : files) {
+            LOG4CXX_DEBUG(logger_, "filename = " << filename);
+            SpectralHashInfo hash_info;
+            try{
+                cv::FileStorage spParams(filename, cv::FileStorage::READ);
+                if (!spParams.isOpened()) {
+                    LOG4CXX_WARN(logger_, "Failed to open spectral hash file named \"" << filename << "\"");
+                    bad_hash_file_names.push_back(filename);
+                }
+                else {
+                    if (spParams["layer_name"].empty()) {
+                        LOG4CXX_WARN(logger_, "The \"layer_name\" field in file \"" << filename << "\" is missing.");
+                        bad_hash_file_names.push_back(filename);
+                    }
+                    else {
+                        spParams["layer_name"] >> hash_info.layer_name;
+                        LOG4CXX_DEBUG(logger_, "layer_name = " << hash_info.layer_name);
+                        if (std::find(names_to_search.begin(),
+                                      names_to_search.end(),
+                                      hash_info.layer_name) != names_to_search.end()) {
+                            bool is_good_file = parseAndValidateHashInfo(filename,
+                                                                         spParams,
+                                                                         hash_info);
+                            if (is_good_file) {
+                                // Everything checks out ok, so save the
+                                // hash info and the layer name.
+                                hash_info.model_name = model_name;
+                                hashInfoList_.push_back(hash_info);
+                                good_hash_layer_names.push_back(hash_info.layer_name);
+                            }
+                            else {
+                                bad_hash_file_names.push_back(filename);
+                            }
+                        }
+                        else {
+                            LOG4CXX_WARN(logger_, "Layer named \"" << hash_info.layer_name << "\" from spectral hash file \"" << filename << "\" was not found in the model named \"" << model_name << "\"");
+                            bad_hash_file_names.push_back(filename);
+                        }
+                    }
+                }
+            } catch(const cv::Exception &err){
+                LOG4CXX_WARN(logger_, "Exception caught when processing spectral hash file named \"" << filename << "\": " << err.what());
+                bad_hash_file_names.push_back(filename);
+            }
+        }
+    }
+    return MPF_DETECTION_SUCCESS;
+}
+
 
 //-----------------------------------------------------------------------------
 CaffeDetection::CaffeDetection() {
@@ -185,7 +343,9 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
 
         std::vector< std::pair<int,float> > class_info;
         std::vector< std::pair<std::string,std::string> > activation_info;
-        rc = GetDetections(job, net, img, class_info, activation_info);
+
+        std::vector< std::pair<std::string,std::string> > hash_info;
+        rc = GetDetections(job, net, img, class_info, activation_info, hash_info);
         if (rc != MPF_DETECTION_SUCCESS) {
             return rc;
         }
@@ -228,7 +388,14 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
             }
         }
 
-        if (!class_info.empty() || !activation_info.empty()) {
+        // Add spectral hash values to the detection properties
+        if (!hash_info.empty()) {
+            for (const std::pair<std::string,std::string> &hash : hash_info) {
+                det_prop[hash.first] = hash.second;
+            }
+        }
+
+        if (!class_info.empty() || !activation_info.empty() || !hash_info.empty()) {
             detection.detection_properties = det_prop;
             locations.push_back(detection);
         }
@@ -247,7 +414,8 @@ CaffeDetection::GetDetections(const MPFJob &job,
                               cv::dnn::Net &net,
                               cv::Mat &frame,
                               std::vector< std::pair<int,float> > &classes,
-                              std::vector< std::pair<std::string, std::string> > &activation_layers) {
+                              std::vector< std::pair<std::string, std::string> > &activation_layers,
+                              std::vector< std::pair<std::string, std::string> > &spectral_hash_values) {
 
     LOG4CXX_DEBUG(logger_, "original frame mat rows = " << frame.rows << " cols = " << frame.cols);
 
@@ -283,12 +451,12 @@ CaffeDetection::GetDetections(const MPFJob &job,
 
     // See if we need to output any internal activation layers. If so
     // add them to the list of layers passed to the forward() method.
-    std::string layers_list = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,
+
+    std::string act_layers_list = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,
                                                                            "ACTIVATION_LAYER_LIST",
                                                                            "");
 
     std::vector<cv::String> output_layers;
-    output_layers.push_back(cv::String(output_layer_name));
 
     // Get the layers in the net and check that each layer
     // requested is actually part of the net. If it is, add it to the
@@ -296,34 +464,50 @@ CaffeDetection::GetDetections(const MPFJob &job,
     // not, remember the name so that we can indicate in the output
     // that it was not found.
     std::vector<cv::String> net_layers = net.getLayerNames();
-    std::vector<std::string> good_layer_names;
-    std::vector<std::string> bad_layer_names;
+    std::string model_name = DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODEL_NAME", "googlenet");
 
-    if (!layers_list.empty()) {
-        boost::trim(layers_list);
-        std::vector<std::string> act_layer_names;
-        boost::split(act_layer_names, layers_list,
-                     boost::is_any_of(" ;"), boost::token_compress_on);
-        for (const std::string &name : act_layer_names) {
-            if (!name.empty()) {
-                if (std::find(net_layers.begin(), net_layers.end(), name) != net_layers.end()) {
-                    output_layers.push_back(cv::String(name));
-                    good_layer_names.push_back(name);
-                }
-                else {
-                    bad_layer_names.push_back(name);
-                }
-            }
-        }
+    std::vector<std::string> good_act_layer_names;
+    std::vector<std::string> bad_act_layer_names;
+
+    getLayerNameLists(net_layers,
+                      model_name,
+                      act_layers_list,
+                      good_act_layer_names,
+                      bad_act_layer_names);
+    for (std::string name : good_act_layer_names) {
+        output_layers.push_back(cv::String(name));
     }
+
+    // See if we need to compute the spectral hash of any internal
+    // activation layers. If so add their names to the list of layers
+    // passed to the forward() method.
+    std::string hash_file_list = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,
+                                                                           "SPECTRAL_HASH_FILE_LIST",
+                                                                           "");
+    std::vector<std::string> good_hash_layer_names;
+    std::vector<std::string> bad_hash_file_names;
+
+    MPFDetectionError rc = initHashInfoList(net_layers, model_name,
+                                            hash_file_list,
+                                            good_hash_layer_names,
+                                            bad_hash_file_names);
+    if (rc != MPF_DETECTION_SUCCESS) return rc;
+    for (std::string name : good_hash_layer_names) {
+        output_layers.push_back(cv::String(name));
+    }
+
+    output_layers.push_back(cv::String(output_layer_name));
+    LOG4CXX_DEBUG(logger_, "number of output layers = " << output_layers.size());
 
     // This form of the forward() function retrieves the output from
     // each of the layers in the name list. The name of the
-    // classification output layer is the first in the list (or the
-    // only one, if no activation layers were requested).
+    // classification output layer is the last in the list (or the
+    // only one, if no activation layers or hash layers were requested).
     std::vector<cv::Mat> out_mats;
     net.forward(out_mats, output_layers); // compute output
-    cv::Mat prob = out_mats.front();
+    assert(out_mats.size() == output_layers.size());
+    cv::Mat prob = out_mats.back();
+    out_mats.pop_back();
 
     LOG4CXX_DEBUG(logger_, "output prob mat rows = " << prob.rows << " cols = " << prob.cols);
     LOG4CXX_DEBUG(logger_, "output prob mat total: " << prob.total());
@@ -353,9 +537,36 @@ CaffeDetection::GetDetections(const MPFJob &job,
 
     getTopNClasses(prob, num_classes, threshold, classes);
 
-    // Create the activation layers output
-    getActivationLayers(out_mats, good_layer_names, bad_layer_names, activation_layers);
+    // Compute the spectral hash values
+    if (!out_mats.empty()) {
+        for (int i = 0; i < hashInfoList_.size(); i++) {
+            spectral_hash_values.push_back(computeSpectralHash(out_mats.back(), hashInfoList_.back()));
+            out_mats.pop_back();
+            hashInfoList_.pop_back();
+        }
+        assert(hashInfoList_.size() == 0);
+    }
 
+    // Notify the user if any of the spectral hash input files could
+    // not be read or contained invalid information
+
+    if (!bad_hash_file_names.empty()) {
+        std::string prop_val = boost::algorithm::join(bad_hash_file_names, "; ");
+        spectral_hash_values.push_back(
+            std::make_pair("INVALID SPECTRAL HASH FILENAME LIST", prop_val));
+    }
+
+    // Create the activation layers output
+    if (!good_act_layer_names.empty()) {
+        getActivationLayers(out_mats, good_act_layer_names, activation_layers);
+    }
+
+    if (!bad_act_layer_names.empty()) {
+        std::string prop_val = boost::algorithm::join(bad_act_layer_names, "; ");
+        activation_layers.push_back(
+            std::make_pair("INVALID ACTIVATION LAYER LIST", prop_val));
+    }
+ 
     return MPF_DETECTION_SUCCESS;
 }
 
@@ -404,15 +615,14 @@ MPFDetectionError CaffeDetection::readClassNames(std::vector<std::string> &class
 //-----------------------------------------------------------------------------
 void CaffeDetection::getActivationLayers(const std::vector<cv::Mat> &mats,
                                          const std::vector<std::string> &good_names,
-                                         const std::vector<std::string> &bad_names,
                                          std::vector<std::pair<std::string,std::string> > &activations)
 {
     for (int i = 0; i < good_names.size(); i++) {
-        // Skip the first entry in mats, which corresponds to the
-        // final output layer that was used to get the list of
-        // classifications. The rest are output for the activation layers.
-        cv::Mat act = mats[i+1];
+
+        cv::Mat act = mats[i];
         std::string name = good_names[i];
+        // Create a JSON-formatted string to represent the activation
+        // values matrix.
         std::string filename = name + ".json";
         cv::FileStorage actStore(filename, cv::FileStorage::WRITE | cv::FileStorage::MEMORY);
         actStore << "activation values" << act;
@@ -422,15 +632,42 @@ void CaffeDetection::getActivationLayers(const std::vector<cv::Mat> &mats,
         activations.push_back(std::make_pair(name, actString));
 
     }
-
-    for (std::string name : bad_names) {
-        LOG4CXX_DEBUG(logger_, "bad name = " << name);
-        std::transform(name.begin(), name.end(), name.begin(), ::toupper);
-        name += " ACTIVATION MATRIX";
-        activations.push_back(std::make_pair(name, "INVALID"));
-    }
 }
 
+//-----------------------------------------------------------------------------
+std::pair<std::string,std::string>
+CaffeDetection::computeSpectralHash(const cv::Mat &activations,
+                                    const SpectralHashInfo &hash_info) {
+
+    cv::Mat omega0;
+    cv::Mat omegas;
+    omega0 = CV_PI / (hash_info.mx - hash_info.mn);
+    omegas = cv::repeat(omega0, hash_info.modes.rows, 1);
+    omegas = omegas.mul(hash_info.modes);
+
+    cv::Mat x = cv::repeat( ((activations * hash_info.pc) - hash_info.mn) ,omegas.rows, 1).mul(omegas);
+
+    std::string bitset;
+    float* xPtr = (float*) x.data;
+    if (hash_info.nbits != x.rows) {
+        LOG4CXX_WARN(logger_, "Number of bits in the spectral hash for layer \"" << hash_info.layer_name << "\" in model named \"" << hash_info.model_name << "\" is not equal to the input nbits value: nbits = " << hash_info.nbits << ", spectral hash size = " << x.rows);
+    }
+    for(int r=0;r<x.rows;r++){
+        int bit=1;
+        for(int c=0;c<x.cols;c++){
+            bit *= ((cos(x.at<float>(r,c)) > 0) ? 1 : -1);
+        }
+        if(bit > 0) {
+            bitset += "1";
+        } else {
+            bitset += "0";
+        }
+    }
+    std::string name(hash_info.layer_name);
+    std::transform(name.begin(), name.end(), name.begin(), ::toupper);
+    name += " SPECTRAL HASH VALUE";
+    return(std::make_pair(name, bitset));
+}
 
 //-----------------------------------------------------------------------------
 
