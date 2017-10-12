@@ -37,7 +37,7 @@ set_property(TARGET dlib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 include(../ComponentSetup.cmake)
 
-find_package(OpenCV 3.2 EXACT REQUIRED PATHS /opt/opencv-3.2.0 COMPONENTS opencv_highgui)
+find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0 COMPONENTS opencv_highgui)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
@@ -56,4 +56,4 @@ configure_mpf_component(DlibFaceDetection mpfDlibFaceDetection)
 add_subdirectory(test)
 
 add_executable(sample_dlib_face_detector sample_dlib_face_detector.cpp)
-target_link_libraries(sample_dlib_face_detector mpfDlibFaceDetection libdl.so)
+target_link_libraries(sample_dlib_face_detector mpfDlibFaceDetection)

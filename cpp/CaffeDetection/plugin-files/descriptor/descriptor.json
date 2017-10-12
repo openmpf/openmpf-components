@@ -17,6 +17,7 @@
     "name": "CAFFE",
     "description": "Returns a semantic description and a confidence score when provided with an input image.",
     "actionType": "DETECTION",
+    "supportsBatchProcessing": true,
     "requiresCollection": {
       "states": []
     },
@@ -144,6 +145,19 @@
           "defaultValue": "prob"
         },
         {
+          "name": "ACTIVATION_LAYER_LIST",
+          "description": "The semicolon-delimited list of names of layers within the specified model for which activation values should be reported in the output. The model activation layer names are defined in the .prototxt file associated with the model.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "SPECTRAL_HASH_FILE_LIST",
+          "description": "A semicolon-delimited list of paths to files. Each file contains JSON formatted data to be used in computing the spectral hash of the activation values in one of the layers in the model. The list contains the following: the name of the model layer, the number of bits in the spectral hash, the max and min matrices, the modes matrix, and the principal components matrix.",
+          "type": "STRING",
+          "defaultValue": ""
+        }
+,
+        {
           "name": "NUMBER_OF_CLASSIFICATIONS",
           "description": "The number of classifications, N, to be returned. The N highest confidence classifications found by the network will be returned with their associated confidence values. The value must be greater than 0, and less than the size of the model output layer.",
           "type": "INT",
@@ -174,30 +188,23 @@
           "defaultValue": "0"
         },
         {
-          "name": "TRANSPOSE",
-          "description": "After the input image is resized and cropped, swap the X and Y coordinates. The default value (false) is for the default model (googlenet).",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
           "name": "SUBTRACT_BLUE_VALUE",
-          "description": "After the input image is resized, cropped, and transposed, subtract this value from the blue color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "INT",
-          "defaultValue": "0"
+          "description": "After the input image is resized and cropped, subtract this value from the blue color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
         },
         {
           "name": "SUBTRACT_GREEN_VALUE",
-          "description": "After the input image is resized, cropped, and transposed, subtract this value from the green color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "INT",
-          "defaultValue": "0"
+          "description": "After the input image is resized and cropped, subtract this value from the green color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
         },
         {
           "name": "SUBTRACT_RED_VALUE",
-          "description": "After the input image is resized, cropped, and transposed, subtract this value from the red color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "INT",
-          "defaultValue": "0"
-        }
-      ]
+          "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
+        }      ]
     }
   },
   "actions": [
@@ -205,7 +212,20 @@
       "name": "CAFFE GOOGLENET DETECTION ACTION",
       "description": "Performs caffe detection using the 'googlenet' model.",
       "algorithm": "CAFFE",
-      "properties": []
+      "properties": [
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "104.0"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "117.0"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "123.0"
+        }
+      ]
     },
     {
       "name": "CAFFE YAHOO NSFW DETECTION ACTION",
@@ -237,20 +257,16 @@
           "value": "16"
         },
         {
-          "name": "TRANSPOSE",
-          "value": "true"
-        },
-        {
           "name": "SUBTRACT_BLUE_VALUE",
-          "value": "104"
+          "value": "104.0"
         },
         {
           "name": "SUBTRACT_GREEN_VALUE",
-          "value": "117"
+          "value": "117.0"
         },
         {
           "name": "SUBTRACT_RED_VALUE",
-          "value": "123"
+          "value": "123.0"
         }
       ]
     }

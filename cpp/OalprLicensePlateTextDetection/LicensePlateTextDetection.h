@@ -41,6 +41,8 @@
 #include <MPFVideoCapture.h>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
 
+#include "alpr.h"
+
 /**
  * The TextDetection class implements license plate text detection
  * and tracking capabilities for images and videos, and is based on
@@ -99,7 +101,6 @@ public:
 private:
     MPF::COMPONENT::MPFDetectionError GetDetectionsFromVideoCapture(
             const MPF::COMPONENT::MPFVideoJob &job,
-            const int frame_skip,
             MPF::COMPONENT::MPFVideoCapture &video_capture,
             std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks);
 /**
@@ -121,6 +122,8 @@ private:
      * @param s2 A previously detected license plate text string
      */
     float LevenshteinScore(const std::string &s1, const std::string &s2);
+
+    std::vector<alpr::AlprPlateResult> alprRecognize(const cv::Mat &frame);
 
     static void SetText(MPF::COMPONENT::MPFImageLocation &detection,
                         const std::string &text);

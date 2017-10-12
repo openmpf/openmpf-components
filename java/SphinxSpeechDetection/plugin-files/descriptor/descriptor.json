@@ -10,6 +10,7 @@
     "name" : "SPHINX",
     "description" : "Detects and transcribes English language speech in audio and video files.",
     "actionType" : "DETECTION",
+    "supportsBatchProcessing": true,
     "requiresCollection" : {
       "states" : []
     },
@@ -104,7 +105,7 @@
     },
     {
       "name": "SPHINX SPEECH DETECTION (WITH MARKUP) PIPELINE",
-      "description": "Performs OpenCV face detection and marks up the results.",
+      "description": "Performs Sphinx speech detection and marks up the results.",
       "tasks": [
         "SPHINX SPEECH DETECTION TASK",
         "OCV GENERIC MARKUP TASK"

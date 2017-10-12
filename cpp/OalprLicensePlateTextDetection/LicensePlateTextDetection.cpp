@@ -202,14 +202,7 @@ MPFDetectionError LicensePlateTextDetection::GetDetections(const MPFImageJob &jo
             return MPF_IMAGE_READ_ERROR;
         }
 
-        vector<AlprRegionOfInterest> roi;  // unused
-        AlprResults RecognizedOutput = alpr_->recognize(frame.data,
-                                               frame.elemSize(),
-                                               frame.cols,
-                                               frame.rows,
-                                               roi);
-
-        vector<AlprPlateResult> results = RecognizedOutput.plates;
+        const vector<AlprPlateResult> &results = alprRecognize(frame);
 
         LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Results size: " << results.size());
 
@@ -279,25 +272,13 @@ MPFDetectionError LicensePlateTextDetection::GetDetections(const MPFImageJob &jo
 
 MPFDetectionError LicensePlateTextDetection::GetDetections(const MPFVideoJob &job, vector<MPFVideoTrack> &tracks) {
     try {
-        int detection_interval = DetectionComponentUtils::GetProperty<int>(job.job_properties, "FRAME_INTERVAL", 1);
-        if (detection_interval < 0) {
-            LOG4CXX_ERROR(td_logger_, "[" << job.job_name
-                                          << "] Frame interval parameter is out of bounds: must be greater than or equal to 0: value given is "
-                                          << detection_interval << ". Setting frame interval to its default value = 1");
-            detection_interval = 1;
-        }
-        else {
-            LOG4CXX_DEBUG(td_logger_,
-                          "[" << job.job_name << "] GetDetections using frame interval: " << detection_interval);
-        }
-
-        MPFVideoCapture video_capture(job);
+        MPFVideoCapture video_capture(job, true, true);
         if (!video_capture.IsOpened()) {
             LOG4CXX_ERROR(td_logger_, "[" << job.job_name << "] Could not initialize OpenCV video capturing.");
             return MPF_COULD_NOT_OPEN_DATAFILE;
         }
 
-        auto detection_result = GetDetectionsFromVideoCapture(job, detection_interval, video_capture, tracks);
+        auto detection_result = GetDetectionsFromVideoCapture(job, video_capture, tracks);
         for (auto &track : tracks) {
             video_capture.ReverseTransform(track);
         }
@@ -311,13 +292,11 @@ MPFDetectionError LicensePlateTextDetection::GetDetections(const MPFVideoJob &jo
 //-----------------------------------------------------------------------------
 // Video case
 MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const MPFVideoJob &job,
-                                                               const int detection_interval,
-                                                               MPFVideoCapture &video_capture,
-                                                               vector<MPFVideoTrack> &tracks) {
+                                                                           MPFVideoCapture &video_capture,
+                                                                           vector<MPFVideoTrack> &tracks) {
 
     int frame_num = 0;
     int frame_count = 0;
-    bool keep_reading = true;
     cv::Mat frame;
     multimap <string, MPFVideoTrack> tracks_map;
 
@@ -328,107 +307,82 @@ MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const
     LOG4CXX_DEBUG(td_logger_, "start_frame = " << job.start_frame);
     LOG4CXX_DEBUG(td_logger_, "stop_frame = " << job.stop_frame);
 
-    int frame_skip = (detection_interval > 0) ? detection_interval : 1;
 
-    if (frame_skip > job.stop_frame) {
-        LOG4CXX_ERROR(td_logger_, "[" << job.job_name << "] Detection interval " << detection_interval << " must be less than or equal to stop_frame " << job.stop_frame << ".");
-        return MPF_INVALID_FRAME_INTERVAL;
-    }
+    while (video_capture.Read(frame)) {
 
-    if (job.start_frame > 0) {
-        frame_num = job.start_frame;
-    }
+        const vector<AlprPlateResult> &results = alprRecognize(frame);
+        LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Frame: " << frame_num << " results size: " << results.size());
 
-    while (keep_reading) {
-        video_capture.SetFramePosition(frame_num);
-        if (video_capture.Read(frame)) {
-            vector<AlprRegionOfInterest> roi;  // unused
-            AlprResults RecognizedOutput = alpr_->recognize(frame.data,
-                                                           frame.elemSize(),
-                                                           frame.cols,
-                                                           frame.rows,
-                                                           roi);
+        // NOTE:  as in image case, for each result only the detection with the
+        // highest confidence is used in forming tracks since the track detection
+        // vector is not intended to hold multiple possible detections for a
+        // single distinct text object.  However, setting the number of detections
+        // (top_n) that alpr should consider to a value greater than 1 tends to
+        // improve the overall quality of all detections.
+        for (int i = 0; i < results.size(); i++) {
+            MPFImageLocation detection;
+            detection.x_left_upper = results[i].plate_points[0].x;
+            detection.y_left_upper = results[i].plate_points[0].y;
+            detection.width =
+                    results[i].plate_points[1].x - results[i].plate_points[0].x;
+            detection.height =
+                    results[i].plate_points[3].y - results[i].plate_points[0].y;
+            detection.confidence = results[i].topNPlates[0].overall_confidence;
+            SetText(detection, results[i].topNPlates[0].characters);
+            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] X Left Upper: " << detection.x_left_upper);
+            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Y Left Upper: " << detection.y_left_upper);
+            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Width: " << detection.width);
+            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Height: " << detection.height);
+            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Confidence: " << detection.confidence);
+            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Text: " << GetText(detection));
 
-            vector <AlprPlateResult> results = RecognizedOutput.plates;
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Frame: " << frame_num << " results size: " << results.size());
+            // Determine whether to create a new track
+            // or add this detection to an existing track.
+            bool create_new_track = true;
+            string key_to_use = GetText(detection);
 
-            // NOTE:  as in image case, for each result only the detection with the
-            // highest confidence is used in forming tracks since the track detection
-            // vector is not intended to hold multiple possible detections for a
-            // single distinct text object.  However, setting the number of detections
-            // (top_n) that alpr should consider to a value greater than 1 tends to
-            // improve the overall quality of all detections.
-            for (int i = 0; i < results.size(); i++) {
-                MPFImageLocation detection;
-                detection.x_left_upper = results[i].plate_points[0].x;
-                detection.y_left_upper = results[i].plate_points[0].y;
-                detection.width =
-                        results[i].plate_points[1].x - results[i].plate_points[0].x;
-                detection.height =
-                        results[i].plate_points[3].y - results[i].plate_points[0].y;
-                detection.confidence = results[i].topNPlates[0].overall_confidence;
-                SetText(detection, results[i].topNPlates[0].characters);
-                LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] X Left Upper: " << detection.x_left_upper);
-                LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Y Left Upper: " << detection.y_left_upper);
-                LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Width: " << detection.width);
-                LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Height: " << detection.height);
-                LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Confidence: " << detection.confidence);
-                LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Text: " << GetText(detection));
+            //TODO:  use equal_range to reduce portion of multimap that is searched
+            for (multimap<string, MPFVideoTrack>::iterator iter = tracks_map.begin();
+                 iter != tracks_map.end(); iter++) {
 
-                // Determine whether to create a new track
-                // or add this detection to an existing track.
-                bool create_new_track = true;
-                string key_to_use = GetText(detection);
-
-                //TODO:  use equal_range to reduce portion of multimap that is searched
-                for (multimap<string, MPFVideoTrack>::iterator iter = tracks_map.begin();
-                     iter != tracks_map.end(); iter++) {
-
-                    // Compare metadata text to keys in map and determine whether it
-                    // was also detected in previous contiguous frame
-                    const string &text = GetText(detection);
-                    if ((CompareKeys(text, iter->first)) &&
-                        (iter->second.stop_frame == frame_num - frame_skip)) {
-                        key_to_use = iter->first;
-                        // Perform a rectangle intersection to see whether adding to
-                        // existing track is reasonable with regard to current
-                        // detection's location
-                        MPFImageLocation track_obj = iter->second.frame_locations.rbegin()->second; // last element in map
-                        cv::Rect current_rect = Utils::ImageLocationToCvRect(
-                                detection);
-                        cv::Rect track_rect = Utils::ImageLocationToCvRect(
-                                track_obj);
-                        cv::Rect intersection = current_rect & track_rect;
-                        if (intersection.area() > ceil(
-                                static_cast<float>(
-                                        track_rect.area()) * rectangle_intersection_min_)) {
-                            // Add detection to this track and update stop_value
-                            iter->second.stop_frame = frame_num;
-                            iter->second.frame_locations.insert(pair<int, MPFImageLocation>(frame_num, detection));
-                            create_new_track = false;
-                        }
-                        break;
+                // Compare metadata text to keys in map and determine whether it
+                // was also detected in previous contiguous frame
+                const string &text = GetText(detection);
+                if ((CompareKeys(text, iter->first)) &&
+                    (iter->second.stop_frame == frame_num - 1)) {
+                    key_to_use = iter->first;
+                    // Perform a rectangle intersection to see whether adding to
+                    // existing track is reasonable with regard to current
+                    // detection's location
+                    MPFImageLocation track_obj = iter->second.frame_locations.rbegin()->second; // last element in map
+                    cv::Rect current_rect = Utils::ImageLocationToCvRect(
+                            detection);
+                    cv::Rect track_rect = Utils::ImageLocationToCvRect(
+                            track_obj);
+                    cv::Rect intersection = current_rect & track_rect;
+                    if (intersection.area() > ceil(
+                            static_cast<float>(
+                                    track_rect.area()) * rectangle_intersection_min_)) {
+                        // Add detection to this track and update stop_value
+                        iter->second.stop_frame = frame_num;
+                        iter->second.frame_locations.insert(pair<int, MPFImageLocation>(frame_num, detection));
+                        create_new_track = false;
                     }
-                }
-
-                if (create_new_track) {
-                    MPFVideoTrack new_track;
-                    new_track.start_frame = frame_num;
-                    new_track.stop_frame = frame_num;
-                    new_track.frame_locations.insert(pair<int, MPFImageLocation>(frame_num, detection));
-                    tracks_map.insert(pair<string, MPFVideoTrack>(
-                            key_to_use, new_track));
+                    break;
                 }
             }
-        } else {
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Empty frame encountered at frame " << video_capture.GetCurrentFramePosition());
-            break;
+
+            if (create_new_track) {
+                MPFVideoTrack new_track;
+                new_track.start_frame = frame_num;
+                new_track.stop_frame = frame_num;
+                new_track.frame_locations.insert(pair<int, MPFImageLocation>(frame_num, detection));
+                tracks_map.insert(pair<string, MPFVideoTrack>(
+                        key_to_use, new_track));
+            }
         }
 
-        frame_num += frame_skip;
-        if (frame_num > job.stop_frame) {
-            keep_reading = false;
-        }
+        frame_num++;
     }
 
     // Return all tracks from map in output vector
@@ -443,6 +397,18 @@ MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const
 
     return MPF_DETECTION_SUCCESS;
 }
+
+
+vector<AlprPlateResult> LicensePlateTextDetection::alprRecognize(const cv::Mat &frame) {
+    // cv::Mat::clone only copies data in the region of interest and always produces a continuous matrix.
+    const cv::Mat &continuousFrame = frame.isContinuous()
+                                     ? frame
+                                     : frame.clone();
+    AlprResults alprResults = alpr_->recognize(continuousFrame.data, static_cast<int>(continuousFrame.elemSize()),
+                                               continuousFrame.cols, continuousFrame.rows, {});
+    return alprResults.plates;
+}
+
 
 //-----------------------------------------------------------------------------
 bool LicensePlateTextDetection::CompareKeys(
