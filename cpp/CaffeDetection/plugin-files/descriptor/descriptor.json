@@ -22,7 +22,11 @@
       "states": []
     },
     "providesCollection": {
-      "states": [],
+      "states": [
+        "DETECTION",
+        "DETECTION_CLASS",
+        "DETECTION_CLASS_CAFFE"
+      ],
       "properties": [
         {
           "name": "FEED_FORWARD_TYPE",
