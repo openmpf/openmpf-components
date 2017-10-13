@@ -132,8 +132,8 @@ void addToTrack(MPFImageLocation &location, int frame_index, MPFVideoTrack &trac
 
 void defaultTracker(MPFImageLocation &location, int frame_index, std::vector<MPFVideoTrack> &tracks) {
     bool should_start_new_track = tracks.empty()
-                               || tracks.back().detection_properties["CLASSIFICATION LIST"]
-                                  != location.detection_properties["CLASSIFICATION LIST"];
+                               || tracks.back().detection_properties["CLASSIFICATION"]
+                                  != location.detection_properties["CLASSIFICATION"];
 
     if (should_start_new_track) {
         tracks.emplace_back(frame_index, frame_index, location.confidence, location.detection_properties);
