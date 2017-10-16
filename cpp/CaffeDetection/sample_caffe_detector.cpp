@@ -50,6 +50,29 @@ int main(int argc, char* argv[]) {
     }
 
     Properties algorithm_properties;
+
+    // DEBUG
+    algorithm_properties["MODEL_NAME"] = "googlenet";
+    algorithm_properties["NUMBER_OF_CLASSIFICATIONS"] = "10";
+    algorithm_properties["RESIZE_HEIGHT"] = "224";
+    algorithm_properties["RESIZE_WIDTH"] = "224";
+    algorithm_properties["SUBTRACT_BLUE_VALUE"] = "104.0";
+    algorithm_properties["SUBTRACT_GREEN_VALUE"] = "117.0";
+    algorithm_properties["SUBTRACT_RED_VALUE"] = "123.0";
+
+    /*
+    // DEBUG
+    algorithm_properties["MODEL_NAME"] = "yahoo_nsfw";
+    algorithm_properties["NUMBER_OF_CLASSIFICATIONS"] = "2";
+    algorithm_properties["RESIZE_HEIGHT"] = "256";
+    algorithm_properties["RESIZE_WIDTH"] = "256";
+    algorithm_properties["TOP_AND_BOTTOM_CROP"] = "16";
+    algorithm_properties["LEFT_AND_RIGHT_CROP"] = "16";
+    algorithm_properties["SUBTRACT_BLUE_VALUE"] = "104.0";
+    algorithm_properties["SUBTRACT_GREEN_VALUE"] = "117.0";
+    algorithm_properties["SUBTRACT_RED_VALUE"] = "123.0";
+    */
+
     MPFDetectionDataType media_type = IMAGE;
     std::string uri(argv[1]);
     std::cout << "uri is " << uri << std::endl;
