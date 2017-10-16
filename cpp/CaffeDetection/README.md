@@ -37,15 +37,15 @@ After the Caffe component plugin package is built and uploaded to the Component 
 
 The Caffe component supports the calculation of the spectral hash for a given input image, or every frame of an input video. The spectral hash is computed according to the method outlined in ["Spectral Hashing" (Y. Weiss, et. al.)](http://papers.nips.cc/paper/3383-spectral-hashing.pdf).
 
-The Caffe component requires a set of input parameters for the spectral hash computation. These are defined in a JSON-formatted input file. An example of a spectral hash parameter file is provided with the Caffe component source code in `plugin-files/config/bvlc_googlenet_spectral_hash.json`. The parameters in that file were derived from the GoogLeNet model training dataset (ILSVRC 2012). On a deployment machine, the correct full path name for this file is ${MPF_HOME}/plugins/CaffeDetection/config/bvlc_googlenet_spectral_hash.json.
+The Caffe component requires a set of input parameters for the spectral hash computation. These are defined in a JSON-formatted input file. An example of a spectral hash parameter file is provided with the Caffe component source code in `plugin-files/config/bvlc_googlenet_spectral_hash.json`. The parameters in that file were derived from the GoogLeNet model training dataset (ILSVRC 2012). On a deployment machine, the correct full path name for this file is `${MPF_HOME}/plugins/CaffeDetection/config/bvlc_googlenet_spectral_hash.json`.
 
 MATLAB code to calculate the spectral hash input parameters for a different training data set can be found [here](http://www.cs.huji.ac.il/~yweiss/SpectralHashing/), and Python code can be found [here](https://github.com/wanji/sh).
 
 
 Calculation of the spectral hash is optional. It will be done in addition to the normal Caffe classification. To request this calculation, follow these steps:
 
-1. Create an input JSON file similar to bvlc_googlenet_spectral_hash.json.
+1. Create an input JSON file similar to `plugin-files/config/bvlc_googlenet_spectral_hash.json`. Place your file in the same directory.
 
 2. Create a pipeline to calculate the spectral hash. The pipeline can be added as a default pipeline, or as a custom pipeline through the web UI. In either case, you must define a new action and set the "SPECTRAL HASH FILE LIST" property to the full path to your spectral hash parameter input file. Then create a new task using this action, and and then create a new pipeline using that task, as outlined above.
 
-   - If you choose to add a default pipeline, your spectral hash JSON file will be located in ${MPF_HOME}/plugins/CaffeDetection/config when the component package is registered. Use this path in the value for the "SPECTRAL HASH FILE LIST" property when creating your new Action.
+   - If you choose to add a default pipeline, your spectral hash JSON file will be located in `${MPF_HOME}/plugins/CaffeDetection/config` when the component package is registered. Use this path in the value for the "SPECTRAL HASH FILE LIST" property when creating your new action.
