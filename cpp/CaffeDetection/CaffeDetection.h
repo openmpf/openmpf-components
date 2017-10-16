@@ -76,7 +76,7 @@ private:
     std::map<std::string, ModelFiles> model_defs_;
     log4cxx::LoggerPtr logger_;
 
-    struct JobConfig;
+    struct CaffeJobConfig;
 
     void getTopNClasses(cv::Mat &prob_blob, int num_classes, double threshold,
                         std::vector< std::pair<int,float> > &classes) const;
@@ -84,12 +84,12 @@ private:
 
 
     static void addActivationLayerInfo(
-            const JobConfig &config,
+            const CaffeJobConfig &config,
             const std::vector<std::pair<std::string, cv::Mat>> &activation_layer_mats,
             MPF::COMPONENT::Properties &detection_properties);
 
 
-    void addSpectralHashInfo(const JobConfig &config,
+    void addSpectralHashInfo(const CaffeJobConfig &config,
                              const std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_mats,
                              MPF::COMPONENT::Properties &detection_properties) const;
 
@@ -102,7 +102,7 @@ private:
 
 
     // Sets the location parameter to a MPFImageLocation if a detection is found in the input frame.
-    MPF::COMPONENT::MPFDetectionError getDetections(CaffeDetection::JobConfig &config, const cv::Mat &input_frame,
+    MPF::COMPONENT::MPFDetectionError getDetections(CaffeDetection::CaffeJobConfig &config, const cv::Mat &input_frame,
                                                     std::unique_ptr<MPF::COMPONENT::MPFImageLocation> &location) const;
 
     template <typename Tracker>
@@ -113,7 +113,7 @@ private:
 
 
     static void getNetworkOutput(
-            JobConfig &config,
+            CaffeJobConfig &config,
             const cv::Mat &input_frame,
             cv::Mat &output_layer,
             std::vector<std::pair<std::string, cv::Mat>> &activation_layer_info,
@@ -121,7 +121,7 @@ private:
 
 
     // struct to hold configuration options and data structures that change every job.
-    struct JobConfig {
+    struct CaffeJobConfig {
         MPF::COMPONENT::MPFDetectionError error;
         std::vector<std::string> class_names;
         cv::dnn::Net net;
@@ -153,7 +153,7 @@ private:
         int number_of_classifications;
         double confidence_threshold;
 
-        JobConfig(const MPF::COMPONENT::Properties &props, const std::map<std::string, ModelFiles> &model_defs,
+        CaffeJobConfig(const MPF::COMPONENT::Properties &props, const std::map<std::string, ModelFiles> &model_defs,
                   const log4cxx::LoggerPtr &logger);
 
         static MPF::COMPONENT::MPFDetectionError readClassNames(std::string synset_file,

@@ -171,7 +171,7 @@ MPF::COMPONENT::MPFDetectionError CaffeDetection::getDetections(const MPF::COMPO
             return MPF_INVALID_DATAFILE_URI;
         }
 
-        JobConfig config(job.job_properties, model_defs_, logger_);
+        CaffeJobConfig config(job.job_properties, model_defs_, logger_);
         if (config.error != MPF_DETECTION_SUCCESS) {
             return config.error;
         }
@@ -217,7 +217,7 @@ MPF::COMPONENT::MPFDetectionError CaffeDetection::getDetections(const MPF::COMPO
 //-----------------------------------------------------------------------------
 MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
     try {
-        JobConfig config(job.job_properties, model_defs_, logger_);
+        CaffeJobConfig config(job.job_properties, model_defs_, logger_);
         if (config.error != MPF_DETECTION_SUCCESS) {
             return config.error;
         }
@@ -279,7 +279,7 @@ void CaffeDetection::getTopNClasses(cv::Mat &prob_blob,
 
 
 
-MPFDetectionError CaffeDetection::getDetections(JobConfig &config, const cv::Mat &input_frame,
+MPFDetectionError CaffeDetection::getDetections(CaffeJobConfig &config, const cv::Mat &input_frame,
                                                 std::unique_ptr<MPFImageLocation> &location) const {
 
     cv::Mat prob;
@@ -347,7 +347,7 @@ MPFDetectionError CaffeDetection::getDetections(JobConfig &config, const cv::Mat
 
 
 
-void CaffeDetection::addActivationLayerInfo(const CaffeDetection::JobConfig &config,
+void CaffeDetection::addActivationLayerInfo(const CaffeDetection::CaffeJobConfig &config,
                                             const std::vector<std::pair<std::string, cv::Mat>> &activation_layer_mats,
                                             MPF::COMPONENT::Properties &detection_properties) {
 
@@ -371,7 +371,7 @@ void CaffeDetection::addActivationLayerInfo(const CaffeDetection::JobConfig &con
 
 
 
-void CaffeDetection::addSpectralHashInfo(const CaffeDetection::JobConfig &config,
+void CaffeDetection::addSpectralHashInfo(const CaffeDetection::CaffeJobConfig &config,
                                          const std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_mats,
                                          Properties &detection_properties) const {
 
@@ -422,7 +422,7 @@ std::pair<std::string, std::string> CaffeDetection::computeSpectralHash(const cv
 }
 
 
-void CaffeDetection::getNetworkOutput(CaffeDetection::JobConfig &config,
+void CaffeDetection::getNetworkOutput(CaffeDetection::CaffeJobConfig &config,
                                       const cv::Mat &input_frame,
                                       cv::Mat &output_layer,
                                       std::vector<std::pair<std::string, cv::Mat>> &activation_layer_info,
@@ -462,8 +462,9 @@ MPF_COMPONENT_CREATOR(CaffeDetection);
 MPF_COMPONENT_DELETER();
 
 
-CaffeDetection::JobConfig::JobConfig(const Properties &props, const std::map<std::string, ModelFiles> &model_defs,
-                                     const log4cxx::LoggerPtr &logger) {
+CaffeDetection::CaffeJobConfig::CaffeJobConfig(const Properties &props,
+                                               const std::map<std::string, ModelFiles> &model_defs,
+                                               const log4cxx::LoggerPtr &logger) {
 
     using namespace DetectionComponentUtils;
 
@@ -551,8 +552,8 @@ CaffeDetection::JobConfig::JobConfig(const Properties &props, const std::map<std
 
 
 
-MPFDetectionError CaffeDetection::JobConfig::readClassNames(std::string synset_file,
-                                                            std::vector<std::string> &class_names) {
+MPFDetectionError CaffeDetection::CaffeJobConfig::readClassNames(std::string synset_file,
+                                                                 std::vector<std::string> &class_names) {
     std::ifstream fp(synset_file);
     if (!fp.is_open()) {
         return MPF_COULD_NOT_OPEN_DATAFILE;
@@ -570,10 +571,10 @@ MPFDetectionError CaffeDetection::JobConfig::readClassNames(std::string synset_f
 
 
 
-void CaffeDetection::JobConfig::validateLayerNames(std::string requested_activation_layers,
-                                                   const std::vector<cv::String> &net_layers,
-                                                   const std::string &model_name,
-                                                   const log4cxx::LoggerPtr &logger) {
+void CaffeDetection::CaffeJobConfig::validateLayerNames(std::string requested_activation_layers,
+                                                        const std::vector<cv::String> &net_layers,
+                                                        const std::string &model_name,
+                                                        const log4cxx::LoggerPtr &logger) {
     // Get the layers in the net and check that each layer
     // requested is actually part of the net. If it is, add it to the
     // vector of layer names for which we need the layer output. If
@@ -602,10 +603,10 @@ void CaffeDetection::JobConfig::validateLayerNames(std::string requested_activat
 }
 
 
-bool CaffeDetection::JobConfig::parseAndValidateHashInfo(const std::string &file_name,
-                                                         cv::FileStorage &sp_params,
-                                                         SpectralHashInfo &hash_info,
-                                                         const log4cxx::LoggerPtr &logger) {
+bool CaffeDetection::CaffeJobConfig::parseAndValidateHashInfo(const std::string &file_name,
+                                                              cv::FileStorage &sp_params,
+                                                              SpectralHashInfo &hash_info,
+                                                              const log4cxx::LoggerPtr &logger) {
     bool is_good_file_name = true;
 
     if (sp_params["nbits"].empty()) {
@@ -670,10 +671,10 @@ bool CaffeDetection::JobConfig::parseAndValidateHashInfo(const std::string &file
 }
 
 
-void CaffeDetection::JobConfig::getSpectralHashInfo(std::string hash_file_list,
-                                                    const std::vector<cv::String> &net_layers,
-                                                    const std::string &model_name,
-                                                    const log4cxx::LoggerPtr &logger) {
+void CaffeDetection::CaffeJobConfig::getSpectralHashInfo(std::string hash_file_list,
+                                                         const std::vector<cv::String> &net_layers,
+                                                         const std::string &model_name,
+                                                         const log4cxx::LoggerPtr &logger) {
     LOG4CXX_DEBUG(logger, "Loading spectral hash parameters");
     if (!hash_file_list.empty()) {
         boost::trim(hash_file_list);
