@@ -90,7 +90,7 @@ private:
             MPF::COMPONENT::Properties &detection_properties);
 
 
-    void addSpectralHashInfo(const CaffeJobConfig &config,
+    void addSpectralHashInfo(CaffeJobConfig &config,
                              const std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_mats,
                              MPF::COMPONENT::Properties &detection_properties) const;
 

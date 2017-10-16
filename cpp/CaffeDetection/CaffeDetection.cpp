@@ -371,12 +371,19 @@ void CaffeDetection::addActivationLayerInfo(const CaffeDetection::CaffeJobConfig
 
 
 
-void CaffeDetection::addSpectralHashInfo(const CaffeDetection::CaffeJobConfig &config,
+void CaffeDetection::addSpectralHashInfo(CaffeDetection::CaffeJobConfig &config,
                                          const std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_mats,
                                          Properties &detection_properties) const {
 
     for (const auto& hash_info_pair : spectral_hash_mats) {
-        detection_properties.emplace(computeSpectralHash(hash_info_pair.second, hash_info_pair.first));
+        std::pair<std::string, std::string> hash_output_pair;
+        hash_output_pair = computeSpectralHash(hash_info_pair.second, hash_info_pair.first);
+        if (!hash_output_pair.second.empty()) {
+            detection_properties.insert(hash_output_pair);
+        }
+        else {
+            config.bad_hash_file_names.push_back(hash_info_pair.first.file_name);
+        }
     }
 
     if (!config.bad_hash_file_names.empty()) {
