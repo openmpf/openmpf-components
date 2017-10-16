@@ -29,7 +29,6 @@
 #include <unistd.h>
 #include <fstream>
 #include <sstream>
-#include <wordexp.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
@@ -48,37 +47,6 @@
 
 using CONFIG4CPP_NAMESPACE::StringVector;
 using namespace MPF::COMPONENT;
-
-// Returns an error string. If it is not empty, then the filename
-// expansion failed and the exp_filename output should not be used.
-std::string expandFileName(const std::string &filename, std::string &exp_filename) {
-    wordexp_t my_exp;
-    std::string err_string;
-    int rc = wordexp(filename.c_str(), &my_exp, WRDE_UNDEF);
-    if (rc) {
-        switch (rc) {
-            case WRDE_BADCHAR:
-                err_string = "Illegal occurrence of an unescaped character from the set: \\n, |, &, ;, <, >, (, ), {, }.";
-                break;
-            case WRDE_BADVAL:
-                err_string = "An undefined shell variable was referenced.";
-                break;
-            case WRDE_SYNTAX:
-                err_string = "Shell syntax error, such as unbalanced parentheses or unmatched quotes.";
-                break;
-            default:
-                err_string = "Unknown error.";
-        }
-        return err_string;
-    }
-    exp_filename = *my_exp.we_wordv;
-    if (exp_filename.at(0) != '/') {
-        err_string = "Error in parsing the spectral hash file name \"" + filename + "\": expanded to \"" + exp_filename + "\"";
-        return err_string;
-    }
-
-    return "";
-}
 
 void CaffeDetection::getLayerNameLists(const std::vector<cv::String> &names_to_search,
                                        const std::string &model_name,
@@ -193,7 +161,7 @@ CaffeDetection::initHashInfoList(const std::vector<cv::String> &names_to_search,
             LOG4CXX_DEBUG(logger_, "filename = " << filename);
             std::string err_string;
             std::string exp_filename;
-            err_string = expandFileName(filename, exp_filename);
+            err_string = Utils::expandFileName(filename, exp_filename);
             if (!err_string.empty()) {
                 LOG4CXX_WARN(logger_, "Expansion of spectral hash input filename \"" << filename << "\" failed: error reported was \"" << err_string << "\"");
                 bad_hash_file_names.push_back(filename);
