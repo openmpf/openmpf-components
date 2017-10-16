@@ -228,6 +228,36 @@
       ]
     },
     {
+      "name": "CAFFE GOOGLENET DETECTION WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH ACTION",
+      "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
+      "algorithm": "CAFFE",
+      "properties": [
+        { "name" : "MODEL_NAME",
+          "value" : "googlenet"
+        },
+        {
+          "name" : "ACTIVATION_LAYER_LIST",
+          "value" : "loss3/classifier"
+        },
+        {
+          "name" : "SPECTRAL_HASH_FILE_LIST",
+          "value" : "${MPF_HOME}/plugins/CaffeDetection/config/bvlc_googlenet_spectral_hash.json"
+        },
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "104.0"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "117.0"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "123.0"
+        }
+      ]
+    },
+    {
       "name": "CAFFE YAHOO NSFW DETECTION ACTION",
       "description": "Performs caffe detection using the 'yahoo_nsfw' model.",
       "algorithm": "CAFFE",
@@ -280,6 +310,13 @@
       ]
     },
     {
+      "name": "CAFFE GOOGLENET DETECTION WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH TASK",
+      "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
+      "actions": [
+        "CAFFE GOOGLENET DETECTION WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH ACTION"
+      ]
+    },
+    {
       "name": "CAFFE YAHOO NSFW DETECTION TASK",
       "description": "Performs caffe detection using the 'yahoo_nsfw' model.",
       "actions": [
@@ -293,6 +330,13 @@
       "description": "Performs caffe detection using the 'googlenet' model.",
       "tasks": [
         "CAFFE GOOGLENET DETECTION TASK"
+      ]
+    },
+    {
+      "name": "CAFFE GOOGLENET DETECTION WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH PIPELINE",
+      "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
+      "tasks": [
+        "CAFFE GOOGLENET DETECTION WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH TASK"
       ]
     },
     {

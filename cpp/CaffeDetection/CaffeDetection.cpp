@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <fstream>
 #include <sstream>
+#include <wordexp.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
@@ -47,6 +48,37 @@
 
 using CONFIG4CPP_NAMESPACE::StringVector;
 using namespace MPF::COMPONENT;
+
+// Returns an error string. If it is not empty, then the filename
+// expansion failed and the exp_filename output should not be used.
+std::string expandFileName(const std::string &filename, std::string &exp_filename) {
+    wordexp_t my_exp;
+    std::string err_string;
+    int rc = wordexp(filename.c_str(), &my_exp, WRDE_UNDEF);
+    if (rc) {
+        switch (rc) {
+            case WRDE_BADCHAR:
+                err_string = "Illegal occurrence of an unescaped character from the set: \\n, |, &, ;, <, >, (, ), {, }.";
+                break;
+            case WRDE_BADVAL:
+                err_string = "An undefined shell variable was referenced.";
+                break;
+            case WRDE_SYNTAX:
+                err_string = "Shell syntax error, such as unbalanced parentheses or unmatched quotes.";
+                break;
+            default:
+                err_string = "Unknown error.";
+        }
+        return err_string;
+    }
+    exp_filename = *my_exp.we_wordv;
+    if (exp_filename.at(0) != '/') {
+        err_string = "Error in parsing the spectral hash file name \"" + filename + "\": expanded to \"" + exp_filename + "\"";
+        return err_string;
+    }
+
+    return "";
+}
 
 void CaffeDetection::getLayerNameLists(const std::vector<cv::String> &names_to_search,
                                        const std::string &model_name,
@@ -159,47 +191,63 @@ CaffeDetection::initHashInfoList(const std::vector<cv::String> &names_to_search,
 
         for (const std::string &filename : files) {
             LOG4CXX_DEBUG(logger_, "filename = " << filename);
-            SpectralHashInfo hash_info;
-            try{
-                cv::FileStorage spParams(filename, cv::FileStorage::READ);
-                if (!spParams.isOpened()) {
-                    LOG4CXX_WARN(logger_, "Failed to open spectral hash file named \"" << filename << "\"");
-                    bad_hash_file_names.push_back(filename);
-                }
-                else {
-                    if (spParams["layer_name"].empty()) {
-                        LOG4CXX_WARN(logger_, "The \"layer_name\" field in file \"" << filename << "\" is missing.");
+            std::string err_string;
+            std::string exp_filename;
+            err_string = expandFileName(filename, exp_filename);
+            if (!err_string.empty()) {
+                LOG4CXX_WARN(logger_, "Expansion of spectral hash input filename \"" << filename << "\" failed: error reported was \"" << err_string << "\"");
+                bad_hash_file_names.push_back(filename);
+            }
+            else {
+                SpectralHashInfo hash_info;
+                try{
+                    cv::FileStorage spParams(exp_filename, cv::FileStorage::READ);
+                    if (!spParams.isOpened()) {
+                        LOG4CXX_WARN(logger_, "Failed to open spectral hash file named \"" << exp_filename << "\"");
                         bad_hash_file_names.push_back(filename);
                     }
                     else {
-                        spParams["layer_name"] >> hash_info.layer_name;
-                        LOG4CXX_DEBUG(logger_, "layer_name = " << hash_info.layer_name);
-                        if (std::find(names_to_search.begin(),
-                                      names_to_search.end(),
-                                      hash_info.layer_name) != names_to_search.end()) {
-                            bool is_good_file = parseAndValidateHashInfo(filename,
-                                                                         spParams,
-                                                                         hash_info);
-                            if (is_good_file) {
-                                // Everything checks out ok, so save the
-                                // hash info and the layer name.
-                                hash_info.model_name = model_name;
-                                hashInfoList_.push_back(hash_info);
-                                good_hash_layer_names.push_back(hash_info.layer_name);
-                            }
-                            else {
-                                bad_hash_file_names.push_back(filename);
-                            }
-                        }
-                        else {
-                            LOG4CXX_WARN(logger_, "Layer named \"" << hash_info.layer_name << "\" from spectral hash file \"" << filename << "\" was not found in the model named \"" << model_name << "\"");
+                        if (spParams["layer_name"].empty()) {
+                            LOG4CXX_WARN(logger_, "The \"layer_name\" field in file \"" << exp_filename << "\" is missing.");
                             bad_hash_file_names.push_back(filename);
                         }
+                        else {
+                            spParams["layer_name"] >> hash_info.layer_name;
+                            LOG4CXX_DEBUG(logger_, "layer_name = " << hash_info.layer_name);
+                            if (std::find(names_to_search.begin(),
+                                          names_to_search.end(),
+                                          hash_info.layer_name) != names_to_search.end()) {
+                                bool is_good_file = parseAndValidateHashInfo(exp_filename,
+                                                                             spParams,
+                                                                             hash_info);
+                                if (is_good_file) {
+                                    // Everything checks out ok, so save the
+                                    // hash info and the layer
+                                    // name. Also save the original
+                                    // file name in case there is a
+                                    // subsequent error in the
+                                    // spectral hash calculation; we
+                                    // can then add the file to the
+                                    // list of bad files.
+                                    hash_info.file_name = filename;
+                                    hash_info.model_name = model_name;
+                                    hashInfoList_.push_back(hash_info);
+                                    good_hash_layer_names.push_back(hash_info.layer_name);
+                                }
+                                else {
+                                    bad_hash_file_names.push_back(exp_filename);
+                                }
+                            }
+                            else {
+                                LOG4CXX_WARN(logger_, "Layer named \"" << hash_info.layer_name << "\" from spectral hash file \"" << exp_filename << "\" was not found in the model named \"" << model_name << "\"");
+                                bad_hash_file_names.push_back(exp_filename);
+                            }
+                        }
                     }
+                } catch(const cv::Exception &err){
+                    LOG4CXX_WARN(logger_, "Exception caught when processing spectral hash file named \"" << exp_filename << "\": " << err.what());
+                    bad_hash_file_names.push_back(exp_filename);
                 }
-            } catch(const cv::Exception &err){
-                LOG4CXX_WARN(logger_, "Exception caught when processing spectral hash file named \"" << filename << "\": " << err.what());
-                bad_hash_file_names.push_back(filename);
             }
         }
     }
@@ -391,7 +439,7 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
         // Add spectral hash values to the detection properties
         if (!hash_info.empty()) {
             for (const std::pair<std::string,std::string> &hash : hash_info) {
-                det_prop[hash.first] = hash.second;
+                if (!hash.second.empty()) det_prop[hash.first] = hash.second;
             }
         }
 
@@ -540,7 +588,14 @@ CaffeDetection::GetDetections(const MPFJob &job,
     // Compute the spectral hash values
     if (!out_mats.empty()) {
         for (int i = 0; i < hashInfoList_.size(); i++) {
-            spectral_hash_values.push_back(computeSpectralHash(out_mats.back(), hashInfoList_.back()));
+            std::pair<std::string,std::string> tmp;
+            tmp = computeSpectralHash(out_mats.back(), hashInfoList_.back());
+            if (!tmp.second.empty()) {
+                spectral_hash_values.push_back(tmp);
+            }
+            else {
+                bad_hash_file_names.push_back(hashInfoList_.back().file_name);
+            }
             out_mats.pop_back();
             hashInfoList_.pop_back();
         }
@@ -641,28 +696,35 @@ CaffeDetection::computeSpectralHash(const cv::Mat &activations,
 
     cv::Mat omega0;
     cv::Mat omegas;
-    omega0 = CV_PI / (hash_info.mx - hash_info.mn);
-    omegas = cv::repeat(omega0, hash_info.modes.rows, 1);
-    omegas = omegas.mul(hash_info.modes);
-
-    cv::Mat x = cv::repeat( ((activations * hash_info.pc) - hash_info.mn) ,omegas.rows, 1).mul(omegas);
-
     std::string bitset;
-    float* xPtr = (float*) x.data;
-    if (hash_info.nbits != x.rows) {
-        LOG4CXX_WARN(logger_, "Number of bits in the spectral hash for layer \"" << hash_info.layer_name << "\" in model named \"" << hash_info.model_name << "\" is not equal to the input nbits value: nbits = " << hash_info.nbits << ", spectral hash size = " << x.rows);
-    }
-    for(int r=0;r<x.rows;r++){
-        int bit=1;
-        for(int c=0;c<x.cols;c++){
-            bit *= ((cos(x.at<float>(r,c)) > 0) ? 1 : -1);
+
+    try {
+        omega0 = CV_PI / (hash_info.mx - hash_info.mn);
+        omegas = cv::repeat(omega0, hash_info.modes.rows, 1);
+        omegas = omegas.mul(hash_info.modes);
+
+        cv::Mat x = cv::repeat( ((activations * hash_info.pc) - hash_info.mn) ,omegas.rows, 1).mul(omegas);
+
+        float* xPtr = (float*) x.data;
+        if (hash_info.nbits != x.rows) {
+            LOG4CXX_WARN(logger_, "Number of bits in the spectral hash for layer \"" << hash_info.layer_name << "\" in model named \"" << hash_info.model_name << "\" is not equal to the input nbits value: nbits = " << hash_info.nbits << ", spectral hash size = " << x.rows);
         }
-        if(bit > 0) {
-            bitset += "1";
-        } else {
-            bitset += "0";
+        for(int r=0;r<x.rows;r++){
+            int bit=1;
+            for(int c=0;c<x.cols;c++){
+                bit *= ((cos(x.at<float>(r,c)) > 0) ? 1 : -1);
+            }
+            if(bit > 0) {
+                bitset += "1";
+            } else {
+                bitset += "0";
+            }
         }
+    } catch (const cv::Exception &err) {
+        // If this happens, then the output bitset will be an empty string.
+        LOG4CXX_ERROR(logger_, "OpenCV exception caught while calculating the spectral hash for layer \"" << hash_info.layer_name << "\" in model named \"" << hash_info.model_name << "\": " << err.what());
     }
+
     std::string name(hash_info.layer_name);
     std::transform(name.begin(), name.end(), name.begin(), ::toupper);
     name += " SPECTRAL HASH VALUE";
