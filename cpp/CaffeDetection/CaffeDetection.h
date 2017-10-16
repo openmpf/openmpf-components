@@ -122,6 +122,7 @@ private:
 
     // struct to hold configuration options and data structures that change every job.
     struct CaffeJobConfig {
+    public:
         MPF::COMPONENT::MPFDetectionError error;
         std::vector<std::string> class_names;
         cv::dnn::Net net;
@@ -154,8 +155,9 @@ private:
         double confidence_threshold;
 
         CaffeJobConfig(const MPF::COMPONENT::Properties &props, const std::map<std::string, ModelFiles> &model_defs,
-                  const log4cxx::LoggerPtr &logger);
+                       const log4cxx::LoggerPtr &logger);
 
+    private:
         static MPF::COMPONENT::MPFDetectionError readClassNames(std::string synset_file,
                                                                 std::vector<std::string> &class_names);
 
