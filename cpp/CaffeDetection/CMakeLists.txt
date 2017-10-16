@@ -54,6 +54,8 @@ target_link_libraries(caffe mpfComponentInterface mpfDetectionComponentApi mpfCo
 
 configure_mpf_component(CaffeDetection caffe)
 
+add_subdirectory(test)
+
 # Build sample executable
 add_executable(sample_caffe_detector sample_caffe_detector.cpp)
 target_link_libraries(sample_caffe_detector caffe)
