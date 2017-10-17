@@ -43,6 +43,7 @@ struct ModelFiles {
 };
 
 struct SpectralHashInfo {
+    std::string file_name;
     std::string model_name;
     std::string layer_name;
     int nbits;
@@ -89,7 +90,7 @@ private:
             MPF::COMPONENT::Properties &detection_properties);
 
 
-    void addSpectralHashInfo(const CaffeJobConfig &config,
+    void addSpectralHashInfo(CaffeJobConfig &config,
                              const std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_mats,
                              MPF::COMPONENT::Properties &detection_properties) const;
 

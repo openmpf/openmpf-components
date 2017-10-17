@@ -371,12 +371,24 @@ void CaffeDetection::addActivationLayerInfo(const CaffeDetection::CaffeJobConfig
 
 
 
-void CaffeDetection::addSpectralHashInfo(const CaffeDetection::CaffeJobConfig &config,
+void CaffeDetection::addSpectralHashInfo(CaffeDetection::CaffeJobConfig &config,
                                          const std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_mats,
                                          Properties &detection_properties) const {
 
     for (const auto& hash_info_pair : spectral_hash_mats) {
-        detection_properties.emplace(computeSpectralHash(hash_info_pair.second, hash_info_pair.first));
+        try {
+            detection_properties.emplace(computeSpectralHash(hash_info_pair.second, hash_info_pair.first));
+        } catch (const cv::Exception &err) {
+            LOG4CXX_ERROR(logger_, "OpenCV exception caught while calculating the spectral hash for layer \""
+                          << hash_info_pair.first.layer_name << "\" in model named \""
+                          << hash_info_pair.first.model_name << "\": " << err.what());
+            const std::string &bad_file_name = hash_info_pair.first.file_name;
+            if (std::find(config.bad_hash_file_names.begin(),
+                          config.bad_hash_file_names.end(),
+                          bad_file_name) == config.bad_hash_file_names.end()) {
+                config.bad_hash_file_names.push_back(bad_file_name);
+            }
+        }
     }
 
     if (!config.bad_hash_file_names.empty()) {
@@ -391,30 +403,31 @@ std::pair<std::string, std::string> CaffeDetection::computeSpectralHash(const cv
                                                                         const SpectralHashInfo &hash_info) const {
     cv::Mat omega0;
     cv::Mat omegas;
-    omega0 = CV_PI / (hash_info.mx - hash_info.mn);
-    omegas = cv::repeat(omega0, hash_info.modes.rows, 1);
-    omegas = omegas.mul(hash_info.modes);
-
-    cv::Mat x = cv::repeat( ((activations * hash_info.pc) - hash_info.mn), omegas.rows, 1).mul(omegas);
-    if (hash_info.nbits != x.rows) {
-        LOG4CXX_WARN(logger_, "Number of bits in the spectral hash for layer \"" << hash_info.layer_name
-                << "\" in model named \"" << hash_info.model_name
-                << "\" is not equal to the input nbits value: nbits = " << hash_info.nbits
-                << ", spectral hash size = " << x.rows);
-    }
-
     std::string bitset;
-    for(int r = 0; r < x.rows; r++){
-        int bit = 1;
-        for(int c = 0; c < x.cols; c++){
-            bit *= ((cos(x.at<float>(r, c)) > 0) ? 1 : -1);
+
+        omega0 = CV_PI / (hash_info.mx - hash_info.mn);
+        omegas = cv::repeat(omega0, hash_info.modes.rows, 1);
+        omegas = omegas.mul(hash_info.modes);
+        cv::Mat x = cv::repeat( ((activations * hash_info.pc) - hash_info.mn), omegas.rows, 1).mul(omegas);
+        if (hash_info.nbits != x.rows) {
+            LOG4CXX_WARN(logger_, "Number of bits in the spectral hash for layer \"" << hash_info.layer_name
+                         << "\" in model named \"" << hash_info.model_name
+                         << "\" is not equal to the input nbits value: nbits = " << hash_info.nbits
+                         << ", spectral hash size = " << x.rows);
         }
-        if(bit > 0) {
-            bitset += "1";
-        } else {
-            bitset += "0";
+
+        for(int r = 0; r < x.rows; r++){
+            int bit = 1;
+            for(int c = 0; c < x.cols; c++){
+                bit *= ((cos(x.at<float>(r, c)) > 0) ? 1 : -1);
+            }
+            if(bit > 0) {
+                bitset += "1";
+            } else {
+                bitset += "0";
+            }
         }
-    }
+
     std::string name(hash_info.layer_name);
     std::transform(name.begin(), name.end(), name.begin(), ::toupper);
     name += " SPECTRAL HASH VALUE";
@@ -684,51 +697,67 @@ void CaffeDetection::CaffeJobConfig::getSpectralHashInfo(std::string hash_file_l
                      boost::token_compress_on);
 
         for (const std::string &file_name : files) {
-            LOG4CXX_DEBUG(logger, "filename = " << file_name);
-            SpectralHashInfo hash_info;
-            try{
-                cv::FileStorage sp_params(file_name, cv::FileStorage::READ);
-                if (!sp_params.isOpened()) {
-                    LOG4CXX_WARN(logger, "Failed to open spectral hash file named \"" << file_name << "\"");
-                    bad_hash_file_names.push_back(file_name);
-                }
-                else {
-                    if (sp_params["layer_name"].empty()) {
-                        LOG4CXX_WARN(logger, "The \"layer_name\" field in file \"" << file_name << "\" is missing.");
+            LOG4CXX_DEBUG(logger, "file_name = " << file_name);
+            std::string err_string;
+            std::string exp_filename;
+            err_string = Utils::expandFileName(file_name, exp_filename);
+            if (!err_string.empty()) {
+                LOG4CXX_WARN(logger, "Expansion of spectral hash input filename \"" << file_name << "\" failed: error reported was \"" << err_string << "\"");
+                bad_hash_file_names.push_back(file_name);
+            }
+            else {
+                SpectralHashInfo hash_info;
+                try {
+                    cv::FileStorage sp_params(exp_filename, cv::FileStorage::READ);
+                    if (!sp_params.isOpened()) {
+                        LOG4CXX_WARN(logger, "Failed to open spectral hash file named \"" << exp_filename << "\"");
                         bad_hash_file_names.push_back(file_name);
                     }
                     else {
-                        sp_params["layer_name"] >> hash_info.layer_name;
-                        LOG4CXX_DEBUG(logger, "layer_name = " << hash_info.layer_name);
-                        if (std::find(net_layers.begin(),
-                                      net_layers.end(),
-                                      hash_info.layer_name) != net_layers.end()) {
-                            bool is_good_file = parseAndValidateHashInfo(file_name,
-                                                                         sp_params,
-                                                                         hash_info,
-                                                                         logger);
-                            if (is_good_file) {
-                                // Everything checks out ok, so save the
-                                // hash info and the layer name.
-                                hash_info.model_name = model_name;
-                                spectral_hash_info.push_back(hash_info);
+                        if (sp_params["layer_name"].empty()) {
+                            LOG4CXX_WARN(logger, "The \"layer_name\" field in file \"" << exp_filename << "\" is missing.");
+                            bad_hash_file_names.push_back(file_name);
+                        }
+                        else {
+                            sp_params["layer_name"] >> hash_info.layer_name;
+                            LOG4CXX_DEBUG(logger, "layer_name = " << hash_info.layer_name);
+                            if (std::find(net_layers.begin(),
+                                          net_layers.end(),
+                                          hash_info.layer_name) != net_layers.end()) {
+                                bool is_good_file = parseAndValidateHashInfo(exp_filename,
+                                                                             sp_params,
+                                                                             hash_info,
+                                                                             logger);
+                                if (is_good_file) {
+                                    // Everything checks out ok, so
+                                    // save the hash info and the
+                                    // layer name. Also save the
+                                    // original file name in case
+                                    // there is a subsequent error in
+                                    // the spectral hash calculation;
+                                    // we can then add the file to the
+                                    // list of bad files.
+                                    hash_info.file_name = file_name;
+                                    hash_info.model_name = model_name;
+                                    spectral_hash_info.push_back(hash_info);
+                                }
+                                else {
+                                    bad_hash_file_names.push_back(file_name);
+                                }
                             }
                             else {
+                                LOG4CXX_WARN(logger, "Layer named \"" << hash_info.layer_name
+                                             << "\" from spectral hash file \"" << file_name
+                                             << "\" was not found in the model named \"" << model_name << "\"");
                                 bad_hash_file_names.push_back(file_name);
                             }
                         }
-                        else {
-                            LOG4CXX_WARN(logger, "Layer named \"" << hash_info.layer_name
-                                                  << "\" from spectral hash file \"" << file_name
-                                                  << "\" was not found in the model named \"" << model_name << "\"");
-                            bad_hash_file_names.push_back(file_name);
-                        }
                     }
+                } catch(const cv::Exception &err){
+                    LOG4CXX_WARN(logger, "Exception caught when processing spectral hash file named \""
+                                 << file_name << "\": " << err.what());
+                    bad_hash_file_names.push_back(file_name);
                 }
-            } catch(const cv::Exception &err){
-                LOG4CXX_WARN(logger, "Exception caught when processing spectral hash file named \""
-                        << file_name << "\": " << err.what());
-                bad_hash_file_names.push_back(file_name);
             }
         }
     }
