@@ -24,94 +24,115 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include <dlfcn.h>
-#include <string>
-#include <vector>
-#include <log4cxx/simplelayout.h>
-#include <log4cxx/consoleappender.h>
-#include <log4cxx/logmanager.h>
-#include "detectionComponentUtils.h"
+#include "DlibFaceDetection.h"
 
-using namespace MPF::COMPONENT;
+#include <stdlib.h>
+#include <stdio.h>
+#include <string>
+#include <iostream>
+
+#include <QCoreApplication>
+#include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
+
+using namespace std;
+
+using namespace MPF;
+using namespace COMPONENT;
+
+// Main program to run the Dlib face detection in standalone mode.
+
+int processImage(MPFDetectionComponent *detection_engine, int argc, char* argv[]);
+int processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]);
 
 int main(int argc, char* argv[]) {
-    log4cxx::LoggerPtr logger = log4cxx::Logger::getLogger("logger");
-    log4cxx::SimpleLayoutPtr layout = new log4cxx::SimpleLayout();
-    log4cxx::ConsoleAppenderPtr console_appender =
-            new log4cxx::ConsoleAppender(layout);
-    logger->addAppender(console_appender);
-    logger->setLevel(log4cxx::Level::getDebug());
 
-    //TODO: test IMAGE and VIDEO
-
-    std::map<std::string, std::string> algorithm_properties;
-    MPFDetectionDataType media_type = IMAGE;
-    std::string uri(argv[2]);
-    LOG4CXX_INFO(logger, "uri is " << uri);
-
-    void *component_handle = dlopen(argv[1], RTLD_NOW);
-    if (NULL == component_handle) {
-        LOG4CXX_ERROR(logger, "Failed to open component library " << argv[1] << ": " << dlerror());
-        return -1;
+    if (argc < 2 || argc > 5) {
+        printf("Usage (IMAGE): %s <uri>\n", argv[0]);
+        printf("Usage (VIDEO): %s <uri> <start_index> <end_index> <detection_interval (optional)>\n", argv[0]);
+        return 1;
     }
 
-    typedef MPFComponent* create_t();
-    typedef void destroy_t(MPFComponent*);
+    QCoreApplication *this_app = new QCoreApplication(argc, argv);
+    string app_dir = (this_app->applicationDirPath()).toStdString();
+    delete this_app;
 
-    create_t* comp_create = (create_t*)dlsym(component_handle, "component_creator");
-    if (NULL == comp_create) {
-        LOG4CXX_ERROR(logger, "dlsym failed for component_creator: " << dlerror());
-        dlclose(component_handle);
-        return -1;
+    DlibFaceDetection dlib_face_detection;
+    MPFDetectionComponent *detection_engine = &dlib_face_detection;
+    detection_engine->SetRunDirectory(app_dir + "/plugin");
+
+    if (!detection_engine->Init()) {
+        printf("Failed to initialize.\n");
+        return 1;
     }
 
-    destroy_t* comp_destroy = (destroy_t*)dlsym(component_handle, "component_deleter");
-    if (NULL == comp_destroy) {
-        LOG4CXX_ERROR(logger,"dlsym failed for component_deleter: " << dlerror());
-        dlclose(component_handle);
-        return -1;
+    int rc;
+    if (argc == 2) {
+        rc = processImage(detection_engine, argc, argv);
+    } else {
+        rc = processVideo(detection_engine, argc, argv);
     }
 
-    MPFComponent* component_engine = comp_create();
-    if (NULL == component_engine) {
-        LOG4CXX_ERROR(logger, "Component_engine creation failed: ");
-        dlclose(component_handle);
-        return -1;
+    if (!detection_engine->Close()) {
+        printf("Failed to close.\n");
     }
 
-    MPFDetectionComponent* mpf_detection_component =
-            dynamic_cast<MPFDetectionComponent*>(component_engine);
-    if (mpf_detection_component == NULL) {
-        LOG4CXX_ERROR(logger, "Cannot identify component object class");
-        return -1;
-    }
-
-    component_engine->SetRunDirectory("plugin");
-    if (!component_engine->Init()) {
-        LOG4CXX_ERROR(logger, "Component initialization failed, exiting.");
-        return -1;
-    }
-
-    std::vector<MPFImageLocation> detections;
-    MPFImageJob job("Testing", uri, algorithm_properties, { });
-    mpf_detection_component->GetDetections(job, detections);
-
-    int i = 0;
-    for (auto loc : detections) {
-        LOG4CXX_INFO(logger, "detection number "
-                << i++
-                << ": location: ["
-                << loc.x_left_upper
-                << ", "
-                << loc.y_left_upper
-                << ", "
-                << loc.width
-                << ", "
-                << loc.height
-                << "] confidence is "
-                << detections[i].confidence);
-    }
-    mpf_detection_component->Close();
-    return 1;
+    return rc;
 }
 
+int processImage(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
+
+    MPFImageJob job("Testing", argv[1], { }, { });
+    vector<MPFImageLocation> locations;
+
+    MPFDetectionError rc = detection_engine->GetDetections(job, locations);
+
+    if (rc != MPF_DETECTION_SUCCESS) {
+        printf("Failed to get detections: rc = %i\n", rc);
+    }
+
+    printf("Number of detections: %i\n", locations.size());
+
+    return rc;
+}
+
+int processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
+
+    // get detection interval if argument is present
+    int detection_interval = 1;
+    if (argc > 4) {
+        detection_interval = stoi(argv[4]);
+    }
+    printf("Using detection interval: %i\n", detection_interval);
+
+    map<string, string> algorithm_properties;
+    algorithm_properties.insert(pair<string, string>("FRAME_INTERVAL", to_string(detection_interval)));
+
+    MPFVideoJob job("Testing", argv[1], stoi(argv[2]), stoi(argv[3]), algorithm_properties, { });
+    vector<MPFVideoTrack> tracks;
+
+    MPFDetectionError rc = detection_engine->GetDetections(job, tracks);
+
+    if (rc != MPFDetectionError::MPF_DETECTION_SUCCESS) {
+        printf("Failed to get detections: rc = %i\n", rc);
+    }
+
+    cout << "Number of video tracks = " << tracks.size() << endl;
+    for (int i = 0; i < tracks.size(); i++) {
+        cout << "\nVideo track " << i << "\n"
+                  << "   start frame = " << tracks[i].start_frame << "\n"
+                  << "   stop frame = " << tracks[i].stop_frame << "\n"
+                  << "   number of locations = " << tracks[i].frame_locations.size() << "\n"
+                  << "   confidence = " << tracks[i].confidence << endl;
+
+        for (auto it : tracks[i].frame_locations) {
+            cout << "   Image location frame = " << it.first << "\n"
+                      << "      x left upper = " << it.second.x_left_upper << "\n"
+                      << "      y left upper = " << it.second.y_left_upper << "\n"
+                      << "      width = " << it.second.width << "\n"
+                      << "      height = " << it.second.height << "\n"
+                      << "      confidence = " << it.second.confidence << endl;
+        }
+    }
+
+    return rc;
+}

@@ -32,7 +32,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 include(../ComponentSetup.cmake)
 
-find_package(OpenCV 3.2 EXACT REQUIRED PATHS /opt/opencv-3.2.0
+find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0
     COMPONENTS opencv_dnn)
 
 find_package(mpfComponentInterface REQUIRED)
@@ -53,6 +53,8 @@ add_library(caffe SHARED ${CAFFE_SOURCE_FILES})
 target_link_libraries(caffe mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${Config4Cpp_LIBS})
 
 configure_mpf_component(CaffeDetection caffe)
+
+add_subdirectory(test)
 
 # Build sample executable
 add_executable(sample_caffe_detector sample_caffe_detector.cpp)
