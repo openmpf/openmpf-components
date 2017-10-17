@@ -382,7 +382,12 @@ void CaffeDetection::addSpectralHashInfo(CaffeDetection::CaffeJobConfig &config,
             LOG4CXX_ERROR(logger_, "OpenCV exception caught while calculating the spectral hash for layer \""
                           << hash_info_pair.first.layer_name << "\" in model named \""
                           << hash_info_pair.first.model_name << "\": " << err.what());
-            config.bad_hash_file_names.push_back(hash_info_pair.first.file_name);
+            const std::string &bad_file_name = hash_info_pair.first.file_name;
+            if (std::find(config.bad_hash_file_names.begin(),
+                          config.bad_hash_file_names.end(),
+                          bad_file_name) == config.bad_hash_file_names.end()) {
+                config.bad_hash_file_names.push_back(bad_file_name);
+            }
         }
     }
 
