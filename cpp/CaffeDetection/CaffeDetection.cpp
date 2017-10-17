@@ -376,12 +376,12 @@ void CaffeDetection::addSpectralHashInfo(CaffeDetection::CaffeJobConfig &config,
                                          Properties &detection_properties) const {
 
     for (const auto& hash_info_pair : spectral_hash_mats) {
-        std::pair<std::string, std::string> hash_output_pair;
-        hash_output_pair = computeSpectralHash(hash_info_pair.second, hash_info_pair.first);
-        if (!hash_output_pair.second.empty()) {
-            detection_properties.insert(hash_output_pair);
-        }
-        else {
+        try {
+            detection_properties.emplace(computeSpectralHash(hash_info_pair.second, hash_info_pair.first));
+        } catch (const cv::Exception &err) {
+            LOG4CXX_ERROR(logger_, "OpenCV exception caught while calculating the spectral hash for layer \""
+                          << hash_info.layer_name << "\" in model named \""
+                          << hash_info.model_name << "\": " << err.what());
             config.bad_hash_file_names.push_back(hash_info_pair.first.file_name);
         }
     }
@@ -400,7 +400,6 @@ std::pair<std::string, std::string> CaffeDetection::computeSpectralHash(const cv
     cv::Mat omegas;
     std::string bitset;
 
-    try {
         omega0 = CV_PI / (hash_info.mx - hash_info.mn);
         omegas = cv::repeat(omega0, hash_info.modes.rows, 1);
         omegas = omegas.mul(hash_info.modes);
@@ -423,10 +422,6 @@ std::pair<std::string, std::string> CaffeDetection::computeSpectralHash(const cv
                 bitset += "0";
             }
         }
-    } catch (const cv::Exception &err) {
-        // If this happens, then the output bitset will be an empty string.
-        LOG4CXX_ERROR(logger_, "OpenCV exception caught while calculating the spectral hash for layer \"" << hash_info.layer_name << "\" in model named \"" << hash_info.model_name << "\": " << err.what());
-    }
 
     std::string name(hash_info.layer_name);
     std::transform(name.begin(), name.end(), name.begin(), ::toupper);
