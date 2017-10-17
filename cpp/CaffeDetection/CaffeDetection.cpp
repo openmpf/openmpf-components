@@ -380,8 +380,8 @@ void CaffeDetection::addSpectralHashInfo(CaffeDetection::CaffeJobConfig &config,
             detection_properties.emplace(computeSpectralHash(hash_info_pair.second, hash_info_pair.first));
         } catch (const cv::Exception &err) {
             LOG4CXX_ERROR(logger_, "OpenCV exception caught while calculating the spectral hash for layer \""
-                          << hash_info.layer_name << "\" in model named \""
-                          << hash_info.model_name << "\": " << err.what());
+                          << hash_info_pair.first.layer_name << "\" in model named \""
+                          << hash_info_pair.first.model_name << "\": " << err.what());
             config.bad_hash_file_names.push_back(hash_info_pair.first.file_name);
         }
     }
