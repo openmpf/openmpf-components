@@ -38,12 +38,12 @@ And the following Java Components:
 - [Parent OpenMPF Project](https://github.com/openmpf/openmpf-projects)
 - [OpenMPF Core](https://github.com/openmpf/openmpf)
 - Components
-    * [Openmpf Standard Components](https://github.com/openmpf/openmpf-components) ( **You are here** )
-    * [Openmpf Contributed Components](https://github.com/openmpf/openmpf-contrib-components)
+    * [OpenMPF Standard Components](https://github.com/openmpf/openmpf-components) ( **You are here** )
+    * [OpenMPF Contributed Components](https://github.com/openmpf/openmpf-contrib-components)
 - Component APIs:
-    * [Openmpf C++ Component sdk](https://github.com/openmpf/openmpf-cpp-component-sdk)
-    * [Openmpf Java Component sdk](https://github.com/openmpf/openmpf-java-component-sdk)
-- [Openmpf Build Tools](https://github.com/openmpf/openmpf-build-tools)
+    * [OpenMPF C++ Component sdk](https://github.com/openmpf/openmpf-cpp-component-sdk)
+    * [OpenMPF Java Component sdk](https://github.com/openmpf/openmpf-java-component-sdk)
+- [OpenMPF Build Tools](https://github.com/openmpf/openmpf-build-tools)
 - [OpenMPF Web Site Source](https://github.com/openmpf/openmpf.github.io)
 
 ## Getting Started
