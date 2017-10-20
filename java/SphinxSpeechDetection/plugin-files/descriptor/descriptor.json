@@ -1,9 +1,9 @@
 {
   "componentName" : "SphinxSpeechDetection",
-  "componentVersion" : "0.10.0",
-  "middlewareVersion" :  "0.10.0",
+  "componentVersion" : "1.0.0",
+  "middlewareVersion" :  "1.0.0",
   "sourceLanguage" : "java",
-  "pathName" : "mpf-sphinx-speech-detection-component-0.10.0.jar",
+  "pathName" : "mpf-sphinx-speech-detection-component-1.0.0.jar",
   "launchArgs" : [],
   "environmentVariables" : [],
   "algorithm" : {
