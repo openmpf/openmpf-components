@@ -27,12 +27,12 @@
 package org.mitre.mpf.detection.sphinx.speech;
 
 import org.apache.commons.io.FilenameUtils;
-import org.mitre.mpf.component.api.MPFAudioJob;
-import org.mitre.mpf.component.api.adapters.MPFAudioAndVideoDetectionComponentAdapter;
-import org.mitre.mpf.component.api.adapters.MPFAudioDetectionMediaHandler;
+import org.mitre.mpf.component.api.detection.MPFAudioJob;
 import org.mitre.mpf.component.api.detection.MPFAudioTrack;
+import org.mitre.mpf.component.api.detection.MPFComponentDetectionError;
 import org.mitre.mpf.component.api.detection.MPFDetectionError;
-import org.mitre.mpf.component.api.exceptions.MPFComponentDetectionError;
+import org.mitre.mpf.component.api.detection.adapters.MPFAudioAndVideoDetectionComponentAdapter;
+import org.mitre.mpf.component.api.detection.adapters.MPFAudioDetectionMediaHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
