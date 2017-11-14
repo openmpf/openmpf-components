@@ -393,7 +393,7 @@ MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const
         tracks.push_back(tracks_map_iter->second);
     }
 
-    LOG4CXX_INFO(td_logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " detections.");
+    LOG4CXX_INFO(td_logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
 
     return MPF_DETECTION_SUCCESS;
 }

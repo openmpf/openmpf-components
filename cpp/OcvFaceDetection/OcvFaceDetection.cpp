@@ -985,7 +985,7 @@ MPFDetectionError OcvFaceDetection::GetDetectionsFromVideoCapture(
     saved_tracks.clear();
 
     LOG4CXX_INFO(OpenFaceDetectionLogger, "[" << job.job_name << "] Processing complete. Found "
-                                              << static_cast<int>(tracks.size()) << " detections.");
+                                              << static_cast<int>(tracks.size()) << " tracks.");
     CloseWindows();
 
     if (verbosity > 0) {
