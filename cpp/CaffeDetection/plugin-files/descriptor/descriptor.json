@@ -1,7 +1,7 @@
 {
   "componentName": "CaffeDetection",
-  "componentVersion": "0.10.0",
-  "middlewareVersion": "0.10.0",
+  "componentVersion": "1.0.0",
+  "middlewareVersion": "1.0.0",
   "sourceLanguage": "c++",
   "pathName": "amq_detection_component",
   "launchArgs": [
@@ -22,8 +22,30 @@
       "states": []
     },
     "providesCollection": {
-      "states": [],
+      "states": [
+        "DETECTION",
+        "DETECTION_CLASS",
+        "DETECTION_CLASS_CAFFE"
+      ],
       "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "description": "Applies to images and videos. The type of feed-forward behavior. Controls how this algorithm will make use of the tracks generated in the previous pipeline stage. If this algorithm is used in the first pipeline stage then this property has no effect. Instead, the default segmenting behavior is used, where tracks from the previous stage are used to generate segments based on the TARGET_SEGMENT_LENGTH and MIN_SEGMENT_LENGTH properties. Can be set to “NONE”, “FRAME”, “SUPERSET_REGION”, or “REGION”. If set to “NONE”, the default segmenting behavior is used. If set to “FRAME”, “SUPERSET_REGION”, or “REGION” then the segment length properties are ignored and instead this algorithm will process one segment per track generated in the previous stage. If set to “FRAME”, then this algorithm will ignore the regions associated with previous detections and instead process the entire frame associated with each of those detections. If set to “SUPERSET_REGION”, then this algorithm will generate a superset region for each of the previous tracks – a bounding box of constant size and position that encloses all of the track’s detection regions. This algorithm will only process the data within the superset region. If set to “REGION”, then this algorithm will use the regions associated with previous detections, which may vary in size and position from frame to frame.",
+          "type": "STRING",
+          "defaultValue": "NONE"
+        },
+        {
+          "name": "FEED_FORWARD_TOP_CONFIDENCE_COUNT",
+          "description": "Only applies if FEED_FORWARD_TYPE is set to a value other than “NONE”. If set to a value <= 0, then for each track generated in the previous pipeline stage, this algorithm will process the frame associated with each detection in that track, ignoring frames that don’t have detections. If FEED_FORWARD_TYPE is set to “FRAME”, then the entire frame is processed. If FEED_FORWARD_TYPE is set to “SUPERSET_REGION”, then only the superset region for those frames is processed. If FEED_FORWARD_TYPE is set to “REGION”, then the specific detection region for each frame is processed. If this property is set to “1” then only the exemplar frame for each of the previous tracks is processed. If this property is set to a value > 1, say 5, then each of the detections in the previous track are sorted by confidence and this algorithm will only process the frames associated with the top 5 detections with the highest confidence. For detections with the same confidence values, it will select those with a lower frame index. If the track contains less than 5 detections, then all of the available detections are used. In practice, setting this property to a value > 1 has no effect on image and audio jobs because each track only contains one detection.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "USE_KEY_FRAMES",
+          "description": "When true the component will only look at key frames (I-frames) from the input video. Can be used in conjunction with FRAME_INTERVAL. For example, when USE_KEY_FRAMES is true, and FRAME_INTERVAL is set to \"2\", then every other key frame will be processed.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
         {
           "name": "FRAME_INTERVAL",
           "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval. Must be greater than or equal to 0. If the frame_interval is set to 0 or 1, a frame_interval of 1 will be used, so that detections are performed on every frame. For a frame interval N > 1, every N-1 frames will be skipped. Default value is defined by the MPF properties file.",
@@ -145,6 +167,18 @@
           "defaultValue": "prob"
         },
         {
+          "name": "ACTIVATION_LAYER_LIST",
+          "description": "The semicolon-delimited list of names of layers within the specified model for which activation values should be reported in the output. The model activation layer names are defined in the .prototxt file associated with the model.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "SPECTRAL_HASH_FILE_LIST",
+          "description": "A semicolon-delimited list of paths to files. Each file contains JSON formatted data to be used in computing the spectral hash of the activation values in one of the layers in the model. The list contains the following: the name of the model layer, the number of bits in the spectral hash, the max and min matrices, the modes matrix, and the principal components matrix.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
           "name": "NUMBER_OF_CLASSIFICATIONS",
           "description": "The number of classifications, N, to be returned. The N highest confidence classifications found by the network will be returned with their associated confidence values. The value must be greater than 0, and less than the size of the model output layer.",
           "type": "INT",
@@ -175,30 +209,23 @@
           "defaultValue": "0"
         },
         {
-          "name": "TRANSPOSE",
-          "description": "After the input image is resized and cropped, swap the X and Y coordinates. The default value (false) is for the default model (googlenet).",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
           "name": "SUBTRACT_BLUE_VALUE",
-          "description": "After the input image is resized, cropped, and transposed, subtract this value from the blue color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "INT",
-          "defaultValue": "0"
+          "description": "After the input image is resized and cropped, subtract this value from the blue color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
         },
         {
           "name": "SUBTRACT_GREEN_VALUE",
-          "description": "After the input image is resized, cropped, and transposed, subtract this value from the green color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "INT",
-          "defaultValue": "0"
+          "description": "After the input image is resized and cropped, subtract this value from the green color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
         },
         {
           "name": "SUBTRACT_RED_VALUE",
-          "description": "After the input image is resized, cropped, and transposed, subtract this value from the red color channel for all of the pixels. The range is [0, 255]. The default value (0) is for the default model (googlenet).",
-          "type": "INT",
-          "defaultValue": "0"
-        }
-      ]
+          "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
+        }      ]
     }
   },
   "actions": [
@@ -206,7 +233,50 @@
       "name": "CAFFE GOOGLENET DETECTION ACTION",
       "description": "Performs caffe detection using the 'googlenet' model.",
       "algorithm": "CAFFE",
-      "properties": []
+      "properties": [
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "104.0"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "117.0"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "123.0"
+        }
+      ]
+    },
+    {
+      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) ACTION",
+      "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
+      "algorithm": "CAFFE",
+      "properties": [
+        { "name" : "MODEL_NAME",
+          "value" : "googlenet"
+        },
+        {
+          "name" : "ACTIVATION_LAYER_LIST",
+          "value" : "loss3/classifier"
+        },
+        {
+          "name" : "SPECTRAL_HASH_FILE_LIST",
+          "value" : "${MPF_HOME}/plugins/CaffeDetection/config/bvlc_googlenet_spectral_hash.json"
+        },
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "104.0"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "117.0"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "123.0"
+        }
+      ]
     },
     {
       "name": "CAFFE YAHOO NSFW DETECTION ACTION",
@@ -238,20 +308,16 @@
           "value": "16"
         },
         {
-          "name": "TRANSPOSE",
-          "value": "true"
-        },
-        {
           "name": "SUBTRACT_BLUE_VALUE",
-          "value": "104"
+          "value": "104.0"
         },
         {
           "name": "SUBTRACT_GREEN_VALUE",
-          "value": "117"
+          "value": "117.0"
         },
         {
           "name": "SUBTRACT_RED_VALUE",
-          "value": "123"
+          "value": "123.0"
         }
       ]
     }
@@ -262,6 +328,13 @@
       "description": "Performs caffe detection using the 'googlenet' model.",
       "actions": [
         "CAFFE GOOGLENET DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) TASK",
+      "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
+      "actions": [
+        "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) ACTION"
       ]
     },
     {
@@ -278,6 +351,13 @@
       "description": "Performs caffe detection using the 'googlenet' model.",
       "tasks": [
         "CAFFE GOOGLENET DETECTION TASK"
+      ]
+    },
+    {
+      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) PIPELINE",
+      "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
+      "tasks": [
+        "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) TASK"
       ]
     },
     {

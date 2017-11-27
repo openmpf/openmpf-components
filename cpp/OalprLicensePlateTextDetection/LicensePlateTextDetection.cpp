@@ -202,14 +202,7 @@ MPFDetectionError LicensePlateTextDetection::GetDetections(const MPFImageJob &jo
             return MPF_IMAGE_READ_ERROR;
         }
 
-        vector<AlprRegionOfInterest> roi;  // unused
-        AlprResults RecognizedOutput = alpr_->recognize(frame.data,
-                                               frame.elemSize(),
-                                               frame.cols,
-                                               frame.rows,
-                                               roi);
-
-        vector<AlprPlateResult> results = RecognizedOutput.plates;
+        const vector<AlprPlateResult> &results = alprRecognize(frame);
 
         LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Results size: " << results.size());
 
@@ -316,14 +309,8 @@ MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const
 
 
     while (video_capture.Read(frame)) {
-        vector<AlprRegionOfInterest> roi;  // unused
-        AlprResults RecognizedOutput = alpr_->recognize(frame.data,
-                                                       frame.elemSize(),
-                                                       frame.cols,
-                                                       frame.rows,
-                                                       roi);
 
-        vector <AlprPlateResult> results = RecognizedOutput.plates;
+        const vector<AlprPlateResult> &results = alprRecognize(frame);
         LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Frame: " << frame_num << " results size: " << results.size());
 
         // NOTE:  as in image case, for each result only the detection with the
@@ -406,10 +393,22 @@ MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const
         tracks.push_back(tracks_map_iter->second);
     }
 
-    LOG4CXX_INFO(td_logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " detections.");
+    LOG4CXX_INFO(td_logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
 
     return MPF_DETECTION_SUCCESS;
 }
+
+
+vector<AlprPlateResult> LicensePlateTextDetection::alprRecognize(const cv::Mat &frame) {
+    // cv::Mat::clone only copies data in the region of interest and always produces a continuous matrix.
+    const cv::Mat &continuousFrame = frame.isContinuous()
+                                     ? frame
+                                     : frame.clone();
+    AlprResults alprResults = alpr_->recognize(continuousFrame.data, static_cast<int>(continuousFrame.elemSize()),
+                                               continuousFrame.cols, continuousFrame.rows, {});
+    return alprResults.plates;
+}
+
 
 //-----------------------------------------------------------------------------
 bool LicensePlateTextDetection::CompareKeys(
