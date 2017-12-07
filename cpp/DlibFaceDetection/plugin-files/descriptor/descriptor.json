@@ -3,10 +3,7 @@
   "componentVersion": "1.0.0",
   "middlewareVersion": "1.0.0",
   "sourceLanguage": "c++",
-  "pathName": "amq_detection_component",
-  "launchArgs": [
-    "${MPF_HOME}/plugins/DlibFaceDetection/lib/libmpfDlibFaceDetection.so"
-  ],
+  "batchLibraryPath": "${MPF_HOME}/plugins/DlibFaceDetection/lib/libmpfDlibFaceDetection.so",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",
@@ -17,7 +14,6 @@
     "name": "DLIB",
     "description": "Detects faces in images and videos using the dlib library.",
     "actionType": "DETECTION",
-    "supportsBatchProcessing": true,
     "requiresCollection": {
       "states": []
     },
