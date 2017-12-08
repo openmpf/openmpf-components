@@ -3,7 +3,7 @@
   "componentVersion" : "1.0.0",
   "middlewareVersion" : "1.0.0",
   "sourceLanguage" : "java",
-  "batchLibraryPath" : "mpf-sphinx-speech-detection-component-1.0.0.jar",
+  "batchLibrary" : "mpf-sphinx-speech-detection-component-1.0.0.jar",
   "environmentVariables" : [],
   "algorithm" : {
     "name" : "SPHINX",

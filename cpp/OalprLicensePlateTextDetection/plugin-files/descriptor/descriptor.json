@@ -4,7 +4,7 @@
   "middlewareVersion": "1.0.0",
   "sourceLanguage": "c++",
   "setupFile": "setup/componentSetup.yml",
-  "batchLibraryPath": "${MPF_HOME}/plugins/OalprLicensePlateTextDetection/lib/libmpfOALPRLicensePlateTextDetection.so",
+  "batchLibrary": "${MPF_HOME}/plugins/OalprLicensePlateTextDetection/lib/libmpfOALPRLicensePlateTextDetection.so",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",

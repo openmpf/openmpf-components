@@ -3,7 +3,7 @@
   "componentVersion": "1.0.0",
   "middlewareVersion": "1.0.0",
   "sourceLanguage": "c++",
-  "batchLibraryPath": "${MPF_HOME}/plugins/OcvFaceDetection/lib/libmpfOcvFaceDetection.so",
+  "batchLibrary": "${MPF_HOME}/plugins/OcvFaceDetection/lib/libmpfOcvFaceDetection.so",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",
