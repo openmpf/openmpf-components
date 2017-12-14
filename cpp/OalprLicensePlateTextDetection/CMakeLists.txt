@@ -59,7 +59,7 @@ target_link_libraries(mpfOALPRLicensePlateTextDetection
     ${OALPR_LIB} ${TESSERACT_LIB} ${LEPT_LIB} ${OpenCV_LIBS}
     mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils )
 
-configure_mpf_component(OalprLicensePlateTextDetection mpfOALPRLicensePlateTextDetection "${extra_lib_dirs}")
+configure_mpf_component(OalprLicensePlateTextDetection TARGETS mpfOALPRLicensePlateTextDetection EXTRA_LIB_PATHS ${extra_lib_dirs})
 
 file(COPY /usr/local/share/openalpr/runtime_data
      DESTINATION plugin/OalprLicensePlateTextDetection)

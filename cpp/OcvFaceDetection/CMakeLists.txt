@@ -49,7 +49,7 @@ add_library(mpfOcvFaceDetection SHARED ${OCV_FACE_DETECTION_SOURCE_FILES})
 target_link_libraries(mpfOcvFaceDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS})
 
 
-configure_mpf_component(OcvFaceDetection mpfOcvFaceDetection)
+configure_mpf_component(OcvFaceDetection TARGETS mpfOcvFaceDetection)
 
 
 add_subdirectory(test)
