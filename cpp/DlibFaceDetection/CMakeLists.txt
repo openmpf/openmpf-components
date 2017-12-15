@@ -51,7 +51,7 @@ add_library(mpfDlibFaceDetection SHARED ${DLIB_FACE_SOURCE_FILES})
 target_link_libraries(mpfDlibFaceDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
     dlib ${OpenCV_LIBS})
 
-configure_mpf_component(DlibFaceDetection mpfDlibFaceDetection)
+configure_mpf_component(DlibFaceDetection TARGETS mpfDlibFaceDetection)
 
 add_subdirectory(test)
 

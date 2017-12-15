@@ -52,7 +52,7 @@ set(CAFFE_SOURCE_FILES ModelFileParserException.h ModelFileParser.cpp ModelFileP
 add_library(caffe SHARED ${CAFFE_SOURCE_FILES})
 target_link_libraries(caffe mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${Config4Cpp_LIBS})
 
-configure_mpf_component(CaffeDetection caffe)
+configure_mpf_component(CaffeDetection TARGETS caffe)
 
 add_subdirectory(test)
 
