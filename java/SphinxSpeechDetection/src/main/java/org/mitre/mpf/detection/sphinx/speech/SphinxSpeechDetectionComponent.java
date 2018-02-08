@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2017 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2018 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2017 The MITRE Corporation                                       *
+ * Copyright 2018 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -27,12 +27,12 @@
 package org.mitre.mpf.detection.sphinx.speech;
 
 import org.apache.commons.io.FilenameUtils;
-import org.mitre.mpf.component.api.MPFAudioJob;
-import org.mitre.mpf.component.api.adapters.MPFAudioAndVideoDetectionComponentAdapter;
-import org.mitre.mpf.component.api.adapters.MPFAudioDetectionMediaHandler;
+import org.mitre.mpf.component.api.detection.MPFAudioJob;
 import org.mitre.mpf.component.api.detection.MPFAudioTrack;
+import org.mitre.mpf.component.api.detection.MPFComponentDetectionError;
 import org.mitre.mpf.component.api.detection.MPFDetectionError;
-import org.mitre.mpf.component.api.exceptions.MPFComponentDetectionError;
+import org.mitre.mpf.component.api.detection.adapters.MPFAudioAndVideoDetectionComponentAdapter;
+import org.mitre.mpf.component.api.detection.adapters.MPFAudioDetectionMediaHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

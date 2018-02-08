@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2017 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2018 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2017 The MITRE Corporation                                       *
+ * Copyright 2018 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -393,7 +393,7 @@ MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const
         tracks.push_back(tracks_map_iter->second);
     }
 
-    LOG4CXX_INFO(td_logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " detections.");
+    LOG4CXX_INFO(td_logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
 
     return MPF_DETECTION_SUCCESS;
 }

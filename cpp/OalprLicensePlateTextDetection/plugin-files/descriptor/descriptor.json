@@ -3,11 +3,8 @@
   "componentVersion": "1.0.0",
   "middlewareVersion": "1.0.0",
   "sourceLanguage": "c++",
-  "pathName": "amq_detection_component",
   "setupFile": "setup/componentSetup.yml",
-  "launchArgs": [
-    "${MPF_HOME}/plugins/OalprLicensePlateTextDetection/lib/libmpfOALPRLicensePlateTextDetection.so"
-  ],
+  "batchLibrary": "${MPF_HOME}/plugins/OalprLicensePlateTextDetection/lib/libmpfOALPRLicensePlateTextDetection.so",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",
@@ -18,7 +15,6 @@
     "name": "OALPR",
     "description": "Detects license plate text in images and videos using the Open Automatic License Plate Recognition (OALPR) Library.",
     "actionType": "DETECTION",
-    "supportsBatchProcessing": true,
     "requiresCollection": {
       "states": []
     },
