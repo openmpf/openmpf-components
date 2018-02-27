@@ -1,0 +1,319 @@
+/******************************************************************************
+ * NOTICE                                                                     *
+ *                                                                            *
+ * This software (or technical data) was produced for the U.S. Government     *
+ * under contract, and is subject to the Rights in Data-General Clause        *
+ * 52.227-14, Alt. IV (DEC 2007).                                             *
+ *                                                                            *
+ * Copyright 2018 The MITRE Corporation. All Rights Reserved.                 *
+ ******************************************************************************/
+
+/******************************************************************************
+ * Copyright 2018 The MITRE Corporation                                       *
+ *                                                                            *
+ * Licensed under the Apache License, Version 2.0 (the "License");            *
+ * you may not use this file except in compliance with the License.           *
+ * You may obtain a copy of the License at                                    *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ * Unless required by applicable law or agreed to in writing, software        *
+ * distributed under the License is distributed on an "AS IS" BASIS,          *
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   *
+ * See the License for the specific language governing permissions and        *
+ * limitations under the License.                                             *
+ ******************************************************************************/
+
+#include <fstream>
+
+#include <log4cxx/xml/domconfigurator.h>
+
+#include <MPFImageReader.h>
+#include <MPFVideoCapture.h>
+#include <detectionComponentUtils.h>
+#include <Utils.h>
+
+#include "Trackers.h"
+#include "DarknetDetection.h"
+
+using namespace MPF::COMPONENT;
+
+
+bool DarknetDetection::Init() {
+    std::string run_dir = GetRunDirectory();
+    if (run_dir.empty()) {
+        run_dir = ".";
+    }
+
+    log4cxx::xml::DOMConfigurator::configure(run_dir + "/DarknetDetection/config/Log4cxxConfig.xml");
+    logger_ = log4cxx::Logger::getLogger("DarknetDetection");
+    LOG4CXX_INFO(logger_, "Initialized DarknetDetection component.");
+
+    return true;
+}
+
+
+MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks) {
+    LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
+    if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
+        PreprocessorTracker tracker;
+        return GetDetections(job, tracks, tracker);
+    }
+    else {
+        int number_of_classifications = DetectionComponentUtils::GetProperty(
+                job.job_properties, "NUMBER_OF_CLASSIFICATIONS", 5);
+        SingleDetectionPerTrackTracker tracker(number_of_classifications);
+        return GetDetections(job, tracks, tracker);
+    }
+}
+
+template<typename Tracker>
+MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks,
+                                                  Tracker &tracker) {
+    try {
+        Detector detector(job.job_properties);
+
+        MPFVideoCapture video_cap(job);
+        if (!video_cap.IsOpened()) {
+            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not open video file: " << job.data_uri);
+            return MPF_COULD_NOT_OPEN_DATAFILE;
+        }
+
+        cv::Mat frame;
+        int frame_number = -1;
+
+        while (video_cap.Read(frame)) {
+            frame_number++;
+            tracker.ProcessFrameDetections(detector.Detect(frame), frame_number);
+        }
+
+        tracks = tracker.GetTracks();
+
+        for (MPFVideoTrack &track : tracks) {
+            video_cap.ReverseTransform(track);
+        }
+
+        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
+
+        return MPF_DETECTION_SUCCESS;
+    }
+    catch (...) {
+        return Utils::HandleDetectionException(job, logger_);
+    }
+}
+
+
+
+MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
+    try {
+        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
+        Detector detector(job.job_properties);
+
+        MPFImageReader image_reader(job);
+        int number_of_classifications
+                = std::max(1, DetectionComponentUtils::GetProperty(job.job_properties,
+                                                                   "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
+
+        std::vector<DarknetResult> results = detector.Detect(image_reader.GetImage());
+        for (auto& result : results) {
+            locations.push_back(
+                    SingleDetectionPerTrackTracker::CreateImageLocation(number_of_classifications, result));
+        }
+
+        for (auto &location : locations) {
+            image_reader.ReverseTransform(location);
+        }
+
+        LOG4CXX_INFO(logger_, "[" << job.job_name << " Found " << locations.size() << " detections.");
+
+        return MPF_DETECTION_SUCCESS;
+    }
+    catch (...) {
+        return Utils::HandleDetectionException(job, logger_);
+    }
+}
+
+
+
+std::string DarknetDetection::GetDetectionType() {
+    return "OBJECT";
+}
+
+
+
+bool DarknetDetection::Close() {
+    return true;
+}
+
+
+
+DarknetDetection::DNetImageHolder::DNetImageHolder(const cv::Mat &cv_image) {
+    dnet_image = make_image(cv_image.cols, cv_image.rows, cv_image.channels());
+
+    // This code is mostly copied from Darknet's "ipl_into_image" function. The main difference is that
+    // this function works with cv::Mat instead of IplImage. IplImage is a legacy OpenCV image type.
+    // The OpenCV documentation for cv::Mat says that cv::Mat and IplImage use a compatible data layout.
+    int height = dnet_image.h;
+    int width = dnet_image.w;
+    int channels = cv_image.channels();
+    size_t step = cv_image.step[0];
+
+    for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+            for (int channel = 0; channel < channels; channel++) {
+                dnet_image.data[channel * width * height + row * width + col]
+                        = cv_image.data[row * step + col * channels + channel] / 255.0f;
+            }
+        }
+    }
+    rgbgr_image(dnet_image);
+}
+
+
+DarknetDetection::DNetImageHolder::~DNetImageHolder() {
+    free_image(dnet_image);
+}
+
+
+DarknetDetection::ProbHolder::ProbHolder(int output_layer_size, int num_classes)
+    : mat_size_(output_layer_size * (num_classes + 1))
+    , prob_mat_(new float[mat_size_]())
+    , prob_row_ptrs_(new float*[output_layer_size])
+{
+    for (int i = 0; i < output_layer_size; i++) {
+        prob_row_ptrs_[i] = &prob_mat_[i * (num_classes + 1)];
+    }
+}
+
+
+float** DarknetDetection::ProbHolder::Get() {
+    return prob_row_ptrs_.get();
+}
+
+
+float* DarknetDetection::ProbHolder::operator[](size_t box_idx) {
+    return prob_row_ptrs_[box_idx];
+}
+
+
+void DarknetDetection::ProbHolder::Clear() {
+    for (int i = 0; i < mat_size_; i++) {
+        prob_mat_[i] = 0.0f;
+    }
+}
+
+
+
+DarknetDetection::Detector::Detector(const Properties &props)
+    : network_(LoadNetwork(props))
+    , output_layer_size_(GetOutputLayerSize(*network_))
+    , num_classes_(GetNumClasses(*network_))
+    , names_(LoadNames(props, num_classes_))
+    , confidence_threshold_(std::max(0.01f, DetectionComponentUtils::GetProperty(props, "CONFIDENCE_THRESHOLD", 0.01f)))
+    , probs_(output_layer_size_, num_classes_)
+    , boxes_(new box[output_layer_size_])
+{
+
+
+}
+
+
+std::vector<DarknetResult> DarknetDetection::Detector::Detect(const cv::Mat &cv_image) {
+    DNetImageHolder image(cv_image);
+    probs_.Clear();
+    network_detect(network_.get(), image.dnet_image, confidence_threshold_, 0.5, 0.3, boxes_.get(),
+                   probs_.Get());
+
+    std::vector<DarknetResult> detections;
+    cv::Size frame_size = cv_image.size();
+
+    for (int box_idx = 0; box_idx < output_layer_size_; box_idx++) {
+        DarknetResult detection { BoxToRect(boxes_[box_idx], frame_size) };
+
+        for (int name_idx = 0; name_idx < num_classes_; name_idx++) {
+            float prob = probs_[box_idx][name_idx];
+            if (prob >= confidence_threshold_) {
+                detection.object_type_probs.emplace_back(prob, names_[name_idx]);
+            }
+        }
+
+        if (!detection.object_type_probs.empty()) {
+            detections.push_back(std::move(detection));
+        }
+    }
+
+    return detections;
+}
+
+
+DarknetDetection::Detector::network_ptr_t DarknetDetection::Detector::LoadNetwork(const Properties &props) {
+    auto cfg_file = ToNonConstCStr(props.at("NETWORK_CONFIG_FILE"));
+    auto weights_file = ToNonConstCStr(props.at("WEIGHTS_FILE"));
+
+    return network_ptr_t(load_network(cfg_file.get(), weights_file.get(), 0),
+                         free_network);
+}
+
+int DarknetDetection::Detector::GetOutputLayerSize(const network &network) {
+    layer output_layer = network.layers[network.n - 1];
+    return output_layer.w * output_layer.h * output_layer.n;
+}
+
+int DarknetDetection::Detector::GetNumClasses(const network &network) {
+    layer output_layer = network.layers[network.n - 1];
+    return output_layer.classes;
+}
+
+
+std::vector<std::string> DarknetDetection::Detector::LoadNames(const Properties &props,
+                                                               int expected_name_count) {
+    const auto &name_file_path = props.at("NAMES_FILE");
+    std::ifstream in_file(name_file_path);
+    if (!in_file.good()) {
+        throw std::runtime_error("Failed to open names file at: " + name_file_path);
+    }
+
+    std::vector<std::string> names;
+    names.reserve(static_cast<size_t>(expected_name_count));
+    
+    std::string line;
+    while (std::getline(in_file, line).good()) {
+        names.push_back(line);
+    }
+    
+    if (names.size() != expected_name_count) {
+        const auto& network_config = props.at("NETWORK_CONFIG_FILE");
+        std::stringstream error;
+        error << "Error: The network config file at " << network_config << " specifies "
+                << expected_name_count << " classes, but the names file at " << name_file_path << " contains "
+                << names.size() << " classes. This is probably because given names file does not correspond to the "
+                << "given network configuration file.";
+        throw std::runtime_error(error.str());
+    }
+    
+    return names;
+}
+
+std::unique_ptr<char[]> DarknetDetection::Detector::ToNonConstCStr(const std::string &str) {
+    std::unique_ptr<char[]> result(new char[str.size() + 1]);
+    size_t length = str.copy(result.get(), str.size());
+    result[length] = '\0';
+    return result;
+}
+
+
+cv::Rect DarknetDetection::Detector::BoxToRect(const box &box, const cv::Size &image_size) {
+    // box.x and box.y refer to the center of the rectangle,
+    // but cv::Rect uses the top left x and y coordinates.
+    auto tlX = static_cast<int>(box.x - box.w / 2.0f);
+    auto tlY = static_cast<int>(box.y - box.h / 2.0f);
+    auto width = static_cast<int>(box.w);
+    auto height = static_cast<int>(box.h);
+
+    return cv::Rect(tlX, tlY, width, height) & cv::Rect(cv::Point(0, 0), image_size);
+}
+
+
+
+MPF_COMPONENT_CREATOR(DarknetDetection);
+MPF_COMPONENT_DELETER();
