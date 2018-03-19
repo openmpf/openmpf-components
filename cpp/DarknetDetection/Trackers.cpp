@@ -99,7 +99,9 @@ MPFImageLocation SingleDetectionPerTrackTracker::CreateImageLocation(int num_cla
 }
 
 std::vector<MPF::COMPONENT::MPFVideoTrack> SingleDetectionPerTrackTracker::GetTracks() {
-    return std::move(tracks_);
+    std::vector<MPFVideoTrack> tmp;
+    tmp.swap(tracks_);
+    return tmp;
 }
 
 
@@ -185,6 +187,7 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> PreprocessorTracker::GetTracks() {
     for (auto &pair : tracks_) {
         results.push_back(std::move(pair.second));
     }
+    tracks_.clear();
     return results;
 }
 

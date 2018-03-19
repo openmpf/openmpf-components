@@ -48,6 +48,7 @@ public:
 
     void ProcessFrameDetections(std::vector<DarknetResult> &&new_detections, int frame_number);
 
+    // Returns tracks and resets the tracker to its initial state.
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks();
 
     static MPF::COMPONENT::MPFImageLocation CreateImageLocation(int num_classes_per_region, DarknetResult &detection);
@@ -63,6 +64,7 @@ public:
 
     void ProcessFrameDetections(std::vector<DarknetResult> &&new_detections, int frame_number);
 
+    // Returns tracks and resets the tracker to its initial state.
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks();
 
     static void CombineImageLocation(const cv::Rect &rect, float prob,
