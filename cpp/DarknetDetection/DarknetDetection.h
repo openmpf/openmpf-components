@@ -70,6 +70,9 @@ private:
             std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
             Tracker &tracker);
 
+    static void ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
+                                                std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
+
     // Darknet's network_detect function has a float** parameter that is used to store the probabilities.
     // The float** is used as a two dimensional array. The first level index is the id of a box,
     // and the second level index is the id of a classification.

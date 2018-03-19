@@ -65,6 +65,9 @@ public:
 
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks();
 
+    static void CombineImageLocation(const cv::Rect &rect, float prob,
+                                     MPF::COMPONENT::MPFImageLocation &image_location);
+
 private:
     // standard library does not define a hash function for pairs
     class PairHasher {
@@ -84,8 +87,8 @@ private:
     void AddNewImageLocationToTrack(const cv::Rect &rect, float prob, const std::string &type,
                                     int frame_number, MPF::COMPONENT::MPFVideoTrack &track);
 
-    void CombineImageLocation(const cv::Rect &rect, float prob,
-                              int frame_number, MPF::COMPONENT::MPFVideoTrack &track);
+    static void CombineImageLocation(const cv::Rect &rect, float prob,
+                                     int frame_number, MPF::COMPONENT::MPFVideoTrack &track);
 };
 
 #endif //OPENMPF_COMPONENTS_TRACKERS_H

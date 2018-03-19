@@ -273,6 +273,14 @@
       "tasks": [
         "TINY YOLO OBJECT DETECTION PREPROCESSOR TASK"
       ]
+    },
+    {
+      "name": "TINY YOLO OBJECT DETECTION PREPROCESSOR (WITH MARKUP) PIPELINE",
+      "description": "Runs the Tiny YOLO object detection Darknet model and produces markup.",
+      "tasks": [
+        "TINY YOLO OBJECT DETECTION PREPROCESSOR TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
     }
   ]
 }

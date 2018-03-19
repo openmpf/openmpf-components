@@ -25,6 +25,7 @@
  ******************************************************************************/
 
 #include <fstream>
+#include <unordered_map>
 
 #include <log4cxx/xml/domconfigurator.h>
 
@@ -115,9 +116,14 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
                                                                    "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
 
         std::vector<DarknetResult> results = detector.Detect(image_reader.GetImage());
-        for (auto& result : results) {
-            locations.push_back(
-                    SingleDetectionPerTrackTracker::CreateImageLocation(number_of_classifications, result));
+        if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
+            ConvertResultsUsingPreprocessor(results, locations);
+        }
+        else {
+            for (auto& result : results) {
+                locations.push_back(
+                        SingleDetectionPerTrackTracker::CreateImageLocation(number_of_classifications, result));
+            }
         }
 
         for (auto &location : locations) {
@@ -133,6 +139,33 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
     }
 }
 
+
+void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
+                                                       std::vector<MPFImageLocation> &locations) {
+
+    std::unordered_map<std::string, MPFImageLocation> type_to_image_loc;
+
+    for (DarknetResult &darknet_result : darknet_results) {
+        const cv::Rect &rect = darknet_result.detection_rect;
+
+        for (std::pair<float, std::string> &class_prob : darknet_result.object_type_probs) {
+            auto it = type_to_image_loc.find(class_prob.second);
+            if (it == type_to_image_loc.cend()) {
+                type_to_image_loc.emplace(
+                        class_prob.second,
+                        MPFImageLocation(rect.x, rect.y, rect.width, rect.height, class_prob.first,
+                                         Properties{ {"OBJECT_TYPE", class_prob.second} }));
+            }
+            else {
+                PreprocessorTracker::CombineImageLocation(rect, class_prob.first, it->second);
+            }
+        }
+    }
+
+    for (auto &image_loc_pair : type_to_image_loc) {
+        locations.push_back(std::move(image_loc_pair.second));
+    }
+}
 
 
 std::string DarknetDetection::GetDetectionType() {

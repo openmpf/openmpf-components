@@ -154,23 +154,27 @@ void PreprocessorTracker::AddNewImageLocationToTrack(const cv::Rect &rect, float
 
 void PreprocessorTracker::CombineImageLocation(const cv::Rect &rect, float prob, int frame_number,
                                                MPFVideoTrack &track) {
-
     auto &frame_location = track.frame_locations.at(frame_number);
+    CombineImageLocation(rect, prob, frame_location);
+    track.confidence = std::max(track.confidence, frame_location.confidence);
+}
 
-    cv::Rect existing_detection_rect(frame_location.x_left_upper, frame_location.y_left_upper,
-                                     frame_location.width, frame_location.height);
+
+
+void PreprocessorTracker::CombineImageLocation(const cv::Rect &rect, float prob, MPFImageLocation &image_location) {
+
+    cv::Rect existing_detection_rect(image_location.x_left_upper, image_location.y_left_upper,
+                                     image_location.width, image_location.height);
     cv::Rect superset_region = rect | existing_detection_rect;
 
-    frame_location.x_left_upper = superset_region.x;
-    frame_location.y_left_upper = superset_region.y;
-    frame_location.width = superset_region.width;
-    frame_location.height = superset_region.height;
+    image_location.x_left_upper = superset_region.x;
+    image_location.y_left_upper = superset_region.y;
+    image_location.width = superset_region.width;
+    image_location.height = superset_region.height;
     // Calculate the probability that there was a detection in the existing image location OR a detection in detection_rect.
     // The probability of at least one of two independent non-mutually exclusive events can be calculated as:
     // P(A or B) = P(A) + P(B) - P(A) * P(B)
-    frame_location.confidence = frame_location.confidence + prob - frame_location.confidence * prob;
-
-    track.confidence = std::max(track.confidence, frame_location.confidence);
+    image_location.confidence = image_location.confidence + prob - image_location.confidence * prob;
 }
 
 
