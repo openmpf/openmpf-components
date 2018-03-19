@@ -77,24 +77,24 @@ MPFImageLocation SingleDetectionPerTrackTracker::CreateImageLocation(int num_cla
     auto prob_pair_iter = object_probs.begin();
 
     float top_confidence = prob_pair_iter->first;
-    std::string top_confidence_type = prob_pair_iter->second;
+    std::string top_confidence_class = prob_pair_iter->second;
     ++prob_pair_iter;
 
-    std::ostringstream other_confidences;
-    other_confidences << top_confidence;
-    std::string other_types = top_confidence_type;
+    std::ostringstream confidence_list;
+    confidence_list << top_confidence;
+    std::string classification_list = top_confidence_class;
 
     for (; prob_pair_iter != last_item_iter; ++prob_pair_iter) {
-        other_confidences << "; " << prob_pair_iter->first;
-        other_types += "; " + prob_pair_iter->second;
+        confidence_list << "; " << prob_pair_iter->first;
+        classification_list += "; " + prob_pair_iter->second;
     }
 
     const auto &rect = detection.detection_rect;
 
     return MPFImageLocation(rect.x, rect.y, rect.width, rect.height, top_confidence, {
-            { "CLASSIFICATION", std::move(top_confidence_type) },
-            { "CLASSIFICATION LIST", std::move(other_types) },
-            { "CLASSIFICATION CONFIDENCE LIST", other_confidences.str() }
+            { "CLASSIFICATION", std::move(top_confidence_class) },
+            { "CLASSIFICATION LIST", std::move(classification_list) },
+            { "CLASSIFICATION CONFIDENCE LIST", confidence_list.str() }
     });
 }
 

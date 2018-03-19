@@ -137,17 +137,17 @@ private:
     // Darknet uses its own image type, which is a C struct. This class adds two features to the Darknet image type.
     // One is that it adds a destructor, which calls the free_image function defined in the Darknet library.
     // The second feature is that it converts a cv::Mat to the Darknet image format.
-    struct DNetImageHolder {
-        image dnet_image;
+    struct DarknetImageHolder {
+        image darknet_image;
 
-        explicit DNetImageHolder(const cv::Mat &cv_image);
+        explicit DarknetImageHolder(const cv::Mat &cv_image);
 
-        ~DNetImageHolder();
+        ~DarknetImageHolder();
 
-        DNetImageHolder(const DNetImageHolder&) = delete;
-        DNetImageHolder& operator=(const DNetImageHolder&) = delete;
-        DNetImageHolder(DNetImageHolder&&) = delete;
-        DNetImageHolder& operator=(DNetImageHolder&&) = delete;
+        DarknetImageHolder(const DarknetImageHolder&) = delete;
+        DarknetImageHolder& operator=(const DarknetImageHolder&) = delete;
+        DarknetImageHolder(DarknetImageHolder&&) = delete;
+        DarknetImageHolder& operator=(DarknetImageHolder&&) = delete;
     };
 
 

@@ -62,7 +62,7 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
     }
     else {
         int number_of_classifications = DetectionComponentUtils::GetProperty(
-                job.job_properties, "NUMBER_OF_CLASSIFICATIONS", 5);
+                job.job_properties, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5);
         SingleDetectionPerTrackTracker tracker(number_of_classifications);
         return GetDetections(job, tracks, tracker);
     }
@@ -180,35 +180,37 @@ bool DarknetDetection::Close() {
 
 
 
-DarknetDetection::DNetImageHolder::DNetImageHolder(const cv::Mat &cv_image) {
-    dnet_image = make_image(cv_image.cols, cv_image.rows, cv_image.channels());
+DarknetDetection::DarknetImageHolder::DarknetImageHolder(const cv::Mat &cv_image) {
+    darknet_image = make_image(cv_image.cols, cv_image.rows, cv_image.channels());
 
     // This code is mostly copied from Darknet's "ipl_into_image" function. The main difference is that
     // this function works with cv::Mat instead of IplImage. IplImage is a legacy OpenCV image type.
     // The OpenCV documentation for cv::Mat says that cv::Mat and IplImage use a compatible data layout.
-    int height = dnet_image.h;
-    int width = dnet_image.w;
+    int height = darknet_image.h;
+    int width = darknet_image.w;
     int channels = cv_image.channels();
     size_t step = cv_image.step[0];
 
     for (int row = 0; row < height; row++) {
         for (int col = 0; col < width; col++) {
             for (int channel = 0; channel < channels; channel++) {
-                dnet_image.data[channel * width * height + row * width + col]
+                darknet_image.data[channel * width * height + row * width + col]
                         = cv_image.data[row * step + col * channels + channel] / 255.0f;
             }
         }
     }
-    rgbgr_image(dnet_image);
+    rgbgr_image(darknet_image);
 }
 
 
-DarknetDetection::DNetImageHolder::~DNetImageHolder() {
-    free_image(dnet_image);
+DarknetDetection::DarknetImageHolder::~DarknetImageHolder() {
+    free_image(darknet_image);
 }
 
 
 DarknetDetection::ProbHolder::ProbHolder(int output_layer_size, int num_classes)
+    // The make_probs function from the Darknet library allocates num_classes + 1 floats per row.
+    // There is no documentation so it isn't clear why it uses num_classes + 1 instead of just num_classes.
     : mat_size_(output_layer_size * (num_classes + 1))
     , prob_mat_(new float[mat_size_]())
     , prob_row_ptrs_(new float*[output_layer_size])
@@ -242,6 +244,9 @@ DarknetDetection::Detector::Detector(const Properties &props)
     , output_layer_size_(GetOutputLayerSize(*network_))
     , num_classes_(GetNumClasses(*network_))
     , names_(LoadNames(props, num_classes_))
+    // Darknet will output of a probability for every possible class regardless of the content of the image.
+    // Most of these classes will have a probability of zero or a number very close to zero.
+    // If the confidence threshold is zero or smaller it will report every possible classification.
     , confidence_threshold_(std::max(0.01f, DetectionComponentUtils::GetProperty(props, "CONFIDENCE_THRESHOLD", 0.01f)))
     , probs_(output_layer_size_, num_classes_)
     , boxes_(new box[output_layer_size_])
@@ -252,9 +257,14 @@ DarknetDetection::Detector::Detector(const Properties &props)
 
 
 std::vector<DarknetResult> DarknetDetection::Detector::Detect(const cv::Mat &cv_image) {
-    DNetImageHolder image(cv_image);
+    DarknetImageHolder image(cv_image);
     probs_.Clear();
-    network_detect(network_.get(), image.dnet_image, confidence_threshold_, 0.5, 0.3, boxes_.get(),
+
+    // There is no documentation explaining what hier_thresh and nms do,
+    // so we are just using the default values from the Darknet library.
+    float hier_thresh = 0.5;
+    float nms = 0.3;
+    network_detect(network_.get(), image.darknet_image, confidence_threshold_, hier_thresh, nms, boxes_.get(),
                    probs_.Get());
 
     std::vector<DarknetResult> detections;
