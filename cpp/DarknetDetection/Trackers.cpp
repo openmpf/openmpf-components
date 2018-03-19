@@ -110,15 +110,18 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> SingleDetectionPerTrackTracker::GetTr
 void PreprocessorTracker::ProcessFrameDetections(std::vector<DarknetResult> &&new_detections, int frame_number) {
     for (DarknetResult &location : new_detections) {
         for (std::pair<float, std::string> &class_prob : location.object_type_probs) {
-            auto it = tracks_.find({frame_number - 1, class_prob.second});
-            if (it != tracks_.cend()) {
-                AddNewImageLocationToTrack(location.detection_rect, class_prob.first, class_prob.second, frame_number,
-                                           it->second);
+            // Check if there is more than box in the current frame that has the same classification.
+            auto current_frame_track_iter = tracks_.find({frame_number, class_prob.second});
+            if (current_frame_track_iter != tracks_.cend()) {
+                CombineImageLocation(location.detection_rect, class_prob.first, frame_number,
+                                     current_frame_track_iter->second);
                 continue;
             }
-            it = tracks_.find({frame_number, class_prob.second});
-            if (it != tracks_.cend()) {
-                CombineImageLocation(location.detection_rect, class_prob.first, frame_number, it->second);
+            // Check if the same type of object was found in the previous frame.
+            auto previous_frame_track_iter = tracks_.find({frame_number - 1, class_prob.second});
+            if (previous_frame_track_iter != tracks_.cend()) {
+                AddNewImageLocationToTrack(location.detection_rect, class_prob.first, class_prob.second, frame_number,
+                                           previous_frame_track_iter->second);
                 continue;
             }
             AddNewTrack(location.detection_rect, class_prob.first, class_prob.second, frame_number);
