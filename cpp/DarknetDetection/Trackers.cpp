@@ -92,9 +92,9 @@ MPFImageLocation SingleDetectionPerTrackTracker::CreateImageLocation(int num_cla
     const auto &rect = detection.detection_rect;
 
     return MPFImageLocation(rect.x, rect.y, rect.width, rect.height, top_confidence, {
-            { "OBJECT_TYPE", std::move(top_confidence_type) },
-            { "OBJECT_TYPE_LIST", std::move(other_types) },
-            { "OBJECT_TYPE_CONFIDENCE_LIST", other_confidences.str() }
+            { "CLASSIFICATION", std::move(top_confidence_type) },
+            { "CLASSIFICATION LIST", std::move(other_types) },
+            { "CLASSIFICATION CONFIDENCE LIST", other_confidences.str() }
     });
 }
 
@@ -128,10 +128,10 @@ void PreprocessorTracker::ProcessFrameDetections(std::vector<DarknetResult> &&ne
 void PreprocessorTracker::AddNewTrack(const cv::Rect &rect, float prob, const std::string &type,
                                       int frame_number) {
 
-    MPFVideoTrack track(frame_number, frame_number, prob, { {"OBJECT_TYPE", type} });
+    MPFVideoTrack track(frame_number, frame_number, prob, { {"CLASSIFICATION", type} });
     track.frame_locations.emplace(
             frame_number,
-            MPFImageLocation(rect.x, rect.y, rect.width, rect.height, prob, { {"OBJECT_TYPE", type} }));
+            MPFImageLocation(rect.x, rect.y, rect.width, rect.height, prob, { {"CLASSIFICATION", type} }));
 
     tracks_.emplace(std::make_pair(frame_number, type), std::move(track));
 }
@@ -141,7 +141,7 @@ void PreprocessorTracker::AddNewImageLocationToTrack(const cv::Rect &rect, float
                                                      int frame_number, MPFVideoTrack &track) {
     track.frame_locations.emplace(
             frame_number,
-            MPFImageLocation(rect.x, rect.y, rect.width, rect.height, prob, Properties{ {"OBJECT_TYPE", type} }));
+            MPFImageLocation(rect.x, rect.y, rect.width, rect.height, prob, Properties{ {"CLASSIFICATION", type} }));
 
     track.confidence = std::max(track.confidence, prob);
     track.stop_frame = frame_number;

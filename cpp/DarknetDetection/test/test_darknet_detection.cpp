@@ -59,7 +59,7 @@ bool almost_equal(float f1, float f2) {
 }
 
 bool object_found(const std::string &expected_object_name, const Properties &detection_properties) {
-    return expected_object_name == detection_properties.at("OBJECT_TYPE");
+    return expected_object_name == detection_properties.at("CLASSIFICATION");
 
 }
 
@@ -176,7 +176,7 @@ DarknetResult CreateDetection(const std::string &object_type, float confidence) 
 
 
 bool TrackMatches(const MPFVideoTrack &track, const std::string &object_type, int start, int stop, float confidence) {
-    bool track_fields_match = track.detection_properties.at("OBJECT_TYPE") == object_type
+    bool track_fields_match = track.detection_properties.at("CLASSIFICATION") == object_type
            && track.start_frame == start
            && track.stop_frame == stop
            && almost_equal(track.confidence, confidence);
@@ -185,7 +185,7 @@ bool TrackMatches(const MPFVideoTrack &track, const std::string &object_type, in
     }
 
     for (int i = start; i <= stop; i++) {
-        if (object_type != track.frame_locations.at(i).detection_properties.at("OBJECT_TYPE")) {
+        if (object_type != track.frame_locations.at(i).detection_properties.at("CLASSIFICATION")) {
             return false;
         }
     }
@@ -247,7 +247,7 @@ TEST(Darknet, PreprocessorTrackerTest) {
 
 bool has_track_with_confidence(const std::vector<MPFVideoTrack> &tracks, const std::string &type, float confidence) {
     for (auto &track : tracks) {
-        if (track.detection_properties.at("OBJECT_TYPE") == type && almost_equal(track.confidence, confidence)) {
+        if (track.detection_properties.at("CLASSIFICATION") == type && almost_equal(track.confidence, confidence)) {
             return true;
         }
     }
@@ -259,7 +259,7 @@ bool has_image_location_with_confidence(const std::vector<MPFVideoTrack> &tracks
     for (auto &track : tracks) {
         for (auto &im_loc_pair : track.frame_locations) {
             auto &im_loc = im_loc_pair.second;
-            if (im_loc.detection_properties.at("OBJECT_TYPE") == type && almost_equal(im_loc.confidence, confidence)) {
+            if (im_loc.detection_properties.at("CLASSIFICATION") == type && almost_equal(im_loc.confidence, confidence)) {
                 return true;
             }
         }
@@ -342,7 +342,7 @@ TEST(Darknet, TestPreproccesorConfidenceCalculation) {
 
 bool has_confidence_values(const MPFVideoTrack &track, std::vector<float> expected_confidences) {
 
-    std::istringstream iss(track.detection_properties.at("OBJECT_TYPE_CONFIDENCE_LIST"));
+    std::istringstream iss(track.detection_properties.at("CLASSIFICATION CONFIDENCE LIST"));
 
     for (auto &expected_confidence : expected_confidences) {
         std::string temp;
@@ -378,12 +378,12 @@ TEST(Darknet, TestNumberOfClassifications) {
     ASSERT_EQ(track2.frame_locations.size(), 1);
 
     ASSERT_FLOAT_EQ(track1.confidence, .3);
-    ASSERT_EQ(track1.detection_properties.at("OBJECT_TYPE"), "cat");
-    ASSERT_EQ(track1.detection_properties.at("OBJECT_TYPE_LIST"), "cat; apple; person");
+    ASSERT_EQ(track1.detection_properties.at("CLASSIFICATION"), "cat");
+    ASSERT_EQ(track1.detection_properties.at("CLASSIFICATION LIST"), "cat; apple; person");
     ASSERT_TRUE(has_confidence_values(track1, { .3, .25, .2 }));
 
     ASSERT_FLOAT_EQ(track2.confidence, .25);
-    ASSERT_EQ(track2.detection_properties.at("OBJECT_TYPE"), "cat");
-    ASSERT_EQ(track2.detection_properties.at("OBJECT_TYPE_LIST"), "cat; dog; apple");
+    ASSERT_EQ(track2.detection_properties.at("CLASSIFICATION"), "cat");
+    ASSERT_EQ(track2.detection_properties.at("CLASSIFICATION LIST"), "cat; dog; apple");
     ASSERT_TRUE(has_confidence_values(track2, { .25, .25, .1 }));
 }

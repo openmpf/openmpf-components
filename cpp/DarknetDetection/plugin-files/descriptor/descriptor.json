@@ -20,8 +20,8 @@
     "providesCollection": {
       "states": [
         "DETECTION",
-        "DETECTION_OBJECT",
-        "DETECTION_OBJECT_DARKNET"
+        "DETECTION_CLASS",
+        "DETECTION_CLASS_DARKNET"
       ],
       "properties": [
         {

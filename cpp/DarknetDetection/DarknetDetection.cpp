@@ -154,7 +154,7 @@ void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult
                 type_to_image_loc.emplace(
                         class_prob.second,
                         MPFImageLocation(rect.x, rect.y, rect.width, rect.height, class_prob.first,
-                                         Properties{ {"OBJECT_TYPE", class_prob.second} }));
+                                         Properties{ {"CLASSIFICATION", class_prob.second} }));
             }
             else {
                 PreprocessorTracker::CombineImageLocation(rect, class_prob.first, it->second);
@@ -169,7 +169,7 @@ void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult
 
 
 std::string DarknetDetection::GetDetectionType() {
-    return "OBJECT";
+    return "CLASS";
 }
 
 
