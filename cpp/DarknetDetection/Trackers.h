@@ -62,7 +62,7 @@ private:
 class PreprocessorTracker {
 public:
 
-    void ProcessFrameDetections(std::vector<DarknetResult> &&new_detections, int frame_number);
+    void ProcessFrameDetections(const std::vector<DarknetResult> &new_detections, int frame_number);
 
     // Returns tracks and resets the tracker to its initial state.
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks();

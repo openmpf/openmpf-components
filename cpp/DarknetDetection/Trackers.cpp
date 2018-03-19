@@ -107,9 +107,9 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> SingleDetectionPerTrackTracker::GetTr
 
 
 
-void PreprocessorTracker::ProcessFrameDetections(std::vector<DarknetResult> &&new_detections, int frame_number) {
-    for (DarknetResult &location : new_detections) {
-        for (std::pair<float, std::string> &class_prob : location.object_type_probs) {
+void PreprocessorTracker::ProcessFrameDetections(const std::vector<DarknetResult> &new_detections, int frame_number) {
+    for (const DarknetResult &location : new_detections) {
+        for (const std::pair<float, std::string> &class_prob : location.object_type_probs) {
             // Check if there is more than box in the current frame that has the same classification.
             auto current_frame_track_iter = tracks_.find({frame_number, class_prob.second});
             if (current_frame_track_iter != tracks_.cend()) {

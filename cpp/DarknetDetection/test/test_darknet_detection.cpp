@@ -269,7 +269,6 @@ bool has_image_location_with_confidence(const std::vector<MPFVideoTrack> &tracks
 
 
 TEST(Darknet, TestPreproccesorConfidenceCalculation) {
-    DarknetResult detections0;
     float p1_confidence = 0.45;
     float p2_confidence = 0.75;
     float prob_not_p1_and_not_p2 = (1 - p1_confidence) * (1 - p2_confidence);
@@ -280,12 +279,14 @@ TEST(Darknet, TestPreproccesorConfidenceCalculation) {
     float prob_p1_or_p2_or_p3 = 1 - prob_not_p1_and_not_p2_and_not_p3;
 
     float d1_confidence = 0.65;
-    detections0.object_type_probs = { { p1_confidence, "person" }, {p2_confidence, "person" },
-                                      { d1_confidence, "dog" } };
+
+    std::vector<DarknetResult> detections0(2);
+    detections0.at(0).object_type_probs = { { p1_confidence, "person" }, { d1_confidence, "dog" } };
+    detections0.at(1).object_type_probs = { { p2_confidence, "person" } };
 
     {
         PreprocessorTracker tracker;
-        tracker.ProcessFrameDetections({ detections0 }, 0);
+        tracker.ProcessFrameDetections(detections0, 0);
         auto tracks = tracker.GetTracks();
 
         ASSERT_EQ(tracks.size(), 2);
@@ -298,11 +299,13 @@ TEST(Darknet, TestPreproccesorConfidenceCalculation) {
     }
 
     {
-        DarknetResult detections0OtherLocation;
-        detections0OtherLocation.object_type_probs = { { p3_confidence, "person" } };
+        DarknetResult detections0_other_location;
+        detections0_other_location.object_type_probs = { { p3_confidence, "person" } };
+        auto detections_copy = detections0;
+        detections_copy.push_back(detections0_other_location);
 
         PreprocessorTracker tracker;
-        tracker.ProcessFrameDetections({ detections0, detections0OtherLocation }, 0);
+        tracker.ProcessFrameDetections(detections_copy, 0);
         auto tracks = tracker.GetTracks();
 
         ASSERT_EQ(tracks.size(), 2);
@@ -318,7 +321,7 @@ TEST(Darknet, TestPreproccesorConfidenceCalculation) {
 
     {
         PreprocessorTracker tracker;
-        tracker.ProcessFrameDetections({ detections0 }, 0);
+        tracker.ProcessFrameDetections(detections0, 0);
 
         DarknetResult detections1;
         detections1.object_type_probs = { { p3_confidence, "person" } };
