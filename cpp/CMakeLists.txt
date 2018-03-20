@@ -34,6 +34,7 @@ add_subdirectory(OcvFaceDetection)
 add_subdirectory(DlibFaceDetection)
 add_subdirectory(OalprLicensePlateTextDetection)
 add_subdirectory(CaffeDetection)
+add_subdirectory(DarknetDetection)
 
 
 
