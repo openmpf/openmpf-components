@@ -33,23 +33,18 @@
 #include <fstream>
 #include <unordered_set>
 #include <MPFVideoCapture.h>
+#include <ModelsIniParser.h>
 
 #include "DarknetDetection.h"
 #include "Trackers.h"
+#include "ModelSettings.h"
 
 using namespace MPF::COMPONENT;
 
 
-std::string get_config_file(const std::string &file_name) {
-    static std::string config_dir_prefix = "../plugin/DarknetDetection/config/";
-    return config_dir_prefix + file_name;
-}
-
 Properties get_yolo_tiny_config(float confidence) {
     return {
-            { "NETWORK_CONFIG_FILE", get_config_file("cfg/tiny-yolo.cfg") },
-            { "WEIGHTS_FILE", get_config_file("weights/tiny-yolo.weights") },
-            { "NAMES_FILE", get_config_file("data/coco.names") },
+            { "MODEL_NAME", "tiny yolo" },
             { "CONFIDENCE_THRESHOLD", std::to_string(confidence) }
     };
 }
@@ -390,3 +385,19 @@ TEST(Darknet, TestNumberOfClassifications) {
     ASSERT_EQ(track2.detection_properties.at("CLASSIFICATION LIST"), "cat; dog; apple");
     ASSERT_TRUE(has_confidence_values(track2, { .25, .25, .1 }));
 }
+
+
+
+TEST(Darknet, TestModelsIniParser) {
+    ModelsIniParser<ModelSettings> parser;
+    ModelSettings settings = parser.Init("../plugin/DarknetDetection/models")
+            .RegisterField("network_config", &ModelSettings::network_config_file)
+            .RegisterField("names", &ModelSettings::names_file)
+            .RegisterField("weights", &ModelSettings::weights_file)
+            .ParseIni("tiny yolo", "/opt/share/models/Darknet/");
+
+    ASSERT_EQ(settings.network_config_file, "../plugin/DarknetDetection/models/tiny-yolo.cfg");
+    ASSERT_EQ(settings.names_file, "../plugin/DarknetDetection/models/coco.names");
+    ASSERT_EQ(settings.weights_file, "../plugin/DarknetDetection/models/tiny-yolo.weights");
+}
+
