@@ -247,7 +247,7 @@ DarknetDetection::Detector::Detector(const Properties &props)
     // Darknet will output of a probability for every possible class regardless of the content of the image.
     // Most of these classes will have a probability of zero or a number very close to zero.
     // If the confidence threshold is zero or smaller it will report every possible classification.
-    , confidence_threshold_(std::max(0.01f, DetectionComponentUtils::GetProperty(props, "CONFIDENCE_THRESHOLD", 0.01f)))
+    , confidence_threshold_(DetectionComponentUtils::GetProperty(props, "CONFIDENCE_THRESHOLD", 0.5f))
     , probs_(output_layer_size_, num_classes_)
     , boxes_(new box[output_layer_size_])
 {
