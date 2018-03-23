@@ -46,8 +46,22 @@ bool DarknetDetection::Init() {
         run_dir = ".";
     }
 
-    log4cxx::xml::DOMConfigurator::configure(run_dir + "/DarknetDetection/config/Log4cxxConfig.xml");
+    std::string plugin_path = run_dir + "/DarknetDetection";
+
+    log4cxx::xml::DOMConfigurator::configure(plugin_path + "/config/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("DarknetDetection");
+
+    try {
+        models_parser_.Init(plugin_path + "/models")
+                .RegisterField("network_config", &ModelSettings::network_config_file)
+                .RegisterField("names", &ModelSettings::names_file)
+                .RegisterField("weights", &ModelSettings::weights_file);
+    }
+    catch (const std::exception &ex) {
+        LOG4CXX_ERROR(logger_, "Failed to initialize ModelsIniParser due to: " << ex.what())
+        return false;
+    }
+
     LOG4CXX_INFO(logger_, "Initialized DarknetDetection component.");
 
     return true;
@@ -72,7 +86,7 @@ template<typename Tracker>
 MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks,
                                                   Tracker &tracker) {
     try {
-        Detector detector(job.job_properties);
+        Detector detector(job.job_properties, GetModelSettings(job.job_properties));
 
         MPFVideoCapture video_cap(job);
         if (!video_cap.IsOpened()) {
@@ -98,6 +112,10 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
 
         return MPF_DETECTION_SUCCESS;
     }
+    catch (const ModelsIniException &ex) {
+        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] " << ex.what());
+        return MPF_COULD_NOT_OPEN_DATAFILE;
+    }
     catch (...) {
         return Utils::HandleDetectionException(job, logger_);
     }
@@ -108,7 +126,7 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
 MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
     try {
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
-        Detector detector(job.job_properties);
+        Detector detector(job.job_properties, GetModelSettings(job.job_properties));
 
         MPFImageReader image_reader(job);
         int number_of_classifications
@@ -130,13 +148,28 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
             image_reader.ReverseTransform(location);
         }
 
-        LOG4CXX_INFO(logger_, "[" << job.job_name << " Found " << locations.size() << " detections.");
+        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << locations.size() << " detections.");
 
         return MPF_DETECTION_SUCCESS;
+    }
+    catch (const ModelsIniException &ex) {
+        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] " << ex.what());
+        return MPF_COULD_NOT_OPEN_DATAFILE;
     }
     catch (...) {
         return Utils::HandleDetectionException(job, logger_);
     }
+}
+
+
+ModelSettings DarknetDetection::GetModelSettings(const MPF::COMPONENT::Properties &job_properties) const {
+    const std::string &model_name = DetectionComponentUtils::GetProperty<std::string>(
+            job_properties, "MODEL_NAME", "tiny yolo");
+
+    const std::string &models_dir_path = DetectionComponentUtils::GetProperty<std::string>(
+            job_properties, "MODELS_DIR_PATH", ".");
+
+    return models_parser_.ParseIni(model_name, models_dir_path + "/DarknetDetection");
 }
 
 
@@ -239,11 +272,11 @@ void DarknetDetection::ProbHolder::Clear() {
 
 
 
-DarknetDetection::Detector::Detector(const Properties &props)
-    : network_(LoadNetwork(props))
+DarknetDetection::Detector::Detector(const Properties &props, const ModelSettings &settings)
+    : network_(LoadNetwork(settings))
     , output_layer_size_(GetOutputLayerSize(*network_))
     , num_classes_(GetNumClasses(*network_))
-    , names_(LoadNames(props, num_classes_))
+    , names_(LoadNames(settings, num_classes_))
     // Darknet will output of a probability for every possible class regardless of the content of the image.
     // Most of these classes will have a probability of zero or a number very close to zero.
     // If the confidence threshold is zero or smaller it will report every possible classification.
@@ -289,9 +322,9 @@ std::vector<DarknetResult> DarknetDetection::Detector::Detect(const cv::Mat &cv_
 }
 
 
-DarknetDetection::Detector::network_ptr_t DarknetDetection::Detector::LoadNetwork(const Properties &props) {
-    auto cfg_file = ToNonConstCStr(props.at("NETWORK_CONFIG_FILE"));
-    auto weights_file = ToNonConstCStr(props.at("WEIGHTS_FILE"));
+DarknetDetection::Detector::network_ptr_t DarknetDetection::Detector::LoadNetwork(const ModelSettings &model_settings) {
+    auto cfg_file = ToNonConstCStr(model_settings.network_config_file);
+    auto weights_file = ToNonConstCStr(model_settings.weights_file);
 
     return network_ptr_t(load_network(cfg_file.get(), weights_file.get(), 0),
                          free_network);
@@ -308,12 +341,11 @@ int DarknetDetection::Detector::GetNumClasses(const network &network) {
 }
 
 
-std::vector<std::string> DarknetDetection::Detector::LoadNames(const Properties &props,
+std::vector<std::string> DarknetDetection::Detector::LoadNames(const ModelSettings &model_settings,
                                                                int expected_name_count) {
-    const auto &name_file_path = props.at("NAMES_FILE");
-    std::ifstream in_file(name_file_path);
+    std::ifstream in_file(model_settings.names_file);
     if (!in_file.good()) {
-        throw std::runtime_error("Failed to open names file at: " + name_file_path);
+        throw std::runtime_error("Failed to open names file at: " + model_settings.names_file);
     }
 
     std::vector<std::string> names;
@@ -325,10 +357,9 @@ std::vector<std::string> DarknetDetection::Detector::LoadNames(const Properties 
     }
     
     if (names.size() != expected_name_count) {
-        const auto& network_config = props.at("NETWORK_CONFIG_FILE");
         std::stringstream error;
-        error << "Error: The network config file at " << network_config << " specifies "
-                << expected_name_count << " classes, but the names file at " << name_file_path << " contains "
+        error << "Error: The network config file at " << model_settings.network_config_file << " specifies "
+                << expected_name_count << " classes, but the names file at " << model_settings.names_file << " contains "
                 << names.size() << " classes. This is probably because given names file does not correspond to the "
                 << "given network configuration file.";
         throw std::runtime_error(error.str());

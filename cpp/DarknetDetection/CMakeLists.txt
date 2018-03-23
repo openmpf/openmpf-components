@@ -44,6 +44,7 @@ add_subdirectory(darknet_lib)
 set(DARKNET_COMPONENT_SOURCE_FILES
     DarknetDetection.cpp DarknetDetection.h
     Trackers.cpp Trackers.h
+    ModelSettings.h
     )
 
 add_library(mpfDarknetDetection SHARED ${DARKNET_COMPONENT_SOURCE_FILES})
