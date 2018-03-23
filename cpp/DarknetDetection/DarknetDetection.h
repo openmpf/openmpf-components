@@ -34,10 +34,10 @@
 #include <opencv2/core.hpp>
 
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
-#include <ModelsIniParser.h>
 
 #include "Trackers.h"
 #include "ModelSettings.h"
+#include "ModelsIniParser.h"
 
 extern "C" {
     #include "darknet.h"
@@ -66,7 +66,7 @@ public:
 private:
     log4cxx::LoggerPtr logger_;
 
-    MPF::COMPONENT::ModelsIniParser<ModelSettings> models_parser_;
+    ModelsIniParser<ModelSettings> models_parser_;
 
 
     template <typename Tracker>

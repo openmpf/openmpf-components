@@ -160,7 +160,7 @@
           "name": "MODELS_DIR_PATH",
           "description": "Path to models directory",
           "type": "STRING",
-          "propertiesKey": "detection.models.dir.path"
+          "defaultValue": "/opt/mpf/share/models/"
         },
         {
           "name": "USE_PREPROCESSOR",

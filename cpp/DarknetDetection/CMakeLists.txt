@@ -46,6 +46,7 @@ set(DARKNET_COMPONENT_SOURCE_FILES
     DarknetDetection.cpp DarknetDetection.h
     Trackers.cpp Trackers.h
     ModelSettings.h
+    ModelsIniParser.cpp ModelsIniParser.h
     )
 
 add_library(mpfDarknetDetection SHARED ${DARKNET_COMPONENT_SOURCE_FILES})
