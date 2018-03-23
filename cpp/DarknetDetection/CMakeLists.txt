@@ -38,7 +38,6 @@ find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
-find_package(Boost REQUIRED)
 
 add_subdirectory(darknet_lib)
 
@@ -50,7 +49,7 @@ set(DARKNET_COMPONENT_SOURCE_FILES
 
 add_library(mpfDarknetDetection SHARED ${DARKNET_COMPONENT_SOURCE_FILES})
 target_link_libraries(mpfDarknetDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
-    darknet_lib ${OpenCV_LIBS} Boost::boost)
+    darknet_lib ${OpenCV_LIBS})
 
 configure_mpf_component(DarknetDetection TARGETS mpfDarknetDetection)
 
