@@ -164,7 +164,7 @@
         },
         {
           "name": "USE_PREPROCESSOR",
-          "description": "TODO",
+          "description": "Enables preprocessor mode. If enabled, and multiple Darknet detections in a frame share the same classification, then those are merged into a single detection where the region corresponds to the superset region that encapsulates all of the original detections, and the confidence value is the probability that at least one of the original detections is a true positive. If disabled, multiple Darknet detections in a frame are not merged together.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },

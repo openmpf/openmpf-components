@@ -113,7 +113,7 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
         return MPF_DETECTION_SUCCESS;
     }
     catch (const ModelsIniException &ex) {
-        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Failed to load model due to: " << ex.what());
+        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] " << ex.what());
         return MPF_COULD_NOT_OPEN_DATAFILE;
     }
     catch (...) {
@@ -153,7 +153,7 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
         return MPF_DETECTION_SUCCESS;
     }
     catch (const ModelsIniException &ex) {
-        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Failed to load model due to: " << ex.what());
+        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] " << ex.what());
         return MPF_COULD_NOT_OPEN_DATAFILE;
     }
     catch (...) {
