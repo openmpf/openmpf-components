@@ -25,51 +25,51 @@
 #############################################################################
 
 cmake_minimum_required(VERSION 3.6)
-project(darknet-detection)
+project(darknet-wrapper)
 
 set(CMAKE_CXX_STANDARD 11)
 
-include(../ComponentSetup.cmake)
 
 find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0 COMPONENTS opencv_core opencv_highgui)
-
 
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
-get_plugin_build_location(DarknetDetection pluginLocation)
 
-if (DEFINED ENV{MPF_DISABLE_CUDA_BUILD})
-    message(
-    "The CUDA version of Darknet will not be built because the MPF_DISABLE_CUDA_BUILD environment variable was set.")
-else()
-    find_package(CUDA)
-    if (NOT CUDA_FOUND)
-        message("The CUDA version of Darknet will not be built because the CUDA library was not found on this machine")
-    endif()
-endif()
 
-add_subdirectory(darknet_lib)
-add_subdirectory(darknet_wrapper)
+set(DARKNET_WRAPPER_SOURCE_FILES
+    DarknetImpl.cpp DarknetImpl.h
+    ../include/DarknetInterface.h
+    )
 
-set(DARKNET_COMPONENT_SOURCE_FILES
-    DarknetDetection.cpp DarknetDetection.h
-    Trackers.cpp Trackers.h)
+add_library(darknet_wrapper MODULE ${DARKNET_WRAPPER_SOURCE_FILES})
+target_link_libraries(darknet_wrapper mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
+    darknet_lib ${OpenCV_LIBS})
 
-add_library(mpfDarknetDetection SHARED ${DARKNET_COMPONENT_SOURCE_FILES})
-target_link_libraries(mpfDarknetDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
-    ${OpenCV_LIBS})
 
-configure_mpf_component(DarknetDetection TARGETS mpfDarknetDetection)
+file(MAKE_DIRECTORY ${pluginLocation}/lib/)
 
-add_dependencies(mpfDarknetDetection darknet_wrapper)
+add_custom_command(TARGET darknet_wrapper POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:darknet_wrapper> ${pluginLocation}/lib/
+    )
+copy_shared_libs(darknet_wrapper ${pluginLocation})
+
+
+
 if (CUDA_FOUND)
-    add_dependencies(mpfDarknetDetection darknet_wrapper_cuda)
+    add_library(darknet_wrapper_cuda MODULE ${DARKNET_WRAPPER_SOURCE_FILES})
+    target_link_libraries(darknet_wrapper_cuda mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
+        darknet_lib_cuda ${OpenCV_LIBS})
+    target_compile_definitions(darknet_wrapper_cuda PRIVATE -DGPU)
+
+
+    add_custom_command(TARGET darknet_wrapper_cuda POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:darknet_wrapper_cuda> ${pluginLocation}/lib/
+        )
+
+    copy_shared_libs(darknet_wrapper_cuda ${pluginLocation})
+
 endif()
 
-add_executable(sample_darknet_detector sample_darknet_detector.cpp)
-target_link_libraries(sample_darknet_detector mpfDarknetDetection)
-
-add_subdirectory(test)

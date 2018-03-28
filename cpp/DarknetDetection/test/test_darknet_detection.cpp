@@ -37,7 +37,7 @@
 
 #include "DarknetDetection.h"
 #include "Trackers.h"
-#include "ModelSettings.h"
+#include "include/DarknetInterface.h"
 
 using namespace MPF::COMPONENT;
 

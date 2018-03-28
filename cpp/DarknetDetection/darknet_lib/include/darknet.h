@@ -32,6 +32,11 @@ extern int gpu_index;
     #endif
 #endif
 
+// brosenberg modification: Add extern "C" so that darknet.h can be properly included in C++ source files
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct{
     int classes;
     char **names;
@@ -246,7 +251,7 @@ struct layer{
 
     float * m;
     float * v;
-    
+
     float * bias_m;
     float * bias_v;
     float * scale_m;
@@ -271,7 +276,7 @@ struct layer{
     float *g_cpu;
     float *o_cpu;
     float *c_cpu;
-    float *dc_cpu; 
+    float *dc_cpu;
 
     float * binary_input;
 
@@ -298,7 +303,7 @@ struct layer{
 
     struct layer *input_h_layer;
     struct layer *state_h_layer;
-	
+
     struct layer *wz;
     struct layer *uz;
     struct layer *wr;
@@ -714,7 +719,6 @@ float *network_predict_image(network *net, image im);
 void network_detect(network *net, image im, float thresh, float hier_thresh, float nms, box *boxes, float **probs);
 int num_boxes(network *net);
 box *make_boxes(network *net);
-float **make_probs(network *net);
 
 void reset_network_state(network *net, int b);
 
@@ -765,5 +769,11 @@ void normalize_array(float *a, int n);
 int *read_intlist(char *s, int *n, int d);
 size_t rand_size_t();
 float rand_normal();
+
+
+// brosenberg modification: Add closing brace for extern "C".
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -25,18 +25,70 @@
  ******************************************************************************/
 
 
-#ifndef OPENMPF_COMPONENTS_MODELSETTINGS_H
-#define OPENMPF_COMPONENTS_MODELSETTINGS_H
+#ifndef OPENMPF_COMPONENTS_DARKNETIMPL_H
+#define OPENMPF_COMPONENTS_DARKNETIMPL_H
 
 
-#include <string>
+#include <memory>
 #include <vector>
+#include <opencv2/core.hpp>
 
-struct ModelSettings {
-    std::string network_config_file;
-    std::string names_file;
-    std::string weights_file;
+#include <MPFDetectionComponent.h>
+
+#include "../include/DarknetInterface.h"
+
+#include "darknet.h"
+
+
+namespace DarknetHelpers {
+    using network_ptr_t = std::unique_ptr<network, decltype(&free_network)>;
+
+
+    // Darknet's network_detect function has a float** parameter that is used to store the probabilities.
+    // The float** is used as a two dimensional array. The first level index is the id of a box,
+    // and the second level index is the id of a classification.
+    class ProbHolder {
+    public:
+        ProbHolder(int output_layer_size, int num_classes);
+
+        float** Get();
+
+        float* operator[](size_t box_idx);
+
+        void Clear();
+
+    private:
+        int mat_size_;
+
+        std::unique_ptr<float[]> prob_mat_;
+
+        std::unique_ptr<float*[]> prob_row_ptrs_;
+    };
+}
+
+
+template<typename ClassFilter>
+class DarknetImpl : public DarknetInterface {
+
+public:
+    DarknetImpl(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
+
+    std::vector<DarknetResult> Detect(const cv::Mat &cv_image) override;
+
+
+private:
+    DarknetHelpers::network_ptr_t network_;
+    int output_layer_size_;
+    int num_classes_;
+    std::vector<std::string> names_;
+    ClassFilter class_filter_;
+
+    float confidence_threshold_;
+
+    DarknetHelpers::ProbHolder probs_;
+
+    std::unique_ptr<box[]> boxes_;
 };
 
 
-#endif //OPENMPF_COMPONENTS_MODELSETTINGS_H
+#endif //OPENMPF_COMPONENTS_DARKNETIMPL_H
