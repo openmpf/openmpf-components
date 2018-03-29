@@ -33,11 +33,170 @@
 #include <MPFVideoCapture.h>
 #include <detectionComponentUtils.h>
 #include <Utils.h>
+#include <unordered_set>
 
 #include "Trackers.h"
 #include "DarknetDetection.h"
 
+
 using namespace MPF::COMPONENT;
+
+
+namespace {
+    class NoOpFilter {
+    public:
+
+        NoOpFilter(const Properties&, const std::vector<std::string>&) {
+
+        }
+
+        bool operator()(const std::string&) {
+            return true;
+        }
+    };
+
+
+    void trim(std::string& str) {
+        auto first_non_space = std::find_if_not(str.begin(), str.end(), [](char c) { return std::isspace(c); });
+
+        str.erase(str.begin(), first_non_space);
+
+        auto last_non_space = std::find_if_not(str.rbegin(), str.rend(),  [](char c) { return std::isspace(c); });
+        str.erase(last_non_space.base(), str.end());
+    }
+
+
+    class WhitelistFilter {
+    public:
+
+        WhitelistFilter(const MPF::COMPONENT::Properties& props, const std::vector<std::string>& names) {
+            const std::string &whitelist_path = props.at("CLASS_WHITELIST_FILE");
+            std::string expanded_file_path;
+            std::string error = Utils::expandFileName(whitelist_path, expanded_file_path);
+            if (!error.empty()) {
+                throw std::runtime_error("Failed to expand file path for whitelist file, which was \""
+                                         + whitelist_path + "\", due to: " + error);
+            }
+
+            std::ifstream whitelist_file(expanded_file_path);
+            if (!whitelist_file.good()) {
+                throw std::runtime_error("Failed to load class whitelist that was supposed to be located at \""
+                                         + expanded_file_path + "\".");
+            }
+
+            std::unordered_set<std::string> temp_whitelist;
+            std::string line;
+            while (std::getline(whitelist_file, line)) {
+                trim(line);
+                if (!line.empty()) {
+                    temp_whitelist.insert(line);
+                }
+            }
+
+            if (temp_whitelist.empty()) {
+                throw std::runtime_error("The class whitelist file located at \""
+                                         + expanded_file_path + "\" was empty.");
+            }
+
+            for (const std::string &name : names) {
+                size_t num_erased = temp_whitelist.erase(name);
+                if (num_erased > 0) {
+                    whitelist_.insert(name);
+                }
+            }
+
+            if (whitelist_.empty()) {
+                throw std::runtime_error("None of the class names specified in the whitelist file located at \""
+                                         + expanded_file_path + "\" were found in the names file.");
+            }
+        }
+
+        bool operator()(const std::string& class_name) {
+            return whitelist_.count(class_name) > 0;
+        }
+
+    private:
+        std::unordered_set<std::string> whitelist_;
+
+    };
+
+
+    // Darknet functions that accept C style strings, accept a char* instead of a const char*.
+    std::unique_ptr<char[]> ToNonConstCStr(const std::string &str) {
+        std::unique_ptr<char[]> result(new char[str.size() + 1]);
+        size_t length = str.copy(result.get(), str.size());
+        result[length] = '\0';
+        return result;
+    }
+
+    DarknetDetection::network_ptr_t LoadNetwork(const ModelSettings &model_settings) {
+        auto cfg_file = ToNonConstCStr(model_settings.network_config_file);
+        auto weights_file = ToNonConstCStr(model_settings.weights_file);
+
+        return { load_network(cfg_file.get(), weights_file.get(), 0),
+                 free_network };
+    }
+
+
+    int GetOutputLayerSize(const network &network) {
+        layer output_layer = network.layers[network.n - 1];
+        return output_layer.w * output_layer.h * output_layer.n;
+    }
+
+
+    int GetNumClasses(const network &network) {
+        layer output_layer = network.layers[network.n - 1];
+        return output_layer.classes;
+    }
+
+
+    std::vector<std::string> LoadNames(const ModelSettings &model_settings, int expected_name_count) {
+        std::ifstream in_file(model_settings.names_file);
+        if (!in_file.good()) {
+            throw std::runtime_error("Failed to open names file at: " + model_settings.names_file);
+        }
+
+        std::vector<std::string> names;
+        names.reserve(static_cast<size_t>(expected_name_count));
+
+        std::string line;
+        while (std::getline(in_file, line).good()) {
+            trim(line);
+            names.push_back(line);
+        }
+
+        if (names.size() != expected_name_count) {
+            std::stringstream error;
+            error << "Error: The network config file at " << model_settings.network_config_file << " specifies "
+                  << expected_name_count << " classes, but the names file at " << model_settings.names_file << " contains "
+                  << names.size() << " classes. This is probably because given names file does not correspond to the "
+                  << "given network configuration file.";
+            throw std::runtime_error(error.str());
+        }
+
+        return names;
+    }
+
+
+
+    cv::Rect BoxToRect(const box &box, const cv::Size &image_size) {
+        // box.x and box.y refer to the center of the rectangle,
+        // but cv::Rect uses the top left x and y coordinates.
+        auto tlX = static_cast<int>(box.x - box.w / 2.0f);
+        auto tlY = static_cast<int>(box.y - box.h / 2.0f);
+        auto width = static_cast<int>(box.w);
+        auto height = static_cast<int>(box.h);
+
+        return cv::Rect(tlX, tlY, width, height) & cv::Rect(cv::Point(0, 0), image_size);
+    }
+
+    bool HasWhitelist(const MPFJob &job) {
+        return !DetectionComponentUtils::GetProperty(job.job_properties, "CLASS_WHITELIST_FILE", std::string())
+                .empty();
+
+    }
+}
+
 
 
 bool DarknetDetection::Init() {
@@ -82,11 +241,24 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
     }
 }
 
+
 template<typename Tracker>
 MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks,
                                                   Tracker &tracker) {
+    if (HasWhitelist(job)) {
+        return GetDetectionsWithFilter<Tracker, WhitelistFilter>(job, tracks, tracker);
+    }
+    else {
+        return GetDetectionsWithFilter<Tracker, NoOpFilter>(job, tracks, tracker);
+    }
+}
+
+
+template<typename Tracker, typename ClassFilter>
+MPFDetectionError DarknetDetection::GetDetectionsWithFilter(
+        const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks, Tracker &tracker) {
     try {
-        Detector detector(job.job_properties, GetModelSettings(job.job_properties));
+        Detector<ClassFilter> detector(job.job_properties, GetModelSettings(job.job_properties));
 
         MPFVideoCapture video_cap(job);
         if (!video_cap.IsOpened()) {
@@ -126,18 +298,20 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
 MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
     try {
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
-        Detector detector(job.job_properties, GetModelSettings(job.job_properties));
-
         MPFImageReader image_reader(job);
-        int number_of_classifications
-                = std::max(1, DetectionComponentUtils::GetProperty(job.job_properties,
-                                                                   "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
+        ModelSettings model_settings = GetModelSettings(job.job_properties);
+        const cv::Mat image = image_reader.GetImage();
+        std::vector<DarknetResult> results = HasWhitelist(job)
+                                        ? Detector<WhitelistFilter>(job.job_properties, model_settings).Detect(image)
+                                        : Detector<NoOpFilter>(job.job_properties, model_settings).Detect(image);
 
-        std::vector<DarknetResult> results = detector.Detect(image_reader.GetImage());
         if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
             ConvertResultsUsingPreprocessor(results, locations);
         }
         else {
+            int number_of_classifications
+                    = std::max(1, DetectionComponentUtils::GetProperty(job.job_properties,
+                                                                       "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
             for (auto& result : results) {
                 locations.push_back(
                         SingleDetectionPerTrackTracker::CreateImageLocation(number_of_classifications, result));
@@ -271,12 +445,13 @@ void DarknetDetection::ProbHolder::Clear() {
 }
 
 
-
-DarknetDetection::Detector::Detector(const Properties &props, const ModelSettings &settings)
+template <typename CF>
+DarknetDetection::Detector<CF>::Detector(const Properties &props, const ModelSettings &settings)
     : network_(LoadNetwork(settings))
     , output_layer_size_(GetOutputLayerSize(*network_))
     , num_classes_(GetNumClasses(*network_))
     , names_(LoadNames(settings, num_classes_))
+    , class_filter_(props, names_)
     // Darknet will output of a probability for every possible class regardless of the content of the image.
     // Most of these classes will have a probability of zero or a number very close to zero.
     // If the confidence threshold is zero or smaller it will report every possible classification.
@@ -289,7 +464,8 @@ DarknetDetection::Detector::Detector(const Properties &props, const ModelSetting
 }
 
 
-std::vector<DarknetResult> DarknetDetection::Detector::Detect(const cv::Mat &cv_image) {
+template <typename CF>
+std::vector<DarknetResult> DarknetDetection::Detector<CF>::Detect(const cv::Mat &cv_image) {
     DarknetImageHolder image(cv_image);
     probs_.Clear();
 
@@ -308,8 +484,10 @@ std::vector<DarknetResult> DarknetDetection::Detector::Detect(const cv::Mat &cv_
 
         for (int name_idx = 0; name_idx < num_classes_; name_idx++) {
             float prob = probs_[box_idx][name_idx];
-            if (prob >= confidence_threshold_) {
-                detection.object_type_probs.emplace_back(prob, names_[name_idx]);
+            const std::string &name = names_[name_idx];
+
+            if (prob >= confidence_threshold_ && class_filter_(name)) {
+                detection.object_type_probs.emplace_back(prob, name);
             }
         }
 
@@ -321,71 +499,6 @@ std::vector<DarknetResult> DarknetDetection::Detector::Detect(const cv::Mat &cv_
     return detections;
 }
 
-
-DarknetDetection::Detector::network_ptr_t DarknetDetection::Detector::LoadNetwork(const ModelSettings &model_settings) {
-    auto cfg_file = ToNonConstCStr(model_settings.network_config_file);
-    auto weights_file = ToNonConstCStr(model_settings.weights_file);
-
-    return network_ptr_t(load_network(cfg_file.get(), weights_file.get(), 0),
-                         free_network);
-}
-
-int DarknetDetection::Detector::GetOutputLayerSize(const network &network) {
-    layer output_layer = network.layers[network.n - 1];
-    return output_layer.w * output_layer.h * output_layer.n;
-}
-
-int DarknetDetection::Detector::GetNumClasses(const network &network) {
-    layer output_layer = network.layers[network.n - 1];
-    return output_layer.classes;
-}
-
-
-std::vector<std::string> DarknetDetection::Detector::LoadNames(const ModelSettings &model_settings,
-                                                               int expected_name_count) {
-    std::ifstream in_file(model_settings.names_file);
-    if (!in_file.good()) {
-        throw std::runtime_error("Failed to open names file at: " + model_settings.names_file);
-    }
-
-    std::vector<std::string> names;
-    names.reserve(static_cast<size_t>(expected_name_count));
-    
-    std::string line;
-    while (std::getline(in_file, line).good()) {
-        names.push_back(line);
-    }
-    
-    if (names.size() != expected_name_count) {
-        std::stringstream error;
-        error << "Error: The network config file at " << model_settings.network_config_file << " specifies "
-                << expected_name_count << " classes, but the names file at " << model_settings.names_file << " contains "
-                << names.size() << " classes. This is probably because given names file does not correspond to the "
-                << "given network configuration file.";
-        throw std::runtime_error(error.str());
-    }
-    
-    return names;
-}
-
-std::unique_ptr<char[]> DarknetDetection::Detector::ToNonConstCStr(const std::string &str) {
-    std::unique_ptr<char[]> result(new char[str.size() + 1]);
-    size_t length = str.copy(result.get(), str.size());
-    result[length] = '\0';
-    return result;
-}
-
-
-cv::Rect DarknetDetection::Detector::BoxToRect(const box &box, const cv::Size &image_size) {
-    // box.x and box.y refer to the center of the rectangle,
-    // but cv::Rect uses the top left x and y coordinates.
-    auto tlX = static_cast<int>(box.x - box.w / 2.0f);
-    auto tlY = static_cast<int>(box.y - box.h / 2.0f);
-    auto width = static_cast<int>(box.w);
-    auto height = static_cast<int>(box.h);
-
-    return cv::Rect(tlX, tlY, width, height) & cv::Rect(cv::Point(0, 0), image_size);
-}
 
 
 
