@@ -451,20 +451,18 @@ TEST(Darknet, TestInvalidWhitelist) {
         job_props["CLASS_WHITELIST_FILE"] = "data/NOTICE";
         MPFImageJob job("Test", "data/dog.jpg", job_props, {});
         MPFDetectionError rc = component.GetDetections(job, results);
-        ASSERT_NE(rc, MPF_DETECTION_SUCCESS);
+        ASSERT_EQ(rc, MPF_COULD_NOT_READ_DATAFILE);
     }
     {
         job_props["CLASS_WHITELIST_FILE"] = "FAKE_PATH";
         MPFImageJob job("Test", "data/dog.jpg", job_props, {});
         MPFDetectionError rc = component.GetDetections(job, results);
-        ASSERT_NE(rc, MPF_DETECTION_SUCCESS);
+        ASSERT_EQ(rc, MPF_COULD_NOT_OPEN_DATAFILE);
     }
     {
         job_props["CLASS_WHITELIST_FILE"] = "$THIS_ENV_VAR_SHOULD_NOT_EXIST/FAKE_PATH";
         MPFImageJob job("Test", "data/dog.jpg", job_props, {});
         MPFDetectionError rc = component.GetDetections(job, results);
-        ASSERT_NE(rc, MPF_DETECTION_SUCCESS);
+        ASSERT_EQ(rc, MPF_INVALID_PROPERTY);
     }
-
-
 }

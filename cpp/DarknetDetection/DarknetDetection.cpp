@@ -34,6 +34,7 @@
 #include <detectionComponentUtils.h>
 #include <Utils.h>
 #include <unordered_set>
+#include <MPFInvalidPropertyException.h>
 
 #include "Trackers.h"
 #include "DarknetDetection.h"
@@ -58,7 +59,6 @@ namespace {
 
     void trim(std::string& str) {
         auto first_non_space = std::find_if_not(str.begin(), str.end(), [](char c) { return std::isspace(c); });
-
         str.erase(str.begin(), first_non_space);
 
         auto last_non_space = std::find_if_not(str.rbegin(), str.rend(),  [](char c) { return std::isspace(c); });
@@ -74,14 +74,17 @@ namespace {
             std::string expanded_file_path;
             std::string error = Utils::expandFileName(whitelist_path, expanded_file_path);
             if (!error.empty()) {
-                throw std::runtime_error("Failed to expand file path for whitelist file, which was \""
-                                         + whitelist_path + "\", due to: " + error);
+                throw MPFInvalidPropertyException(
+                        "CLASS_WHITELIST_FILE",
+                        "The value, \"" + whitelist_path + "\", could not be expanded due to: " + error);
             }
 
             std::ifstream whitelist_file(expanded_file_path);
             if (!whitelist_file.good()) {
-                throw std::runtime_error("Failed to load class whitelist that was supposed to be located at \""
-                                         + expanded_file_path + "\".");
+                throw MPFDetectionException(
+                        MPF_COULD_NOT_OPEN_DATAFILE,
+                        "Failed to load class whitelist that was supposed to be located at \""
+                            + expanded_file_path + "\".");
             }
 
             std::unordered_set<std::string> temp_whitelist;
@@ -94,20 +97,22 @@ namespace {
             }
 
             if (temp_whitelist.empty()) {
-                throw std::runtime_error("The class whitelist file located at \""
-                                         + expanded_file_path + "\" was empty.");
+                throw MPFDetectionException(
+                        MPF_COULD_NOT_READ_DATAFILE,
+                        "The class whitelist file located at \"" + expanded_file_path + "\" was empty.");
             }
 
             for (const std::string &name : names) {
-                size_t num_erased = temp_whitelist.erase(name);
-                if (num_erased > 0) {
+                if (temp_whitelist.count(name) > 0) {
                     whitelist_.insert(name);
                 }
             }
 
             if (whitelist_.empty()) {
-                throw std::runtime_error("None of the class names specified in the whitelist file located at \""
-                                         + expanded_file_path + "\" were found in the names file.");
+                throw MPFDetectionException(
+                        MPF_COULD_NOT_READ_DATAFILE,
+                        "None of the class names specified in the whitelist file located at \""
+                             + expanded_file_path + "\" were found in the names file.");
             }
         }
 
@@ -284,10 +289,6 @@ MPFDetectionError DarknetDetection::GetDetectionsWithFilter(
 
         return MPF_DETECTION_SUCCESS;
     }
-    catch (const ModelsIniException &ex) {
-        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] " << ex.what());
-        return MPF_COULD_NOT_OPEN_DATAFILE;
-    }
     catch (...) {
         return Utils::HandleDetectionException(job, logger_);
     }
@@ -325,10 +326,6 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << locations.size() << " detections.");
 
         return MPF_DETECTION_SUCCESS;
-    }
-    catch (const ModelsIniException &ex) {
-        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] " << ex.what());
-        return MPF_COULD_NOT_OPEN_DATAFILE;
     }
     catch (...) {
         return Utils::HandleDetectionException(job, logger_);
@@ -445,8 +442,8 @@ void DarknetDetection::ProbHolder::Clear() {
 }
 
 
-template <typename CF>
-DarknetDetection::Detector<CF>::Detector(const Properties &props, const ModelSettings &settings)
+template <typename ClassFilter>
+DarknetDetection::Detector<ClassFilter>::Detector(const Properties &props, const ModelSettings &settings)
     : network_(LoadNetwork(settings))
     , output_layer_size_(GetOutputLayerSize(*network_))
     , num_classes_(GetNumClasses(*network_))
@@ -464,8 +461,8 @@ DarknetDetection::Detector<CF>::Detector(const Properties &props, const ModelSet
 }
 
 
-template <typename CF>
-std::vector<DarknetResult> DarknetDetection::Detector<CF>::Detect(const cv::Mat &cv_image) {
+template <typename ClassFilter>
+std::vector<DarknetResult> DarknetDetection::Detector<ClassFilter>::Detect(const cv::Mat &cv_image) {
     DarknetImageHolder image(cv_image);
     probs_.Clear();
 
