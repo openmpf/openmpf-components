@@ -28,19 +28,13 @@
 #ifndef OPENMPF_COMPONENTS_CAFFEDETECTION_H
 #define OPENMPF_COMPONENTS_CAFFEDETECTION_H
 
+#include <memory>
 
 #include <log4cxx/logger.h>
 #include <opencv2/dnn.hpp>
 
-#include <MPFDetectionComponent.h>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
-#include <memory>
-
-struct ModelFiles {
-    cv::String model_txt;
-    cv::String model_bin;
-    std::string synset_file;
-};
+#include <ModelsIniParser.h>
 
 struct SpectralHashInfo {
     std::string file_name;
@@ -56,6 +50,12 @@ struct SpectralHashInfo {
 class CaffeDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
 public:
+
+    struct ModelSettings {
+        std::string prototxt_file;
+        std::string caffemodel_file;
+        std::string synset_file;
+    };
 
     bool Init() override;
 
@@ -74,8 +74,9 @@ public:
 
 private:
 
-    std::map<std::string, ModelFiles> model_defs_;
     log4cxx::LoggerPtr logger_;
+
+    MPF::COMPONENT::ModelsIniParser<ModelSettings> models_parser_;
 
     struct CaffeJobConfig;
 
@@ -155,7 +156,8 @@ private:
         int number_of_classifications;
         double confidence_threshold;
 
-        CaffeJobConfig(const MPF::COMPONENT::Properties &props, const std::map<std::string, ModelFiles> &model_defs,
+        CaffeJobConfig(const MPF::COMPONENT::Properties &props,
+                       const MPF::COMPONENT::ModelsIniParser<ModelSettings> &models,
                        const log4cxx::LoggerPtr &logger);
 
     private:
