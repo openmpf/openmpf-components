@@ -136,7 +136,7 @@ TEST(CAFFE, SpectralHashTest) {
 
     Properties job_props = getGoogleNetProperties();
     job_props["SPECTRAL_HASH_FILE_LIST"] =
-            "../plugin/CaffeDetection/config/bvlc_googlenet_spectral_hash.json; fake_hash_file.asdf";
+            "../plugin/CaffeDetection/models/bvlc_googlenet_spectral_hash.json; fake_hash_file.asdf";
     job_props["ACTIVATION_LAYER_LIST"] = "prob;inception_3a/relu_1x1";
 
     MPFImageJob job("Test", "test/sundial.jpg", job_props, {});

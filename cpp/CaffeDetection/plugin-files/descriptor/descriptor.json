@@ -258,7 +258,7 @@
         },
         {
           "name" : "SPECTRAL_HASH_FILE_LIST",
-          "value" : "${MPF_HOME}/plugins/CaffeDetection/config/bvlc_googlenet_spectral_hash.json"
+          "value" : "${MPF_HOME}/plugins/CaffeDetection/models/bvlc_googlenet_spectral_hash.json"
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",
