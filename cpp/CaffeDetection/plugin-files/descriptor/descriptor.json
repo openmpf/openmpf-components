@@ -157,6 +157,12 @@
           "defaultValue": "googlenet"
         },
         {
+          "name": "MODELS_DIR_PATH",
+          "description": "Path to models directory",
+          "type": "STRING",
+          "propertiesKey": "detection.models.dir.path"
+        },
+        {
           "name": "MODEL_OUTPUT_LAYER",
           "description": "The name of the layer within the specified model for which output should be reported. The model layer names are defined in the .prototxt file associated with the model.",
           "type": "STRING",
