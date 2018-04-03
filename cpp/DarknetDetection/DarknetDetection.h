@@ -47,6 +47,8 @@ extern "C" {
 class DarknetDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
 public:
+    using network_ptr_t = std::unique_ptr<network, decltype(&free_network)>;
+
     bool Init() override;
 
     bool Close() override;
@@ -71,6 +73,12 @@ private:
 
     template <typename Tracker>
     MPF::COMPONENT::MPFDetectionError GetDetections(
+            const MPF::COMPONENT::MPFVideoJob &job,
+            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
+            Tracker &tracker);
+
+    template <typename Tracker, typename ClassFilter>
+    MPF::COMPONENT::MPFDetectionError GetDetectionsWithFilter(
             const MPF::COMPONENT::MPFVideoJob &job,
             std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
             Tracker &tracker);
@@ -103,41 +111,27 @@ private:
 
 
 
+    template <typename ClassFilter>
     class Detector {
     public:
 
-        explicit Detector(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
+        Detector(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
 
         std::vector<DarknetResult> Detect(const cv::Mat &cv_image);
 
 
     private:
-        using network_ptr_t = std::unique_ptr<network, decltype(&free_network)>;
-
         network_ptr_t network_;
         int output_layer_size_;
         int num_classes_;
         std::vector<std::string> names_;
+        ClassFilter class_filter_;
 
         float confidence_threshold_;
 
         ProbHolder probs_;
 
         std::unique_ptr<box[]> boxes_;
-
-
-        static network_ptr_t LoadNetwork(const ModelSettings &model_settings);
-
-        static int GetOutputLayerSize(const network &net);
-
-        static int GetNumClasses(const network &net);
-
-        static std::vector<std::string> LoadNames(const ModelSettings &model_settings, int expected_name_count);
-
-        // Darknet functions that accept C style strings, accept a char* instead of a const char*.
-        static std::unique_ptr<char[]> ToNonConstCStr(const std::string &str);
-
-        static cv::Rect BoxToRect(const box &box, const cv::Size &image_size);
     };
 
 
@@ -156,7 +150,6 @@ private:
         DarknetImageHolder(DarknetImageHolder&&) = delete;
         DarknetImageHolder& operator=(DarknetImageHolder&&) = delete;
     };
-
 
 };
 
