@@ -42,7 +42,7 @@
 using namespace MPF::COMPONENT;
 
 
-Properties get_yolo_tiny_config(float confidence) {
+Properties get_yolo_tiny_config(float confidence = 0.5) {
     return {
             { "MODEL_NAME", "tiny yolo" },
             { "CONFIDENCE_THRESHOLD", std::to_string(confidence) }
@@ -92,7 +92,7 @@ DarknetDetection init_component() {
 
 
 TEST(Darknet, ImageTest) {
-    MPFImageJob job("Test", "data/dog.jpg", get_yolo_tiny_config(0.5), {});
+    MPFImageJob job("Test", "data/dog.jpg", get_yolo_tiny_config(), {});
 
 
     DarknetDetection component = init_component();
@@ -110,7 +110,7 @@ TEST(Darknet, ImageTest) {
 
 TEST(Darknet, VideoTest) {
     int end_frame = 4;
-    MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, get_yolo_tiny_config(0.5), { });
+    MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, get_yolo_tiny_config(), { });
 
     DarknetDetection component = init_component();
     std::vector<MPFVideoTrack> results;
@@ -145,7 +145,7 @@ bool object_found_in_all_frames(const std::string &object_type, const MPFVideoTr
 
 TEST(Darknet, UsePreprocessorVideoTest) {
     int end_frame = 4;
-    Properties job_properties = get_yolo_tiny_config(0.5);
+    Properties job_properties = get_yolo_tiny_config();
     job_properties.emplace("USE_PREPROCESSOR", "TRUE");
 
     MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, job_properties, { });
@@ -401,3 +401,68 @@ TEST(Darknet, TestModelsIniParser) {
     ASSERT_EQ(settings.weights_file, "../plugin/DarknetDetection/models/tiny-yolo.weights");
 }
 
+
+
+TEST(Darknet, TestWhitelist) {
+    Properties job_props = get_yolo_tiny_config();
+    DarknetDetection component = init_component();
+
+    {
+        job_props["CLASS_WHITELIST_FILE"] = "data/test-whitelist.txt";
+        MPFImageJob job("Test", "data/dog.jpg", job_props, {});
+
+        std::vector<MPFImageLocation> results;
+        MPFDetectionError rc = component.GetDetections(job, results);
+        ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+
+        ASSERT_TRUE(object_found("dog", results));
+        ASSERT_TRUE(object_found("bicycle", results));
+        ASSERT_FALSE(object_found("car", results));
+    }
+
+    {
+        int end_frame = 2;
+        setenv("TEST_ENV_VAR", "data", true);
+        setenv("TEST_ENV_VAR2", "whitelist", true);
+        job_props["CLASS_WHITELIST_FILE"] = "$TEST_ENV_VAR/test-${TEST_ENV_VAR2}.txt";
+
+        MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, job_props, {});
+
+        std::vector<MPFVideoTrack> results;
+        MPFDetectionError rc = component.GetDetections(job, results);
+        ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+
+        for (int i = 0; i <= end_frame; i++) {
+            ASSERT_TRUE(object_found("person", i, results));
+            ASSERT_FALSE(object_found("car", i, results));
+        }
+    }
+}
+
+
+
+TEST(Darknet, TestInvalidWhitelist) {
+    Properties job_props = get_yolo_tiny_config();
+
+    DarknetDetection component = init_component();
+    std::vector<MPFImageLocation> results;
+
+    {
+        job_props["CLASS_WHITELIST_FILE"] = "data/NOTICE";
+        MPFImageJob job("Test", "data/dog.jpg", job_props, {});
+        MPFDetectionError rc = component.GetDetections(job, results);
+        ASSERT_EQ(rc, MPF_COULD_NOT_READ_DATAFILE);
+    }
+    {
+        job_props["CLASS_WHITELIST_FILE"] = "FAKE_PATH";
+        MPFImageJob job("Test", "data/dog.jpg", job_props, {});
+        MPFDetectionError rc = component.GetDetections(job, results);
+        ASSERT_EQ(rc, MPF_COULD_NOT_OPEN_DATAFILE);
+    }
+    {
+        job_props["CLASS_WHITELIST_FILE"] = "$THIS_ENV_VAR_SHOULD_NOT_EXIST/FAKE_PATH";
+        MPFImageJob job("Test", "data/dog.jpg", job_props, {});
+        MPFDetectionError rc = component.GetDetections(job, results);
+        ASSERT_EQ(rc, MPF_INVALID_PROPERTY);
+    }
+}

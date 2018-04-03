@@ -173,6 +173,12 @@
           "description": "The number of classifications, N, to return for each region. The N highest confidence classifications found by the network per region will be returned with their associated confidence values. The value must be greater than 0. At most, the maximum number of classifications that the model supports will be reported.",
           "type": "INT",
           "defaultValue": "5"
+        },
+        {
+          "name": "CLASS_WHITELIST_FILE",
+          "description": "When provided, only class names contained in the specified file will be reported.",
+          "type": "STRING",
+          "defaultValue": ""
         }
       ]
     }
