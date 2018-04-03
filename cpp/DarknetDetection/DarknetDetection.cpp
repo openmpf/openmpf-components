@@ -57,15 +57,6 @@ namespace {
     };
 
 
-    void trim(std::string& str) {
-        auto first_non_space = std::find_if_not(str.begin(), str.end(), [](char c) { return std::isspace(c); });
-        str.erase(str.begin(), first_non_space);
-
-        auto last_non_space = std::find_if_not(str.rbegin(), str.rend(),  [](char c) { return std::isspace(c); });
-        str.erase(last_non_space.base(), str.end());
-    }
-
-
     class WhitelistFilter {
     public:
 
@@ -90,7 +81,7 @@ namespace {
             std::unordered_set<std::string> temp_whitelist;
             std::string line;
             while (std::getline(whitelist_file, line)) {
-                trim(line);
+                Utils::trim(line);
                 if (!line.empty()) {
                     temp_whitelist.insert(line);
                 }
@@ -166,7 +157,7 @@ namespace {
 
         std::string line;
         while (std::getline(in_file, line).good()) {
-            trim(line);
+            Utils::trim(line);
             names.push_back(line);
         }
 
