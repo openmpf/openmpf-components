@@ -461,8 +461,8 @@ CaffeDetection::CaffeJobConfig::CaffeJobConfig(const Properties &props,
     const std::string &models_dir_path = GetProperty<std::string>(props,
                                                                   "MODELS_DIR_PATH",
                                                                   ".");
-    ModelSettings settings = models.ParseIni(model_name,
-                                             models_dir_path + "/CaffeDetection");
+    ModelSettings settings = model_parser.ParseIni(model_name,
+                                                   models_dir_path + "/CaffeDetection");
 
     LOG4CXX_INFO(logger, "Get detections using model: " << model_name);
 
