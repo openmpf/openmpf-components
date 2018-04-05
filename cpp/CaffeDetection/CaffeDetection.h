@@ -157,7 +157,7 @@ private:
         double confidence_threshold;
 
         CaffeJobConfig(const MPF::COMPONENT::Properties &props,
-                       const MPF::COMPONENT::ModelsIniParser<ModelSettings> &models,
+                       const MPF::COMPONENT::ModelsIniParser<ModelSettings> &model_parser,
                        const log4cxx::LoggerPtr &logger);
 
     private:

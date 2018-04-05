@@ -450,7 +450,7 @@ MPF_COMPONENT_DELETER();
 
 
 CaffeDetection::CaffeJobConfig::CaffeJobConfig(const Properties &props,
-                                               const MPF::COMPONENT::ModelsIniParser<ModelSettings> &models,
+                                               const MPF::COMPONENT::ModelsIniParser<ModelSettings> &model_parser,
                                                const log4cxx::LoggerPtr &logger) {
 
     using namespace DetectionComponentUtils;
