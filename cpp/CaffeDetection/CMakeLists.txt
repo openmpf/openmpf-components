@@ -40,17 +40,11 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
-# Find and install config4cpp
-set(config4cpp_DIR /apps/source/config4cpp)
-include_directories(${config4cpp_DIR}/include)
-set(config4cpp_LIBDIR ${config4cpp_DIR}/lib)
-set(Config4Cpp_LIBS ${config4cpp_LIBDIR}/libconfig4cpp.a)
 
-
-set(CAFFE_SOURCE_FILES ModelFileParserException.h ModelFileParser.cpp ModelFileParser.h CaffeDetection.cpp CaffeDetection.h)
+set(CAFFE_SOURCE_FILES CaffeDetection.cpp CaffeDetection.h)
 
 add_library(caffe SHARED ${CAFFE_SOURCE_FILES})
-target_link_libraries(caffe mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${Config4Cpp_LIBS})
+target_link_libraries(caffe mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS})
 
 configure_mpf_component(CaffeDetection TARGETS caffe)
 

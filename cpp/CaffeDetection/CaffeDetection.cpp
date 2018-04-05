@@ -42,10 +42,7 @@
 #include <MPFImageReader.h>
 #include <MPFVideoCapture.h>
 
-#include "ModelFileParser.h"
 
-
-using CONFIG4CPP_NAMESPACE::StringVector;
 using namespace MPF::COMPONENT;
 
 
@@ -77,37 +74,14 @@ bool CaffeDetection::Init() {
     // Load model info from config file
     // A model is defined by a txt file, a bin file, and a synset
 
-    ModelFileParser* parser;
-    StringVector model_scopes;
-    const char* scope = "";
-
-    std::string config_filepath = config_path + "/models.cfg";
-    const char* model_filename = config_filepath.c_str();
-
-    std::string model_path = config_path + "/";
     try {
-        parser = new ModelFileParser();
-        parser->parse(model_filename, scope);
-        parser->listModelScopes(model_scopes);
-        int len = model_scopes.length();
-        if (len <= 0) {
-            LOG4CXX_ERROR(logger_, "Could not parse model file: " << model_path);
-            return false;
-        } else {
-            for (int i = 0; i < len; i++) {
-                ModelFiles model_files;
-                model_files.model_txt = model_path + parser->getModelTxt(model_scopes[i]);
-                model_files.model_bin = model_path + parser->getModelBin(model_scopes[i]);
-                model_files.synset_file = model_path + parser->getSynsetTxt(model_scopes[i]);
-                model_defs_.insert(std::pair<std::string, ModelFiles>(
-                        parser->getName(model_scopes[i]),
-                        model_files));
-            }
-        }
-        delete parser;
-    } catch(const ModelFileParserException & ex) {
-        LOG4CXX_ERROR(logger_, "Could not parse model file: " << model_path << ". " << ex.c_str());
-        delete parser;
+        models_parser_.Init(plugin_path + "/models")
+                .RegisterField("model_txt", &ModelSettings::prototxt_file)
+                .RegisterField("model_bin", &ModelSettings::caffemodel_file)
+                .RegisterField("synset_txt", &ModelSettings::synset_file);
+    }
+    catch (const std::exception &ex) {
+        LOG4CXX_ERROR(logger_, "Failed to initialize ModelsIniParser due to: " << ex.what())
         return false;
     }
 
@@ -171,7 +145,7 @@ MPF::COMPONENT::MPFDetectionError CaffeDetection::getDetections(const MPF::COMPO
             return MPF_INVALID_DATAFILE_URI;
         }
 
-        CaffeJobConfig config(job.job_properties, model_defs_, logger_);
+        CaffeJobConfig config(job.job_properties, models_parser_, logger_);
         if (config.error != MPF_DETECTION_SUCCESS) {
             return config.error;
         }
@@ -217,7 +191,7 @@ MPF::COMPONENT::MPFDetectionError CaffeDetection::getDetections(const MPF::COMPO
 //-----------------------------------------------------------------------------
 MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
     try {
-        CaffeJobConfig config(job.job_properties, model_defs_, logger_);
+        CaffeJobConfig config(job.job_properties, models_parser_, logger_);
         if (config.error != MPF_DETECTION_SUCCESS) {
             return config.error;
         }
@@ -476,24 +450,23 @@ MPF_COMPONENT_DELETER();
 
 
 CaffeDetection::CaffeJobConfig::CaffeJobConfig(const Properties &props,
-                                               const std::map<std::string, ModelFiles> &model_defs,
+                                               const MPF::COMPONENT::ModelsIniParser<ModelSettings> &model_parser,
                                                const log4cxx::LoggerPtr &logger) {
 
     using namespace DetectionComponentUtils;
 
-    std::string model_name = GetProperty<std::string>(props, "MODEL_NAME", "googlenet");
-    auto iter = model_defs.find(model_name);
-    if (iter == model_defs.end()) {
-        LOG4CXX_ERROR(logger, "Could not load specified model: " << model_name);
-        error = MPF_DETECTION_NOT_INITIALIZED;
-        return;
-    }
+    const std::string &model_name = GetProperty<std::string>(props,
+                                                             "MODEL_NAME",
+                                                             "googlenet");
+    const std::string &models_dir_path = GetProperty<std::string>(props,
+                                                                  "MODELS_DIR_PATH",
+                                                                  ".");
+    ModelSettings settings = model_parser.ParseIni(model_name,
+                                                   models_dir_path + "/CaffeDetection");
 
     LOG4CXX_INFO(logger, "Get detections using model: " << model_name);
 
-    ModelFiles model_files = iter->second;
-
-    error = readClassNames(model_files.synset_file, class_names);
+    error = readClassNames(settings.synset_file, class_names);
     if (error != MPF_DETECTION_SUCCESS) {
         LOG4CXX_ERROR(logger, "Failed to read class labels for the network");
         return;
@@ -506,11 +479,11 @@ CaffeDetection::CaffeJobConfig::CaffeJobConfig(const Properties &props,
     }
 
     // try to import Caffe model
-    net = cv::dnn::readNetFromCaffe(model_files.model_txt, model_files.model_bin);
+    net = cv::dnn::readNetFromCaffe(settings.prototxt_file, settings.caffemodel_file);
     if (net.empty()) {
         LOG4CXX_ERROR(logger, "Can't load network specified by the following files: ");
-        LOG4CXX_ERROR(logger, "prototxt:   " << model_files.model_txt);
-        LOG4CXX_ERROR(logger, "caffemodel: " << model_files.model_bin);
+        LOG4CXX_ERROR(logger, "prototxt:   " << settings.prototxt_file);
+        LOG4CXX_ERROR(logger, "caffemodel: " << settings.caffemodel_file);
         error = MPF_DETECTION_NOT_INITIALIZED;
         return;
     }

@@ -157,6 +157,12 @@
           "defaultValue": "googlenet"
         },
         {
+          "name": "MODELS_DIR_PATH",
+          "description": "Path to models directory",
+          "type": "STRING",
+          "propertiesKey": "detection.models.dir.path"
+        },
+        {
           "name": "MODEL_OUTPUT_LAYER",
           "description": "The name of the layer within the specified model for which output should be reported. The model layer names are defined in the .prototxt file associated with the model.",
           "type": "STRING",
@@ -258,7 +264,7 @@
         },
         {
           "name" : "SPECTRAL_HASH_FILE_LIST",
-          "value" : "${MPF_HOME}/plugins/CaffeDetection/config/bvlc_googlenet_spectral_hash.json"
+          "value" : "${MPF_HOME}/plugins/CaffeDetection/models/bvlc_googlenet_spectral_hash.json"
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",
