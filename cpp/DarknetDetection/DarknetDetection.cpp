@@ -125,15 +125,15 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
         DarknetDl detector = GetDarknetImpl(job);
 
         MPFImageReader image_reader(job);
-        int number_of_classifications
-                = std::max(1, DetectionComponentUtils::GetProperty(job.job_properties,
-                                                                   "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
 
         std::vector<DarknetResult> results = detector.Detect(image_reader.GetImage());
         if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
             ConvertResultsUsingPreprocessor(results, locations);
         }
         else {
+            int number_of_classifications
+                    = std::max(1, DetectionComponentUtils::GetProperty(job.job_properties,
+                                                                       "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
             for (auto& result : results) {
                 locations.push_back(
                         SingleDetectionPerTrackTracker::CreateImageLocation(number_of_classifications, result));
