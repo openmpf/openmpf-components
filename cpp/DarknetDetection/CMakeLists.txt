@@ -42,11 +42,15 @@ find_package(Qt4 REQUIRED)
 get_plugin_build_location(DarknetDetection pluginLocation)
 
 if (DEFINED ENV{MPF_DISABLE_CUDA_BUILD})
+    set(DARKNET_BUILD_CUDA OFF)
     message(
     "The CUDA version of Darknet will not be built because the MPF_DISABLE_CUDA_BUILD environment variable was set.")
 else()
     find_package(CUDA)
-    if (NOT CUDA_FOUND)
+    if (CUDA_FOUND)
+        set(DARKNET_BUILD_CUDA ON)
+    else()
+        set(DARKNET_BUILD_CUDA OFF)
         message("The CUDA version of Darknet will not be built because the CUDA library was not found on this machine")
     endif()
 endif()
@@ -65,7 +69,7 @@ target_link_libraries(mpfDarknetDetection mpfComponentInterface mpfDetectionComp
 configure_mpf_component(DarknetDetection TARGETS mpfDarknetDetection)
 
 add_dependencies(mpfDarknetDetection darknet_wrapper)
-if (CUDA_FOUND)
+if (DARKNET_BUILD_CUDA)
     add_dependencies(mpfDarknetDetection darknet_wrapper_cuda)
 endif()
 

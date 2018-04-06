@@ -58,7 +58,7 @@ copy_shared_libs(darknet_wrapper ${pluginLocation})
 
 
 
-if (CUDA_FOUND)
+if (DARKNET_BUILD_CUDA)
     add_library(darknet_wrapper_cuda MODULE ${DARKNET_WRAPPER_SOURCE_FILES})
     target_link_libraries(darknet_wrapper_cuda mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
         darknet_lib_cuda ${OpenCV_LIBS})
@@ -70,6 +70,5 @@ if (CUDA_FOUND)
         )
 
     copy_shared_libs(darknet_wrapper_cuda ${pluginLocation})
-
 endif()
 

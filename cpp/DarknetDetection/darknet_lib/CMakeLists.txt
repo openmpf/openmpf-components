@@ -91,7 +91,7 @@ target_include_directories(darknet_lib PUBLIC include)
 target_link_libraries(darknet_lib m pthread ${OpenCV_LIBS})
 
 
-if (CUDA_FOUND)
+if (DARKNET_BUILD_CUDA)
     SET(DARKNET_CUDA_SRC_FILES
         src/activation_kernels.cu
         src/avgpool_layer_kernels.cu
@@ -116,6 +116,5 @@ if (CUDA_FOUND)
 
     target_include_directories(darknet_lib_cuda PUBLIC include ${CUDA_INCLUDE_DIRS})
     target_link_libraries(darknet_lib_cuda m pthread ${OpenCV_LIBS} ${CUDA_curand_LIBRARY})
-
 endif()
 
