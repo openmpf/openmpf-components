@@ -35,20 +35,16 @@
 
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
 #include <ModelsIniParser.h>
+#include <dlfcn.h>
 
 #include "Trackers.h"
-#include "ModelSettings.h"
 
-extern "C" {
-    #include "darknet.h"
-};
+#include "include/DarknetInterface.h"
 
 
 class DarknetDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
 public:
-    using network_ptr_t = std::unique_ptr<network, decltype(&free_network)>;
-
     bool Init() override;
 
     bool Close() override;
@@ -66,19 +62,18 @@ public:
 
 
 private:
+    class DarknetDl;
+
     log4cxx::LoggerPtr logger_;
+    
+    std::string plugin_path_;
 
     MPF::COMPONENT::ModelsIniParser<ModelSettings> models_parser_;
 
+    DarknetDl GetDarknetImpl(const MPF::COMPONENT::MPFJob &job);
 
     template <typename Tracker>
     MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFVideoJob &job,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
-            Tracker &tracker);
-
-    template <typename Tracker, typename ClassFilter>
-    MPF::COMPONENT::MPFDetectionError GetDetectionsWithFilter(
             const MPF::COMPONENT::MPFVideoJob &job,
             std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
             Tracker &tracker);
@@ -87,70 +82,29 @@ private:
                                                 std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
 
     ModelSettings GetModelSettings(const MPF::COMPONENT::Properties &job_properties) const;
+    
 
-    // Darknet's network_detect function has a float** parameter that is used to store the probabilities.
-    // The float** is used as a two dimensional array. The first level index is the id of a box,
-    // and the second level index is the id of a classification.
-    class ProbHolder {
+
+    class DarknetDl {
     public:
-        ProbHolder(int output_layer_size, int num_classes);
-
-        float** Get();
-
-        float* operator[](size_t box_idx);
-
-        void Clear();
-
-    private:
-        int mat_size_;
-
-        std::unique_ptr<float[]> prob_mat_;
-
-        std::unique_ptr<float*[]> prob_row_ptrs_;
-    };
-
-
-
-    template <typename ClassFilter>
-    class Detector {
-    public:
-
-        Detector(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
+        DarknetDl(const std::string &lib_path, const MPF::COMPONENT::MPFJob &job, const ModelSettings &model_settings);
 
         std::vector<DarknetResult> Detect(const cv::Mat &cv_image);
 
 
     private:
-        network_ptr_t network_;
-        int output_layer_size_;
-        int num_classes_;
-        std::vector<std::string> names_;
-        ClassFilter class_filter_;
+        using darknet_impl_t = std::unique_ptr<DarknetInterface, void(*)(DarknetInterface*)>;
 
-        float confidence_threshold_;
+        std::unique_ptr<void, decltype(&dlclose)> lib_handle_;
 
-        ProbHolder probs_;
+        darknet_impl_t darknet_impl_;
 
-        std::unique_ptr<box[]> boxes_;
+        static darknet_impl_t LoadDarknetImpl(void* lib_handle, const MPF::COMPONENT::MPFJob &job,
+                                              const ModelSettings &model_settings);
+
+        template <typename TFunc>
+        static TFunc* LoadFunction(void* lib_handle, const char * symbol_name);
     };
-
-
-    // Darknet uses its own image type, which is a C struct. This class adds two features to the Darknet image type.
-    // One is that it adds a destructor, which calls the free_image function defined in the Darknet library.
-    // The second feature is that it converts a cv::Mat to the Darknet image format.
-    struct DarknetImageHolder {
-        image darknet_image;
-
-        explicit DarknetImageHolder(const cv::Mat &cv_image);
-
-        ~DarknetImageHolder();
-
-        DarknetImageHolder(const DarknetImageHolder&) = delete;
-        DarknetImageHolder& operator=(const DarknetImageHolder&) = delete;
-        DarknetImageHolder(DarknetImageHolder&&) = delete;
-        DarknetImageHolder& operator=(DarknetImageHolder&&) = delete;
-    };
-
 };
 
 

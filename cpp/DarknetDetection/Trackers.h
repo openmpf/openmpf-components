@@ -36,10 +36,7 @@
 
 #include <MPFDetectionComponent.h>
 
-struct DarknetResult {
-    cv::Rect detection_rect;
-    std::vector<std::pair<float, std::string>> object_type_probs;
-};
+#include "include/DarknetInterface.h"
 
 
 class SingleDetectionPerTrackTracker {

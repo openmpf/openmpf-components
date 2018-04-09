@@ -170,7 +170,7 @@
         },
         {
           "name": "NUMBER_OF_CLASSIFICATIONS_PER_REGION",
-          "description": "The number of classifications, N, to return for each region. The N highest confidence classifications found by the network per region will be returned with their associated confidence values. The value must be greater than 0. At most, the maximum number of classifications that the model supports will be reported.",
+          "description": "Only applies if USE_PREPROCESSOR is false. The number of classifications, N, to return for each region. The N highest confidence classifications found by the network per region will be returned with their associated confidence values. The value must be greater than 0. At most, the maximum number of classifications that the model supports will be reported.",
           "type": "INT",
           "defaultValue": "5"
         },
@@ -179,6 +179,18 @@
           "description": "When provided, only class names contained in the specified file will be reported.",
           "type": "STRING",
           "defaultValue": ""
+        },
+        {
+          "name": "CUDA_DEVICE_ID",
+          "description": "ID of CUDA device (typically 0) that will be used to run Darknet. When less than 0 CUDA will be disabled.",
+          "type": "INT",
+          "propertiesKey": "detection.cuda.device.id"
+        },
+        {
+          "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
+          "description": "Indicates whether or not the CPU only version of Darknet should run if there is an issue with the GPU. Only used when CUDA_DEVICE_ID >= 0.",
+          "type": "BOOLEAN",
+          "propertiesKey": "detection.use.cpu.when.gpu.problem"
         }
       ]
     }
@@ -201,7 +213,7 @@
     },
     {
       "name": "TINY YOLO OBJECT DETECTION PREPROCESSOR ACTION",
-      "description": "TODO",
+      "description": "Runs the Tiny YOLO object detection Darknet model in preprocessor mode.",
       "algorithm": "DARKNET",
       "properties": [
         {
@@ -211,6 +223,40 @@
         {
           "name": "MODEL_NAME",
           "value": "TINY YOLO"
+        },
+        {
+          "name": "USE_PREPROCESSOR",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "name": "YOLO OBJECT DETECTION ACTION",
+      "description": "Runs the YOLO object detection Darknet model.",
+      "algorithm": "DARKNET",
+      "properties": [
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "value": "0.5"
+        },
+        {
+          "name": "MODEL_NAME",
+          "value": "YOLO"
+        }
+      ]
+    },
+    {
+      "name": "YOLO OBJECT DETECTION PREPROCESSOR ACTION",
+      "description": "Runs the YOLO object detection Darknet model in preprocessor mode.",
+      "algorithm": "DARKNET",
+      "properties": [
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "value": "0.5"
+        },
+        {
+          "name": "MODEL_NAME",
+          "value": "YOLO"
         },
         {
           "name": "USE_PREPROCESSOR",
@@ -229,9 +275,23 @@
     },
     {
       "name": "TINY YOLO OBJECT DETECTION PREPROCESSOR TASK",
-      "description": "TODO",
+      "description": "Runs the Tiny YOLO object detection Darknet model in preprocessor mode.",
       "actions": [
         "TINY YOLO OBJECT DETECTION PREPROCESSOR ACTION"
+      ]
+    },
+    {
+      "name": "YOLO OBJECT DETECTION TASK",
+      "description": "Runs the YOLO object detection Darknet model.",
+      "actions": [
+        "YOLO OBJECT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "YOLO OBJECT DETECTION PREPROCESSOR TASK",
+      "description": "Runs the YOLO object detection Darknet model in preprocessor mode.",
+      "actions": [
+        "YOLO OBJECT DETECTION PREPROCESSOR ACTION"
       ]
     }
   ],
@@ -253,16 +313,46 @@
     },
     {
       "name": "TINY YOLO OBJECT DETECTION PREPROCESSOR PIPELINE",
-      "description": "Runs the Tiny YOLO object detection Darknet model.",
+      "description": "Runs the Tiny YOLO object detection Darknet model in preprocessor mode.",
       "tasks": [
         "TINY YOLO OBJECT DETECTION PREPROCESSOR TASK"
       ]
     },
     {
       "name": "TINY YOLO OBJECT DETECTION PREPROCESSOR (WITH MARKUP) PIPELINE",
-      "description": "Runs the Tiny YOLO object detection Darknet model and produces markup.",
+      "description": "Runs the Tiny YOLO object detection Darknet model in preprocessor mode and produces markup.",
       "tasks": [
         "TINY YOLO OBJECT DETECTION PREPROCESSOR TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "YOLO OBJECT DETECTION PIPELINE",
+      "description": "Runs the YOLO object detection Darknet model.",
+      "tasks": [
+        "YOLO OBJECT DETECTION TASK"
+      ]
+    },
+    {
+      "name": "YOLO OBJECT DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the YOLO object detection Darknet model and produces markup.",
+      "tasks": [
+        "YOLO OBJECT DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "YOLO OBJECT DETECTION PREPROCESSOR PIPELINE",
+      "description": "Runs the YOLO object detection Darknet model in preprocessor mode.",
+      "tasks": [
+        "YOLO OBJECT DETECTION PREPROCESSOR TASK"
+      ]
+    },
+    {
+      "name": "YOLO OBJECT DETECTION PREPROCESSOR (WITH MARKUP) PIPELINE",
+      "description": "Runs the YOLO object detection Darknet model in preprocessor mode and produces markup.",
+      "tasks": [
+        "YOLO OBJECT DETECTION PREPROCESSOR TASK",
         "OCV GENERIC MARKUP TASK"
       ]
     }

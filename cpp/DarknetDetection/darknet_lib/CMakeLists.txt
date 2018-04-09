@@ -26,7 +26,7 @@
 
 cmake_minimum_required(VERSION 3.6)
 
-project(darknet_lib C)
+project(darknet_lib)
 
 set(CMAKE_C_STANDARD 11)
 
@@ -74,7 +74,6 @@ set(DARKNET_LIB_SRC_FILES
     src/lstm_layer.c)
 
 find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0 COMPONENTS opencv_core opencv_highgui)
-add_definitions(-DOPENCV)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -87,5 +86,35 @@ else()
 endif()
 
 add_library(darknet_lib ${DARKNET_LIB_SRC_FILES})
+target_compile_definitions(darknet_lib PUBLIC -DOPENCV)
 target_include_directories(darknet_lib PUBLIC include)
 target_link_libraries(darknet_lib m pthread ${OpenCV_LIBS})
+
+
+if (DARKNET_BUILD_CUDA)
+    SET(DARKNET_CUDA_SRC_FILES
+        src/activation_kernels.cu
+        src/avgpool_layer_kernels.cu
+        src/blas_kernels.cu
+        src/col2im_kernels.cu
+        src/convolutional_kernels.cu
+        src/crop_layer_kernels.cu
+        src/deconvolutional_kernels.cu
+        src/dropout_layer_kernels.cu
+        src/im2col_kernels.cu
+        src/maxpool_layer_kernels.cu
+        )
+
+    find_package(CUDA REQUIRED)
+    set(CUDA_NVCC_FLAGS -DGPU -DOPENCV --compiler-options -fPIC )
+
+    include_directories(include)
+
+    CUDA_ADD_LIBRARY(darknet_lib_cuda ${DARKNET_LIB_SRC_FILES} ${DARKNET_CUDA_SRC_FILES})
+    CUDA_ADD_CUBLAS_TO_TARGET(darknet_lib_cuda)
+    target_compile_definitions(darknet_lib_cuda PUBLIC -DOPENCV -DGPU)
+
+    target_include_directories(darknet_lib_cuda PUBLIC include ${CUDA_INCLUDE_DIRS})
+    target_link_libraries(darknet_lib_cuda m pthread ${OpenCV_LIBS} ${CUDA_curand_LIBRARY})
+endif()
+

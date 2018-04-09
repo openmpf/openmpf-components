@@ -19,14 +19,6 @@ void show_image_cv(image p, const char *name, IplImage *disp);
 #endif
 #endif
 
-// ----
-int fill_image_from_stream(CvCapture *cap, image im);
-image ipl_to_image(IplImage* src);
-void ipl_into_image(IplImage* src, image im);
-void flush_stream_buffer(CvCapture *cap, int n);
-void show_image_cv(image p, const char *name, IplImage *disp);
-// ----
-
 float get_color(int c, int x, int max);
 void draw_box(image a, int x1, int y1, int x2, int y2, float r, float g, float b);
 void draw_bbox(image a, box bbox, int w, float r, float g, float b);
