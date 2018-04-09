@@ -317,14 +317,17 @@ void configure_cuda_device(const Properties &job_props) {
 #ifdef GPU
     int cuda_device_id = DetectionComponentUtils::GetProperty(job_props, "CUDA_DEVICE_ID", -1);
     if (cuda_device_id < 0) {
-        throw std::runtime_error("CUDA version of darknet library loaded, but the CUDA_DEVICE_ID was not set.");
+        throw MPFDetectionException(
+                MPF_GPU_ERROR, "CUDA version of darknet library loaded, but the CUDA_DEVICE_ID was not set.");
     }
 
     gpu_index = cuda_device_id;
     cudaError_t rc = cudaSetDevice(cuda_device_id);
     if (rc != cudaError_t::cudaSuccess) {
-        throw std::runtime_error("Failed to set CUDA device to device number " + std::to_string(cuda_device_id)
-                                 + " due to: " + cudaGetErrorString(rc));
+        throw MPFDetectionException(
+                MPF_GPU_ERROR,
+                "Failed to set CUDA device to device number " + std::to_string(cuda_device_id)
+                         + " due to: " + cudaGetErrorString(rc));
     }
 #endif
 }
