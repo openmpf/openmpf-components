@@ -36,6 +36,7 @@
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
 #include <ModelsIniParser.h>
 #include <dlfcn.h>
+#include <DlClassLoader.h>
 
 #include "Trackers.h"
 
@@ -62,7 +63,7 @@ public:
 
 
 private:
-    class DarknetDl;
+    using DarknetDl = MPF::COMPONENT::DlClassLoader<DarknetInterface>;
 
     log4cxx::LoggerPtr logger_;
     
@@ -82,29 +83,6 @@ private:
                                                 std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
 
     ModelSettings GetModelSettings(const MPF::COMPONENT::Properties &job_properties) const;
-    
-
-
-    class DarknetDl {
-    public:
-        DarknetDl(const std::string &lib_path, const MPF::COMPONENT::MPFJob &job, const ModelSettings &model_settings);
-
-        std::vector<DarknetResult> Detect(const cv::Mat &cv_image);
-
-
-    private:
-        using darknet_impl_t = std::unique_ptr<DarknetInterface, void(*)(DarknetInterface*)>;
-
-        std::unique_ptr<void, decltype(&dlclose)> lib_handle_;
-
-        darknet_impl_t darknet_impl_;
-
-        static darknet_impl_t LoadDarknetImpl(void* lib_handle, const MPF::COMPONENT::MPFJob &job,
-                                              const ModelSettings &model_settings);
-
-        template <typename TFunc>
-        static TFunc* LoadFunction(void* lib_handle, const char * symbol_name);
-    };
 };
 
 
