@@ -99,7 +99,7 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
 
         while (video_cap.Read(frame)) {
             frame_number++;
-            tracker.ProcessFrameDetections(detector.Detect(frame), frame_number);
+            tracker.ProcessFrameDetections(detector->Detect(frame), frame_number);
         }
 
         tracks = tracker.GetTracks();
@@ -126,7 +126,7 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
 
         MPFImageReader image_reader(job);
 
-        std::vector<DarknetResult> results = detector.Detect(image_reader.GetImage());
+        std::vector<DarknetResult> results = detector->Detect(image_reader.GetImage());
         if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
             ConvertResultsUsingPreprocessor(results, locations);
         }
@@ -157,27 +157,30 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
 DarknetDetection::DarknetDl DarknetDetection::GetDarknetImpl(const MPF::COMPONENT::MPFJob &job) {
     static std::string cpu_darknet_lib = plugin_path_ + "/lib/libdarknet_wrapper.so";
     static std::string gpu_darknet_lib = plugin_path_ + "/lib/libdarknet_wrapper_cuda.so";
+    static std::string darknet_impl_creator = "darknet_impl_creator";
+    static std::string darknet_impl_deleter = "darknet_impl_deleter";
+
     const ModelSettings model_settings = GetModelSettings(job.job_properties);
 
     int cuda_device_id = DetectionComponentUtils::GetProperty(job.job_properties, "CUDA_DEVICE_ID", -1);
-    if (cuda_device_id < 0) {
-        return DarknetDl(cpu_darknet_lib, job, model_settings);
-    }
-
-    try {
-        return DarknetDl(gpu_darknet_lib, job, model_settings);
-    }
-    catch (const std::exception &ex) {
-        if (DetectionComponentUtils::GetProperty(job.job_properties, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", false)) {
-            LOG4CXX_WARN(logger_, "An error occured while trying to load the GPU version of Darknet: " << ex.what());
-            LOG4CXX_WARN(logger_, "Falling back to CPU version.");
-            return DarknetDl(cpu_darknet_lib, job, model_settings);
+    if (cuda_device_id >= 0) {
+        try {
+            return DarknetDl(gpu_darknet_lib, darknet_impl_creator, darknet_impl_deleter,
+                             &job.job_properties, &model_settings);
         }
-        else {
-            throw;
+        catch (const std::exception &ex) {
+            if (DetectionComponentUtils::GetProperty(job.job_properties, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", false)) {
+                LOG4CXX_WARN(logger_,
+                             "An error occured while trying to load the GPU version of Darknet: " << ex.what());
+                LOG4CXX_WARN(logger_, "Falling back to CPU version.");
+            }
+            else {
+                throw;
+            }
         }
-
     }
+    return DarknetDl(cpu_darknet_lib, darknet_impl_creator, darknet_impl_deleter,
+                     &job.job_properties, &model_settings);
 }
 
 ModelSettings DarknetDetection::GetModelSettings(const MPF::COMPONENT::Properties &job_properties) const {
@@ -227,67 +230,6 @@ std::string DarknetDetection::GetDetectionType() {
 
 bool DarknetDetection::Close() {
     return true;
-}
-
-
-
-DarknetDetection::DarknetDl::DarknetDl(const std::string &lib_path, const MPFJob &job,
-                                       const ModelSettings &model_settings)
-    : lib_handle_(dlopen(lib_path.c_str(), RTLD_NOW), dlclose)
-    , darknet_impl_(LoadDarknetImpl(lib_handle_.get(), job, model_settings))
-{
-
-}
-
-
-DarknetDetection::DarknetDl::darknet_impl_t DarknetDetection::DarknetDl::LoadDarknetImpl(
-        void *lib_handle, const MPFJob &job, const ModelSettings &model_settings) {
-
-    if (lib_handle == nullptr) {
-        throw std::runtime_error(std::string("Failed to open darknet implementation library: ") + dlerror());
-    }
-
-    auto create_impl_fn
-            = LoadFunction<DarknetInterface* (const std::map<std::string, std::string>*, const ModelSettings*)>(
-                    lib_handle, "darknet_impl_creator");
-
-    auto delete_impl_fn
-            = LoadFunction<void (DarknetInterface*)>(
-                    lib_handle, "darknet_impl_deleter");
-
-    darknet_impl_t darknet_impl(nullptr, delete_impl_fn);
-    try {
-        darknet_impl = { create_impl_fn(&job.job_properties, &model_settings), delete_impl_fn };
-    }
-    catch (const MPFDetectionException &ex) {
-        throw ex;
-    }
-    catch (const std::exception &ex) {
-        throw std::runtime_error(std::string(
-                "Failed to load darknet implementation library because the darknet_impl_creator function threw an exception: ")
-                 + ex.what());
-    }
-
-    if (darknet_impl == nullptr) {
-        throw std::runtime_error(
-                "Failed to load darknet implementation library because the darknet_impl_creator function returned null.");
-    }
-
-    return darknet_impl;
-}
-
-
-template<typename TFunc>
-TFunc* DarknetDetection::DarknetDl::LoadFunction(void *lib_handle, const char *symbol_name) {
-    auto result = reinterpret_cast<TFunc*>(dlsym(lib_handle, symbol_name));
-    if (result == nullptr) {
-        throw std::runtime_error(std::string("dlsym failed for ") + symbol_name + ": " + dlerror());
-    }
-    return result;
-}
-
-std::vector<DarknetResult> DarknetDetection::DarknetDl::Detect(const cv::Mat &cv_image) {
-    return darknet_impl_->Detect(cv_image);
 }
 
 
