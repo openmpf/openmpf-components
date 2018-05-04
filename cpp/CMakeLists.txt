@@ -34,6 +34,20 @@ add_subdirectory(OcvFaceDetection)
 add_subdirectory(DlibFaceDetection)
 add_subdirectory(OalprLicensePlateTextDetection)
 add_subdirectory(CaffeDetection)
+
+### Set the following variable when building components that use the Nvidia CUDA
+### runtime and the nvcc compiler.
+
+### By default, we build GPU components for maximum portability across GPU
+### architectures. This means that we create PTX code for the minimum compute
+### capability only. For the darknet component, we have not seen a performance
+### benefit to creating to ELF code in addition to PTX code. However, for other
+### components, this may not be the case. Component developers may override the
+### value of the ARCH_BUILD_FLAGS variable given here in their component-specific
+### CMakeLists.txt file.
+
+set(ARCH_BUILD_FLAGS "-gencode arch=compute_30,code=compute_30")
+
 add_subdirectory(DarknetDetection)
 
 
