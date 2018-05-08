@@ -34,3 +34,15 @@ list(APPEND CMAKE_PREFIX_PATH $ENV{HOME}/mpf-sdk-install/lib/cmake)
 find_package(mpfCMakeHelpers REQUIRED)
 configure_mpf_sdk_install_location()
 
+### Set the following variable when building components that use the NVIDIA CUDA
+### runtime and the nvcc compiler.
+
+### By default, we build GPU components for maximum portability across GPU
+### architectures. This means that we create PTX code for the minimum compute
+### capability only. For the darknet component, we have not seen a performance
+### benefit to creating to ELF code in addition to PTX code. However, for other
+### components, this may not be the case. Component developers may override the
+### value of the ARCH_BUILD_FLAGS variable given here in their component-specific
+### CMakeLists.txt file.
+
+set(GPU_ARCH_BUILD_FLAGS "-gencode arch=compute_30,code=compute_30")

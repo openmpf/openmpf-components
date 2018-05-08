@@ -106,7 +106,11 @@ if (DARKNET_BUILD_CUDA)
         )
 
     find_package(CUDA REQUIRED)
-    set(CUDA_NVCC_FLAGS -DGPU -DOPENCV --compiler-options -fPIC )
+    set(CUDA_VERBOSE_BUILD ON)
+
+## See the file ComponentSetup.cmake for the definition of GPU_ARCH_BUILD_FLAGS
+    message(STATUS "GPU_ARCH_BUILD_FLAGS = ${GPU_ARCH_BUILD_FLAGS}")
+    set(CUDA_NVCC_FLAGS -DGPU -DOPENCV --compiler-options -fPIC ${GPU_ARCH_BUILD_FLAGS})
 
     include_directories(include)
 
