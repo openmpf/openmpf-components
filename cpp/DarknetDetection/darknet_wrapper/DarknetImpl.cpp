@@ -329,8 +329,15 @@ void configure_cuda_device(const Properties &job_props) {
                 "Failed to set CUDA device to device number " + std::to_string(cuda_device_id)
                          + " due to: " + cudaGetErrorString(rc));
     }
-    // This function must be called here in order for the flag value
-    // to be set for the device just selected.
+    // Through testing we have determined that the following function
+    // must be called after cudaSetDevice() in order for it to take
+    // effect on the device just selected. This seems contrary to what
+    // is implied by the documentation, specifically regarding calling
+    // it before the runtime and driver have been initialized.
+    // In addition, our testing has been unable to find a circumstance
+    // where this function fails, also despite what the documentation
+    // says. For this reason, we treat failure of this function as a
+    // fatal error, since it should not fail under normal operation.
     rc = cudaSetDeviceFlags(cudaDeviceBlockingSync);
     if (rc != cudaSuccess) {
         throw MPFDetectionException(MPF_GPU_ERROR, "Could not set GPU device " + std::to_string(cuda_device_id) + " to use blocking synchronization: " + cudaGetErrorString(rc));
