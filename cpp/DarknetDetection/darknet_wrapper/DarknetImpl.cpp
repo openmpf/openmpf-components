@@ -323,7 +323,7 @@ void configure_cuda_device(const Properties &job_props) {
 
     gpu_index = cuda_device_id;
     cudaError_t rc = cudaSetDevice(cuda_device_id);
-    if (rc != cudaError_t::cudaSuccess) {
+    if (rc != cudaSuccess) {
         throw MPFDetectionException(
                 MPF_GPU_ERROR,
                 "Failed to set CUDA device to device number " + std::to_string(cuda_device_id)
@@ -340,7 +340,7 @@ void configure_cuda_device(const Properties &job_props) {
     // fatal error, since it should not fail under normal operation.
     rc = cudaSetDeviceFlags(cudaDeviceBlockingSync);
     if (rc != cudaSuccess) {
-        throw MPFDetectionException(MPF_GPU_ERROR, "Could not set GPU device " + std::to_string(cuda_device_id) + " to use blocking synchronization: " + cudaGetErrorString(rc));
+        throw MPFDetectionException(MPF_GPU_ERROR, "Could not set CUDA device " + std::to_string(cuda_device_id) + " to use blocking synchronization: " + cudaGetErrorString(rc));
     }
 #endif
 }
