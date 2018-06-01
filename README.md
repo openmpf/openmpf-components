@@ -41,8 +41,9 @@ And the following Java Components:
     * [OpenMPF Standard Components](https://github.com/openmpf/openmpf-components) ( **You are here** )
     * [OpenMPF Contributed Components](https://github.com/openmpf/openmpf-contrib-components)
 - Component APIs:
-    * [OpenMPF C++ Component sdk](https://github.com/openmpf/openmpf-cpp-component-sdk)
-    * [OpenMPF Java Component sdk](https://github.com/openmpf/openmpf-java-component-sdk)
+    * [OpenMPF C++ Component SDK](https://github.com/openmpf/openmpf-cpp-component-sdk)
+    * [OpenMPF Java Component SDK](https://github.com/openmpf/openmpf-java-component-sdk)
+    * [OpenMPF Python Component SDK](https://github.com/openmpf/openmpf-python-component-sdk)
 - [OpenMPF Build Tools](https://github.com/openmpf/openmpf-build-tools)
 - [OpenMPF Web Site Source](https://github.com/openmpf/openmpf.github.io)
 
