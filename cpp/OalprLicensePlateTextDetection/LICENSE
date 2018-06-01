@@ -19,11 +19,11 @@
  that you send an email to opensource@mitre.org in order to let us know where
  this software is being used.
 
- The Media Processing Framework Open-source Automated License Plate Recognition
- (OALPR) text detection component software makes use of a third party library.
- Compiling the MPF OALPR text detection component with this library creates a
- derivative work and inherits the GNU Affero General Public License under
- which that library is licensed:
+
+
+ This software makes use of the OpenALPR library. Compiling this software
+ with the OpenALPR library creates a derivative work and inherits the GNU Affero
+ General Public License under which that library is licensed:
 
  --------------------------------------------------------------------------
 
