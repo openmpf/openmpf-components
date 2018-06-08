@@ -1,0 +1,247 @@
+{
+  "componentName" : "SceneChangeDetection",
+  "componentVersion" : "2.0.0",
+  "middlewareVersion" :  "2.0.0",
+  "sourceLanguage" : "c++",
+  "batchLibrary": "${MPF_HOME}/plugins/SceneChangeDetection/lib/libsceneChange.so",
+  "streamLibrary": "${MPF_HOME}/plugins/SceneChangeDetection/lib/libsceneChange.so",
+  "environmentVariables" : [ {
+    "name" : "LD_LIBRARY_PATH",
+    "value" : "${MPF_HOME}/plugins/SceneChangeDetection/lib:${LD_LIBRARY_PATH}"
+  } ],
+  "algorithm" : {
+    "name" : "SceneChange",
+    "description" : "Segments a video into scenes based on 4 detectors.",
+    "actionType" : "DETECTION",
+    "requiresCollection" : {
+      "states" : []
+    },
+    "providesCollection" : {
+      "states" : [],
+      "properties" : [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "description": "Applies to images and videos. The type of feed-forward behavior. Controls how this algorithm will make use of the tracks generated in the previous pipeline stage. If this algorithm is used in the first pipeline stage then this property has no effect. Instead, the default segmenting behavior is used, where tracks from the previous stage are used to generate segments based on the TARGET_SEGMENT_LENGTH and MIN_SEGMENT_LENGTH properties. Can be set to “NONE”, “FRAME”, or “SUPERSET_REGION”. If set to “NONE”, the default segmenting behavior is used. If set to “FRAME” or “SUPERSET_REGION”, then the segment length properties are ignored and instead this algorithm will process one segment per track generated in the previous stage. If set to “FRAME”, then this algorithm will ignore the regions associated with previous detections and instead process the entire frame associated with each of those detections. If set to “SUPERSET_REGION”, then this algorithm will generate a superset region for each of the previous tracks – a bounding box of constant size and position that encloses all of the track’s detection regions. This algorithm will only process the data within the superset region.",
+          "type": "STRING",
+          "defaultValue": "NONE"
+        },
+        {
+          "name": "FEED_FORWARD_TOP_CONFIDENCE_COUNT",
+          "description": "Only applies if FEED_FORWARD_TYPE is set to a value other than “NONE”. If set to a value <= 0, then for each track generated in the previous pipeline stage, this algorithm will process the frame associated with each detection in that track, ignoring frames that don’t have detections. If FEED_FORWARD_TYPE is set to “FRAME”, then the entire frame is processed. If FEED_FORWARD_TYPE is set to “SUPERSET_REGION”, then only the superset region for those frames is processed. If this property is set to “1” then only the exemplar frame for each of the previous tracks is processed. If this property is set to a value > 1, say 5, then each of the detections in the previous track are sorted by confidence and this algorithm will only process the frames associated with the top 5 detections with the highest confidence. For detections with the same confidence values, it will select those with a lower frame index. If the track contains less than 5 detections, then all of the available detections are used. In practice, setting this property to a value > 1 has no effect on image and audio jobs because each track only contains one detection.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "USE_KEY_FRAMES",
+          "description": "When true the component will only look at key frames (I-frames) from the input video. Can be used in conjunction with FRAME_INTERVAL. For example, when USE_KEY_FRAMES is true, and FRAME_INTERVAL is set to \"2\", then every other key frame will be processed.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "FRAME_INTERVAL",
+          "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval. Must be greater than or equal to 0. If the frame_interval is set to 0 or 1, a frame_interval of 1 will be used, so that detections are performed on every frame. For a frame interval N > 1, every N-1 frames will be skipped. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.sampling.interval"
+        },
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
+          "type": "DOUBLE",
+          "defaultValue": "-2"
+        },
+        {
+          "name": "STREAMING_ACTIVITY_CONFIDENCE_THRESHOLD",
+          "description": "The minimum detection confidence score for reporting activity in a frame. Detections with confidence below this value will not cause activity to be reported, but they may become part of a track that is eventually reported at the end of a segment.",
+          "type": "FLOAT",
+          "defaultValue": "1.5"
+        },
+        {
+          "name": "MIN_GAP_BETWEEN_SEGMENTS",
+          "description": "In the context of videos, the minimum number of frames between segments which are not adjacent. Value must be greater than or equal to 1. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.gap"
+        },
+        {
+          "name": "TARGET_SEGMENT_LENGTH",
+          "description": "In the context of videos, the preferred length of segments which are to be processed by this algorithm. Value is expected to be greater than 10. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.target.length"
+        },
+        {
+          "name": "MIN_SEGMENT_LENGTH",
+          "description": "In the context of videos, the minimum length of a segment which will be processed by this algorithm. Value must be greater than 0. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.length"
+        },
+        {
+          "name": "MERGE_TRACKS",
+          "description": "In the context of videos, when set to true, attempt to merge tracks spanning segment boundaries. Default value is defined by the MPF properties file.",
+          "type": "BOOLEAN",
+          "propertiesKey": "detection.track.merging.enabled"
+        },
+        {
+          "name": "MIN_GAP_BETWEEN_TRACKS",
+          "description": "In the context of videos, similar tracks with less than this number of frames between them will be merged into a single track. If MERGE_TRACKS is false, this has no effect. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.track.min.gap"
+        },
+        {
+          "name": "MIN_TRACK_LENGTH",
+          "description": "In the context of videos, defines the minimum track length in frames. Tracks shorter than this minimum length will be silently discarded. Default value is defined by the MPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.track.minimum.length"
+        },
+        {
+          "name": "MIN_OVERLAP",
+          "description": "In the context of videos, the minimum overlap between detection bounding boxes for adjacent tracks to be considered continuous. Value is expected to be between 0 and 1. Default value is defined by the MPF properties file.",
+          "type": "DOUBLE",
+          "propertiesKey": "detection.track.overlap.threshold"
+        },
+        {
+          "name": "SEARCH_REGION_ENABLE_DETECTION",
+          "description": "Enable cropping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_X_DETECTION",
+          "description": "X coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_Y_DETECTION",
+          "description": "Y coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION",
+          "description": "X coordinate for bottom right corner of cropped frame. If negative, bottom right X of input media will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION",
+          "description": "Y coordinate for bottom right corner of cropped frame. If negative, bottom right Y of input media. will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "ROTATION",
+          "description": "Specifies the number of degrees in the clockwise direction that the media will be rotated. Only 90, 180 and 270 degrees are supported.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "HORIZONTAL_FLIP",
+          "description": "Specifies whether or not the original media is flipped. Rotation occurs before flipping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_ROTATE",
+          "description": "Specifies whether not to rotate media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_FLIP",
+          "description": "Specifies whether or not to flip media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "DO_EDGE",
+          "description": "Enable edge detection on adjacent frames. Runs a sobel filter on the current frame, then compares results from the previous frame. ",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "DO_HIST",
+          "description": "Enable histogram detection on adjacent frames. Checks the histogram correlation between two images.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "DO_CONT",
+          "description": "Enable content detection. Compares differences between adjacent frames based on HSV pixel values. Differences in hue, saturation, and value are averaged together.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "DO_THRS",
+          "description": "Enable threshold detection of a scene cut or a fade in/out based on color values. (Note: Appears to process frames individually)",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "EDGE_THRESHOLD",
+          "description": "Specifies the threshold for edge detection as the percentage of edge pixels that are different from the previous frame. Higher values reduce detection sensitivity. Threshold range 0-1. ",
+          "type": "DOUBLE",
+          "defaultValue": "0.75"
+        },
+        {
+          "name": "HIST_THRESHOLD",
+          "description": "Specifies the threshold for histogram detection as the degree of correlation between adjacent frames. Higher values increase detection sensitivity. Threshold range 0-1. ",
+          "type": "DOUBLE",
+          "defaultValue": "0.25"
+        },
+        {
+          "name": "CONT_THRESHOLD",
+          "description": "Specifies the threshold for content detection as a percentage of image pixels that are different from the previous frame. Higher values reduce detection sensitivity. Threshold range 0-1.  ",
+          "type": "DOUBLE",
+          "defaultValue": "0.30"
+        },
+        {
+          "name": "THRS_THRESHOLD",
+          "description": "Sets the minimum pixel color value for threshold detection. Range of this threshold appears to be dependent on image format (i.e. for common 32-bit images, color threshold ranges from 0-255). Otherwise, threshold values are from 0-1. Higher values increase detection sensitivity. ",
+          "type": "DOUBLE",
+          "defaultValue": "12.0"
+        },
+        {
+          "name": "MIN_PERCENT",
+          "description": "Specifies minimum percentage of a frame that falls below THRS_THRESHOLD in order to be detected as a scene fade out. Higher values reduce detection sensitivity.",
+          "type": "DOUBLE",
+          "defaultValue": "0.95"
+        },
+        {
+          "name": "MIN_SCENE",
+          "description": "Sets the minimum length (frames) required for a single scene. Negative values are equivalent to a minimum length of 0. ",
+          "type": "INT",
+          "defaultValue": "15"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "OCV SCENE CHANGE DETECTION ACTION",
+      "description": "Basic scene change detection with all parameters default",
+      "algorithm": "SceneChange",
+      "properties" : []
+        
+    
+    }
+  ],
+  "tasks": [
+    {
+      "name": "OCV SCENE CHANGE DETECTION TASK",
+      "description": "Basic scene change detection with all parameters default",
+      "actions": [
+        "OCV SCENE CHANGE DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "OCV SCENE CHANGE DETECTION PIPELINE",
+      "description": "Basic scene change detection with all parameters default",
+      "tasks": [
+        "OCV SCENE CHANGE DETECTION TASK"
+      ]
+    }
+  ]
+  
+}
+

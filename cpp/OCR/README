@@ -1,0 +1,38 @@
+# BUILD
+
+NOTE: To build and run this component, OpenCV 2.4.9 and
+      ffmpeg must be installed first.
+
+NOTE: You must build the MPF Component API library before
+      building this component. See the instructions
+      in the README in the "MPFComponentAPI/cplusplus"
+      directory.
+
+Run the following commands from within the "src" directory:
+
+mkdir build
+cd build
+cmake ..
+make
+
+
+# RUN STANDALONE
+
+To run this component, you must supply the path to
+a video file on the command line.
+
+From within the build directory:
+
+./sample_image_transformer
+
+./sample_image_transformer <ImageFile> ROTATE
+
+./sample_image_transformer <ImageFile> CROP
+
+./sample_image_transformer <ImageFile> FLIP
+
+
+# REGISTER PACKAGE
+
+As an admin user, upload ImageTransformerComponent.tar.gz
+to the Component Registration page. 
