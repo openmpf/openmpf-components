@@ -29,9 +29,11 @@ Included in this repository are the following C++ Components:
 - DLIB Face Detection
 - OpenCV LBP Face Detection
 - OpenALPR Text Detection
+- Video Scene Change Detection
 
 And the following Java Components:
 - Sphinx Speech Detection
+- Apache Tika Text Detection
 
 ## Where Am I?
 

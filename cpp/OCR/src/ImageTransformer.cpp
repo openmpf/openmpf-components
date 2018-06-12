@@ -315,10 +315,6 @@ void ImageTransformerComponent::Sharpen(cv::Mat &image, double weight = 1.0) {
 	cv::blur(image,blurred,cv::Size(2,2));
 	cv::threshold(blurred,mask,48,1,cv::THRESH_BINARY);
 	cv::multiply(blurred,mask,blurred);
-	
-	double d1,d2;
-	d1 = 2.0;
-	d2 = -1.0*weight;
 	cv::addWeighted(image,1.0+weight,blurred,-1.0,0,image);
 }
 
@@ -535,19 +531,10 @@ bool ImageTransformerComponent::comp_regex(const std::string & detection, std::s
 {
 	bool found = false;
      try {
-		//log_print("entered regex");
-        //  log_print(regstr);
 		boost::regex reg_matcher(regstr, boost::regex_constants::extended);
-		//log_print(detection);
 		boost::smatch m;
-		//log_print("Matching regex");
 		if (boost::regex_search(detection,m,reg_matcher)){
 			found = true;
-			//for (auto x:m){ log_print(x);}
-			
-		}
-		else{
-			//log_print("REGEX NOT MATCHED.");
 		}
      } catch (const boost::regex_error& e) {
 		std::stringstream ss;
