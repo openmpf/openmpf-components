@@ -38,9 +38,8 @@
 #include <dlfcn.h>
 #include <DlClassLoader.h>
 
-#include "Trackers.h"
-
 #include "include/DarknetInterface.h"
+#include "SPSCBoundedQueue.h"
 
 
 class DarknetDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
@@ -73,11 +72,24 @@ private:
 
     DarknetDl GetDarknetImpl(const MPF::COMPONENT::MPFJob &job);
 
+    struct VideoFrame {
+      int index;
+      cv::Mat frame;
+
+      VideoFrame() : index(0) {}
+      VideoFrame(int i, cv::Mat &f) 
+               : index(i), frame(std::move(f)) {}
+    };
+
     template <typename Tracker>
     MPF::COMPONENT::MPFDetectionError GetDetections(
             const MPF::COMPONENT::MPFVideoJob &job,
             std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
             Tracker &tracker);
+
+  template<typename Tracker, typename Entry>
+    void RunDetection(DarknetDl &detector, Tracker &tracker,
+                      SPSCBoundedQueue<Entry> &queue);
 
     static void ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
                                                 std::vector<MPF::COMPONENT::MPFImageLocation> &locations);

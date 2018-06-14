@@ -26,6 +26,11 @@
 
 #include <fstream>
 #include <unordered_map>
+#include <atomic>
+#include <iostream>
+#include <chrono>
+
+#include <thread>
 
 #include <log4cxx/xml/domconfigurator.h>
 
@@ -82,9 +87,41 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
     }
 }
 
+
+std::atomic<bool> StopEverything;
+
+template<typename Tracker, typename Entry>
+void DarknetDetection::RunDetection(DarknetDl &detector, Tracker &tracker,
+                                    SPSCBoundedQueue<Entry> &queue) {
+
+  std::vector<DarknetResult>detections;
+  // Take a frame out of the queue.
+  do {
+    Entry current_frame;
+    while (!queue.pop(current_frame) && !StopEverything) {
+      ;
+    }
+    // Process it
+    // std::cout << "popped frame #" << current_frame.index << std::endl;
+    // std::cout << "rows = " << current_frame.frame.rows << " cols = " << current_frame.frame.cols << std::endl;
+    tracker.ProcessFrameDetections(detector->Detect(current_frame.frame),
+                                   current_frame.index);
+  } while (!StopEverything);
+
+}
+
+
 template<typename Tracker>
-MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks,
+MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job,
+                                                  std::vector<MPFVideoTrack> &tracks,
                                                   Tracker &tracker) {
+
+
+    int queue_capacity = DetectionComponentUtils::GetProperty(
+        job.job_properties, "FRAME_QUEUE_CAPACITY", 4);
+
+    SPSCBoundedQueue<VideoFrame> frame_buf(queue_capacity);
+    StopEverything = false;
     try {
         DarknetDl detector = GetDarknetImpl(job);
 
@@ -94,14 +131,33 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
             return MPF_COULD_NOT_OPEN_DATAFILE;
         }
 
+        // Create the frame queue. The length of the queue is a job
+        // property.
+
+        // Run a thread to run the GPU detection, passing the function
+        // in as a lambda so the templates can be instantiated properly.
+        std::thread detection_thread([this, &detector, &tracker, &frame_buf]() { DarknetDetection::RunDetection(detector, tracker, frame_buf); });
+
         cv::Mat frame;
         int frame_number = -1;
 
         while (video_cap.Read(frame)) {
             frame_number++;
-            tracker.ProcessFrameDetections(detector->Detect(frame), frame_number);
+            // std::cout << "pushing frame #" << frame_number << std::endl;
+            // Put the frame in the queue
+            VideoFrame current_frame(frame_number, frame);
+            while (!frame_buf.push(current_frame)) {
+              ;
+            }
         }
 
+        // Wait for the queue to empty.
+        while(!frame_buf.isEmpty()) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        StopEverything = true;
+        detection_thread.join();
+        
         tracks = tracker.GetTracks();
 
         for (MPFVideoTrack &track : tracks) {
