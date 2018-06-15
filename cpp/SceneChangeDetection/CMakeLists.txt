@@ -57,5 +57,5 @@ target_link_libraries(sceneChange mpfComponentInterface mpfDetectionComponentApi
 configure_mpf_component(SceneChangeDetection TARGETS sceneChange)
 
 # Build sample executable
-add_executable(sample_caffe_detector sample_caffe_detector.cpp)
-target_link_libraries(sample_caffe_detector sceneChange)
+add_executable(sample_scene_change_detector sample_scene_change_detector.cpp)
+target_link_libraries(sample_scene_change_detector sceneChange)

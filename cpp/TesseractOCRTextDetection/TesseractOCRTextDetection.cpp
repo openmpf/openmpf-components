@@ -35,7 +35,7 @@
 #include <log4cxx/xml/domconfigurator.h>
 #include <algorithm>
 #include <cctype>
-#include "ImageTransformer.h"
+#include "TesseractOCRTextDetection.h"
 #include "detectionComponentUtils.h"
 #include <fstream>
 #include "JSON.h"
@@ -52,7 +52,7 @@ using log4cxx::xml::DOMConfigurator;
  * Called during Init.
  * Initialize default parameters.
  */
- void ImageTransformerComponent::SetDefaultParameters() {
+ void TesseractOCRTextDetection::SetDefaultParameters() {
     ocr_fset.sharpen = 1.0;
     ocr_fset.scale = 2.4; 
     ocr_fset.threshold_check = true;
@@ -71,7 +71,7 @@ using log4cxx::xml::DOMConfigurator;
  * Called during Init.
  * Copy over parameters values from .ini file.
  */
-void ImageTransformerComponent::SetReadConfigParameters() {
+void TesseractOCRTextDetection::SetReadConfigParameters() {
 
     if(parameters.contains("SHARPEN")) {
         ocr_fset.sharpen = parameters["SHARPEN"].toDouble();
@@ -114,8 +114,8 @@ void ImageTransformerComponent::SetReadConfigParameters() {
 /*
  * Counts whitespace, alphanumeric, non-english characters in string.
  */
-ImageTransformerComponent::OCR_char_stats ImageTransformerComponent::char_count(std::string s, std::string white_space, std::string eng_symbol, std::string eng_num ){
-    ImageTransformerComponent::OCR_char_stats stats = {
+TesseractOCRTextDetection::OCR_char_stats TesseractOCRTextDetection::char_count(std::string s, std::string white_space, std::string eng_symbol, std::string eng_num ){
+    TesseractOCRTextDetection::OCR_char_stats stats = {
         0,  //alphabet_count
         0,  //num_count
         0,  //whspace_count
@@ -154,7 +154,7 @@ ImageTransformerComponent::OCR_char_stats ImageTransformerComponent::char_count(
  * Conduct filtering of results.
  * Reject/accept text based on char frequency/histogram comparison to english language.
  */
-std::string ImageTransformerComponent::check_string(std::string s, ImageTransformerComponent::OCR_filter_settings ocrset){
+std::string TesseractOCRTextDetection::check_string(std::string s, TesseractOCRTextDetection::OCR_filter_settings ocrset){
     bool num_only_ok = ocrset.num_only_ok;
     bool threshold_check = ocrset.threshold_check;
     bool hist_check = ocrset.hist_check;
@@ -203,7 +203,7 @@ std::string ImageTransformerComponent::check_string(std::string s, ImageTransfor
              eng_hist, 1, histSize, ranges);
     
 
-    ImageTransformerComponent::OCR_char_stats results = char_count( s, white_space, eng_symbol, eng_num );
+    TesseractOCRTextDetection::OCR_char_stats results = char_count( s, white_space, eng_symbol, eng_num );
     int alphabet_count=results.alphabet_count;
     int num_count=results.num_count;
     int whspace_count=results.whspace_count;
@@ -260,7 +260,7 @@ std::string ImageTransformerComponent::check_string(std::string s, ImageTransfor
 
 }
 
-bool ImageTransformerComponent::Init() {
+bool TesseractOCRTextDetection::Init() {
 	
 	// Determine where the executable is running
 	std::string run_dir = GetRunDirectory();
@@ -310,7 +310,7 @@ bool ImageTransformerComponent::Init() {
 /*
  * Sharpen image.
  */
-void ImageTransformerComponent::Sharpen(cv::Mat &image, double weight = 1.0) {
+void TesseractOCRTextDetection::Sharpen(cv::Mat &image, double weight = 1.0) {
 	cv::Mat blurred, mask;
 	cv::blur(image,blurred,cv::Size(2,2));
 	cv::threshold(blurred,mask,48,1,cv::THRESH_BINARY);
@@ -318,7 +318,7 @@ void ImageTransformerComponent::Sharpen(cv::Mat &image, double weight = 1.0) {
 	cv::addWeighted(image,1.0+weight,blurred,-1.0,0,image);
 }
 
-bool ImageTransformerComponent::Close() {
+bool TesseractOCRTextDetection::Close() {
 
 	return true;
 }
@@ -362,7 +362,7 @@ std::string clean_whitespace(std::string input)
 /*
  * Split a string into a vector of tokens (for split-search).
  */
-std::vector<std::string> ImageTransformerComponent::get_tokens(std::string str) {
+std::vector<std::string> TesseractOCRTextDetection::get_tokens(std::string str) {
     vector<string> dt;
     stringstream ss;
     string tmp; 
@@ -378,7 +378,7 @@ std::vector<std::string> ImageTransformerComponent::get_tokens(std::string str) 
  * Reads JSON Tag filter file.
  * Setup tags for split-string and regex filters.
  */
-std::map<std::string,std::map<std::string,std::vector<std::string>>> ImageTransformerComponent::parse_json(std::string jsonfile_name)
+std::map<std::string,std::map<std::string,std::vector<std::string>>> TesseractOCRTextDetection::parse_json(std::string jsonfile_name)
 {
 	std::map<std::string,std::map<std::string,std::vector<std::string>>> json_kvs;
 	std::ifstream ifs(jsonfile_name);
@@ -514,7 +514,7 @@ std::map<std::string,std::map<std::string,std::vector<std::string>>> ImageTransf
 /*
  * Verify that two strings are identical (ignore letter case).
  */
-bool ImageTransformerComponent::comp_strcmp(const std::string & strHaystack, const std::string & strNeedle)
+bool TesseractOCRTextDetection::comp_strcmp(const std::string & strHaystack, const std::string & strNeedle)
 {
 	auto it = std::search(
     strHaystack.begin(), strHaystack.end(),
@@ -527,7 +527,7 @@ bool ImageTransformerComponent::comp_strcmp(const std::string & strHaystack, con
 /*
  * Check if detection string contains regstr pattern.
  */
-bool ImageTransformerComponent::comp_regex(const std::string & detection, std::string regstr)
+bool TesseractOCRTextDetection::comp_regex(const std::string & detection, std::string regstr)
 {
 	bool found = false;
      try {
@@ -546,7 +546,7 @@ bool ImageTransformerComponent::comp_regex(const std::string & detection, std::s
 /*
  * Regex error handling.
  */
-std::string ImageTransformerComponent::parseRegexCode(boost::regex_constants::error_type etype) {
+std::string TesseractOCRTextDetection::parseRegexCode(boost::regex_constants::error_type etype) {
     switch (etype) {
     case boost::regex_constants::error_collate:
         return "error_collate: invalid collating element request";
@@ -579,25 +579,25 @@ std::string ImageTransformerComponent::parseRegexCode(boost::regex_constants::er
     }
 }
 
-void ImageTransformerComponent::log_print(string text)
+void TesseractOCRTextDetection::log_print(string text)
 {
 	LOG4CXX_INFO(hw_logger_, text.c_str() );
 	cout << text << endl;
 }
 
-void ImageTransformerComponent::log_print(const char* text)
+void TesseractOCRTextDetection::log_print(const char* text)
 {
 	string t2(text);
 	log_print(t2);
 }
 
-void ImageTransformerComponent::log_print(const wchar_t* text)
+void TesseractOCRTextDetection::log_print(const wchar_t* text)
 {
 	wstring temp(text);
 	log_print(string(temp.begin(),temp.end()));
 }
 
-void ImageTransformerComponent::log_print(std::wstring text)
+void TesseractOCRTextDetection::log_print(std::wstring text)
 {
 	log_print(string(text.begin(),text.end()));
 }
@@ -629,7 +629,7 @@ std::string random_string( size_t length )
 /*
  * Run tesseract ocr on refined image.
  */
-bool ImageTransformerComponent::get_tesseract_detections(const MPFImageJob &job, std::string &detection, cv::Mat &original, double weight, int psm, std::string lang)
+bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job, std::string &detection, cv::Mat &original, double weight, int psm, std::string lang)
 {
 	string run_dir = GetRunDirectory();
     if (run_dir.empty()) {
@@ -726,7 +726,7 @@ T &replace (
     return str;
 }
 
-std::string ImageTransformerComponent::fix_regex(std::string inreg)
+std::string TesseractOCRTextDetection::fix_regex(std::string inreg)
 {
 	for(auto const& x : regTable)
 	{
@@ -752,7 +752,7 @@ bool is_only_ascii_whitespace( const std::string& str )
 /*
  * Performs regex-tagging of ocr text detection.
  */
-std::string ImageTransformerComponent::search_regex(std::string ocr_detections, std::map<std::string,std::vector<std::string>> json_kvs_regex)
+std::string TesseractOCRTextDetection::search_regex(std::string ocr_detections, std::map<std::string,std::vector<std::string>> json_kvs_regex)
 {
 	if(json_kvs_regex.size() == 0) return "";
 
@@ -794,7 +794,7 @@ std::string ImageTransformerComponent::search_regex(std::string ocr_detections, 
 /*
  * Performs split-string-tagging of ocr text detection.
  */
-std::string ImageTransformerComponent::search_string_split(std::vector<std::string> tokenized, std::map<std::string,std::vector<std::string>> json_kvs_string)
+std::string TesseractOCRTextDetection::search_string_split(std::vector<std::string> tokenized, std::map<std::string,std::vector<std::string>> json_kvs_string)
 {
 	if(json_kvs_string.size() == 0) return "";
 	string found_tags_string = "";
@@ -872,7 +872,7 @@ std::string ImageTransformerComponent::search_string_split(std::vector<std::stri
 /*
  * Performs full-string tagging of ocr text detection.
  */
-std::string ImageTransformerComponent::search_string(std::string ocr_detections, std::map<std::string,std::vector<std::string>> json_kvs_string)
+std::string TesseractOCRTextDetection::search_string(std::string ocr_detections, std::map<std::string,std::vector<std::string>> json_kvs_string)
 {
 	if(json_kvs_string.size() == 0) return "";
 	string found_tags_string = "";
@@ -911,7 +911,7 @@ std::string ImageTransformerComponent::search_string(std::string ocr_detections,
 
 
 
-MPFDetectionError ImageTransformerComponent::GetDetections(const MPFImageJob &job,
+MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &job,
 														   std::vector <MPFImageLocation> &locations)
 {
 	std::cout << "[" << job.job_name << "] Processing \"" << job.data_uri << "\"." << std::endl;
@@ -953,7 +953,7 @@ MPFDetectionError ImageTransformerComponent::GetDetections(const MPFImageJob &jo
         ocr_fset.vowel_min = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MIN",ocr_fset.vowel_min);
         ocr_fset.vowel_max = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MAX",ocr_fset.vowel_max);
         ocr_fset.correl_limit = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MIN_HIST_SCORE",ocr_fset.correl_limit);     
-        ocr_detections = ImageTransformerComponent::check_string(ocr_detections,ocr_fset);
+        ocr_detections = TesseractOCRTextDetection::check_string(ocr_detections,ocr_fset);
 
 	if(!DE)
 	{
@@ -997,7 +997,7 @@ MPFDetectionError ImageTransformerComponent::GetDetections(const MPFImageJob &jo
 	return MPF_DETECTION_SUCCESS;
 }
 
-bool ImageTransformerComponent::Supports(MPFDetectionDataType data_type) {
+bool TesseractOCRTextDetection::Supports(MPFDetectionDataType data_type) {
 
 	if (data_type == MPFDetectionDataType::IMAGE) {
 		return true;
@@ -1005,7 +1005,7 @@ bool ImageTransformerComponent::Supports(MPFDetectionDataType data_type) {
 	return false;
 }
 
-MPF_COMPONENT_CREATOR(ImageTransformerComponent);
+MPF_COMPONENT_CREATOR(TesseractOCRTextDetection);
 MPF_COMPONENT_DELETER();
 
 

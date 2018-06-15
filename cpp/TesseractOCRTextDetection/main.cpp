@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include "ImageTransformer.h"
+#include "TesseractOCRTextDetection.h"
 #include "MPFComponentInterface.h"
 
 /**
@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
     //SetRunDirectory(".");
     // Instantiate the component
-    ImageTransformerComponent im;
+    TesseractOCRTextDetection im;
     im.SetRunDirectory("./plugin");
     im.Init();
     // Declare the vector of image locations to be filled in by the

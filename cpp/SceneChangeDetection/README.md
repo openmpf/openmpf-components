@@ -1,3 +1,3 @@
 # Overview
 
-This repository contains source code and models data for the MPF caffe object detection component.
+This repository contains source code for the OpenMPF video scene change detection component.

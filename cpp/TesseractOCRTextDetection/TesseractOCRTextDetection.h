@@ -24,8 +24,8 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef IMAGE_TRANSFORMER_COMPONENT_H
-#define IMAGE_TRANSFORMER_COMPONENT_H
+#ifndef OPENMPF_COMPONENTS_TESSERACTOCRTEXTDETECTION_H
+#define OPENMPF_COMPONENTS_TESSERACTOCRTEXTDETECTION_H
 
 #include "adapters/MPFImageDetectionComponentAdapter.h"
 #include <MPFImageReader.h>
@@ -42,11 +42,11 @@ namespace MPF {
 
 namespace COMPONENT {
 
-class ImageTransformerComponent : public MPFImageDetectionComponentAdapter {
+class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
   public:
-    ImageTransformerComponent() = default;
-    ~ImageTransformerComponent() = default;
+    TesseractOCRTextDetection() = default;
+    ~TesseractOCRTextDetection() = default;
 
     struct OCR_char_stats{
         int alphabet_count;

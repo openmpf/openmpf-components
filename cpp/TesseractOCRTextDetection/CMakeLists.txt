@@ -27,13 +27,13 @@
 cmake_minimum_required(VERSION 3.6)
 project(TesseractOCR)
 ADD_DEFINITIONS("-std=c++11")
-include(../../ComponentSetup.cmake)
+include(../ComponentSetup.cmake)
 
 set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
 message("Package in ${PACKAGE_DIR}")
 file(MAKE_DIRECTORY ${PACKAGE_DIR}/bin)
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/bin/tessdata DESTINATION ${PACKAGE_DIR}/bin/)
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/plugin-files/data/tessdata DESTINATION ${PACKAGE_DIR}/bin/)
 file(COPY /usr/local/bin/tesseract DESTINATION ${PACKAGE_DIR}/bin/)
 
 
@@ -63,7 +63,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 
 
 set(OCR_SOURCE_FILES
-        ImageTransformer.cpp ImageTransformer.h JSON.cpp JSONValue.cpp JSON.h JSONValue.h)
+        TesseractOCRTextDetection.cpp TesseractOCRTextDetection.h JSON.cpp JSONValue.cpp JSON.h JSONValue.h)
 
 
 
