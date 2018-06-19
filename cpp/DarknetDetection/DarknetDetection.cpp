@@ -27,7 +27,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <atomic>
-#include <iostream>
+//#include <iostream>
 #include <chrono>
 
 #include <thread>
@@ -88,25 +88,26 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
 }
 
 
-std::atomic<bool> StopEverything;
-
 template<typename Tracker, typename Entry>
 void DarknetDetection::RunDetection(DarknetDl &detector, Tracker &tracker,
-                                    SPSCBoundedQueue<Entry> &queue) {
+                                    MPF::COMPONENT::SPSCBoundedQueue<Entry> &queue) {
 
   std::vector<DarknetResult>detections;
   // Take a frame out of the queue.
-  do {
+  while (1) {
     Entry current_frame;
-    while (!queue.pop(current_frame) && !StopEverything) {
-      ;
+    while (!queue.pop(current_frame)) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    }
+    if (current_frame.stop_flag) {
+      // We're done
+      break;
     }
     // Process it
-    // std::cout << "popped frame #" << current_frame.index << std::endl;
-    // std::cout << "rows = " << current_frame.frame.rows << " cols = " << current_frame.frame.cols << std::endl;
     tracker.ProcessFrameDetections(detector->Detect(current_frame.frame),
                                    current_frame.index);
-  } while (!StopEverything);
+  };
 
 }
 
@@ -120,8 +121,8 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job,
     int queue_capacity = DetectionComponentUtils::GetProperty(
         job.job_properties, "FRAME_QUEUE_CAPACITY", 4);
 
-    SPSCBoundedQueue<VideoFrame> frame_buf(queue_capacity);
-    StopEverything = false;
+    MPF::COMPONENT::SPSCBoundedQueue<VideoFrame> frame_buf(queue_capacity);
+ 
     try {
         DarknetDl detector = GetDarknetImpl(job);
 
@@ -143,19 +144,18 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job,
 
         while (video_cap.Read(frame)) {
             frame_number++;
-            // std::cout << "pushing frame #" << frame_number << std::endl;
             // Put the frame in the queue
             VideoFrame current_frame(frame_number, frame);
             while (!frame_buf.push(current_frame)) {
-              ;
+              std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         }
 
-        // Wait for the queue to empty.
-        while(!frame_buf.isEmpty()) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        // Send a stop frame to tell the consumer it is done.
+        VideoFrame stop_frame(true);
+        while (!frame_buf.push(stop_frame)) {
+          ;
         }
-        StopEverything = true;
         detection_thread.join();
         
         tracks = tracker.GetTracks();

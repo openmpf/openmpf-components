@@ -74,11 +74,13 @@ private:
 
     struct VideoFrame {
       int index;
+      bool stop_flag;
       cv::Mat frame;
 
-      VideoFrame() : index(0) {}
-      VideoFrame(int i, cv::Mat &f) 
-               : index(i), frame(std::move(f)) {}
+      VideoFrame() : index(0), stop_flag(false) {}
+      VideoFrame(bool flag) : stop_flag(flag) {}
+      VideoFrame(int i, cv::Mat &f) : index(i), stop_flag(false), frame(std::move(f)) {}
+      VideoFrame(int i, bool flag, cv::Mat &f) : index(i), stop_flag(flag), frame(f) {}
     };
 
     template <typename Tracker>
@@ -89,7 +91,7 @@ private:
 
   template<typename Tracker, typename Entry>
     void RunDetection(DarknetDl &detector, Tracker &tracker,
-                      SPSCBoundedQueue<Entry> &queue);
+                      MPF::COMPONENT::SPSCBoundedQueue<Entry> &queue);
 
     static void ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
                                                 std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
