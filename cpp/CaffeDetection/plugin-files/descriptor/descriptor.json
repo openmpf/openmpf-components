@@ -1,7 +1,7 @@
 {
   "componentName": "CaffeDetection",
-  "componentVersion": "2.0.0",
-  "middlewareVersion" : "2.0.0",
+  "componentVersion": "2.1.0",
+  "middlewareVersion": "2.1.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/CaffeDetection/lib/libcaffe.so",
   "environmentVariables": [
@@ -233,7 +233,8 @@
           "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0.0, 255.0].",
           "type": "FLOAT",
           "defaultValue": "0.0"
-        }      ]
+        }
+      ]
     }
   },
   "actions": [
@@ -261,16 +262,17 @@
       "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
       "algorithm": "CAFFE",
       "properties": [
-        { "name" : "MODEL_NAME",
-          "value" : "googlenet"
+        {
+          "name": "MODEL_NAME",
+          "value": "googlenet"
         },
         {
-          "name" : "ACTIVATION_LAYER_LIST",
-          "value" : "loss3/classifier"
+          "name": "ACTIVATION_LAYER_LIST",
+          "value": "loss3/classifier"
         },
         {
-          "name" : "SPECTRAL_HASH_FILE_LIST",
-          "value" : "${MPF_HOME}/plugins/CaffeDetection/models/bvlc_googlenet_spectral_hash.json"
+          "name": "SPECTRAL_HASH_FILE_LIST",
+          "value": "${MPF_HOME}/plugins/CaffeDetection/models/bvlc_googlenet_spectral_hash.json"
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",
