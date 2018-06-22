@@ -4,7 +4,12 @@
   "middlewareVersion": "2.1.0",
   "sourceLanguage": "java",
   "batchLibrary": "mpf-sphinx-speech-detection-component-2.1.0.jar",
-  "environmentVariables": [],
+  "environmentVariables": [
+    {
+      "name": "LD_LIBRARY_PATH",
+      "value": "${MPF_HOME}/lib:${LD_LIBRARY_PATH}"
+    }
+  ],
   "algorithm": {
     "name": "SPHINX",
     "description": "Detects and transcribes English language speech in audio and video files.",
