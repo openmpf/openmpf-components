@@ -28,66 +28,68 @@
 #ifndef OPENMPF_COMPONENTS_TRACKERS_H
 #define OPENMPF_COMPONENTS_TRACKERS_H
 
-#include <unordered_map>
-#include <string>
+#include <utility>
 #include <vector>
 
 #include <opencv2/core.hpp>
 
 #include <MPFDetectionComponent.h>
+#include <BaseTracker.h>
+#include <RegionOverlapTracker.h>
 
 #include "include/DarknetInterface.h"
 
 
-class SingleDetectionPerTrackTracker {
+namespace TrackingHelpers {
+    MPF::COMPONENT::MPFImageLocation CreateImageLocation(int num_classes_per_region, DarknetResult &detection);
+
+    void CombineImageLocations(const MPF::COMPONENT::MPFImageLocation &new_img_loc,
+                               MPF::COMPONENT::MPFImageLocation &existing_img_loc);
+}
+
+
+class PreprocessorTracker : public MPF::COMPONENT::BaseTracker {
 public:
-    explicit SingleDetectionPerTrackTracker(int num_classes_per_region);
+    void ProcessFrameDetections(const std::vector<DarknetResult> &new_detections, int frame_number);
+
+
+protected:
+    bool IsSameTrack(const MPF::COMPONENT::MPFImageLocation &new_loc,
+                     int frame_number,
+                     const MPF::COMPONENT::MPFVideoTrack &existing_track) override;
+
+    MPF::COMPONENT::MPFVideoTrack CreateTrack(MPF::COMPONENT::MPFImageLocation &&img_loc,
+                                              int frame_number) override;
+
+    void AddToTrack(MPF::COMPONENT::MPFImageLocation &&new_img_loc,
+                    int frame_number,
+                    MPF::COMPONENT::MPFVideoTrack &existing_track) override;
+};
+
+
+
+class DefaultTracker : public MPF::COMPONENT::RegionOverlapTracker {
+public:
+    DefaultTracker(int num_classes_per_region, double min_overlap);
 
     void ProcessFrameDetections(std::vector<DarknetResult> &&new_detections, int frame_number);
 
-    // Returns tracks and resets the tracker to its initial state.
-    std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks();
+protected:
+    bool OverlappingDetectionsAreSameTrack(const MPF::COMPONENT::MPFImageLocation &new_loc,
+                                           int frame_number,
+                                           const MPF::COMPONENT::MPFVideoTrack &existing_track) override;
 
-    static MPF::COMPONENT::MPFImageLocation CreateImageLocation(int num_classes_per_region, DarknetResult &detection);
+    MPF::COMPONENT::MPFVideoTrack CreateTrack(MPF::COMPONENT::MPFImageLocation &&img_loc,
+                                              int frame_number) override;
+
+    void AddToTrack(MPF::COMPONENT::MPFImageLocation &&new_img_loc,
+                    int frame_number,
+                    MPF::COMPONENT::MPFVideoTrack &existing_track) override;
 
 private:
     const int num_classes_per_region_;
-    std::vector<MPF::COMPONENT::MPFVideoTrack> tracks_;
 };
 
 
-class PreprocessorTracker {
-public:
-
-    void ProcessFrameDetections(const std::vector<DarknetResult> &new_detections, int frame_number);
-
-    // Returns tracks and resets the tracker to its initial state.
-    std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks();
-
-    static void CombineImageLocation(const cv::Rect &rect, float prob,
-                                     MPF::COMPONENT::MPFImageLocation &image_location);
-
-private:
-    // standard library does not define a hash function for pairs
-    class PairHasher {
-    public:
-        size_t operator()(const std::pair<int, std::string> &pair) const;
-
-    private:
-        std::hash<int> int_hasher_;
-        std::hash<std::string> string_hasher_;
-    };
-
-    std::unordered_map<std::pair<int, std::string>, // Key is { track.stop_frame, object_type }
-                       MPF::COMPONENT::MPFVideoTrack, PairHasher> tracks_;
-
-    void AddNewTrack(const cv::Rect &detection_rect, float prob, const std::string &type, int frame_number);
-
-    void AddNewImageLocationToTrack(const cv::Rect &rect, float prob, const std::string &type,
-                                    int frame_number, MPF::COMPONENT::MPFVideoTrack &track);
-
-    static void CombineImageLocation(const cv::Rect &rect, float prob,
-                                     int frame_number, MPF::COMPONENT::MPFVideoTrack &track);
-};
 
 #endif //OPENMPF_COMPONENTS_TRACKERS_H
