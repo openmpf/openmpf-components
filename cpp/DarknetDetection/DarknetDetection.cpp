@@ -92,22 +92,22 @@ template<typename Tracker, typename Entry>
 void DarknetDetection::RunDetection(DarknetDl &detector, Tracker &tracker,
                                     MPF::COMPONENT::SPSCBoundedQueue<Entry> &queue) {
 
-  std::vector<DarknetResult>detections;
-  // Take a frame out of the queue.
-  while (1) {
-    Entry current_frame;
-    while (!queue.pop(current_frame)) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::vector<DarknetResult>detections;
+    // Take a frame out of the queue.
+    while (1) {
+        Entry current_frame;
+        while (!queue.pop(current_frame)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    }
-    if (current_frame.stop_flag) {
-      // We're done
-      break;
-    }
-    // Process it
-    tracker.ProcessFrameDetections(detector->Detect(current_frame.frame),
-                                   current_frame.index);
-  };
+        }
+        if (current_frame.stop_flag) {
+            // We're done
+            break;
+        }
+        // Process it
+        tracker.ProcessFrameDetections(detector->Detect(current_frame.frame),
+                                       current_frame.index);
+    };
 
 }
 
@@ -147,14 +147,14 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job,
             // Put the frame in the queue
             VideoFrame current_frame(frame_number, frame);
             while (!frame_buf.push(current_frame)) {
-              std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         }
 
         // Send a stop frame to tell the consumer it is done.
         VideoFrame stop_frame(true);
         while (!frame_buf.push(stop_frame)) {
-          ;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         detection_thread.join();
         
