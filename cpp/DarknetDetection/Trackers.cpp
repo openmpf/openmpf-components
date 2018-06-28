@@ -24,34 +24,20 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include "Trackers.h"
+
+#include <unordered_map>
 
 #include <opencv2/core.hpp>
 
-#include "Trackers.h"
 
 using namespace MPF::COMPONENT;
 
-
-SingleDetectionPerTrackTracker::SingleDetectionPerTrackTracker(int num_classes_per_region)
-        : num_classes_per_region_(num_classes_per_region) {
-}
-
-
-void SingleDetectionPerTrackTracker::ProcessFrameDetections(
-        std::vector<DarknetResult> &&new_detections, int frame_number) {
-
-    for (auto &darknet_result : new_detections) {
-        MPFImageLocation location = CreateImageLocation(num_classes_per_region_, darknet_result);
-
-        MPFVideoTrack track(frame_number, frame_number, location.confidence, location.detection_properties);
-        track.frame_locations.emplace(frame_number, std::move(location));
-        tracks_.push_back(std::move(track));
-    }
-}
-
-
-
 namespace {
+    cv::Rect to_rect(const MPFImageLocation &img_loc) {
+        return { img_loc.x_left_upper, img_loc.y_left_upper, img_loc.width, img_loc.height };
+    }
+
     bool order_by_descending_first_then_by_ascending_second(const std::pair<float, std::string> &left,
                                                             const std::pair<float, std::string> &right) {
         // Swap order of left.first and right.first in first tie argument to get descending confidence
@@ -61,8 +47,7 @@ namespace {
 }
 
 
-MPFImageLocation SingleDetectionPerTrackTracker::CreateImageLocation(int num_classes_per_region,
-                                                                     DarknetResult &detection) {
+MPFImageLocation TrackingHelpers::CreateImageLocation(int num_classes_per_region, DarknetResult &detection) {
     auto &object_probs = detection.object_type_probs;
     int num_items_to_get = std::min(num_classes_per_region, static_cast<int>(object_probs.size()));
     auto last_item_iter = object_probs.begin() + num_items_to_get;
@@ -98,105 +83,123 @@ MPFImageLocation SingleDetectionPerTrackTracker::CreateImageLocation(int num_cla
     });
 }
 
-std::vector<MPF::COMPONENT::MPFVideoTrack> SingleDetectionPerTrackTracker::GetTracks() {
-    std::vector<MPFVideoTrack> tmp;
-    tmp.swap(tracks_);
-    return tmp;
+
+void TrackingHelpers::CombineImageLocations(const MPFImageLocation &new_img_loc, MPFImageLocation &existing_img_loc) {
+    cv::Rect superset_region = to_rect(existing_img_loc) | to_rect(new_img_loc);
+
+    existing_img_loc.x_left_upper = superset_region.x;
+    existing_img_loc.y_left_upper = superset_region.y;
+    existing_img_loc.width = superset_region.width;
+    existing_img_loc.height = superset_region.height;
+    // Calculate the probability that there was a detection in the existing image location OR a detection in detection_rect.
+    // The probability of at least one of two independent non-mutually exclusive events can be calculated as:
+    // P(A or B) = P(A) + P(B) - P(A) * P(B)
+    float existing_confidence = existing_img_loc.confidence;
+    float new_confidence = new_img_loc.confidence;
+    existing_img_loc.confidence = existing_confidence + new_confidence - existing_confidence * new_confidence;
 }
 
 
 
 
 void PreprocessorTracker::ProcessFrameDetections(const std::vector<DarknetResult> &new_detections, int frame_number) {
-    for (const DarknetResult &location : new_detections) {
-        for (const std::pair<float, std::string> &class_prob : location.object_type_probs) {
-            // Check if there is more than one box in the current frame that has the same classification.
-            auto current_frame_track_iter = tracks_.find({frame_number, class_prob.second});
-            if (current_frame_track_iter != tracks_.cend()) {
-                CombineImageLocation(location.detection_rect, class_prob.first, frame_number,
-                                     current_frame_track_iter->second);
-                continue;
-            }
-            // Check if the same type of object was found in the previous frame.
-            auto previous_frame_track_iter = tracks_.find({frame_number - 1, class_prob.second});
-            if (previous_frame_track_iter != tracks_.cend()) {
-                AddNewImageLocationToTrack(location.detection_rect, class_prob.first, class_prob.second, frame_number,
-                                           previous_frame_track_iter->second);
-                continue;
-            }
-            AddNewTrack(location.detection_rect, class_prob.first, class_prob.second, frame_number);
+    for (auto &darknet_result : new_detections) {
+        auto &rect = darknet_result.detection_rect;
+        for (const std::pair<float, std::string> &class_prob : darknet_result.object_type_probs) {
+            BaseTracker::ProcessFrameDetections(
+                    MPFImageLocation(rect.x, rect.y, rect.width, rect.height, class_prob.first,
+                                     { {"CLASSIFICATION", class_prob.second} }),
+                    frame_number);
         }
     }
 }
 
 
-void PreprocessorTracker::AddNewTrack(const cv::Rect &rect, float prob, const std::string &type,
-                                      int frame_number) {
+bool PreprocessorTracker::IsSameTrack(const MPFImageLocation &new_loc, int frame_number,
+                                      const MPFVideoTrack &existing_track) {
+    return new_loc.detection_properties.at("CLASSIFICATION")
+           == existing_track.detection_properties.at("CLASSIFICATION");
+}
 
-    MPFVideoTrack track(frame_number, frame_number, prob, { {"CLASSIFICATION", type} });
-    track.frame_locations.emplace(
-            frame_number,
-            MPFImageLocation(rect.x, rect.y, rect.width, rect.height, prob, { {"CLASSIFICATION", type} }));
-
-    tracks_.emplace(std::make_pair(frame_number, type), std::move(track));
+MPFVideoTrack PreprocessorTracker::CreateTrack(MPFImageLocation &&img_loc, int frame_number) {
+    MPFVideoTrack track(frame_number, frame_number, img_loc.confidence,
+                        { { "CLASSIFICATION", img_loc.detection_properties.at("CLASSIFICATION")} });
+    track.frame_locations.emplace(frame_number, std::move(img_loc));
+    return track;
 }
 
 
-void PreprocessorTracker::AddNewImageLocationToTrack(const cv::Rect &rect, float prob, const std::string &type,
-                                                     int frame_number, MPFVideoTrack &track) {
-    track.frame_locations.emplace(
-            frame_number,
-            MPFImageLocation(rect.x, rect.y, rect.width, rect.height, prob, Properties{ {"CLASSIFICATION", type} }));
-
-    track.confidence = std::max(track.confidence, prob);
-    track.stop_frame = frame_number;
-
-    // Move track to its new key in tracks_;
-    tracks_.emplace(std::make_pair(frame_number, type), std::move(track));
-    tracks_.erase({frame_number - 1, type});
-}
-
-
-void PreprocessorTracker::CombineImageLocation(const cv::Rect &rect, float prob, int frame_number,
-                                               MPFVideoTrack &track) {
-    auto &frame_location = track.frame_locations.at(frame_number);
-    CombineImageLocation(rect, prob, frame_location);
-    track.confidence = std::max(track.confidence, frame_location.confidence);
-}
-
-
-
-void PreprocessorTracker::CombineImageLocation(const cv::Rect &rect, float prob, MPFImageLocation &image_location) {
-
-    cv::Rect existing_detection_rect(image_location.x_left_upper, image_location.y_left_upper,
-                                     image_location.width, image_location.height);
-    cv::Rect superset_region = rect | existing_detection_rect;
-
-    image_location.x_left_upper = superset_region.x;
-    image_location.y_left_upper = superset_region.y;
-    image_location.width = superset_region.width;
-    image_location.height = superset_region.height;
-    // Calculate the probability that there was a detection in the existing image location OR a detection in detection_rect.
-    // The probability of at least one of two independent non-mutually exclusive events can be calculated as:
-    // P(A or B) = P(A) + P(B) - P(A) * P(B)
-    image_location.confidence = image_location.confidence + prob - image_location.confidence * prob;
-}
-
-
-std::vector<MPF::COMPONENT::MPFVideoTrack> PreprocessorTracker::GetTracks() {
-    std::vector<MPFVideoTrack> results;
-    results.reserve(tracks_.size());
-
-    for (auto &pair : tracks_) {
-        results.push_back(std::move(pair.second));
+void PreprocessorTracker::AddToTrack(MPFImageLocation &&new_img_loc, int frame_number,
+                                     MPFVideoTrack &existing_track) {
+    auto it = existing_track.frame_locations.find(frame_number);
+    bool has_detection_in_current_frame = it != existing_track.frame_locations.end();
+    if (has_detection_in_current_frame) {
+        auto &existing_img_loc = it->second;
+        TrackingHelpers::CombineImageLocations(new_img_loc, existing_img_loc);
+        existing_track.confidence = std::max(existing_track.confidence, existing_img_loc.confidence);
     }
-    tracks_.clear();
-    return results;
+    else {
+        existing_track.confidence = std::max(existing_track.confidence, new_img_loc.confidence);
+        existing_track.frame_locations.emplace(frame_number, std::move(new_img_loc));
+        existing_track.stop_frame = frame_number;
+    }
 }
 
 
-size_t PreprocessorTracker::PairHasher::operator()(const std::pair<int, std::string> &pair) const {
-    auto h1 = int_hasher_(pair.first);
-    auto h2 = string_hasher_(pair.second);
-    return h1 ^ (h2 << 1);
+
+
+DefaultTracker::DefaultTracker(int num_classes_per_region, double min_overlap)
+    : RegionOverlapTracker(min_overlap)
+    , num_classes_per_region_(num_classes_per_region)
+{
+
 }
+
+bool DefaultTracker::OverlappingDetectionsAreSameTrack(const MPFImageLocation &new_loc, int frame_number,
+                                                       const MPFVideoTrack &existing_track) {
+    return new_loc.detection_properties.at("CLASSIFICATION")
+           == existing_track.detection_properties.at("CLASSIFICATION");
+}
+
+
+MPFVideoTrack DefaultTracker::CreateTrack(MPFImageLocation &&img_loc, int frame_number) {
+    MPFVideoTrack track(frame_number, frame_number, img_loc.confidence,
+                        { { "CLASSIFICATION", img_loc.detection_properties.at("CLASSIFICATION") } });
+
+    auto class_list_iter = img_loc.detection_properties.find("CLASSIFICATION LIST");
+    if (class_list_iter != img_loc.detection_properties.end()) {
+        track.detection_properties.insert(*class_list_iter);
+    }
+    auto confidence_list_iter = img_loc.detection_properties.find("CLASSIFICATION CONFIDENCE LIST");
+    if (confidence_list_iter != img_loc.detection_properties.end()) {
+        track.detection_properties.insert(*confidence_list_iter);
+    }
+
+    track.frame_locations.emplace(frame_number, std::move(img_loc));
+    return track;
+}
+
+
+void DefaultTracker::AddToTrack(MPFImageLocation &&new_img_loc, int frame_number, MPFVideoTrack &existing_track) {
+    auto same_frame_iter = existing_track.frame_locations.find(frame_number);
+    bool current_frame_has_existing_detection = same_frame_iter != existing_track.frame_locations.end();
+    if (current_frame_has_existing_detection) {
+        auto &existing_img_loc = same_frame_iter->second;
+        TrackingHelpers::CombineImageLocations(new_img_loc, existing_img_loc);
+        existing_track.confidence = std::max(existing_track.confidence, existing_img_loc.confidence);
+    }
+    else {
+        existing_track.confidence = std::max(existing_track.confidence, new_img_loc.confidence);
+        existing_track.frame_locations.emplace(frame_number, std::move(new_img_loc));
+        existing_track.stop_frame = frame_number;
+    }
+}
+
+void DefaultTracker::ProcessFrameDetections(std::vector<DarknetResult> &&new_detections, int frame_number) {
+    for (auto& darknet_result : new_detections) {
+        RegionOverlapTracker::ProcessFrameDetections(
+                TrackingHelpers::CreateImageLocation(num_classes_per_region_, darknet_result),
+                frame_number);
+    }
+}
+

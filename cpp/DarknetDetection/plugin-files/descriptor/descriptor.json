@@ -197,6 +197,12 @@
           "description": "Indicates whether or not the CPU only version of Darknet should run if there is an issue with the GPU. Only used when CUDA_DEVICE_ID >= 0.",
           "type": "BOOLEAN",
           "propertiesKey": "detection.use.cpu.when.gpu.problem"
+        },
+        {
+          "name": "RECTANGLE_INTERSECTION_MIN",
+          "description": "A number between 0.0 and 1.0 indicating the minimum amount of detection region overlap required for two detections to be considered part of the same track.",
+          "type": "FLOAT",
+          "defaultValue": "0.5"
         }
       ]
     }

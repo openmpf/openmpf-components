@@ -77,10 +77,19 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
     else {
         int number_of_classifications = DetectionComponentUtils::GetProperty(
                 job.job_properties, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5);
-        SingleDetectionPerTrackTracker tracker(number_of_classifications);
+        double rect_intersection_min = DetectionComponentUtils::GetProperty(
+                job.job_properties, "RECTANGLE_INTERSECTION_MIN", 0.5);
+        if (rect_intersection_min >= 1) {
+            LOG4CXX_ERROR(logger_,  "[" << job.job_name
+                << "] Invalid RECTANGLE_INTERSECTION_MIN job property. RECTANGLE_INTERSECTION_MIN must be "
+                << "less than or equal to one, but the value provided was " << rect_intersection_min << ".");
+            return MPF_INVALID_PROPERTY;
+        }
+        DefaultTracker tracker(number_of_classifications, rect_intersection_min);
         return GetDetections(job, tracks, tracker);
     }
 }
+
 
 template<typename Tracker>
 MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks,
@@ -136,7 +145,7 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
                                                                        "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
             for (auto& result : results) {
                 locations.push_back(
-                        SingleDetectionPerTrackTracker::CreateImageLocation(number_of_classifications, result));
+                        TrackingHelpers::CreateImageLocation(number_of_classifications, result));
             }
         }
 
@@ -194,6 +203,7 @@ ModelSettings DarknetDetection::GetModelSettings(const MPF::COMPONENT::Propertie
 }
 
 
+
 void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
                                                        std::vector<MPFImageLocation> &locations) {
 
@@ -203,15 +213,15 @@ void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult
         const cv::Rect &rect = darknet_result.detection_rect;
 
         for (std::pair<float, std::string> &class_prob : darknet_result.object_type_probs) {
+            MPFImageLocation img_loc(rect.x, rect.y, rect.width, rect.height, class_prob.first,
+                                     Properties{ {"CLASSIFICATION", class_prob.second} });
+
             auto it = type_to_image_loc.find(class_prob.second);
             if (it == type_to_image_loc.cend()) {
-                type_to_image_loc.emplace(
-                        class_prob.second,
-                        MPFImageLocation(rect.x, rect.y, rect.width, rect.height, class_prob.first,
-                                         Properties{ {"CLASSIFICATION", class_prob.second} }));
+                type_to_image_loc.emplace(class_prob.second, std::move(img_loc));
             }
             else {
-                PreprocessorTracker::CombineImageLocation(rect, class_prob.first, it->second);
+                TrackingHelpers::CombineImageLocations(img_loc, it->second);
             }
         }
     }
