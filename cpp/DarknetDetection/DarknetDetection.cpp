@@ -229,13 +229,6 @@ void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult
     for (auto &image_loc_pair : type_to_image_loc) {
         locations.push_back(std::move(image_loc_pair.second));
     }
-//    PreprocessorTracker tracker;
-//    tracker.ProcessFrameDetections(darknet_results, 0);
-//    for (auto& track : tracker.GetTracks()) {
-//        for (auto &frame_loc_pair : track.frame_locations) {
-//            locations.push_back(std::move(frame_loc_pair.second));
-//        }
-//    }
 }
 
 
