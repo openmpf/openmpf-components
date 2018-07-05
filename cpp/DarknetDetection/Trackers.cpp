@@ -32,25 +32,6 @@
 using namespace MPF::COMPONENT;
 
 
-SingleDetectionPerTrackTracker::SingleDetectionPerTrackTracker(int num_classes_per_region)
-        : num_classes_per_region_(num_classes_per_region) {
-}
-
-
-void SingleDetectionPerTrackTracker::ProcessFrameDetections(
-        std::vector<DarknetResult> &&new_detections, int frame_number) {
-
-    for (auto &darknet_result : new_detections) {
-        MPFImageLocation location = CreateImageLocation(num_classes_per_region_, darknet_result);
-
-        MPFVideoTrack track(frame_number, frame_number, location.confidence, location.detection_properties);
-        track.frame_locations.emplace(frame_number, std::move(location));
-        tracks_.push_back(std::move(track));
-    }
-}
-
-
-
 namespace {
     bool order_by_descending_first_then_by_ascending_second(const std::pair<float, std::string> &left,
                                                             const std::pair<float, std::string> &right) {
@@ -61,49 +42,134 @@ namespace {
 }
 
 
-MPFImageLocation SingleDetectionPerTrackTracker::CreateImageLocation(int num_classes_per_region,
-                                                                     DarknetResult &detection) {
-    auto &object_probs = detection.object_type_probs;
-    int num_items_to_get = std::min(num_classes_per_region, static_cast<int>(object_probs.size()));
-    auto last_item_iter = object_probs.begin() + num_items_to_get;
+namespace TrackingHelpers {
 
-    // Put the first num_items_to_get items in sorted order.
-    // Everything after last_item_iter, will be greater than *last_item_iter, but won't be in any specific order.
-    // Using std::sort would take O(object_probs.size() * log(object_probs.size())) steps,
-    // std::partial sort only takes O(object_probs.size() * log(num_items_to_get)) steps.
-    std::partial_sort(object_probs.begin(), last_item_iter, object_probs.end(),
-                      order_by_descending_first_then_by_ascending_second);
+    MPFImageLocation CreateImageLocation(int num_classes_per_region, DarknetResult &detection) {
+        auto &object_probs = detection.object_type_probs;
+        int num_items_to_get = std::min(num_classes_per_region, static_cast<int>(object_probs.size()));
+        auto last_item_iter = object_probs.begin() + num_items_to_get;
 
-    auto prob_pair_iter = object_probs.begin();
+        // Put the first num_items_to_get items in sorted order.
+        // Everything after last_item_iter, will be greater than *last_item_iter, but won't be in any specific order.
+        // Using std::sort would take O(object_probs.size() * log(object_probs.size())) steps,
+        // std::partial sort only takes O(object_probs.size() * log(num_items_to_get)) steps.
+        std::partial_sort(object_probs.begin(), last_item_iter, object_probs.end(),
+                          order_by_descending_first_then_by_ascending_second);
 
-    float top_confidence = prob_pair_iter->first;
-    std::string top_confidence_class = prob_pair_iter->second;
-    ++prob_pair_iter;
+        auto prob_pair_iter = object_probs.begin();
 
-    std::ostringstream confidence_list;
-    confidence_list << top_confidence;
-    std::string classification_list = top_confidence_class;
+        float top_confidence = prob_pair_iter->first;
+        std::string top_confidence_class = prob_pair_iter->second;
+        ++prob_pair_iter;
 
-    for (; prob_pair_iter != last_item_iter; ++prob_pair_iter) {
-        confidence_list << "; " << prob_pair_iter->first;
-        classification_list += "; " + prob_pair_iter->second;
+        std::ostringstream confidence_list;
+        confidence_list << top_confidence;
+        std::string classification_list = top_confidence_class;
+
+        for (; prob_pair_iter != last_item_iter; ++prob_pair_iter) {
+            confidence_list << "; " << prob_pair_iter->first;
+            classification_list += "; " + prob_pair_iter->second;
+        }
+
+        const auto &rect = detection.detection_rect;
+
+        return MPFImageLocation(rect.x, rect.y, rect.width, rect.height, top_confidence, {
+                { "CLASSIFICATION", std::move(top_confidence_class) },
+                { "CLASSIFICATION LIST", std::move(classification_list) },
+                { "CLASSIFICATION CONFIDENCE LIST", confidence_list.str() }
+        });
     }
 
-    const auto &rect = detection.detection_rect;
 
-    return MPFImageLocation(rect.x, rect.y, rect.width, rect.height, top_confidence, {
-            { "CLASSIFICATION", std::move(top_confidence_class) },
-            { "CLASSIFICATION LIST", std::move(classification_list) },
-            { "CLASSIFICATION CONFIDENCE LIST", confidence_list.str() }
-    });
+    void CombineImageLocation(const cv::Rect &rect, float prob, MPFImageLocation &image_location) {
+        cv::Rect existing_detection_rect(image_location.x_left_upper, image_location.y_left_upper,
+                                         image_location.width, image_location.height);
+        cv::Rect superset_region = rect | existing_detection_rect;
+
+        image_location.x_left_upper = superset_region.x;
+        image_location.y_left_upper = superset_region.y;
+        image_location.width = superset_region.width;
+        image_location.height = superset_region.height;
+        // Calculate the probability that there was a detection in the existing image location OR a detection in detection_rect.
+        // The probability of at least one of two independent non-mutually exclusive events can be calculated as:
+        // P(A or B) = P(A) + P(B) - P(A) * P(B)
+        image_location.confidence = image_location.confidence + prob - image_location.confidence * prob;
+    }
 }
 
-std::vector<MPF::COMPONENT::MPFVideoTrack> SingleDetectionPerTrackTracker::GetTracks() {
-    std::vector<MPFVideoTrack> tmp;
-    tmp.swap(tracks_);
-    return tmp;
+
+DefaultTracker::DefaultTracker(int num_classes_per_region, double min_overlap)
+        : num_classes_per_region_(num_classes_per_region)
+        , min_overlap_(min_overlap)
+{
 }
 
+
+void DefaultTracker::ProcessFrameDetections(std::vector<DarknetResult> &&new_detections, int frame_number) {
+    for (DarknetResult &detection : new_detections) {
+        MPFImageLocation img_loc = TrackingHelpers::CreateImageLocation(num_classes_per_region_, detection);
+        std::string type = img_loc.detection_properties.at("CLASSIFICATION");
+
+        auto range = tracks_.equal_range({frame_number - 1, type});
+        double max_overlap = min_overlap_ - 1;
+        auto max_overlap_iter = tracks_.end();
+        for (auto it = range.first; it != range.second; ++it) {
+            double overlap = GetOverlap(detection.detection_rect, it->second);
+            if (overlap > max_overlap) {
+                max_overlap = overlap;
+                max_overlap_iter = it;
+            }
+        }
+
+        if (max_overlap >= min_overlap_) {
+            auto &track = max_overlap_iter->second;
+
+            track.stop_frame = frame_number;
+            if (img_loc.confidence > track.confidence) {
+                track.confidence = img_loc.confidence;
+                track.detection_properties = img_loc.detection_properties;
+            }
+            track.frame_locations.emplace(frame_number, std::move(img_loc));
+            tracks_.emplace(std::make_pair(frame_number, type), std::move(track));
+            tracks_.erase(max_overlap_iter);
+        }
+        else {
+            MPFVideoTrack track(frame_number, frame_number, img_loc.confidence, img_loc.detection_properties);
+            track.frame_locations.emplace(frame_number, std::move(img_loc));
+            tracks_.emplace(std::make_pair(frame_number, type), std::move(track));
+        }
+    }
+}
+
+std::vector<MPFVideoTrack> DefaultTracker::GetTracks() {
+    std::vector<MPFVideoTrack> results;
+    results.reserve(tracks_.size());
+
+    for (auto &pair : tracks_) {
+        results.push_back(std::move(pair.second));
+    }
+    tracks_ = { };
+    return results;
+}
+
+
+double DefaultTracker::GetOverlap(const cv::Rect &detection_rect, const MPFVideoTrack &track) {
+    auto last_detection_it = track.frame_locations.rbegin();
+    if (last_detection_it == track.frame_locations.rend()) {
+        throw std::length_error("Track must not be empty.");
+    }
+    auto &last_detection = last_detection_it->second;
+    cv::Rect track_rect(last_detection.x_left_upper, last_detection.y_left_upper,
+                        last_detection.width, last_detection.height);
+
+    if (track_rect.empty() || detection_rect.empty()) {
+        return track_rect == detection_rect ? 1 : 0;
+    }
+
+    cv::Rect intersection = track_rect & detection_rect;
+    cv::Rect rect_union = track_rect | detection_rect;
+    return intersection.area() / static_cast<double>(rect_union.area());
+}
 
 
 
@@ -160,26 +226,8 @@ void PreprocessorTracker::AddNewImageLocationToTrack(const cv::Rect &rect, float
 void PreprocessorTracker::CombineImageLocation(const cv::Rect &rect, float prob, int frame_number,
                                                MPFVideoTrack &track) {
     auto &frame_location = track.frame_locations.at(frame_number);
-    CombineImageLocation(rect, prob, frame_location);
+    TrackingHelpers::CombineImageLocation(rect, prob, frame_location);
     track.confidence = std::max(track.confidence, frame_location.confidence);
-}
-
-
-
-void PreprocessorTracker::CombineImageLocation(const cv::Rect &rect, float prob, MPFImageLocation &image_location) {
-
-    cv::Rect existing_detection_rect(image_location.x_left_upper, image_location.y_left_upper,
-                                     image_location.width, image_location.height);
-    cv::Rect superset_region = rect | existing_detection_rect;
-
-    image_location.x_left_upper = superset_region.x;
-    image_location.y_left_upper = superset_region.y;
-    image_location.width = superset_region.width;
-    image_location.height = superset_region.height;
-    // Calculate the probability that there was a detection in the existing image location OR a detection in detection_rect.
-    // The probability of at least one of two independent non-mutually exclusive events can be calculated as:
-    // P(A or B) = P(A) + P(B) - P(A) * P(B)
-    image_location.confidence = image_location.confidence + prob - image_location.confidence * prob;
 }
 
 
@@ -198,5 +246,5 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> PreprocessorTracker::GetTracks() {
 size_t PreprocessorTracker::PairHasher::operator()(const std::pair<int, std::string> &pair) const {
     auto h1 = int_hasher_(pair.first);
     auto h2 = string_hasher_(pair.second);
-    return h1 ^ (h2 << 1);
+    return h1 ^ (h2 << 1u);
 }

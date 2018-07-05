@@ -77,7 +77,15 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
     else {
         int number_of_classifications = DetectionComponentUtils::GetProperty(
                 job.job_properties, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5);
-        SingleDetectionPerTrackTracker tracker(number_of_classifications);
+        double rect_intersection_min = DetectionComponentUtils::GetProperty(
+                job.job_properties, "MIN_OVERLAP", 0.5);
+        if (rect_intersection_min >= 1) {
+            LOG4CXX_ERROR(logger_,  "[" << job.job_name
+                << "] Invalid RECTANGLE_INTERSECTION_MIN job property. RECTANGLE_INTERSECTION_MIN must be "
+                << "less than or equal to one, but the value provided was " << rect_intersection_min << ".");
+            return MPF_INVALID_PROPERTY;
+        }
+        DefaultTracker tracker(number_of_classifications, rect_intersection_min);
         return GetDetections(job, tracks, tracker);
     }
 }
@@ -136,7 +144,7 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
                                                                        "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
             for (auto& result : results) {
                 locations.push_back(
-                        SingleDetectionPerTrackTracker::CreateImageLocation(number_of_classifications, result));
+                        TrackingHelpers::CreateImageLocation(number_of_classifications, result));
             }
         }
 
@@ -211,7 +219,7 @@ void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult
                                          Properties{ {"CLASSIFICATION", class_prob.second} }));
             }
             else {
-                PreprocessorTracker::CombineImageLocation(rect, class_prob.first, it->second);
+                TrackingHelpers::CombineImageLocation(rect, class_prob.first, it->second);
             }
         }
     }

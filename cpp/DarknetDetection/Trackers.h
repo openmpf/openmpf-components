@@ -28,6 +28,7 @@
 #ifndef OPENMPF_COMPONENTS_TRACKERS_H
 #define OPENMPF_COMPONENTS_TRACKERS_H
 
+#include <map>
 #include <unordered_map>
 #include <string>
 #include <vector>
@@ -38,22 +39,34 @@
 
 #include "include/DarknetInterface.h"
 
+namespace TrackingHelpers {
+    MPF::COMPONENT::MPFImageLocation CreateImageLocation(int num_classes_per_region, DarknetResult &detection);
 
-class SingleDetectionPerTrackTracker {
+    void CombineImageLocation(const cv::Rect &rect, float prob,
+                              MPF::COMPONENT::MPFImageLocation &image_location);
+}
+
+
+class DefaultTracker {
 public:
-    explicit SingleDetectionPerTrackTracker(int num_classes_per_region);
+    DefaultTracker(int num_classes_per_region, double min_overlap);
 
     void ProcessFrameDetections(std::vector<DarknetResult> &&new_detections, int frame_number);
 
     // Returns tracks and resets the tracker to its initial state.
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks();
 
-    static MPF::COMPONENT::MPFImageLocation CreateImageLocation(int num_classes_per_region, DarknetResult &detection);
-
 private:
     const int num_classes_per_region_;
-    std::vector<MPF::COMPONENT::MPFVideoTrack> tracks_;
+
+    const double min_overlap_;
+
+    std::multimap<std::pair<int, std::string>, MPF::COMPONENT::MPFVideoTrack> tracks_;
+
+    static double GetOverlap(const cv::Rect &detection_rect, const MPF::COMPONENT::MPFVideoTrack &track);
 };
+
+
 
 
 class PreprocessorTracker {
@@ -63,9 +76,6 @@ public:
 
     // Returns tracks and resets the tracker to its initial state.
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks();
-
-    static void CombineImageLocation(const cv::Rect &rect, float prob,
-                                     MPF::COMPONENT::MPFImageLocation &image_location);
 
 private:
     // standard library does not define a hash function for pairs
