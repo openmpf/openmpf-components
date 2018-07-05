@@ -80,9 +80,8 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
         double rect_intersection_min = DetectionComponentUtils::GetProperty(
                 job.job_properties, "MIN_OVERLAP", 0.5);
         if (rect_intersection_min >= 1) {
-            LOG4CXX_ERROR(logger_,  "[" << job.job_name
-                << "] Invalid RECTANGLE_INTERSECTION_MIN job property. RECTANGLE_INTERSECTION_MIN must be "
-                << "less than or equal to one, but the value provided was " << rect_intersection_min << ".");
+            LOG4CXX_ERROR(logger_,  "[" << job.job_name << "] Invalid MIN_OVERLAP job property. MIN_OVERLAP must be "
+               << "less than or equal to one, but the value provided was " << rect_intersection_min << ".");
             return MPF_INVALID_PROPERTY;
         }
         DefaultTracker tracker(number_of_classifications, rect_intersection_min);
