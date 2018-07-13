@@ -39,8 +39,6 @@
 #include <DlClassLoader.h>
 
 #include "include/DarknetInterface.h"
-#include "SPSCBoundedQueue.h"
-
 
 class DarknetDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
@@ -71,30 +69,6 @@ private:
     MPF::COMPONENT::ModelsIniParser<ModelSettings> models_parser_;
 
     DarknetDl GetDarknetImpl(const MPF::COMPONENT::MPFJob &job);
-
-    struct VideoFrame {
-      int index;
-      bool stop_flag;
-      cv::Mat frame;
-
-      VideoFrame() : index(0), stop_flag(false) {}
-      VideoFrame(bool flag) : stop_flag(flag) {}
-      VideoFrame(int i, cv::Mat &f) : index(i), stop_flag(false), frame(std::move(f)) {}
-      VideoFrame(int i, bool flag, cv::Mat &f) : index(i), stop_flag(flag), frame(f) {}
-    };
-
-    template <typename Tracker>
-    MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFVideoJob &job,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
-            Tracker &tracker);
-
-  template<typename Tracker, typename Entry>
-    void RunDetection(DarknetDl &detector, Tracker &tracker,
-                      MPF::COMPONENT::SPSCBoundedQueue<Entry> &queue);
-
-    static void ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
-                                                std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
 
     ModelSettings GetModelSettings(const MPF::COMPONENT::Properties &job_properties) const;
 };

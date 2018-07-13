@@ -127,4 +127,3 @@ void print_tracks(const std::vector<MPFVideoTrack> &tracks) {
         std::cout << std::right << std::setw(6) << group.second.first << std::endl;
     }
 }
-

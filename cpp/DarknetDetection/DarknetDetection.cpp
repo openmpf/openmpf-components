@@ -25,21 +25,12 @@
  ******************************************************************************/
 
 #include <fstream>
-#include <unordered_map>
-#include <atomic>
-//#include <iostream>
-#include <chrono>
-
-#include <thread>
 
 #include <log4cxx/xml/domconfigurator.h>
 
-#include <MPFImageReader.h>
-#include <MPFVideoCapture.h>
 #include <detectionComponentUtils.h>
 #include <Utils.h>
 
-#include "Trackers.h"
 #include "DarknetDetection.h"
 
 using namespace MPF::COMPONENT;
@@ -75,104 +66,23 @@ bool DarknetDetection::Init() {
 
 MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks) {
     LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
-    if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
-        PreprocessorTracker tracker;
-        return GetDetections(job, tracks, tracker);
-    }
-    else {
-        int number_of_classifications = DetectionComponentUtils::GetProperty(
-                job.job_properties, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5);
-        SingleDetectionPerTrackTracker tracker(number_of_classifications);
-        return GetDetections(job, tracks, tracker);
-    }
-}
 
-
-template<typename Tracker, typename Entry>
-void DarknetDetection::RunDetection(DarknetDl &detector, Tracker &tracker,
-                                    MPF::COMPONENT::SPSCBoundedQueue<Entry> &queue) {
-
-    std::vector<DarknetResult>detections;
-    // Take a frame out of the queue.
-    while (1) {
-        Entry current_frame;
-        while (!queue.pop(current_frame)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-        }
-        if (current_frame.stop_flag) {
-            // We're done
-            break;
-        }
-        // Process it
-        tracker.ProcessFrameDetections(detector->Detect(current_frame.frame),
-                                       current_frame.index);
-    };
-
-}
-
-
-template<typename Tracker>
-MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job,
-                                                  std::vector<MPFVideoTrack> &tracks,
-                                                  Tracker &tracker) {
-
-
-    int queue_capacity = DetectionComponentUtils::GetProperty(
-        job.job_properties, "FRAME_QUEUE_CAPACITY", 4);
-
-    MPF::COMPONENT::SPSCBoundedQueue<VideoFrame> frame_buf(queue_capacity);
- 
     try {
         DarknetDl detector = GetDarknetImpl(job);
 
-        MPFVideoCapture video_cap(job);
-        if (!video_cap.IsOpened()) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not open video file: " << job.data_uri);
-            return MPF_COULD_NOT_OPEN_DATAFILE;
+        MPFDetectionError rc = detector->RunDarknetDetection(job, tracks);
+        if (rc != MPF_DETECTION_SUCCESS) {
+            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Darknet detection fialed for file: " << job.data_uri);
         }
-
-        // Create the frame queue. The length of the queue is a job
-        // property.
-
-        // Run a thread to run the GPU detection, passing the function
-        // in as a lambda so the templates can be instantiated properly.
-        std::thread detection_thread([this, &detector, &tracker, &frame_buf]() { DarknetDetection::RunDetection(detector, tracker, frame_buf); });
-
-        cv::Mat frame;
-        int frame_number = -1;
-
-        while (video_cap.Read(frame)) {
-            frame_number++;
-            // Put the frame in the queue
-            VideoFrame current_frame(frame_number, frame);
-            while (!frame_buf.push(current_frame)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-        }
-
-        // Send a stop frame to tell the consumer it is done.
-        VideoFrame stop_frame(true);
-        while (!frame_buf.push(stop_frame)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-        detection_thread.join();
         
-        tracks = tracker.GetTracks();
-
-        for (MPFVideoTrack &track : tracks) {
-            video_cap.ReverseTransform(track);
-        }
-
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
-
-        return MPF_DETECTION_SUCCESS;
+        return rc;
     }
     catch (...) {
         return Utils::HandleDetectionException(job, logger_);
     }
-}
 
+}
 
 
 MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
@@ -180,33 +90,14 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
         DarknetDl detector = GetDarknetImpl(job);
 
-        MPFImageReader image_reader(job);
-
-        std::vector<DarknetResult> results = detector->Detect(image_reader.GetImage());
-        if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
-            ConvertResultsUsingPreprocessor(results, locations);
-        }
-        else {
-            int number_of_classifications
-                    = std::max(1, DetectionComponentUtils::GetProperty(job.job_properties,
-                                                                       "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
-            for (auto& result : results) {
-                locations.push_back(
-                        SingleDetectionPerTrackTracker::CreateImageLocation(number_of_classifications, result));
-            }
-        }
-
-        for (auto &location : locations) {
-            image_reader.ReverseTransform(location);
-        }
-
+        MPFDetectionError rc = detector->RunDarknetDetection(job, locations);
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << locations.size() << " detections.");
-
-        return MPF_DETECTION_SUCCESS;
+        return rc;
     }
     catch (...) {
         return Utils::HandleDetectionException(job, logger_);
     }
+
 }
 
 
@@ -250,32 +141,6 @@ ModelSettings DarknetDetection::GetModelSettings(const MPF::COMPONENT::Propertie
 }
 
 
-void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
-                                                       std::vector<MPFImageLocation> &locations) {
-
-    std::unordered_map<std::string, MPFImageLocation> type_to_image_loc;
-
-    for (DarknetResult &darknet_result : darknet_results) {
-        const cv::Rect &rect = darknet_result.detection_rect;
-
-        for (std::pair<float, std::string> &class_prob : darknet_result.object_type_probs) {
-            auto it = type_to_image_loc.find(class_prob.second);
-            if (it == type_to_image_loc.cend()) {
-                type_to_image_loc.emplace(
-                        class_prob.second,
-                        MPFImageLocation(rect.x, rect.y, rect.width, rect.height, class_prob.first,
-                                         Properties{ {"CLASSIFICATION", class_prob.second} }));
-            }
-            else {
-                PreprocessorTracker::CombineImageLocation(rect, class_prob.first, it->second);
-            }
-        }
-    }
-
-    for (auto &image_loc_pair : type_to_image_loc) {
-        locations.push_back(std::move(image_loc_pair.second));
-    }
-}
 
 
 std::string DarknetDetection::GetDetectionType() {
