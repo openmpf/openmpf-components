@@ -36,7 +36,7 @@
 
 #include <MPFDetectionComponent.h>
 
-#include "include/DarknetInterface.h"
+#include "../include/DarknetInterface.h"
 
 
 class SingleDetectionPerTrackTracker {

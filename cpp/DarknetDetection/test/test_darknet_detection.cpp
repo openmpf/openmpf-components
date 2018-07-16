@@ -36,7 +36,7 @@
 #include <ModelsIniParser.h>
 
 #include "DarknetDetection.h"
-#include "Trackers.h"
+#include "../darknet_wrapper/Trackers.h"
 #include "include/DarknetInterface.h"
 
 using namespace MPF::COMPONENT;

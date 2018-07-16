@@ -45,7 +45,7 @@
 #include <MPFDetectionException.h>
 #include <MPFInvalidPropertyException.h>
 
-#include "../Trackers.h"
+#include "Trackers.h"
 #include "DarknetImpl.h"
 
 
