@@ -28,8 +28,6 @@ cmake_minimum_required(VERSION 3.6)
 project(darknet-wrapper)
 
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
-
 
 find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0 COMPONENTS opencv_core opencv_imgproc opencv_highgui)
 
@@ -43,9 +41,10 @@ find_package(Qt4 REQUIRED)
 set(DARKNET_WRAPPER_SOURCE_FILES
     DarknetImpl.cpp DarknetImpl.h
     ../include/DarknetInterface.h
+    Trackers.cpp Trackers.h
     )
 
-add_library(darknet_wrapper MODULE ${DARKNET_WRAPPER_SOURCE_FILES})
+add_library(darknet_wrapper SHARED ${DARKNET_WRAPPER_SOURCE_FILES})
 target_link_libraries(darknet_wrapper mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
     darknet_lib ${OpenCV_LIBS})
 
