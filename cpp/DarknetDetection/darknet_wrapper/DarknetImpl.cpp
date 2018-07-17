@@ -142,7 +142,7 @@ namespace {
 
 
     DarknetImageHolder::DarknetImageHolder() 
-            : index(0), stop_flag(false) {
+            : index(0), stop_flag(false), orig_frame_size(cv::Size(0,0)) {
         darknet_image.w = 0;
         darknet_image.h = 0;
         darknet_image.c = 0;
@@ -150,7 +150,7 @@ namespace {
     }
 
     DarknetImageHolder::DarknetImageHolder(const bool s) 
-            : index(0), stop_flag(s) {
+            : index(0), stop_flag(s), orig_frame_size(cv::Size(0,0)) {
         darknet_image.w = 0;
         darknet_image.h = 0;
         darknet_image.c = 0;
@@ -161,6 +161,7 @@ namespace {
                                            const int target_width,
                                            const int target_height)
             : index(0), stop_flag(false) {
+        orig_frame_size = cv_image.size();
         darknet_image = CvMatToImage(cv_image, target_width, target_height);
     }
 
@@ -169,6 +170,7 @@ namespace {
                                            const int target_width,
                                            const int target_height)
             : index(frame_num), stop_flag(false) {
+        orig_frame_size = cv_image.size();
         darknet_image = CvMatToImage(cv_image, target_width, target_height);
     }
 
@@ -337,7 +339,6 @@ DarknetImpl<ClassFilter>::DarknetImpl(const std::map<std::string, std::string> &
     , confidence_threshold_(DetectionComponentUtils::GetProperty(props, "CONFIDENCE_THRESHOLD", 0.5f))
     , probs_(output_layer_size_, num_classes_)
     , boxes_(new box[output_layer_size_])
-    , orig_frame_size_(cv::Size(0,0))
     , halt_(false)
 {
     int c = DetectionComponentUtils::GetProperty(props, "FRAME_QUEUE_CAPACITY", 4);
@@ -430,7 +431,6 @@ MPFDetectionError DarknetImpl<ClassFilter>::SendFrames(MPFVideoCapture &video_ca
         if (!video_cap.Read(frame)) {
             return MPF::COMPONENT::MPFDetectionError::MPF_COULD_NOT_READ_DATAFILE;
         }
-        orig_frame_size_ = frame.size();
 
         do {
             frame_number++;
@@ -515,14 +515,18 @@ std::vector<DarknetResult> DarknetImpl<ClassFilter>::Detect(const DarknetImageHo
 
     layer l = net->layers[net->n-1];
     if(l.type == REGION){
-        get_region_boxes(l, im.w, im.h, net->w, net->h, confidence_threshold_, probs_.Get(), boxes_.get(), 0, 0, 0, hier_thresh, 0);
+        int image_width = image_holder.orig_frame_size.width;
+        int image_height = image_holder.orig_frame_size.height;
+        get_region_boxes(l, image_width, image_height, net->w, net->h,
+                         confidence_threshold_, probs_.Get(),
+                         boxes_.get(), 0, 0, 0, hier_thresh, 0);
         do_nms_sort(boxes_.get(), probs_.Get(), l.w*l.h*l.n, l.classes, nms);
     }
 
     std::vector<DarknetResult> detections;
 
     for (int box_idx = 0; box_idx < output_layer_size_; box_idx++) {
-        DarknetResult detection { BoxToRect(boxes_[box_idx], orig_frame_size_) };
+        DarknetResult detection { BoxToRect(boxes_[box_idx], image_holder.orig_frame_size) };
 
         for (int name_idx = 0; name_idx < num_classes_; name_idx++) {
             float prob = probs_[box_idx][name_idx];

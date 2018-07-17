@@ -73,6 +73,7 @@ namespace {
 struct DarknetImageHolder {
     int index;
     bool stop_flag;
+    cv::Size orig_frame_size;
     image darknet_image;
     DarknetImageHolder();
     explicit DarknetImageHolder(const bool s);
@@ -118,8 +119,6 @@ private:
     DarknetHelpers::ProbHolder probs_;
 
     std::unique_ptr<box[]> boxes_;
-
-    cv::Size orig_frame_size_;
 
     MPF::COMPONENT::SPSCBoundedQueue<std::unique_ptr<DarknetImageHolder>> queue_;
     std::atomic<bool> halt_;
