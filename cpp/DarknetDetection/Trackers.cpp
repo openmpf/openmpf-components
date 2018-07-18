@@ -108,10 +108,10 @@ DefaultTracker::DefaultTracker(int num_classes_per_region, double min_overlap)
 void DefaultTracker::ProcessFrameDetections(std::vector<DarknetResult> &&new_detections, int frame_number) {
     for (DarknetResult &detection : new_detections) {
         MPFImageLocation img_loc = TrackingHelpers::CreateImageLocation(num_classes_per_region_, detection);
-        std::string type = img_loc.detection_properties.at("CLASSIFICATION");
+        std::string classification = img_loc.detection_properties.at("CLASSIFICATION");
 
-        auto range = tracks_.equal_range({frame_number - 1, type});
-        double max_overlap = min_overlap_ - 1;
+        auto range = tracks_.equal_range({frame_number - 1, classification});
+        double max_overlap = min_overlap_ - 1; // Can't set to -1.0 because min_overlap_ may be less than -1.
         auto max_overlap_iter = tracks_.end();
         for (auto it = range.first; it != range.second; ++it) {
             double overlap = GetOverlap(detection.detection_rect, it->second);
@@ -123,20 +123,17 @@ void DefaultTracker::ProcessFrameDetections(std::vector<DarknetResult> &&new_det
 
         if (max_overlap >= min_overlap_) {
             auto &track = max_overlap_iter->second;
-
             track.stop_frame = frame_number;
-            if (img_loc.confidence > track.confidence) {
-                track.confidence = img_loc.confidence;
-                track.detection_properties = img_loc.detection_properties;
-            }
+            track.confidence = std::max(track.confidence, img_loc.confidence);
             track.frame_locations.emplace(frame_number, std::move(img_loc));
-            tracks_.emplace(std::make_pair(frame_number, type), std::move(track));
+
+            tracks_.emplace(std::make_pair(frame_number, classification), std::move(track));
             tracks_.erase(max_overlap_iter);
         }
         else {
-            MPFVideoTrack track(frame_number, frame_number, img_loc.confidence, img_loc.detection_properties);
+            MPFVideoTrack track(frame_number, frame_number, img_loc.confidence, { {"CLASSIFICATION", classification}});
             track.frame_locations.emplace(frame_number, std::move(img_loc));
-            tracks_.emplace(std::make_pair(frame_number, type), std::move(track));
+            tracks_.emplace(std::make_pair(frame_number, classification), std::move(track));
         }
     }
 }

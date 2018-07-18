@@ -351,7 +351,8 @@ TEST(Darknet, TestPreproccesorConfidenceCalculation) {
 
 bool has_confidence_values(const MPFVideoTrack &track, std::vector<float> expected_confidences) {
 
-    std::istringstream iss(track.detection_properties.at("CLASSIFICATION CONFIDENCE LIST"));
+    std::istringstream iss(track.frame_locations.begin()->second
+                                   .detection_properties.at("CLASSIFICATION CONFIDENCE LIST"));
 
     for (auto &expected_confidence : expected_confidences) {
         std::string temp;
@@ -398,12 +399,14 @@ TEST(Darknet, TestNumberOfClassifications) {
 
     ASSERT_FLOAT_EQ(track1.confidence, .3);
     ASSERT_EQ(track1.detection_properties.at("CLASSIFICATION"), "cat");
-    ASSERT_EQ(track1.detection_properties.at("CLASSIFICATION LIST"), "cat; apple; person");
+    ASSERT_EQ(track1.frame_locations.begin()->second.detection_properties.at("CLASSIFICATION LIST"),
+              "cat; apple; person");
     ASSERT_TRUE(has_confidence_values(track1, { .3, .25, .2 }));
 
     ASSERT_FLOAT_EQ(track2.confidence, .25);
     ASSERT_EQ(track2.detection_properties.at("CLASSIFICATION"), "cat");
-    ASSERT_EQ(track2.detection_properties.at("CLASSIFICATION LIST"), "cat; dog; apple");
+    ASSERT_EQ(track2.frame_locations.begin()->second.detection_properties.at("CLASSIFICATION LIST"),
+              "cat; dog; apple");
     ASSERT_TRUE(has_confidence_values(track2, { .25, .25, .1 }));
 }
 
@@ -596,6 +599,28 @@ TEST(Darknet, DefaultTrackerOnlyCombinesExactMatchWhenOverlapIsOne) {
     ASSERT_EQ(2, other_track.frame_locations.size());
     ASSERT_TRUE(object_found("other", 1, other_track));
     ASSERT_TRUE(object_found("other", 2, other_track));
+}
+
+
+TEST(Darknet, DefaultTrackerDoesNotCombineWhenOverlapIsGreaterThanOne) {
+    DefaultTracker tracker(5, 1.1);
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 6}, "object", 0.5) }, 0);
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "object", 0.5) }, 1);
+
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "other", 0.5) }, 1);
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "other", 0.5) }, 2);
+
+    auto tracks = tracker.GetTracks();
+    ASSERT_EQ(4, tracks.size());
+    ASSERT_TRUE(object_found("object", 0, tracks));
+    ASSERT_TRUE(object_found("object", 1, tracks));
+    ASSERT_TRUE(object_found("other", 1, tracks));
+    ASSERT_TRUE(object_found("other", 2, tracks));
+
+    for (const auto &track : tracks) {
+        ASSERT_EQ(1, track.frame_locations.size());
+        ASSERT_EQ(track.start_frame, track.stop_frame);
+    }
 }
 
 

@@ -98,7 +98,7 @@
         },
         {
           "name": "MIN_OVERLAP",
-          "description": "In the context of videos, the minimum overlap between detection bounding boxes for adjacent tracks to be considered continuous. Value is expected to be between 0 and 1. Default value is defined by the OpenMPF properties file.",
+          "description": "In the context of videos, the minimum overlap between detection bounding boxes for adjacent tracks to be considered continuous. When not positive, non-overlapping detections may be combined into one track. When 1, only detections with exact overlap may be combined into one track. When greater than 1, each track will have exactly one detection. Default value is defined by the OpenMPF properties file.",
           "type": "DOUBLE",
           "propertiesKey": "detection.track.overlap.threshold"
         },
