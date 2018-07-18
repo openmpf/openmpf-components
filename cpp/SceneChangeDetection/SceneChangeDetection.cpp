@@ -64,7 +64,7 @@ SceneChangeDetection::~SceneChangeDetection() {
 }
 
 std::string SceneChangeDetection::GetDetectionType() {
-    return "CLASS";
+    return "SCENE";
 }
 
 bool SceneChangeDetection::Init() {

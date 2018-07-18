@@ -76,7 +76,7 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     OCR_char_stats char_count(std::string s, std::string white_space, std::string eng_symbol, std::string eng_num );
     std::string check_string(std::string s, OCR_filter_settings ocrset);
 
-    std::string GetDetectionType() { return "IMAGE_DATA"; }
+    std::string GetDetectionType();
 
     bool Init();
 

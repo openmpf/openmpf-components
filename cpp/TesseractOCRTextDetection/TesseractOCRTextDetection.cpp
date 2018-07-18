@@ -47,6 +47,11 @@ using namespace std;
 using log4cxx::Logger;
 using log4cxx::xml::DOMConfigurator;
 
+std::string TesseractOCRTextDetection::GetDetectionType(){
+    
+    return "TEXT";
+}
+
 
 /*
  * Called during Init.
@@ -998,10 +1003,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
 
 bool TesseractOCRTextDetection::Supports(MPFDetectionDataType data_type) {
 
-	if (data_type == MPFDetectionDataType::IMAGE) {
-		return true;
-	}
-	return false;
+	return data_type == MPFDetectionDataType::IMAGE;
 }
 
 MPF_COMPONENT_CREATOR(TesseractOCRTextDetection);

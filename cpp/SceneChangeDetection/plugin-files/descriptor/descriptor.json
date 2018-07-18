@@ -74,7 +74,7 @@
         },
         {
           "name": "MERGE_TRACKS",
-          "description": "In the context of videos, when set to true, attempt to merge tracks spanning segment boundaries. Default value is defined by the MPF properties file.",
+          "description": "In the context of videos, when set to true, attempt to merge tracks spanning segment boundaries.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
