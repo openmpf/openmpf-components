@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2016 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2018 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2016 The MITRE Corporation                                       *
+ * Copyright 2018 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -94,7 +94,7 @@ int main(int argc, char* argv[]) {
         Properties media_properties;
         std::string job_name("Testing Scene Change");
         std::cout<<"testing scene change"<<std::endl;
-        MPFVideoJob job(job_name, uri, 0,200,algorithm_properties, media_properties);
+        MPFVideoJob job(job_name, uri, 0,251,algorithm_properties, media_properties);
         scene_change_component.GetDetections(job, detections);
         std::cout<<"number of final scenes: "<<detections.size()<<std::endl;
         for (int i = 0; i < detections.size(); i++) {

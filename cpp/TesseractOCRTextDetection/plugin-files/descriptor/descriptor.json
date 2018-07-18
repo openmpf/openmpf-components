@@ -1,17 +1,16 @@
 {
   "componentName" : "TesseractOCR",
-  "componentVersion" : "2.0.0",
-  "middlewareVersion" :  "2.0.0",
+  "componentVersion" : "3.0.0",
+  "middlewareVersion" :  "3.0.0",
   "sourceLanguage" : "c++",
   "batchLibrary": "${MPF_HOME}/plugins/TesseractOCR/lib/libmpfTesseractOCR.so",
-  "streamLibrary": "${MPF_HOME}/plugins/TesseractOCR/lib/libmpfTesseractOCR.so",
   "environmentVariables" : [ {
     "name" : "LD_LIBRARY_PATH",
     "value" : "${MPF_HOME}/plugins/TesseractOCR/lib:${LD_LIBRARY_PATH}",
     "sep" : ":"
   } ],
   "algorithm" : {
-    "name" : "TesseractOCR",
+    "name" : "TESSERACTOCR",
     "description" : "This component applies Tesseract optical character recognition to an image.",
     "actionType" : "DETECTION",
     "requiresCollection" : {
@@ -181,7 +180,7 @@
         },
         {
           "name": "SCALE",
-          "description": "Image rescaling factor. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.0.",
+          "description": "Image rescaling factor. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.4.",
           "type": "DOUBLE",
           "defaultValue": "2.4"
         },
@@ -252,7 +251,7 @@
     {
       "name": "IMAGE OCR ACTION",
       "description": "Testing the OCR stuff.",
-      "algorithm": "TesseractOCR",
+      "algorithm": "TESSERACTOCR",
       "properties": [
         {
         "name" : "TAGGING_FILE",
@@ -271,7 +270,7 @@
     {
       "name": "TESSERACT OCR ACTION",
       "description": "OCR action with auto rotate, flip, and PSM1.",
-      "algorithm": "TesseractOCR",
+      "algorithm": "TESSERACTOCR",
       "properties": [
         {
         "name" : "TAGGING_FILE",

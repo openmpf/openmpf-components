@@ -24,40 +24,25 @@
 # limitations under the License.                                            #
 #############################################################################
 
-
 cmake_minimum_required(VERSION 3.6)
-project(scenechange-detection)
+project(tesseractocr-detection-tests)
 
 set(CMAKE_CXX_STANDARD 11)
 
-include(../ComponentSetup.cmake)
+find_package(GTest)
+if (${GTEST_FOUND})
 
-find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0
-    COMPONENTS opencv_video opencv_highgui)
+    enable_testing()
+    find_package(GTest REQUIRED)
+    find_package(mpfComponentTestUtils REQUIRED)
 
-find_package(mpfComponentInterface REQUIRED)
-find_package(mpfDetectionComponentApi REQUIRED)
-find_package(mpfComponentUtils REQUIRED)
-find_package(Qt4 REQUIRED)
+    include_directories(..)
+    add_executable(TesseractOCRTextDetectionTest test_tesseract_ocr_detection.cpp)
+    target_link_libraries(TesseractOCRTextDetectionTest mpfTesseractOCR mpfComponentTestUtils GTest::GTest GTest::Main)
 
+    add_test(NAME TesseractOCRTextDetectionTest COMMAND TesseractOCRTextDetectionTest)
 
-
-# Find and install config4cpp
-set(config4cpp_DIR /apps/source/config4cpp)
-include_directories(${config4cpp_DIR}/include)
-set(config4cpp_LIBDIR ${config4cpp_DIR}/lib)
-set(Config4Cpp_LIBS ${config4cpp_LIBDIR}/libconfig4cpp.a)
-
-
-set(SCENE_SOURCE_FILES SceneChangeDetection.cpp SceneChangeDetection.h)
-
-add_library(mpfSceneChange SHARED ${SCENE_SOURCE_FILES})
-target_link_libraries(mpfSceneChange mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${Config4Cpp_LIBS})
-
-configure_mpf_component(SceneChangeDetection TARGETS mpfSceneChange)
-
-# Build sample executable
-add_executable(sample_scene_change_detector sample_scene_change_detector.cpp)
-target_link_libraries(sample_scene_change_detector mpfSceneChange)
-
-add_subdirectory(test)
+    # Install test images and videos
+    file(GLOB OCR_TEST_FILES data/*)
+    file(COPY ${OCR_TEST_FILES} DESTINATION test)
+endif()

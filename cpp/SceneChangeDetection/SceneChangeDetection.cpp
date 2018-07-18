@@ -150,7 +150,6 @@ void SceneChangeDetection::SetDefaultParameters() {
  * Sets parameters from .ini file.
  */
 void SceneChangeDetection::SetReadConfigParameters() {
-    //make sure none of the parameters are missed in the config file - double check
 
 
     if(parameters.contains("DO_HIST")) {
@@ -183,7 +182,7 @@ void SceneChangeDetection::SetReadConfigParameters() {
     }
 
     if(parameters.contains("MIN_SCENE")) {
-        minScene = parameters["MIN_Scene"].toInt();
+        minScene = parameters["MIN_SCENE"].toInt();
     }
 }
 
@@ -205,7 +204,8 @@ bool SceneChangeDetection::EdgeDetector(cv::Mat frameGray, cv::Mat &lastFrameEdg
     dilate(frameEdgeFinal,frameEdgeFinal,dilateKernel);
     absdiff(frameEdgeFinal,lastFrameEdgeFinal,edgeDst);
     double sumEdges = sum(edgeDst).val[0];
-    double deltaEdges = sumEdges / numPixels;
+    int frame_pixels = edgeDst.size().width*edgeDst.size().height;
+    double deltaEdges = sumEdges / frame_pixels;//numPixels;
 
     frameEdges.copyTo(lastFrameEdgeFinal);
     if(deltaEdges > edge_thresh)
@@ -251,9 +251,10 @@ bool SceneChangeDetection::ContentDetector(cv::Mat frame, cv::Mat &lastFrameHSV)
     cvtColor(frame,frameHSV,COLOR_BGR2HSV);
     absdiff(frameHSV,lastFrameHSV,dst);
     auto sum_ = sum(dst).val;
-    double deltaH = sum_[0]/numPixels;
-    double deltaS = sum_[1]/numPixels;
-    double deltaV = sum_[2]/numPixels;
+    int frame_pixels = dst.size().width*dst.size().height;
+    double deltaH = sum_[0]/frame_pixels;///numPixels;
+    double deltaS = sum_[1]/frame_pixels;
+    double deltaV = sum_[2]/frame_pixels;
     double deltaHSVAvg = (deltaH + deltaS + deltaV) / (3.0);
 
     frameHSV.copyTo(lastFrameHSV);
@@ -348,7 +349,16 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         if (job.start_frame > 0) {
             init_frame_index = job.start_frame - 1;
         }
+        
         int frame_index = init_frame_index+1;
+        
+        //Uncomment to enable scene change detection at the first frame.
+        //Only applies for non-zero initial frames.
+        //Ex. run getDetections on frames 50-100, uncomment allows frame 49 to be extracted and compared against frame 50
+        //otherwise, starting comparison will be frame 50 and 51. 
+        //if(init_frame_index > 1){
+        //    frame_index = frame_index-1;
+        //}
         cap.SetFramePosition(frame_index-1); // start from one frame before to get "lasts"
         double maxProgress = 80;
         double progressStep = maxProgress/cap.GetFrameCount();
@@ -367,7 +377,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
             bool success = cap.Read(frame);
             rows = frame.rows;
             cols = frame.cols;
-            numPixels = rows + cols;
+            numPixels = rows * cols;
             int currFrameNum = cap.GetFrameCount();
             double msec = cap.GetProperty(CAP_PROP_POS_MSEC);
             cvtColor(frame,frameGray,COLOR_BGR2GRAY);
@@ -393,7 +403,9 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
 
 
             }
-            
+            //Uncomment to enable adjusting property values in MPF Workflow.
+            //While disabled, property values are initialized from .ini file instead.
+            /*
             edge_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"EDGE_THRESHOLD",edge_thresh);
             hist_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"HIST_THRESHOLD",hist_thresh);
             cont_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"CONT_THRESHOLD",cont_thresh);
@@ -405,7 +417,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
             do_hist = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_HIST",do_hist);
             do_cont = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_CONT",do_cont);
             do_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_THRS",do_thrs);
-            do_edge = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_EDGE",do_edge);
+            do_edge = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_EDGE",do_edge);*/
             
             bool edge_result = do_edge && EdgeDetector(frameGray, lastFrameEdgeFinal);
             
@@ -419,7 +431,6 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
             {
                 if(frame_index-lastFrameNum >= minScene)    
                 {
-                    // found track
                     keyframes[frame_index]=lastFrameNum;
                     lastFrameNum = frame_index;
                 }
@@ -455,6 +466,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
                             )
                         );
             }
+            cap.ReverseTransform(track);
             locations.push_back(track);
         }
 

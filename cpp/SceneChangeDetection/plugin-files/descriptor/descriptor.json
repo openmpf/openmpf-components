@@ -1,16 +1,15 @@
 {
   "componentName" : "SceneChangeDetection",
-  "componentVersion" : "2.0.0",
-  "middlewareVersion" :  "2.0.0",
+  "componentVersion" : "3.0.0",
+  "middlewareVersion" :  "3.0.0",
   "sourceLanguage" : "c++",
   "batchLibrary": "${MPF_HOME}/plugins/SceneChangeDetection/lib/libsceneChange.so",
-  "streamLibrary": "${MPF_HOME}/plugins/SceneChangeDetection/lib/libsceneChange.so",
   "environmentVariables" : [ {
     "name" : "LD_LIBRARY_PATH",
     "value" : "${MPF_HOME}/plugins/SceneChangeDetection/lib:${LD_LIBRARY_PATH}"
   } ],
   "algorithm" : {
-    "name" : "SceneChange",
+    "name" : "SCENECHANGE",
     "description" : "Segments a video into scenes based on 4 detectors.",
     "actionType" : "DETECTION",
     "requiresCollection" : {
@@ -77,7 +76,7 @@
           "name": "MERGE_TRACKS",
           "description": "In the context of videos, when set to true, attempt to merge tracks spanning segment boundaries. Default value is defined by the MPF properties file.",
           "type": "BOOLEAN",
-          "propertiesKey": "detection.track.merging.enabled"
+          "defaultValue": "false"
         },
         {
           "name": "MIN_GAP_BETWEEN_TRACKS",
@@ -177,27 +176,27 @@
         },
         {
           "name": "EDGE_THRESHOLD",
-          "description": "Specifies the threshold for edge detection as the percentage of edge pixels that are different from the previous frame. Higher values reduce detection sensitivity. Threshold range 0-1. ",
+          "description": "Specifies the threshold for edge detection as the percentage of edge pixels that are different from the previous frame. Higher values reduce detection sensitivity. Threshold range 0-255. ",
           "type": "DOUBLE",
-          "defaultValue": "0.75"
+          "defaultValue": "70"
         },
         {
           "name": "HIST_THRESHOLD",
           "description": "Specifies the threshold for histogram detection as the degree of correlation between adjacent frames. Higher values increase detection sensitivity. Threshold range 0-1. ",
           "type": "DOUBLE",
-          "defaultValue": "0.25"
+          "defaultValue": "0.90"
         },
         {
           "name": "CONT_THRESHOLD",
-          "description": "Specifies the threshold for content detection as a percentage of image pixels that are different from the previous frame. Higher values reduce detection sensitivity. Threshold range 0-1.  ",
+          "description": "Specifies the threshold for content detection as a percentage of image pixels that are different from the previous frame. Higher values reduce detection sensitivity. Threshold range 0-255.  ",
           "type": "DOUBLE",
-          "defaultValue": "0.30"
+          "defaultValue": "35"
         },
         {
           "name": "THRS_THRESHOLD",
           "description": "Sets the minimum pixel color value for threshold detection. Range of this threshold appears to be dependent on image format (i.e. for common 32-bit images, color threshold ranges from 0-255). Otherwise, threshold values are from 0-1. Higher values increase detection sensitivity. ",
           "type": "DOUBLE",
-          "defaultValue": "12.0"
+          "defaultValue": "15.0"
         },
         {
           "name": "MIN_PERCENT",
@@ -218,7 +217,7 @@
     {
       "name": "OCV SCENE CHANGE DETECTION ACTION",
       "description": "Basic scene change detection with all parameters default",
-      "algorithm": "SceneChange",
+      "algorithm": "SCENECHANGE",
       "properties" : []
     }
   ],

@@ -76,8 +76,10 @@ target_link_libraries(mpfTesseractOCR mpfComponentInterface mpfDetectionComponen
 configure_mpf_component(TesseractOCR TARGETS  mpfTesseractOCR EXTRA_LIB_PATHS "${extra_lib_dirs}")
 
 
+add_subdirectory(test)
+
 # Build executable
-add_executable(OCR_test main.cpp)
-target_link_libraries(OCR_test mpfTesseractOCR)
+add_executable(sample_tesseract_ocr_detector sample_tesseract_ocr_detector.cpp)
+target_link_libraries(sample_tesseract_ocr_detector mpfTesseractOCR)
 
 

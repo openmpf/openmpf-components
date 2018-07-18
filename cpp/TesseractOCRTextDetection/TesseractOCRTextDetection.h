@@ -86,10 +86,10 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     bool comp_regex(const std::string & detection, std::string regstr);
     bool Supports(MPFDetectionDataType data_type);
     void Sharpen(cv::Mat &image, double weight);
-    void log_print(std::string text);
-    void log_print(std::wstring text);
-    void log_print(const char* text);
-    void log_print(const wchar_t* text);
+    std::string log_print_str(std::string text);
+    std::string log_print_str(std::wstring text);
+    std::string log_print_str(const char* text);
+    std::string log_print_str(const wchar_t* text);
     std::vector<std::string> get_tokens(std::string str);
     
     std::string parseRegexCode(boost::regex_constants::error_type etype);
