@@ -33,7 +33,7 @@ set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
 message("Package in ${PACKAGE_DIR}")
 file(MAKE_DIRECTORY ${PACKAGE_DIR}/bin)
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/plugin-files/data/tessdata DESTINATION ${PACKAGE_DIR}/bin/)
+
 file(COPY /usr/local/bin/tesseract DESTINATION ${PACKAGE_DIR}/bin/)
 
 
