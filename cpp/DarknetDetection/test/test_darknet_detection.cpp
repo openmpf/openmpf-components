@@ -72,7 +72,7 @@ bool object_found(const std::string &expected_object_name, int frame_number,
                   const std::vector<MPFVideoTrack> &tracks) {
 
     for (const auto &track : tracks) {
-        if (track.start_frame == frame_number
+        if (frame_number >= track.start_frame && frame_number <= track.stop_frame
                 && object_found(expected_object_name, track.detection_properties)
                 && object_found(expected_object_name, track.frame_locations.at(frame_number).detection_properties)) {
             return true;
@@ -81,6 +81,9 @@ bool object_found(const std::string &expected_object_name, int frame_number,
     return false;
 }
 
+bool object_found(const std::string &expected_object_name, int frame_number, const MPFVideoTrack &track) {
+    return object_found(expected_object_name, frame_number, std::vector<MPFVideoTrack>{ track });
+}
 
 
 DarknetDetection init_component() {
@@ -92,20 +95,24 @@ DarknetDetection init_component() {
 
 
 TEST(Darknet, ImageTest) {
-    MPFImageJob job("Test", "data/dog.jpg", get_yolo_tiny_config(), {});
+    for (bool use_preprocessor : { true, false }) {
+        Properties job_properties = get_yolo_tiny_config();
+        if (use_preprocessor) {
+            job_properties.emplace("USE_PREPROCESSOR", "TRUE");
+        }
+        MPFImageJob job("Test", "data/dog.jpg", job_properties, {});
 
+        DarknetDetection component = init_component();
 
-    DarknetDetection component = init_component();
+        std::vector<MPFImageLocation> results;
+        MPFDetectionError rc = component.GetDetections(job, results);
+        ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
 
-    std::vector<MPFImageLocation> results;
-    MPFDetectionError rc = component.GetDetections(job, results);
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
-
-    ASSERT_TRUE(object_found("dog", results));
-    ASSERT_TRUE(object_found("car", results));
-    ASSERT_TRUE(object_found("bicycle", results));
+        ASSERT_TRUE(object_found("dog", results));
+        ASSERT_TRUE(object_found("car", results));
+        ASSERT_TRUE(object_found("bicycle", results));
+    }
 }
-
 
 
 TEST(Darknet, VideoTest) {
@@ -167,6 +174,10 @@ TEST(Darknet, UsePreprocessorVideoTest) {
 
 DarknetResult CreateDetection(const std::string &object_type, float confidence) {
     return DarknetResult { cv::Rect(0, 0, 10, 10), { { confidence, object_type } } };
+}
+
+DarknetResult CreateDetection(const cv::Rect &location, const std::string &object_type, float confidence) {
+    return DarknetResult { location, { { confidence, object_type } } };
 }
 
 
@@ -340,7 +351,8 @@ TEST(Darknet, TestPreproccesorConfidenceCalculation) {
 
 bool has_confidence_values(const MPFVideoTrack &track, std::vector<float> expected_confidences) {
 
-    std::istringstream iss(track.detection_properties.at("CLASSIFICATION CONFIDENCE LIST"));
+    std::istringstream iss(track.frame_locations.begin()->second
+                                   .detection_properties.at("CLASSIFICATION CONFIDENCE LIST"));
 
     for (auto &expected_confidence : expected_confidences) {
         std::string temp;
@@ -358,31 +370,43 @@ bool has_confidence_values(const MPFVideoTrack &track, std::vector<float> expect
 
 TEST(Darknet, TestNumberOfClassifications) {
     DarknetResult detections1;
+    detections1.detection_rect = cv::Rect(0, 0, 1, 1);
     detections1.object_type_probs = { { .1, "dog" }, { .2, "person" }, {.3, "cat"}, {.25, "apple"} };
 
     DarknetResult detections2;
+    detections2.detection_rect = cv::Rect(4, 4, 1, 1);
     detections2.object_type_probs = { { .1, "person" }, { .25, "dog" }, {.25, "cat"}, {.1, "apple"} };
 
-    SingleDetectionPerTrackTracker tracker(3);
+    DefaultTracker tracker(3, 0.5);
     tracker.ProcessFrameDetections({ detections1, detections2 }, 0);
 
     auto tracks = tracker.GetTracks();
     ASSERT_EQ(tracks.size(), 2);
 
-    auto &track1 = tracks.at(0);
-    auto &track2 = tracks.at(1);
+    MPFVideoTrack track1;
+    MPFVideoTrack track2;
+    if (tracks.at(0).frame_locations.begin()->second.x_left_upper == 0) {
+        track1 = tracks.at(0);
+        track2 = tracks.at(1);
+    }
+    else {
+        track1 = tracks.at(1);
+        track2 = tracks.at(0);
+    }
 
     ASSERT_EQ(track1.frame_locations.size(), 1);
     ASSERT_EQ(track2.frame_locations.size(), 1);
 
     ASSERT_FLOAT_EQ(track1.confidence, .3);
     ASSERT_EQ(track1.detection_properties.at("CLASSIFICATION"), "cat");
-    ASSERT_EQ(track1.detection_properties.at("CLASSIFICATION LIST"), "cat; apple; person");
+    ASSERT_EQ(track1.frame_locations.begin()->second.detection_properties.at("CLASSIFICATION LIST"),
+              "cat; apple; person");
     ASSERT_TRUE(has_confidence_values(track1, { .3, .25, .2 }));
 
     ASSERT_FLOAT_EQ(track2.confidence, .25);
     ASSERT_EQ(track2.detection_properties.at("CLASSIFICATION"), "cat");
-    ASSERT_EQ(track2.detection_properties.at("CLASSIFICATION LIST"), "cat; dog; apple");
+    ASSERT_EQ(track2.frame_locations.begin()->second.detection_properties.at("CLASSIFICATION LIST"),
+              "cat; dog; apple");
     ASSERT_TRUE(has_confidence_values(track2, { .25, .25, .1 }));
 }
 
@@ -466,3 +490,177 @@ TEST(Darknet, TestInvalidWhitelist) {
         ASSERT_EQ(rc, MPF_INVALID_PROPERTY);
     }
 }
+
+
+TEST(Darknet, DefaultTrackerFiltersOnIntersectionRatio) {
+    DefaultTracker tracker(5, 0.5);
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 20, 20}, "object", 0.5) }, 0);
+    tracker.ProcessFrameDetections({ CreateDetection({8, 8, 20, 20}, "object", 0.5) }, 1);
+    tracker.ProcessFrameDetections({ CreateDetection({20, 20, 20, 20}, "object", 0.5) }, 2);
+
+    auto tracks = tracker.GetTracks();
+    ASSERT_EQ(2, tracks.size());
+
+    MPFVideoTrack track1;
+    MPFVideoTrack track2;
+    if (tracks.at(0).start_frame == 0) {
+        track1 = tracks.at(0);
+        track2 = tracks.at(1);
+    }
+    else {
+        track1 = tracks.at(1);
+        track2 = tracks.at(0);
+    }
+
+    ASSERT_EQ(0, track1.start_frame);
+    ASSERT_EQ(1, track1.stop_frame);
+    ASSERT_EQ(2, track1.frame_locations.size());
+    ASSERT_TRUE(object_found("object", 0, track1));
+    ASSERT_TRUE(object_found("object", 1, track1));
+
+    ASSERT_EQ(2, track2.start_frame);
+    ASSERT_EQ(2, track2.stop_frame);
+    ASSERT_EQ(1, track2.frame_locations.size());
+    ASSERT_TRUE(object_found("object", 2, track2));
+}
+
+
+TEST(Darknet, DefaultTrackerIgnoresOverlapWhenOverlapRatioNotPositive) {
+    for (double overlap_ratio : { 0.0, -0.5, -1.0 }) {
+        DefaultTracker tracker(5, overlap_ratio);
+        tracker.ProcessFrameDetections({ CreateDetection(cv::Rect(0, 0, 1, 1), "object", 0.5) }, 0);
+        tracker.ProcessFrameDetections({ CreateDetection(cv::Rect(5, 5, 1, 1), "object", 0.5) }, 1);
+        tracker.ProcessFrameDetections({ CreateDetection(cv::Rect(0, 0, 1, 1), "other", 0.5) }, 1);
+
+
+        auto tracks = tracker.GetTracks();
+        ASSERT_EQ(2, tracks.size());
+
+        MPFVideoTrack object_track;
+        MPFVideoTrack other_track;
+        if (tracks.at(0).frame_locations.size() == 2) {
+            object_track = tracks.at(0);
+            other_track = tracks.at(1);
+        }
+        else {
+            object_track = tracks.at(1);
+            other_track = tracks.at(0);
+        }
+
+        ASSERT_EQ(2, object_track.frame_locations.size());
+        ASSERT_TRUE(object_found("object", 0, object_track));
+        ASSERT_TRUE(object_found("object", 1, object_track));
+        ASSERT_EQ(0, object_track.start_frame);
+        ASSERT_EQ(1, object_track.stop_frame);
+
+        ASSERT_EQ(1, other_track.frame_locations.size());
+        ASSERT_TRUE(object_found("other", 1, other_track));
+        ASSERT_EQ(1, other_track.start_frame);
+        ASSERT_EQ(1, other_track.stop_frame);
+    }
+}
+
+
+
+TEST(Darknet, DefaultTrackerOnlyCombinesExactMatchWhenOverlapIsOne) {
+    DefaultTracker tracker(5, 1);
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 6}, "object", 0.5) }, 0);
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "object", 0.5) }, 1);
+
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "other", 0.5) }, 1);
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "other", 0.5) }, 2);
+
+    auto tracks = tracker.GetTracks();
+    ASSERT_EQ(3, tracks.size());
+
+    MPFVideoTrack object_track1;
+    MPFVideoTrack object_track2;
+    MPFVideoTrack other_track;
+    for (auto& track : tracks) {
+        if (track.start_frame == 0 && track.stop_frame == 0) {
+            object_track1 = track;
+        }
+        else if (track.start_frame == 1 && track.stop_frame == 1) {
+            object_track2 = track;
+        }
+        else {
+            other_track = track;
+        }
+    }
+
+    ASSERT_EQ(1, object_track1.frame_locations.size());
+    ASSERT_TRUE(object_found("object", 0, object_track1));
+
+    ASSERT_EQ(1, object_track2.frame_locations.size());
+    ASSERT_TRUE(object_found("object", 1, object_track2));
+
+    ASSERT_EQ(1, other_track.start_frame);
+    ASSERT_EQ(2, other_track.stop_frame);
+    ASSERT_EQ(2, other_track.frame_locations.size());
+    ASSERT_TRUE(object_found("other", 1, other_track));
+    ASSERT_TRUE(object_found("other", 2, other_track));
+}
+
+
+TEST(Darknet, DefaultTrackerDoesNotCombineWhenOverlapIsGreaterThanOne) {
+    DefaultTracker tracker(5, 1.1);
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 6}, "object", 0.5) }, 0);
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "object", 0.5) }, 1);
+
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "other", 0.5) }, 1);
+    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "other", 0.5) }, 2);
+
+    auto tracks = tracker.GetTracks();
+    ASSERT_EQ(4, tracks.size());
+    ASSERT_TRUE(object_found("object", 0, tracks));
+    ASSERT_TRUE(object_found("object", 1, tracks));
+    ASSERT_TRUE(object_found("other", 1, tracks));
+    ASSERT_TRUE(object_found("other", 2, tracks));
+
+    for (const auto &track : tracks) {
+        ASSERT_EQ(1, track.frame_locations.size());
+        ASSERT_EQ(track.start_frame, track.stop_frame);
+    }
+}
+
+
+
+TEST(Darknet, DefaultTrackerDoesNotCombineDetectionsWhenNonContiguousFrames) {
+    DefaultTracker tracker(5, 0);
+    auto detection = CreateDetection(cv::Rect(0, 0, 1, 1), "object", 0.5);
+
+    tracker.ProcessFrameDetections({ detection }, 0);
+    tracker.ProcessFrameDetections({ detection }, 1);
+
+    tracker.ProcessFrameDetections({ detection }, 3);
+    tracker.ProcessFrameDetections({ detection }, 4);
+    tracker.ProcessFrameDetections({ detection }, 5);
+
+    auto tracks = tracker.GetTracks();
+    ASSERT_EQ(2, tracks.size());
+    MPFVideoTrack track0to1;
+    MPFVideoTrack track3to5;
+    if (tracks.at(0).start_frame == 0) {
+        track0to1 = tracks.at(0);
+        track3to5 = tracks.at(1);
+    }
+    else {
+        track0to1 = tracks.at(1);
+        track3to5 = tracks.at(0);
+    }
+
+    ASSERT_EQ(0, track0to1.start_frame);
+    ASSERT_EQ(1, track0to1.stop_frame);
+    ASSERT_EQ(2, track0to1.frame_locations.size());
+    ASSERT_TRUE(object_found("object", 0, track0to1));
+    ASSERT_TRUE(object_found("object", 1, track0to1));
+
+    ASSERT_EQ(3, track3to5.start_frame);
+    ASSERT_EQ(5, track3to5.stop_frame);
+    ASSERT_EQ(3, track3to5.frame_locations.size());
+    ASSERT_TRUE(object_found("object", 3, track3to5));
+    ASSERT_TRUE(object_found("object", 4, track3to5));
+    ASSERT_TRUE(object_found("object", 5, track3to5));
+}
+
+
