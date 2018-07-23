@@ -116,7 +116,7 @@
           "name": "TESSERACT_PSM",
           "description": "Tesseract Page Segmentation Mode. Refer to Tesseract docs for details",
           "type": "INT",
-          "defaultValue": "3"
+          "defaultValue": "1"
         },
         {
           "name": "SEARCH_REGION_ENABLE_DETECTION",
@@ -287,7 +287,12 @@
         {
           "name": "AUTO_FLIP",
           "value": "true"
+        },
+        {
+          "name": "TESSERACT_PSM",
+          "value": "1"
         }
+
     ]
     }
   ],
