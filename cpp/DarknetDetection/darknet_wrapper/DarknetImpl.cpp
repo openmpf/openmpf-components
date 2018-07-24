@@ -84,61 +84,38 @@ namespace DarknetHelpers {
 
 namespace {
 
-    image DarknetImageHolder::CvMatToImage(const cv::Mat &cv_image,
-                                           const int target_width,
-                                           const int target_height) {
-        int new_w = cv_image.cols;
-        int new_h = cv_image.rows;
-        int w = target_width;
-        int h = target_height;
+image DarknetImageHolder::CvMatToImage(const cv::Mat &cv_image,
+                                       const int target_width,
+                                       const int target_height) {
 
-        // Compute the scaled width and height: this will keep the
-        // same aspect ratio but make it fit within the
-        // target_width and target_height.
-        if (((float)w/cv_image.cols) < ((float)h/cv_image.rows)) {
-            new_w = w;
-            new_h = (cv_image.rows * w)/cv_image.cols;
-        }
-        else {
-            new_h = h;
-            new_w = (cv_image.cols * h)/cv_image.rows;
-        }
+    image tmp_image = make_image(cv_image.cols,
+                                 cv_image.rows,
+                                 cv_image.channels());
+    
+    // This code is mostly copied from Darknet's "ipl_into_image"
+    // function. The main difference is that this function works
+    // with cv::Mat instead of IplImage. IplImage is a legacy
+    // OpenCV image type. The OpenCV documentation for cv::Mat
+    // says that cv::Mat and IplImage use a compatible data
+    // layout.
+    int width = tmp_image.w;
+    int height = tmp_image.h;
+    int channels = cv_image.channels();
+    size_t step = cv_image.step[0];
 
-        cv::Mat resized;
-        cv::Size s(new_w, new_h);
-        cv::resize(cv_image, resized, s);
-
-        // Now add borders. Darknet uses a gray border.
-        cv::Scalar_<float> val(255.0/2, 255.0/2, 255.0/2);
-        int dx = (w-new_w)/2;
-        int dy = (h-new_h)/2;
-
-        cv::Mat square_image(w, h, resized.type(), val);
-        resized.copyTo(square_image(cv::Rect(dx, dy, resized.cols, resized.rows)));
-        image darknet_image = make_image(square_image.cols, square_image.rows, square_image.channels());
-
-        // This code is mostly copied from Darknet's "ipl_into_image"
-        // function. The main difference is that this function works
-        // with cv::Mat instead of IplImage. IplImage is a legacy
-        // OpenCV image type. The OpenCV documentation for cv::Mat
-        // says that cv::Mat and IplImage use a compatible data
-        // layout.
-        int height = darknet_image.h;
-        int width = darknet_image.w;
-        int channels = square_image.channels();
-        size_t step = square_image.step[0];
-
-        for (int row = 0; row < height; row++) {
-            for (int col = 0; col < width; col++) {
-                for (int channel = 0; channel < channels; channel++) {
-                    darknet_image.data[channel * width * height + row * width + col]
-                            = square_image.data[row * step + col * channels + channel] / 255.0f;
-                }
+    for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+            for (int channel = 0; channel < channels; channel++) {
+                tmp_image.data[channel * width * height + row * width + col]
+                        = cv_image.data[row * step + col * channels + channel] / 255.0f;
             }
         }
-        rgbgr_image(darknet_image);
-        return std::move(darknet_image);
     }
+    rgbgr_image(tmp_image);
+    image darknet_image = letterbox_image(tmp_image, target_width, target_height);
+    free_image(tmp_image);
+    return darknet_image;
+}
 
 
     DarknetImageHolder::DarknetImageHolder() 
