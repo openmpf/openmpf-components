@@ -140,9 +140,6 @@ ModelSettings DarknetDetection::GetModelSettings(const MPF::COMPONENT::Propertie
     return models_parser_.ParseIni(model_name, models_dir_path + "/DarknetDetection");
 }
 
-
-
-
 std::string DarknetDetection::GetDetectionType() {
     return "CLASS";
 }

@@ -325,9 +325,8 @@ DarknetImpl<ClassFilter>::DarknetImpl(const std::map<std::string, std::string> &
 }
 
 template<typename ClassFilter>
-void DarknetImpl<ClassFilter>::ConvertResultsUsingPreprocessor(
-    std::vector<DarknetResult> &darknet_results,
-    std::vector<MPFImageLocation> &locations) {
+void DarknetImpl<ClassFilter>::ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
+                                                               std::vector<MPFImageLocation> &locations) {
 
     std::unordered_map<std::string, MPFImageLocation> type_to_image_loc;
 
@@ -437,7 +436,28 @@ MPFDetectionError DarknetImpl<ClassFilter>::RunDarknetDetection(const MPFVideoJo
     else {
         int number_of_classifications = DetectionComponentUtils::GetProperty(
                 job.job_properties, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5);
-        SingleDetectionPerTrackTracker tracker(number_of_classifications);
+        double rect_min_overlap = DetectionComponentUtils::GetProperty(
+                job.job_properties, "MIN_OVERLAP", 0.5);
+
+        if (rect_min_overlap == 1) {
+            LOG4CXX_INFO(logger_, "[" << job.job_name << "] The MIN_OVERLAP job property was one, so only detections "
+                     "that have the exact same location, size, and classification "
+                     "will be combined in to the same track.");
+        }
+        else if (rect_min_overlap > 1) {
+            LOG4CXX_INFO(logger_, "[" << job.job_name << "] The value of the MIN_OVERLAP job property was "
+                    << rect_min_overlap << ". Since the value is greater than one, "
+                       "each track will contain exactly one detection.");
+        }
+        else if (rect_min_overlap <= 0) {
+            LOG4CXX_INFO(logger_, "[" << job.job_name << "] The value of the MIN_OVERLAP job property was "
+                      << rect_min_overlap << ". Since the value is less than or equal to zero, "
+                         "if a detection does not overlap with any tracks that have the same classification, "
+                         "it will be added to an existing track with which it does not overlap "
+                         "and has the same classification if at least one such track exists.");
+        }
+        DefaultTracker tracker(number_of_classifications, rect_min_overlap);
+        // SingleDetectionPerTrackTracker tracker(number_of_classifications);
         return GetDetections(job, tracks, tracker);
     }
 }
