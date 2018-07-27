@@ -366,6 +366,10 @@ MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const
                         // Add detection to this track and update stop_value
                         iter->second.stop_frame = frame_num;
                         iter->second.frame_locations.insert(pair<int, MPFImageLocation>(frame_num, detection));
+                        if (detection.confidence > iter->second.confidence) {
+                            iter->second.confidence = detection.confidence;
+                            iter->second.detection_properties["TEXT"] = detection.detection_properties["TEXT"];
+                        }
                         create_new_track = false;
                     }
                     break;
@@ -377,6 +381,8 @@ MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const
                 new_track.start_frame = frame_num;
                 new_track.stop_frame = frame_num;
                 new_track.frame_locations.insert(pair<int, MPFImageLocation>(frame_num, detection));
+                new_track.confidence = detection.confidence;
+                new_track.detection_properties["TEXT"] = detection.detection_properties["TEXT"];
                 tracks_map.insert(pair<string, MPFVideoTrack>(
                         key_to_use, new_track));
             }
