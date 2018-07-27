@@ -342,7 +342,7 @@ void DarknetImpl<ClassFilter>::ConvertResultsUsingPreprocessor(std::vector<Darkn
                                          Properties{ {"CLASSIFICATION", class_prob.second} }));
             }
             else {
-                PreprocessorTracker::CombineImageLocation(rect, class_prob.first, it->second);
+                TrackingHelpers::CombineImageLocation(rect, class_prob.first, it->second);
             }
         }
     }
@@ -457,7 +457,6 @@ MPFDetectionError DarknetImpl<ClassFilter>::RunDarknetDetection(const MPFVideoJo
                          "and has the same classification if at least one such track exists.");
         }
         DefaultTracker tracker(number_of_classifications, rect_min_overlap);
-        // SingleDetectionPerTrackTracker tracker(number_of_classifications);
         return GetDetections(job, tracks, tracker);
     }
 }
@@ -556,7 +555,7 @@ MPFDetectionError DarknetImpl<ClassFilter>::RunDarknetDetection(const MPFImageJo
                                                                    "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
         for (auto& result : results) {
             locations.push_back(
-                SingleDetectionPerTrackTracker::CreateImageLocation(number_of_classifications, result));
+                TrackingHelpers::CreateImageLocation(number_of_classifications, result));
         }
     }
 
