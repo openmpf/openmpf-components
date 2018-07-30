@@ -67,12 +67,17 @@ bool DarknetDetection::Init() {
 MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks) {
     LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
 
+    if (DetectionComponentUtils::GetProperty(job.job_properties, "FRAME_QUEUE_CAPACITY", 4) <= 0) {
+        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] : Detection failed: frame queue capacity property must be greater than or equal to 0");
+        return MPF_INVALID_PROPERTY;
+    }
+
     try {
         DarknetDl detector = GetDarknetImpl(job);
 
         MPFDetectionError rc = detector->RunDarknetDetection(job, tracks);
         if (rc != MPF_DETECTION_SUCCESS) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Darknet detection fialed for file: " << job.data_uri);
+            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Darknet detection failed for file: " << job.data_uri);
         }
         
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
@@ -91,6 +96,10 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
         DarknetDl detector = GetDarknetImpl(job);
 
         MPFDetectionError rc = detector->RunDarknetDetection(job, locations);
+        if (rc != MPF_DETECTION_SUCCESS) {
+            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Darknet detection failed for file: " << job.data_uri);
+        }
+
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << locations.size() << " detections.");
         return rc;
     }

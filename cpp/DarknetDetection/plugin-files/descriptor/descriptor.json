@@ -169,6 +169,12 @@
           "propertiesKey": "detection.models.dir.path"
         },
         {
+          "name": "FRAME_QUEUE_CAPACITY",
+          "description": "The maximum number of frames in the frame queue. When processing videos, the reading of frames from the input file and the processing of the frames are done on separate threads. The frame queue is created with a fixed capacity at the time the job is started",
+          "type": "INT",
+          "defaultValue": "4"
+        },
+        {
           "name": "USE_PREPROCESSOR",
           "description": "Enables preprocessor mode. If enabled, and multiple Darknet detections in a frame share the same classification, then those are merged into a single detection where the region corresponds to the superset region that encapsulates all of the original detections, and the confidence value is the probability that at least one of the original detections is a true positive. If disabled, multiple Darknet detections in a frame are not merged together.",
           "type": "BOOLEAN",

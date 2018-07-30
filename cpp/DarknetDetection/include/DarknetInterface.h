@@ -34,7 +34,7 @@
 
 #include <opencv2/core.hpp>
 
-#include "MPFDetectionComponent.h"
+#include <MPFDetectionComponent.h>
 
 struct DarknetResult {
     cv::Rect detection_rect;

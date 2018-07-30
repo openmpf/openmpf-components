@@ -29,7 +29,6 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv/cv.hpp>
 
-#include <MPFDetectionComponent.h>
 #include <fstream>
 #include <unordered_set>
 #include <MPFVideoCapture.h>
