@@ -83,8 +83,6 @@ namespace DarknetHelpers {
 } // end of DarknetHelpers namespace
 
 
-namespace {
-
 image DarknetImageHolder::CvMatToImage(const cv::Mat &cv_image,
                                        const int target_width,
                                        const int target_height) {
@@ -119,15 +117,6 @@ image DarknetImageHolder::CvMatToImage(const cv::Mat &cv_image,
     return darknet_image;
 }
 
-
-    DarknetImageHolder::DarknetImageHolder() 
-            : index(0), stop_flag(false), orig_frame_size(cv::Size(0,0)) {
-        darknet_image.w = 0;
-        darknet_image.h = 0;
-        darknet_image.c = 0;
-        darknet_image.data = NULL;
-    }
-
     DarknetImageHolder::DarknetImageHolder(const bool s) 
             : index(0), stop_flag(s), orig_frame_size(cv::Size(0,0)) {
         darknet_image.w = 0;
@@ -159,6 +148,8 @@ image DarknetImageHolder::CvMatToImage(const cv::Mat &cv_image,
         }
     }
 
+
+namespace {
 
     // Darknet functions that accept C style strings, accept a char*
     // instead of a const char*.
@@ -317,8 +308,7 @@ DarknetImpl<ClassFilter>::DarknetImpl(const std::map<std::string, std::string> &
     // If the confidence threshold is zero or smaller it will report every possible classification.
     , confidence_threshold_(DetectionComponentUtils::GetProperty(props, "CONFIDENCE_THRESHOLD", 0.5f))
     , probs_(output_layer_size_, num_classes_)
-    , boxes_(new box[output_layer_size_])
-    , queue_(DetectionComponentUtils::GetProperty(props, "FRAME_QUEUE_CAPACITY", 4)) {}
+    , boxes_(new box[output_layer_size_]) {}
 
 
 template<typename ClassFilter>
@@ -352,7 +342,8 @@ void DarknetImpl<ClassFilter>::ConvertResultsUsingPreprocessor(std::vector<Darkn
 // This function runs the detection and tracking on a separate thread.
 template<typename ClassFilter>
 template<typename Tracker>
-void DarknetImpl<ClassFilter>::ProcessFrameQueue(Tracker &tracker) {
+void DarknetImpl<ClassFilter>::ProcessFrameQueue(Tracker &tracker,
+                                                 DarknetQueue &queue) {
 
     std::vector<DarknetResult>detections;
 
@@ -360,7 +351,7 @@ void DarknetImpl<ClassFilter>::ProcessFrameQueue(Tracker &tracker) {
         std::unique_ptr<DarknetImageHolder> current_frame;
 
         try {
-            current_frame = queue_.pop();
+            current_frame = queue.pop();
         }
         catch (const std::runtime_error &e) {
             // The pop() function will throw an exception when the
@@ -381,19 +372,20 @@ void DarknetImpl<ClassFilter>::ProcessFrameQueue(Tracker &tracker) {
 }
 
 template<typename ClassFilter>
-void DarknetImpl<ClassFilter>::FinishDetection(bool halt) {
-    if (halt) queue_.halt();
-    if (detection_thread_.joinable()) {
-        detection_thread_.join();
+void DarknetImpl<ClassFilter>::FinishDetection(std::thread &detection_thread,
+                                               DarknetQueue &queue, bool halt) {
+    if (halt) queue.halt();
+    if (detection_thread.joinable()) {
+        detection_thread.join();
     }
 }
 
 template<typename ClassFilter>
-void DarknetImpl<ClassFilter>::EnqueueStopFrame() {
+void DarknetImpl<ClassFilter>::EnqueueStopFrame(DarknetQueue &queue) {
     // Put a stop frame into the queue to tell the consumer it is done.
     std::unique_ptr<DarknetImageHolder> stop_frame(new DarknetImageHolder(true));
     try {
-        queue_.push(std::move(stop_frame));
+        queue.push(std::move(stop_frame));
     }
     catch (const std::runtime_error &e) {
         return;
@@ -402,7 +394,7 @@ void DarknetImpl<ClassFilter>::EnqueueStopFrame() {
 
 
 template<typename ClassFilter>
-MPFDetectionError DarknetImpl<ClassFilter>::ReadAndEnqueueFrames(MPFVideoCapture &video_cap) {
+MPFDetectionError DarknetImpl<ClassFilter>::ReadAndEnqueueFrames(MPFVideoCapture &video_cap, DarknetQueue &queue) {
 
     try {
         cv::Mat frame;
@@ -418,7 +410,7 @@ MPFDetectionError DarknetImpl<ClassFilter>::ReadAndEnqueueFrames(MPFVideoCapture
             std::unique_ptr<DarknetImageHolder> current_frame(new DarknetImageHolder(frame_number, frame, network_->w, network_->h));
 
             try {
-                queue_.push(std::move(current_frame));
+                queue.push(std::move(current_frame));
             }
             catch (const std::runtime_error &e) {
                 break;
@@ -426,7 +418,7 @@ MPFDetectionError DarknetImpl<ClassFilter>::ReadAndEnqueueFrames(MPFVideoCapture
 
         } while (video_cap.Read(frame));
 
-        EnqueueStopFrame();
+        EnqueueStopFrame(queue);
     }
     catch (std::exception &e) {
         return MPF::COMPONENT::MPFDetectionError::MPF_COULD_NOT_READ_DATAFILE;
@@ -459,25 +451,26 @@ MPFDetectionError DarknetImpl<ClassFilter>::RunDarknetDetection(const MPFVideoJo
                                                                 std::vector<MPFVideoTrack> &tracks,
                                                                 Tracker &tracker) {
 
+    DarknetQueue queue(DetectionComponentUtils::GetProperty(job.job_properties, "FRAME_QUEUE_CAPACITY", 4));
 
-    detection_thread_ = std::thread{ [this, &tracker]() { DarknetImpl::ProcessFrameQueue(tracker); } };
+    std::thread detection_thread = std::thread{ [this, &tracker, &queue]() { DarknetImpl::ProcessFrameQueue(tracker, queue); } };
 
     MPFVideoCapture video_cap(job);
     if (!video_cap.IsOpened()) {
-        FinishDetection(true);
+        FinishDetection(detection_thread, queue, true);
         return MPF_COULD_NOT_OPEN_DATAFILE;
     }
-    MPFDetectionError rc = ReadAndEnqueueFrames(video_cap);
+    MPFDetectionError rc = ReadAndEnqueueFrames(video_cap, queue);
     if (rc != MPF_DETECTION_SUCCESS) {
         // Set the halt parameter to true so that the detection thread
         // won't be waiting forever for more frames to be sent.
-        FinishDetection(true);
+        FinishDetection(detection_thread, queue, true);
     }
     else {
         // Wait for the thread to finish, setting the halt parameter
         // to false so that it will execute all the way to the stop
         // frame before returning.
-        FinishDetection(false);
+        FinishDetection(detection_thread, queue, false);
         tracks = tracker.GetTracks();
 
         for (MPFVideoTrack &track : tracks) {

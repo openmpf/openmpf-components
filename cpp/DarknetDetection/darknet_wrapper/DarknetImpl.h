@@ -68,32 +68,30 @@ namespace DarknetHelpers {
     };
 }
 
-namespace {
-    struct DarknetImageHolder {
-        int index;
-        bool stop_flag;
-        cv::Size orig_frame_size;
-        image darknet_image;
 
-        DarknetImageHolder();
-        explicit DarknetImageHolder(const bool s);
-        DarknetImageHolder(const cv::Mat &cv_image,
-                           const int target_width, const int target_height);
-        DarknetImageHolder(int frame_num, const cv::Mat &cv_image,
-                           const int target_width, const int target_height);
+struct DarknetImageHolder {
+    int index;
+    bool stop_flag;
+    cv::Size orig_frame_size;
+    image darknet_image;
 
-        ~DarknetImageHolder();
+    DarknetImageHolder() = delete;
+    explicit DarknetImageHolder(const bool s);
+    DarknetImageHolder(const cv::Mat &cv_image,
+                       const int target_width, const int target_height);
+    DarknetImageHolder(int frame_num, const cv::Mat &cv_image,
+                       const int target_width, const int target_height);
 
-        DarknetImageHolder(const DarknetImageHolder& im) = delete;
-        DarknetImageHolder& operator=(const DarknetImageHolder& im) = delete;
-        DarknetImageHolder(DarknetImageHolder&& im) = delete;
-        DarknetImageHolder& operator=(DarknetImageHolder&& im) = delete;
+    ~DarknetImageHolder();
 
-        image CvMatToImage(const cv::Mat &cv_image, const int w, const int h);
+    DarknetImageHolder(const DarknetImageHolder& im) = delete;
+    DarknetImageHolder& operator=(const DarknetImageHolder& im) = delete;
+    DarknetImageHolder(DarknetImageHolder&& im) = delete;
+    DarknetImageHolder& operator=(DarknetImageHolder&& im) = delete;
 
-    };
+    static image CvMatToImage(const cv::Mat &cv_image, const int w, const int h);
+};
 
-}  // end of anonymous namespace
 
 template<typename ClassFilter>
 class DarknetImpl : public DarknetInterface {
@@ -120,9 +118,6 @@ private:
 
     std::unique_ptr<box[]> boxes_;
 
-    MPF::COMPONENT::SPSCBoundedQueue<std::unique_ptr<DarknetImageHolder>> queue_;
-    std::thread detection_thread_;
-
     template <typename Tracker>
     MPF::COMPONENT::MPFDetectionError RunDarknetDetection(
             const MPF::COMPONENT::MPFVideoJob &job,
@@ -134,25 +129,27 @@ private:
     static void ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
                                                 std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
 
+    using DarknetQueue = MPF::COMPONENT::SPSCBoundedQueue<std::unique_ptr<DarknetImageHolder>>;
+
     // ProcessFrameQueue is the function that will be executed by the
     // thread spawned in GetDetections for video jobs.
     template <typename Tracker>
-    void ProcessFrameQueue(Tracker &tracker);
+    void ProcessFrameQueue(Tracker &tracker,  DarknetQueue &queue);
 
    // FinishDetection is used to stop the detection thread. Set the
    // halt parameter to true when the processing must be terminated
    // due to an exception or other error, and the thread will
    // terminate without emptying the queue. Otherwise, the thread will
    // empty the queue before being joined in this function.
-    void FinishDetection(bool halt);
+    void FinishDetection(std::thread &thread, DarknetQueue &queue, bool halt);
 
     // This function reads frames from the video and puts them into
     // the queue.
-    MPF::COMPONENT::MPFDetectionError ReadAndEnqueueFrames(MPF::COMPONENT::MPFVideoCapture &video_cap);
+    MPF::COMPONENT::MPFDetectionError ReadAndEnqueueFrames(MPF::COMPONENT::MPFVideoCapture &video_cap, DarknetQueue &queue);
 
     // This function puts a stop frame into the queue to tell the
     // detecton thread when there are no more frames to be processed.
-    void EnqueueStopFrame();
+    void EnqueueStopFrame(DarknetQueue &queue);
 };
 
 
