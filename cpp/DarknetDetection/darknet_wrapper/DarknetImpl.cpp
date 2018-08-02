@@ -318,8 +318,7 @@ DarknetImpl<ClassFilter>::DarknetImpl(const std::map<std::string, std::string> &
     , confidence_threshold_(DetectionComponentUtils::GetProperty(props, "CONFIDENCE_THRESHOLD", 0.5f))
     , probs_(output_layer_size_, num_classes_)
     , boxes_(new box[output_layer_size_])
-    , queue_(DetectionComponentUtils::GetProperty(props, "FRAME_QUEUE_CAPACITY", 4))
-    , halt_(false) {}
+    , queue_(DetectionComponentUtils::GetProperty(props, "FRAME_QUEUE_CAPACITY", 4)) {}
 
 
 template<typename ClassFilter>
@@ -359,11 +358,13 @@ void DarknetImpl<ClassFilter>::ProcessFrameQueue(Tracker &tracker) {
 
     do {
         std::unique_ptr<DarknetImageHolder> current_frame;
-        while (!halt_ && !queue_.pop(current_frame)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+        try {
+            current_frame = queue_.pop();
         }
-        if (halt_) {
-            // We're being forced to stop.
+        catch (const std::runtime_error &e) {
+            // The pop() function will throw an exception when the
+            // queue has been halted.
             break;
         }
 
@@ -372,6 +373,7 @@ void DarknetImpl<ClassFilter>::ProcessFrameQueue(Tracker &tracker) {
             // to do.
             break;
         }
+
         // Process it
         tracker.ProcessFrameDetections(Detect(*current_frame.get()),
                                         current_frame->index);
@@ -380,7 +382,7 @@ void DarknetImpl<ClassFilter>::ProcessFrameQueue(Tracker &tracker) {
 
 template<typename ClassFilter>
 void DarknetImpl<ClassFilter>::FinishDetection(bool halt) {
-    if (halt) halt_ = true;
+    if (halt) queue_.halt();
     if (detection_thread_.joinable()) {
         detection_thread_.join();
     }
@@ -390,10 +392,14 @@ template<typename ClassFilter>
 void DarknetImpl<ClassFilter>::EnqueueStopFrame() {
     // Put a stop frame into the queue to tell the consumer it is done.
     std::unique_ptr<DarknetImageHolder> stop_frame(new DarknetImageHolder(true));
-    while (!queue_.push(stop_frame)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    try {
+        queue_.push(std::move(stop_frame));
+    }
+    catch (const std::runtime_error &e) {
+        return;
     }
 }
+
 
 template<typename ClassFilter>
 MPFDetectionError DarknetImpl<ClassFilter>::ReadAndEnqueueFrames(MPFVideoCapture &video_cap) {
@@ -408,10 +414,16 @@ MPFDetectionError DarknetImpl<ClassFilter>::ReadAndEnqueueFrames(MPFVideoCapture
 
         do {
             frame_number++;
+
             std::unique_ptr<DarknetImageHolder> current_frame(new DarknetImageHolder(frame_number, frame, network_->w, network_->h));
-            while (!queue_.push(current_frame)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+            try {
+                queue_.push(std::move(current_frame));
             }
+            catch (const std::runtime_error &e) {
+                break;
+            }
+
         } while (video_cap.Read(frame));
 
         EnqueueStopFrame();

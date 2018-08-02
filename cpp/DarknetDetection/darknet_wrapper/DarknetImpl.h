@@ -28,7 +28,7 @@
 #ifndef OPENMPF_COMPONENTS_DARKNETIMPL_H
 #define OPENMPF_COMPONENTS_DARKNETIMPL_H
 
-
+#include <atomic>
 #include <memory>
 #include <vector>
 
@@ -121,7 +121,6 @@ private:
     std::unique_ptr<box[]> boxes_;
 
     MPF::COMPONENT::SPSCBoundedQueue<std::unique_ptr<DarknetImageHolder>> queue_;
-    std::atomic<bool> halt_;
     std::thread detection_thread_;
 
     template <typename Tracker>
