@@ -170,7 +170,7 @@
         },
         {
           "name": "FRAME_QUEUE_CAPACITY",
-          "description": "The maximum number of frames in the frame queue. When processing videos, the reading of frames from the input file and the processing of the frames are done on separate threads. The frame queue is created with a fixed capacity at the time the job is started",
+          "description": "The maximum number of frames in the frame queue. When processing videos, the reading of frames from the input file and the processing of the frames are done on separate threads. The frame queue is created with a fixed capacity at the time the job is started.",
           "type": "INT",
           "defaultValue": "4"
         },

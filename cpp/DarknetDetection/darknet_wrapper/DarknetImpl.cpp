@@ -366,7 +366,7 @@ void DarknetImpl<ClassFilter>::ProcessFrameQueue(Tracker &tracker,
         }
 
         // Process it
-        tracker.ProcessFrameDetections(Detect(*current_frame.get()),
+        tracker.ProcessFrameDetections(Detect(*current_frame),
                                         current_frame->index);
     } while (1);
 }
@@ -410,6 +410,7 @@ MPFDetectionError DarknetImpl<ClassFilter>::ReadAndEnqueueFrames(MPFVideoCapture
             std::unique_ptr<DarknetImageHolder> current_frame(new DarknetImageHolder(frame_number, frame, network_->w, network_->h));
 
             try {
+
                 queue.push(std::move(current_frame));
             }
             catch (const std::runtime_error &e) {
@@ -451,15 +452,15 @@ MPFDetectionError DarknetImpl<ClassFilter>::RunDarknetDetection(const MPFVideoJo
                                                                 std::vector<MPFVideoTrack> &tracks,
                                                                 Tracker &tracker) {
 
+    MPFVideoCapture video_cap(job);
+    if (!video_cap.IsOpened()) {
+        return MPF_COULD_NOT_OPEN_DATAFILE;
+    }
+
     DarknetQueue queue(DetectionComponentUtils::GetProperty(job.job_properties, "FRAME_QUEUE_CAPACITY", 4));
 
     std::thread detection_thread = std::thread{ [this, &tracker, &queue]() { DarknetImpl::ProcessFrameQueue(tracker, queue); } };
 
-    MPFVideoCapture video_cap(job);
-    if (!video_cap.IsOpened()) {
-        FinishDetection(detection_thread, queue, true);
-        return MPF_COULD_NOT_OPEN_DATAFILE;
-    }
     MPFDetectionError rc = ReadAndEnqueueFrames(video_cap, queue);
     if (rc != MPF_DETECTION_SUCCESS) {
         // Set the halt parameter to true so that the detection thread
@@ -529,7 +530,7 @@ MPFDetectionError DarknetImpl<ClassFilter>::RunDarknetDetection(const MPFImageJo
                                                                 std::vector<MPFImageLocation> &locations) {
 
     MPFImageReader image_reader(job);
-    DarknetImageHolder image(image_reader.GetImage(), network_.get()->w, network_.get()->h);
+    DarknetImageHolder image(image_reader.GetImage(), network_->w, network_->h);
     std::vector<DarknetResult> results = Detect(image);
     if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
         ConvertResultsUsingPreprocessor(results, locations);

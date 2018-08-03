@@ -34,6 +34,8 @@
 
 #include <opencv2/core.hpp>
 
+#include <MPFDetectionComponent.h>
+
 #include <MPFVideoCapture.h>
 #include <SPSCBoundedQueue.h>
 
