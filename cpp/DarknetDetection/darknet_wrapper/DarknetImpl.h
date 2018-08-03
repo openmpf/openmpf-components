@@ -37,7 +37,7 @@
 #include <MPFDetectionComponent.h>
 
 #include <MPFVideoCapture.h>
-#include <SPSCBoundedQueue.h>
+#include <BoundedQueue.h>
 
 #include "../include/DarknetInterface.h"
 
@@ -131,7 +131,7 @@ private:
     static void ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
                                                 std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
 
-    using DarknetQueue = MPF::COMPONENT::SPSCBoundedQueue<std::unique_ptr<DarknetImageHolder>>;
+    using DarknetQueue = MPF::COMPONENT::BoundedQueue<std::unique_ptr<DarknetImageHolder>>;
 
     // ProcessFrameQueue is the function that will be executed by the
     // thread spawned in GetDetections for video jobs.
