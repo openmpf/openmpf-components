@@ -449,7 +449,8 @@ void DlibFaceDetection::UpdateTracks(const dlib::cv_image<dlib::uint8> &next_fra
             MPFImageLocation mpf_object_detection;
             DlibRectToMPFImageLocation(current_track->correlation_tracker.get_position(), object_location_conf, mpf_object_detection);
             current_track->mpf_video_track.frame_locations.insert(pair<int, MPFImageLocation>(frame_index, mpf_object_detection));
-
+            current_track->mpf_video_track.confidence = std::max(current_track->mpf_video_track.confidence,
+                                                                 mpf_object_detection.confidence);
             //next track
             ++current_track;
         } else {
@@ -489,6 +490,8 @@ void DlibFaceDetection::UpdateTracks(const dlib::cv_image<dlib::uint8> &next_fra
             MPFImageLocation first_mpf_object_detection;
             DlibRectToMPFImageLocation(detected_object_rect, detected_object->detection_confidence, first_mpf_object_detection);
             new_dlib_track.mpf_video_track.frame_locations.insert(pair<int, MPFImageLocation>(frame_index, first_mpf_object_detection));
+            new_dlib_track.mpf_video_track.confidence = std::max(new_dlib_track.mpf_video_track.confidence,
+                                                                 first_mpf_object_detection.confidence);
 
             current_tracks.push_back(new_dlib_track);
 
