@@ -68,7 +68,7 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
     LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
 
     if (DetectionComponentUtils::GetProperty(job.job_properties, "FRAME_QUEUE_CAPACITY", 4) <= 0) {
-        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] : Detection failed: frame queue capacity property must be greater than or equal to 0");
+        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] : Detection failed: frame queue capacity property must be greater than 0");
         return MPF_INVALID_PROPERTY;
     }
 

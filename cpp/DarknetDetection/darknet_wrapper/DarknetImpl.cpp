@@ -308,7 +308,8 @@ DarknetImpl<ClassFilter>::DarknetImpl(const std::map<std::string, std::string> &
     // If the confidence threshold is zero or smaller it will report every possible classification.
     , confidence_threshold_(DetectionComponentUtils::GetProperty(props, "CONFIDENCE_THRESHOLD", 0.5f))
     , probs_(output_layer_size_, num_classes_)
-    , boxes_(new box[output_layer_size_]) {}
+    , boxes_(new box[output_layer_size_])
+    , logger_(log4cxx::Logger::getLogger("DarknetDetection")) {}
 
 
 template<typename ClassFilter>
@@ -401,6 +402,7 @@ MPFDetectionError DarknetImpl<ClassFilter>::ReadAndEnqueueFrames(MPFVideoCapture
         int frame_number = -1;
 
         if (!video_cap.Read(frame)) {
+            LOG4CXX_ERROR(logger_, __FUNCTION__ << ": Video capture failed to read a frame");
             return MPF::COMPONENT::MPFDetectionError::MPF_COULD_NOT_READ_DATAFILE;
         }
 
@@ -422,6 +424,7 @@ MPFDetectionError DarknetImpl<ClassFilter>::ReadAndEnqueueFrames(MPFVideoCapture
         EnqueueStopFrame(queue);
     }
     catch (std::exception &e) {
+        LOG4CXX_ERROR(logger_, __FUNCTION__ << ": exception caught: " << e.what());
         return MPF::COMPONENT::MPFDetectionError::MPF_COULD_NOT_READ_DATAFILE;
     }
     return MPF_DETECTION_SUCCESS;
@@ -454,6 +457,7 @@ MPFDetectionError DarknetImpl<ClassFilter>::RunDarknetDetection(const MPFVideoJo
 
     MPFVideoCapture video_cap(job);
     if (!video_cap.IsOpened()) {
+        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] : Failed to open video capture");
         return MPF_COULD_NOT_OPEN_DATAFILE;
     }
 
