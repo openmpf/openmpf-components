@@ -39,6 +39,8 @@ import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import static org.hamcrest.CoreMatchers.containsString;
+
 import java.nio.file.Paths;
 
 /**
@@ -47,15 +49,15 @@ import java.nio.file.Paths;
  * getDetections() and support() methods are correctly implemented, the component will work properly.  In cases where
  * the init() or close() methods are overridden, those also should be tested.
  */
-public class TikaDetectionComponentTest {
+public class TikaTextDetectionComponentTest {
 
-    private TikaDetectionComponent tikaComponent;
+    private TikaTextDetectionComponent tikaComponent;
 
     @Before
     public void setUp() {
-        tikaComponent = new TikaDetectionComponent();
+        tikaComponent = new TikaTextDetectionComponent();
         tikaComponent.init();
-        tikaComponent.setRunDirectory(".."); //System.getProperty("user.dir") + "/plugin-files")
+        tikaComponent.setRunDirectory("..");
     }
 
     @After
@@ -66,27 +68,43 @@ public class TikaDetectionComponentTest {
 
     @Test
     public void testGetDetectionsGeneric() throws Exception {
-        System.out.println(Paths.get(".").toAbsolutePath().normalize().toString());
-        String uri = "./test/Testing TIKA DETECTION.pptx";
-
+        String uri = "./test/data/Testing TIKA DETECTION.pptx";
         Map<String, String> jobProperties = new HashMap<String, String>();
         Map<String, String> mediaProperties = new HashMap<String, String>();
         String textTags = "text-tags.json";
-        jobProperties.put("TAGGING_FILE", textTags);
-
+        String rundirectory = tikaComponent.getRunDirectory();
+        jobProperties.put("TAGGING_FILE", rundirectory+"/TikaDetection/plugin-files/config/"+textTags);
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", uri, jobProperties, mediaProperties);
+        boolean debug=false;
 
         try {
             List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-            System.out.println(String.format("Number of generic tracks = %d.", tracks.size()));
-
-            for (int i = 0; i < tracks.size(); i++) {
-                MPFGenericTrack track = tracks.get(i);
-                System.out.println(String.format("Generic track number %d", i));
-                System.out.println(String.format("  Confidence = %f", track.getConfidence()));
-                System.out.println(String.format("  Text = %s", track.getDetectionProperties().get("TEXT")));
-                System.out.println(String.format("  Language = %s", track.getDetectionProperties().get("TEXT_LANGUAGE")));
-                assertEquals("Confidence does not match.", -1.0f, track.getConfidence(),0.1f);
+            assertEquals("Number of expected tracks does not match.", 6 ,tracks.size());
+            //Test each output type
+            if(tracks.size() == 6){
+                MPFGenericTrack track = tracks.get(1);
+                assertEquals("Expected language does not match.", "English", track.getDetectionProperties().get("TEXT_LANGUAGE"));
+                track = tracks.get(2);
+                assertEquals("Expected language does not match.", "Japanese", track.getDetectionProperties().get("TEXT_LANGUAGE"));
+                track = tracks.get(3);
+                assertEquals("Expected tags not found.", "personal", track.getDetectionProperties().get("TAGS_STRING"));
+                assertEquals("Expected tags not found.", "personal", track.getDetectionProperties().get("TAGS_REGEX"));
+                track = tracks.get(5);
+                assertThat(track.getDetectionProperties().get("TEXT"), containsString("End slide test text"));
+            }
+            
+            //For human testing
+            if(debug){
+                for (int i = 0; i < tracks.size(); i++) {
+                    MPFGenericTrack track = tracks.get(i);
+                    System.out.println(String.format("Generic track number %d", i));
+                    System.out.println(String.format("  Confidence = %f", track.getConfidence()));
+                    System.out.println(String.format("  Text = %s", track.getDetectionProperties().get("TEXT")));
+                    System.out.println(String.format("  Language = %s", track.getDetectionProperties().get("TEXT_LANGUAGE")));
+                    System.out.println(String.format("  Split Tags = %s", track.getDetectionProperties().get("TAGS_STRING")));
+                    System.out.println(String.format("  Regex Tags = %s", track.getDetectionProperties().get("TAGS_REGEX")));
+                    assertEquals("Confidence does not match.", -1.0f, track.getConfidence(),0.1f);
+                }
             }
         } catch (MPFComponentDetectionError e) {
             System.err.println(String.format("An error occurred of type ", e.getDetectionError().name()));

@@ -31,11 +31,11 @@
 
 
     <groupId>org.mitre.mpf</groupId>
-    <version>2.0.0</version>
+    <version>3.0.0</version>
 
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>mpf-tika-detection-component</artifactId>
+    <artifactId>mpf-tika-text-detection-component</artifactId>
 
     <properties>
         <junit.version>4.12</junit.version>
@@ -95,13 +95,13 @@
                 <artifactId>maven-assembly-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>assemble-tika-detection-package</id>
+                        <id>assemble-tika-text-detection-package</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
                         <configuration>
-                            <finalName>TikaDetection</finalName>
+                            <finalName>TikaTextDetection</finalName>
                             <descriptor>assemblyDescriptor.xml</descriptor>
                             <outputDirectory>target/plugin-packages</outputDirectory>
                             <appendAssemblyId>false</appendAssemblyId>

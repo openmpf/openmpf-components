@@ -31,6 +31,6 @@
 	   					   http://www.springframework.org/schema/beans/spring-beans.xsd">
 
     <bean id="component"
-          class="org.mitre.mpf.detection.tika.TikaDetectionComponent"/>
+          class="org.mitre.mpf.detection.tika.TikaTextDetectionComponent"/>
 
 </beans>

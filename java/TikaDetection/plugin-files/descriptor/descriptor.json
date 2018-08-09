@@ -1,12 +1,12 @@
 {
-  "componentName" : "TikaDetection",
-  "componentVersion" : "2.0.0",
-  "middlewareVersion" : "2.0.0",
+  "componentName" : "TikaTextDetection",
+  "componentVersion" : "3.0.0",
+  "middlewareVersion" : "3.0.0",
   "sourceLanguage" : "java",
-  "batchLibrary" : "mpf-tika-detection-component-2.0.0.jar",
+  "batchLibrary" : "mpf-tika-text-detection-component-2.0.0.jar",
   "environmentVariables" : [],
   "algorithm" : {
-    "name": "TIKA",
+    "name": "TIKATEXT",
     "description": "The Apache Tika text detection component.",
     "actionType": "DETECTION",
     "requiresCollection": {
@@ -47,12 +47,6 @@
           "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
           "type": "DOUBLE",
           "defaultValue": "-2"
-        },
-        {
-          "name": "STREAMING_ACTIVITY_CONFIDENCE_THRESHOLD",
-          "description": "The minimum detection confidence score for reporting activity in a frame. Detections with confidence below this value will not cause activity to be reported, but they may become part of a track that is eventually reported at the end of a segment.",
-          "type": "FLOAT",
-          "defaultValue": "1.5"
         },
         {
           "name": "MIN_GAP_BETWEEN_SEGMENTS",
@@ -98,9 +92,9 @@
         },
         {
           "name": "TAGGING_FILE",
-          "description": "Name of a JSON file (in the plugin's config folder) that describes a tag hierarchy to be used on the full text returned from Tesseract OCR.",
+          "description": "Name of a JSON file (in the plugin's config folder) that describes a tag hierarchy to be used on the full text returned from Tika text detection.",
           "type": "STRING",
-          "defaultValue": "text-tags.json"
+          "defaultValue": "$MPF_HOME/plugins/TikaDetection/config/text-tags.json"
         },
         {
           "name": "TESSERACT_LANGUAGE",
@@ -175,7 +169,7 @@
     {
       "name": "TIKA DETECTION ACTION",
       "description": "Executes the Tika text detection algorithm using the default parameters.",
-      "algorithm": "TIKA",
+      "algorithm": "TIKATEXT",
       "properties": []
     }
   ],
