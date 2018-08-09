@@ -810,6 +810,7 @@ MPFDetectionError OcvFaceDetection::GetDetectionsFromVideoCapture(
                 fd.confidence = static_cast<float>(correct_detected_rect_pair.second);
                 //can finally store the MPFImageLocation
                 track->face_track.frame_locations.insert(pair<int, MPFImageLocation>(frame_index, fd));
+                track->face_track.confidence = std::max(track->face_track.confidence, fd.confidence);
             }
             else {
                 continue;
@@ -925,6 +926,8 @@ MPFDetectionError OcvFaceDetection::GetDetectionsFromVideoCapture(
 
                     //add the first detection
                     track_new.face_track.frame_locations.insert(pair<int, MPFImageLocation>(frame_index, first_face_detection));
+                    track_new.face_track.confidence = std::max(track_new.face_track.confidence,
+                                                               first_face_detection.confidence);
                     //add the new track
                     current_tracks.push_back(track_new);
 

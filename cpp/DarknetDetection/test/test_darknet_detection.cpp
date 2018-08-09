@@ -36,7 +36,7 @@
 #include <ModelsIniParser.h>
 
 #include "DarknetDetection.h"
-#include "Trackers.h"
+#include "../darknet_wrapper/Trackers.h"
 #include "include/DarknetInterface.h"
 
 using namespace MPF::COMPONENT;
@@ -274,7 +274,7 @@ bool has_image_location_with_confidence(const std::vector<MPFVideoTrack> &tracks
 }
 
 
-TEST(Darknet, TestPreproccesorConfidenceCalculation) {
+TEST(Darknet, TestPreprocessorConfidenceCalculation) {
     float p1_confidence = 0.45;
     float p2_confidence = 0.75;
     float prob_not_p1_and_not_p2 = (1 - p1_confidence) * (1 - p2_confidence);

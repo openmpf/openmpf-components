@@ -39,13 +39,14 @@ void print_tracks(const std::vector<MPFVideoTrack> &tracks);
 int main(int argc, char* argv[]) {
     if (argc < 3) {
         std::cout << "Usage: " << argv[0] << " <uri> <model_name> [gpu_index]" << std::endl;
-        std::cout << "Usage: " << argv[0] << " <uri> <model_name> <start_frame> <end_frame> [gpu_index]" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <uri> <model_name> <start_frame> <end_frame> [gpu_index] [queue_capacity]" << std::endl;
         return 1;
     }
 
     std::string uri = argv[1];
     std::string model_name = argv[2];
     std::string gpu_index = "-1";
+    std::string queue_capacity = "4";
     int start_frame = 0;
     int end_frame = -1;
 
@@ -59,10 +60,14 @@ int main(int argc, char* argv[]) {
     if (argc >= 6) {
         gpu_index = argv[5];
     }
+    if (argc >= 7) {
+        queue_capacity = argv[6];
+    }
 
     std::cout << "URI: " << uri << std::endl;
     std::cout << "model name: " << model_name << std::endl;
     std::cout << "GPU Index: " << gpu_index << std::endl;
+    std::cout << "queue capacity: " << queue_capacity << std::endl;
     std::cout << "start frame: " << start_frame << std::endl;
     std::cout << "end frame: " << end_frame << std::endl;
 
@@ -77,7 +82,9 @@ int main(int argc, char* argv[]) {
     }
 
     MPFVideoJob job("Test", uri, start_frame, end_frame,
-                    { {"CUDA_DEVICE_ID", gpu_index}, {"MODEL_NAME", model_name} },
+                    { {"CUDA_DEVICE_ID", gpu_index},
+                      {"MODEL_NAME", model_name},
+                      {"FRAME_QUEUE_CAPACITY", queue_capacity} },
                     {});
 
     std::vector<MPFVideoTrack> tracks;
@@ -127,4 +134,3 @@ void print_tracks(const std::vector<MPFVideoTrack> &tracks) {
         std::cout << std::right << std::setw(6) << group.second.first << std::endl;
     }
 }
-

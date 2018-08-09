@@ -38,10 +38,7 @@
 #include <dlfcn.h>
 #include <DlClassLoader.h>
 
-#include "Trackers.h"
-
 #include "include/DarknetInterface.h"
-
 
 class DarknetDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
@@ -72,15 +69,6 @@ private:
     MPF::COMPONENT::ModelsIniParser<ModelSettings> models_parser_;
 
     DarknetDl GetDarknetImpl(const MPF::COMPONENT::MPFJob &job);
-
-    template <typename Tracker>
-    MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFVideoJob &job,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
-            Tracker &tracker);
-
-    static void ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
-                                                std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
 
     ModelSettings GetModelSettings(const MPF::COMPONENT::Properties &job_properties) const;
 };

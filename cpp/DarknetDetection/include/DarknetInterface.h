@@ -34,7 +34,7 @@
 
 #include <opencv2/core.hpp>
 
-
+#include <MPFDetectionComponent.h>
 
 struct DarknetResult {
     cv::Rect detection_rect;
@@ -52,8 +52,11 @@ public:
     DarknetInterface(const std::map<std::string, std::string> &props, const ModelSettings &settings) { }
 
     virtual ~DarknetInterface() = default;
+    virtual MPF::COMPONENT::MPFDetectionError RunDarknetDetection(const MPF::COMPONENT::MPFVideoJob &job,
+                              std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks) = 0;
+    virtual MPF::COMPONENT::MPFDetectionError RunDarknetDetection(const MPF::COMPONENT::MPFImageJob &job,
+                              std::vector<MPF::COMPONENT::MPFImageLocation> &locations) = 0;
 
-    virtual std::vector<DarknetResult> Detect(const cv::Mat &cv_image) = 0;
 };
 
 #endif //OPENMPF_COMPONENTS_DARKNETINTERFACE_H

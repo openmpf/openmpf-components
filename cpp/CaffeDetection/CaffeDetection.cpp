@@ -98,7 +98,7 @@ void addToTrack(MPFImageLocation &location, int frame_index, MPFVideoTrack &trac
     track.stop_frame = frame_index;
     if (location.confidence > track.confidence) {
         track.confidence = location.confidence;
-        track.detection_properties = location.detection_properties;
+        track.detection_properties["CLASSIFICATION"] = location.detection_properties["CLASSIFICATION"];
     }
     track.frame_locations[frame_index] = std::move(location);
 }
@@ -110,17 +110,19 @@ void defaultTracker(MPFImageLocation &location, int frame_index, std::vector<MPF
                                   != location.detection_properties["CLASSIFICATION"];
 
     if (should_start_new_track) {
-        tracks.emplace_back(frame_index, frame_index, location.confidence, location.detection_properties);
+        tracks.emplace_back(frame_index, frame_index, location.confidence,
+                            Properties{ { "CLASSIFICATION", location.detection_properties["CLASSIFICATION"] } });
     }
     addToTrack(location, frame_index, tracks.back());
 }
 
 
-void feedForwardTracker(MPFImageLocation &location, int frameIndex, std::vector<MPFVideoTrack> &tracks) {
+void feedForwardTracker(MPFImageLocation &location, int frame_index, std::vector<MPFVideoTrack> &tracks) {
     if (tracks.empty()) {
-        tracks.emplace_back(frameIndex, frameIndex, location.confidence, location.detection_properties);
+        tracks.emplace_back(frame_index, frame_index, location.confidence,
+                            Properties{ { "CLASSIFICATION", location.detection_properties["CLASSIFICATION"] } });
     }
-    addToTrack(location, frameIndex, tracks.back());
+    addToTrack(location, frame_index, tracks.back());
 }
 
 
