@@ -61,8 +61,8 @@ int main(int argc, char* argv[]) {
         gpu_index = argv[5];
     }
     if (argc >= 7) {
-         queue_capacity = argv[6];
-     }
+        queue_capacity = argv[6];
+    }
 
     std::cout << "URI: " << uri << std::endl;
     std::cout << "model name: " << model_name << std::endl;
