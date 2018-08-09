@@ -94,7 +94,7 @@
           "name": "TAGGING_FILE",
           "description": "Name of a JSON file (in the plugin's config folder) that describes a tag hierarchy to be used on the full text returned from Tika text detection.",
           "type": "STRING",
-          "defaultValue": "$MPF_HOME/plugins/TikaDetection/config/text-tags.json"
+          "defaultValue": "$MPF_HOME/plugins/TikaTextDetection/config/text-tags.json"
         },
         {
           "name": "TESSERACT_LANGUAGE",

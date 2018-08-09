@@ -73,7 +73,7 @@ public class TikaTextDetectionComponentTest {
         Map<String, String> mediaProperties = new HashMap<String, String>();
         String textTags = "text-tags.json";
         String rundirectory = tikaComponent.getRunDirectory();
-        jobProperties.put("TAGGING_FILE", rundirectory+"/TikaDetection/plugin-files/config/"+textTags);
+        jobProperties.put("TAGGING_FILE", rundirectory+"/TikaTextDetection/plugin-files/config/"+textTags);
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", uri, jobProperties, mediaProperties);
         boolean debug=false;
 
