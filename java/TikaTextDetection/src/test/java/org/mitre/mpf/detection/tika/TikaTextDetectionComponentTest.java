@@ -80,7 +80,7 @@ public class TikaTextDetectionComponentTest {
         try {
             List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
             assertEquals("Number of expected tracks does not match.", 6 ,tracks.size());
-            //Test each output type
+            // Test each output type.
             if(tracks.size() == 6){
                 MPFGenericTrack track = tracks.get(1);
                 assertEquals("Expected language does not match.", "English", track.getDetectionProperties().get("TEXT_LANGUAGE"));
@@ -93,7 +93,7 @@ public class TikaTextDetectionComponentTest {
                 assertThat(track.getDetectionProperties().get("TEXT"), containsString("End slide test text"));
             }
             
-            //For human testing
+            // For human testing.
             if(debug){
                 for (int i = 0; i < tracks.size(); i++) {
                     MPFGenericTrack track = tracks.get(i);

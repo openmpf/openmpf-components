@@ -72,7 +72,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
          lang_map = Collections.unmodifiableMap(initLangMap());
     }
     
-    // Handles the case where the media is a generic type
+    // Handles the case where the media is a generic type.
     public List<MPFGenericTrack>  getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
         LOG.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
@@ -82,7 +82,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         // Tika Detection
         // =========================
 
-        //Specify filename for tika parsers here.
+        // Specify filename for tika parsers here.
         File file = new File(mpfGenericJob.getDataUri());
         String text_output = "";
         String metadata_output = "";
@@ -91,15 +91,15 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         
         
         try{
-            //Init parser with custom content handler for parsing text per page (PDF/PPTX)
+            // Init parser with custom content handler for parsing text per page (PDF/PPTX).
             Parser parser = new AutoDetectParser();
             TextExtractionContentHandler handler = new TextExtractionContentHandler();
             Metadata metadata = new Metadata();
             FileInputStream inputstream = new FileInputStream(file);
             ParseContext context = new ParseContext();
 
-            //Parse file.
-            //If the format is .pdf or .pptx, output will be divided by page/slide.
+            // Parse file.
+            // If the format is .pdf or .pptx, output will be divided by page/slide.
             parser.parse(inputstream, handler, metadata, context);
             metadata_output = metadata.toString();
             context_output = context.toString();
@@ -116,7 +116,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         List<MPFGenericTrack> tracks = new LinkedList<MPFGenericTrack>();
         Map<String,String> properties = mpfGenericJob.getJobProperties();
         
-        //Acquire tag file.
+        // Acquire tag file.
         String tag_file = "";
         if(properties.get("TAGGING_FILE") == null) {
             String rundirectory = this.getRunDirectory();
@@ -129,10 +129,10 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         tag_file = this.expandPathEnvVars(tag_file);
         
 
-        //If output exists, separate all output into separate pages.
-        //Tag each page by detected language.
+        // If output exists, separate all output into separate pages.
+        // Tag each page by detected language.
         if(page_output.size() >= 1){
-            //Language identifier
+            // Load language identifier.
             OptimaizeLangDetector identifier = new OptimaizeLangDetector();
             JSONObject string_tags = new JSONObject();
             JSONObject regex_tags = new JSONObject();
@@ -144,7 +144,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                 LOG.error("Failed to load language models.");
             }
             
-            //Parse Tag File
+            // Parse Tag File.
             try{
                 JSONParser parser = new JSONParser();
                 JSONObject a = (JSONObject) parser.parse(new FileReader(tag_file));               
@@ -171,7 +171,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                 Map<String, String> imageDetectionProperties = new HashMap<String, String>();
                 List<String> splitTags = new ArrayList<String>();
                 List<String> regexTags = new ArrayList<String>();
-                //Split out non-alphanumeric characters.
+                // Split out non-alphanumeric characters.
                 String pageText = page_output.get(i).toString().toLowerCase();
                 String[] values = pageText.split("\\W+");
                 
@@ -236,7 +236,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         return tracks;
     }
     
-    //Map for translating from ISO 639-2 code to english description.
+    // Map for translating from ISO 639-2 code to english description.
     private static Map<String,String> initLangMap(){
         Map<String,String> map = new HashMap<String,String>();
         map.put("af","Afrikaans");
@@ -316,9 +316,9 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
     
 
 
-    //TODO: Delete once integrated into OpenMPF-Java-Components
-    //Utility function
-    //Expands environment variables in a given path/filename.
+    // TODO: Delete once integrated into OpenMPF-Java-Components.
+    // Utility function.
+    // Expands environment variables in a given path/filename.
     public static String expandPathEnvVars(String path) {
         Map<String, String> sysEnv = System.getenv();
         for (Map.Entry<String, String> entry : sysEnv.entrySet()) {
@@ -329,7 +329,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         return path;
     }
 
-    //Extract stack trace as a string
+    // Extract stack trace as a string.
     public static String extractStackTrace(Exception e){
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
@@ -337,7 +337,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         return sw.toString();
     }
     
-    // The TikeDetection component supports generic file types (pdfs, documents, txt, etc.)
+    // The TikeDetection component supports generic file types (pdfs, documents, txt, etc.).
     public boolean supports(MPFDataType mpfDataType) {
         return mpfDataType != null && MPFDataType.UNKNOWN.equals(mpfDataType);
     }

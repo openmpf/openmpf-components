@@ -83,7 +83,7 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
         return text_results.toString();
     }
     
-    //Returns the text detections, subdivided by page number.
+    // Returns the text detections, subdivided by page number.
     public ArrayList<StringBuilder> getPages(){
         return page_map;
     }
