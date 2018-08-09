@@ -31,6 +31,7 @@ Included in this repository are the following C++ Components:
 - OpenALPR Text Detection
 - Video Scene Change Detection
 - Tesseract OCR Text Detection
+- Darknet Object Classification
 
 And the following Java Components:
 - Sphinx Speech Detection
