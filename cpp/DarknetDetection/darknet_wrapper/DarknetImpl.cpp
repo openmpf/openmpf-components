@@ -28,16 +28,25 @@
 #include <fstream>
 #include <iostream>
 #include <unordered_set>
+#include <thread>
+#include <chrono>
+#include <unordered_map>
 
 #ifdef GPU
 #include <cuda_runtime_api.h>
 #endif
 
+#include <opencv2/imgproc.hpp>
+
+#include <MPFDetectionComponent.h>
+#include <MPFImageReader.h>
+#include <MPFVideoCapture.h>
 #include <detectionComponentUtils.h>
 #include <Utils.h>
 #include <MPFDetectionException.h>
 #include <MPFInvalidPropertyException.h>
 
+#include "Trackers.h"
 #include "DarknetImpl.h"
 
 
@@ -71,52 +80,79 @@ namespace DarknetHelpers {
             prob_mat_[i] = 0.0f;
         }
     }
+} // end of DarknetHelpers namespace
+
+
+image DarknetImageHolder::CvMatToImage(const cv::Mat &cv_image,
+                                       const int target_width,
+                                       const int target_height) {
+
+    // Darknet uses its own image type, which is a C struct.
+    image tmp_image = make_image(cv_image.cols,
+                                 cv_image.rows,
+                                 cv_image.channels());
+    
+    // This code is mostly copied from Darknet's "ipl_into_image"
+    // function. The main difference is that this function works
+    // with cv::Mat instead of IplImage. IplImage is a legacy
+    // OpenCV image type. The OpenCV documentation for cv::Mat
+    // says that cv::Mat and IplImage use a compatible data
+    // layout.
+    int width = tmp_image.w;
+    int height = tmp_image.h;
+    int channels = cv_image.channels();
+    size_t step = cv_image.step[0];
+
+    for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+            for (int channel = 0; channel < channels; channel++) {
+                tmp_image.data[channel * width * height + row * width + col]
+                        = cv_image.data[row * step + col * channels + channel] / 255.0f;
+            }
+        }
+    }
+    rgbgr_image(tmp_image);
+    image darknet_image = letterbox_image(tmp_image, target_width, target_height);
+    free_image(tmp_image);
+    return darknet_image;
 }
+
+    DarknetImageHolder::DarknetImageHolder(const bool s) 
+            : index(0), stop_flag(s), orig_frame_size(cv::Size(0,0)) {
+        darknet_image.w = 0;
+        darknet_image.h = 0;
+        darknet_image.c = 0;
+        darknet_image.data = NULL;
+    }
+
+    DarknetImageHolder::DarknetImageHolder(const cv::Mat &cv_image,
+                                           const int target_width,
+                                           const int target_height)
+            : index(0), stop_flag(false) {
+        orig_frame_size = cv_image.size();
+        darknet_image = CvMatToImage(cv_image, target_width, target_height);
+    }
+
+    DarknetImageHolder::DarknetImageHolder(int frame_num,
+                                           const cv::Mat &cv_image,
+                                           const int target_width,
+                                           const int target_height)
+            : index(frame_num), stop_flag(false) {
+        orig_frame_size = cv_image.size();
+        darknet_image = CvMatToImage(cv_image, target_width, target_height);
+    }
+
+    DarknetImageHolder::~DarknetImageHolder() {
+        if (NULL != darknet_image.data) {
+            free_image(darknet_image);
+        }
+    }
 
 
 namespace {
-    // Darknet uses its own image type, which is a C struct. This class adds two features to the Darknet image type.
-    // One is that it adds a destructor, which calls the free_image function defined in the Darknet library.
-    // The second feature is that it converts a cv::Mat to the Darknet image format.
-    struct DarknetImageHolder {
-        image darknet_image;
 
-        explicit DarknetImageHolder(const cv::Mat &cv_image)
-            : darknet_image(make_image(cv_image.cols, cv_image.rows, cv_image.channels()))
-        {
-            // This code is mostly copied from Darknet's "ipl_into_image" function. The main difference is that
-            // this function works with cv::Mat instead of IplImage. IplImage is a legacy OpenCV image type.
-            // The OpenCV documentation for cv::Mat says that cv::Mat and IplImage use a compatible data layout.
-            int height = darknet_image.h;
-            int width = darknet_image.w;
-            int channels = cv_image.channels();
-            size_t step = cv_image.step[0];
-
-            for (int row = 0; row < height; row++) {
-                for (int col = 0; col < width; col++) {
-                    for (int channel = 0; channel < channels; channel++) {
-                        darknet_image.data[channel * width * height + row * width + col]
-                                = cv_image.data[row * step + col * channels + channel] / 255.0f;
-                    }
-                }
-            }
-            rgbgr_image(darknet_image);
-
-        }
-
-        ~DarknetImageHolder() {
-            free_image(darknet_image);
-        }
-
-        DarknetImageHolder(const DarknetImageHolder&) = delete;
-        DarknetImageHolder& operator=(const DarknetImageHolder&) = delete;
-        DarknetImageHolder(DarknetImageHolder&&) = delete;
-        DarknetImageHolder& operator=(DarknetImageHolder&&) = delete;
-    };
-
-
-
-    // Darknet functions that accept C style strings, accept a char* instead of a const char*.
+    // Darknet functions that accept C style strings, accept a char*
+    // instead of a const char*.
     std::unique_ptr<char[]> ToNonConstCStr(const std::string &str) {
         std::unique_ptr<char[]> result(new char[str.size() + 1]);
         size_t length = str.copy(result.get(), str.size());
@@ -130,7 +166,7 @@ namespace {
         auto weights_file = ToNonConstCStr(model_settings.weights_file);
 
         return { load_network(cfg_file.get(), weights_file.get(), 0),
-                 free_network };
+                    free_network };
     }
 
 
@@ -187,7 +223,7 @@ namespace {
 
     bool HasWhitelist(const Properties &props) {
         return !DetectionComponentUtils::GetProperty(props, "CLASS_WHITELIST_FILE", std::string())
-                    .empty();
+                .empty();
     }
 
 
@@ -208,16 +244,16 @@ namespace {
             std::string error = Utils::expandFileName(whitelist_path, expanded_file_path);
             if (!error.empty()) {
                 throw MPFInvalidPropertyException(
-                        "CLASS_WHITELIST_FILE",
-                        "The value, \"" + whitelist_path + "\", could not be expanded due to: " + error);
+                    "CLASS_WHITELIST_FILE",
+                    "The value, \"" + whitelist_path + "\", could not be expanded due to: " + error);
             }
 
             std::ifstream whitelist_file(expanded_file_path);
             if (!whitelist_file.good()) {
                 throw MPFDetectionException(
-                        MPF_COULD_NOT_OPEN_DATAFILE,
-                        "Failed to load class whitelist that was supposed to be located at \""
-                        + expanded_file_path + "\".");
+                    MPF_COULD_NOT_OPEN_DATAFILE,
+                    "Failed to load class whitelist that was supposed to be located at \""
+                    + expanded_file_path + "\".");
             }
 
             std::unordered_set<std::string> temp_whitelist;
@@ -231,8 +267,8 @@ namespace {
 
             if (temp_whitelist.empty()) {
                 throw MPFDetectionException(
-                        MPF_COULD_NOT_READ_DATAFILE,
-                        "The class whitelist file located at \"" + expanded_file_path + "\" was empty.");
+                    MPF_COULD_NOT_READ_DATAFILE,
+                    "The class whitelist file located at \"" + expanded_file_path + "\" was empty.");
             }
 
             for (const std::string &name : names) {
@@ -243,26 +279,25 @@ namespace {
 
             if (whitelist_.empty()) {
                 throw MPFDetectionException(
-                        MPF_COULD_NOT_READ_DATAFILE,
-                        "None of the class names specified in the whitelist file located at \""
-                        + expanded_file_path + "\" were found in the names file.");
+                    MPF_COULD_NOT_READ_DATAFILE,
+                    "None of the class names specified in the whitelist file located at \""
+                    + expanded_file_path + "\" were found in the names file.");
             }
         }
 
         bool operator()(const std::string& class_name) {
             return whitelist_.count(class_name) > 0;
         }
-
     private:
         std::unordered_set<std::string> whitelist_;
-
     };
-}
+
+}  // end of anonymous namespace
 
 
 template<typename ClassFilter>
 DarknetImpl<ClassFilter>::DarknetImpl(const std::map<std::string, std::string> &props, const ModelSettings &settings)
-    : DarknetInterface(props, settings)
+        : DarknetInterface(props, settings)
     , network_(LoadNetwork(settings))
     , output_layer_size_(GetOutputLayerSize(*network_))
     , num_classes_(GetNumClasses(*network_))
@@ -274,28 +309,210 @@ DarknetImpl<ClassFilter>::DarknetImpl(const std::map<std::string, std::string> &
     , confidence_threshold_(DetectionComponentUtils::GetProperty(props, "CONFIDENCE_THRESHOLD", 0.5f))
     , probs_(output_layer_size_, num_classes_)
     , boxes_(new box[output_layer_size_])
-{
+    , logger_(log4cxx::Logger::getLogger("DarknetDetection")) {}
 
+
+template<typename ClassFilter>
+void DarknetImpl<ClassFilter>::ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
+                                                               std::vector<MPFImageLocation> &locations) {
+
+    std::unordered_map<std::string, MPFImageLocation> type_to_image_loc;
+
+    for (DarknetResult &darknet_result : darknet_results) {
+        const cv::Rect &rect = darknet_result.detection_rect;
+
+        for (std::pair<float, std::string> &class_prob : darknet_result.object_type_probs) {
+            auto it = type_to_image_loc.find(class_prob.second);
+            if (it == type_to_image_loc.cend()) {
+                type_to_image_loc.emplace(
+                        class_prob.second,
+                        MPFImageLocation(rect.x, rect.y, rect.width, rect.height, class_prob.first,
+                                         Properties{ {"CLASSIFICATION", class_prob.second} }));
+            }
+            else {
+                TrackingHelpers::CombineImageLocation(rect, class_prob.first, it->second);
+            }
+        }
+    }
+
+    for (auto &image_loc_pair : type_to_image_loc) {
+        locations.push_back(std::move(image_loc_pair.second));
+    }
+}
+
+// This function runs the detection and tracking on a separate thread.
+template<typename ClassFilter>
+template<typename Tracker>
+void DarknetImpl<ClassFilter>::ProcessFrameQueue(Tracker &tracker,
+                                                 DarknetQueue &queue) {
+
+    std::vector<DarknetResult>detections;
+
+    do {
+        std::unique_ptr<DarknetImageHolder> current_frame;
+
+        try {
+            current_frame = queue.pop();
+        }
+        catch (const std::runtime_error &e) {
+            // The pop() function will throw an exception when the
+            // queue has been halted.
+            break;
+        }
+
+        if (current_frame->stop_flag) {
+            // The last frame for this job has been processed. No more
+            // to do.
+            break;
+        }
+
+        // Process it
+        tracker.ProcessFrameDetections(Detect(*current_frame),
+                                        current_frame->index);
+    } while (1);
+}
+
+template<typename ClassFilter>
+void DarknetImpl<ClassFilter>::FinishDetection(std::thread &detection_thread,
+                                               DarknetQueue &queue, bool halt) {
+    if (halt) queue.halt();
+    if (detection_thread.joinable()) {
+        detection_thread.join();
+    }
+}
+
+template<typename ClassFilter>
+void DarknetImpl<ClassFilter>::EnqueueStopFrame(DarknetQueue &queue) {
+    // Put a stop frame into the queue to tell the consumer it is done.
+    std::unique_ptr<DarknetImageHolder> stop_frame(new DarknetImageHolder(true));
+    try {
+        queue.push(std::move(stop_frame));
+    }
+    catch (const std::runtime_error &e) {
+        return;
+    }
 }
 
 
 template<typename ClassFilter>
-std::vector<DarknetResult> DarknetImpl<ClassFilter>::Detect(const cv::Mat &cv_image) {
-    DarknetImageHolder image(cv_image);
+MPFDetectionError DarknetImpl<ClassFilter>::ReadAndEnqueueFrames(MPFVideoCapture &video_cap, DarknetQueue &queue) {
+
+    try {
+        cv::Mat frame;
+        int frame_number = -1;
+
+        if (!video_cap.Read(frame)) {
+            LOG4CXX_ERROR(logger_, __FUNCTION__ << ": Video capture failed to read a frame");
+            return MPF::COMPONENT::MPFDetectionError::MPF_COULD_NOT_READ_DATAFILE;
+        }
+
+        do {
+            frame_number++;
+
+            std::unique_ptr<DarknetImageHolder> current_frame(new DarknetImageHolder(frame_number, frame, network_->w, network_->h));
+
+            try {
+
+                queue.push(std::move(current_frame));
+            }
+            catch (const std::runtime_error &e) {
+                break;
+            }
+
+        } while (video_cap.Read(frame));
+
+        EnqueueStopFrame(queue);
+    }
+    catch (std::exception &e) {
+        LOG4CXX_ERROR(logger_, __FUNCTION__ << ": exception caught: " << e.what());
+        return MPF::COMPONENT::MPFDetectionError::MPF_COULD_NOT_READ_DATAFILE;
+    }
+    return MPF_DETECTION_SUCCESS;
+}
+
+template<typename ClassFilter>
+MPFDetectionError DarknetImpl<ClassFilter>::RunDarknetDetection(const MPFVideoJob &job,
+                                                                std::vector<MPFVideoTrack> &tracks) {
+    
+    if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
+        PreprocessorTracker tracker;
+        return RunDarknetDetection(job, tracks, tracker);
+    }
+    else {
+        int number_of_classifications = DetectionComponentUtils::GetProperty(
+                job.job_properties, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5);
+        double rect_min_overlap = DetectionComponentUtils::GetProperty(
+                job.job_properties, "MIN_OVERLAP", 0.5);
+
+        DefaultTracker tracker(number_of_classifications, rect_min_overlap);
+        return RunDarknetDetection(job, tracks, tracker);
+    }
+}
+
+template<typename ClassFilter>
+template<typename Tracker>
+MPFDetectionError DarknetImpl<ClassFilter>::RunDarknetDetection(const MPFVideoJob &job,
+                                                                std::vector<MPFVideoTrack> &tracks,
+                                                                Tracker &tracker) {
+
+    MPFVideoCapture video_cap(job);
+    if (!video_cap.IsOpened()) {
+        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] : Failed to open video capture");
+        return MPF_COULD_NOT_OPEN_DATAFILE;
+    }
+
+    DarknetQueue queue(DetectionComponentUtils::GetProperty(job.job_properties, "FRAME_QUEUE_CAPACITY", 4));
+
+    std::thread detection_thread = std::thread{ [this, &tracker, &queue]() { DarknetImpl::ProcessFrameQueue(tracker, queue); } };
+
+    MPFDetectionError rc = ReadAndEnqueueFrames(video_cap, queue);
+    if (rc != MPF_DETECTION_SUCCESS) {
+        // Set the halt parameter to true so that the detection thread
+        // won't be waiting forever for more frames to be sent.
+        FinishDetection(detection_thread, queue, true);
+    }
+    else {
+        // Wait for the thread to finish, setting the halt parameter
+        // to false so that it will execute all the way to the stop
+        // frame before returning.
+        FinishDetection(detection_thread, queue, false);
+        tracks = tracker.GetTracks();
+
+        for (MPFVideoTrack &track : tracks) {
+            video_cap.ReverseTransform(track);
+        }
+    }
+    return rc;
+}
+
+
+template<typename ClassFilter>
+std::vector<DarknetResult> DarknetImpl<ClassFilter>::Detect(const DarknetImageHolder &image_holder) {
     probs_.Clear();
 
     // There is no documentation explaining what hier_thresh and nms do,
     // so we are just using the default values from the Darknet library.
     float hier_thresh = 0.5;
     float nms = 0.3;
-    network_detect(network_.get(), image.darknet_image, confidence_threshold_, hier_thresh, nms, boxes_.get(),
-                   probs_.Get());
+    network *net = network_.get();
+    image im = image_holder.darknet_image;
+    set_batch_network(net, 1);
+    network_predict(net, im.data);
+
+    layer l = net->layers[net->n-1];
+    if(l.type == REGION){
+        int image_width = image_holder.orig_frame_size.width;
+        int image_height = image_holder.orig_frame_size.height;
+        get_region_boxes(l, image_width, image_height, net->w, net->h,
+                         confidence_threshold_, probs_.Get(),
+                         boxes_.get(), 0, 0, 0, hier_thresh, 0);
+        do_nms_sort(boxes_.get(), probs_.Get(), l.w*l.h*l.n, l.classes, nms);
+    }
 
     std::vector<DarknetResult> detections;
-    cv::Size frame_size = cv_image.size();
 
     for (int box_idx = 0; box_idx < output_layer_size_; box_idx++) {
-        DarknetResult detection { BoxToRect(boxes_[box_idx], frame_size) };
+        DarknetResult detection { BoxToRect(boxes_[box_idx], image_holder.orig_frame_size) };
 
         for (int name_idx = 0; name_idx < num_classes_; name_idx++) {
             float prob = probs_[box_idx][name_idx];
@@ -310,6 +527,33 @@ std::vector<DarknetResult> DarknetImpl<ClassFilter>::Detect(const cv::Mat &cv_im
     }
 
     return detections;
+}
+
+template<typename ClassFilter>
+MPFDetectionError DarknetImpl<ClassFilter>::RunDarknetDetection(const MPFImageJob &job,
+                                                                std::vector<MPFImageLocation> &locations) {
+
+    MPFImageReader image_reader(job);
+    DarknetImageHolder image(image_reader.GetImage(), network_->w, network_->h);
+    std::vector<DarknetResult> results = Detect(image);
+    if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
+        ConvertResultsUsingPreprocessor(results, locations);
+    }
+    else {
+        int number_of_classifications
+                = std::max(1, DetectionComponentUtils::GetProperty(job.job_properties,
+                                                                   "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
+        for (auto& result : results) {
+            locations.push_back(
+                TrackingHelpers::CreateImageLocation(number_of_classifications, result));
+        }
+    }
+
+    for (auto &location : locations) {
+        image_reader.ReverseTransform(location);
+    }
+
+    return MPF_DETECTION_SUCCESS;
 }
 
 

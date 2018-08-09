@@ -25,16 +25,12 @@
  ******************************************************************************/
 
 #include <fstream>
-#include <unordered_map>
 
 #include <log4cxx/xml/domconfigurator.h>
 
-#include <MPFImageReader.h>
-#include <MPFVideoCapture.h>
 #include <detectionComponentUtils.h>
 #include <Utils.h>
 
-#include "Trackers.h"
 #include "DarknetDetection.h"
 
 using namespace MPF::COMPONENT;
@@ -70,73 +66,28 @@ bool DarknetDetection::Init() {
 
 MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks) {
     LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
-    if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
-        PreprocessorTracker tracker;
-        return GetDetections(job, tracks, tracker);
-    }
-    else {
-        int number_of_classifications = DetectionComponentUtils::GetProperty(
-                job.job_properties, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5);
-        double rect_min_overlap = DetectionComponentUtils::GetProperty(
-                job.job_properties, "MIN_OVERLAP", 0.5);
 
-        if (rect_min_overlap == 1) {
-            LOG4CXX_INFO(logger_, "[" << job.job_name << "] The MIN_OVERLAP job property was one, so only detections "
-                     "that have the exact same location, size, and classification "
-                     "will be combined in to the same track.");
-        }
-        else if (rect_min_overlap > 1) {
-            LOG4CXX_INFO(logger_, "[" << job.job_name << "] The value of the MIN_OVERLAP job property was "
-                    << rect_min_overlap << ". Since the value is greater than one, "
-                       "each track will contain exactly one detection.");
-        }
-        else if (rect_min_overlap <= 0) {
-            LOG4CXX_INFO(logger_, "[" << job.job_name << "] The value of the MIN_OVERLAP job property was "
-                      << rect_min_overlap << ". Since the value is less than or equal to zero, "
-                         "if a detection does not overlap with any tracks that have the same classification, "
-                         "it will be added to an existing track with which it does not overlap "
-                         "and has the same classification if at least one such track exists.");
-        }
-        DefaultTracker tracker(number_of_classifications, rect_min_overlap);
-        return GetDetections(job, tracks, tracker);
+    if (DetectionComponentUtils::GetProperty(job.job_properties, "FRAME_QUEUE_CAPACITY", 4) <= 0) {
+        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] : Detection failed: frame queue capacity property must be greater than 0");
+        return MPF_INVALID_PROPERTY;
     }
-}
 
-template<typename Tracker>
-MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks,
-                                                  Tracker &tracker) {
     try {
         DarknetDl detector = GetDarknetImpl(job);
 
-        MPFVideoCapture video_cap(job);
-        if (!video_cap.IsOpened()) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not open video file: " << job.data_uri);
-            return MPF_COULD_NOT_OPEN_DATAFILE;
+        MPFDetectionError rc = detector->RunDarknetDetection(job, tracks);
+        if (rc != MPF_DETECTION_SUCCESS) {
+            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Darknet detection failed for file: " << job.data_uri);
         }
-
-        cv::Mat frame;
-        int frame_number = -1;
-
-        while (video_cap.Read(frame)) {
-            frame_number++;
-            tracker.ProcessFrameDetections(detector->Detect(frame), frame_number);
-        }
-
-        tracks = tracker.GetTracks();
-
-        for (MPFVideoTrack &track : tracks) {
-            video_cap.ReverseTransform(track);
-        }
-
+        
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
-
-        return MPF_DETECTION_SUCCESS;
+        return rc;
     }
     catch (...) {
         return Utils::HandleDetectionException(job, logger_);
     }
-}
 
+}
 
 
 MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
@@ -144,33 +95,18 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
         DarknetDl detector = GetDarknetImpl(job);
 
-        MPFImageReader image_reader(job);
-
-        std::vector<DarknetResult> results = detector->Detect(image_reader.GetImage());
-        if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
-            ConvertResultsUsingPreprocessor(results, locations);
-        }
-        else {
-            int number_of_classifications
-                    = std::max(1, DetectionComponentUtils::GetProperty(job.job_properties,
-                                                                       "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
-            for (auto& result : results) {
-                locations.push_back(
-                        TrackingHelpers::CreateImageLocation(number_of_classifications, result));
-            }
-        }
-
-        for (auto &location : locations) {
-            image_reader.ReverseTransform(location);
+        MPFDetectionError rc = detector->RunDarknetDetection(job, locations);
+        if (rc != MPF_DETECTION_SUCCESS) {
+            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Darknet detection failed for file: " << job.data_uri);
         }
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << locations.size() << " detections.");
-
-        return MPF_DETECTION_SUCCESS;
+        return rc;
     }
     catch (...) {
         return Utils::HandleDetectionException(job, logger_);
     }
+
 }
 
 
@@ -212,35 +148,6 @@ ModelSettings DarknetDetection::GetModelSettings(const MPF::COMPONENT::Propertie
 
     return models_parser_.ParseIni(model_name, models_dir_path + "/DarknetDetection");
 }
-
-
-void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
-                                                       std::vector<MPFImageLocation> &locations) {
-
-    std::unordered_map<std::string, MPFImageLocation> type_to_image_loc;
-
-    for (DarknetResult &darknet_result : darknet_results) {
-        const cv::Rect &rect = darknet_result.detection_rect;
-
-        for (std::pair<float, std::string> &class_prob : darknet_result.object_type_probs) {
-            auto it = type_to_image_loc.find(class_prob.second);
-            if (it == type_to_image_loc.cend()) {
-                type_to_image_loc.emplace(
-                        class_prob.second,
-                        MPFImageLocation(rect.x, rect.y, rect.width, rect.height, class_prob.first,
-                                         Properties{ {"CLASSIFICATION", class_prob.second} }));
-            }
-            else {
-                TrackingHelpers::CombineImageLocation(rect, class_prob.first, it->second);
-            }
-        }
-    }
-
-    for (auto &image_loc_pair : type_to_image_loc) {
-        locations.push_back(std::move(image_loc_pair.second));
-    }
-}
-
 
 std::string DarknetDetection::GetDetectionType() {
     return "CLASS";

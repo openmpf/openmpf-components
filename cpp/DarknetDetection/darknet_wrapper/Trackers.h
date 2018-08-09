@@ -37,7 +37,7 @@
 
 #include <MPFDetectionComponent.h>
 
-#include "include/DarknetInterface.h"
+#include "../include/DarknetInterface.h"
 
 namespace TrackingHelpers {
     MPF::COMPONENT::MPFImageLocation CreateImageLocation(int num_classes_per_region, DarknetResult &detection);

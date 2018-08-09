@@ -98,7 +98,7 @@
         },
         {
           "name": "MIN_OVERLAP",
-          "description": "In the context of videos, the minimum overlap between detection bounding boxes for adjacent tracks with the same classification to be considered continuous. When not positive, non-overlapping detections may be combined into one track. When 1, only detections with exact overlap may be combined into one track. When greater than 1, each track will have exactly one detection. Default value is defined by the OpenMPF properties file.",
+          "description": "In the context of videos, the minimum overlap between detection bounding boxes for adjacent tracks with the same classification to be considered continuous. The value is normally between 0 and 1, in which case it represents the ratio of the areas of the bounding boxes. When it is less than or equal to 0, non-overlapping detections may be combined into one track.  When greater than 1, each track will have exactly one detection. Default value is defined by the OpenMPF properties file.",
           "type": "DOUBLE",
           "propertiesKey": "detection.track.overlap.threshold"
         },
@@ -167,6 +167,12 @@
           "description": "Path to models directory",
           "type": "STRING",
           "propertiesKey": "detection.models.dir.path"
+        },
+        {
+          "name": "FRAME_QUEUE_CAPACITY",
+          "description": "The maximum number of frames in the frame queue. When processing videos, the reading of frames from the input file and the processing of the frames are done on separate threads. The frame queue is created with a fixed capacity at the time the job is started.",
+          "type": "INT",
+          "defaultValue": "4"
         },
         {
           "name": "USE_PREPROCESSOR",
