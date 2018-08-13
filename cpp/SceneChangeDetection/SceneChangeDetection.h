@@ -56,10 +56,7 @@ public:
             const MPF::COMPONENT::MPFVideoJob &job, 
             std::vector<MPF::COMPONENT::MPFVideoTrack> &locations);
     std::string GetDetectionType();
-    bool EdgeDetector(cv::Mat frameGray, cv::Mat &lastFrameEdgeFinal);
-    bool HistogramDetector(cv::Mat frame, cv::Mat &lastHist);
-    bool ContentDetector(cv::Mat frame, cv::Mat &lastFrameHSV);
-    bool ThresholdDetector(cv::Mat frame, cv::Mat &lastFrame);
+
 
 private:
 
@@ -77,16 +74,22 @@ private:
     int minScene;
 
     bool do_hist, do_edge, do_cont, do_thrs;
+    
+    bool EdgeDetector(cv::Mat frameGray, cv::Mat &lastFrameEdgeFinal);
+    bool HistogramDetector(cv::Mat frame, cv::Mat &lastHist);
+    bool ContentDetector(cv::Mat frame, cv::Mat &lastFrameHSV);
+    bool ThresholdDetector(cv::Mat frame, cv::Mat &lastFrame);
+    
 
     int histSize[2] = {30,32};
-    // hue varies from 0 to 179, see cvtColor
+    // Hue varies from 0 to 179, see cvtColor.
     float hranges[2] = {0,180};
-    // saturation varies from 0 (black-gray-white) to
-    // 255 (pure spectrum color)
+    // Saturation varies from 0 (black-gray-white) to
+    // 255 (pure spectrum color).
     float sranges[2] = {0,256};
     bool frameUnderThreshold(cv::Mat image, double threshold, double numPixels);
     
-    //Support for reading .ini files
+    // Support for reading .ini files.
     void SetDefaultParameters();
     void SetReadConfigParameters();
 };

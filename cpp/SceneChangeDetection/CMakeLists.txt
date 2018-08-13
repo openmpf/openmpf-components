@@ -40,23 +40,14 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
-
-
-# Find and install config4cpp
-set(config4cpp_DIR /apps/source/config4cpp)
-include_directories(${config4cpp_DIR}/include)
-set(config4cpp_LIBDIR ${config4cpp_DIR}/lib)
-set(Config4Cpp_LIBS ${config4cpp_LIBDIR}/libconfig4cpp.a)
-
-
 set(SCENE_SOURCE_FILES SceneChangeDetection.cpp SceneChangeDetection.h)
 
 add_library(mpfSceneChange SHARED ${SCENE_SOURCE_FILES})
-target_link_libraries(mpfSceneChange mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${Config4Cpp_LIBS})
+target_link_libraries(mpfSceneChange mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS})
 
 configure_mpf_component(SceneChangeDetection TARGETS mpfSceneChange)
 
-# Build sample executable
+# Build sample executable.
 add_executable(sample_scene_change_detector sample_scene_change_detector.cpp)
 target_link_libraries(sample_scene_change_detector mpfSceneChange)
 

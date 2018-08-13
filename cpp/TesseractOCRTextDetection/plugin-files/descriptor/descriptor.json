@@ -53,12 +53,6 @@
           "defaultValue": "-2"
         },
         {
-          "name": "STREAMING_ACTIVITY_CONFIDENCE_THRESHOLD",
-          "description": "The minimum detection confidence score for reporting activity in a frame. Detections with confidence below this value will not cause activity to be reported, but they may become part of a track that is eventually reported at the end of a segment.",
-          "type": "FLOAT",
-          "defaultValue": "1.5"
-        },
-        {
           "name": "MIN_GAP_BETWEEN_SEGMENTS",
           "description": "In the context of videos, the minimum number of frames between segments which are not adjacent. Value must be greater than or equal to 1. Default value is defined by the MPF properties file.",
           "type": "INT",
@@ -102,7 +96,7 @@
         },
         {
           "name": "TAGGING_FILE",
-          "description": "Name of a JSON file (in the plugin's config folder) that describes a tag hierarchy to be used on the full text returned from Tesseract OCR.",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. $MPF_HOME/.../text-tags.json). Supports environment variables.",
           "type": "STRING",
           "defaultValue": "text-tags.json"
         },
@@ -114,7 +108,7 @@
         },
         {
           "name": "TESSERACT_PSM",
-          "description": "Tesseract Page Segmentation Mode. Refer to Tesseract docs for details",
+          "description": "Tesseract Page Segmentation Mode. Refer to Tesseract docs for details.",
           "type": "INT",
           "defaultValue": "3"
         },
@@ -174,7 +168,7 @@
         },
         {
           "name": "SHARPEN",
-          "description": "Weight of the sharpening paremeter. Default is 1.0, 0.0 = original image, higher = sharper",
+          "description": "Weight of the sharpening paremeter. Default is 1.0, 0.0 = original image, higher = sharper.",
           "type": "DOUBLE",
           "defaultValue": "1.0"
         },
@@ -234,13 +228,13 @@
         },
         {
           "name": "VOWEL_MIN",
-          "description": "Specifies min fraction of english vowels in a detection",
+          "description": "Specifies min fraction of english vowels in a detection.",
           "type": "DOUBLE",
           "defaultValue": "0.10"
         },
         {
           "name": "VOWEL_MAX",
-          "description": "Specifies max fraction of english vowels in a detection",
+          "description": "Specifies max fraction of english vowels in a detection.",
           "type": "DOUBLE",
           "defaultValue": "0.95"
         }  
@@ -249,13 +243,13 @@
   },
   "actions": [
     {
-      "name": "IMAGE OCR ACTION",
-      "description": "Testing the OCR stuff.",
+      "name": "TESSERACT IMAGE OCR ACTION",
+      "description": "Runs the Tesseract OCR model on an image.",
       "algorithm": "TESSERACTOCR",
       "properties": [
         {
         "name" : "TAGGING_FILE",
-        "value" : "text-tags.json"
+        "value" : "$MPF_HOME/plugins/TesseractOCR/config/text-tags.json"
         },
         {
         "name" : "SHARPEN",
@@ -268,13 +262,13 @@
     ]
     },
     {
-      "name": "TESSERACT OCR ACTION",
-      "description": "OCR action with auto rotate, flip, and PSM1.",
+      "name": "TESSERACT IMAGE OCR ACTION WITH AUTO-ROTATE, FLIP, and PSM1",
+      "description": "Runs Tesseract OCR with auto rotate, flip, and PSM1.",
       "algorithm": "TESSERACTOCR",
       "properties": [
         {
         "name" : "TAGGING_FILE",
-        "value" : "text-tags.json"
+        "value" : "$MPF_HOME/plugins/TesseractOCR/config/text-tags.json"
         },
         {
         "name" : "SHARPEN",
@@ -298,33 +292,33 @@
   ],
   "tasks": [
     {
-      "name": "IMAGE OCR TASK",
-      "description": "Performs OCR detection.",
+      "name": "TESSERACT IMAGE OCR TASK",
+      "description": "Runs the Tesseract OCR model on an image.",
       "actions": [
-        "IMAGE OCR ACTION"
+        "TESSERACT IMAGE OCR ACTION"
       ]
     },
     {
-      "name": "TESSERACT OCR TASK",
-      "description": "Performs OCR detection.",
+      "name": "TESSERACT IMAGE OCR TASK WITH AUTO-ROTATE, FLIP, and PSM1",
+      "description": "Runs Tesseract OCR with auto rotate, flip, and PSM1.",
       "actions": [
-        "TESSERACT OCR ACTION"
+        "TESSERACT IMAGE OCR ACTION WITH AUTO-ROTATE, FLIP, and PSM1"
       ]
     }
   ],
   "pipelines": [
     {
-      "name": "IMAGE OCR PIPELINE",
-      "description": "Performs OCR detection.",
+      "name": "TESSERACT IMAGE OCR PIPELINE",
+      "description": "Runs the Tesseract OCR model on an image.",
       "tasks": [
-        "IMAGE OCR TASK"
+        "TESSERACT IMAGE OCR TASK"
       ]
     },
     {
-      "name": "TESSERACT OCR PIPELINE",
-      "description": "Performs OCR detection.",
+      "name": "TESSERACT IMAGE OCR PIPELINE WITH AUTO-ROTATE, FLIP, and PSM1",
+      "description": "Runs Tesseract OCR with auto rotate, flip, and PSM1.",
       "tasks": [
-        "TESSERACT OCR TASK"
+        "TESSERACT IMAGE OCR TASK WITH AUTO-ROTATE, FLIP, and PSM1"
       ]
     }
   ]

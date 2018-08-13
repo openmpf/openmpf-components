@@ -45,30 +45,28 @@ using std::to_string;
 
 int main(int argc, char* argv[]) {
 
-  if ((argc < 2 || argc > 3)) {
-        std::cout << "Usage: " << argv[0] << " IMAGE_FILE_URI <ROTATE | CROP | FLIP>" << std::endl;
+  if ((argc < 2)) {
+        std::cout << "Usage: " << argv[0] << " IMAGE_FILE_URI " << std::endl;
         return 0;
     }
   else{
- 
+
 	std::string uri(argv[1]);
 	Properties algorithm_properties;
 
-        
     Properties media_properties;
     std::string job_name("OCR_test");
     algorithm_properties["TAGGING_FILE"] = "text-tags.json";
     algorithm_properties["SHARPEN"] = "1.0";
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
-    //SetRunDirectory(".");
-    // Instantiate the component
+    // Instantiate the component.
     TesseractOCRTextDetection im;
     im.SetRunDirectory("./plugin");
     im.Init();
     // Declare the vector of image locations to be filled in by the
     // component.
     std::vector<MPFImageLocation> locations;
-    // Pass the job to the image detection component
+    // Pass the job to the image detection component.
     MPFDetectionError rc = MPF_DETECTION_SUCCESS;
     rc = im.GetDetections(job, locations);
     if (rc == MPF_DETECTION_SUCCESS) {

@@ -42,7 +42,6 @@ if (${GTEST_FOUND})
 
     add_test(NAME TesseractOCRTextDetectionTest COMMAND TesseractOCRTextDetectionTest)
 
-    # Install test images and videos
-    file(GLOB OCR_TEST_FILES data/*)
-    file(COPY ${OCR_TEST_FILES} DESTINATION test)
+    # Install test images and videos.
+    file(COPY data/ DESTINATION data)
 endif()

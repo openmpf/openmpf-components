@@ -89,8 +89,8 @@ TEST(TESSERACTOCR, ImageTest) {
 
     ASSERT_TRUE(ocr.Init());
 
-    assertObjectDetectedInImage("TESTING 123", "test/text-demo.png", ocr);
-    assertObjectNotDetectedInImage("Ponies", "test/text-demo.png", ocr);
+    assertObjectDetectedInImage("TESTING 123", "data/text-demo.png", ocr);
+    assertObjectNotDetectedInImage("Ponies", "data/text-demo.png", ocr);
 
     ASSERT_TRUE(ocr.Close());
 }

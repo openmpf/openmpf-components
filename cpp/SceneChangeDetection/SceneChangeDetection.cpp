@@ -69,7 +69,7 @@ std::string SceneChangeDetection::GetDetectionType() {
 
 bool SceneChangeDetection::Init() {
 
-    // Determine where the executable is running
+    // Determine where the executable is running.
     std::string run_dir = GetRunDirectory();
     if (run_dir.empty()) {
         run_dir = ".";
@@ -77,19 +77,19 @@ bool SceneChangeDetection::Init() {
     std::string plugin_path = run_dir + "/SceneChangeDetection";
     std::string config_path = plugin_path + "/config";
 
-    // Configure logger
+    // Configure logger.
     log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("SceneChangeDetection");
 
     LOG4CXX_DEBUG(logger_, "Plugin path: " << plugin_path);
 
-    // Initialize dilateKernel
+    // Initialize dilateKernel.
     dilateKernel = getStructuringElement(MORPH_RECT,Size(11,11),Point(5,5));
 
 
     SetDefaultParameters();
     //Once this is done - parameters will be set and SetReadConfigParameters() can be called again to revert back
-    //to the params read at initialization
+    //to the params read at initialization.
     std::string config_params_path = config_path + "/mpfSceneChangeDetection.ini";
     int rc = LoadConfig(config_params_path, parameters);
     if (rc) {
@@ -109,40 +109,39 @@ bool SceneChangeDetection::Init() {
  * Initializes default parameter values.
  */
 void SceneChangeDetection::SetDefaultParameters() {
-    //Threshold for edge detection.
-    //Higher values result in less detections (lower sensitivity)
-    //Range 0-1
+    // Threshold for edge detection.
+    // Higher values result in less detections (lower sensitivity).
+    // Range 0-1.
     edge_thresh = 0.75;
 
-    //Threshold for histogram detection.
-    //Higher values result in more detections (higher sensitivity)
-    //Range 0-1
+    // Threshold for histogram detection.
+    // Higher values result in more detections (higher sensitivity).
+    // Range 0-1.
     hist_thresh = 0.25;
 
-    //Threshold for content detection.
-    //Higher values result in less detections (lower sensitivity)
-    //Range 0-1
+    // Threshold for content detection.
+    // Higher values result in less detections (lower sensitivity).
+    // Range 0-1.
     cont_thresh = 0.30;
 
-    //Threshold for thrs detection.
-    //Higher values result in more detections (higher sensitivity)
-    //Range 0-1? (most likely 0-255).
+    // Threshold for thrs detection.
+    // Higher values result in more detections (higher sensitivity).
+    // Range 0-1? (most likely 0-255).
     thrs_thresh = 12.0;
 
-    //Second threshold for thrs detection (combines with thrs_thres)
-    //Higher values decrease sensitivity.
-    //Range 0-1
+    // Second threshold for thrs detection (combines with thrs_thres).
+    // Higher values decrease sensitivity.
+    // Range 0-1.
     minPercent = 0.95;
 
-    //Expected min number of frames between scene changes.
+    // Expected min number of frames between scene changes.
     minScene = 15; 
 
-    //Toggles each type of detection (true = perform detection)
+    // Toggles each type of detection (true = perform detection).
     do_hist = true;
     do_cont = true;
     do_thrs = true;
     do_edge = true;
-    
 }
 
 /*
@@ -150,8 +149,6 @@ void SceneChangeDetection::SetDefaultParameters() {
  * Sets parameters from .ini file.
  */
 void SceneChangeDetection::SetReadConfigParameters() {
-
-
     if(parameters.contains("DO_HIST")) {
         do_hist = (parameters["DO_HIST"].toInt() > 0);
     }
@@ -205,7 +202,7 @@ bool SceneChangeDetection::EdgeDetector(cv::Mat frameGray, cv::Mat &lastFrameEdg
     absdiff(frameEdgeFinal,lastFrameEdgeFinal,edgeDst);
     double sumEdges = sum(edgeDst).val[0];
     int frame_pixels = edgeDst.size().width*edgeDst.size().height;
-    double deltaEdges = sumEdges / frame_pixels;//numPixels;
+    double deltaEdges = sumEdges / frame_pixels;
 
     frameEdges.copyTo(lastFrameEdgeFinal);
     if(deltaEdges > edge_thresh)
@@ -228,9 +225,9 @@ bool SceneChangeDetection::HistogramDetector(cv::Mat frame, cv::Mat &lastHist)
     const float* ranges[] = { hranges, sranges };
 
 
-    calcHist( &frame, 1, (const int*) &channels[0], Mat(), // do not use mask
+    calcHist( &frame, 1, (const int*) &channels[0], Mat(), // Do not use mask.
              hist, 2, histSize, ranges,
-             true, // the histogram is uniform
+             true, // The histogram is uniform.
              false );
     double val = compareHist(hist,lastHist,CV_COMP_CORREL);
     hist.copyTo(lastHist);
@@ -252,7 +249,7 @@ bool SceneChangeDetection::ContentDetector(cv::Mat frame, cv::Mat &lastFrameHSV)
     absdiff(frameHSV,lastFrameHSV,dst);
     auto sum_ = sum(dst).val;
     int frame_pixels = dst.size().width*dst.size().height;
-    double deltaH = sum_[0]/frame_pixels;///numPixels;
+    double deltaH = sum_[0]/frame_pixels;
     double deltaS = sum_[1]/frame_pixels;
     double deltaV = sum_[2]/frame_pixels;
     double deltaHSVAvg = (deltaH + deltaS + deltaV) / (3.0);
@@ -282,7 +279,7 @@ bool SceneChangeDetection::ThresholdDetector(cv::Mat frame, cv::Mat &lastFrame)
     {
         return true;
     }
-    else return false;
+    return false;
 }
 
 /*
@@ -327,12 +324,12 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
        LOG4CXX_DEBUG(logger_, "Data URI = " << job.data_uri);
 
         if (job.data_uri.empty()) {
-            LOG4CXX_ERROR(logger_, "Invalid image file");
+            LOG4CXX_ERROR(logger_, "Invalid video file");
             return MPF_INVALID_DATAFILE_URI;
         }
 
 
-       
+
         MPFVideoCapture cap(job);
         bool success = false;
         if (!cap.IsOpened()) {
@@ -345,86 +342,73 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         LOG4CXX_DEBUG(logger_, "end frame = " << job.stop_frame);
 
         std::vector<MPFVideoTrack> tracks;
-        int init_frame_index = 0;
-        if (job.start_frame > 0) {
-            init_frame_index = job.start_frame - 1;
-        }
-        
-        int frame_index = init_frame_index+1;
-        
-        //Uncomment to enable scene change detection at the first frame.
-        //Only applies for non-zero initial frames.
-        //Ex. run getDetections on frames 50-100, uncomment allows frame 49 to be extracted and compared against frame 50
-        //otherwise, starting comparison will be frame 50 and 51. 
-        //if(init_frame_index > 1){
-        //    frame_index = frame_index-1;
-        //}
-        cap.SetFramePosition(frame_index-1); // start from one frame before to get "lasts"
-        double maxProgress = 80;
-        double progressStep = maxProgress/cap.GetFrameCount();
-        int lastFrameNum = frame_index;
-        int count = 0;
 
         Mat lastFrameEdgeFinal, frameGray, lastFrameHSV, lastFrame;
         MatND lastHist;
+        int frame_index;
+        const std::vector<cv::Mat> &init_frames = cap.GetInitializationFramesIfAvailable(1);
+        // Attempt to use the frame before the start of the segment to initialize the foreground.
+        // If one is not available, use frame 0 and start processing at frame 1.
+        if (init_frames.empty()) {
+            frame_index = 1;
+            bool success = cap.Read(lastFrame);
+            if(!success){
+                LOG4CXX_ERROR(logger_, "Error reading frame number " + std::to_string(0) + ".");
+            }
+        }
+        else {
+            frame_index = 0;
+            lastFrame = init_frames.at(0);
+        }
 
+
+        int lastFrameNum = frame_index-1;
         int rows, cols;
         const float* ranges[] = { hranges, sranges };
-        bool first_it = true;
+        
+        // Initialize the first frame.
+        edge_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"EDGE_THRESHOLD",edge_thresh);
+        hist_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"HIST_THRESHOLD",hist_thresh);
+        cont_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"CONT_THRESHOLD",cont_thresh);
+        thrs_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"THRS_THRESHOLD",thrs_thresh);
 
-        while (frame_index < qMin(frame_count, job.stop_frame + 1)) {
+        minPercent = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_PERCENT",minPercent);
+        minScene = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_SCENE",minScene);
+
+        do_hist = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_HIST",do_hist);
+        do_cont = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_CONT",do_cont);
+        do_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_THRS",do_thrs);
+        do_edge = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_EDGE",do_edge);
+        
+        double msec = cap.GetProperty(CAP_PROP_POS_MSEC);
+        rows = lastFrame.rows;
+        cols = lastFrame.cols;
+        numPixels = rows * cols;
+        
+        cvtColor(lastFrame,frameGray,COLOR_BGR2GRAY);
+        cv::Mat frameEdges,frameEdgeFinal;
+        blur(frameGray,frameEdges,Size(3,3));
+        Canny(frameEdges,frameEdges,90,270,3);
+        frameGray.copyTo(lastFrameEdgeFinal,frameEdges);
+        dilate(lastFrameEdgeFinal,lastFrameEdgeFinal,dilateKernel);
+        cvtColor(lastFrame, lastFrameHSV, COLOR_BGR2HSV);
+        calcHist( &lastFrame, 1, (const int*) &channels[0], Mat(),
+             lastHist, 2, histSize, ranges,
+             true,
+             false );
+
+        while (frame_index < qMin(frame_count, job.stop_frame)) {
             cv::Mat frame;
             bool success = cap.Read(frame);
-            rows = frame.rows;
-            cols = frame.cols;
-            numPixels = rows * cols;
-            int currFrameNum = cap.GetFrameCount();
-            double msec = cap.GetProperty(CAP_PROP_POS_MSEC);
-            cvtColor(frame,frameGray,COLOR_BGR2GRAY);
-
-            if(first_it)
-            {
-                first_it = false;
-                lastFrame = frame;
-                cv::Mat frameEdges,frameEdgeFinal;
-                blur(frameGray,frameEdges,Size(3,3));
-                Canny(frameEdges,frameEdges,90,270,3);
-                frameGray.copyTo(lastFrameEdgeFinal,frameEdges);
-                dilate(lastFrameEdgeFinal,lastFrameEdgeFinal,dilateKernel);
-                cvtColor(frame, lastFrameHSV, COLOR_BGR2HSV);
-
-                calcHist( &frame, 1, (const int*) &channels[0], Mat(), // do not use mask
-                     lastHist, 2, histSize, ranges,
-                     true, // the histogram is uniform
-                     false );
-                
-                frame_index++;
-                continue;
-
-
+            if(!success){
+                LOG4CXX_ERROR(logger_, "Error reading frame number " + std::to_string(frame_index) + ".");
             }
-            //Uncomment to enable adjusting property values in MPF Workflow.
-            //While disabled, property values are initialized from .ini file instead.
-            /*
-            edge_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"EDGE_THRESHOLD",edge_thresh);
-            hist_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"HIST_THRESHOLD",hist_thresh);
-            cont_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"CONT_THRESHOLD",cont_thresh);
-            thrs_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"THRS_THRESHOLD",thrs_thresh);
-
-            minPercent = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_PERCENT",minPercent);
-            minScene = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_SCENE",minScene);
-
-            do_hist = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_HIST",do_hist);
-            do_cont = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_CONT",do_cont);
-            do_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_THRS",do_thrs);
-            do_edge = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_EDGE",do_edge);*/
+            cvtColor(frame,frameGray,COLOR_BGR2GRAY);
+            
             
             bool edge_result = do_edge && EdgeDetector(frameGray, lastFrameEdgeFinal);
-            
             bool hist_result = do_hist && HistogramDetector(frame, lastHist);
-            
             bool cont_result = do_cont && ContentDetector(frame, lastFrameHSV);
-            
             bool thrs_result = do_thrs && ThresholdDetector(frame, lastFrame);
 
             if(edge_result || hist_result || cont_result || thrs_result)
@@ -436,36 +420,20 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
                 }
             }
 
-
             frame_index++;
 
         }
         keyframes[frame_index]=lastFrameNum;
-        bool use_exemplar = true;
         for(auto const& kv : keyframes)
         {
             auto start_frame = kv.second;
             auto end_frame = kv.first;
             MPFVideoTrack track(start_frame,end_frame);
-            if(!use_exemplar)
-            {
-                for(int i = start_frame;i<end_frame;i++)
-                {
-                    track.frame_locations.insert(
-                        std::pair<int,MPFImageLocation>(i-start_frame,
-                            MPFImageLocation(0,0,cols, rows)
-                            )
-                        );
-                }
-            }
-            else
-            {
-                track.frame_locations.insert(
-                        std::pair<int,MPFImageLocation>(start_frame + (int)((end_frame-start_frame)/2),
-                            MPFImageLocation(0,0,cols, rows)
-                            )
-                        );
-            }
+            track.frame_locations.insert(
+                    std::pair<int,MPFImageLocation>(start_frame + (int)((end_frame-start_frame)/2),
+                        MPFImageLocation(0,0,cols, rows)
+                        )
+                    );
             cap.ReverseTransform(track);
             locations.push_back(track);
         }

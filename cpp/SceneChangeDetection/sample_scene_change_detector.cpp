@@ -45,32 +45,25 @@ split(const T & str, const T & delimiters) {
     typename T::size_type start = 0;
     auto pos = str.find_first_of(delimiters, start);
     while(pos != T::npos) {
-        if(pos != start) // ignore empty tokens
+        if(pos != start) // Ignore empty tokens.
             v.emplace_back(str, start, pos - start);
         start = pos + 1;
         pos = str.find_first_of(delimiters, start);
     }
-    if(start < str.length()) // ignore trailing delimiter
-        v.emplace_back(str, start, str.length() - start); // add what's left of the string
+    if(start < str.length()) // Ignore trailing delimiter.
+        v.emplace_back(str, start, str.length() - start); // Add what's left of the string.
     return v;
 };
 
 int main(int argc, char* argv[]) {
 
-    if ((argc < 2) || (argc > 5)) {
+    if ((argc < 2) || (argc > 4)) {
         std::cout << "argc = " << argc << std::endl;
-        std::cout << "Usage: " << argv[0] << " <image URI> <num classifications> <confidence threshold> <ROTATE | CROP | FLIP>" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <image URI> <start frame> <end frame>" << std::endl;
         return EXIT_SUCCESS;
     }
 
     SceneChangeDetection scene_change_component;
-
-
-
-    QHash<QString, QString> parameters;
-    QString current_path = QDir::currentPath();
-    std::string config_path(current_path.toStdString() + "/config/mog_config.ini");
-
     scene_change_component.SetRunDirectory("plugin");
 
     if (!scene_change_component.Init()) {
@@ -81,34 +74,54 @@ int main(int argc, char* argv[]) {
     Properties algorithm_properties;
     
     std::string uri(argv[1]);
+    int start_frame = 0, stop_frame = 200;
+
+    try{
+        if(argc == 3){
+            std::cout << "Stop frame not provided. Setting stop frame to 200.\n";
+            start_frame = std::stoi(argv[2]);
+        } else if(argc == 4){
+            start_frame = std::stoi(argv[2]);
+            stop_frame = std::stoi(argv[3]);
+        } else {
+            std::cout << "Start and stop frames not provided. Setting frame range to 0-200.\n"; 
+        }
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+
     std::cout << "uri is " << uri << std::endl;
 
     vector<string> v = split<string>(uri,".");
     auto lastel = v.back();
     MPFDetectionDataType media_type;
-    
-  
+
+
     {
         std::vector<MPFVideoTrack> detections;
         media_type = VIDEO;
         Properties media_properties;
         std::string job_name("Testing Scene Change");
         std::cout<<"testing scene change"<<std::endl;
-        MPFVideoJob job(job_name, uri, 0,251,algorithm_properties, media_properties);
-        scene_change_component.GetDetections(job, detections);
-        std::cout<<"number of final scenes: "<<detections.size()<<std::endl;
-        for (int i = 0; i < detections.size(); i++) {
-            std::cout << "scene number "
-                      << i
-                      << ": start frame is "
-                      << detections[i].start_frame
-                        << "; stop frame is "
-                      << detections[i].stop_frame
-                      << std::endl;
+        MPFVideoJob job(job_name, uri, start_frame,stop_frame,algorithm_properties, media_properties);
+        MPFDetectionError rc = scene_change_component.GetDetections(job, detections);
+        if(MPF_DETECTION_SUCCESS== rc){
+            std::cout<<"number of final scenes: "<<detections.size()<<std::endl;
+            for (int i = 0; i < detections.size(); i++) {
+                std::cout << "scene number "
+                          << i
+                          << ": start frame is "
+                          << detections[i].start_frame
+                            << "; stop frame is "
+                          << detections[i].stop_frame
+                          << std::endl;
+            }
+        } else {
+        std::cout << "Scene change getDetections failed!" << std::endl;
         }
-
     }
-   
+
 
     
     scene_change_component.Close();

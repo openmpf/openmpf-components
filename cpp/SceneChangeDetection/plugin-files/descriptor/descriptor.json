@@ -49,12 +49,6 @@
           "defaultValue": "-2"
         },
         {
-          "name": "STREAMING_ACTIVITY_CONFIDENCE_THRESHOLD",
-          "description": "The minimum detection confidence score for reporting activity in a frame. Detections with confidence below this value will not cause activity to be reported, but they may become part of a track that is eventually reported at the end of a segment.",
-          "type": "FLOAT",
-          "defaultValue": "1.5"
-        },
-        {
           "name": "MIN_GAP_BETWEEN_SEGMENTS",
           "description": "In the context of videos, the minimum number of frames between segments which are not adjacent. Value must be greater than or equal to 1. Default value is defined by the MPF properties file.",
           "type": "INT",
@@ -216,7 +210,7 @@
   "actions": [
     {
       "name": "OCV SCENE CHANGE DETECTION ACTION",
-      "description": "Basic scene change detection with all parameters default",
+      "description": "Basic scene change detection with all parameters default.",
       "algorithm": "SCENECHANGE",
       "properties" : []
     }
@@ -224,7 +218,7 @@
   "tasks": [
     {
       "name": "OCV SCENE CHANGE DETECTION TASK",
-      "description": "Basic scene change detection with all parameters default",
+      "description": "Basic scene change detection with all parameters default.",
       "actions": [
         "OCV SCENE CHANGE DETECTION ACTION"
       ]
@@ -233,7 +227,7 @@
   "pipelines": [
     {
       "name": "OCV SCENE CHANGE DETECTION PIPELINE",
-      "description": "Basic scene change detection with all parameters default",
+      "description": "Basic scene change detection with all parameters default.",
       "tasks": [
         "OCV SCENE CHANGE DETECTION TASK"
       ]
