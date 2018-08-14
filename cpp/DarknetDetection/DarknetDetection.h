@@ -38,7 +38,10 @@
 #include <dlfcn.h>
 #include <DlClassLoader.h>
 
+#include "Trackers.h"
+
 #include "include/DarknetInterface.h"
+
 
 class DarknetDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
@@ -61,16 +64,34 @@ public:
 
 private:
     using DarknetDl = MPF::COMPONENT::DlClassLoader<DarknetInterface>;
+    using DarknetAsyncDl = MPF::COMPONENT::DlClassLoader<DarknetAsyncInterface>;
 
     log4cxx::LoggerPtr logger_;
     
-    std::string plugin_path_;
+    std::string cpu_darknet_lib_path_;
+
+    std::string gpu_darknet_lib_path_;
 
     MPF::COMPONENT::ModelsIniParser<ModelSettings> models_parser_;
 
-    DarknetDl GetDarknetImpl(const MPF::COMPONENT::MPFJob &job);
+
+    DarknetAsyncDl GetDarknetImpl(const MPF::COMPONENT::MPFVideoJob &job);
+
+    DarknetDl GetDarknetImpl(const MPF::COMPONENT::MPFImageJob &job);
+
+    template <typename TDarknetDl>
+    TDarknetDl GetDarknetImpl(const MPF::COMPONENT::MPFJob &job,
+                              const std::string &creator, const std::string &deleter);
+
+
+    static void ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
+                                                std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
 
     ModelSettings GetModelSettings(const MPF::COMPONENT::Properties &job_properties) const;
+
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks(
+            const MPF::COMPONENT::MPFJob &job,
+            std::vector<DarknetResult> &&detections);
 };
 
 

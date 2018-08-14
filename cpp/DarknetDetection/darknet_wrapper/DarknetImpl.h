@@ -28,15 +28,14 @@
 #ifndef OPENMPF_COMPONENTS_DARKNETIMPL_H
 #define OPENMPF_COMPONENTS_DARKNETIMPL_H
 
-#include <atomic>
+
 #include <memory>
 #include <vector>
+#include <future>
 
 #include <opencv2/core.hpp>
 
 #include <MPFDetectionComponent.h>
-
-#include <MPFVideoCapture.h>
 #include <BlockingQueue.h>
 
 #include "../include/DarknetInterface.h"
@@ -68,31 +67,9 @@ namespace DarknetHelpers {
 
         std::unique_ptr<float*[]> prob_row_ptrs_;
     };
+
+    struct DarknetImageHolder;
 }
-
-
-struct DarknetImageHolder {
-    int index;
-    bool stop_flag;
-    cv::Size orig_frame_size;
-    image darknet_image;
-
-    DarknetImageHolder() = delete;
-    explicit DarknetImageHolder(const bool s);
-    DarknetImageHolder(const cv::Mat &cv_image,
-                       const int target_width, const int target_height);
-    DarknetImageHolder(int frame_num, const cv::Mat &cv_image,
-                       const int target_width, const int target_height);
-
-    ~DarknetImageHolder();
-
-    DarknetImageHolder(const DarknetImageHolder& im) = delete;
-    DarknetImageHolder& operator=(const DarknetImageHolder& im) = delete;
-    DarknetImageHolder(DarknetImageHolder&& im) = delete;
-    DarknetImageHolder& operator=(DarknetImageHolder&& im) = delete;
-
-    static image CvMatToImage(const cv::Mat &cv_image, const int w, const int h);
-};
 
 
 template<typename ClassFilter>
@@ -101,11 +78,13 @@ class DarknetImpl : public DarknetInterface {
 public:
     DarknetImpl(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
 
-    MPF::COMPONENT::MPFDetectionError RunDarknetDetection(const MPF::COMPONENT::MPFVideoJob &job,
-                                                          std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks) override;
+    std::vector<DarknetResult> Detect(int frame_number, const cv::Mat &cv_image) override;
 
-    MPF::COMPONENT::MPFDetectionError RunDarknetDetection(const MPF::COMPONENT::MPFImageJob &job,
-                                                          std::vector<MPF::COMPONENT::MPFImageLocation> &locations) override;
+    void Detect(int frame_number, const cv::Mat &cv_image, std::vector<DarknetResult> &detections) override;
+
+    void Detect(const DarknetHelpers::DarknetImageHolder &image_holder, std::vector<DarknetResult> &detections);
+
+    cv::Size GetTargetFrameSize();
 
 private:
     DarknetHelpers::network_ptr_t network_;
@@ -119,41 +98,38 @@ private:
     DarknetHelpers::ProbHolder probs_;
 
     std::unique_ptr<box[]> boxes_;
+};
 
-    log4cxx::LoggerPtr logger_;
 
-    template <typename Tracker>
-    MPF::COMPONENT::MPFDetectionError RunDarknetDetection(
-            const MPF::COMPONENT::MPFVideoJob &job,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
-            Tracker &tracker);
 
-    std::vector<DarknetResult> Detect(const DarknetImageHolder &image);
+class DarknetImplAsync : public DarknetAsyncInterface {
+public:
+    DarknetImplAsync(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
 
-    static void ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
-                                                std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
+    ~DarknetImplAsync() override;
 
-    using DarknetQueue = MPF::COMPONENT::BlockingQueue<std::unique_ptr<DarknetImageHolder>>;
+    void Submit(int frame_number, const cv::Mat &cv_image) override;
 
-    // ProcessFrameQueue is the function that will be executed by the
-    // thread spawned in GetDetections for video jobs.
-    template <typename Tracker>
-    void ProcessFrameQueue(Tracker &tracker,  DarknetQueue &queue);
+    std::vector<DarknetResult> GetResults() override;
 
-   // FinishDetection is used to stop the detection thread. Set the
-   // halt parameter to true when the processing must be terminated
-   // due to an exception or other error, and the thread will
-   // terminate without emptying the queue. Otherwise, the thread will
-   // empty the queue before being joined in this function.
-    void FinishDetection(std::thread &thread, DarknetQueue &queue, bool halt);
+private:
+    using DarknetQueue = MPF::COMPONENT::BlockingQueue<std::unique_ptr<DarknetHelpers::DarknetImageHolder>>;
+    DarknetQueue work_queue_;
 
-    // This function reads frames from the video and puts them into
-    // the queue.
-    MPF::COMPONENT::MPFDetectionError ReadAndEnqueueFrames(MPF::COMPONENT::MPFVideoCapture &video_cap, DarknetQueue &queue);
+    cv::Size target_frame_size_;
 
-    // This function puts a stop frame into the queue to tell the
-    // detecton thread when there are no more frames to be processed.
-    void EnqueueStopFrame(DarknetQueue &queue);
+    std::future<std::vector<DarknetResult>> work_done_future_;
+
+    bool get_results_called_ = false;
+
+    template<typename ClassFilter>
+    void Init(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
+
+
+    // Runs on a thread spawned by the call to std::async in the Init method.
+    template<typename ClassFilter>
+    static std::vector<DarknetResult> ProcessFrameQueue(DarknetImpl<ClassFilter> darknet_impl,
+                                                        DarknetQueue &work_queue);
 };
 
 

@@ -30,13 +30,16 @@
 #include <opencv/cv.hpp>
 
 #include <MPFDetectionComponent.h>
+#include <MPFVideoCapture.h>
+
 #include <fstream>
 #include <unordered_set>
 #include <MPFVideoCapture.h>
 #include <ModelsIniParser.h>
 
 #include "DarknetDetection.h"
-#include "../darknet_wrapper/Trackers.h"
+#include "DarknetStreamingDetection.h"
+#include "Trackers.h"
 #include "include/DarknetInterface.h"
 
 using namespace MPF::COMPONENT;
@@ -131,6 +134,37 @@ TEST(Darknet, VideoTest) {
 }
 
 
+TEST(DarknetStreaming, VideoTest) {
+    int end_frame = 4;
+    MPFStreamingVideoJob job("Test", "../plugin/", get_yolo_tiny_config(), {});
+    DarknetStreamingDetection component(job);
+    int frame_number = 0;
+
+    for (int segments = 0; segments < 2; segments++) {
+        VideoSegmentInfo segment_info(segments, frame_number, frame_number + end_frame, 100, 100);
+        component.BeginSegment(segment_info);
+
+        MPFVideoCapture cap({"Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, {}, { }});
+
+        int true_count = 0;
+        cv::Mat frame;
+        while (cap.Read(frame)) {
+            if (component.ProcessFrame(frame, frame_number)) {
+                true_count++;
+            }
+            frame_number++;
+        }
+        ASSERT_EQ(1, true_count);
+
+        std::vector<MPFVideoTrack> results = component.EndSegment();
+        for (int i = segment_info.start_frame; i <= segment_info.end_frame; i++) {
+            ASSERT_TRUE(object_found("person", i, results));
+            ASSERT_TRUE(object_found("car", i, results));
+        }
+    }
+}
+
+
 
 bool object_found_in_all_frames(const std::string &object_type, const MPFVideoTrack &track, int start, int stop) {
     bool track_valid = object_found(object_type, track.detection_properties)
@@ -172,12 +206,54 @@ TEST(Darknet, UsePreprocessorVideoTest) {
 }
 
 
-DarknetResult CreateDetection(const std::string &object_type, float confidence) {
-    return DarknetResult { cv::Rect(0, 0, 10, 10), { { confidence, object_type } } };
+
+TEST(DarknetStreaming, UsePreprocessorVideoTest) {
+    int end_frame = 4;
+    Properties job_properties = get_yolo_tiny_config();
+    job_properties.emplace("USE_PREPROCESSOR", "TRUE");
+
+    MPFStreamingVideoJob job("Test", "../plugin/", job_properties, {});
+    DarknetStreamingDetection component(job);
+    int frame_number = 0;
+
+    for (int segments = 0; segments < 2; segments++) {
+        VideoSegmentInfo segment_info(segments, frame_number, frame_number + end_frame, 100, 100);
+        component.BeginSegment(segment_info);
+        MPFVideoCapture cap({"Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, job_properties, { }});
+
+        int true_count = 0;
+        cv::Mat frame;
+        while (cap.Read(frame)) {
+            if (component.ProcessFrame(frame, frame_number)) {
+                true_count++;
+            }
+            frame_number++;
+        }
+        ASSERT_EQ(1, true_count);
+
+        std::vector<MPFVideoTrack> results = component.EndSegment();
+
+        ASSERT_EQ(results.size(), 2);
+
+        ASSERT_TRUE(
+            object_found_in_all_frames("car", results.at(0), segment_info.start_frame, segment_info.end_frame)
+                || object_found_in_all_frames("car", results.at(1), segment_info.start_frame, segment_info.end_frame));
+
+        ASSERT_TRUE(
+            object_found_in_all_frames("person", results.at(0), segment_info.start_frame, segment_info.end_frame)
+                || object_found_in_all_frames("person", results.at(1), segment_info.start_frame, segment_info.end_frame));
+    }
 }
 
-DarknetResult CreateDetection(const cv::Rect &location, const std::string &object_type, float confidence) {
-    return DarknetResult { location, { { confidence, object_type } } };
+
+
+DarknetResult CreateDetection(const std::string &object_type, float confidence, int frame_number) {
+    return DarknetResult(frame_number, cv::Rect(0, 0, 10, 10), { { confidence, object_type } });
+}
+
+DarknetResult CreateDetection(const cv::Rect &location, const std::string &object_type, float confidence,
+                              int frame_number) {
+    return DarknetResult(frame_number, location, { { confidence, object_type } });
 }
 
 
@@ -209,39 +285,20 @@ bool ContainsTrack(const std::vector<MPFVideoTrack> &tracks, const std::string &
 }
 
 TEST(Darknet, PreprocessorTrackerTest) {
+    std::vector<MPFVideoTrack> tracks = PreprocessorTracker::GetTracks({
+            CreateDetection("person", 0.5, 0), CreateDetection("dog", 0.5, 0),
 
-    PreprocessorTracker tracker;
+            CreateDetection("person", 0.6, 1), CreateDetection("dog", 0.5, 1),
 
-    tracker.ProcessFrameDetections(
-            { CreateDetection("person", 0.5), CreateDetection("dog", 0.5) },
-            0);
+            CreateDetection("person", 0.8, 2), CreateDetection("dog", 0.5, 2), CreateDetection("cat", 0.5, 2),
 
-    tracker.ProcessFrameDetections(
-            { CreateDetection("person", 0.6), CreateDetection("dog", 0.5)},
-            1
-    );
+            CreateDetection("dog", 0.5, 3), CreateDetection("cat", 0.95, 3),
 
-    tracker.ProcessFrameDetections(
-            { CreateDetection("person", 0.8), CreateDetection("dog", 0.5), CreateDetection("cat", 0.5)},
-            2
-    );
+            CreateDetection("dog", 0.5, 4), CreateDetection("cat", 0.5, 4), CreateDetection("person", 0.65, 4),
 
-    tracker.ProcessFrameDetections(
-            { CreateDetection("dog", 0.5), CreateDetection("cat", 0.95)},
-            3
-    );
+            CreateDetection("dog", 0.5, 5), CreateDetection("person", 0.9, 5), CreateDetection("person", 0.3, 5)
+    });
 
-    tracker.ProcessFrameDetections(
-            { CreateDetection("dog", 0.5), CreateDetection("cat", 0.5), CreateDetection("person", 0.65)},
-            4
-    );
-
-    tracker.ProcessFrameDetections(
-            { CreateDetection("dog", 0.5), CreateDetection("person", 0.9), CreateDetection("person", 0.3)},
-            5
-    );
-
-    std::vector<MPFVideoTrack> tracks = tracker.GetTracks();
     ASSERT_EQ(4, tracks.size());
     ASSERT_TRUE(ContainsTrack(tracks, "person", 0, 2, 0.8));
     ASSERT_TRUE(ContainsTrack(tracks, "person", 4, 5, 0.93));
@@ -273,8 +330,9 @@ bool has_image_location_with_confidence(const std::vector<MPFVideoTrack> &tracks
     return false;
 }
 
+using class_prob_vec_t = decltype(DarknetResult::object_type_probs);
 
-TEST(Darknet, TestPreprocessorConfidenceCalculation) {
+TEST(Darknet, TestPreproccessorConfidenceCalculation) {
     float p1_confidence = 0.45;
     float p2_confidence = 0.75;
     float prob_not_p1_and_not_p2 = (1 - p1_confidence) * (1 - p2_confidence);
@@ -286,14 +344,15 @@ TEST(Darknet, TestPreprocessorConfidenceCalculation) {
 
     float d1_confidence = 0.65;
 
-    std::vector<DarknetResult> detections0(2);
-    detections0.at(0).object_type_probs = { { p1_confidence, "person" }, { d1_confidence, "dog" } };
-    detections0.at(1).object_type_probs = { { p2_confidence, "person" } };
+
+    std::vector<DarknetResult> initial_detections {
+            DarknetResult(0, cv::Rect(1, 1, 1, 1), { { p1_confidence, "person" }, { d1_confidence, "dog" } }),
+            DarknetResult(0, cv::Rect(1, 1, 1, 1), { { p2_confidence, "person" } })
+    };
 
     {
-        PreprocessorTracker tracker;
-        tracker.ProcessFrameDetections(detections0, 0);
-        auto tracks = tracker.GetTracks();
+        auto detections_copy = initial_detections;
+        auto tracks = PreprocessorTracker::GetTracks(std::move(detections_copy));
 
         ASSERT_EQ(tracks.size(), 2);
 
@@ -305,14 +364,10 @@ TEST(Darknet, TestPreprocessorConfidenceCalculation) {
     }
 
     {
-        DarknetResult detections0_other_location;
-        detections0_other_location.object_type_probs = { { p3_confidence, "person" } };
-        auto detections_copy = detections0;
-        detections_copy.push_back(detections0_other_location);
+        auto detections_copy = initial_detections;
+        detections_copy.emplace_back(0, cv::Rect(1, 1, 1, 1), class_prob_vec_t{ { p3_confidence, "person" } });
 
-        PreprocessorTracker tracker;
-        tracker.ProcessFrameDetections(detections_copy, 0);
-        auto tracks = tracker.GetTracks();
+        auto tracks = PreprocessorTracker::GetTracks(std::move(detections_copy));
 
         ASSERT_EQ(tracks.size(), 2);
 
@@ -326,15 +381,9 @@ TEST(Darknet, TestPreprocessorConfidenceCalculation) {
 
 
     {
-        PreprocessorTracker tracker;
-        tracker.ProcessFrameDetections(detections0, 0);
-
-        DarknetResult detections1;
-        detections1.object_type_probs = { { p3_confidence, "person" } };
-
-        tracker.ProcessFrameDetections({ detections1 }, 1);
-
-        auto tracks = tracker.GetTracks();
+        auto detections_copy = initial_detections;
+        detections_copy.emplace_back(1, cv::Rect(1, 1, 1, 1), class_prob_vec_t{ { p3_confidence, "person" } });
+        auto tracks = PreprocessorTracker::GetTracks(std::move(detections_copy));
 
         ASSERT_EQ(tracks.size(), 2);
 
@@ -369,18 +418,13 @@ bool has_confidence_values(const MPFVideoTrack &track, std::vector<float> expect
 
 
 TEST(Darknet, TestNumberOfClassifications) {
-    DarknetResult detections1;
-    detections1.detection_rect = cv::Rect(0, 0, 1, 1);
-    detections1.object_type_probs = { { .1, "dog" }, { .2, "person" }, {.3, "cat"}, {.25, "apple"} };
+    std::vector<DarknetResult> detections {
+        DarknetResult(0, cv::Rect(0, 0, 1, 1), { { .1, "dog" }, { .2, "person" }, {.3, "cat"}, {.25, "apple"} }),
+        DarknetResult(0, cv::Rect(4, 4, 1, 1), { { .1, "person" }, { .25, "dog" }, {.25, "cat"}, {.1, "apple"} })
+    };
 
-    DarknetResult detections2;
-    detections2.detection_rect = cv::Rect(4, 4, 1, 1);
-    detections2.object_type_probs = { { .1, "person" }, { .25, "dog" }, {.25, "cat"}, {.1, "apple"} };
+    auto tracks = DefaultTracker::GetTracks(3, 0.5, std::move(detections));
 
-    DefaultTracker tracker(3, 0.5);
-    tracker.ProcessFrameDetections({ detections1, detections2 }, 0);
-
-    auto tracks = tracker.GetTracks();
     ASSERT_EQ(tracks.size(), 2);
 
     MPFVideoTrack track1;
@@ -493,12 +537,13 @@ TEST(Darknet, TestInvalidWhitelist) {
 
 
 TEST(Darknet, DefaultTrackerFiltersOnIntersectionRatio) {
-    DefaultTracker tracker(5, 0.5);
-    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 20, 20}, "object", 0.5) }, 0);
-    tracker.ProcessFrameDetections({ CreateDetection({8, 8, 20, 20}, "object", 0.5) }, 1);
-    tracker.ProcessFrameDetections({ CreateDetection({20, 20, 20, 20}, "object", 0.5) }, 2);
+    std::vector<DarknetResult> detections {
+            CreateDetection({5, 5, 20, 20}, "object", 0.5, 0),
+            CreateDetection({8, 8, 20, 20}, "object", 0.5, 1),
+            CreateDetection({20, 20, 20, 20}, "object", 0.5, 2)
+    };
 
-    auto tracks = tracker.GetTracks();
+    auto tracks = DefaultTracker::GetTracks(5, 0.5, std::move(detections));
     ASSERT_EQ(2, tracks.size());
 
     MPFVideoTrack track1;
@@ -527,13 +572,14 @@ TEST(Darknet, DefaultTrackerFiltersOnIntersectionRatio) {
 
 TEST(Darknet, DefaultTrackerIgnoresOverlapWhenOverlapRatioNotPositive) {
     for (double overlap_ratio : { 0.0, -0.5, -1.0 }) {
-        DefaultTracker tracker(5, overlap_ratio);
-        tracker.ProcessFrameDetections({ CreateDetection(cv::Rect(0, 0, 1, 1), "object", 0.5) }, 0);
-        tracker.ProcessFrameDetections({ CreateDetection(cv::Rect(5, 5, 1, 1), "object", 0.5) }, 1);
-        tracker.ProcessFrameDetections({ CreateDetection(cv::Rect(0, 0, 1, 1), "other", 0.5) }, 1);
 
+        std::vector<DarknetResult> detections {
+                CreateDetection(cv::Rect(0, 0, 1, 1), "object", 0.5, 0),
+                CreateDetection(cv::Rect(5, 5, 1, 1), "object", 0.5, 1),
+                CreateDetection(cv::Rect(0, 0, 1, 1), "other", 0.5, 1)
+        };
 
-        auto tracks = tracker.GetTracks();
+        auto tracks = DefaultTracker::GetTracks(5, overlap_ratio, std::move(detections));
         ASSERT_EQ(2, tracks.size());
 
         MPFVideoTrack object_track;
@@ -563,14 +609,14 @@ TEST(Darknet, DefaultTrackerIgnoresOverlapWhenOverlapRatioNotPositive) {
 
 
 TEST(Darknet, DefaultTrackerOnlyCombinesExactMatchWhenOverlapIsOne) {
-    DefaultTracker tracker(5, 1);
-    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 6}, "object", 0.5) }, 0);
-    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "object", 0.5) }, 1);
+    std::vector<DarknetResult> detections {
+            CreateDetection({5, 5, 5, 6}, "object", 0.5, 0),
+            CreateDetection({5, 5, 5, 5}, "object", 0.5, 1),
+            CreateDetection({5, 5, 5, 5}, "other", 0.5, 1),
+            CreateDetection({5, 5, 5, 5}, "other", 0.5, 2)
+    };
 
-    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "other", 0.5) }, 1);
-    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "other", 0.5) }, 2);
-
-    auto tracks = tracker.GetTracks();
+    auto tracks = DefaultTracker::GetTracks(5, 1, std::move(detections));
     ASSERT_EQ(3, tracks.size());
 
     MPFVideoTrack object_track1;
@@ -603,14 +649,15 @@ TEST(Darknet, DefaultTrackerOnlyCombinesExactMatchWhenOverlapIsOne) {
 
 
 TEST(Darknet, DefaultTrackerDoesNotCombineWhenOverlapIsGreaterThanOne) {
-    DefaultTracker tracker(5, 1.1);
-    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 6}, "object", 0.5) }, 0);
-    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "object", 0.5) }, 1);
+    std::vector<DarknetResult> detections {
+            CreateDetection({5, 5, 5, 6}, "object", 0.5, 0),
+            CreateDetection({5, 5, 5, 5}, "object", 0.5, 1),
+            CreateDetection({5, 5, 5, 5}, "other", 0.5, 1),
+            CreateDetection({5, 5, 5, 5}, "other", 0.5, 2)
+    };
 
-    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "other", 0.5) }, 1);
-    tracker.ProcessFrameDetections({ CreateDetection({5, 5, 5, 5}, "other", 0.5) }, 2);
 
-    auto tracks = tracker.GetTracks();
+    auto tracks = DefaultTracker::GetTracks(5, 1.1, std::move(detections));
     ASSERT_EQ(4, tracks.size());
     ASSERT_TRUE(object_found("object", 0, tracks));
     ASSERT_TRUE(object_found("object", 1, tracks));
@@ -626,17 +673,16 @@ TEST(Darknet, DefaultTrackerDoesNotCombineWhenOverlapIsGreaterThanOne) {
 
 
 TEST(Darknet, DefaultTrackerDoesNotCombineDetectionsWhenNonContiguousFrames) {
-    DefaultTracker tracker(5, 0);
-    auto detection = CreateDetection(cv::Rect(0, 0, 1, 1), "object", 0.5);
+    std::vector<DarknetResult> detections {
+            CreateDetection(cv::Rect(0, 0, 1, 1), "object", 0.5, 0),
+            CreateDetection(cv::Rect(0, 0, 1, 1), "object", 0.5, 1),
 
-    tracker.ProcessFrameDetections({ detection }, 0);
-    tracker.ProcessFrameDetections({ detection }, 1);
+            CreateDetection(cv::Rect(0, 0, 1, 1), "object", 0.5, 3),
+            CreateDetection(cv::Rect(0, 0, 1, 1), "object", 0.5, 4),
+            CreateDetection(cv::Rect(0, 0, 1, 1), "object", 0.5, 5)
+    };
 
-    tracker.ProcessFrameDetections({ detection }, 3);
-    tracker.ProcessFrameDetections({ detection }, 4);
-    tracker.ProcessFrameDetections({ detection }, 5);
-
-    auto tracks = tracker.GetTracks();
+    auto tracks = DefaultTracker::GetTracks(5, 0, std::move(detections));
     ASSERT_EQ(2, tracks.size());
     MPFVideoTrack track0to1;
     MPFVideoTrack track3to5;

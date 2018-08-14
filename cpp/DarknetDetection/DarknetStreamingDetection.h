@@ -24,64 +24,55 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#ifndef OPENMPF_COMPONENTS_DARKNETSTREAMINGDETECTION_H
+#define OPENMPF_COMPONENTS_DARKNETSTREAMINGDETECTION_H
 
-#ifndef OPENMPF_COMPONENTS_DARKNETINTERFACE_H
-#define OPENMPF_COMPONENTS_DARKNETINTERFACE_H
-
-#include <map>
-#include <vector>
+#include <functional>
 #include <string>
 
-#include <opencv2/core.hpp>
+#include <log4cxx/logger.h>
+
+#include <MPFStreamingDetectionComponent.h>
+#include <DlClassLoader.h>
+
+#include "include/DarknetInterface.h"
 
 
+class DarknetStreamingDetection : public MPF::COMPONENT::MPFStreamingDetectionComponent {
 
-struct DarknetResult {
-    int frame_number;
-    cv::Rect detection_rect;
-    std::vector<std::pair<float, std::string>> object_type_probs;
-
-    DarknetResult(
-            int frame_number,
-            const cv::Rect &detection_rect,
-            std::vector<std::pair<float, std::string>> &&object_type_probs = {})
-        : frame_number(frame_number)
-        , detection_rect(detection_rect)
-        , object_type_probs(std::move(object_type_probs))
-    {
-    }
-};
-
-struct ModelSettings {
-    std::string network_config_file;
-    std::string names_file;
-    std::string weights_file;
-};
-
-
-class DarknetInterface {
 public:
-    DarknetInterface(const std::map<std::string, std::string> &props, const ModelSettings &settings) { }
+    explicit DarknetStreamingDetection(const MPF::COMPONENT::MPFStreamingVideoJob &job);
 
-    virtual ~DarknetInterface() = default;
+    std::string GetDetectionType() override;
 
-    virtual std::vector<DarknetResult> Detect(int frame_number, const cv::Mat &cv_image) = 0;
+    void BeginSegment(const MPF::COMPONENT::VideoSegmentInfo &segment_info) override;
 
-    virtual void Detect(int frame_number, const cv::Mat &cv_image, std::vector<DarknetResult> &detections) = 0;
+    bool ProcessFrame(const cv::Mat &frame, int frame_number) override;
+
+    std::vector<MPF::COMPONENT::MPFVideoTrack> EndSegment() override;
+
+private:
+    log4cxx::LoggerPtr logger_;
+
+    std::string job_name_;
+
+    std::string log_prefix_;
+
+    MPF::COMPONENT::DlClassLoader<DarknetInterface> detector_;
+
+    std::function<
+             std::vector<MPF::COMPONENT::MPFVideoTrack> (std::vector<DarknetResult>&&)
+    > tracker_;
+
+
+    std::vector<DarknetResult> current_segment_detections_;
+
+    bool found_track_in_current_segment_ = false;
+
+    DarknetStreamingDetection(const MPF::COMPONENT::MPFStreamingVideoJob &job, log4cxx::LoggerPtr logger);
+
+    [[noreturn]] void LogError(const std::string &message);
 };
 
 
-
-class DarknetAsyncInterface {
-public:
-    DarknetAsyncInterface(const std::map<std::string, std::string> &props, const ModelSettings &settings) { }
-
-    virtual ~DarknetAsyncInterface() = default;
-
-    virtual void Submit(int frame_number, const cv::Mat &cv_image) = 0;
-
-    virtual std::vector<DarknetResult> GetResults() = 0;
-};
-
-
-#endif //OPENMPF_COMPONENTS_DARKNETINTERFACE_H
+#endif //OPENMPF_COMPONENTS_DARKNETSTREAMINGDETECTION_H

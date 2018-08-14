@@ -37,67 +37,23 @@
 
 #include <MPFDetectionComponent.h>
 
-#include "../include/DarknetInterface.h"
+#include "include/DarknetInterface.h"
 
-namespace TrackingHelpers {
+
+
+namespace DefaultTracker {
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks(int num_classes_per_region, double min_overlap,
+                                                         std::vector<DarknetResult> &&detections);
+
     MPF::COMPONENT::MPFImageLocation CreateImageLocation(int num_classes_per_region, DarknetResult &detection);
+}
+
+
+namespace PreprocessorTracker  {
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks(std::vector<DarknetResult> &&detections);
 
     void CombineImageLocation(const cv::Rect &rect, float prob,
                               MPF::COMPONENT::MPFImageLocation &image_location);
 }
-
-
-class DefaultTracker {
-public:
-    DefaultTracker(int num_classes_per_region, double min_overlap);
-
-    void ProcessFrameDetections(std::vector<DarknetResult> &&new_detections, int frame_number);
-
-    // Returns tracks and resets the tracker to its initial state.
-    std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks();
-
-private:
-    const int num_classes_per_region_;
-
-    const double min_overlap_;
-
-    std::multimap<std::pair<int, std::string>, MPF::COMPONENT::MPFVideoTrack> tracks_;
-
-    static double GetOverlap(const cv::Rect &detection_rect, const MPF::COMPONENT::MPFVideoTrack &track);
-};
-
-
-
-
-class PreprocessorTracker {
-public:
-
-    void ProcessFrameDetections(const std::vector<DarknetResult> &new_detections, int frame_number);
-
-    // Returns tracks and resets the tracker to its initial state.
-    std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks();
-
-private:
-    // standard library does not define a hash function for pairs
-    class PairHasher {
-    public:
-        size_t operator()(const std::pair<int, std::string> &pair) const;
-
-    private:
-        std::hash<int> int_hasher_;
-        std::hash<std::string> string_hasher_;
-    };
-
-    std::unordered_map<std::pair<int, std::string>, // Key is { track.stop_frame, object_type }
-                       MPF::COMPONENT::MPFVideoTrack, PairHasher> tracks_;
-
-    void AddNewTrack(const cv::Rect &detection_rect, float prob, const std::string &type, int frame_number);
-
-    void AddNewImageLocationToTrack(const cv::Rect &rect, float prob, const std::string &type,
-                                    int frame_number, MPF::COMPONENT::MPFVideoTrack &track);
-
-    static void CombineImageLocation(const cv::Rect &rect, float prob,
-                                     int frame_number, MPF::COMPONENT::MPFVideoTrack &track);
-};
 
 #endif //OPENMPF_COMPONENTS_TRACKERS_H
