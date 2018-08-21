@@ -186,7 +186,7 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> DarknetStreamingDetection::EndSegment
         auto detection_count = current_segment_detections_.size();
 
         auto tracks = tracker_(std::move(current_segment_detections_));
-        LOG4CXX_INFO(logger_, log_prefix_ << "Reached end of segment. Found " << tracks.size() << " tracks in segment.")
+        LOG4CXX_INFO(logger_, log_prefix_ << "End segment. " << tracks.size() << " tracks reported.")
 
         current_segment_detections_ = {};
         // Call reserve to prevent the vector from doing extra resizing.
