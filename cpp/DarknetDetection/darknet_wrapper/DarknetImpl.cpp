@@ -402,7 +402,7 @@ void DarknetAsyncImpl::Submit(int frame_number, const cv::Mat &cv_image) {
 std::vector<DarknetResult> DarknetAsyncImpl::GetResults() {
     if (get_results_called_) {
         // std::future becomes invalid after the first time std::future::get() is called
-        throw std::runtime_error("DarknetImplAsync::GetResults() can only be called once.");
+        throw std::runtime_error("DarknetAsyncImpl::GetResults() can only be called once.");
     }
     get_results_called_ = true;
 
