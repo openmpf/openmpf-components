@@ -140,8 +140,10 @@ TEST(DarknetStreaming, VideoTest) {
     DarknetStreamingDetection component(job);
     int frame_number = 0;
 
-    for (int segments = 0; segments < 2; segments++) {
-        VideoSegmentInfo segment_info(segments, frame_number, frame_number + end_frame, 100, 100);
+    // Runs Darknet on same video frames twice, but treats them as separate segments.
+    // Same tracks should be found in both segments since each segment processes the same frames.
+    for (int segment = 0; segment < 2; segment++) {
+        VideoSegmentInfo segment_info(segment, frame_number, frame_number + end_frame, 100, 100);
         component.BeginSegment(segment_info);
 
         MPFVideoCapture cap({"Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, {}, { }});
@@ -216,8 +218,10 @@ TEST(DarknetStreaming, UsePreprocessorVideoTest) {
     DarknetStreamingDetection component(job);
     int frame_number = 0;
 
-    for (int segments = 0; segments < 2; segments++) {
-        VideoSegmentInfo segment_info(segments, frame_number, frame_number + end_frame, 100, 100);
+    // Runs Darknet on same video frames twice, but treats them as separate segments.
+    // Same tracks should be found in both segments since each segment processes the same frames.
+    for (int segment = 0; segment < 2; segment++) {
+        VideoSegmentInfo segment_info(segment, frame_number, frame_number + end_frame, 100, 100);
         component.BeginSegment(segment_info);
         MPFVideoCapture cap({"Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, job_properties, { }});
 
@@ -332,7 +336,7 @@ bool has_image_location_with_confidence(const std::vector<MPFVideoTrack> &tracks
 
 using class_prob_vec_t = decltype(DarknetResult::object_type_probs);
 
-TEST(Darknet, TestPreproccessorConfidenceCalculation) {
+TEST(Darknet, TestPreprocessorConfidenceCalculation) {
     float p1_confidence = 0.45;
     float p2_confidence = 0.75;
     float prob_not_p1_and_not_p2 = (1 - p1_confidence) * (1 - p2_confidence);

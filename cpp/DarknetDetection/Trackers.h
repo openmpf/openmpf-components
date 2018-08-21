@@ -28,9 +28,6 @@
 #ifndef OPENMPF_COMPONENTS_TRACKERS_H
 #define OPENMPF_COMPONENTS_TRACKERS_H
 
-#include <map>
-#include <unordered_map>
-#include <string>
 #include <vector>
 
 #include <opencv2/core.hpp>
@@ -42,6 +39,7 @@
 
 
 namespace DefaultTracker {
+    // Assumes detections is sorted by DarknetResult::frame_number
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks(int num_classes_per_region, double min_overlap,
                                                          std::vector<DarknetResult> &&detections);
 
@@ -50,6 +48,7 @@ namespace DefaultTracker {
 
 
 namespace PreprocessorTracker  {
+    // Assumes detections is sorted by DarknetResult::frame_number
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks(std::vector<DarknetResult> &&detections);
 
     void CombineImageLocation(const cv::Rect &rect, float prob,

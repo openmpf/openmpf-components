@@ -26,7 +26,9 @@
 
 #include "DarknetStreamingDetection.h"
 
+#include <exception>
 #include <sstream>
+#include <utility>
 
 #include <log4cxx/xml/domconfigurator.h>
 
@@ -35,6 +37,7 @@
 
 #include "include/DarknetInterface.h"
 #include "Trackers.h"
+
 
 using namespace MPF::COMPONENT;
 
@@ -186,6 +189,8 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> DarknetStreamingDetection::EndSegment
         LOG4CXX_INFO(logger_, log_prefix_ << "Reached end of segment. Found " << tracks.size() << " tracks in segment.")
 
         current_segment_detections_ = {};
+        // Call reserve to prevent the vector from doing extra resizing.
+        // Assumes that the next segment will have a similar number of detections.
         current_segment_detections_.reserve(detection_count);
 
         found_track_in_current_segment_ = false;

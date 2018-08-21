@@ -29,17 +29,18 @@
 #define OPENMPF_COMPONENTS_DARKNETIMPL_H
 
 
-#include <memory>
-#include <vector>
 #include <future>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include <opencv2/core.hpp>
 
-#include <MPFDetectionComponent.h>
 #include <BlockingQueue.h>
+#include <MPFDetectionComponent.h>
+#include <MPFDetectionObjects.h>
 
 #include "../include/DarknetInterface.h"
-
 #include "darknet.h"
 
 
@@ -102,11 +103,11 @@ private:
 
 
 
-class DarknetImplAsync : public DarknetAsyncInterface {
+class DarknetAsyncImpl : public DarknetAsyncInterface {
 public:
-    DarknetImplAsync(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
+    DarknetAsyncImpl(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
 
-    ~DarknetImplAsync() override;
+    ~DarknetAsyncImpl() override;
 
     void Submit(int frame_number, const cv::Mat &cv_image) override;
 

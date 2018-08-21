@@ -29,9 +29,11 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 
 #include <log4cxx/logger.h>
 
+#include <MPFDetectionObjects.h>
 #include <MPFStreamingDetectionComponent.h>
 #include <DlClassLoader.h>
 

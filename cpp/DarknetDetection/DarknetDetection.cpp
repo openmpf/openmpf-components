@@ -24,8 +24,12 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include <fstream>
+#include "DarknetDetection.h"
+
+#include <algorithm>
+#include <exception>
 #include <unordered_map>
+#include <utility>
 
 #include <log4cxx/xml/domconfigurator.h>
 
@@ -35,7 +39,7 @@
 #include <Utils.h>
 
 #include "Trackers.h"
-#include "DarknetDetection.h"
+
 
 using namespace MPF::COMPONENT;
 

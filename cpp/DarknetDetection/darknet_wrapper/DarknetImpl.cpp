@@ -25,21 +25,26 @@
  ******************************************************************************/
 
 
-#include <fstream>
-#include <iostream>
-#include <unordered_set>
+#include "DarknetImpl.h"
+
 #include <chrono>
+#include <fstream>
+#include <functional>
+#include <map>
+#include <sstream>
+#include <stdexcept>
+#include <unordered_set>
+#include <utility>
 
 #ifdef GPU
 #include <cuda_runtime_api.h>
 #endif
 
 #include <detectionComponentUtils.h>
-#include <Utils.h>
 #include <MPFDetectionException.h>
 #include <MPFInvalidPropertyException.h>
+#include <Utils.h>
 
-#include "DarknetImpl.h"
 
 
 using namespace MPF::COMPONENT;
@@ -306,7 +311,7 @@ std::vector<DarknetResult> DarknetImpl<ClassFilter>::Detect(int frame_number, co
 template<typename ClassFilter>
 void DarknetImpl<ClassFilter>::Detect(int frame_number, const cv::Mat &cv_image,
                                       std::vector<DarknetResult> &detections) {
-    Detect(DarknetHelpers::DarknetImageHolder(frame_number, cv_image, cv::Size(network_->w, network_->h)), detections);
+    Detect(DarknetHelpers::DarknetImageHolder(frame_number, cv_image, GetTargetFrameSize()), detections);
 }
 
 
@@ -359,7 +364,7 @@ cv::Size DarknetImpl<ClassFilter>::GetTargetFrameSize() {
 
 
 
-DarknetImplAsync::DarknetImplAsync(const Properties &props, const ModelSettings &settings)
+DarknetAsyncImpl::DarknetAsyncImpl(const Properties &props, const ModelSettings &settings)
     : DarknetAsyncInterface(props, settings)
     , work_queue_(DetectionComponentUtils::GetProperty(props, "FRAME_QUEUE_CAPACITY", 4))
 {
@@ -371,7 +376,7 @@ DarknetImplAsync::DarknetImplAsync(const Properties &props, const ModelSettings 
     }
 }
 
-DarknetImplAsync::~DarknetImplAsync() {
+DarknetAsyncImpl::~DarknetAsyncImpl() {
     // In the normal case, the thread running ProcessFrameQueue will have already exited at this point,
     // so calling halt has no effect.
     // If the thread running ProcessFrameQueue is still active, that indicates an error. Calling halt here will cause
@@ -381,7 +386,7 @@ DarknetImplAsync::~DarknetImplAsync() {
 
 
 template<typename ClassFilter>
-void DarknetImplAsync::Init(const Properties &props, const ModelSettings &settings) {
+void DarknetAsyncImpl::Init(const Properties &props, const ModelSettings &settings) {
     DarknetImpl<ClassFilter> darknet_impl(props, settings);
     target_frame_size_ = darknet_impl.GetTargetFrameSize();
     work_done_future_ = std::async(std::launch::async,
@@ -389,12 +394,12 @@ void DarknetImplAsync::Init(const Properties &props, const ModelSettings &settin
 }
 
 
-void DarknetImplAsync::Submit(int frame_number, const cv::Mat &cv_image) {
+void DarknetAsyncImpl::Submit(int frame_number, const cv::Mat &cv_image) {
     work_queue_.emplace(new DarknetHelpers::DarknetImageHolder(frame_number, cv_image, target_frame_size_));
 }
 
 
-std::vector<DarknetResult> DarknetImplAsync::GetResults() {
+std::vector<DarknetResult> DarknetAsyncImpl::GetResults() {
     if (get_results_called_) {
         // std::future becomes invalid after the first time std::future::get() is called
         throw std::runtime_error("DarknetImplAsync::GetResults() can only be called once.");
@@ -417,7 +422,7 @@ std::vector<DarknetResult> DarknetImplAsync::GetResults() {
 
 
 template<typename ClassFilter>
-std::vector<DarknetResult> DarknetImplAsync::ProcessFrameQueue(DarknetImpl<ClassFilter> darknet_impl,
+std::vector<DarknetResult> DarknetAsyncImpl::ProcessFrameQueue(DarknetImpl<ClassFilter> darknet_impl,
                                                                DarknetQueue &work_queue) {
     std::vector<DarknetResult> results;
     try {
@@ -498,7 +503,7 @@ extern "C" {
     DarknetAsyncInterface* darknet_async_impl_creator(const std::map<std::string, std::string> *props,
                                                       const ModelSettings *settings) {
         configure_cuda_device(*props);
-        return new DarknetImplAsync(*props, *settings);
+        return new DarknetAsyncImpl(*props, *settings);
     }
 
     void darknet_async_impl_deleter(DarknetAsyncInterface *impl) {

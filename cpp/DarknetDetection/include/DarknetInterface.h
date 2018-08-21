@@ -29,8 +29,9 @@
 #define OPENMPF_COMPONENTS_DARKNETINTERFACE_H
 
 #include <map>
-#include <vector>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <opencv2/core.hpp>
 

@@ -24,25 +24,24 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include "Trackers.h"
+
+#include <algorithm>
+#include <functional>
+#include <map>
+#include <string>
+#include <stdexcept>
+#include <tuple>
+#include <unordered_map>
+#include <utility>
 
 #include <opencv2/core.hpp>
 
-#include "Trackers.h"
 
 using namespace MPF::COMPONENT;
 
 
 namespace {
-    bool order_by_frame_number(const DarknetResult &d1, const DarknetResult &d2) {
-        return d1.frame_number < d2.frame_number;
-    }
-
-    void sort_by_frame_number(std::vector<DarknetResult> &detections) {
-        if (!std::is_sorted(detections.begin(), detections.end(), order_by_frame_number)) {
-            std::sort(detections.begin(), detections.end(), order_by_frame_number);
-        }
-    }
-
     template <typename TMap>
     std::vector<typename TMap::mapped_type> map_to_vector(TMap &&map) {
         std::vector<typename TMap::mapped_type> results;
@@ -132,8 +131,6 @@ namespace DefaultTracker {
 
     std::vector<MPFVideoTrack> GetTracks(int num_classes_per_region, double min_overlap,
                                          std::vector<DarknetResult> &&detections) {
-        sort_by_frame_number(detections);
-
         track_map_t tracks;
         for (DarknetResult &detection : detections) {
             AddTrack(detection, num_classes_per_region, min_overlap, tracks);
@@ -261,8 +258,6 @@ namespace PreprocessorTracker {
 
 
     std::vector<MPFVideoTrack> GetTracks(std::vector<DarknetResult> &&detections) {
-        sort_by_frame_number(detections);
-
         track_map_t tracks;
         for (const DarknetResult &detection : detections) {
             for (const std::pair<float, std::string> &class_prob : detection.object_type_probs) {

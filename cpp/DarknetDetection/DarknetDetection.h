@@ -28,19 +28,18 @@
 #ifndef OPENMPF_COMPONENTS_DARKNETDETECTION_H
 #define OPENMPF_COMPONENTS_DARKNETDETECTION_H
 
-#include <memory>
+#include <string>
+#include <vector>
 
 #include <log4cxx/logger.h>
-#include <opencv2/core.hpp>
 
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
-#include <ModelsIniParser.h>
-#include <dlfcn.h>
 #include <DlClassLoader.h>
-
-#include "Trackers.h"
+#include <ModelsIniParser.h>
+#include <MPFDetectionObjects.h>
 
 #include "include/DarknetInterface.h"
+#include "Trackers.h"
 
 
 class DarknetDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
