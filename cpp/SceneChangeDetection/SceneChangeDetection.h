@@ -75,10 +75,10 @@ private:
 
     bool do_hist, do_edge, do_cont, do_thrs;
     
-    bool EdgeDetector(cv::Mat frameGray, cv::Mat &lastFrameEdgeFinal);
-    bool HistogramDetector(cv::Mat frame, cv::Mat &lastHist);
-    bool ContentDetector(cv::Mat frame, cv::Mat &lastFrameHSV);
-    bool ThresholdDetector(cv::Mat frame, cv::Mat &lastFrame);
+    bool EdgeDetector(const cv::Mat &frameGray, cv::Mat &lastFrameEdgeFinal);
+    bool HistogramDetector(const cv::Mat &frame, cv::Mat &lastHist);
+    bool ContentDetector(const cv::Mat &frame, cv::Mat &lastFrameHSV);
+    bool ThresholdDetector(const cv::Mat &frame, cv::Mat &lastFrame);
     
 
     int histSize[2] = {30,32};
@@ -87,7 +87,7 @@ private:
     // Saturation varies from 0 (black-gray-white) to
     // 255 (pure spectrum color).
     float sranges[2] = {0,256};
-    bool frameUnderThreshold(cv::Mat image, double threshold, double numPixels);
+    bool frameUnderThreshold(const cv::Mat &image, double threshold, double numPixels);
     
     // Support for reading .ini files.
     void SetDefaultParameters();

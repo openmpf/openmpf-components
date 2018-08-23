@@ -120,7 +120,7 @@ void TesseractOCRTextDetection::SetReadConfigParameters() {
 /*
  * Counts whitespace, alphanumeric, non-english characters in string.
  */
-TesseractOCRTextDetection::OCR_char_stats TesseractOCRTextDetection::char_count(std::string s, std::string white_space, std::string eng_symbol, std::string eng_num ){
+TesseractOCRTextDetection::OCR_char_stats TesseractOCRTextDetection::char_count(const std::string &s,const std::string &white_space, const std::string &eng_symbol, const std::string &eng_num ){
     TesseractOCRTextDetection::OCR_char_stats stats = {
         0,  //alphabet_count
         0,  //num_count
@@ -160,7 +160,7 @@ TesseractOCRTextDetection::OCR_char_stats TesseractOCRTextDetection::char_count(
  * Conduct filtering of results.
  * Reject/accept text based on char frequency/histogram comparison to english language.
  */
-std::string TesseractOCRTextDetection::check_string(std::string s, TesseractOCRTextDetection::OCR_filter_settings ocrset){
+std::string TesseractOCRTextDetection::check_string(const std::string &s,const TesseractOCRTextDetection::OCR_filter_settings &ocrset){
     bool num_only_ok = ocrset.num_only_ok;
     bool threshold_check = ocrset.threshold_check;
     bool hist_check = ocrset.hist_check;
@@ -280,7 +280,7 @@ bool TesseractOCRTextDetection::Init() {
     log4cxx::xml::DOMConfigurator::configure(plugin_path+"/config/Log4cxxConfig.xml");
     hw_logger_ = log4cxx::Logger::getLogger("TesseractOCR");
 
-    std::cout << "Running in directory " << plugin_path << std::endl;
+    LOG4CXX_DEBUG(hw_logger_, log_print_str( "[" + job_name + "] " + "Running in directory " + plugin_path));
 
 
     regTable["\\\\d"] = "[[:digit:]]";
@@ -333,7 +333,7 @@ bool TesseractOCRTextDetection::Close() {
 /*
  * Helper function for string processing.
  */
-inline string to_lowercase(string data)
+inline string to_lowercase(const string &data)
 {
     string d2(data);
     for(auto& c :d2){tolower(c);}
@@ -344,7 +344,7 @@ inline string to_lowercase(string data)
 /*
  * Helper function for string processing.
  */
-inline string trim_punc(string in)
+inline string trim_punc(const string &in)
 {
     string d2(in);
     boost::trim_if(d2, [](char c) { return std::ispunct(c); });
@@ -355,7 +355,7 @@ inline string trim_punc(string in)
 /*
  * Helper function for string processing.
  */
-std::string clean_whitespace(std::string input)
+std::string clean_whitespace(const std::string &input)
 {
 
     boost::regex re("\n(\n|[[:space:]])+");
@@ -369,7 +369,7 @@ std::string clean_whitespace(std::string input)
 /*
  * Split a string into a vector of tokens (for split-search).
  */
-std::vector<std::string> TesseractOCRTextDetection::get_tokens(std::string str) {
+std::vector<std::string> TesseractOCRTextDetection::get_tokens(const std::string &str) {
     vector<string> dt;
     stringstream ss;
     string tmp; 
@@ -385,7 +385,7 @@ std::vector<std::string> TesseractOCRTextDetection::get_tokens(std::string str) 
  * Reads JSON Tag filter file.
  * Setup tags for split-string and regex filters.
  */
-std::map<std::string,std::map<std::string,std::vector<std::string>>> TesseractOCRTextDetection::parse_json(std::string jsonfile_name)
+std::map<std::string,std::map<std::string,std::vector<std::string>>> TesseractOCRTextDetection::parse_json(const std::string &jsonfile_name)
 {
     std::map<std::string,std::map<std::string,std::vector<std::string>>> json_kvs;
     std::ifstream ifs(jsonfile_name);
@@ -521,7 +521,7 @@ std::map<std::string,std::map<std::string,std::vector<std::string>>> TesseractOC
 /*
  * Verify that two strings are identical (ignore letter case).
  */
-bool TesseractOCRTextDetection::comp_strcmp(const std::string & strHaystack, const std::string & strNeedle)
+bool TesseractOCRTextDetection::comp_strcmp(const std::string &strHaystack, const std::string &strNeedle)
 {
     auto it = std::search(
     strHaystack.begin(), strHaystack.end(),
@@ -534,7 +534,7 @@ bool TesseractOCRTextDetection::comp_strcmp(const std::string & strHaystack, con
 /*
  * Check if detection string contains regstr pattern.
  */
-bool TesseractOCRTextDetection::comp_regex(const std::string & detection, std::string regstr)
+bool TesseractOCRTextDetection::comp_regex(const std::string &detection, const std::string  &regstr)
 {
     bool found = false;
      try {
@@ -590,7 +590,7 @@ std::string TesseractOCRTextDetection::parseRegexCode(boost::regex_constants::er
 
 
 
-string TesseractOCRTextDetection::log_print_str(string text)
+string TesseractOCRTextDetection::log_print_str(const string &text)
 {
     cout << text << endl;
     return text;
@@ -608,7 +608,7 @@ string TesseractOCRTextDetection::log_print_str(const wchar_t* text)
     return log_print_str(string(temp.begin(),temp.end()));
 }
 
-string TesseractOCRTextDetection::log_print_str(std::wstring text)
+string TesseractOCRTextDetection::log_print_str(const std::wstring &text)
 {
     return log_print_str(string(text.begin(),text.end()));
 }
@@ -760,7 +760,7 @@ bool is_only_ascii_whitespace( const std::string& str )
 /*
  * Performs regex-tagging of ocr text detection.
  */
-std::string TesseractOCRTextDetection::search_regex(std::string ocr_detections, std::map<std::string,std::vector<std::string>> json_kvs_regex)
+std::string TesseractOCRTextDetection::search_regex(const std::string &ocr_detections, const std::map<std::string,std::vector<std::string>> &json_kvs_regex)
 {
     if(json_kvs_regex.size() == 0) return "";
 
@@ -802,7 +802,7 @@ std::string TesseractOCRTextDetection::search_regex(std::string ocr_detections, 
 /*
  * Performs split-string-tagging of ocr text detection.
  */
-std::string TesseractOCRTextDetection::search_string_split(std::vector<std::string> tokenized, std::map<std::string,std::vector<std::string>> json_kvs_string)
+std::string TesseractOCRTextDetection::search_string_split(const std::vector<std::string> &tokenized, const std::map<std::string,std::vector<std::string>> &json_kvs_string)
 {
     if(json_kvs_string.size() == 0) return "";
     string found_tags_string = "";
@@ -880,7 +880,7 @@ std::string TesseractOCRTextDetection::search_string_split(std::vector<std::stri
 /*
  * Performs full-string tagging of ocr text detection.
  */
-std::string TesseractOCRTextDetection::search_string(std::string ocr_detections, std::map<std::string,std::vector<std::string>> json_kvs_string)
+std::string TesseractOCRTextDetection::search_string(const std::string &ocr_detections, const std::map<std::string,std::vector<std::string>> &json_kvs_string)
 {
     if(json_kvs_string.size() == 0) return "";
     string found_tags_string = "";

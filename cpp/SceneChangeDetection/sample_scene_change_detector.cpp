@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
 
     if ((argc < 2) || (argc > 4)) {
         std::cout << "argc = " << argc << std::endl;
-        std::cout << "Usage: " << argv[0] << " <image URI> <start frame> <end frame>" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <video URI> <start frame> <end frame>" << std::endl;
         return EXIT_SUCCESS;
     }
 

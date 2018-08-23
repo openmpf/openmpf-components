@@ -47,7 +47,6 @@ MPFImageJob createOCRJob(const std::string &uri){
 
 bool containsObject(const std::string &object_name, const std::vector<MPFImageLocation> &locations) {
     for (int i = 0; i < locations.size(); i++) {
-
         std::string text = locations[i].detection_properties.at("TEXT");
         if(text.find(object_name)!= std::string::npos)
             return true;
@@ -90,7 +89,7 @@ TEST(TESSERACTOCR, ImageTest) {
     ASSERT_TRUE(ocr.Init());
 
     assertObjectDetectedInImage("TESTING 123", "data/text-demo.png", ocr);
-    assertObjectNotDetectedInImage("Ponies", "data/text-demo.png", ocr);
+    assertObjectNotDetectedInImage("Ponies", "data/test-tags.png", ocr);
 
     ASSERT_TRUE(ocr.Close());
 }

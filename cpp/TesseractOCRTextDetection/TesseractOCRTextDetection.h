@@ -88,29 +88,29 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     log4cxx::LoggerPtr hw_logger_;
     std::map<std::string,std::string> regTable;
     std::string fix_regex(std::string inreg);
-    std::map<std::string,std::map<std::string,std::vector<std::string>>> parse_json(std::string jsonfile_name);
+    std::map<std::string,std::map<std::string,std::vector<std::string>>> parse_json(const std::string &jsonfile_name);
     bool get_tesseract_detections(const MPFImageJob &job, std::string &detection, cv::Mat &original, double weight, int psm, std::string lang);
 
     void SetDefaultParameters();
     void SetReadConfigParameters();
-    OCR_char_stats char_count(std::string s, std::string white_space, std::string eng_symbol, std::string eng_num );
-    std::string check_string(std::string s, OCR_filter_settings ocrset);
+    OCR_char_stats char_count(const std::string &s, const std::string &white_space, const std::string &eng_symbol, const std::string &eng_num );
+    std::string check_string(const std::string &s, const OCR_filter_settings &ocrset);
 
-    bool comp_strcmp(const std::string & strHaystack, const std::string & strNeedle);
-    bool comp_regex(const std::string & detection, std::string regstr);
+    bool comp_strcmp(const std::string &strHaystack, const std::string &strNeedle);
+    bool comp_regex(const std::string &detection, const std::string &regstr);
     bool Supports(MPFDetectionDataType data_type);
     void Sharpen(cv::Mat &image, double weight);
-    std::string log_print_str(std::string text);
-    std::string log_print_str(std::wstring text);
+    std::string log_print_str(const std::string &text);
+    std::string log_print_str(const std::wstring &text);
     std::string log_print_str(const char* text);
     std::string log_print_str(const wchar_t* text);
-    std::vector<std::string> get_tokens(std::string str);
+    std::vector<std::string> get_tokens(const std::string &str);
 
     std::string parseRegexCode(boost::regex_constants::error_type etype);
 
-    std::string search_regex(std::string ocr_detections, std::map<std::string,std::vector<std::string>> json_kvs_regex);
-    std::string search_string(std::string ocr_detections, std::map<std::string,std::vector<std::string>> json_kvs_string);
-    std::string search_string_split(std::vector<std::string> tokenized, std::map<std::string,std::vector<std::string>> json_kvs_string);
+    std::string search_regex(const std::string &ocr_detections, const std::map<std::string,std::vector<std::string>> &json_kvs_regex);
+    std::string search_string(const std::string &ocr_detections, const std::map<std::string,std::vector<std::string>> &json_kvs_string);
+    std::string search_string_split(const std::vector<std::string> &tokenized, const std::map<std::string,std::vector<std::string>> &json_kvs_string);
 };
 
 }

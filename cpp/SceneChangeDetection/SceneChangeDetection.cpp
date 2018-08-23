@@ -192,7 +192,7 @@ bool SceneChangeDetection::Close() {
  * Calculates the difference in edge pixels between the last two frames.
  * Returns true when the difference exceeds edge_thresh.
  */
-bool SceneChangeDetection::EdgeDetector(cv::Mat frameGray, cv::Mat &lastFrameEdgeFinal)
+bool SceneChangeDetection::EdgeDetector(const cv::Mat &frameGray, cv::Mat &lastFrameEdgeFinal)
 {
     cv::Mat frameEdges,frameEdgeFinal,edgeDst;
     blur(frameGray,frameEdges,Size(3,3));
@@ -219,7 +219,7 @@ bool SceneChangeDetection::EdgeDetector(cv::Mat frameGray, cv::Mat &lastFrameEdg
  * Performs histogram comparison between the last two frames.
  * Returns true when correlation falls below hist_thresh. 
  */
-bool SceneChangeDetection::HistogramDetector(cv::Mat frame, cv::Mat &lastHist)
+bool SceneChangeDetection::HistogramDetector(const cv::Mat &frame, cv::Mat &lastHist)
 {
     MatND hist;
     const float* ranges[] = { hranges, sranges };
@@ -242,7 +242,7 @@ bool SceneChangeDetection::HistogramDetector(cv::Mat frame, cv::Mat &lastHist)
  * Calculates average difference in HSV values between the last two frames.
  * Returns true when total average difference exceeds cont_thresh.
  */
-bool SceneChangeDetection::ContentDetector(cv::Mat frame, cv::Mat &lastFrameHSV)
+bool SceneChangeDetection::ContentDetector(const cv::Mat &frame, cv::Mat &lastFrameHSV)
 {
     Mat frameHSV, dst;
     cvtColor(frame,frameHSV,COLOR_BGR2HSV);
@@ -268,7 +268,7 @@ bool SceneChangeDetection::ContentDetector(cv::Mat frame, cv::Mat &lastFrameHSV)
  * Note: Once threshold is met, fadeOut is set to true
  * and all subsequent frames in the scene will be marked as fade outs.
  */
-bool SceneChangeDetection::ThresholdDetector(cv::Mat frame, cv::Mat &lastFrame)
+bool SceneChangeDetection::ThresholdDetector(const cv::Mat &frame, cv::Mat &lastFrame)
 {
     bool FUT = frameUnderThreshold(frame,thrs_thresh,numPixels*3);
     if(!fadeOut && FUT)
@@ -286,7 +286,7 @@ bool SceneChangeDetection::ThresholdDetector(cv::Mat frame, cv::Mat &lastFrame)
  * Counts number of pixels that fall under threshold value.
  * If total number of dark pixels exceeds minThreshold, return true.
  */
-bool SceneChangeDetection::frameUnderThreshold(cv::Mat image, double threshold, double numPixels)
+bool SceneChangeDetection::frameUnderThreshold(const cv::Mat &image, double threshold, double numPixels)
 {
     int minThreshold = (int)(numPixels*(1.0-minPercent));
     int frameAmount = 0;
@@ -324,7 +324,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
        LOG4CXX_DEBUG(logger_, "Data URI = " << job.data_uri);
 
         if (job.data_uri.empty()) {
-            LOG4CXX_ERROR(logger_, "Invalid video file");
+            LOG4CXX_ERROR(logger_, "Invalid video file: " + job.data_uri);
             return MPF_INVALID_DATAFILE_URI;
         }
 
@@ -333,6 +333,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         MPFVideoCapture cap(job);
         bool success = false;
         if (!cap.IsOpened()) {
+            LOG4CXX_ERROR(logger_, "Could not open video file: " + job.data_uri);
             return MPF_COULD_NOT_OPEN_DATAFILE;
         }
 
