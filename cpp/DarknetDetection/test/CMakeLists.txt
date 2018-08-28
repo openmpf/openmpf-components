@@ -39,7 +39,8 @@ if (${GTEST_FOUND})
 
     include_directories(..)
     add_executable(DarknetDetectionTest test_darknet_detection.cpp)
-    target_link_libraries(DarknetDetectionTest mpfDarknetDetection darknet_wrapper mpfComponentTestUtils GTest::GTest GTest::Main)
+    target_link_libraries(DarknetDetectionTest mpfDarknetDetection mpfDarknetStreamingDetection mpfComponentTestUtils
+            GTest::GTest GTest::Main)
 
     add_test(NAME DarknetDetectionTest COMMAND DarknetDetectionTest)
 

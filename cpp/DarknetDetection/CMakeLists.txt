@@ -59,13 +59,24 @@ add_subdirectory(darknet_lib)
 add_subdirectory(darknet_wrapper)
 
 set(DARKNET_COMPONENT_SOURCE_FILES
-    DarknetDetection.cpp DarknetDetection.h)
+    DarknetDetection.cpp DarknetDetection.h
+    Trackers.cpp Trackers.h)
 
 add_library(mpfDarknetDetection SHARED ${DARKNET_COMPONENT_SOURCE_FILES})
 target_link_libraries(mpfDarknetDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
     ${OpenCV_LIBS})
 
-configure_mpf_component(DarknetDetection TARGETS mpfDarknetDetection)
+
+set(DARKNET_STREAMING_COMPONENT_SOURCE_FILES
+    DarknetStreamingDetection.cpp DarknetStreamingDetection.h
+    Trackers.cpp Trackers.h)
+
+add_library(mpfDarknetStreamingDetection SHARED ${DARKNET_STREAMING_COMPONENT_SOURCE_FILES})
+target_link_libraries(mpfDarknetStreamingDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
+    ${OpenCV_LIBS})
+
+
+configure_mpf_component(DarknetDetection TARGETS mpfDarknetDetection mpfDarknetStreamingDetection)
 
 add_dependencies(mpfDarknetDetection darknet_wrapper)
 if (DARKNET_BUILD_CUDA)
