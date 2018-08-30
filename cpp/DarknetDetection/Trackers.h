@@ -25,64 +25,34 @@
  ******************************************************************************/
 
 
-#ifndef OPENMPF_COMPONENTS_DARKNETINTERFACE_H
-#define OPENMPF_COMPONENTS_DARKNETINTERFACE_H
+#ifndef OPENMPF_COMPONENTS_TRACKERS_H
+#define OPENMPF_COMPONENTS_TRACKERS_H
 
-#include <map>
-#include <string>
-#include <utility>
 #include <vector>
 
 #include <opencv2/core.hpp>
 
+#include <MPFDetectionComponent.h>
 
-
-struct DarknetResult {
-    int frame_number;
-    cv::Rect detection_rect;
-    std::vector<std::pair<float, std::string>> object_type_probs;
-
-    DarknetResult(
-            int frame_number,
-            const cv::Rect &detection_rect,
-            std::vector<std::pair<float, std::string>> &&object_type_probs = {})
-        : frame_number(frame_number)
-        , detection_rect(detection_rect)
-        , object_type_probs(std::move(object_type_probs))
-    {
-    }
-};
-
-struct ModelSettings {
-    std::string network_config_file;
-    std::string names_file;
-    std::string weights_file;
-};
-
-
-class DarknetInterface {
-public:
-    DarknetInterface(const std::map<std::string, std::string> &props, const ModelSettings &settings) { }
-
-    virtual ~DarknetInterface() = default;
-
-    virtual std::vector<DarknetResult> Detect(int frame_number, const cv::Mat &cv_image) = 0;
-
-    virtual void Detect(int frame_number, const cv::Mat &cv_image, std::vector<DarknetResult> &detections) = 0;
-};
+#include "include/DarknetInterface.h"
 
 
 
-class DarknetAsyncInterface {
-public:
-    DarknetAsyncInterface(const std::map<std::string, std::string> &props, const ModelSettings &settings) { }
+namespace DefaultTracker {
+    // Assumes detections is sorted by DarknetResult::frame_number
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks(int num_classes_per_region, double min_overlap,
+                                                         std::vector<DarknetResult> &&detections);
 
-    virtual ~DarknetAsyncInterface() = default;
-
-    virtual void Submit(int frame_number, const cv::Mat &cv_image) = 0;
-
-    virtual std::vector<DarknetResult> GetResults() = 0;
-};
+    MPF::COMPONENT::MPFImageLocation CreateImageLocation(int num_classes_per_region, DarknetResult &detection);
+}
 
 
-#endif //OPENMPF_COMPONENTS_DARKNETINTERFACE_H
+namespace PreprocessorTracker  {
+    // Assumes detections is sorted by DarknetResult::frame_number
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetTracks(std::vector<DarknetResult> &&detections);
+
+    void CombineImageLocation(const cv::Rect &rect, float prob,
+                              MPF::COMPONENT::MPFImageLocation &image_location);
+}
+
+#endif //OPENMPF_COMPONENTS_TRACKERS_H
