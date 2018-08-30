@@ -41,15 +41,13 @@ import static org.junit.Assert.fail;
 
 import static org.hamcrest.CoreMatchers.containsString;
 
-import java.nio.file.Paths;
-
 /**
  * The test class provides the framework for developing Java components.  Test cases can be prepared for a variety
  * of input conditions, and can cover successful executions as well as error conditions.  In most cases, if the
  * getDetections() and support() methods are correctly implemented, the component will work properly.  In cases where
  * the init() or close() methods are overridden, those also should be tested.
  */
-public class TikaTextDetectionComponentTest {
+public class TestTikaTextDetectionComponent {
 
     private TikaTextDetectionComponent tikaComponent;
 
@@ -73,36 +71,67 @@ public class TikaTextDetectionComponentTest {
         Map<String, String> mediaProperties = new HashMap<String, String>();
         String textTags = "text-tags.json";
         String rundirectory = tikaComponent.getRunDirectory();
-        jobProperties.put("TAGGING_FILE", rundirectory+"/TikaTextDetection/plugin-files/config/"+textTags);
+        jobProperties.put("TAGGING_FILE", rundirectory + "/TikaTextDetection/plugin-files/config/"+textTags);
+        jobProperties.put("CHAR_LIMIT", "20");
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", uri, jobProperties, mediaProperties);
-        boolean debug=false;
+        boolean debug = false;
 
         try {
             List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-            assertEquals("Number of expected tracks does not match.", 6 ,tracks.size());
+            assertEquals("Number of expected tracks does not match.", 8 ,tracks.size());
             // Test each output type.
-            if(tracks.size() == 6){
-                MPFGenericTrack track = tracks.get(1);
-                assertEquals("Expected language does not match.", "English", track.getDetectionProperties().get("TEXT_LANGUAGE"));
-                track = tracks.get(2);
-                assertEquals("Expected language does not match.", "Japanese", track.getDetectionProperties().get("TEXT_LANGUAGE"));
-                track = tracks.get(3);
-                assertEquals("Expected tags not found.", "personal", track.getDetectionProperties().get("TAGS_STRING"));
-                assertEquals("Expected tags not found.", "personal", track.getDetectionProperties().get("TAGS_REGEX"));
-                track = tracks.get(5);
-                assertThat(track.getDetectionProperties().get("TEXT"), containsString("End slide test text"));
-            }
+
+            //Test single keyword tag extraction and text extraction
+            MPFGenericTrack test_track = tracks.get(0);
+            assertEquals("Expected language does not match.", "English", test_track.getDetectionProperties().get("TEXT_LANGUAGE"));
+            assertEquals("Expected text does not match.", "Testing Text Detection\nSlide 1", test_track.getDetectionProperties().get("TEXT"));
+            assertEquals("Expected keyword tag not found.", "personal", test_track.getDetectionProperties().get("TAGS"));
+
+            //Test language extraction
+            test_track = tracks.get(1);
+            assertEquals("Expected language does not match.", "Japanese", test_track.getDetectionProperties().get("TEXT_LANGUAGE"));
+
+            //Test keyword and regex tag extraction. (Two tags should be detected by two filters)
+            test_track = tracks.get(2);
+            assertEquals("Expected regex/keyword tags not found.", "identity document, personal", test_track.getDetectionProperties().get("TAGS"));
+
+
+            //Test single regex tag extraction.
+            test_track = tracks.get(3);
+            assertEquals("Expected regex tag not found.", "vehicle", test_track.getDetectionProperties().get("TAGS"));
+
+            //Test no detections.
+            test_track = tracks.get(4);
+            assertEquals("Text should be empty", null, test_track.getDetectionProperties().get("TEXT"));
+            assertEquals("Language should be empty", null, test_track.getDetectionProperties().get("TEXT_LANGUAGE"));
+            assertEquals("Tags should be empty", null, test_track.getDetectionProperties().get("TAGS"));
+
+            //Test multiple keyword tags
+            test_track = tracks.get(5);
+            assertEquals("Expected keyword tags not found.", "travel, identity document", test_track.getDetectionProperties().get("TAGS"));
+
             
+            //Test multiple regex tags
+            test_track = tracks.get(6);
+            assertEquals("Expected regex tags not found.", "financial, personal", test_track.getDetectionProperties().get("TAGS"));
+
+
+            //Test text, keyword/regex tags.
+            //Both keyword and regex pick up the same category so only one tag should be output.
+            test_track = tracks.get(7);
+            assertThat(test_track.getDetectionProperties().get("TEXT"), containsString("End slide test text"));
+            assertEquals("Expected tag not found.", "personal", test_track.getDetectionProperties().get("TAGS"));
+
+
             // For human testing.
-            if(debug){
+            if (debug) {
                 for (int i = 0; i < tracks.size(); i++) {
                     MPFGenericTrack track = tracks.get(i);
-                    System.out.println(String.format("Generic track number %d", i));
+                    System.out.println(String.format("  Generic track number %d", i));
                     System.out.println(String.format("  Confidence = %f", track.getConfidence()));
                     System.out.println(String.format("  Text = %s", track.getDetectionProperties().get("TEXT")));
                     System.out.println(String.format("  Language = %s", track.getDetectionProperties().get("TEXT_LANGUAGE")));
-                    System.out.println(String.format("  Split Tags = %s", track.getDetectionProperties().get("TAGS_STRING")));
-                    System.out.println(String.format("  Regex Tags = %s", track.getDetectionProperties().get("TAGS_REGEX")));
+                    System.out.println(String.format("  Text Tags = %s", track.getDetectionProperties().get("TAGS")));
                     assertEquals("Confidence does not match.", -1.0f, track.getConfidence(),0.1f);
                 }
             }

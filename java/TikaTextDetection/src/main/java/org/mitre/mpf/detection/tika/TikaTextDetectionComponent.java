@@ -27,13 +27,13 @@
 package org.mitre.mpf.detection.tika;
 
 import org.mitre.mpf.component.api.detection.*;
+import org.mitre.mpf.component.api.detection.util.MPFEnvironmentVariablePathExpander;
 
 import java.util.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
-import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
 
 import java.lang.StringBuilder;
@@ -41,10 +41,6 @@ import java.lang.StringBuilder;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
-import org.apache.tika.sax.BodyContentHandler;
-import org.apache.tika.language.LanguageIdentifier;
-
-import org.apache.tika.language.detect.LanguageDetector;
 import org.apache.tika.langdetect.OptimaizeLangDetector;
 import org.apache.tika.language.detect.LanguageResult;
 
@@ -68,16 +64,16 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TikaTextDetectionComponent.class);
     private static final Map<String, String> lang_map;
-    static{
+    static {
          lang_map = Collections.unmodifiableMap(initLangMap());
     }
-    
+
     // Handles the case where the media is a generic type.
     public List<MPFGenericTrack>  getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
         LOG.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
             mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
-            
+
         // =========================
         // Tika Detection
         // =========================
@@ -88,8 +84,8 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         String metadata_output = "";
         String context_output = "";
         List<StringBuilder> page_output = new ArrayList<StringBuilder>();
-        
-        
+
+
         try{
             // Init parser with custom content handler for parsing text per page (PDF/PPTX).
             Parser parser = new AutoDetectParser();
@@ -106,124 +102,145 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             text_output =  handler.toString();
             page_output = handler.getPages();
 
-        }catch(Exception e){
+        } catch (Exception e) {
             LOG.error(extractStackTrace(e));
             LOG.error(e.toString());
             LOG.error("Error parsing file."+"\nFilepath = " + file.toString());
         }
-        
+
         float confidence = -1.0f;
+        int char_limit = 0;
         List<MPFGenericTrack> tracks = new LinkedList<MPFGenericTrack>();
+
+
+
+
         Map<String,String> properties = mpfGenericJob.getJobProperties();
-        
+
         // Acquire tag file.
         String tag_file = "";
-        if(properties.get("TAGGING_FILE") == null) {
+        if (properties.get("TAGGING_FILE") == null) {
             String rundirectory = this.getRunDirectory();
-            if(rundirectory == null || rundirectory.length() < 1)
+            if (rundirectory == null || rundirectory.length() < 1)
                 rundirectory = "../plugins";
-            tag_file = rundirectory+"/TikaDetection/config/text-tags.json";
+            tag_file = rundirectory + "/TikaDetection/config/text-tags.json";
         } else {
             tag_file = properties.get("TAGGING_FILE") ;
         }
-        tag_file = this.expandPathEnvVars(tag_file);
-        
+        tag_file = MPFEnvironmentVariablePathExpander.expand(tag_file);
+
+        // Set language filtering limit.
+        if (properties.get("CHAR_LIMIT") != null) {
+            char_limit = (new Integer(properties.get("CHAR_LIMIT"))).intValue();
+        }
+
+        // Store metadata as a unique track.
+        // Disabled by default for format consistency.
+        if(properties.get("STORE_METADATA") == "true"){
+            Map<String, String> genericDetectionProperties = new HashMap<String, String>();
+            genericDetectionProperties.put("METADATA", metadata_output.trim());
+            MPFGenericTrack metadataTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
+            tracks.add(metadataTrack);
+        }
 
         // If output exists, separate all output into separate pages.
         // Tag each page by detected language.
-        if(page_output.size() >= 1){
+        if (page_output.size() >= 1) {
             // Load language identifier.
             OptimaizeLangDetector identifier = new OptimaizeLangDetector();
             JSONObject string_tags = new JSONObject();
             JSONObject regex_tags = new JSONObject();
-            try{
+            try {
                 identifier.loadModels();       
-            }catch (IOException e) {
+            } catch (IOException e) {
                 LOG.error(extractStackTrace(e));
                 LOG.error(e.toString());
                 LOG.error("Failed to load language models.");
             }
-            
+
             // Parse Tag File.
             try{
                 JSONParser parser = new JSONParser();
                 JSONObject a = (JSONObject) parser.parse(new FileReader(tag_file));               
-                string_tags = (JSONObject)a.get("TAGS_STRING_SPLIT");
-                regex_tags = (JSONObject)a.get("TAGS_REGEX");
-            }catch (FileNotFoundException e) {
+                string_tags = (JSONObject) a.get("TAGS_BY_KEYWORD");
+                regex_tags = (JSONObject) a.get("TAGS_BY_REGEX");
+            } catch (FileNotFoundException e) {
                 LOG.error(extractStackTrace(e));
                 LOG.error(e.toString());
-                LOG.error("Tag file "+tag_file+" not found!");
-            }catch (ParseException e) {
+                LOG.error("Tag file " + tag_file + " not found!");
+            } catch (ParseException e) {
                 LOG.error(extractStackTrace(e));
                 LOG.error(e.toString());
                 LOG.error("Error parsing tag file.");
-            }catch (IOException e) {
+            } catch (IOException e) {
                 LOG.error(extractStackTrace(e));
                 LOG.error(e.toString());
                 LOG.error("I/O Error!");
             }
 
-            int page_id_len = (int)(java.lang.Math.log10(page_output.size())) + 1;
-            for(int i = 0; i < page_output.size(); i++){
-                
+            int page_id_len = (int) (java.lang.Math.log10(page_output.size())) + 1;
+            for (int i = 0; i < page_output.size(); i++) {
+
                 Map<String, String> genericDetectionProperties = new HashMap<String, String>();
-                Map<String, String> imageDetectionProperties = new HashMap<String, String>();
                 List<String> splitTags = new ArrayList<String>();
                 List<String> regexTags = new ArrayList<String>();
                 // Split out non-alphanumeric characters.
                 String pageText = page_output.get(i).toString().toLowerCase();
                 String[] values = pageText.split("\\W+");
-                
+
                 Set<String> hashSet = new HashSet<String>(Arrays.asList(values));
 
                 try{
                     
-                    for(Iterator iterator = string_tags.keySet().iterator(); iterator.hasNext();) {
+                    for (Iterator iterator = string_tags.keySet().iterator(); iterator.hasNext(); ) {
                         String key = (String) iterator.next();
-                        for(Object x: (JSONArray)string_tags.get(key)){
-                            if(hashSet.contains(x)){
+                        for (Object x : (JSONArray) string_tags.get(key)) {
+                            if (hashSet.contains(x)) {
                                 splitTags.add(key);
                                 break;
                             }
                         }
                     }
-                    
-                    for(Iterator iterator = regex_tags.keySet().iterator(); iterator.hasNext();) {
+
+                    for (Iterator iterator = regex_tags.keySet().iterator(); iterator.hasNext(); ) {
                         String key = (String) iterator.next();
-                        for(Object x: (JSONArray)regex_tags.get(key)){
-                            if(pageText.matches((String)x)){
-                                regexTags.add(key);
+                        for (Object x : (JSONArray) regex_tags.get(key)) {
+                            if (pageText.matches((String) x) && !splitTags.contains(key)) {
+                                splitTags.add(key);
                                 break;
                             }
                         }
                     }
-                    
-                    String splitTagsResult = String.join(",", splitTags);
-                    String regexTagsResult = String.join(",", regexTags);
-                    String text_detect = page_output.get(i).toString();
-                    LanguageResult lang_result = identifier.detect(text_detect);
-                    String language = lang_result.getLanguage();
-                    
-                    if(lang_map.containsKey(language))
-                        language = lang_map.get(language);
-                    if(!lang_result.isReasonablyCertain())
-                        language = null;
-                    genericDetectionProperties.put("TEXT", text_detect);
-                    
-                    if(language != null && language.length()>0)
-                        genericDetectionProperties.put("TEXT_LANGUAGE",  language);
-                    if(splitTagsResult.length() > 0)
-                        genericDetectionProperties.put("TAGS_STRING", splitTagsResult);
-                    if(regexTagsResult.length() > 0)
-                        genericDetectionProperties.put("TAGS_REGEX", regexTagsResult);
-                    
-                } catch (Exception e){
+
+                    String splitTagsResult = String.join(", ", splitTags);
+                    String text_detect = page_output.get(i).toString().trim();
+
+
+                    if (text_detect.length() > 0) 
+                        genericDetectionProperties.put("TEXT", text_detect);
+
+                    // Process text languages. 
+                    if(text_detect.length() >= char_limit){
+                        LanguageResult lang_result = identifier.detect(text_detect);
+                        String language = lang_result.getLanguage();
+
+                        if (lang_map.containsKey(language))
+                            language = lang_map.get(language);
+                        if (!lang_result.isReasonablyCertain())
+                            language = null;
+                        if (language != null && language.length()>0)
+                            genericDetectionProperties.put("TEXT_LANGUAGE",  language);
+                    }
+
+                    if (splitTagsResult.length() > 0)
+                        genericDetectionProperties.put("TAGS", splitTagsResult);
+
+                } catch (Exception e) {
                     LOG.error(extractStackTrace(e));
                     LOG.error(e.toString());
                     LOG.error("Failed to process text detections.");
                 }
-                genericDetectionProperties.put("PAGE_NUM",String.format("%0"+String.valueOf(page_id_len)+"d", i));
+                genericDetectionProperties.put("PAGE_NUM",String.format("%0" + String.valueOf(page_id_len) + "d", i));
                 MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                 tracks.add(genericTrack);
             }
@@ -235,108 +252,93 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
         return tracks;
     }
-    
+
     // Map for translating from ISO 639-2 code to english description.
-    private static Map<String,String> initLangMap(){
+    private static Map<String,String> initLangMap() {
         Map<String,String> map = new HashMap<String,String>();
-        map.put("af","Afrikaans");
-        map.put("an","Aragonese");
-        map.put("ar","Arabic");
-        map.put("ast","Asturian");
-        map.put("be","Belarusian");
-        map.put("br","Breton");
-        map.put("bg","Bulgarian");
-        map.put("bn","Bengali");
-        map.put("ca","Catalan");
-        map.put("cs","Czech");
-        map.put("cy","Welsh");
-        map.put("da","Danish");
-        map.put("de","German");
-        map.put("el","Greek");
-        map.put("en","English");
-        map.put("eo","Esperanto");
-        map.put("es","Spanish");
-        map.put("et","Estonian");
-        map.put("eu","Basque");
-        map.put("fa","Persian");
-        map.put("fi","Finnish");
-        map.put("fr","French");
-        map.put("ga","Irish");
-        map.put("gl","Galician");
-        map.put("gu","Gujarati");
-        map.put("he","Hebrew");
-        map.put("hi","Hindi");
-        map.put("hr","Croatian");
-        map.put("ht","Haitian");
-        map.put("hu","Hungarian");
-        map.put("id","Indonesian");
-        map.put("is","Icelandic");
-        map.put("it","Italian");
-        map.put("ja","Japanese");
-        map.put("km","Khmer");
-        map.put("kn","Kannada");
-        map.put("ko","Korean");
-        map.put("lt","Lithuanian");
-        map.put("lv","Latvian");
-        map.put("mk","Macedonian");
-        map.put("ml","Malayalam");
-        map.put("mr","Marathi");
-        map.put("ms","Malay");
-        map.put("mt","Maltese");
-        map.put("ne","Nepali");
-        map.put("nl","Dutch");
-        map.put("no","Norwegian");
-        map.put("oc","Occitan");
-        map.put("pa","Punjabi");
-        map.put("pl","Polish");
-        map.put("pt","Portuguese");
-        map.put("ro","Romanian");
-        map.put("ru","Russian");
-        map.put("sk","Slovak");
-        map.put("sl","Slovenian");
-        map.put("so","Somali");
-        map.put("sq","Albanian");
-        map.put("sr","Serbian");
-        map.put("sv","Swedish");
-        map.put("sw","Swahili");
-        map.put("ta","Tamil");
-        map.put("te","Telugu");
-        map.put("th","Thai");
-        map.put("tl","Tagalog");
-        map.put("tr","Turkish"); 
-        map.put("uk","Ukrainian");
-        map.put("ur","Urdu");
-        map.put("vi","Vietnamese");
-        map.put("wa","Walloon");
-        map.put("yi","Yiddish");
-        map.put("zh-cn","Simplified Chinese");
-        map.put("zh-tw","Traditional Chinese");
+        map.put("af", "Afrikaans");
+        map.put("an", "Aragonese");
+        map.put("ar", "Arabic");
+        map.put("ast", "Asturian");
+        map.put("be", "Belarusian");
+        map.put("br", "Breton");
+        map.put("bg", "Bulgarian");
+        map.put("bn", "Bengali");
+        map.put("ca", "Catalan");
+        map.put("cs", "Czech");
+        map.put("cy", "Welsh");
+        map.put("da", "Danish");
+        map.put("de", "German");
+        map.put("el", "Greek");
+        map.put("en", "English");
+        map.put("eo", "Esperanto");
+        map.put("es", "Spanish");
+        map.put("et", "Estonian");
+        map.put("eu", "Basque");
+        map.put("fa", "Persian");
+        map.put("fi", "Finnish");
+        map.put("fr", "French");
+        map.put("ga", "Irish");
+        map.put("gl", "Galician");
+        map.put("gu", "Gujarati");
+        map.put("he", "Hebrew");
+        map.put("hi", "Hindi");
+        map.put("hr", "Croatian");
+        map.put("ht", "Haitian");
+        map.put("hu", "Hungarian");
+        map.put("id", "Indonesian");
+        map.put("is", "Icelandic");
+        map.put("it", "Italian");
+        map.put("ja", "Japanese");
+        map.put("km", "Khmer");
+        map.put("kn", "Kannada");
+        map.put("ko", "Korean");
+        map.put("lt", "Lithuanian");
+        map.put("lv", "Latvian");
+        map.put("mk", "Macedonian");
+        map.put("ml", "Malayalam");
+        map.put("mr", "Marathi");
+        map.put("ms", "Malay");
+        map.put("mt", "Maltese");
+        map.put("ne", "Nepali");
+        map.put("nl", "Dutch");
+        map.put("no", "Norwegian");
+        map.put("oc", "Occitan");
+        map.put("pa", "Punjabi");
+        map.put("pl", "Polish");
+        map.put("pt", "Portuguese");
+        map.put("ro", "Romanian");
+        map.put("ru", "Russian");
+        map.put("sk", "Slovak");
+        map.put("sl", "Slovenian");
+        map.put("so", "Somali");
+        map.put("sq", "Albanian");
+        map.put("sr", "Serbian");
+        map.put("sv", "Swedish");
+        map.put("sw", "Swahili");
+        map.put("ta", "Tamil");
+        map.put("te", "Telugu");
+        map.put("th", "Thai");
+        map.put("tl", "Tagalog");
+        map.put("tr", "Turkish"); 
+        map.put("uk", "Ukrainian");
+        map.put("ur", "Urdu");
+        map.put("vi", "Vietnamese");
+        map.put("wa", "Walloon");
+        map.put("yi", "Yiddish");
+        map.put("zh-cn", "Simplified Chinese");
+        map.put("zh-tw", "Traditional Chinese");
         return map;
-    }
-    
-
-
-    // TODO: Delete once integrated into OpenMPF-Java-Components.
-    // Utility function.
-    // Expands environment variables in a given path/filename.
-    public static String expandPathEnvVars(String path) {
-        Map<String, String> sysEnv = System.getenv();
-        for (Map.Entry<String, String> entry : sysEnv.entrySet()) {
-            String key = entry.getKey();
-            String value = entry.getValue();
-            path = path.replaceAll("\\$" + key, value);
-        }
-        return path;
     }
 
     // Extract stack trace as a string.
-    public static String extractStackTrace(Exception e){
+    public static String extractStackTrace(Exception e) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw);
         return sw.toString();
     }
-    
+
     // The TikeDetection component supports generic file types (pdfs, documents, txt, etc.).
     public boolean supports(MPFDataType mpfDataType) {
         return mpfDataType != null && MPFDataType.UNKNOWN.equals(mpfDataType);
@@ -345,15 +347,15 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
     public String getDetectionType() {
         return "TEXT";
     }
-    
+
     public List<MPFImageLocation> getDetections(MPFImageJob job) throws MPFComponentDetectionError {
         throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Image detection not supported.");
     }
-    
+
     public List<MPFVideoTrack> getDetections(MPFVideoJob job) throws MPFComponentDetectionError {
         throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Video detection not supported.");
     }
-    
+
     public List<MPFAudioTrack> getDetections(MPFAudioJob job) throws MPFComponentDetectionError {
         throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Audio detection not supported.");
     }

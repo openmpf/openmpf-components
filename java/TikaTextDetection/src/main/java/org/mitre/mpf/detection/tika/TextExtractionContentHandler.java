@@ -39,20 +39,34 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     protected int pageNumber = 0;
     public StringBuilder text_results;
     public ArrayList<StringBuilder> page_map;
-    
+    private boolean skip_title;
+
     public TextExtractionContentHandler(){
         super();
         pageTag = "div";
         pageNumber = 0;
+        // Enable to avoid storing metadata/title text from ppt document.
+        skip_title = true;
+
         text_results = new StringBuilder();
         page_map = new ArrayList<StringBuilder>();
         page_map.add(new StringBuilder());
         
     }
 
-    public void startElement (String uri, String localName, String qName, Attributes atts) throws SAXException  {  
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("page") || atts.getValue("class").equals("slide-content"))) {
-            startPage();
+    public void startElement (String uri, String localName, String qName, Attributes atts) throws SAXException  {
+        if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) {
+           startPage();
+        }
+        if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
+            if (skip_title) {
+                //Skip metadata section of pptx.
+                skip_title = false;
+                //Discard title text. (not part of slide text nor master slide content).
+                resetPage();
+            } else {
+                startPage();
+            }
         }
     }
 
@@ -62,14 +76,14 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
             endPage();
         }
     }
-    
+
     public void characters(char[] ch, int start, int length) throws SAXException {
-        if(length>0){
+        if (length > 0) {
             text_results.append(ch);
             page_map.get(pageNumber).append(ch);
         }
     }
-    
+
     protected void startPage() throws SAXException {
         pageNumber ++;
         page_map.add(new StringBuilder());
@@ -78,11 +92,17 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     protected void endPage() throws SAXException {
         return;
     }
-    
+
+    protected void resetPage() throws SAXException {
+        pageNumber = 0;
+        page_map.clear();
+        page_map.add(new StringBuilder());
+    }
+
     public String toString(){
         return text_results.toString();
     }
-    
+
     // Returns the text detections, subdivided by page number.
     public ArrayList<StringBuilder> getPages(){
         return page_map;

@@ -3,7 +3,7 @@
   "componentVersion" : "3.0.0",
   "middlewareVersion" : "3.0.0",
   "sourceLanguage" : "java",
-  "batchLibrary" : "mpf-tika-text-detection-component-2.0.0.jar",
+  "batchLibrary" : "mpf-tika-text-detection-component-3.0.0.jar",
   "environmentVariables" : [],
   "algorithm" : {
     "name": "TIKATEXT",
@@ -161,13 +161,25 @@
           "description": "Specifies whether or not to flip media based on EXIF data.",
           "type": "BOOLEAN",
           "defaultValue": "false"
+        },
+        {
+          "name": "STORE_METADATA",
+          "description": "Specifies whether or not to store metadata as a separate track detection.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "CHAR_LIMIT",
+          "description": "Specifies minimum length of detected text before language filtering is applied.",
+          "type": "INT",
+          "defaultValue": "20"
         }
       ]
     }
   },
   "actions": [
     {
-      "name": "TIKA DETECTION ACTION",
+      "name": "TIKA TEXT DETECTION ACTION",
       "description": "Executes the Tika text detection algorithm using the default parameters.",
       "algorithm": "TIKATEXT",
       "properties": []
@@ -175,19 +187,19 @@
   ],
   "tasks": [
     {
-      "name": "TIKA DETECTION TASK",
+      "name": "TIKA TEXT DETECTION TASK",
       "description": "Performs Tika text detection.",
       "actions": [
-        "TIKA DETECTION ACTION"
+        "TIKA TEXT DETECTION ACTION"
       ]
     }
   ],
   "pipelines": [
     {
-      "name": "TIKA DETECTION PIPELINE",
+      "name": "TIKA TEXT DETECTION PIPELINE",
       "description": "Performs Tika text detection.",
       "tasks": [
-        "TIKA DETECTION TASK"
+        "TIKA TEXT DETECTION TASK"
       ]
     }
   ]
