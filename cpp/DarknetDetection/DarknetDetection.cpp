@@ -24,14 +24,22 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include <fstream>
+#include "DarknetDetection.h"
+
+#include <algorithm>
+#include <exception>
+#include <unordered_map>
+#include <utility>
 
 #include <log4cxx/xml/domconfigurator.h>
 
+#include <MPFImageReader.h>
+#include <MPFVideoCapture.h>
 #include <detectionComponentUtils.h>
 #include <Utils.h>
 
-#include "DarknetDetection.h"
+#include "Trackers.h"
+
 
 using namespace MPF::COMPONENT;
 
@@ -42,13 +50,15 @@ bool DarknetDetection::Init() {
         run_dir = ".";
     }
 
-    plugin_path_ = run_dir + "/DarknetDetection";
+    std::string plugin_path = run_dir + "/DarknetDetection";
+    cpu_darknet_lib_path_ = plugin_path + "/lib/libdarknet_wrapper.so";
+    gpu_darknet_lib_path_ = plugin_path + "/lib/libdarknet_wrapper_cuda.so";
 
-    log4cxx::xml::DOMConfigurator::configure(plugin_path_ + "/config/Log4cxxConfig.xml");
+    log4cxx::xml::DOMConfigurator::configure(plugin_path + "/config/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("DarknetDetection");
 
     try {
-        models_parser_.Init(plugin_path_ + "/models")
+        models_parser_.Init(plugin_path + "/models")
                 .RegisterField("network_config", &ModelSettings::network_config_file)
                 .RegisterField("names", &ModelSettings::names_file)
                 .RegisterField("weights", &ModelSettings::weights_file);
@@ -64,65 +74,120 @@ bool DarknetDetection::Init() {
 }
 
 
+
 MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks) {
-    LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
-
-    if (DetectionComponentUtils::GetProperty(job.job_properties, "FRAME_QUEUE_CAPACITY", 4) <= 0) {
-        LOG4CXX_ERROR(logger_, "[" << job.job_name << "] : Detection failed: frame queue capacity property must be greater than 0");
-        return MPF_INVALID_PROPERTY;
-    }
-
     try {
-        DarknetDl detector = GetDarknetImpl(job);
+        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
 
-        MPFDetectionError rc = detector->RunDarknetDetection(job, tracks);
-        if (rc != MPF_DETECTION_SUCCESS) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Darknet detection failed for file: " << job.data_uri);
+        if (DetectionComponentUtils::GetProperty(job.job_properties, "FRAME_QUEUE_CAPACITY", 4) <= 0) {
+            LOG4CXX_ERROR(logger_, "[" << job.job_name
+                    << "] : Detection failed: frame queue capacity property must be greater than 0");
+            return MPF_INVALID_PROPERTY;
         }
-        
+
+        MPFVideoCapture video_cap(job);
+        if (!video_cap.IsOpened()) {
+            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not open video file: " << job.data_uri);
+            return MPF_COULD_NOT_OPEN_DATAFILE;
+        }
+
+        DarknetAsyncDl detector = GetDarknetImpl(job);
+
+        cv::Mat frame;
+        int frame_number = -1;
+        while (video_cap.Read(frame)) {
+            frame_number++;
+            detector->Submit(frame_number, frame);
+        }
+
+        tracks = GetTracks(job, detector->GetResults());
+        for (MPFVideoTrack &track : tracks) {
+            video_cap.ReverseTransform(track);
+        }
+
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
-        return rc;
+
+        return MPF_DETECTION_SUCCESS;
     }
     catch (...) {
         return Utils::HandleDetectionException(job, logger_);
     }
-
 }
+
+
+std::vector<MPFVideoTrack> DarknetDetection::GetTracks(const MPFJob &job, std::vector<DarknetResult> &&detections) {
+
+    if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
+        return PreprocessorTracker::GetTracks(std::move(detections));
+    }
+
+    int number_of_classifications = DetectionComponentUtils::GetProperty(
+            job.job_properties, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5);
+    double rect_min_overlap = DetectionComponentUtils::GetProperty(
+            job.job_properties, "MIN_OVERLAP", 0.5);
+    return DefaultTracker::GetTracks(number_of_classifications, rect_min_overlap, std::move(detections));
+}
+
 
 
 MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
     try {
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
-        DarknetDl detector = GetDarknetImpl(job);
+        MPFImageReader image_reader(job);
 
-        MPFDetectionError rc = detector->RunDarknetDetection(job, locations);
-        if (rc != MPF_DETECTION_SUCCESS) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Darknet detection failed for file: " << job.data_uri);
+        if (image_reader.GetImage().empty()) {
+            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not open image file: " << job.data_uri);
+            return MPF_COULD_NOT_OPEN_DATAFILE;
+        }
+
+        DarknetDl detector = GetDarknetImpl(job);
+        std::vector<DarknetResult> results = detector->Detect(0, image_reader.GetImage());
+        if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
+            ConvertResultsUsingPreprocessor(results, locations);
+        }
+        else {
+            int number_of_classifications
+                    = std::max(1, DetectionComponentUtils::GetProperty(job.job_properties,
+                                                                       "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5));
+            for (auto& result : results) {
+                locations.push_back(
+                        DefaultTracker::CreateImageLocation(number_of_classifications, result));
+            }
+        }
+
+        for (auto &location : locations) {
+            image_reader.ReverseTransform(location);
         }
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << locations.size() << " detections.");
-        return rc;
+
+        return MPF_DETECTION_SUCCESS;
     }
     catch (...) {
         return Utils::HandleDetectionException(job, logger_);
     }
-
 }
 
 
-DarknetDetection::DarknetDl DarknetDetection::GetDarknetImpl(const MPF::COMPONENT::MPFJob &job) {
-    static std::string cpu_darknet_lib = plugin_path_ + "/lib/libdarknet_wrapper.so";
-    static std::string gpu_darknet_lib = plugin_path_ + "/lib/libdarknet_wrapper_cuda.so";
-    static std::string darknet_impl_creator = "darknet_impl_creator";
-    static std::string darknet_impl_deleter = "darknet_impl_deleter";
+DarknetDetection::DarknetAsyncDl DarknetDetection::GetDarknetImpl(const MPFVideoJob &job) {
+    return GetDarknetImpl<DarknetAsyncDl>(job, "darknet_async_impl_creator", "darknet_async_impl_deleter");
+}
+
+DarknetDetection::DarknetDl DarknetDetection::GetDarknetImpl(const MPFImageJob &job) {
+    return GetDarknetImpl<DarknetDl>(job, "darknet_impl_creator", "darknet_impl_deleter");
+}
+
+
+template <typename TDarknetDl>
+TDarknetDl DarknetDetection::GetDarknetImpl(const MPFJob &job,
+                                            const std::string &creator, const std::string &deleter) {
 
     const ModelSettings model_settings = GetModelSettings(job.job_properties);
 
     int cuda_device_id = DetectionComponentUtils::GetProperty(job.job_properties, "CUDA_DEVICE_ID", -1);
     if (cuda_device_id >= 0) {
         try {
-            return DarknetDl(gpu_darknet_lib, darknet_impl_creator, darknet_impl_deleter,
-                             &job.job_properties, &model_settings);
+            return TDarknetDl(gpu_darknet_lib_path_, creator, deleter, &job.job_properties, &model_settings);
         }
         catch (const std::exception &ex) {
             if (DetectionComponentUtils::GetProperty(job.job_properties, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", false)) {
@@ -135,9 +200,10 @@ DarknetDetection::DarknetDl DarknetDetection::GetDarknetImpl(const MPF::COMPONEN
             }
         }
     }
-    return DarknetDl(cpu_darknet_lib, darknet_impl_creator, darknet_impl_deleter,
-                     &job.job_properties, &model_settings);
+    return TDarknetDl(cpu_darknet_lib_path_, creator, deleter, &job.job_properties, &model_settings);
 }
+
+
 
 ModelSettings DarknetDetection::GetModelSettings(const MPF::COMPONENT::Properties &job_properties) const {
     const std::string &model_name = DetectionComponentUtils::GetProperty<std::string>(
@@ -148,6 +214,35 @@ ModelSettings DarknetDetection::GetModelSettings(const MPF::COMPONENT::Propertie
 
     return models_parser_.ParseIni(model_name, models_dir_path + "/DarknetDetection");
 }
+
+
+void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
+                                                       std::vector<MPFImageLocation> &locations) {
+
+    std::unordered_map<std::string, MPFImageLocation> type_to_image_loc;
+
+    for (DarknetResult &darknet_result : darknet_results) {
+        const cv::Rect &rect = darknet_result.detection_rect;
+
+        for (std::pair<float, std::string> &class_prob : darknet_result.object_type_probs) {
+            auto it = type_to_image_loc.find(class_prob.second);
+            if (it == type_to_image_loc.cend()) {
+                type_to_image_loc.emplace(
+                        class_prob.second,
+                        MPFImageLocation(rect.x, rect.y, rect.width, rect.height, class_prob.first,
+                                         Properties{ {"CLASSIFICATION", class_prob.second} }));
+            }
+            else {
+                PreprocessorTracker::CombineImageLocation(rect, class_prob.first, it->second);
+            }
+        }
+    }
+
+    for (auto &image_loc_pair : type_to_image_loc) {
+        locations.push_back(std::move(image_loc_pair.second));
+    }
+}
+
 
 std::string DarknetDetection::GetDetectionType() {
     return "CLASS";

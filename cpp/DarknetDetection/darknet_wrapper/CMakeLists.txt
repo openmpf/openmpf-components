@@ -29,6 +29,7 @@ project(darknet-wrapper)
 
 set(CMAKE_CXX_STANDARD 11)
 
+
 find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0 COMPONENTS opencv_core opencv_highgui)
 
 find_package(mpfComponentInterface REQUIRED)
@@ -41,10 +42,9 @@ find_package(Qt4 REQUIRED)
 set(DARKNET_WRAPPER_SOURCE_FILES
     DarknetImpl.cpp DarknetImpl.h
     ../include/DarknetInterface.h
-    Trackers.cpp Trackers.h
     )
 
-add_library(darknet_wrapper SHARED ${DARKNET_WRAPPER_SOURCE_FILES})
+add_library(darknet_wrapper MODULE ${DARKNET_WRAPPER_SOURCE_FILES})
 target_link_libraries(darknet_wrapper mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
     darknet_lib ${OpenCV_LIBS})
 
@@ -59,7 +59,7 @@ copy_shared_libs(darknet_wrapper ${pluginLocation})
 
 
 if (DARKNET_BUILD_CUDA)
-    add_library(darknet_wrapper_cuda SHARED ${DARKNET_WRAPPER_SOURCE_FILES})
+    add_library(darknet_wrapper_cuda MODULE ${DARKNET_WRAPPER_SOURCE_FILES})
     target_link_libraries(darknet_wrapper_cuda mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
         darknet_lib_cuda ${OpenCV_LIBS})
     target_compile_definitions(darknet_wrapper_cuda PRIVATE -DGPU)
