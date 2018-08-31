@@ -48,7 +48,7 @@ using namespace std;
 using log4cxx::Logger;
 using log4cxx::xml::DOMConfigurator;
 
-std::string TesseractOCRTextDetection::GetDetectionType(){
+std::string TesseractOCRTextDetection::GetDetectionType() {
     
     return "TEXT";
 }
@@ -120,7 +120,7 @@ void TesseractOCRTextDetection::SetReadConfigParameters() {
 /*
  * Counts whitespace, alphanumeric, non-english characters in string.
  */
-TesseractOCRTextDetection::OCR_char_stats TesseractOCRTextDetection::char_count(const std::string &s,const std::string &white_space, const std::string &eng_symbol, const std::string &eng_num ){
+TesseractOCRTextDetection::OCR_char_stats TesseractOCRTextDetection::char_count(const std::string &s,const std::string &white_space, const std::string &eng_symbol, const std::string &eng_num) {
     TesseractOCRTextDetection::OCR_char_stats stats = {
         0,  //alphabet_count
         0,  //num_count
@@ -130,23 +130,23 @@ TesseractOCRTextDetection::OCR_char_stats TesseractOCRTextDetection::char_count(
         {0} //char_list
     };
 
-    for(char c: s){
-        if(white_space.find(c)!=std::string::npos){
+    for (char c : s) {
+        if (white_space.find(c) != std::string::npos) {
             stats.whspace_count++;
             continue;
         }
-        if(eng_symbol.find(c)!=std::string::npos){
+        if (eng_symbol.find(c) != std::string::npos) {
             stats.punct_count++;
             continue;
         }
-        if(eng_num.find(c)!=std::string::npos){
+        if (eng_num.find(c) != std::string::npos) {
             stats.num_count++;
             continue;
         }
         int x = tolower(c) - (int)'a';
-        if(x >= 0 && x <= 25){ 
+        if (x >= 0 && x <= 25) { 
             stats.alphabet_count++;
-            stats.char_list[x]++;    
+            stats.char_list[x]++;
             continue;
         }
 
@@ -160,7 +160,7 @@ TesseractOCRTextDetection::OCR_char_stats TesseractOCRTextDetection::char_count(
  * Conduct filtering of results.
  * Reject/accept text based on char frequency/histogram comparison to english language.
  */
-std::string TesseractOCRTextDetection::check_string(const std::string &s,const TesseractOCRTextDetection::OCR_filter_settings &ocrset){
+std::string TesseractOCRTextDetection::check_string(const std::string &s,const TesseractOCRTextDetection::OCR_filter_settings &ocrset) {
     bool num_only_ok = ocrset.num_only_ok;
     bool threshold_check = ocrset.threshold_check;
     bool hist_check = ocrset.hist_check;
@@ -207,14 +207,14 @@ std::string TesseractOCRTextDetection::check_string(const std::string &s,const T
     cv::MatND eng_hist;
     cv::calcHist(&eng_mat, 1, channels, cv::Mat(), // do not use mask
              eng_hist, 1, histSize, ranges);
-    
 
-    TesseractOCRTextDetection::OCR_char_stats results = char_count( s, white_space, eng_symbol, eng_num );
-    int alphabet_count=results.alphabet_count;
-    int num_count=results.num_count;
-    int whspace_count=results.whspace_count;
-    int punct_count=results.punct_count;
-    int non_eng_count=results.non_eng_count;
+
+    TesseractOCRTextDetection::OCR_char_stats results = char_count(s, white_space, eng_symbol, eng_num);
+    int alphabet_count = results.alphabet_count;
+    int num_count = results.num_count;
+    int whspace_count = results.whspace_count;
+    int punct_count = results.punct_count;
+    int non_eng_count = results.non_eng_count;
     int* char_list = results.char_list;
     float char_f_list[26] = {0};
     cv::Mat   char_mat;
@@ -234,7 +234,7 @@ std::string TesseractOCRTextDetection::check_string(const std::string &s,const T
         int total_eng_char = num_count+alphabet_count+punct_count;
         if((alphabet_count + num_count < min_word_len)) return "";
         
-        float eng_symb_fraction = float(punct_count)/float(total_eng_char);
+        float eng_symb_fraction = float(punct_count) / float(total_eng_char);
         if(eng_symb_fraction > excess_eng_symbols) return "";
 
         float non_eng_fraction = float(non_eng_count)/float(total_eng_char+non_eng_count);
@@ -249,10 +249,10 @@ std::string TesseractOCRTextDetection::check_string(const std::string &s,const T
             iss >> subs;
             if(subs.length()>max_wsize) max_wsize = subs.length();
         } while (iss);
-        if(max_wsize < min_word_len) return "";
+        if (max_wsize < min_word_len) return "";
     }
-    if(alphabet_count == 0){
-        if(num_only_ok) return s;
+    if (alphabet_count == 0) {
+        if (num_only_ok) return s;
         else return "";
     }
     //Calculate vowel percentage and check if threshold is met.
@@ -338,7 +338,6 @@ inline string to_lowercase(const string &data)
     string d2(data);
     for(auto& c :d2){tolower(c);}
     return d2;
-
 }
 
 /*
@@ -402,8 +401,8 @@ std::map<std::string,std::map<std::string,std::vector<std::string>>> TesseractOC
     }
     JSONObject root;
     root = value->AsObject();
-    
-    
+
+
     std::map<std::string,std::vector<std::string>> json_kvs_string;
     std::map<std::string,std::vector<std::string>> json_kvs_regex;
     std::map<std::string,std::vector<std::string>> json_kvs_string_split;
@@ -454,10 +453,10 @@ std::map<std::string,std::map<std::string,std::vector<std::string>>> TesseractOC
             wstring term_temp(term);
             string term_str(term_temp.begin(),term_temp.end());
             JSONArray array = root3[term]->AsArray();
-            if(!root3[term]->IsArray())
+            if (!root3[term]->IsArray())
             {
-                LOG4CXX_ERROR(hw_logger_, log_print_str( "[" + job_name + "] Invalid JSON Array in SPLIT tags!"));              
-            } 
+                LOG4CXX_ERROR(hw_logger_, log_print_str( "[" + job_name + "] Invalid JSON Array in SPLIT tags!"));
+            }
             for (unsigned int i = 0; i < array.size(); i++)
             {
                 wstringstream output;
@@ -540,7 +539,7 @@ bool TesseractOCRTextDetection::comp_regex(const std::string &detection, const s
      try {
         boost::regex reg_matcher(regstr, boost::regex_constants::extended);
         boost::smatch m;
-        if (boost::regex_search(detection,m,reg_matcher)){
+        if (boost::regex_search(detection,m,reg_matcher)) {
             found = true;
         }
      } catch (const boost::regex_error& e) {
@@ -659,7 +658,6 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     cv::Mat image_data;
     image_data = video_capture.GetImage();
     if( image_data.empty() ) {
-        std::cout << "[" << job_name << "] Could not open transformed image and will not return detections" << std::endl;
         LOG4CXX_WARN(hw_logger_,  "[" + job_name + "] Could not open transformed image and will not return detections" );
         return false;
     }else{
@@ -762,34 +760,34 @@ bool is_only_ascii_whitespace( const std::string& str )
  */
 std::string TesseractOCRTextDetection::search_regex(const std::string &ocr_detections, const std::map<std::string,std::vector<std::string>> &json_kvs_regex)
 {
-    if(json_kvs_regex.size() == 0) return "";
+    if (json_kvs_regex.size() == 0) return "";
 
         string found_tags_regex = "";
 
         set<string> found_keys_regex;
-        for(const auto& kv : json_kvs_regex)
+        for (const auto& kv : json_kvs_regex)
         {
             auto key = kv.first;
             auto values = kv.second;
             bool breaker = false;
-            for(auto value : values)
+            for (auto value : values)
             {
-                    if(comp_regex(ocr_detections,value))
+                    if (comp_regex(ocr_detections,value))
                     { 
                         found_keys_regex.insert(key);
                         breaker = true;
                         break;
                     }
-                if(breaker) break;
+                if (breaker) break;
             }
         }
         int num_found = 0;
-        for(auto tags : found_keys_regex)
+        for (auto tags : found_keys_regex)
         {
             found_tags_regex +=tags + ", ";
             num_found++;
         }
-        if(num_found>0)
+        if (num_found > 0)
         {
             found_tags_regex = found_tags_regex.substr(0,found_tags_regex.size()-2);
         }
@@ -804,11 +802,11 @@ std::string TesseractOCRTextDetection::search_regex(const std::string &ocr_detec
  */
 std::string TesseractOCRTextDetection::search_string_split(const std::vector<std::string> &tokenized, const std::map<std::string,std::vector<std::string>> &json_kvs_string)
 {
-    if(json_kvs_string.size() == 0) return "";
+    if (json_kvs_string.size() == 0) return "";
     string found_tags_string = "";
     set<string> found_keys_string;
         boost::regex rgx("\\s+");
-        for(const auto& kv : json_kvs_string)
+        for (const auto& kv : json_kvs_string)
         {
             auto key = kv.first;
             auto values = kv.second;
@@ -817,37 +815,37 @@ std::string TesseractOCRTextDetection::search_string_split(const std::vector<std
             {
                 vector<string> tag_tokens;
                 boost::split_regex(tag_tokens,value,rgx);
-                if (tag_tokens.size()==1)
+                if (tag_tokens.size() == 1)
                 {
-                    for(const auto& token : tokenized)
+                    for (const auto& token : tokenized)
                     {
-                        if(strcasecmp(token.c_str(), value.c_str())==0)
+                        if (strcasecmp(token.c_str(), value.c_str()) == 0)
                         { 
                             found_keys_string.insert(key);
                             breaker = true;
                             break;
                         }
                     }
-                    if( breaker) break;
+                    if ( breaker) break;
                 }
                 else
                 {
                     int word_id = 0;
-                    for(const auto& token : tokenized)
+                    for (const auto& token : tokenized)
                     {
-                        if(word_id==tag_tokens.size())
+                        if (word_id == tag_tokens.size())
                         {
                                 found_keys_string.insert(key);
                                 breaker = true;
                                 break;
                         }
-                        else if(strcasecmp(token.c_str(), tag_tokens[word_id].c_str())==0)
+                        else if (strcasecmp(token.c_str(), tag_tokens[word_id].c_str()) == 0)
                         { 
                             word_id++;
                         }
-                        else if(word_id > 0)
+                        else if (word_id > 0)
                         {
-                            if(strcasecmp(token.c_str(), tag_tokens[0].c_str())==0)
+                            if (strcasecmp(token.c_str(), tag_tokens[0].c_str()) == 0)
                             {
                                 word_id = 1;
                             }
@@ -858,19 +856,19 @@ std::string TesseractOCRTextDetection::search_string_split(const std::vector<std
                             
                         }
                     }
-                    if( breaker) break;
+                    if (breaker) break;
                 }
             }
         }
     int num_found = 0;
-        for(auto tags : found_keys_string)
+        for (auto tags : found_keys_string)
         {
-            found_tags_string +=tags + ", ";
+            found_tags_string += tags + ", ";
             num_found++;
         }
-        if(num_found>0)
+        if (num_found > 0)
         {
-            found_tags_string = found_tags_string.substr(0,found_tags_string.size()-2);
+            found_tags_string = found_tags_string.substr(0,found_tags_string.size() - 2);
         }
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Done searching for string tags, found: " + to_string(num_found));
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Found string tags are: "+ found_tags_string);
@@ -882,20 +880,20 @@ std::string TesseractOCRTextDetection::search_string_split(const std::vector<std
  */
 std::string TesseractOCRTextDetection::search_string(const std::string &ocr_detections, const std::map<std::string,std::vector<std::string>> &json_kvs_string)
 {
-    if(json_kvs_string.size() == 0) return "";
+    if (json_kvs_string.size() == 0) return "";
     string found_tags_string = "";
     set<string> found_keys_string;
         
-        for(const auto& kv : json_kvs_string)
+        for (const auto& kv : json_kvs_string)
         {
             auto key = kv.first;
             auto values = kv.second;
             bool breaker = false;
 
-            for(auto value : values)
+            for (auto value : values)
             {
-                    if(comp_strcmp(ocr_detections,value))
-                    { 
+                    if (comp_strcmp(ocr_detections,value))
+                    {
                         found_keys_string.insert(key);
                         breaker = true;
                         break;
@@ -903,18 +901,18 @@ std::string TesseractOCRTextDetection::search_string(const std::string &ocr_dete
             }
         }
     int num_found = 0;
-        for(auto tags : found_keys_string)
+        for (auto tags : found_keys_string)
         {
-            found_tags_string +=tags + ", ";
+            found_tags_string += tags + ", ";
             num_found++;
         }
-        if(num_found>0)
+        if (num_found > 0)
         {
-            found_tags_string = found_tags_string.substr(0,found_tags_string.size()-2);
+            found_tags_string = found_tags_string.substr(0,found_tags_string.size() - 2);
         }
         LOG4CXX_DEBUG(hw_logger_, "[" + job_name + "] Done searching for full string tags, found: " + to_string(num_found));
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Found full string tags are: "+ found_tags_string);
-        return found_tags_string;   
+        return found_tags_string;
 }
 
 
@@ -922,7 +920,7 @@ std::string TesseractOCRTextDetection::search_string(const std::string &ocr_dete
 MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, std::vector <MPFImageLocation> &locations)
 {
     job_name = job.job_name;
-    std::cout << "[" << job_name << "] Processing \"" << job.data_uri << "\"." << std::endl;
+    LOG4CXX_DEBUG(hw_logger_, "[" + job_name + "] Processing \"" + job.data_uri + "\".");
     string run_dir = GetRunDirectory();
     if (run_dir.empty()) {
         run_dir = ".";
@@ -933,7 +931,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
     
     
     string jsonfile_name =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties,"TAGGING_FILE","text-tags.json");
-    if( jsonfile_name.find('$') != std::string::npos || jsonfile_name.find('/') != std::string::npos ){
+    if ( jsonfile_name.find('$') != std::string::npos || jsonfile_name.find('/') != std::string::npos ) {
         string new_jsonfile_name = "";
         Utils::expandFileName(jsonfile_name,new_jsonfile_name);
         jsonfile_name = new_jsonfile_name;
@@ -955,7 +953,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
     cv::Mat image;
     ocr_fset.sharpen = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SHARPEN",ocr_fset.sharpen);
     
-    if(!get_tesseract_detections(job,ocr_detections, image, ocr_fset.sharpen, psm, lang))
+    if (!get_tesseract_detections(job,ocr_detections, image, ocr_fset.sharpen, psm, lang))
     {
         LOG4CXX_ERROR(hw_logger_, log_print_str( "[" + job_name + "] Could not read image!"));
         return MPF_IMAGE_READ_ERROR;
@@ -977,18 +975,17 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
 
 
     LOG4CXX_DEBUG(hw_logger_, log_print_str( "[" + job_name + "] Ran tesseract"));
-    LOG4CXX_DEBUG(hw_logger_, log_print_str( "[" + job_name + "] Tesseract output was: "+ocr_detections));
+    LOG4CXX_DEBUG(hw_logger_, log_print_str( "[" + job_name + "] Tesseract output was: " + ocr_detections));
 
 
     MPFImageLocation image_location(0, 0, image.cols, image.rows);
 
-    
 
-    if( is_only_ascii_whitespace(ocr_detections) )
+    if(is_only_ascii_whitespace(ocr_detections))
     {
         LOG4CXX_WARN(hw_logger_, log_print_str("[" + job_name + "] empty OCR image!"));
     }
-    else{
+    else {
         auto tokenized = get_tokens(ocr_detections);
         vector<string> lower_tokenized;
 
@@ -998,7 +995,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
 
         
         image_location.detection_properties["TEXT"] = ocr_detections;
-        if(found_tags_string_split.size() > 0 && found_tags_string.size()> 0)
+        if(found_tags_string_split.size() > 0 && found_tags_string.size() > 0)
         {
             found_tags_string += ", ";
         }
@@ -1008,8 +1005,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
         locations.push_back(image_location);
     }
     
-    std::cout << "[" << job_name << "] Processing complete. Generated " << locations.size() << " dummy image locations." << std::endl << std::endl;
-
+    LOG4CXX_DEBUG(hw_logger_, "[" + job_name + "] Processing complete. Generated " + std::to_string(locations.size()) + " dummy image locations.");
     return MPF_DETECTION_SUCCESS;
 }
 

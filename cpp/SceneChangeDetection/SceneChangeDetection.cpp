@@ -55,7 +55,7 @@
 using namespace MPF::COMPONENT;
 using namespace cv;
 
-SceneChangeDetection::SceneChangeDetection(){
+SceneChangeDetection::SceneChangeDetection() {
 
 }
 
@@ -149,36 +149,36 @@ void SceneChangeDetection::SetDefaultParameters() {
  * Sets parameters from .ini file.
  */
 void SceneChangeDetection::SetReadConfigParameters() {
-    if(parameters.contains("DO_HIST")) {
+    if (parameters.contains("DO_HIST")) {
         do_hist = (parameters["DO_HIST"].toInt() > 0);
     }
-    if(parameters.contains("DO_CONT")) {
+    if (parameters.contains("DO_CONT")) {
         do_cont = (parameters["DO_CONT"].toInt() > 0);
     }
-    if(parameters.contains("DO_THRS")) {
+    if (parameters.contains("DO_THRS")) {
         do_thrs = (parameters["DO_THRS"].toInt() > 0);
     }
-    if(parameters.contains("DO_EDGE")) {
+    if (parameters.contains("DO_EDGE")) {
         do_edge = (parameters["DO_EDGE"].toInt() > 0);
     }
 
-    if(parameters.contains("HIST_THRESHOLD")) {
+    if (parameters.contains("HIST_THRESHOLD")) {
         hist_thresh = parameters["HIST_THRESHOLD"].toDouble();
     }
-    if(parameters.contains("CONT_THRESHOLD")) {
+    if (parameters.contains("CONT_THRESHOLD")) {
         cont_thresh = parameters["CONT_THRESHOLD"].toDouble();
     }
-    if(parameters.contains("THRS_THRESHOLD")) {
+    if (parameters.contains("THRS_THRESHOLD")) {
         thrs_thresh = parameters["THRS_THRESHOLD"].toDouble();
     }
-    if(parameters.contains("EDGE_THRESHOLD")) {
+    if (parameters.contains("EDGE_THRESHOLD")) {
         edge_thresh = parameters["EDGE_THRESHOLD"].toDouble();
     }
-    if(parameters.contains("MIN_PERCENT")) {
+    if (parameters.contains("MIN_PERCENT")) {
         minPercent = parameters["MIN_PERCENT"].toDouble();
     }
 
-    if(parameters.contains("MIN_SCENE")) {
+    if (parameters.contains("MIN_SCENE")) {
         minScene = parameters["MIN_SCENE"].toInt();
     }
 }
@@ -205,7 +205,7 @@ bool SceneChangeDetection::EdgeDetector(const cv::Mat &frameGray, cv::Mat &lastF
     double deltaEdges = sumEdges / frame_pixels;
 
     frameEdges.copyTo(lastFrameEdgeFinal);
-    if(deltaEdges > edge_thresh)
+    if (deltaEdges > edge_thresh)
     {
         return true;
     }
@@ -231,7 +231,7 @@ bool SceneChangeDetection::HistogramDetector(const cv::Mat &frame, cv::Mat &last
              false );
     double val = compareHist(hist,lastHist,CV_COMP_CORREL);
     hist.copyTo(lastHist);
-    if(val <hist_thresh)
+    if (val <hist_thresh)
     {
         return true;
     }
@@ -255,7 +255,7 @@ bool SceneChangeDetection::ContentDetector(const cv::Mat &frame, cv::Mat &lastFr
     double deltaHSVAvg = (deltaH + deltaS + deltaV) / (3.0);
 
     frameHSV.copyTo(lastFrameHSV);
-    if(deltaHSVAvg > cont_thresh)
+    if (deltaHSVAvg > cont_thresh)
     {
         return true;
     }
@@ -271,11 +271,11 @@ bool SceneChangeDetection::ContentDetector(const cv::Mat &frame, cv::Mat &lastFr
 bool SceneChangeDetection::ThresholdDetector(const cv::Mat &frame, cv::Mat &lastFrame)
 {
     bool FUT = frameUnderThreshold(frame,thrs_thresh,numPixels*3);
-    if(!fadeOut && FUT)
+    if (!fadeOut && FUT)
     {
         fadeOut = true;
     }
-    else if(fadeOut && FUT)
+    else if (fadeOut && FUT)
     {
         return true;
     }
@@ -292,12 +292,12 @@ bool SceneChangeDetection::frameUnderThreshold(const cv::Mat &image, double thre
     int frameAmount = 0;
     std::vector<Mat> channels;
     split(image,channels);
-    for(int y=0;y<image.rows;y++)
+    for (int y = 0; y < image.rows; y++)
     {
         cv::Mat dst;
-        compare(channels[0].row(y),Scalar(threshold),dst,CMP_GT);
+        compare(channels[0].row(y), Scalar(threshold), dst,CMP_GT);
         frameAmount += countNonZero(dst);
-        if (frameAmount> minThreshold)
+        if (frameAmount > minThreshold)
         {
             return false;
         }
@@ -412,9 +412,9 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
             bool cont_result = do_cont && ContentDetector(frame, lastFrameHSV);
             bool thrs_result = do_thrs && ThresholdDetector(frame, lastFrame);
 
-            if(edge_result || hist_result || cont_result || thrs_result)
+            if (edge_result || hist_result || cont_result || thrs_result)
             {
-                if(frame_index-lastFrameNum >= minScene)    
+                if (frame_index-lastFrameNum >= minScene)
                 {
                     keyframes[frame_index]=lastFrameNum;
                     lastFrameNum = frame_index;
