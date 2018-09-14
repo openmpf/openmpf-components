@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<properties>
+  <parsers>
+    <!-- Default Parser for most things,-->
+    <parser class="org.apache.tika.parser.DefaultParser">
+    </parser>
+    <!-- Use a different parser for PDF -->
+  </parsers>
+</properties>
