@@ -89,12 +89,12 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     std::map<std::string,std::string> regTable;
     std::string fix_regex(std::string inreg);
     std::map<std::string,std::map<std::string,std::vector<std::string>>> parse_json(const std::string &jsonfile_name);
-    bool get_tesseract_detections(const MPFImageJob &job, std::string &detection, cv::Mat &original, double weight, int psm, std::string lang);
+    bool get_tesseract_detections(const MPFImageJob &job, std::wstring &detection, cv::Mat &original, double weight, int psm, std::string lang);
 
     void SetDefaultParameters();
     void SetReadConfigParameters();
-    OCR_char_stats char_count(const std::string &s, const std::string &white_space, const std::string &eng_symbol, const std::string &eng_num );
-    std::string check_string(const std::string &s, const OCR_filter_settings &ocrset);
+    OCR_char_stats char_count(const std::wstring &s, const std::wstring &white_space, const std::wstring &eng_symbol, const std::wstring &eng_num );
+    std::wstring check_string(const std::wstring &s, const OCR_filter_settings &ocrset);
 
     bool comp_strcmp(const std::string &strHaystack, const std::string &strNeedle);
     bool comp_regex(const std::string &detection, const std::string &regstr);

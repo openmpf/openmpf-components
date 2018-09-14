@@ -58,8 +58,8 @@ endforeach()
 
 
 
-find_package(Boost 1.53.0 COMPONENTS regex) 
-include_directories(${Boost_INCLUDE_DIRS}) 
+find_package(Boost 1.53.0 COMPONENTS regex locale) 
+include_directories(${Boost_INCLUDE_DIRS})
 
 
 set(OCR_SOURCE_FILES
@@ -81,5 +81,3 @@ add_subdirectory(test)
 # Build executable
 add_executable(sample_tesseract_ocr_detector sample_tesseract_ocr_detector.cpp)
 target_link_libraries(sample_tesseract_ocr_detector mpfTesseractOCR)
-
-
