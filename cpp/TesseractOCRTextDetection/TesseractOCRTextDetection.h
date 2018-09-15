@@ -70,6 +70,7 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         bool num_only_ok;
         bool threshold_check;
         bool hist_check;
+        bool invert;
         int min_word_len;
         int hist_min_char;
         double scale;

@@ -179,6 +179,12 @@
           "defaultValue": "2.4"
         },
         {
+          "name": "INVERT",
+          "description": "Toggles image color inversion during preprocessing.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
           "name": "THRS_FILTER",
           "description": "Toggles filtering of OCR results by character frequencies (vowels, punctuation, etc.). Effective for shorter sequences of strings.",
           "type": "BOOLEAN",
@@ -237,7 +243,7 @@
           "description": "Specifies max fraction of english vowels in a detection.",
           "type": "DOUBLE",
           "defaultValue": "0.95"
-        }  
+        }
       ]
     }
   },

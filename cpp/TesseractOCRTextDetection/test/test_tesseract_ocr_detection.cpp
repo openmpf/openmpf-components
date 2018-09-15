@@ -44,44 +44,6 @@ MPFImageJob createOCRJob(const std::string &uri){
     return job;
 }
 
-/*
-bool containsTextTag(const std::string &text, const std::vector<MPFImageLocation> &locations) {
-    for (int i = 0; i < locations.size(); i++) {
-        std::string text = locations[i].detection_properties.at("TEXT");
-        
-        if(text.find(text)!= std::string::npos)
-            return true;
-    }
-    return false;
-}
-
-void assertObjectDetectedInImage(const std::string &expected_text, const std::string &image_path,
-                                 TesseractOCRTextDetection &ocr) {
-    MPFImageJob job = createOCRJob(image_path);
-
-    std::vector<MPFImageLocation> image_locations;
-    MPFDetectionError rc = ocr.GetDetections(job, image_locations);
-
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
-    ASSERT_FALSE(image_locations.empty());
-
-    ASSERT_TRUE(containsTextTag(expected_text, image_locations))
-                                << "Expected OCR to detect text \"" << expected_text << "\" in " << image_path;
-}
-void assertObjectNotDetectedInImage(const std::string &expected_text, const std::string &expected_tags, const std::string &image_path,
-                                 TesseractOCRTextDetection &ocr) {
-    MPFImageJob job = createOCRJob(image_path);
-
-    std::vector<MPFImageLocation> image_locations;
-    MPFDetectionError rc = ocr.GetDetections(job, image_locations);
-
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
-    ASSERT_FALSE(image_locations.empty());
-
-    ASSERT_FALSE(containsTextTag(expected_text, image_locations))
-                                << "Expected OCR to NOT detect text \"" << expected_text << "\" in " << image_path;
-}*/
-
 
 void runDetections(const std::string &image_path, TesseractOCRTextDetection &ocr, std::vector<MPFImageLocation> &image_locations) {
     MPFImageJob job = createOCRJob(image_path);
@@ -111,7 +73,7 @@ bool containsText(const std::string &exp_text, const std::vector<MPFImageLocatio
 bool containsTag(const std::string &exp_tag, const std::vector<MPFImageLocation> &locations) {
     for (int i = 0; i < locations.size(); i++) {
         std::string text = locations[i].detection_properties.at("TAGS");
-        
+
         if(text.find(exp_tag)!= std::string::npos)
             return true;
     }
@@ -172,10 +134,3 @@ TEST(TESSERACTOCR, ImageTest) {
 
     ASSERT_TRUE(ocr.Close());
 }
-
-
-
-
-
-
-

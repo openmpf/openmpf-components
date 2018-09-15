@@ -72,6 +72,7 @@ std::string TesseractOCRTextDetection::GetDetectionType() {
     ocr_fset.vowel_min = 0.10;
     ocr_fset.vowel_max = 0.95;
     ocr_fset.correl_limit = 0.52;
+    ocr_fset.invert = false;
 }
 
 /*
@@ -80,40 +81,43 @@ std::string TesseractOCRTextDetection::GetDetectionType() {
  */
 void TesseractOCRTextDetection::SetReadConfigParameters() {
 
-    if(parameters.contains("SHARPEN")) {
+    if (parameters.contains("SHARPEN")) {
         ocr_fset.sharpen = parameters["SHARPEN"].toDouble();
     }
-    if(parameters.contains("SCALE")) {
+    if (parameters.contains("SCALE")) {
         ocr_fset.scale = parameters["SCALE"].toDouble();
     }
-    if(parameters.contains("THRS_FILTER")) {
+    if (parameters.contains("INVERT")) {
+        ocr_fset.invert = (parameters["INVERT"].toInt() > 0);
+    }
+    if (parameters.contains("THRS_FILTER")) {
         ocr_fset.threshold_check = (parameters["THRS_FILTER"].toInt() > 0);
     }
-    if(parameters.contains("HIST_FILTER")) {
+    if (parameters.contains("HIST_FILTER")) {
         ocr_fset.hist_check = (parameters["HIST_FILTER"].toInt() > 0);
     }
-    if(parameters.contains("NUM_ONLY")) {
+    if (parameters.contains("NUM_ONLY")) {
         ocr_fset.num_only_ok = (parameters["NUM_ONLY"].toInt() > 0);
     }
-    if(parameters.contains("MIN_WORD_LEN")) {
+    if (parameters.contains("MIN_WORD_LEN")) {
         ocr_fset.min_word_len = parameters["MIN_WORD_LEN"].toInt();
     }
-    if(parameters.contains("MIN_HIST_SIZE")) {
+    if (parameters.contains("MIN_HIST_SIZE")) {
         ocr_fset.hist_min_char = parameters["MIN_HIST_SIZE"].toInt();
     }
-    if(parameters.contains("MIN_HIST_SCORE")) {
+    if (parameters.contains("MIN_HIST_SCORE")) {
         ocr_fset.correl_limit = parameters["MIN_HIST_SCORE"].toDouble();
     }
-    if(parameters.contains("MAX_ENG_PNCT")) {
+    if (parameters.contains("MAX_ENG_PNCT")) {
         ocr_fset.excess_eng_symbols = parameters["MAX_ENG_PNCT"].toDouble();
     }
-    if(parameters.contains("MAX_FRN_CHAR")) {
+    if (parameters.contains("MAX_FRN_CHAR")) {
         ocr_fset.excess_non_eng_symbols = parameters["MAX_FRN_CHAR"].toDouble();
     }
-    if(parameters.contains("VOWEL_MIN")) {
+    if (parameters.contains("VOWEL_MIN")) {
         ocr_fset.vowel_min = parameters["VOWEL_MIN"].toDouble();
     }
-    if(parameters.contains("VOWEL_MAX")) {
+    if (parameters.contains("VOWEL_MAX")) {
         ocr_fset.vowel_max = parameters["VOWEL_MAX"].toDouble();
     }
 }
@@ -321,7 +325,8 @@ bool TesseractOCRTextDetection::Init() {
 }
 
 /*
- * Sharpen image.
+ * Image preprocessing to improve text extraction.
+ * Sharpens image.
  */
 void TesseractOCRTextDetection::Sharpen(cv::Mat &image, double weight = 1.0) {
     cv::Mat blurred, mask;
@@ -667,17 +672,26 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     }
     cv::cvtColor(image_data,image_data,cv::COLOR_BGR2GRAY);
 
-    //Modification to resize image via user input:
+    // Image preprocessig to improve text extraction results.
+
+    // Rescale amd sharpen image (larger images improve detection results).
     ocr_fset.scale = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SCALE",ocr_fset.scale);
     cv::resize(image_data,image_data,cv::Size(),ocr_fset.scale ,ocr_fset.scale );
     Sharpen(image_data,weight);
     cv::Mat imb,imi;
+    // Image thresholding.
     double thresh_val = cv::threshold(image_data,imb,0,255,cv::THRESH_BINARY|cv::THRESH_OTSU);
-    double min, max;
-    cv::Mat tmp_imb(imb.size(),imb.type());
-    cv::minMaxLoc(imb, &min, &max);
-    tmp_imb.setTo(cv::Scalar::all(max));
-    cv::subtract(tmp_imb,imb,imi);
+    // Image inversion.
+    if (ocr_fset.invert) {
+        double min, max;
+        cv::Mat tmp_imb(imb.size(),imb.type());
+        cv::minMaxLoc(imb, &min, &max);
+        tmp_imb.setTo(cv::Scalar::all(max));
+        cv::subtract(tmp_imb,imb,imi);
+    } else {
+        imi = imb;
+    }
+
     vector<string> results;
     boost::algorithm::split(results, job_name, boost::algorithm::is_any_of(" :"));
     string plugin_path = run_dir + "/TesseractOCR";
@@ -952,6 +966,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
     LOG4CXX_DEBUG(hw_logger_, log_print_str( "[" + job_name + "] About to run tesseract"));
     cv::Mat image;
     ocr_fset.sharpen = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SHARPEN",ocr_fset.sharpen);
+    ocr_fset.invert = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"INVERT",ocr_fset.invert);
 
     if (!get_tesseract_detections(job,ocr_detections, image, ocr_fset.sharpen, psm, lang))
     {
@@ -1015,12 +1030,6 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
         }
 
         image_location.detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(ocr_detections);
-        //if(found_tags_string_split.size() > 0 && found_tags_string.size() > 0)
-        //{
-        //    found_tags_string += ", ";
-        //}
-        //found_tags_string += found_tags_string_split;
-
         image_location.detection_properties["TAGS"] = tag_string;
         locations.push_back(image_location);
     }
