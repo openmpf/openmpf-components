@@ -18,3 +18,13 @@
  is used in a deployment or embedded within another project, it is requested
  that you send an email to opensource@mitre.org in order to let us know where
  this software is being used.
+
+ This software makes use of source code and data files from third party software:
+
+--------------------------------------------------------------------------
+
+The tika-parsers is licensed under the Apache 2.0 License.
+Project Page: https://tika.apache.org/
+Modifications to PDF2XHTML.java to allow for tracking of extracted images.
+
+--------------------------------------------------------------------------
