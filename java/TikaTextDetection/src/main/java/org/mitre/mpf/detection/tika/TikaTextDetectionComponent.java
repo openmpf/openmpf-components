@@ -26,39 +26,24 @@
 
 package org.mitre.mpf.detection.tika;
 
-import org.mitre.mpf.component.api.detection.*;
-import org.mitre.mpf.component.api.detection.util.MPFEnvironmentVariablePathExpander;
-
-import java.util.*;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-
+import org.apache.commons.collections4.MapUtils;
+import org.apache.tika.langdetect.OptimaizeLangDetector;
+import org.apache.tika.language.detect.LanguageResult;
 import org.apache.tika.metadata.Metadata;
-
-import java.lang.StringBuilder;
-
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
-import org.apache.tika.langdetect.OptimaizeLangDetector;
-import org.apache.tika.language.detect.LanguageResult;
-
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.util.Iterator;
-
+import org.mitre.mpf.component.api.detection.*;
+import org.mitre.mpf.component.api.detection.util.MPFEnvironmentVariablePathExpander;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.StringWriter;
-import java.io.PrintWriter;
-
+import java.io.*;
+import java.util.*;
 
 public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
@@ -80,11 +65,8 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
         // Specify filename for tika parsers here.
         File file = new File(mpfGenericJob.getDataUri());
-        String text_output = "";
         String metadata_output = "";
-        String context_output = "";
         List<StringBuilder> page_output = new ArrayList<StringBuilder>();
-
 
         try{
             // Init parser with custom content handler for parsing text per page (PDF/PPTX).
@@ -97,9 +79,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             // Parse file.
             // If the format is .pdf or .pptx, output will be divided by page/slide.
             parser.parse(inputstream, handler, metadata, context);
-            metadata_output = metadata.toString();
-            context_output = context.toString();
-            text_output =  handler.toString();
             page_output = handler.getPages();
 
         } catch (Exception e) {
@@ -109,34 +88,26 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         }
 
         float confidence = -1.0f;
-        int char_limit = 0;
         List<MPFGenericTrack> tracks = new LinkedList<MPFGenericTrack>();
-
-
-
 
         Map<String,String> properties = mpfGenericJob.getJobProperties();
 
         // Acquire tag file.
-        String tag_file = "";
-        if (properties.get("TAGGING_FILE") == null) {
+        String tag_file = MapUtils.getString(properties, "TAGGING_FILE");
+        if (tag_file == null) {
             String rundirectory = this.getRunDirectory();
             if (rundirectory == null || rundirectory.length() < 1)
                 rundirectory = "../plugins";
             tag_file = rundirectory + "/TikaDetection/config/text-tags.json";
-        } else {
-            tag_file = properties.get("TAGGING_FILE") ;
         }
         tag_file = MPFEnvironmentVariablePathExpander.expand(tag_file);
 
         // Set language filtering limit.
-        if (properties.get("CHAR_LIMIT") != null) {
-            char_limit = (new Integer(properties.get("CHAR_LIMIT"))).intValue();
-        }
+        int char_limit = MapUtils.getIntValue(properties, "CHAR_LIMIT", 0);
 
         // Store metadata as a unique track.
         // Disabled by default for format consistency.
-        if(properties.get("STORE_METADATA") == "true"){
+        if (MapUtils.getBooleanValue(properties, "STORE_METADATA")){
             Map<String, String> genericDetectionProperties = new HashMap<String, String>();
             genericDetectionProperties.put("METADATA", metadata_output.trim());
             MPFGenericTrack metadataTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
