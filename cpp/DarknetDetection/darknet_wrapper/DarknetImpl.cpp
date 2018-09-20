@@ -52,32 +52,6 @@ using namespace MPF::COMPONENT;
 
 namespace DarknetHelpers {
 
-    ProbHolder::ProbHolder(int output_layer_size, int num_classes)
-        // The make_probs function from the Darknet library allocates num_classes + 1 floats per row.
-        // There is no documentation so it isn't clear why it uses num_classes + 1 instead of just num_classes.
-        : mat_size_(output_layer_size * (num_classes + 1))
-        , prob_mat_(new float[mat_size_]())
-        , prob_row_ptrs_(new float*[output_layer_size])
-    {
-        for (int i = 0; i < output_layer_size; i++) {
-            prob_row_ptrs_[i] = &prob_mat_[i * (num_classes + 1)];
-        }
-    }
-
-    float** ProbHolder::Get() {
-        return prob_row_ptrs_.get();
-    }
-
-    float* ProbHolder::operator[](size_t box_idx) {
-        return prob_row_ptrs_[box_idx];
-    }
-
-    void ProbHolder::Clear() {
-        for (int i = 0; i < mat_size_; i++) {
-            prob_mat_[i] = 0.0f;
-        }
-    }
-
 
     // Darknet uses its own image type, which is a C struct. This class adds two features to the Darknet image type.
     // One is that it adds a destructor, which calls the free_image function defined in the Darknet library.
@@ -139,6 +113,39 @@ namespace DarknetHelpers {
 
 
 namespace {
+    struct DetectionHolder {
+        int num_detections = 0;
+        detection* detections = nullptr;
+
+        DetectionHolder(network &net, const DarknetHelpers::DarknetImageHolder &image_holder,
+                        float confidence_threshold) {
+            // There is no documentation explaining what hier_thresh and nms do,
+            // so we are just using the default values from the Darknet library.
+            float hier_thresh = 0.5;
+            float nms = 0.3;
+
+            set_batch_network(&net, 1);
+            network_predict(&net, image_holder.darknet_image.data);
+            detections = get_network_boxes(&net, image_holder.original_size.width, image_holder.original_size.height,
+                                           confidence_threshold, 0.5, nullptr, 0, &num_detections);
+            layer output_layer = net.layers[net.n - 1];
+            do_nms_sort(detections, num_detections, output_layer.classes, nms);
+        }
+
+        detection* begin() {
+            return detections;
+        }
+
+        detection* end() {
+            return detections + num_detections;
+        }
+
+        ~DetectionHolder() {
+            free_detections(detections, num_detections);
+        }
+    };
+
+
     // Darknet functions that accept C style strings, accept a char* instead of a const char*.
     std::unique_ptr<char[]> ToNonConstCStr(const std::string &str) {
         std::unique_ptr<char[]> result(new char[str.size() + 1]);
@@ -294,8 +301,6 @@ DarknetImpl<ClassFilter>::DarknetImpl(const std::map<std::string, std::string> &
     // Most of these classes will have a probability of zero or a number very close to zero.
     // If the confidence threshold is zero or smaller it will report every possible classification.
     , confidence_threshold_(DetectionComponentUtils::GetProperty(props, "CONFIDENCE_THRESHOLD", 0.5f))
-    , probs_(output_layer_size_, num_classes_)
-    , boxes_(new box[output_layer_size_])
 {
 
 }
@@ -317,40 +322,22 @@ void DarknetImpl<ClassFilter>::Detect(int frame_number, const cv::Mat &cv_image,
 
 template<typename ClassFilter>
 void DarknetImpl<ClassFilter>::Detect(const DarknetHelpers::DarknetImageHolder &image_holder,
-                                      std::vector<DarknetResult> &detections) {
-    probs_.Clear();
+                                      std::vector<DarknetResult> &darknet_results) {
 
-    // There is no documentation explaining what hier_thresh and nms do,
-    // so we are just using the default values from the Darknet library.
-    float hier_thresh = 0.5;
-    float nms = 0.3;
-    image im = image_holder.darknet_image;
-    set_batch_network(network_.get(), 1);
-    network_predict(network_.get(), im.data);
+    DetectionHolder detection_holder(*network_, image_holder, confidence_threshold_);
 
-    layer l = network_->layers[network_->n-1];
-    if(l.type == REGION){
-        int image_width = image_holder.original_size.width;
-        int image_height = image_holder.original_size.height;
-        get_region_boxes(l, image_width, image_height, network_->w, network_->h,
-                         confidence_threshold_, probs_.Get(),
-                         boxes_.get(), nullptr, 0, nullptr, hier_thresh, 0);
-        do_nms_sort(boxes_.get(), probs_.Get(), l.w*l.h*l.n, l.classes, nms);
-    }
+    for (const detection& detection : detection_holder) {
+        DarknetResult darknet_result(image_holder.frame_number, BoxToRect(detection.bbox, image_holder.original_size));
 
-
-    for (int box_idx = 0; box_idx < output_layer_size_; box_idx++) {
-        DarknetResult detection(image_holder.frame_number, BoxToRect(boxes_[box_idx], image_holder.original_size));
-
-        for (int name_idx = 0; name_idx < num_classes_; name_idx++) {
-            float prob = probs_[box_idx][name_idx];
+        for (int name_idx = 0; name_idx < detection.classes; name_idx++) {
+            float prob = detection.prob[name_idx];
             if (prob >= confidence_threshold_ && class_filter_(names_[name_idx])) {
-                detection.object_type_probs.emplace_back(prob, names_[name_idx]);
+                darknet_result.object_type_probs.emplace_back(prob, names_[name_idx]);
             }
         }
 
-        if (!detection.object_type_probs.empty()) {
-            detections.push_back(std::move(detection));
+        if (!darknet_result.object_type_probs.empty()) {
+            darknet_results.push_back(std::move(darknet_result));
         }
     }
 }
