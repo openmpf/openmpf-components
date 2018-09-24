@@ -468,9 +468,9 @@ TEST(Darknet, TestModelsIniParser) {
             .RegisterField("weights", &ModelSettings::weights_file)
             .ParseIni("tiny yolo", "/opt/share/models/Darknet/");
 
-    ASSERT_EQ(settings.network_config_file, "../plugin/DarknetDetection/models/tiny-yolo.cfg");
+    ASSERT_EQ(settings.network_config_file, "../plugin/DarknetDetection/models/yolov3-tiny.cfg");
     ASSERT_EQ(settings.names_file, "../plugin/DarknetDetection/models/coco.names");
-    ASSERT_EQ(settings.weights_file, "../plugin/DarknetDetection/models/tiny-yolo.weights");
+    ASSERT_EQ(settings.weights_file, "../plugin/DarknetDetection/models/yolov3-tiny.weights");
 }
 
 

@@ -47,28 +47,6 @@
 namespace DarknetHelpers {
     using network_ptr_t = std::unique_ptr<network, decltype(&free_network)>;
 
-
-    // Darknet's network_detect function has a float** parameter that is used to store the probabilities.
-    // The float** is used as a two dimensional array. The first level index is the id of a box,
-    // and the second level index is the id of a classification.
-    class ProbHolder {
-    public:
-        ProbHolder(int output_layer_size, int num_classes);
-
-        float** Get();
-
-        float* operator[](size_t box_idx);
-
-        void Clear();
-
-    private:
-        int mat_size_;
-
-        std::unique_ptr<float[]> prob_mat_;
-
-        std::unique_ptr<float*[]> prob_row_ptrs_;
-    };
-
     struct DarknetImageHolder;
 }
 
@@ -93,12 +71,7 @@ private:
     int num_classes_;
     std::vector<std::string> names_;
     ClassFilter class_filter_;
-
     float confidence_threshold_;
-
-    DarknetHelpers::ProbHolder probs_;
-
-    std::unique_ptr<box[]> boxes_;
 };
 
 

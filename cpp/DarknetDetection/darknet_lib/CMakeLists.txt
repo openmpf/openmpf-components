@@ -56,12 +56,14 @@ set(DARKNET_LIB_SRC_FILES
     src/option_list.c
     src/detection_layer.c
     src/route_layer.c
+    src/upsample_layer.c
     src/box.c
     src/normalization_layer.c
     src/avgpool_layer.c
     src/layer.c
     src/local_layer.c
     src/shortcut_layer.c
+    src/logistic_layer.c
     src/activation_layer.c
     src/rnn_layer.c
     src/gru_layer.c
@@ -71,7 +73,10 @@ set(DARKNET_LIB_SRC_FILES
     src/region_layer.c
     src/reorg_layer.c
     src/tree.c
-    src/lstm_layer.c)
+    src/lstm_layer.c
+    src/l2norm_layer.c
+    src/yolo_layer.c
+    src/iseg_layer.c)
 
 find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0 COMPONENTS opencv_core opencv_highgui)
 
