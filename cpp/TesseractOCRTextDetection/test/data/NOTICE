@@ -1,6 +1,14 @@
 # text-demo.png
-Text extracted from open source project https://github.com/tesseract-ocr/tesseract
+Text extracted from open source project https://github.com/tesseract-ocr/tesseract.
 
-# test-tags.png
-Custom generated image
+# test-keyword.png
+Custom generated image for testing keyword tags.
 
+# test-keywordregex.png
+Custom generated image for testing keyword and regex tags.
+
+# test-regex.png
+Custom generated image for testing regex tags.
+
+# blank.png
+Custom generated image, contains no text.

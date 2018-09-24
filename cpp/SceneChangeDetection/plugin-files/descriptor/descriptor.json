@@ -16,7 +16,11 @@
       "states" : []
     },
     "providesCollection" : {
-      "states" : [],
+      "states" : [
+        "DETECTION",
+        "DETECTION_SCENE",
+        "DETECTION_SCENE_OCV"
+      ],
       "properties" : [
         {
           "name": "FEED_FORWARD_TYPE",

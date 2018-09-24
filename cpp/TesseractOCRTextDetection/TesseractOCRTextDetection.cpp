@@ -652,9 +652,9 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     }
 
 
-    MPFImageReader video_capture(job);
+    MPFImageReader image_reader(job);
     cv::Mat image_data;
-    image_data = video_capture.GetImage();
+    image_data = image_reader.GetImage();
     if( image_data.empty() ) {
         LOG4CXX_WARN(hw_logger_,  "[" + job_name + "] Could not open transformed image and will not return detections" );
         return false;
