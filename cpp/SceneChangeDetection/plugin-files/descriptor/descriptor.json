@@ -3,7 +3,7 @@
   "componentVersion" : "3.0.0",
   "middlewareVersion" :  "3.0.0",
   "sourceLanguage" : "c++",
-  "batchLibrary": "${MPF_HOME}/plugins/SceneChangeDetection/lib/libsceneChange.so",
+  "batchLibrary": "${MPF_HOME}/plugins/SceneChangeDetection/lib/libmpfSceneChange.so",
   "environmentVariables" : [ {
     "name" : "LD_LIBRARY_PATH",
     "value" : "${MPF_HOME}/plugins/SceneChangeDetection/lib:${LD_LIBRARY_PATH}"

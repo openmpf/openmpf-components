@@ -135,7 +135,7 @@ void SceneChangeDetection::SetDefaultParameters() {
     minPercent = 0.95;
 
     // Expected min number of frames between scene changes.
-    minScene = 15; 
+    minScene = 15;
 
     // Toggles each type of detection (true = perform detection).
     do_hist = true;
@@ -217,7 +217,7 @@ bool SceneChangeDetection::EdgeDetector(const cv::Mat &frameGray, cv::Mat &lastF
 
 /*
  * Performs histogram comparison between the last two frames.
- * Returns true when correlation falls below hist_thresh. 
+ * Returns true when correlation falls below hist_thresh.
  */
 bool SceneChangeDetection::HistogramDetector(const cv::Mat &frame, cv::Mat &lastHist)
 {
@@ -366,7 +366,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         int lastFrameNum = frame_index-1;
         int rows, cols;
         const float* ranges[] = { hranges, sranges };
-        
+
         // Initialize the first frame.
         edge_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"EDGE_THRESHOLD",edge_thresh);
         hist_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"HIST_THRESHOLD",hist_thresh);
@@ -380,12 +380,12 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         do_cont = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_CONT",do_cont);
         do_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_THRS",do_thrs);
         do_edge = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_EDGE",do_edge);
-        
+
         double msec = cap.GetProperty(CAP_PROP_POS_MSEC);
         rows = lastFrame.rows;
         cols = lastFrame.cols;
         numPixels = rows * cols;
-        
+
         cvtColor(lastFrame,frameGray,COLOR_BGR2GRAY);
         cv::Mat frameEdges,frameEdgeFinal;
         blur(frameGray,frameEdges,Size(3,3));
@@ -398,15 +398,10 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
              true,
              false );
 
-        while (frame_index < qMin(frame_count, job.stop_frame)) {
-            cv::Mat frame;
-            bool success = cap.Read(frame);
-            if(!success){
-                LOG4CXX_ERROR(logger_, "Error reading frame number " + std::to_string(frame_index) + ".");
-            }
+        cv::Mat frame;
+        while (cap.Read(frame)) {
+
             cvtColor(frame,frameGray,COLOR_BGR2GRAY);
-            
-            
             bool edge_result = do_edge && EdgeDetector(frameGray, lastFrameEdgeFinal);
             bool hist_result = do_hist && HistogramDetector(frame, lastHist);
             bool cont_result = do_cont && ContentDetector(frame, lastFrameHSV);
@@ -441,7 +436,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
 
         cap.Release();
 
-        
+
         return MPF_DETECTION_SUCCESS;
     }
     catch (...) {
@@ -451,4 +446,3 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
 
 MPF_COMPONENT_CREATOR(SceneChangeDetection);
 MPF_COMPONENT_DELETER();
-
