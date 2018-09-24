@@ -11,14 +11,14 @@ detection property PAGE = 0) corresponds to first page of each document by
 default.
 
 The extractor only extracts unique images once per page.
-Images that are reused or duplicated in the pdf are ignored to save processing
-time and avoid infinite recursion. However, modifications were made to the pdf
+Images that are reused or duplicated in the PDF are ignored to save processing
+time and avoid infinite recursion. However, modifications were made to the PDF
 parser to allow for tracking of images repeatedly used across multiple pages.
 If an image occurs across two or more pages it will be extracted once from the
 first page then reported in the detection tracks of the following pages whenever
 it found again.
 
 Images extracted are automatically stored in a directory named after the job in
-the $MPF_HOME artifacts folder. Users can toggle the job parameter
+the $MPF_HOME/share/artifacts directory. Users can toggle the job parameter
 (ORGANIZE_BY_PAGE) to store each set of images in sub-directories labeled by
 page number, otherwise all unique images are stored in the main job directory.
