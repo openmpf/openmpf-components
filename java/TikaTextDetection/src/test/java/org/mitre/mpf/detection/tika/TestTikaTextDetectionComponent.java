@@ -72,13 +72,15 @@ public class TestTikaTextDetectionComponent {
         String textTags = "text-tags.json";
         String rundirectory = tikaComponent.getRunDirectory();
         jobProperties.put("TAGGING_FILE", rundirectory + "/TikaTextDetection/plugin-files/config/"+textTags);
-        jobProperties.put("CHAR_LIMIT", "20");
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "true");
+
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", uri, jobProperties, mediaProperties);
         boolean debug = false;
 
         try {
             List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-            assertEquals("Number of expected tracks does not match.", 8 ,tracks.size());
+            assertEquals("Number of expected tracks does not match.", 9 ,tracks.size());
             // Test each output type.
 
             //Test single keyword tag extraction and text extraction
@@ -92,6 +94,7 @@ public class TestTikaTextDetectionComponent {
             assertEquals("Expected language does not match.", "Japanese", test_track.getDetectionProperties().get("TEXT_LANGUAGE"));
 
             //Test keyword and regex tag extraction. (Two tags should be detected by two filters)
+            //Keyword and regex filters should produce different tags.
             test_track = tracks.get(2);
             assertEquals("Expected regex/keyword tags not found.", "identity document, personal", test_track.getDetectionProperties().get("TAGS"));
 
@@ -102,23 +105,28 @@ public class TestTikaTextDetectionComponent {
 
             //Test no detections.
             test_track = tracks.get(4);
-            assertEquals("Text should be empty", null, test_track.getDetectionProperties().get("TEXT"));
-            assertEquals("Language should be empty", null, test_track.getDetectionProperties().get("TEXT_LANGUAGE"));
-            assertEquals("Tags should be empty", null, test_track.getDetectionProperties().get("TAGS"));
+            assertEquals("Text should be empty", "", test_track.getDetectionProperties().get("TEXT"));
+            assertEquals("Language should be empty", "Unknown", test_track.getDetectionProperties().get("TEXT_LANGUAGE"));
+            assertEquals("Tags should be empty", "" , test_track.getDetectionProperties().get("TAGS"));
 
             //Test multiple keyword tags
             test_track = tracks.get(5);
             assertEquals("Expected keyword tags not found.", "travel, identity document", test_track.getDetectionProperties().get("TAGS"));
 
-            
+
             //Test multiple regex tags
             test_track = tracks.get(6);
             assertEquals("Expected regex tags not found.", "financial, personal", test_track.getDetectionProperties().get("TAGS"));
 
+            //Test text, keyword/regex tags.
+            //Keyword and regex each pick up one different cateogry
+            //followed by 1 combined category for 3 detections in total.
+            test_track = tracks.get(7);
+            assertEquals("Expected tags not found.", "vehicle, financial, personal", test_track.getDetectionProperties().get("TAGS"));
 
             //Test text, keyword/regex tags.
             //Both keyword and regex pick up the same category so only one tag should be output.
-            test_track = tracks.get(7);
+            test_track = tracks.get(8);
             assertThat(test_track.getDetectionProperties().get("TEXT"), containsString("End slide test text"));
             assertEquals("Expected tag not found.", "personal", test_track.getDetectionProperties().get("TAGS"));
 
