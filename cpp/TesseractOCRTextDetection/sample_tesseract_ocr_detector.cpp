@@ -57,6 +57,8 @@ int main(int argc, char* argv[]) {
     Properties media_properties;
     std::string job_name("OCR_test");
     algorithm_properties["TAGGING_FILE"] = "text-tags.json";
+    algorithm_properties["THRS_FILTER"] = "false";
+    algorithm_properties["HIST_FILTER"] = "false";
     algorithm_properties["SHARPEN"] = "1.0";
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
     // Instantiate the component.
@@ -87,5 +89,3 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-
-

@@ -43,6 +43,7 @@
 #include "JSON.h"
 #include "MPFSimpleConfigLoader.h"
 
+
 using namespace MPF;
 using namespace COMPONENT;
 using namespace std;
@@ -373,7 +374,6 @@ std::wstring clean_whitespace(const std::wstring &input)
     wstring result = boost::regex_replace(input,re,L"\n");
 
     wstring result2 = boost::regex_replace(result,re2,L"\\\\n");
-    std::locale locale("en_US");
     result2 = boost::trim_copy(result2);
     return result2;
 
@@ -406,9 +406,11 @@ std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> Tesserac
         LOG4CXX_ERROR(hw_logger_, log_print_str( "[" + job_name + "] ERROR READING JSON FILE AT " + jsonfile_name));
     std::string j;
     std::stringstream buffer2;
+    std::wstring x;
     buffer2 << ifs.rdbuf();
     j = buffer2.str();
-    JSONValue *value = JSON::Parse(j.c_str());
+    x = boost::locale::conv::utf_to_utf<wchar_t>(j);
+    JSONValue *value = JSON::Parse(x.c_str());
     if(value == NULL)
     {
         LOG4CXX_ERROR(hw_logger_, log_print_str( "[" + job_name + "] JSON is corrupted."));
@@ -445,9 +447,6 @@ std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> Tesserac
             }
             iter++;
         }
-    }
-    else{
-        LOG4CXX_WARN(hw_logger_, log_print_str( "[" + job_name + "] TAGS_STRING NOT FOUND."));
     }
 
 

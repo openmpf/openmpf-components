@@ -65,7 +65,8 @@
 		"reservation",
 		"roundtrip",
 		"travel",
-		"trip"]
+		"trip"],
+		"cyrillic-text": ["ИИИИИ"]
 	},
 	"TAGS_BY_REGEX": {
 		"vehicle": [".*auto.*"],

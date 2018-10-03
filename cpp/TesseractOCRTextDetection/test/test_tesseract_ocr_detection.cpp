@@ -35,11 +35,14 @@ using namespace MPF::COMPONENT;
 
 
 MPFImageJob createOCRJob(const std::string &uri){
-	Properties algorithm_properties;
+    Properties algorithm_properties;
     Properties media_properties;
     std::string job_name("OCR_test");
     algorithm_properties["TAGGING_FILE"] = "text-tags.json";
     algorithm_properties["SHARPEN"] = "1.0";
+    algorithm_properties["TESSERACT_LANGUAGE"] = "uzb_cyrl+eng";
+    algorithm_properties["THRS_FILTER"] = "false";
+    algorithm_properties["HIST_FILTER"] = "false";
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
     return job;
 }
@@ -73,7 +76,6 @@ bool containsText(const std::string &exp_text, const std::vector<MPFImageLocatio
 bool containsTag(const std::string &exp_tag, const std::vector<MPFImageLocation> &locations) {
     for (int i = 0; i < locations.size(); i++) {
         std::string text = locations[i].detection_properties.at("TAGS");
-
         if(text.find(exp_tag)!= std::string::npos)
             return true;
     }
@@ -116,20 +118,25 @@ TEST(TESSERACTOCR, ImageTest) {
     results.clear();
 
     runDetections("data/tags-keyword.png", ocr, results);
-    assertTextInImage("data/text-demo.png", "Passenger Passport", results);
-    assertTagInImage("data/text-demo.png", "identity document, travel", results);
+    assertTextInImage("data/tags-keyword.png", "Passenger Passport", results);
+    assertTagInImage("data/tags-keyword.png", "identity document, travel", results);
     results.clear();
 
 
     runDetections("data/tags-keywordregex.png", ocr, results);
-    assertTagInImage("data/text-demo.png", "personal", results);
+    assertTagInImage("data/tags-keywordregex.png", "personal", results);
     results.clear();
 
     runDetections("data/tags-regex.png", ocr, results);
-    assertTagInImage("data/text-demo.png", "financial, personal", results);
+    assertTagInImage("data/tags-regex.png", "financial, personal", results);
     results.clear();
 
     assertEmptyDetection("data/blank.png", ocr, results);
+    results.clear();
+
+    runDetections("data/foreign-text.png", ocr, results);
+    assertTagInImage("data/foreign-text.png", "cyrillic-text, identity document", results);
+    results.clear();
 
 
     ASSERT_TRUE(ocr.Close());
