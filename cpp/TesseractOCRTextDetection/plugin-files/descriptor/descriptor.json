@@ -48,7 +48,7 @@
         },
         {
           "name": "TESSERACT_LANGUAGE",
-          "description": "The language OCR will be done in.",
+          "description": "The language OCR will be done in. Use '+' to separate multiple languages (i.e. 'eng+deu+ara' = english, german, arabic)",
           "type": "STRING",
           "defaultValue": "eng"
         },
