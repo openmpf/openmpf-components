@@ -134,13 +134,13 @@
           "name": "THRS_FILTER",
           "description": "Toggles filtering of OCR results by character frequencies (vowels, punctuation, etc.). Effective for shorter sequences of strings.",
           "type": "BOOLEAN",
-          "defaultValue": "true"
+          "defaultValue": "false"
         },
         {
           "name": "HIST_FILTER",
           "description": "Toggles filtering of OCR results by histogram correlation to english character frequencies. Needs longer sequences of words to be effective.",
           "type": "BOOLEAN",
-          "defaultValue": "true"
+          "defaultValue": "false"
         },
         {
           "name": "NUM_ONLY",
@@ -158,7 +158,7 @@
           "name": "MIN_HIST_SIZE",
           "description": "Specifies minimum number of english characters needed for a histogram comparison. Strings with less than specified number will only go through threshold check to avoid false negatives.",
           "type": "INT",
-          "defaultValue": "45"
+          "defaultValue": "60"
         },
         {
           "name": "MIN_HIST_SCORE",
@@ -168,27 +168,45 @@
         },
         {
           "name": "MAX_ENG_PNCT",
-          "description": "Specifies max fraction of english punctuation in a detection. Default value .35 = any detection with >35% punctuation characters would be removed. Ignores whitespace.",
+          "description": "Specifies max fraction of english punctuation in a detection. Default value .40 = any detection with >40% punctuation characters would be removed. Ignores whitespace.",
           "type": "DOUBLE",
-          "defaultValue": "0.35"
+          "defaultValue": "0.40"
         },
         {
           "name": "MAX_FRN_CHAR",
           "description": "Specifies max fraction of non-english characters in a detection.",
           "type": "DOUBLE",
-          "defaultValue": "0.10"
+          "defaultValue": "0.20"
         },
         {
           "name": "VOWEL_MIN",
           "description": "Specifies min fraction of english vowels in a detection.",
           "type": "DOUBLE",
-          "defaultValue": "0.10"
+          "defaultValue": "0.05"
         },
         {
           "name": "VOWEL_MAX",
           "description": "Specifies max fraction of english vowels in a detection.",
           "type": "DOUBLE",
           "defaultValue": "0.95"
+        },
+        {
+          "name": "ENABLE_ADAPTIVE_THRS",
+          "description": "Enables adaptive image thresholding (instead of otsu threshold). Only works better for images with lighting gradients. Slower than otsu thresholding and thus not enabled by default.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "ADAPTIVE_THRS_BLOCKSIZE",
+          "description": "Specifies pixel radius for calculating adaptive threshold value.",
+          "type": "INT",
+          "defaultValue": "51"
+        },
+        {
+          "name": "ADAPTIVE_THRS_CONSTANT",
+          "description": "Specifies constant subtracted from adaptive threshold mean.",
+          "type": "DOUBLE",
+          "defaultValue": "2"
         }
       ]
     }

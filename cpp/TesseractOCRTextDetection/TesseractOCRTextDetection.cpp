@@ -74,6 +74,9 @@ std::string TesseractOCRTextDetection::GetDetectionType() {
     ocr_fset.vowel_max = 0.95;
     ocr_fset.correl_limit = 0.52;
     ocr_fset.invert = false;
+    ocr_fset.adaptive_thrs = false;
+    ocr_fset.adaptive_thrs_pixel = 11;
+    ocr_fset.adaptive_thrs_c = 0;
 }
 
 /*
@@ -120,6 +123,15 @@ void TesseractOCRTextDetection::SetReadConfigParameters() {
     }
     if (parameters.contains("VOWEL_MAX")) {
         ocr_fset.vowel_max = parameters["VOWEL_MAX"].toDouble();
+    }
+    if (parameters.contains("ENABLE_ADAPTIVE_THRS")) {
+        ocr_fset.adaptive_thrs = (parameters["ENABLE_ADAPTIVE_THRS"].toInt() > 0);
+    }
+    if (parameters.contains("ADAPTIVE_THRS_CONSTANT")) {
+        ocr_fset.adaptive_thrs_c = parameters["ADAPTIVE_THRS_CONSTANT"].toDouble();
+    }
+    if (parameters.contains("ADAPTIVE_THRS_BLOCKSIZE")) {
+        ocr_fset.adaptive_thrs_pixel = parameters["ADAPTIVE_THRS_BLOCKSIZE"].toInt();
     }
 }
 
@@ -293,7 +305,6 @@ bool TesseractOCRTextDetection::Init() {
 
     LOG4CXX_DEBUG(hw_logger_, log_print_str( "[" + job_name + "] " + "Running in directory " + plugin_path));
 
-
     regTable[L"\\\\d"] = L"[[:digit:]]";
     regTable[L"\\\\l"] = L"[[:lower:]]";
     regTable[L"\\\\s"] = L"[[:space:]]";
@@ -358,9 +369,8 @@ inline wstring to_lowercase(const wstring &data)
 inline wstring trim_punc(const wstring &in)
 {
     wstring d2(in);
-    boost::trim_if(d2, [](char c) { return std::ispunct(c, std::locale("en_US"));});
+    boost::trim_if(d2, [](wchar_t c) { return std::ispunct(c, std::locale("en_US.UTF-8"));});
     return d2;
-
 }
 
 /*
@@ -481,7 +491,6 @@ std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> Tesserac
     }
 
     // REGEX STUFF
-
     if (root.find(L"TAGS_BY_REGEX") != root.end() && root[L"TAGS_BY_REGEX"]->IsObject())
     {
         LOG4CXX_DEBUG(hw_logger_, log_print_str( "[" + job_name + "] Regex tags found."));
@@ -665,11 +674,22 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     // Image preprocessig to improve text extraction results.
     // Rescale and sharpen image (larger images improve detection results).
     ocr_fset.scale = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SCALE",ocr_fset.scale);
-    cv::resize(image_data,image_data,cv::Size(),ocr_fset.scale ,ocr_fset.scale );
+    ocr_fset.adaptive_thrs_c = DetectionComponentUtils::GetProperty<double>(job.job_properties,"ADAPTIVE_THRS_CONSTANT",ocr_fset.adaptive_thrs_c);
+    ocr_fset.adaptive_thrs_pixel = DetectionComponentUtils::GetProperty<int>(job.job_properties,"ADAPTIVE_THRS_BLOCKSIZE",ocr_fset.adaptive_thrs_pixel);
+    ocr_fset.adaptive_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_ADAPTIVE_THRS",ocr_fset.adaptive_thrs);
+
+
+    cv::resize(image_data,image_data,cv::Size(),ocr_fset.scale ,ocr_fset.scale);
     Sharpen(image_data,weight);
     cv::Mat imb,imi;
     // Image thresholding.
-    double thresh_val = cv::threshold(image_data,imb,0,255,cv::THRESH_BINARY|cv::THRESH_OTSU);
+    if (ocr_fset.adaptive_thrs) {
+        // Pixel blocksize ranges 5-51 worked for adaptive threshold.
+        cv::adaptiveThreshold(image_data, imb, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY,ocr_fset.adaptive_thrs_pixel, ocr_fset.adaptive_thrs_c);
+    } else {
+        double thresh_val = cv::threshold(image_data, imb, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
+    }
+
     // Image inversion.
     if (ocr_fset.invert) {
         double min, max;
@@ -711,7 +731,8 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
       if( fgets(buffer.data(),128,pipe.get())!=NULL)
         result+=buffer.data();
     }
-    detection = boost::locale::conv::utf_to_utf<wchar_t>(result.data());
+    detection = boost::locale::conv::utf_to_utf<wchar_t>(result);
+
     if(remove((plugin_path + "/"+imname).c_str())!=0)
       LOG4CXX_ERROR(hw_logger_, "[" + job_name + "] error deleting temp image");
 
@@ -917,8 +938,6 @@ set<wstring>  TesseractOCRTextDetection::search_string(const std::wstring &ocr_d
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Found full string tags are: "+ boost::locale::conv::utf_to_utf<char>(found_tags_string));
         return found_keys_string;
 }
-
-
 
 MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, std::vector <MPFImageLocation> &locations)
 {
