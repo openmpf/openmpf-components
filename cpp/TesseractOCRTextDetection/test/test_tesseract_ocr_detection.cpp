@@ -114,7 +114,7 @@ TEST(TESSERACTOCR, ImageTest) {
     runDetections("data/text-demo.png", ocr, results);
     assertTextInImage("data/text-demo.png", "TESTING 123", results);
     assertTextNotInImage("data/text-demo.png", "Ponies", results);
-    assertTagNotInImage("data/text-demo.png", "personal", results);
+    assertTagNotInImage("data/text-demo.png", "selector", results);
     results.clear();
 
     runDetections("data/tags-keyword.png", ocr, results);
@@ -124,18 +124,18 @@ TEST(TESSERACTOCR, ImageTest) {
 
 
     runDetections("data/tags-keywordregex.png", ocr, results);
-    assertTagInImage("data/tags-keywordregex.png", "personal", results);
+    assertTagInImage("data/tags-keywordregex.png", "selector", results);
     results.clear();
 
     runDetections("data/tags-regex.png", ocr, results);
-    assertTagInImage("data/tags-regex.png", "financial, personal", results);
+    assertTagInImage("data/tags-regex.png", "financial, selector", results);
     results.clear();
 
     assertEmptyDetection("data/blank.png", ocr, results);
     results.clear();
 
     runDetections("data/foreign-text.png", ocr, results);
-    assertTagInImage("data/foreign-text.png", "cyrillic-text, identity document", results);
+    assertTagInImage("data/foreign-text.png", "foreign-text, identity document", results);
     results.clear();
 
 

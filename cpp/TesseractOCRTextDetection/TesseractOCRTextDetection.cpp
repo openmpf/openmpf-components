@@ -51,8 +51,7 @@ using log4cxx::Logger;
 using log4cxx::xml::DOMConfigurator;
 
 std::string TesseractOCRTextDetection::GetDetectionType() {
-
-    return "TEXT";
+    return "IMAGE_DATA";
 }
 
 
@@ -369,7 +368,7 @@ inline wstring to_lowercase(const wstring &data)
 inline wstring trim_punc(const wstring &in)
 {
     wstring d2(in);
-    boost::trim_if(d2, [](wchar_t c) { return std::ispunct(c, std::locale("en_US.UTF-8"));});
+    boost::trim_if(d2, [](wchar_t c) { return std::iswpunct(c);});
     return d2;
 }
 
