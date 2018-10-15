@@ -71,7 +71,10 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         bool threshold_check;
         bool hist_check;
         bool invert;
-        bool adaptive_thrs;
+        bool enable_adaptive_thrs;
+        bool enable_otsu_thrs;
+        bool enable_rescale;
+        bool enable_sharpen;
         int adaptive_thrs_pixel;
         int min_word_len;
         int hist_min_char;
@@ -83,6 +86,8 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         double vowel_min;
         double vowel_max;
         double correl_limit;
+        std::string tesseract_lang;
+
     };
 
     QHash<QString, QString> parameters;
@@ -112,9 +117,9 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
     std::string parseRegexCode(boost::regex_constants::error_type etype);
 
-    std::set<std::wstring> search_regex(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex);
-    std::set<std::wstring> search_string(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
-    std::set<std::wstring> search_string_split(const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
+    std::wstring search_regex(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex);
+    std::wstring search_string(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
+    std::wstring search_string_split(const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
 };
 
 }

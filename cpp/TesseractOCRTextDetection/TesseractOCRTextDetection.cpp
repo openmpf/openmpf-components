@@ -73,7 +73,14 @@ std::string TesseractOCRTextDetection::GetDetectionType() {
     ocr_fset.vowel_max = 0.95;
     ocr_fset.correl_limit = 0.52;
     ocr_fset.invert = false;
-    ocr_fset.adaptive_thrs = false;
+
+    ocr_fset.enable_sharpen = false;
+    ocr_fset.enable_rescale = true;
+    ocr_fset.enable_otsu_thrs = false;
+    ocr_fset.enable_adaptive_thrs = false;
+
+    ocr_fset.tesseract_lang = "eng";
+
     ocr_fset.adaptive_thrs_pixel = 11;
     ocr_fset.adaptive_thrs_c = 0;
 }
@@ -123,14 +130,26 @@ void TesseractOCRTextDetection::SetReadConfigParameters() {
     if (parameters.contains("VOWEL_MAX")) {
         ocr_fset.vowel_max = parameters["VOWEL_MAX"].toDouble();
     }
+    if (parameters.contains("ENABLE_SHARPEN")) {
+        ocr_fset.enable_sharpen = (parameters["ENABLE_SHARPEN"].toInt() > 0);
+    }
+    if (parameters.contains("ENABLE_RESCALE")) {
+        ocr_fset.enable_rescale = (parameters["ENABLE_RESCALE"].toInt() > 0);
+    }
+    if (parameters.contains("ENABLE_OTSU_THRS")) {
+        ocr_fset.enable_otsu_thrs = (parameters["ENABLE_OTSU_THRS"].toInt() > 0);
+    }
     if (parameters.contains("ENABLE_ADAPTIVE_THRS")) {
-        ocr_fset.adaptive_thrs = (parameters["ENABLE_ADAPTIVE_THRS"].toInt() > 0);
+        ocr_fset.enable_adaptive_thrs = (parameters["ENABLE_ADAPTIVE_THRS"].toInt() > 0);
     }
     if (parameters.contains("ADAPTIVE_THRS_CONSTANT")) {
         ocr_fset.adaptive_thrs_c = parameters["ADAPTIVE_THRS_CONSTANT"].toDouble();
     }
     if (parameters.contains("ADAPTIVE_THRS_BLOCKSIZE")) {
         ocr_fset.adaptive_thrs_pixel = parameters["ADAPTIVE_THRS_BLOCKSIZE"].toInt();
+    }
+    if (parameters.contains("TESSERACT_LANGUAGE")) {
+        ocr_fset.tesseract_lang = parameters["TESSERACT_LANGUAGE"].toStdString();
     }
 }
 
@@ -668,26 +687,41 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     }else{
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Transformed image opened." );
     }
-    cv::cvtColor(image_data,image_data,cv::COLOR_BGR2GRAY);
+
+
+
+    ocr_fset.scale = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SCALE",ocr_fset.scale);
+    ocr_fset.adaptive_thrs_c = DetectionComponentUtils::GetProperty<double>(job.job_properties,"ADAPTIVE_THRS_CONSTANT", ocr_fset.adaptive_thrs_c);
+    ocr_fset.adaptive_thrs_pixel = DetectionComponentUtils::GetProperty<int>(job.job_properties,"ADAPTIVE_THRS_BLOCKSIZE", ocr_fset.adaptive_thrs_pixel);
+    ocr_fset.enable_adaptive_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_ADAPTIVE_THRS", ocr_fset.enable_adaptive_thrs);
+    ocr_fset.enable_otsu_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_OTSU_THRS", ocr_fset.enable_otsu_thrs);
+    ocr_fset.enable_sharpen = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_SHARPEN", ocr_fset.enable_sharpen);
+    ocr_fset.enable_rescale = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_RESCALE", ocr_fset.enable_rescale);
 
     // Image preprocessig to improve text extraction results.
-    // Rescale and sharpen image (larger images improve detection results).
-    ocr_fset.scale = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SCALE",ocr_fset.scale);
-    ocr_fset.adaptive_thrs_c = DetectionComponentUtils::GetProperty<double>(job.job_properties,"ADAPTIVE_THRS_CONSTANT",ocr_fset.adaptive_thrs_c);
-    ocr_fset.adaptive_thrs_pixel = DetectionComponentUtils::GetProperty<int>(job.job_properties,"ADAPTIVE_THRS_BLOCKSIZE",ocr_fset.adaptive_thrs_pixel);
-    ocr_fset.adaptive_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_ADAPTIVE_THRS",ocr_fset.adaptive_thrs);
 
-
-    cv::resize(image_data,image_data,cv::Size(),ocr_fset.scale ,ocr_fset.scale);
-    Sharpen(image_data,weight);
-    cv::Mat imb,imi;
     // Image thresholding.
-    if (ocr_fset.adaptive_thrs) {
+    if (ocr_fset.enable_otsu_thrs || ocr_fset.enable_adaptive_thrs)
+        cv::cvtColor(image_data,image_data,cv::COLOR_BGR2GRAY);
+    if (ocr_fset.enable_adaptive_thrs) {
         // Pixel blocksize ranges 5-51 worked for adaptive threshold.
-        cv::adaptiveThreshold(image_data, imb, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY,ocr_fset.adaptive_thrs_pixel, ocr_fset.adaptive_thrs_c);
-    } else {
-        double thresh_val = cv::threshold(image_data, imb, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
+        cv::adaptiveThreshold(image_data, image_data, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY,ocr_fset.adaptive_thrs_pixel, ocr_fset.adaptive_thrs_c);
+    } else if (ocr_fset.enable_otsu_thrs) {
+        double thresh_val = cv::threshold(image_data, image_data, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
     }
+
+    // Rescale and sharpen image (larger images improve detection results).
+
+    if (ocr_fset.enable_rescale){
+        cv::resize(image_data,image_data,cv::Size(),ocr_fset.scale ,ocr_fset.scale);
+    }
+    if (ocr_fset.enable_sharpen){
+        Sharpen(image_data,weight);
+    }
+    cv::Mat imb,imi;
+
+    imb = image_data;
+
 
     // Image inversion.
     if (ocr_fset.invert) {
@@ -782,11 +816,11 @@ bool is_only_ascii_whitespace( const std::wstring& str )
 /*
  * Performs regex-tagging of ocr text detection.
  */
-set<wstring> TesseractOCRTextDetection::search_regex(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex)
+std::wstring TesseractOCRTextDetection::search_regex(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex)
 {
         wstring found_tags_regex = L"";
         set<wstring> found_keys_regex;
-        if (json_kvs_regex.size() == 0) return found_keys_regex;
+        if (json_kvs_regex.size() == 0) return found_tags_regex;
 
         for (const auto& kv : json_kvs_regex)
         {
@@ -817,17 +851,17 @@ set<wstring> TesseractOCRTextDetection::search_regex(const std::wstring &ocr_det
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Done searching for regex tags, found: " + to_string(num_found));
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Found regex tags are: "+ boost::locale::conv::utf_to_utf<char>(found_tags_regex));
 
-        return found_keys_regex;
+        return found_tags_regex;
 }
 
 /*
  * Performs split-string-tagging of ocr text detection.
  */
-set<wstring> TesseractOCRTextDetection::search_string_split(const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string)
+std::wstring TesseractOCRTextDetection::search_string_split(const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string)
 {
     wstring found_tags_string = L"";
     set<wstring> found_keys_string;
-    if (json_kvs_string.size() == 0) return found_keys_string;
+    if (json_kvs_string.size() == 0) return found_tags_string;
         boost::wregex rgx(L"\\s+");
         for (const auto& kv : json_kvs_string)
         {
@@ -895,17 +929,17 @@ set<wstring> TesseractOCRTextDetection::search_string_split(const std::vector<st
         }
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Done searching for string tags, found: " + to_string(num_found));
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Found string tags are: "+ boost::locale::conv::utf_to_utf<char>(found_tags_string));
-        return found_keys_string;
+        return found_tags_string;
 }
 
 /*
  * Performs full-string tagging of ocr text detection.
  */
-set<wstring>  TesseractOCRTextDetection::search_string(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string)
+std::wstring  TesseractOCRTextDetection::search_string(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string)
 {
     wstring found_tags_string = L"";
     set<wstring> found_keys_string;
-    if (json_kvs_string.size() == 0) return found_keys_string;
+    if (json_kvs_string.size() == 0) return found_tags_string;
 
         for (const auto& kv : json_kvs_string)
         {
@@ -935,7 +969,7 @@ set<wstring>  TesseractOCRTextDetection::search_string(const std::wstring &ocr_d
         }
         LOG4CXX_DEBUG(hw_logger_, "[" + job_name + "] Done searching for full string tags, found: " + to_string(num_found));
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Found full string tags are: "+ boost::locale::conv::utf_to_utf<char>(found_tags_string));
-        return found_keys_string;
+        return found_tags_string;
 }
 
 MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, std::vector <MPFImageLocation> &locations)
@@ -961,7 +995,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
     }
 
     int psm = DetectionComponentUtils::GetProperty<int>(job.job_properties,"TESSERACT_PSM",3);
-    std::string lang = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,"TESSERACT_LANGUAGE","eng");
+    std::string lang = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,"TESSERACT_LANGUAGE", ocr_fset.tesseract_lang);
 
     LOG4CXX_DEBUG(hw_logger_, log_print_str( "[" + job_name + "] About to read JSON from: " + jsonfile_name));
     auto json_kvs_full = parse_json(jsonfile_name);
@@ -1013,30 +1047,13 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
         auto found_tags_string_split = search_string_split(tokenized,json_kvs_string_split);
         auto found_tags_string = search_string(ocr_detections,json_kvs_string);
 
-        for ( auto tag: found_tags_string_split) {
-            found_tags_string.insert(tag);
+        if (found_tags_string_split.size() > 0 && found_tags_string.size() > 0) {
+            found_tags_string += L", ";
         }
-
-        for ( auto tag: found_tags_regex) {
-            found_tags_string.insert(tag);
-        }
-
-        std::wstring tag_string = L"";
-        int num_found = 0;
-
-        for (auto tags : found_tags_string)
-        {
-            tag_string += tags + L", ";
-            num_found++;
-        }
-
-        if (num_found > 0)
-        {
-            tag_string = tag_string.substr(0,tag_string.size() - 2);
-        }
-
+        found_tags_string += found_tags_string_split;
+        image_location.detection_properties["TAGS_STRING"] = boost::locale::conv::utf_to_utf<char>(found_tags_string);
+        image_location.detection_properties["TAGS_REGEX"] = boost::locale::conv::utf_to_utf<char>(found_tags_regex);
         image_location.detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(ocr_detections);
-        image_location.detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
         locations.push_back(image_location);
     }
 

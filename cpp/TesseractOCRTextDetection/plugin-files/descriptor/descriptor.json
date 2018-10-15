@@ -113,6 +113,30 @@
           "defaultValue": "false"
         },
         {
+          "name": "ENABLE_SHARPEN",
+          "description": "Enables image sharpening as a preprocessing step.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "ENABLE_RESCALE",
+          "description": "Enables image rescaling as a preprocessing step. Combine with image sharpening to improve text resolution.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "ENABLE_OTSU_THRS",
+          "description": "Enables Otsu image thresholding. Adaptive_thrs overrides Otsu when both are enabled. Improves text extraction by converting image to black and white. Works best for images with uniform lighting. For multicolor images with gradients, use adaptive threshold. ",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "ENABLE_ADAPTIVE_THRS",
+          "description": "Enables adaptive image thresholding (overrides Otsu). Works better for images with lighting/color gradients.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
           "name": "SHARPEN",
           "description": "Weight of the sharpening paremeter. Default is 1.0, 0.0 = original image, higher = sharper.",
           "type": "DOUBLE",
@@ -191,12 +215,6 @@
           "defaultValue": "0.95"
         },
         {
-          "name": "ENABLE_ADAPTIVE_THRS",
-          "description": "Enables adaptive image thresholding (instead of otsu threshold). Only works better for images with lighting gradients. Slower than otsu thresholding and thus not enabled by default.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
           "name": "ADAPTIVE_THRS_BLOCKSIZE",
           "description": "Specifies pixel radius for calculating adaptive threshold value.",
           "type": "INT",
@@ -206,7 +224,7 @@
           "name": "ADAPTIVE_THRS_CONSTANT",
           "description": "Specifies constant subtracted from adaptive threshold mean.",
           "type": "DOUBLE",
-          "defaultValue": "2"
+          "defaultValue": "5"
         }
       ]
     }
