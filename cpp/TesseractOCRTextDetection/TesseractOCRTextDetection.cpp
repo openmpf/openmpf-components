@@ -1057,7 +1057,8 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
         locations.push_back(image_location);
     }
 
-    LOG4CXX_DEBUG(hw_logger_, "[" + job_name + "] Processing complete. Generated " + std::to_string(locations.size()) + " dummy image locations.");
+    LOG4CXX_DEBUG(hw_logger_, "[" + job_name + "] Processing complete. Found " + std::to_string(locations.size()) + " tracks.");
+
     return MPF_DETECTION_SUCCESS;
 }
 
