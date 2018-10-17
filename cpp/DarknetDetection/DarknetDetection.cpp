@@ -85,11 +85,13 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
             return MPF_INVALID_PROPERTY;
         }
 
+        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Attempting to open video from \"" << job.data_uri << "\"...")
         MPFVideoCapture video_cap(job);
         if (!video_cap.IsOpened()) {
             LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not open video file: " << job.data_uri);
             return MPF_COULD_NOT_OPEN_DATAFILE;
         }
+        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Successfully opened video file.")
 
         DarknetAsyncDl detector = GetDarknetImpl(job);
 
@@ -99,11 +101,18 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
             frame_number++;
             detector->Submit(frame_number, frame);
         }
+        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Read " << frame_number << " frames from video.")
 
         tracks = GetTracks(job, detector->GetResults());
+
+        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Successfully combined detections in to "
+                << tracks.size() << " tracks.");
+
+        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Attempting to apply reverse transform to tracks...")
         for (MPFVideoTrack &track : tracks) {
             video_cap.ReverseTransform(track);
         }
+        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Successfully applied reverse transform to tracks.")
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
 
@@ -118,6 +127,8 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
 std::vector<MPFVideoTrack> DarknetDetection::GetTracks(const MPFJob &job, std::vector<DarknetResult> &&detections) {
 
     if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
+        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Attempting to generate tracks from " << detections.size()
+                << " detections using PreprocessorTracker...")
         return PreprocessorTracker::GetTracks(std::move(detections));
     }
 
@@ -125,6 +136,8 @@ std::vector<MPFVideoTrack> DarknetDetection::GetTracks(const MPFJob &job, std::v
             job.job_properties, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5);
     double rect_min_overlap = DetectionComponentUtils::GetProperty(
             job.job_properties, "MIN_OVERLAP", 0.5);
+    LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Attempting to generate tracks from " << detections.size()
+                               << " detections using DefaultTracker...")
     return DefaultTracker::GetTracks(number_of_classifications, rect_min_overlap, std::move(detections));
 }
 
@@ -187,12 +200,16 @@ TDarknetDl DarknetDetection::GetDarknetImpl(const MPFJob &job,
     int cuda_device_id = DetectionComponentUtils::GetProperty(job.job_properties, "CUDA_DEVICE_ID", -1);
     if (cuda_device_id >= 0) {
         try {
-            return TDarknetDl(gpu_darknet_lib_path_, creator, deleter, &job.job_properties, &model_settings);
+            LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Attempting to load the GPU version of Darknet...")
+            auto darknetDl = TDarknetDl(gpu_darknet_lib_path_, creator, deleter,
+                                        &job.job_name, &job.job_properties, &model_settings, &logger_);
+            LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Successfully loaded the GPU version of Darknet.")
+            return darknetDl;
         }
         catch (const std::exception &ex) {
             if (DetectionComponentUtils::GetProperty(job.job_properties, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", false)) {
-                LOG4CXX_WARN(logger_,
-                             "An error occured while trying to load the GPU version of Darknet: " << ex.what());
+                LOG4CXX_WARN(logger_, "[" << job.job_name
+                        << "] An error occurred while trying to load the GPU version of Darknet: " << ex.what())
                 LOG4CXX_WARN(logger_, "Falling back to CPU version.");
             }
             else {
@@ -200,7 +217,11 @@ TDarknetDl DarknetDetection::GetDarknetImpl(const MPFJob &job,
             }
         }
     }
-    return TDarknetDl(cpu_darknet_lib_path_, creator, deleter, &job.job_properties, &model_settings);
+    LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Attempting to load the CPU version of Darknet...")
+    auto darknetDl = TDarknetDl(cpu_darknet_lib_path_, creator, deleter,
+                                &job.job_name, &job.job_properties, &model_settings, &logger_);
+    LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Successfully loaded the CPU version of Darknet.")
+    return darknetDl;
 }
 
 

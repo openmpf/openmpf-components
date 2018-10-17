@@ -76,7 +76,8 @@ namespace {
             try {
                 std::string gpu_darknet_lib_path
                         = job.run_directory + "/DarknetDetection/lib/libdarknet_wrapper_cuda.so";
-                return { gpu_darknet_lib_path, creator_fn_name, deleter_fn_name, &job.job_properties, &model_settings };
+                return { gpu_darknet_lib_path, creator_fn_name, deleter_fn_name,
+                            &job.job_name, &job.job_properties, &model_settings, &logger };
             }
             catch (const std::exception &ex) {
                 if (DetectionComponentUtils::GetProperty(job.job_properties, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", false)) {
@@ -91,7 +92,8 @@ namespace {
         }
         std::string cpu_darknet_lib_path
                 = job.run_directory + "/DarknetDetection/lib/libdarknet_wrapper.so";
-        return { cpu_darknet_lib_path, creator_fn_name, deleter_fn_name, &job.job_properties, &model_settings };
+        return { cpu_darknet_lib_path, creator_fn_name, deleter_fn_name,
+                    &job.job_name, &job.job_properties, &model_settings, &logger };
     }
 
     std::function< std::vector<MPFVideoTrack> (std::vector<DarknetResult>&&) >
