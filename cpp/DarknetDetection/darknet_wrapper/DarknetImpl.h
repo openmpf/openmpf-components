@@ -36,6 +36,8 @@
 
 #include <opencv2/core.hpp>
 
+#include <log4cxx/logger.h>
+
 #include <BlockingQueue.h>
 #include <MPFDetectionComponent.h>
 #include <MPFDetectionObjects.h>
@@ -55,7 +57,8 @@ template<typename ClassFilter>
 class DarknetImpl : public DarknetInterface {
 
 public:
-    DarknetImpl(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
+    DarknetImpl(const std::string &job_name, const MPF::COMPONENT::Properties &props,
+                const ModelSettings &settings, log4cxx::LoggerPtr &logger);
 
     std::vector<DarknetResult> Detect(int frame_number, const cv::Mat &cv_image) override;
 
@@ -66,6 +69,8 @@ public:
     cv::Size GetTargetFrameSize();
 
 private:
+    std::string log_prefix_;
+    log4cxx::LoggerPtr logger_;
     DarknetHelpers::network_ptr_t network_;
     int output_layer_size_;
     int num_classes_;
@@ -78,7 +83,8 @@ private:
 
 class DarknetAsyncImpl : public DarknetAsyncInterface {
 public:
-    DarknetAsyncImpl(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
+    DarknetAsyncImpl(const std::string &job_name, const MPF::COMPONENT::Properties &props,
+                     const ModelSettings &settings, log4cxx::LoggerPtr &logger);
 
     ~DarknetAsyncImpl() override;
 
@@ -87,6 +93,10 @@ public:
     std::vector<DarknetResult> GetResults() override;
 
 private:
+    std::string log_prefix_;
+
+    log4cxx::LoggerPtr logger_;
+
     using DarknetQueue = MPF::COMPONENT::BlockingQueue<std::unique_ptr<DarknetHelpers::DarknetImageHolder>>;
     DarknetQueue work_queue_;
 
@@ -97,7 +107,7 @@ private:
     bool get_results_called_ = false;
 
     template<typename ClassFilter>
-    void Init(const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
+    void Init(const std::string &job_name, const MPF::COMPONENT::Properties &props, const ModelSettings &settings);
 
 
     // Runs on a thread spawned by the call to std::async in the Init method.
