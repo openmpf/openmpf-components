@@ -46,7 +46,7 @@ using std::to_string;
 int main(int argc, char* argv[]) {
 
   if ((argc < 2)) {
-        std::cout << "Usage: " << argv[0] << " IMAGE_FILE_URI " << std::endl;
+        std::cout << "Usage: " << argv[0] << " IMAGE_FILE_URI " << " TESSERACT_LANGUAGES(Optional)" <<std::endl;
         return 0;
     }
   else{
@@ -60,6 +60,9 @@ int main(int argc, char* argv[]) {
     algorithm_properties["THRS_FILTER"] = "false";
     algorithm_properties["HIST_FILTER"] = "false";
     algorithm_properties["SHARPEN"] = "1.0";
+    if (argc == 3) {
+        algorithm_properties["TESSERACT_LANGUAGE"] = argv[2];
+    }
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
     // Instantiate the component.
     TesseractOCRTextDetection im;

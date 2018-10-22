@@ -41,24 +41,6 @@
           "defaultValue": "-2"
         },
         {
-          "name": "TAGGING_FILE",
-          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. $MPF_HOME/.../text-tags.json). Supports environment variables.",
-          "type": "STRING",
-          "defaultValue": "text-tags.json"
-        },
-        {
-          "name": "TESSERACT_LANGUAGE",
-          "description": "The language OCR will be done in. Use '+' to separate multiple languages (i.e. 'eng+deu+ara' = english, german, arabic)",
-          "type": "STRING",
-          "defaultValue": "eng"
-        },
-        {
-          "name": "TESSERACT_PSM",
-          "description": "Tesseract Page Segmentation Mode. Refer to Tesseract docs for details.",
-          "type": "INT",
-          "defaultValue": "3"
-        },
-        {
           "name": "SEARCH_REGION_ENABLE_DETECTION",
           "description": "Enable cropping.",
           "type": "BOOLEAN",
@@ -113,6 +95,24 @@
           "defaultValue": "false"
         },
         {
+          "name": "TAGGING_FILE",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. $MPF_HOME/.../text-tags.json). Supports environment variables.",
+          "type": "STRING",
+          "defaultValue": "text-tags.json"
+        },
+        {
+          "name": "TESSERACT_LANGUAGE",
+          "description": "The language OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+ara' = run English, German, Arabic together as one track detection, and 'eng, ara+deu'= run English as the first track and Arabic + German as the second track. Language model files for Arabic, Bulgarian, French, Uzbek, English, and Pashto are stored in plugin-files/bin/tessdata. Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00.",
+          "type": "STRING",
+          "defaultValue": "eng"
+        },
+        {
+          "name": "TESSERACT_PSM",
+          "description": "Tesseract Page Segmentation Mode. Refer to Tesseract docs (https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage) for details.",
+          "type": "INT",
+          "defaultValue": "3"
+        },
+        {
           "name": "ENABLE_SHARPEN",
           "description": "Enables image sharpening as a preprocessing step.",
           "type": "BOOLEAN",
@@ -122,7 +122,7 @@
           "name": "ENABLE_RESCALE",
           "description": "Enables image rescaling as a preprocessing step. Combine with image sharpening to improve text resolution.",
           "type": "BOOLEAN",
-          "defaultValue": "true"
+          "defaultValue": "false"
         },
         {
           "name": "ENABLE_OTSU_THRS",
@@ -134,7 +134,7 @@
           "name": "ENABLE_ADAPTIVE_THRS",
           "description": "Enables adaptive image thresholding (overrides Otsu). Works better for images with lighting/color gradients.",
           "type": "BOOLEAN",
-          "defaultValue": "true"
+          "defaultValue": "false"
         },
         {
           "name": "SHARPEN",
@@ -144,9 +144,9 @@
         },
         {
           "name": "SCALE",
-          "description": "Image rescaling factor. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.4.",
+          "description": "Image rescaling factor. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.6.",
           "type": "DOUBLE",
-          "defaultValue": "2.4"
+          "defaultValue": "2.6"
         },
         {
           "name": "INVERT",
@@ -238,14 +238,6 @@
         {
         "name" : "TAGGING_FILE",
         "value" : "$MPF_HOME/plugins/TesseractOCR/config/text-tags.json"
-        },
-        {
-        "name" : "SHARPEN",
-        "value" : "1.0"
-        },
-        {
-          "name": "TESSERACT_PSM",
-          "value": "3"
         }
     ]
     },
@@ -257,10 +249,6 @@
         {
         "name" : "TAGGING_FILE",
         "value" : "$MPF_HOME/plugins/TesseractOCR/config/text-tags.json"
-        },
-        {
-        "name" : "SHARPEN",
-        "value" : "1.0"
         },
         {
           "name": "AUTO_ROTATE",

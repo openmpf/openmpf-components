@@ -144,6 +144,8 @@ void SceneChangeDetection::SetDefaultParameters() {
     do_cont = true;
     do_thrs = true;
     do_edge = true;
+
+    use_exemplar = true;
 }
 
 /*
@@ -163,6 +165,9 @@ void SceneChangeDetection::SetReadConfigParameters() {
     if (parameters.contains("DO_EDGE")) {
         do_edge = (parameters["DO_EDGE"].toInt() > 0);
     }
+    if (parameters.contains("USE_SCENE_EXEMPLAR")) {
+        use_exemplar = (parameters["USE_SCENE_EXEMPLAR"].toInt() > 0);
+    }
 
     if (parameters.contains("HIST_THRESHOLD")) {
         hist_thresh = parameters["HIST_THRESHOLD"].toDouble();
@@ -180,8 +185,8 @@ void SceneChangeDetection::SetReadConfigParameters() {
         minPercent = parameters["MIN_PERCENT"].toDouble();
     }
 
-    if (parameters.contains("MIN_SCENE")) {
-        minScene = parameters["MIN_SCENE"].toInt();
+    if (parameters.contains("MIN_TRACK_LENGTH")) {
+        minScene = parameters["MIN_TRACK_LENGTH"].toInt();
     }
 }
 
@@ -233,11 +238,7 @@ bool SceneChangeDetection::HistogramDetector(const cv::Mat &frame, cv::Mat &last
              false );
     double val = compareHist(hist,lastHist,CV_COMP_CORREL);
     hist.copyTo(lastHist);
-    if (val <hist_thresh)
-    {
-        return true;
-    }
-    else return false;
+    return val < hist_thresh;
 }
 
 /*
@@ -376,7 +377,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         thrs_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"THRS_THRESHOLD",thrs_thresh);
 
         minPercent = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_PERCENT",minPercent);
-        minScene = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_SCENE",minScene);
+        minScene = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_TRACK_LENGTH",minScene);
 
         do_hist = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_HIST",do_hist);
         do_cont = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_CONT",do_cont);
@@ -427,11 +428,23 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
             auto start_frame = kv.second;
             auto end_frame = kv.first;
             MPFVideoTrack track(start_frame,end_frame-1);
-            track.frame_locations.insert(
-                    std::pair<int,MPFImageLocation>(start_frame + (int)((end_frame-start_frame)/2),
-                        MPFImageLocation(0,0,cols, rows)
-                        )
-                    );
+            if (use_exemplar) {
+                track.frame_locations.insert(
+                        std::pair<int,MPFImageLocation>(start_frame + (int)((end_frame-start_frame)/2),
+                            MPFImageLocation(0,0,cols, rows)
+                            )
+                        );
+            } else {
+                for(int i = start_frame;i<end_frame;i++)
+                {
+                    track.frame_locations.insert(
+                        std::pair<int,MPFImageLocation>(i-start_frame,
+                            MPFImageLocation(0,0,cols, rows)
+                            )
+                        );
+                }
+            }
+
             cap.ReverseTransform(track);
             locations.push_back(track);
         }

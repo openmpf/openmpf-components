@@ -84,9 +84,10 @@
         },
         {
           "name": "MIN_TRACK_LENGTH",
-          "description": "In the context of videos, defines the minimum track length in frames. Tracks shorter than this minimum length will be silently discarded. Default value is defined by the MPF properties file.",
+          "description": "For this module: Sets the minimum frames required for a single scene track. Negative values are equivalent to a minimum length of 0. ",
           "type": "INT",
-          "propertiesKey": "detection.track.minimum.length"
+          "propertiesKey": "detection.track.minimum.length",
+          "defaultValue": 15
         },
         {
           "name": "MIN_OVERLAP",
@@ -173,6 +174,12 @@
           "defaultValue": "true"
         },
         {
+          "name": "USE_SCENE_EXEMPLAR",
+          "description": "By default only the middle frame (exemplar) of each scene is stored. When disabled, each frame in a scene will be stored as an MPFImageLocation.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
           "name": "EDGE_THRESHOLD",
           "description": "Specifies the threshold for edge detection as the percentage of edge pixels that are different from the previous frame. Higher values reduce detection sensitivity. Threshold range 0-255. ",
           "type": "DOUBLE",
@@ -201,12 +208,6 @@
           "description": "Specifies minimum percentage of a frame that falls below THRS_THRESHOLD in order to be detected as a scene fade out. Higher values reduce detection sensitivity.",
           "type": "DOUBLE",
           "defaultValue": "0.95"
-        },
-        {
-          "name": "MIN_SCENE",
-          "description": "Sets the minimum length (frames) required for a single scene. Negative values are equivalent to a minimum length of 0. ",
-          "type": "INT",
-          "defaultValue": "15"
         }
       ]
     }

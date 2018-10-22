@@ -73,7 +73,7 @@ private:
     bool fadeOut;
     int minScene;
 
-    bool do_hist, do_edge, do_cont, do_thrs;
+    bool do_hist, do_edge, do_cont, do_thrs, use_exemplar;
 
     bool EdgeDetector(const cv::Mat &frameGray, cv::Mat &lastFrameEdgeFinal);
     bool HistogramDetector(const cv::Mat &frame, cv::Mat &lastHist);

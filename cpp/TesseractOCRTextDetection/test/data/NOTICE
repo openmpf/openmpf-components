@@ -13,5 +13,8 @@ Custom generated image for testing regex tags.
 # blank.png
 Custom generated image, contains no text.
 
-# foreign-text.png
-Custom generated image, contains foreign and English text.
+# english-bul.png
+Custom generated image, contains English and Bulgarian text from the Universal Declaration of Human Rights (http://www.un.org/en/universal-declaration-human-rights).
+
+# junk-text.png
+Custom generated image containing gibberish text.

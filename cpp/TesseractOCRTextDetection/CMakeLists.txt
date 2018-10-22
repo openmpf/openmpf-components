@@ -58,7 +58,7 @@ endforeach()
 
 
 
-find_package(Boost 1.53.0 COMPONENTS regex locale) 
+find_package(Boost 1.53.0 COMPONENTS regex locale filesystem) 
 include_directories(${Boost_INCLUDE_DIRS})
 
 
