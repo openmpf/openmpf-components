@@ -27,7 +27,9 @@
 #include <map>
 #include <iostream>
 #include <boost/regex.hpp>
-#include <boost/locale/encoding.hpp>
+#include <boost/locale.hpp>
+//#include <boost/locale/generator.hpp>
+//#include <boost/locale/generator.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/regex.hpp>
 #include <boost/filesystem.hpp>
@@ -331,6 +333,11 @@ std::wstring TesseractOCRTextDetection::check_string(const std::wstring &s,const
 bool TesseractOCRTextDetection::Init() {
     job_name = "TesseractOCR initialization";
 
+    //Set global locale
+    boost::locale::generator gen;
+    locale loc = gen("");
+    locale::global(loc);
+
     // Determine where the executable is running
     std::string run_dir = GetRunDirectory();
     if (run_dir == "") {
@@ -398,7 +405,18 @@ bool TesseractOCRTextDetection::Close() {
 inline wstring to_lowercase(const wstring &data)
 {
     wstring d2(data);
-    for(auto& c :d2){towlower(c);}
+    //for(auto& c :d2){towlower(c);}
+    //string t_data = boost::locale::conv::utf_to_utf<char>(data);
+    //string d2 = boost::locale::to_lower(t_data, locale);
+    //wstring result = boost::locale::conv::utf_to_utf<wchar_t>(d2);
+
+    //std::locale loc = std::locale("en_US.UTF-8");
+    //t_data = boost::locale::normalize(t_data);
+    d2 = boost::locale::normalize(d2);
+    //cout << "Before lowercase :" << boost::locale::conv::utf_to_utf<char>(d2) << "\n";
+    d2 = boost::locale::to_lower(d2);
+    //cout << "After lowercase :" << boost::locale::conv::utf_to_utf<char>(d2)  << "\n";
+    //wstring d2 =  boost::locale::conv::utf_to_utf<wchar_t>(t_data);
     return d2;
 }
 
@@ -916,6 +934,7 @@ std::wstring TesseractOCRTextDetection::search_string_split(const std::vector<st
 {
     wstring found_tags_string = L"";
     set<wstring> found_keys_string;
+    //std::locale loc = std::locale("");
     if (json_kvs_string.size() == 0) return found_tags_string;
         boost::wregex rgx(L"\\s+");
         for (const auto& kv : json_kvs_string)
@@ -931,7 +950,10 @@ std::wstring TesseractOCRTextDetection::search_string_split(const std::vector<st
                 {
                     for (const auto& token : tokenized)
                     {
-                        if (boost::iequals(token,value))
+
+                        //std::use_facet<boost::locale::collator<char>>(loc).compare(boost::locale::collator_base::primary, lhs, rhs);
+
+                        if (std::use_facet<boost::locale::collator<wchar_t>>(std::locale()).compare(boost::locale::collator_base::primary,token,value) == 0)
                         {
                             found_keys_string.insert(key);
                             breaker = true;
@@ -951,13 +973,13 @@ std::wstring TesseractOCRTextDetection::search_string_split(const std::vector<st
                                 breaker = true;
                                 break;
                         }
-                        else if (boost::iequals(token,tag_tokens[word_id]))
+                        else if (std::use_facet<boost::locale::collator<wchar_t>>(std::locale()).compare(boost::locale::collator_base::primary,token,tag_tokens[word_id]) == 0)
                         {
                             word_id++;
                         }
                         else if (word_id > 0)
                         {
-                            if (boost::iequals(token,tag_tokens[0]))
+                            if (std::use_facet<boost::locale::collator<wchar_t>>(std::locale()).compare(boost::locale::collator_base::primary,token,tag_tokens[0]) == 0)
                             {
                                 word_id = 1;
                             }
