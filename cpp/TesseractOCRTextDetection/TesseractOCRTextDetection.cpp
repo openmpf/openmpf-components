@@ -929,6 +929,7 @@ std::string TesseractOCRTextDetection::search_regex(const std::string &ocr_detec
 std::string TesseractOCRTextDetection::search_string_split(const std::vector<std::string> &tokenized, const std::map<std::string,std::vector<std::string>> &json_kvs_string)
 {
     string found_tags_string = "";
+    std::locale loc = std::locale();
     set<string> found_keys_string;
     if (json_kvs_string.size() == 0) return found_tags_string;
         boost::regex rgx("\\s+");
@@ -945,7 +946,7 @@ std::string TesseractOCRTextDetection::search_string_split(const std::vector<std
                 {
                     for (const auto& token : tokenized)
                     {
-                        if (boost::iequals(token,value))
+                        if (std::use_facet<boost::locale::collator<char>>(loc).compare(boost::locale::collator_base::primary,token,value) == 0)
                         {
                             found_keys_string.insert(key);
                             breaker = true;
@@ -965,13 +966,13 @@ std::string TesseractOCRTextDetection::search_string_split(const std::vector<std
                                 breaker = true;
                                 break;
                         }
-                        else if (boost::iequals(token,tag_tokens[word_id]))
+                        else if (std::use_facet<boost::locale::collator<char>>(loc).compare(boost::locale::collator_base::primary,token,tag_tokens[word_id]) == 0)
                         {
                             word_id++;
                         }
                         else if (word_id > 0)
                         {
-                            if (boost::iequals(token,tag_tokens[0]))
+                            if (std::use_facet<boost::locale::collator<char>>(loc).compare(boost::locale::collator_base::primary,token,tag_tokens[0]) == 0)
                             {
                                 word_id = 1;
                             }
