@@ -599,12 +599,10 @@ bool TesseractOCRTextDetection::comp_strcmp(const std::string &strHaystack, cons
 /*
  * Check if detection string contains regstr pattern.
  */
-bool TesseractOCRTextDetection::comp_regex(const std::string &t_detection, const std::string  &regstr)
+bool TesseractOCRTextDetection::comp_regex(const std::string &detection, const std::string  &regstr)
 {
     bool found = false;
 
-    std::string detection = t_detection;
-    detection = to_lowercase(detection);
      try {
         boost::regex reg_matcher(regstr, boost::regex_constants::extended);
         boost::smatch m;
@@ -1118,9 +1116,10 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
         }
         else {
             auto tokenized = get_tokens(ocr_detections);
-            auto found_tags_regex = search_regex(ocr_detections,json_kvs_regex);
+            std::string norm_detections = to_lowercase(ocr_detections);
+            auto found_tags_regex = search_regex(norm_detections,json_kvs_regex);
             auto found_tags_string_split = search_string_split(tokenized,json_kvs_string_split);
-            auto found_tags_string = search_string(ocr_detections,json_kvs_string);
+            auto found_tags_string = search_string(norm_detections,json_kvs_string);
 
             if (found_tags_string_split.size() > 0 && found_tags_string.size() > 0) {
                 found_tags_string += ", ";
