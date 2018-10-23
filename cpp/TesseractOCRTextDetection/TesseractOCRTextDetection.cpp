@@ -28,8 +28,6 @@
 #include <iostream>
 #include <boost/regex.hpp>
 #include <boost/locale.hpp>
-//#include <boost/locale/generator.hpp>
-//#include <boost/locale/generator.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/regex.hpp>
 #include <boost/filesystem.hpp>
@@ -45,8 +43,6 @@
 #include <fstream>
 #include "JSON.h"
 #include "MPFSimpleConfigLoader.h"
-
-
 
 using namespace MPF;
 using namespace COMPONENT;
@@ -234,8 +230,6 @@ std::wstring TesseractOCRTextDetection::check_string(const std::wstring &s,const
     //Text could be from an academic source, or a phone number.
     std::wstring eng_num = L"0123456789";
 
-
-
     //Histogram of english characters
     float eng_list[] = {8.167,1.492,2.782,4.253,12.702,2.228,2.015,6.094,
             6.966,0.153,0.772,4.025,2.406,6.749,7.507,1.929,0.095,
@@ -405,18 +399,8 @@ bool TesseractOCRTextDetection::Close() {
 inline wstring to_lowercase(const wstring &data)
 {
     wstring d2(data);
-    //for(auto& c :d2){towlower(c);}
-    //string t_data = boost::locale::conv::utf_to_utf<char>(data);
-    //string d2 = boost::locale::to_lower(t_data, locale);
-    //wstring result = boost::locale::conv::utf_to_utf<wchar_t>(d2);
-
-    //std::locale loc = std::locale("en_US.UTF-8");
-    //t_data = boost::locale::normalize(t_data);
     d2 = boost::locale::normalize(d2);
-    //cout << "Before lowercase :" << boost::locale::conv::utf_to_utf<char>(d2) << "\n";
     d2 = boost::locale::to_lower(d2);
-    //cout << "After lowercase :" << boost::locale::conv::utf_to_utf<char>(d2)  << "\n";
-    //wstring d2 =  boost::locale::conv::utf_to_utf<wchar_t>(t_data);
     return d2;
 }
 
@@ -443,7 +427,6 @@ std::wstring clean_whitespace(const std::wstring &input)
     wstring result2 = boost::regex_replace(result,re2,L"\\\\n");
     result2 = boost::trim_copy(result2);
     return result2;
-
 }
 
 /*
@@ -659,12 +642,8 @@ std::string TesseractOCRTextDetection::parseRegexCode(boost::regex_constants::er
 }
 
 
-
-
-
 string TesseractOCRTextDetection::log_print_str(const string &text)
 {
-    //cout << text << endl;
     return text;
 }
 
@@ -784,7 +763,6 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     boost::algorithm::split(lang_tracks, lang_input, boost::algorithm::is_any_of(","));
 
     for(std::string lang: lang_tracks) {
-        //std::cout << "EVALUATING LANGUAGE: " << lang << "\n";
         //Process each individual language input
         lang = boost::trim_copy(lang);
         std::array<char, 128> buffer;
@@ -804,9 +782,7 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
 
         //Confirm each language model is supported
         for (std::string c_lang : languages) {
-            //std::string c_lang = boost::trim_copy(i_lang);
             std::string language_model = bin_path + "/tessdata/" + c_lang + ".traineddata";
-            //std::cout << "Checking : " << language_model << "\n";
             if (!boost::filesystem::exists( language_model )){
                 missing_lang_model = true;
                 LOG4CXX_WARN(hw_logger_,  "[" + job_name + "] Tesseract language model (" + c_lang
@@ -819,7 +795,6 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         string tesspref = "";
         char* ldpath_v = getenv("LD_LIBRARY_PATH");
         string ldpath = ldpath_v==NULL? "" : string(ldpath_v);
-        //cout << ldpath <<endl;
         ldpath = "LD_LIBRARY_PATH="+plugin_path+"/lib/:"+ldpath;
         tesspref = "TESSDATA_PREFIX="+plugin_path+"/bin/";
         cmdex = tesspref + " "+ldpath + " " + cmdex;
@@ -934,7 +909,7 @@ std::wstring TesseractOCRTextDetection::search_string_split(const std::vector<st
 {
     wstring found_tags_string = L"";
     set<wstring> found_keys_string;
-    //std::locale loc = std::locale("");
+    std::locale loc = std::locale();
     if (json_kvs_string.size() == 0) return found_tags_string;
         boost::wregex rgx(L"\\s+");
         for (const auto& kv : json_kvs_string)
@@ -950,10 +925,7 @@ std::wstring TesseractOCRTextDetection::search_string_split(const std::vector<st
                 {
                     for (const auto& token : tokenized)
                     {
-
-                        //std::use_facet<boost::locale::collator<char>>(loc).compare(boost::locale::collator_base::primary, lhs, rhs);
-
-                        if (std::use_facet<boost::locale::collator<wchar_t>>(std::locale()).compare(boost::locale::collator_base::primary,token,value) == 0)
+                        if (std::use_facet<boost::locale::collator<wchar_t>>(loc).compare(boost::locale::collator_base::primary,token,value) == 0)
                         {
                             found_keys_string.insert(key);
                             breaker = true;
@@ -973,13 +945,13 @@ std::wstring TesseractOCRTextDetection::search_string_split(const std::vector<st
                                 breaker = true;
                                 break;
                         }
-                        else if (std::use_facet<boost::locale::collator<wchar_t>>(std::locale()).compare(boost::locale::collator_base::primary,token,tag_tokens[word_id]) == 0)
+                        else if (std::use_facet<boost::locale::collator<wchar_t>>(loc).compare(boost::locale::collator_base::primary,token,tag_tokens[word_id]) == 0)
                         {
                             word_id++;
                         }
                         else if (word_id > 0)
                         {
-                            if (std::use_facet<boost::locale::collator<wchar_t>>(std::locale()).compare(boost::locale::collator_base::primary,token,tag_tokens[0]) == 0)
+                            if (std::use_facet<boost::locale::collator<wchar_t>>(loc).compare(boost::locale::collator_base::primary,token,tag_tokens[0]) == 0)
                             {
                                 word_id = 1;
                             }
@@ -1125,9 +1097,10 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
         }
         else {
             auto tokenized = get_tokens(ocr_detections);
-            auto found_tags_regex = search_regex(ocr_detections,json_kvs_regex);
+            std::wstring norm_detections = to_lowercase(ocr_detections);
+            auto found_tags_regex = search_regex(norm_detections,json_kvs_regex);
             auto found_tags_string_split = search_string_split(tokenized,json_kvs_string_split);
-            auto found_tags_string = search_string(ocr_detections,json_kvs_string);
+            auto found_tags_string = search_string(norm_detections,json_kvs_string);
 
             if (found_tags_string_split.size() > 0 && found_tags_string.size() > 0) {
                 found_tags_string += L", ";
