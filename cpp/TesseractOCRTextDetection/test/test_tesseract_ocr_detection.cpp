@@ -176,7 +176,7 @@ TEST(TESSERACTOCR, ImageTest) {
 
     runDetections("data/tags-regex.png", ocr, results);
     //errorfix
-    //assertRegexTagInImage("data/tags-regex.png", "financial, selector", results);
+    assertRegexTagInImage("data/tags-regex.png", "financial, selector", results);
     assertStringTagNotInImage("data/tags-keywordregex.png", "financial, selector", results);
     results.clear();
 
@@ -199,7 +199,7 @@ TEST(TESSERACTOCR, ImageTest) {
 
     runDetections("data/eng-bul.png", ocr, results, custom_properties3);
     //errorfix
-    //assertStringTagInImage("data/eng-bul.png", "foreign-text", results, 1);
+    assertStringTagInImage("data/eng-bul.png", "foreign-text", results, 1);
     assertTextInImage("data/eng-bul.png", "Всички хора се раждат свободни", results, 1);
     assertTextInImage("data/eng-bul.png", "All human beings are born free", results, 0);
 }

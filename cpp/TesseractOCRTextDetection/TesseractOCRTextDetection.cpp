@@ -27,7 +27,7 @@
 #include <map>
 #include <iostream>
 #include <boost/regex.hpp>
-#include <boost/locale/encoding.hpp>
+#include <boost/locale.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/regex.hpp>
 #include <boost/filesystem.hpp>
@@ -329,6 +329,11 @@ std::string TesseractOCRTextDetection::check_string(const std::string &s,const T
 bool TesseractOCRTextDetection::Init() {
     job_name = "TesseractOCR initialization";
 
+    //Set global locale
+    boost::locale::generator gen;
+    locale loc = gen("");
+    locale::global(loc);
+
     // Determine where the executable is running
     std::string run_dir = GetRunDirectory();
     if (run_dir == "") {
@@ -396,7 +401,8 @@ bool TesseractOCRTextDetection::Close() {
 inline string to_lowercase(const string &data)
 {
     string d2(data);
-    for(auto& c :d2){tolower(c);}
+    d2 = boost::locale::normalize(d2);
+    d2 = boost::locale::to_lower(d2);
     return d2;
 }
 
@@ -489,11 +495,10 @@ std::map<std::string,std::map<std::string,std::vector<std::string>>> TesseractOC
             }
             for (unsigned int i = 0; i < array.size(); i++)
             {
-                wstringstream output;
-                output << array[i]->Stringify();
-                wstring ws(output.str());
-                string str(ws.begin(),ws.end());
-                str = str.substr(1,str.size()-2);
+
+                wstring temp = array[i]->Stringify();
+                temp = temp.substr(1, temp.size() - 2);
+                std::string str = boost::locale::conv::utf_to_utf<char>(temp);
                 str = to_lowercase(str);
                 json_kvs_string[term_str].push_back(str);
             }
@@ -521,11 +526,9 @@ std::map<std::string,std::map<std::string,std::vector<std::string>>> TesseractOC
             }
             for (unsigned int i = 0; i < array.size(); i++)
             {
-                wstringstream output;
-                output << array[i]->Stringify();
-                wstring ws(output.str());
-                string str(ws.begin(),ws.end());
-                str = str.substr(1,str.size()-2);
+                wstring temp = array[i]->Stringify();
+                temp = temp.substr(1, temp.size() - 2);
+                std::string str = boost::locale::conv::utf_to_utf<char>(temp);
                 str = to_lowercase(str);
                 json_kvs_string_split[term_str].push_back(str);
             }
@@ -557,11 +560,9 @@ std::map<std::string,std::map<std::string,std::vector<std::string>>> TesseractOC
             for (unsigned int i = 0; i < array.size(); i++)
             {
 
-                wstringstream output;
-                output << array[i]->Stringify();
-                wstring ws(output.str());
-                string str(ws.begin(),ws.end());
-                str = str.substr(1,str.size()-2);
+                wstring temp = array[i]->Stringify();
+                temp = temp.substr(1, temp.size() - 2);
+                std::string str = boost::locale::conv::utf_to_utf<char>(temp);
                 str = fix_regex(str);
                 str = to_lowercase(str);
                 json_kvs_regex[term_str].push_back(str);
@@ -598,9 +599,12 @@ bool TesseractOCRTextDetection::comp_strcmp(const std::string &strHaystack, cons
 /*
  * Check if detection string contains regstr pattern.
  */
-bool TesseractOCRTextDetection::comp_regex(const std::string &detection, const std::string  &regstr)
+bool TesseractOCRTextDetection::comp_regex(const std::string &t_detection, const std::string  &regstr)
 {
     bool found = false;
+
+    std::string detection = t_detection;
+    detection = to_lowercase(detection);
      try {
         boost::regex reg_matcher(regstr, boost::regex_constants::extended);
         boost::smatch m;
