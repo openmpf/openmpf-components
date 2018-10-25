@@ -51,7 +51,7 @@ using log4cxx::Logger;
 using log4cxx::xml::DOMConfigurator;
 
 std::string TesseractOCRTextDetection::GetDetectionType() {
-    return "IMAGE_DATA";
+    return "TEXT";
 }
 
 
@@ -864,11 +864,11 @@ bool is_only_ascii_whitespace( const std::wstring& str )
 /*
  * Performs regex-tagging of ocr text detection.
  */
-std::wstring TesseractOCRTextDetection::search_regex(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex)
+set<wstring> TesseractOCRTextDetection::search_regex(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex)
 {
         wstring found_tags_regex = L"";
         set<wstring> found_keys_regex;
-        if (json_kvs_regex.size() == 0) return found_tags_regex;
+        if (json_kvs_regex.size() == 0) return found_keys_regex;
 
         for (const auto& kv : json_kvs_regex)
         {
@@ -899,18 +899,18 @@ std::wstring TesseractOCRTextDetection::search_regex(const std::wstring &ocr_det
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Done searching for regex tags, found: " + to_string(num_found));
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Found regex tags are: "+ boost::locale::conv::utf_to_utf<char>(found_tags_regex));
 
-        return found_tags_regex;
+        return found_keys_regex;
 }
 
 /*
  * Performs split-string-tagging of ocr text detection.
  */
-std::wstring TesseractOCRTextDetection::search_string_split(const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string)
+set<wstring> TesseractOCRTextDetection::search_string_split(const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string)
 {
     wstring found_tags_string = L"";
     set<wstring> found_keys_string;
     std::locale loc = std::locale();
-    if (json_kvs_string.size() == 0) return found_tags_string;
+    if (json_kvs_string.size() == 0) return found_keys_string;
         boost::wregex rgx(L"\\s+");
         for (const auto& kv : json_kvs_string)
         {
@@ -978,17 +978,17 @@ std::wstring TesseractOCRTextDetection::search_string_split(const std::vector<st
         }
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Done searching for string tags, found: " + to_string(num_found));
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Found string tags are: "+ boost::locale::conv::utf_to_utf<char>(found_tags_string));
-        return found_tags_string;
+        return found_keys_string;
 }
 
 /*
  * Performs full-string tagging of ocr text detection.
  */
-std::wstring  TesseractOCRTextDetection::search_string(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string)
+set<wstring> TesseractOCRTextDetection::search_string(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string)
 {
     wstring found_tags_string = L"";
     set<wstring> found_keys_string;
-    if (json_kvs_string.size() == 0) return found_tags_string;
+    if (json_kvs_string.size() == 0) return found_keys_string;
 
         for (const auto& kv : json_kvs_string)
         {
@@ -1018,7 +1018,7 @@ std::wstring  TesseractOCRTextDetection::search_string(const std::wstring &ocr_d
         }
         LOG4CXX_DEBUG(hw_logger_, "[" + job_name + "] Done searching for full string tags, found: " + to_string(num_found));
         LOG4CXX_DEBUG(hw_logger_,  "[" + job_name + "] Found full string tags are: "+ boost::locale::conv::utf_to_utf<char>(found_tags_string));
-        return found_tags_string;
+        return found_keys_string;
 }
 
 MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, std::vector <MPFImageLocation> &locations)
@@ -1102,13 +1102,26 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
             auto found_tags_string_split = search_string_split(tokenized,json_kvs_string_split);
             auto found_tags_string = search_string(norm_detections,json_kvs_string);
 
-            if (found_tags_string_split.size() > 0 && found_tags_string.size() > 0) {
-                found_tags_string += L", ";
+            for ( auto tag: found_tags_string_split) {
+                found_tags_string.insert(tag);
             }
-            found_tags_string += found_tags_string_split;
+            for ( auto tag: found_tags_regex) {
+                found_tags_string.insert(tag);
+            }
+            std::wstring tag_string = L"";
+            int num_found = 0;
+            for (auto tags : found_tags_string)
+            {
+                tag_string += tags + L", ";
+                num_found++;
+            }
+             if (num_found > 0)
+            {
+                tag_string = tag_string.substr(0,tag_string.size() - 2);
+            }
+
             image_location.detection_properties["LANGUAGE"] = ocr_lang;
-            image_location.detection_properties["TAGS_STRING"] = boost::locale::conv::utf_to_utf<char>(found_tags_string);
-            image_location.detection_properties["TAGS_REGEX"] = boost::locale::conv::utf_to_utf<char>(found_tags_regex);
+            image_location.detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
             image_location.detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(ocr_detections);
             locations.push_back(image_location);
         }

@@ -117,9 +117,9 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
     std::string parseRegexCode(boost::regex_constants::error_type etype);
 
-    std::wstring search_regex(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex);
-    std::wstring search_string(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
-    std::wstring search_string_split(const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
+    std::set<std::wstring> search_regex(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex);
+    std::set<std::wstring> search_string(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
+    std::set<std::wstring> search_string_split(const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
 };
 
 }

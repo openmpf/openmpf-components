@@ -81,10 +81,8 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < locations.size(); i++) {
             std::cout << "OCR result: " << i << "\n"
                       << "   metadata = \"" << locations[i].detection_properties.at("TEXT") << "\"" << std::endl;
-            std::cout << "OCR string tags: " << i << "\n"
-                      << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS_STRING") << "\"" << std::endl;
-            std::cout << "OCR regex tags: " << i << "\n"
-                      << "   detected regex tags = \"" << locations[i].detection_properties.at("TAGS_REGEX") << "\"" << std::endl;
+            std::cout << "OCR text tags: " << i << "\n"
+                      << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS") << "\"" << std::endl;
         }
     }
     else {

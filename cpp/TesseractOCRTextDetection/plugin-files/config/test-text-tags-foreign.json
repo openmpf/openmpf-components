@@ -30,7 +30,7 @@
 		"salary",
 		"savings",
 		"transaction"],
-		"selector": ["3G",
+		"personal": ["3G",
 		"4G",
 		"cellular",
 		"email",
@@ -70,7 +70,7 @@
 	},
 	"TAGS_BY_REGEX": {
 		"vehicle": [".*auto.*"],
-		"selector": [".*birth.*", ".*\\d{1,3}(—|-)\\d{1,3}(—|-)\\d{2,4}.*", ".*\\d{1,3}/\\d{1,3}/\\d{2,4}.*"],
+		"personal": [".*birth.*", ".*\\d{1,3}(—|-)\\d{1,3}(—|-)\\d{2,4}.*", ".*\\d{1,3}/\\d{1,3}/\\d{2,4}.*"],
 		"financial": [".*financ.*"]
 	}
 }

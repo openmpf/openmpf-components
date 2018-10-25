@@ -86,30 +86,15 @@ bool containsText(const std::string &exp_text, const std::vector<MPFImageLocatio
     return false;
 }
 
-bool containsStringTag(const std::string &exp_tag, const std::vector<MPFImageLocation> &locations, int index = -1) {
+bool containsTag(const std::string &exp_tag, const std::vector<MPFImageLocation> &locations, int index = -1) {
     if (index != -1) {
-        std::string text = locations[index].detection_properties.at("TAGS_STRING");
+        std::string text = locations[index].detection_properties.at("TAGS");
         if(text.find(exp_tag)!= std::string::npos)
             return true;
         return false;
     }
     for (int i = 0; i < locations.size(); i++) {
-        std::string text = locations[i].detection_properties.at("TAGS_STRING");
-        if(text.find(exp_tag)!= std::string::npos)
-            return true;
-    }
-    return false;
-}
-
-bool containsRegexTag(const std::string &exp_tag, const std::vector<MPFImageLocation> &locations, int index = -1) {
-    if (index != -1) {
-        std::string text = locations[index].detection_properties.at("TAGS_REGEX");
-        if(text.find(exp_tag)!= std::string::npos)
-            return true;
-        return false;
-    }
-    for (int i = 0; i < locations.size(); i++) {
-        std::string text = locations[i].detection_properties.at("TAGS_REGEX");
+        std::string text = locations[i].detection_properties.at("TAGS");
         if(text.find(exp_tag)!= std::string::npos)
             return true;
     }
@@ -121,30 +106,19 @@ void assertTextInImage(const std::string &image_path, const std::string &expecte
                                << "Expected OCR to detect text \"" << expected_text << "\" in " << image_path;
 }
 
-void assertStringTagInImage(const std::string &image_path, const std::string &expected_tag, const std::vector<MPFImageLocation> &locations, int index = -1) {
-    ASSERT_TRUE(containsStringTag(expected_tag, locations, index))
-                               << "Expected OCR to detect keyword tag \"" << expected_tag << "\" in " << image_path;
+void assertTagInImage(const std::string &image_path, const std::string &expected_tag, const std::vector<MPFImageLocation> &locations, int index = -1) {
+    ASSERT_TRUE(containsTag(expected_tag, locations, index))
+                               << "Expected OCR to detect tag \"" << expected_tag << "\" in " << image_path;
 }
-
-void assertRegexTagInImage(const std::string &image_path, const std::string &expected_tag, const std::vector<MPFImageLocation> &locations, int index = -1) {
-    ASSERT_TRUE(containsRegexTag(expected_tag, locations, index))
-                               << "Expected OCR to detect regex tag \"" << expected_tag << "\" in " << image_path;
-}
-
 
 void assertTextNotInImage(const std::string &image_path, const std::string &expected_text, const std::vector<MPFImageLocation> &locations, int index = -1) {
     ASSERT_FALSE(containsText(expected_text, locations, index))
                                << "Expected OCR to NOT detect text \"" << expected_text << "\" in " << image_path;
 }
 
-void assertStringTagNotInImage(const std::string &image_path, const std::string &expected_tag, const std::vector<MPFImageLocation> &locations, int index = -1) {
-    ASSERT_FALSE(containsStringTag(expected_tag, locations, index))
+void assertTagNotInImage(const std::string &image_path, const std::string &expected_tag, const std::vector<MPFImageLocation> &locations, int index = -1) {
+    ASSERT_FALSE(containsTag(expected_tag, locations, index))
                                << "Expected OCR to NOT detect keyword tag \"" << expected_tag << "\" in " << image_path;
-}
-
-void assertRegexTagNotInImage(const std::string &image_path, const std::string &expected_tag, const std::vector<MPFImageLocation> &locations, int index = -1) {
-    ASSERT_FALSE(containsRegexTag(expected_tag, locations, index))
-                               << "Expected OCR to NOT detect regex tag \"" << expected_tag << "\" in " << image_path;
 }
 
 TEST(TESSERACTOCR, ImageTest) {
@@ -158,25 +132,21 @@ TEST(TESSERACTOCR, ImageTest) {
     runDetections("data/text-demo.png", ocr, results);
     assertTextInImage("data/text-demo.png", "TESTING 123", results);
     assertTextNotInImage("data/text-demo.png", "Ponies", results);
-    assertStringTagNotInImage("data/text-demo.png", "selector", results);
-    assertRegexTagNotInImage("data/text-demo.png", "selector", results);
+    assertTagNotInImage("data/text-demo.png", "personal", results);
     results.clear();
 
     runDetections("data/tags-keyword.png", ocr, results);
     assertTextInImage("data/tags-keyword.png", "Passenger Passport", results);
-    assertStringTagInImage("data/tags-keyword.png", "identity document, travel", results);
-    assertRegexTagNotInImage("data/tags-keyword.png", "identity document, travel", results);
+    assertTagInImage("data/tags-keyword.png", "identity document, travel", results);
     results.clear();
 
 
     runDetections("data/tags-keywordregex.png", ocr, results);
-    assertRegexTagInImage("data/tags-keywordregex.png", "selector", results);
-    assertStringTagInImage("data/tags-keywordregex.png", "selector", results);
+    assertTagInImage("data/tags-keywordregex.png", "personal", results);
     results.clear();
 
     runDetections("data/tags-regex.png", ocr, results);
-    assertRegexTagInImage("data/tags-regex.png", "financial, selector", results);
-    assertStringTagNotInImage("data/tags-keywordregex.png", "financial, selector", results);
+    assertTagInImage("data/tags-regex.png", "financial, personal", results);
     results.clear();
 
     assertEmptyDetection("data/blank.png", ocr, results);
@@ -197,7 +167,7 @@ TEST(TESSERACTOCR, ImageTest) {
     std::map<std::string,std::string> custom_properties3 = {{"TESSERACT_LANGUAGE", "eng, bul"}};
 
     runDetections("data/eng-bul.png", ocr, results, custom_properties3);
-    assertStringTagInImage("data/eng-bul.png", "foreign-text", results, 1);
+    assertTagInImage("data/eng-bul.png", "foreign-text", results, 1);
     assertTextInImage("data/eng-bul.png", "Всички хора се раждат свободни", results, 1);
     assertTextInImage("data/eng-bul.png", "All human beings are born free", results, 0);
 }
