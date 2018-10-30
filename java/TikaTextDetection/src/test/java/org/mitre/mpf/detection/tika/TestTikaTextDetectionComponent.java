@@ -87,7 +87,7 @@ public class TestTikaTextDetectionComponent {
             MPFGenericTrack test_track = tracks.get(0);
             assertEquals("Expected language does not match.", "English", test_track.getDetectionProperties().get("TEXT_LANGUAGE"));
             assertEquals("Expected text does not match.", "Testing Text Detection\nSlide 1", test_track.getDetectionProperties().get("TEXT"));
-            assertEquals("Expected keyword tag not found.", "selector", test_track.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected keyword tag not found.", "personal", test_track.getDetectionProperties().get("TAGS"));
 
             //Test language extraction
             test_track = tracks.get(1);
@@ -96,7 +96,7 @@ public class TestTikaTextDetectionComponent {
             //Test keyword and regex tag extraction. (Two tags should be detected by two filters)
             //Keyword and regex filters should produce different tags.
             test_track = tracks.get(2);
-            assertEquals("Expected regex/keyword tags not found.", "identity document, selector", test_track.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected regex/keyword tags not found.", "identity document, personal", test_track.getDetectionProperties().get("TAGS"));
 
 
             //Test single regex tag extraction.
@@ -116,19 +116,19 @@ public class TestTikaTextDetectionComponent {
 
             //Test multiple regex tags
             test_track = tracks.get(6);
-            assertEquals("Expected regex tags not found.", "financial, selector", test_track.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected regex tags not found.", "financial, personal", test_track.getDetectionProperties().get("TAGS"));
 
             //Test text, keyword/regex tags.
             //Keyword and regex each pick up one different cateogry
             //followed by 1 combined category for 3 detections in total.
             test_track = tracks.get(7);
-            assertEquals("Expected tags not found.", "vehicle, financial, selector", test_track.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected tags not found.", "vehicle, financial, personal", test_track.getDetectionProperties().get("TAGS"));
 
             //Test text, keyword/regex tags.
             //Both keyword and regex pick up the same category so only one tag should be output.
             test_track = tracks.get(8);
             assertThat(test_track.getDetectionProperties().get("TEXT"), containsString("End slide test text"));
-            assertEquals("Expected tag not found.", "selector", test_track.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected tag not found.", "personal", test_track.getDetectionProperties().get("TAGS"));
 
 
             // For human testing.
