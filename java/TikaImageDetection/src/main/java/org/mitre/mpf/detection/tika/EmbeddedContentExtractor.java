@@ -50,21 +50,21 @@ import java.util.HashMap;
 
 public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
     private String path;
-    private HashMap<String, String> images_found;
+    private HashMap<String, String> imagesFound;
     private boolean separatePages;
     private int id,pagenum;
-    private ArrayList<StringBuilder> image_map;
+    private ArrayList<StringBuilder> imageMap;
     private StringBuilder current;
     private Path outputPageDir;
-    public EmbeddedContentExtractor(String save_path, boolean separate){
-        path = save_path;
+    public EmbeddedContentExtractor(String savePath, boolean separate){
+        path = savePath;
         pagenum = 0;
-        images_found = new HashMap<String,String>();
+        imagesFound = new HashMap<String,String>();
         separatePages = separate;
         id = 0;
-        image_map = new ArrayList<StringBuilder>();
+        imageMap = new ArrayList<StringBuilder>();
         current = new StringBuilder();
-        image_map.add(current);
+        imageMap.add(current);
         if(separatePages)
             outputPageDir = (new File(path + "/PAGE_" + String.valueOf(pagenum-1))).toPath();
 
@@ -79,21 +79,21 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
     }
 
     public ArrayList<StringBuilder> getImageList() {
-        return image_map;
+        return imageMap;
     }
 
     public boolean shouldParseEmbedded(Metadata metadata) {
         return true;
     }
 
-    public void parseEmbedded(InputStream stream, ContentHandler im_handler, Metadata metadata, boolean outputHtml)
+    public void parseEmbedded(InputStream stream, ContentHandler imHandler, Metadata metadata, boolean outputHtml)
             throws SAXException, IOException {
         //Create a new page
-        int nextpage = Integer.parseInt(im_handler.toString()) - 1;
+        int nextpage = Integer.parseInt(imHandler.toString()) - 1;
         while (pagenum < nextpage) {
             pagenum ++;
             current = new StringBuilder();
-            image_map.add(current);
+            imageMap.add(current);
             if (separatePages) {
                 outputPageDir = (new File(path + "/PAGE_" + String.valueOf(pagenum))).toPath();
             }
@@ -102,10 +102,10 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
 
 
         String cosID = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
-        if (images_found.containsKey(cosID)) {
+        if (imagesFound.containsKey(cosID)) {
             //Skip saving the file but append the file information.
         } else {
-            images_found.put(cosID,"image" + String.valueOf(id) + "." + metadata.get(Metadata.CONTENT_TYPE));
+            imagesFound.put(cosID,"image" + String.valueOf(id) + "." + metadata.get(Metadata.CONTENT_TYPE));
             File outputFPath = new File(outputPageDir.toString() + "/image" + String.valueOf(id) + "." + metadata.get(Metadata.CONTENT_TYPE));
             Path outputPath = outputFPath.toPath();
             Files.deleteIfExists(outputPath);
@@ -114,7 +114,7 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
             id++;
         }
 
-        String filename = images_found.get(cosID);
+        String filename = imagesFound.get(cosID);
         if (current.length() == 0) {
             current.append(filename);
         } else {

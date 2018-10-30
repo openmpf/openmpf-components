@@ -125,13 +125,13 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         // Tika Detection
         // =========================
 
-        String default_save_path = mpfGenericJob.getDataUri();
+        String defaultSavePath = mpfGenericJob.getDataUri();
         Map<String,String> properties = mpfGenericJob.getJobProperties();
         boolean separatePages = false;
 
         if (properties.get("SAVE_PATH") != null) {
-            default_save_path = properties.get("SAVE_PATH");
-            default_save_path = MPFEnvironmentVariablePathExpander.expand(default_save_path);
+            defaultSavePath = properties.get("SAVE_PATH");
+            defaultSavePath = MPFEnvironmentVariablePathExpander.expand(defaultSavePath);
         }
 
         if (properties.get("ORGANIZE_BY_PAGE") != null) {
@@ -139,21 +139,17 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         }
 
         if (mpfGenericJob.getJobName().length() != 0) {
-            default_save_path += "/"+mpfGenericJob.getJobName().split(":")[0];
+            defaultSavePath += "/"+mpfGenericJob.getJobName().split(":")[0];
         }
 
-        String text_output = "";
-        String metadata_output = "";
-        String context_output = "";
-        List<StringBuilder> page_output = new ArrayList<StringBuilder>();
         List<MPFGenericTrack> tracks = new LinkedList<MPFGenericTrack>();
         Integer page = 0;
         float confidence = -1.0f;
-        for (StringBuilder im_list: parseDocument(mpfGenericJob.getDataUri(), default_save_path, separatePages)) {
+        for (StringBuilder imList: parseDocument(mpfGenericJob.getDataUri(), defaultSavePath, separatePages)) {
             Map<String, String> genericDetectionProperties = new HashMap<String, String>();
             genericDetectionProperties.put("PAGE",page.toString());
-            if (im_list.toString().length() > 0) {
-                genericDetectionProperties.put("IMAGE_FILES",im_list.toString());
+            if (imList.toString().length() > 0) {
+                genericDetectionProperties.put("IMAGE_FILES",imList.toString());
             }
             MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
             tracks.add(genericTrack);

@@ -38,32 +38,14 @@ import java.util.ArrayList;
 public class ImageExtractionContentHandler extends ToTextContentHandler{
     private String pageTag = "div";
     protected int pageNumber = 0;
-    //public StringBuilder text_results;
-    //public ArrayList<StringBuilder> page_map;
-
-    //public StringBuilder image_results;
-    //public ArrayList<StringBuilder> image_map;
-
-    private boolean skip_title;
-
-    //private ArrayList<String> image_list;
-    //private List<MPFGenericTrack> tracks;
+    private boolean skipTitle;
 
     public ImageExtractionContentHandler(){
         super();
         pageTag = "div";
         pageNumber = 0;
         // Enable to avoid storing metadata/title text from ppt document.
-        skip_title = true;
-
-        //text_results = new StringBuilder();
-        //page_map = new ArrayList<StringBuilder>();
-        //page_map.add(new StringBuilder());
-        //image_map = new ArrayList<StringBuilder>();
-        //image_map.add(new StringBuilder());
-
-        //tracks = new ArrayList<MPFGenericTrack>();
-        //tracks.add(new )
+        skipTitle = true;
     }
 
     public void startElement (String uri, String localName, String qName, Attributes atts) throws SAXException  {
@@ -71,9 +53,9 @@ public class ImageExtractionContentHandler extends ToTextContentHandler{
            startPage();
         }
         if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
-            if (skip_title) {
+            if (skipTitle) {
                 //Skip metadata section of pptx.
-                skip_title = false;
+                skipTitle = false;
                 //Discard title text. (not part of slide text nor master slide content).
                 resetPage();
             } else {
@@ -90,27 +72,12 @@ public class ImageExtractionContentHandler extends ToTextContentHandler{
     }
 
     public void characters(char[] ch, int start, int length) throws SAXException {
-        if (length > 0) {
-            //text_results.append(ch);
-            //page_map.get(pageNumber).append(ch);
-        }
+        return;
     }
 
-/*
-    public void insertImage(String imagefile) {
-        if (image_map.get(pageNumber).length() == 0) {
-            image_map.get(pageNumber).append(imagefile);
-        } else {
-            image_map.get(pageNumber).append(", ");
-            image_map.get(pageNumber).append(imagefile);
-        }
-
-    }*/
 
     protected void startPage() throws SAXException {
         pageNumber ++;
-        //page_map.add(new StringBuilder());
-        //image_map.add(new StringBuilder());
     }
 
     protected void endPage() throws SAXException {
@@ -119,15 +86,7 @@ public class ImageExtractionContentHandler extends ToTextContentHandler{
 
     protected void resetPage() throws SAXException {
         pageNumber = 0;
-        //page_map.clear();
-        //page_map.add(new StringBuilder());
-        //image_map.clear();
-        //image_map.add(new StringBuilder());
     }
-/*
-    public ArrayList<StringBuilder> getImageList() {
-        return image_map;
-    }*/
 
     public String toString(){
         return String.valueOf(pageNumber);
@@ -137,8 +96,4 @@ public class ImageExtractionContentHandler extends ToTextContentHandler{
         return pageNumber;
     }
 
-    // Returns the text detections, subdivided by page number.
-    //public ArrayList<StringBuilder> getPages(){
-//        return page_map;
-    //}
 }
