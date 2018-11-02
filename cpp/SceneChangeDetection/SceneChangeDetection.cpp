@@ -185,8 +185,8 @@ void SceneChangeDetection::SetReadConfigParameters() {
         minPercent = parameters["MIN_PERCENT"].toDouble();
     }
 
-    if (parameters.contains("MIN_TRACK_LENGTH")) {
-        minScene = parameters["MIN_TRACK_LENGTH"].toInt();
+    if (parameters.contains("MIN_FADEOUT_SCENECHANGE_LENGTH")) {
+        minScene = parameters["MIN_FADEOUT_SCENECHANGE_LENGTH"].toInt();
     }
 }
 
@@ -377,7 +377,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         thrs_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties,"THRS_THRESHOLD",thrs_thresh);
 
         minPercent = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_PERCENT",minPercent);
-        minScene = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_TRACK_LENGTH",minScene);
+        minScene = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_FADEOUT_SCENECHANGE_LENGTH",minScene);
 
         do_hist = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_HIST",do_hist);
         do_cont = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"DO_CONT",do_cont);
