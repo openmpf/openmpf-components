@@ -68,8 +68,8 @@
 		"trip"]
 	},
 	"TAGS_BY_REGEX": {
-		"vehicle": [".*auto.*"],
-		"selector": [".*birth.*", ".*\\d{1,3}(—|-)\\d{1,3}(—|-)\\d{2,4}.*", ".*\\d{1,3}/\\d{1,3}/\\d{2,4}.*"],
-		"financial": [".*financ.*"]
+		"vehicle": ["auto"],
+		"selector": ["birth", "\\d{1,3}(—|-)\\d{1,3}(—|-)\\d{2,4}", "\\d{1,3}/\\d{1,3}/\\d{2,4}"],
+		"financial": ["financ"]
 	}
 }
