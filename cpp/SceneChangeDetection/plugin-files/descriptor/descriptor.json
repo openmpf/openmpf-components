@@ -84,10 +84,9 @@
         },
         {
           "name": "MIN_TRACK_LENGTH",
-          "description": "For this module: Sets the minimum frames required for a single scene track. Negative values are equivalent to a minimum length of 0. ",
+          "description": "In the context of videos, defines the minimum track length in frames. Tracks shorter than this minimum length will be silently discarded. Default value is defined by the OpenMPF properties file.",
           "type": "INT",
-          "propertiesKey": "detection.track.minimum.length",
-          "defaultValue": 15
+          "propertiesKey": "detection.track.minimum.length"
         },
         {
           "name": "MIN_OVERLAP",
@@ -208,6 +207,12 @@
           "description": "Specifies minimum percentage of a frame that falls below THRS_THRESHOLD in order to be detected as a scene fade out. Higher values reduce detection sensitivity.",
           "type": "DOUBLE",
           "defaultValue": "0.95"
+        },
+        {
+          "name": "MIN_FADEOUT_SCENECHANGE_LENGTH",
+          "description": "Specifies the minimum number of frames required before a scene change detection is allowed. Multiple scene changes occuring within the min frame length are ignored. A value of 0 or less will allow single frames to be reported as individual scenes (not recommended for videos with fadeouts).",
+          "type": "INT",
+          "defaultValue": "15"
         }
       ]
     }
