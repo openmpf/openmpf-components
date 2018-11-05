@@ -30,10 +30,13 @@ together in one track and ',' to run them as separate tracks. Delimiters
 can also be combined for separate multilingual tracks.
 
 Example 1: 'eng+deu+ara' = run English, German, Arabic together as one track detection.
-Example 2: 'eng, ara+deu'= run English as the first track and Arabic + German 
+Example 2: 'eng, ara+deu'= run English as the first track and Arabic + German
 as the second track.
 
-By default this component contains model files for Arabic, Bulgarian, French, Uzbek,
-English, and Pashto. Users may download and load in additional language models
-from https://github.com/tesseract-ocr/tessdata/tree/3.04.00, stored in
-the component's bin/tessdata directory.
+
+By default this component contains model files for Bulgarian (bul),
+Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus),
+Russian (rus), and Spanish (spa). Note the osd language file (osd.traindata) is
+for extraction of script orientation rather than language. Users may download and
+load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00,
+stored in the component's bin/tessdata directory.

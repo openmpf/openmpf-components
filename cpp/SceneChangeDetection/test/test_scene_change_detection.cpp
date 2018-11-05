@@ -26,20 +26,16 @@
 
 #include <string>
 #include <MPFDetectionComponent.h>
-
 #include <gtest/gtest.h>
-
 #include "SceneChangeDetection.h"
 
 using namespace MPF::COMPONENT;
-
-
 
 MPFVideoJob createSceneJob(const std::string &uri){
     Properties algorithm_properties;
     Properties media_properties;
     std::string job_name("Testing Scene Change");
-    MPFVideoJob job(job_name, uri, 0,251,algorithm_properties, media_properties);
+    MPFVideoJob job(job_name, uri, 0, 251, algorithm_properties, media_properties);
     return job;
 }
 
@@ -47,7 +43,6 @@ MPFVideoJob createSceneJob(const std::string &uri){
 void assertScenesDetected(const int &expected, const std::string &video_path,
                                  SceneChangeDetection &scenechange) {
     MPFVideoJob job = createSceneJob(video_path);
-
     std::vector<MPFVideoTrack> detections;
     MPFDetectionError rc = scenechange.GetDetections(job, detections);
 
@@ -63,17 +58,7 @@ TEST(SCENECHANGE, VideoTest) {
 
     SceneChangeDetection scenechange;
     scenechange.SetRunDirectory("../plugin");
-
     ASSERT_TRUE(scenechange.Init());
-
     assertScenesDetected(2,"data/scene_change.mp4", scenechange);
-
     ASSERT_TRUE(scenechange.Close());
 }
-
-
-
-
-
-
-
