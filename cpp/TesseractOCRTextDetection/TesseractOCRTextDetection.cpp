@@ -803,8 +803,8 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         // Reset tesseract for the next language process.
         tess_api.End();
         result = text.get();
-
-        std::pair<std::string, std::string> output_ocr (lang, result);
+        std::wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(result);
+        std::pair<std::string, std::wstring> output_ocr (lang,t_detection);
         detection.push_back(output_ocr);
     }
 
