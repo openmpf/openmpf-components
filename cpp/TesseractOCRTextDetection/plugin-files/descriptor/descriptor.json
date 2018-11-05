@@ -102,7 +102,7 @@
         },
         {
           "name": "TESSERACT_LANGUAGE",
-          "description": "The language OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+ara' = run English, German, Arabic together as one track detection, and 'eng, ara+deu'= run English as the first track and Arabic + German as the second track. Language model files for Arabic, Bulgarian, French, Uzbek, English, and Pashto are stored in plugin-files/bin/tessdata. Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00.",
+          "description": "The language OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+ara' = run English, German, Arabic together as one track detection, and 'eng, ara+deu'= run English as the first track and Arabic + German as the second track. Language model files for Bulgarian (bul), Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus), Russian (rus), and Spanish (spa) are stored in plugin-files/bin/tessdata. Note the osd language file (osd.traindata) is for extraction of script orientation rather than language. Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00.",
           "type": "STRING",
           "defaultValue": "eng"
         },
@@ -242,8 +242,8 @@
     ]
     },
     {
-      "name": "TESSERACT IMAGE OCR ACTION WITH AUTO-ROTATE, FLIP, and PSM1",
-      "description": "Runs Tesseract OCR with auto rotate, flip, and PSM1.",
+      "name": "TESSERACT IMAGE OCR ACTION SPARSE TEXT",
+      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "algorithm": "TESSERACTOCR",
       "properties": [
         {
@@ -251,16 +251,8 @@
         "value" : "$MPF_HOME/plugins/TesseractOCR/config/text-tags.json"
         },
         {
-          "name": "AUTO_ROTATE",
-          "value": "true"
-        },
-        {
-          "name": "AUTO_FLIP",
-          "value": "true"
-        },
-        {
           "name": "TESSERACT_PSM",
-          "value": "1"
+          "value": "11"
         }
 
     ]
@@ -275,10 +267,10 @@
       ]
     },
     {
-      "name": "TESSERACT IMAGE OCR TASK WITH AUTO-ROTATE, FLIP, and PSM1",
-      "description": "Runs Tesseract OCR with auto rotate, flip, and PSM1.",
+      "name": "TESSERACT IMAGE OCR TASK SPARSE TEXT",
+      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "actions": [
-        "TESSERACT IMAGE OCR ACTION WITH AUTO-ROTATE, FLIP, and PSM1"
+        "TESSERACT IMAGE OCR ACTION SPARSE TEXT"
       ]
     }
   ],
@@ -291,10 +283,10 @@
       ]
     },
     {
-      "name": "TESSERACT IMAGE OCR PIPELINE WITH AUTO-ROTATE, FLIP, and PSM1",
-      "description": "Runs Tesseract OCR with auto rotate, flip, and PSM1.",
+      "name": "TESSERACT IMAGE OCR PIPELINE SPARSE TEXT",
+      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "tasks": [
-        "TESSERACT IMAGE OCR TASK WITH AUTO-ROTATE, FLIP, and PSM1"
+        "TESSERACT IMAGE OCR TASK SPARSE TEXT"
       ]
     }
   ]

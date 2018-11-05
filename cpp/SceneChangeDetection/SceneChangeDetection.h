@@ -75,10 +75,10 @@ private:
 
     bool do_hist, do_edge, do_cont, do_thrs, use_exemplar;
 
-    bool EdgeDetector(const cv::Mat &frameGray, cv::Mat &lastFrameEdgeFinal);
-    bool HistogramDetector(const cv::Mat &frame, cv::Mat &lastHist);
-    bool ContentDetector(const cv::Mat &frame, cv::Mat &lastFrameHSV);
-    bool ThresholdDetector(const cv::Mat &frame, cv::Mat &lastFrame);
+    bool DetectChangeEdges(const cv::Mat &frameGray, cv::Mat &lastFrameEdgeFinal);
+    bool DetectChangeHistogram(const cv::Mat &frame, cv::Mat &lastHist);
+    bool DetectChangeContent(const cv::Mat &frame, cv::Mat &lastFrameHSV);
+    bool DetectChangeThreshold(const cv::Mat &frame, cv::Mat &lastFrame);
 
 
     int histSize[2] = {30,32};
