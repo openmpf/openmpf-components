@@ -43,6 +43,7 @@
 #include <fstream>
 #include "JSON.h"
 #include "MPFSimpleConfigLoader.h"
+#include <tesseract/baseapi.h>
 
 using namespace MPF;
 using namespace COMPONENT;
@@ -698,6 +699,8 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         run_dir = ".";
     }
 
+    tesseract::TessBaseAPI tess_api;
+
 
     MPFImageReader image_reader(job);
     cv::Mat image_data;
@@ -755,20 +758,16 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     vector<string> results;
     boost::algorithm::split(results, job_name, boost::algorithm::is_any_of(" :"));
     string plugin_path = run_dir + "/TesseractOCR";
-    string imname = random_string(20)+(results.size()>1 ? results[1] : "_")+".png";
-    LOG4CXX_DEBUG(hw_logger_,"[" + job_name + "] Creating temporary image "+plugin_path + "/"+imname);
-    cv::imwrite(plugin_path + "/"+imname,imi);
 
     vector<std::string> lang_tracks;
     boost::algorithm::split(lang_tracks, lang_input, boost::algorithm::is_any_of(","));
-
+    std::string tessdata_path =  plugin_path+"/bin/tessdata";
     for(std::string lang: lang_tracks) {
-        //Process each individual language input
+        // Process each language specified by user.
         lang = boost::trim_copy(lang);
         std::array<char, 128> buffer;
         std::string result;
         std::string bin_path = plugin_path+"/bin";
-
 
         bool missing_lang_model = false;
         vector<std::string> languages;
@@ -778,10 +777,10 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         }
 
         lang = boost::algorithm::join(languages,"+");
-        std::string cmdex = bin_path + "/tesseract -l " + lang + " -psm " + std::to_string(psm) + " " + plugin_path + "/"+imname+" stdout";
 
-        //Confirm each language model is supported
+        // Confirm each language model is supported.
         for (std::string c_lang : languages) {
+
             std::string language_model = bin_path + "/tessdata/" + c_lang + ".traineddata";
             if (!boost::filesystem::exists( language_model )){
                 missing_lang_model = true;
@@ -791,31 +790,23 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
             }
         }
 
-        LOG4CXX_DEBUG(hw_logger_, "[" + job_name + "] About to call tesseract with command: " + cmdex);
-        string tesspref = "";
-        char* ldpath_v = getenv("LD_LIBRARY_PATH");
-        string ldpath = ldpath_v==NULL? "" : string(ldpath_v);
-        ldpath = "LD_LIBRARY_PATH="+plugin_path+"/lib/:"+ldpath;
-        tesspref = "TESSDATA_PREFIX="+plugin_path+"/bin/";
-        cmdex = tesspref + " "+ldpath + " " + cmdex;
 
-        std::shared_ptr<FILE> pipe(popen(cmdex.c_str(),"r"),pclose);
-        if (!pipe){
-         throw std::runtime_error("popen() failed!");
-         LOG4CXX_ERROR(hw_logger_,  "[" + job_name + "] popen() failed! Tesseract can't be found?");
+        int init_rc = tess_api.Init(tessdata_path.c_str(), lang.c_str());
+        if (init_rc != 0) {
+            LOG4CXX_ERROR(hw_logger_,  "[" + job_name + "] Failed to initialize Tesseract! Error code: " + std::to_string(init_rc));
         }
-        LOG4CXX_DEBUG(hw_logger_, "[" + job_name + "] Tesseract ran");
-        while (!feof(pipe.get())){
-          if( fgets(buffer.data(),128,pipe.get())!=NULL)
-            result+=buffer.data();
-        }
-        std::wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(result);
-        std::pair<std::string, std::wstring> output_ocr (lang,t_detection);
+        tess_api.SetPageSegMode((tesseract::PageSegMode)psm);
+        LOG4CXX_DEBUG(hw_logger_, "[" + job_name + "] About to call tesseract");
+        tess_api.SetImage(imi.data, imi.cols, imi.rows, imi.channels(), static_cast<int>(imi.step));
+        std::unique_ptr<char[]> text { tess_api.GetUTF8Text() };
+
+        // Reset tesseract for the next language process.
+        tess_api.End();
+        result = text.get();
+
+        std::pair<std::string, std::string> output_ocr (lang, result);
         detection.push_back(output_ocr);
     }
-
-    if(remove((plugin_path + "/"+imname).c_str())!=0)
-      LOG4CXX_ERROR(hw_logger_, "[" + job_name + "] error deleting temp image");
 
     return true;
 }
