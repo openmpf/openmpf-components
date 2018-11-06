@@ -34,26 +34,8 @@
 #include "SceneChangeDetection.h"
 #include <QDir>
 
-
 using namespace MPF::COMPONENT;
 using namespace std;
-
-template<typename T>
-vector<T>
-split(const T & str, const T & delimiters) {
-    vector<T> v;
-    typename T::size_type start = 0;
-    auto pos = str.find_first_of(delimiters, start);
-    while(pos != T::npos) {
-        if(pos != start) // Ignore empty tokens.
-            v.emplace_back(str, start, pos - start);
-        start = pos + 1;
-        pos = str.find_first_of(delimiters, start);
-    }
-    if(start < str.length()) // Ignore trailing delimiter.
-        v.emplace_back(str, start, str.length() - start); // Add what's left of the string.
-    return v;
-};
 
 int main(int argc, char* argv[]) {
 
@@ -90,14 +72,8 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    std::cout << "uri is " << uri << std::endl;
-
-    vector<string> v = split<string>(uri, ".");
-    auto lastel = v.back();
-    MPFDetectionDataType media_type;
     {
         std::vector<MPFVideoTrack> detections;
-        media_type = VIDEO;
         Properties media_properties;
         std::string job_name("Testing Scene Change");
         std::cout << "testing scene change" << std::endl;
@@ -115,7 +91,8 @@ int main(int argc, char* argv[]) {
                           << std::endl;
             }
         } else {
-        std::cout << "Scene change getDetections failed!" << std::endl;
+            std::cout << "Scene change detections failed!" << std::endl;
+            return EXIT_FAILURE;
         }
     }
     scene_change_component.Close();

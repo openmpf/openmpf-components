@@ -69,7 +69,6 @@ std::string SceneChangeDetection::GetDetectionType() {
 
 bool SceneChangeDetection::Init() {
 
-    std::string job_name = "SceneChangeDetection initialization";
     // Determine where the executable is running.
     std::string run_dir = GetRunDirectory();
     if (run_dir.empty()) {
@@ -82,7 +81,8 @@ bool SceneChangeDetection::Init() {
     log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("SceneChangeDetection");
 
-    LOG4CXX_DEBUG(logger_, "[" << job_name << "] " << "Running in directory: " << plugin_path);
+    LOG4CXX_DEBUG(logger_, "Plugin path: " << plugin_path);
+    LOG4CXX_INFO(logger_, "Initializing SceneChangeDetection");
 
     // Initialize dilateKernel.
     dilateKernel = getStructuringElement(MORPH_RECT, Size(11, 11), Point(5, 5));
@@ -93,13 +93,14 @@ bool SceneChangeDetection::Init() {
     std::string config_params_path = config_path + "/mpfSceneChangeDetection.ini";
     int rc = LoadConfig(config_params_path, parameters);
     if (rc) {
-        LOG4CXX_ERROR(logger_, "[" << job_name << "] " << "Could not parse config file: " << config_params_path);
+        LOG4CXX_ERROR(logger_, "Could not parse config file: " << config_params_path);
+        keyframes.clear();
         return false;
     }
 
     SetReadConfigParameters();
     keyframes.clear();
-    LOG4CXX_INFO(logger_, "[" << job_name << "] " << "INITIALIZED COMPONENT" );
+    LOG4CXX_INFO(logger_, "INITIALIZED COMPONENT" );
     return true;
 }
 
@@ -180,8 +181,8 @@ void SceneChangeDetection::SetReadConfigParameters() {
     if (parameters.contains("MIN_PERCENT")) {
         minPercent = parameters["MIN_PERCENT"].toDouble();
     }
-    if (parameters.contains("MIN_FADEOUT_SCENECHANGE_LENGTH")) {
-        minScene = parameters["MIN_FADEOUT_SCENECHANGE_LENGTH"].toInt();
+    if (parameters.contains("MIN_SCENECHANGE_LENGTH")) {
+        minScene = parameters["MIN_SCENECHANGE_LENGTH"].toInt();
     }
 }
 
@@ -311,11 +312,11 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         if (job.has_feed_forward_track)
         {
 
-            LOG4CXX_INFO(logger_, "[" << job.job_name << "] " << "STARTING FEEDFORWARD GETDETECTIONS" );
+            LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "STARTING FEEDFORWARD GETDETECTIONS" );
         }
         else
         {
-            LOG4CXX_INFO(logger_, "[" << job.job_name << "] " << "STARTING NO FF GETDETECTIONS" );
+            LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "STARTING NO FF GETDETECTIONS" );
         }
 
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "Data URI = " << job.data_uri);
@@ -333,7 +334,6 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         if (!cap.IsOpened()) {
             LOG4CXX_ERROR(logger_, "[" << job.job_name << "] " << "Could not open video file: " + job.data_uri);
             keyframes.clear();
-            cap.Release();
             return MPF_COULD_NOT_OPEN_DATAFILE;
         }
 
@@ -356,7 +356,6 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
             if(!success){
                 LOG4CXX_ERROR(logger_, "[" << job.job_name << "] " << "Error reading frame number " + std::to_string(job.start_frame) + ".");
                 keyframes.clear();
-                cap.Release();
                 return MPF_COULD_NOT_READ_DATAFILE;
             }
         }
@@ -377,12 +376,14 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         thrs_thresh = DetectionComponentUtils::GetProperty<double>(job.job_properties, "THRS_THRESHOLD", thrs_thresh);
 
         minPercent = DetectionComponentUtils::GetProperty<double>(job.job_properties, "MIN_PERCENT", minPercent);
-        minScene = DetectionComponentUtils::GetProperty<int>(job.job_properties, "MIN_FADEOUT_SCENECHANGE_LENGTH", minScene);
+        minScene = DetectionComponentUtils::GetProperty<int>(job.job_properties, "MIN_SCENECHANGE_LENGTH", minScene);
 
         do_hist = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "DO_HIST", do_hist);
         do_cont = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "DO_CONT", do_cont);
         do_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "DO_THRS", do_thrs);
         do_edge = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "DO_EDGE", do_edge);
+
+        use_exemplar = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "USE_SCENE_EXEMPLAR", use_exemplar);
 
         double msec = cap.GetProperty(CAP_PROP_POS_MSEC);
         rows = lastFrame.rows;
@@ -449,16 +450,14 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
             locations.push_back(track);
         }
 
-        cap.Release();
         keyframes.clear();
-
-
+        LOG4CXX_DEBUG(logger_, "[" + job.job_name + "] Processing complete. Found " + std::to_string(locations.size()) + " tracks.");
         return MPF_DETECTION_SUCCESS;
     }
     catch (...) {
+        keyframes.clear();
         return Utils::HandleDetectionException(job, logger_);
     }
-    keyframes.clear();
 }
 
 MPF_COMPONENT_CREATOR(SceneChangeDetection);

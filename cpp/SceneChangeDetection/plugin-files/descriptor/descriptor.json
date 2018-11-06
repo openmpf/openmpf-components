@@ -209,7 +209,7 @@
           "defaultValue": "0.95"
         },
         {
-          "name": "MIN_FADEOUT_SCENECHANGE_LENGTH",
+          "name": "MIN_SCENECHANGE_LENGTH",
           "description": "Specifies the minimum number of frames required before a scene change detection is allowed. Multiple scene changes occuring within the min frame length are ignored. A value of 0 or less will allow single frames to be reported as individual scenes (not recommended for videos with fadeouts).",
           "type": "INT",
           "defaultValue": "15"

@@ -28,7 +28,7 @@
 <log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
 
   <!-- Output the log message to log file-->
-  <appender name="SCENECHANGE-DETECTION-VIDEO-FILE" class="org.apache.log4j.DailyRollingFileAppender">
+  <appender name="SCENECHANGE-DETECTION-FILE" class="org.apache.log4j.DailyRollingFileAppender">
     <param name="file" value="${MPF_LOG_PATH}/${THIS_MPF_NODE}/log/scenechange-detection.log" />
     <param name="DatePattern" value="'.'yyyy-MM-dd" />
     <layout class="org.apache.log4j.PatternLayout">
@@ -38,7 +38,7 @@
 
   <logger name="SceneChangeDetection" additivity="false">
     <level value="INFO"/>
-    <appender-ref ref="SCENECHANGE-DETECTION-VIDEO-FILE"/>
+    <appender-ref ref="SCENECHANGE-DETECTION-FILE"/>
   </logger>
 
  </log4j:configuration>
