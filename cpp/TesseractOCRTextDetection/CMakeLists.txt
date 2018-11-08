@@ -25,7 +25,7 @@
 #############################################################################
 
 cmake_minimum_required(VERSION 3.6)
-project(TesseractOCR)
+project(TesseractOCRTextDetection)
 ADD_DEFINITIONS("-std=c++11")
 include(../ComponentSetup.cmake)
 
@@ -58,7 +58,7 @@ endforeach()
 
 
 
-find_package(Boost 1.53.0 COMPONENTS regex locale filesystem) 
+find_package(Boost 1.53.0 COMPONENTS regex locale filesystem)
 include_directories(${Boost_INCLUDE_DIRS})
 
 
@@ -68,16 +68,16 @@ set(OCR_SOURCE_FILES
 
 
 # Build library
-add_library(mpfTesseractOCR SHARED ${OCR_SOURCE_FILES})
+add_library(mpfTesseractOCRTextDetection SHARED ${OCR_SOURCE_FILES})
 
 
-target_link_libraries(mpfTesseractOCR mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${TESSERACT_LIB} ${LEPT_LIB} ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(mpfTesseractOCRTextDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${TESSERACT_LIB} ${LEPT_LIB} ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES})
 
-configure_mpf_component(TesseractOCR TARGETS  mpfTesseractOCR EXTRA_LIB_PATHS "${extra_lib_dirs}")
+configure_mpf_component(TesseractOCRTextDetection TARGETS  mpfTesseractOCRTextDetection EXTRA_LIB_PATHS "${extra_lib_dirs}")
 
 
 add_subdirectory(test)
 
 # Build executable
 add_executable(sample_tesseract_ocr_detector sample_tesseract_ocr_detector.cpp)
-target_link_libraries(sample_tesseract_ocr_detector mpfTesseractOCR)
+target_link_libraries(sample_tesseract_ocr_detector mpfTesseractOCRTextDetection)

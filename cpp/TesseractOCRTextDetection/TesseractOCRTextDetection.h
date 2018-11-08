@@ -34,6 +34,7 @@
 #include <opencv2/opencv.hpp>
 #include <log4cxx/logger.h>
 #include <boost/regex.hpp>
+#include <boost/locale.hpp>
 
 #include <QHash>
 #include <QString>
@@ -92,13 +93,12 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
     QHash<QString, QString> parameters;
     OCR_filter_settings ocr_fset;
-    std::string job_name;
 
     log4cxx::LoggerPtr hw_logger_;
     std::map<std::wstring,std::wstring> regTable;
     std::wstring fix_regex(std::wstring inreg);
-    std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> parse_json(const std::string &jsonfile_name);
-    bool get_tesseract_detections(const MPFImageJob &job, std::vector<std::pair<std::string, std::wstring>> &detection, cv::Mat &original, double weight, int psm, std::string lang);
+    std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> parse_json(const MPFImageJob &job, const std::string &jsonfile_name, MPFDetectionError &job_status);
+    bool get_tesseract_detections(const MPFImageJob &job, std::vector<std::pair<std::string, std::wstring>> &detection, cv::Mat &original, double weight, int psm, std::string lang, MPFDetectionError &job_status);
 
     void SetDefaultParameters();
     void SetReadConfigParameters();
@@ -106,8 +106,9 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     std::wstring check_string(const std::wstring &s, const OCR_filter_settings &ocrset);
 
     bool comp_strcmp(const std::wstring &strHaystack, const std::wstring &strNeedle);
-    bool comp_regex(const std::wstring &detection, const std::wstring &regstr);
+    bool comp_regex(const MPFImageJob &job, const std::wstring &detection, const std::wstring &regstr, MPFDetectionError &job_status);
     bool Supports(MPFDetectionDataType data_type);
+    bool token_comparison(const std::wstring &token, const std::wstring &value);
     void Sharpen(cv::Mat &image, double weight);
     std::string log_print_str(const std::string &text);
     std::string log_print_str(const std::wstring &text);
@@ -117,9 +118,9 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
     std::string parseRegexCode(boost::regex_constants::error_type etype);
 
-    std::set<std::wstring> search_regex(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex);
-    std::set<std::wstring> search_string(const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
-    std::set<std::wstring> search_string_split(const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
+    std::set<std::wstring> search_regex(const MPFImageJob &job, const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex, MPFDetectionError &job_status);
+    std::set<std::wstring> search_string(const MPFImageJob &job, const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
+    std::set<std::wstring> search_string_split(const MPFImageJob &job, const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
 };
 
 }

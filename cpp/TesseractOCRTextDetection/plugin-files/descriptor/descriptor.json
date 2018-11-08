@@ -1,12 +1,12 @@
 {
-  "componentName" : "TesseractOCR",
+  "componentName" : "TesseractOCRTextDetection",
   "componentVersion" : "3.0.0",
   "middlewareVersion" :  "3.0.0",
   "sourceLanguage" : "c++",
-  "batchLibrary": "${MPF_HOME}/plugins/TesseractOCR/lib/libmpfTesseractOCR.so",
+  "batchLibrary": "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib/libmpfTesseractOCRTextDetection.so",
   "environmentVariables" : [ {
     "name" : "LD_LIBRARY_PATH",
-    "value" : "${MPF_HOME}/plugins/TesseractOCR/lib:${LD_LIBRARY_PATH}",
+    "value" : "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib:${LD_LIBRARY_PATH}",
     "sep" : ":"
   } ],
   "algorithm" : {
@@ -96,7 +96,7 @@
         },
         {
           "name": "TAGGING_FILE",
-          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. $MPF_HOME/.../text-tags.json). Supports environment variables.",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. $MPF_HOME/.../text-tags.json).",
           "type": "STRING",
           "defaultValue": "text-tags.json"
         },
@@ -237,7 +237,7 @@
       "properties": [
         {
         "name" : "TAGGING_FILE",
-        "value" : "$MPF_HOME/plugins/TesseractOCR/config/text-tags.json"
+        "value" : "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
         }
     ]
     },
@@ -248,7 +248,7 @@
       "properties": [
         {
         "name" : "TAGGING_FILE",
-        "value" : "$MPF_HOME/plugins/TesseractOCR/config/text-tags.json"
+        "value" : "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
         },
         {
           "name": "TESSERACT_PSM",

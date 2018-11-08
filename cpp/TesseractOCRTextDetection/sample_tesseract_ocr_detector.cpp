@@ -46,7 +46,7 @@ using std::to_string;
 int main(int argc, char* argv[]) {
 
   if ((argc < 2)) {
-        std::cout << "Usage: " << argv[0] << " IMAGE_FILE_URI " << " TESSERACT_LANGUAGES(Optional)" <<std::endl;
+        std::cout << "Usage: " << argv[0] << " <IMAGE_FILE_URI> [TESSERACT_LANGUAGES]" << std::endl;
         return 0;
     }
   else{

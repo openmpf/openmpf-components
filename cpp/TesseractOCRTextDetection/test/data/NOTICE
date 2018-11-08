@@ -1,20 +1,21 @@
-# text-demo.png
-Text extracted from open source project https://github.com/tesseract-ocr/tesseract.
-
-# test-keyword.png
-Custom generated image for testing keyword tags.
-
-# test-keywordregex.png
-Custom generated image for testing keyword and regex tags.
-
-# test-regex.png
-Custom generated image for testing regex tags.
-
 # blank.png
 Custom generated image, contains no text.
 
-# english-bul.png
-Custom generated image, contains English and Bulgarian text from the Universal Declaration of Human Rights (http://www.un.org/en/universal-declaration-human-rights).
+# eng-bul.png
+Custom generated image, contains English and Bulgarian text from the Universal
+Declaration of Human Rights (http://www.un.org/en/universal-declaration-human-rights).
 
 # junk-text.png
 Custom generated image containing gibberish text.
+
+# tags-keyword.png
+Custom generated image for testing keyword tags.
+
+# tags-keywordregex.png
+Custom generated image for testing keyword and regex tags.
+
+# tags-regex.png
+Custom generated image for testing regex tags.
+
+# text-demo.png
+Text extracted from open source project https://github.com/tesseract-ocr/tesseract.

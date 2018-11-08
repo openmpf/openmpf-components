@@ -38,7 +38,7 @@ if (${GTEST_FOUND})
 
     include_directories(..)
     add_executable(TesseractOCRTextDetectionTest test_tesseract_ocr_detection.cpp)
-    target_link_libraries(TesseractOCRTextDetectionTest mpfTesseractOCR mpfComponentTestUtils GTest::GTest GTest::Main)
+    target_link_libraries(TesseractOCRTextDetectionTest mpfTesseractOCRTextDetection mpfComponentTestUtils GTest::GTest GTest::Main)
 
     add_test(NAME TesseractOCRTextDetectionTest COMMAND TesseractOCRTextDetectionTest)
 

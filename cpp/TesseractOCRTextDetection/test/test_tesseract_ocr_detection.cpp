@@ -74,13 +74,11 @@ bool containsText(const std::string &exp_text, const std::vector<MPFImageLocatio
 
     if (index != -1) {
         std::string text = locations[index].detection_properties.at("TEXT");
-        if(text.find(exp_text)!= std::string::npos)
-            return true;
-        return false;
+        return text.find(exp_text) != std::string::npos;
     }
     for (int i = 0; i < locations.size(); i++) {
         std::string text = locations[i].detection_properties.at("TEXT");
-        if(text.find(exp_text)!= std::string::npos)
+        if(text.find(exp_text) != std::string::npos)
             return true;
     }
     return false;
@@ -89,13 +87,11 @@ bool containsText(const std::string &exp_text, const std::vector<MPFImageLocatio
 bool containsTag(const std::string &exp_tag, const std::vector<MPFImageLocation> &locations, int index = -1) {
     if (index != -1) {
         std::string text = locations[index].detection_properties.at("TAGS");
-        if(text.find(exp_tag)!= std::string::npos)
-            return true;
-        return false;
+        return text.find(exp_tag) != std::string::npos;
     }
     for (int i = 0; i < locations.size(); i++) {
         std::string text = locations[i].detection_properties.at("TAGS");
-        if(text.find(exp_tag)!= std::string::npos)
+        if(text.find(exp_tag) != std::string::npos)
             return true;
     }
     return false;
