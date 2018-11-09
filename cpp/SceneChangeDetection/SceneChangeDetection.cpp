@@ -451,7 +451,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         }
 
         keyframes.clear();
-        LOG4CXX_DEBUG(logger_, "[" + job.job_name + "] Processing complete. Found " + std::to_string(locations.size()) + " tracks.");
+        LOG4CXX_INFO(logger_, "[" + job.job_name + "] Processing complete. Found " + std::to_string(locations.size()) + " tracks.");
         return MPF_DETECTION_SUCCESS;
     }
     catch (...) {

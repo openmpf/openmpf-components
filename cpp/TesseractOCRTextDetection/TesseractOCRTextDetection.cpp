@@ -313,7 +313,7 @@ std::wstring TesseractOCRTextDetection::check_string(const std::wstring &s, cons
             return L"";
         }
     }
-    if (alphabet_count >= hist_min_char && hist_check) {
+    if (hist_check && alphabet_count >= hist_min_char) {
         double result = abs(cv::compareHist( eng_hist, char_hist, CV_COMP_CORREL));
         if (result < ocr_fset.correl_limit) {
             return L"";
@@ -1151,7 +1151,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
             locations.push_back(image_location);
         }
     }
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing complete. Found " + std::to_string(locations.size()) + " tracks.");
+    LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Processing complete. Found " + std::to_string(locations.size()) + " tracks.");
     ocr_outputs.clear();
 
     return job_status;
