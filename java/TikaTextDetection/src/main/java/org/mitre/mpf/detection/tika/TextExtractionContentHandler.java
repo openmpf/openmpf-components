@@ -26,9 +26,7 @@
 
 package org.mitre.mpf.detection.tika;
 
-import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
-import org.xml.sax.SAXParseException;
 import org.xml.sax.Attributes;
 import org.apache.tika.sax.ToTextContentHandler;
 import java.lang.StringBuilder;

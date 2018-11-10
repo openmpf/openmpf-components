@@ -111,18 +111,18 @@ public class TestTikaTextDetectionComponent {
 
             //Test multiple keyword tags
             testTrack = tracks.get(5);
-            assertEquals("Expected keyword tags not found.", "travel, identity document", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected keyword tags not found.", "identity document, travel", testTrack.getDetectionProperties().get("TAGS"));
 
 
             //Test multiple regex tags
             testTrack = tracks.get(6);
-            assertEquals("Expected regex tags not found.", "financial, personal", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected regex tags not found.", "personal, financial", testTrack.getDetectionProperties().get("TAGS"));
 
             //Test text, keyword/regex tags.
             //Keyword and regex each pick up one different cateogry
             //followed by 1 combined category for 3 detections in total.
             testTrack = tracks.get(7);
-            assertEquals("Expected tags not found.", "vehicle, financial, personal", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected tags not found.", "vehicle, personal, financial", testTrack.getDetectionProperties().get("TAGS"));
 
             //Test text, keyword/regex tags.
             //Both keyword and regex pick up the same category so only one tag should be output.
