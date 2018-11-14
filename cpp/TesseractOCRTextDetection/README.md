@@ -10,9 +10,15 @@ as well as adjust image preprocessing settings for text extraction.
 For processing English text, users can enable filters (THRS_FILTER, HIST_FILTER)
 to eliminate gibberish detections from a given scene. All text extracted from
 an image can also be tagged using regex and keyword tags in a given json file.
+For keyword tagging, users can provide either words or phrases
+(ex. "bank-tag: [money, bank of america, etc.]"). Phrases must contain
+words separated by white-space. For more complex pattern matching, use regex tags
+instead. Both forms of tagging are case-insensitive.
+
 By default the json tagging file is located in the config folder as text-tags.json,
 however users can provide an alternate full path to a tagging file of their choice.
 English and foreign text tags following UTF-8 encoding are supported.
+
 
 Language models supported by Tesseract must be stored in /bin/tessdata.
 Users are able to store new models into the tessdata folder to expand

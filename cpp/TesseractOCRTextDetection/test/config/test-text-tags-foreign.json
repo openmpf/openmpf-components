@@ -66,7 +66,8 @@
 		"roundtrip",
 		"travel",
 		"trip"],
-		"foreign-text": ["свободни"]
+		"foreign-text": ["свободни"],
+		"key-phrase": ["spirit of brotherhood"]
 	},
 	"TAGS_BY_REGEX": {
 		"vehicle": ["auto"],

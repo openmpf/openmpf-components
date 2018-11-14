@@ -143,7 +143,7 @@ void SceneChangeDetection::SetDefaultParameters() {
     do_thrs = true;
     do_edge = true;
 
-    use_exemplar = true;
+    use_middle_frame = true;
 }
 
 /*
@@ -164,7 +164,7 @@ void SceneChangeDetection::SetReadConfigParameters() {
         do_edge = (parameters["DO_EDGE"].toInt() > 0);
     }
     if (parameters.contains("USE_MIDDLE_FRAME")) {
-        use_exemplar = (parameters["USE_MIDDLE_FRAME"].toInt() > 0);
+        use_middle_frame = (parameters["USE_MIDDLE_FRAME"].toInt() > 0);
     }
     if (parameters.contains("HIST_THRESHOLD")) {
         hist_thresh = parameters["HIST_THRESHOLD"].toDouble();
@@ -383,7 +383,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         do_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "DO_THRS", do_thrs);
         do_edge = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "DO_EDGE", do_edge);
 
-        use_exemplar = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "USE_MIDDLE_FRAME", use_exemplar);
+        use_middle_frame = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "USE_MIDDLE_FRAME", use_middle_frame);
 
         double msec = cap.GetProperty(CAP_PROP_POS_MSEC);
         rows = lastFrame.rows;
@@ -429,7 +429,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
             auto start_frame = kv.second;
             auto end_frame = kv.first;
             MPFVideoTrack track(start_frame, end_frame - 1);
-            if (use_exemplar) {
+            if (use_middle_frame) {
                 track.frame_locations.insert(
                         std::pair<int,MPFImageLocation>(start_frame + (int)((end_frame - start_frame) / 2),
                             MPFImageLocation(0, 0, cols, rows)

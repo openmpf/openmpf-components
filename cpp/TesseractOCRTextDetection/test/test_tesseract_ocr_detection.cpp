@@ -125,35 +125,45 @@ TEST(TESSERACTOCR, ImageTest) {
 
     ASSERT_TRUE(ocr.Init());
 
+    // Test basic keyword and text detection.
     runDetections("data/text-demo.png", ocr, results);
     assertTextInImage("data/text-demo.png", "TESTING 123", results);
     assertTextNotInImage("data/text-demo.png", "Ponies", results);
     assertTagNotInImage("data/text-demo.png", "personal", results);
     results.clear();
 
+    // Test multiple keyword tagging.
     runDetections("data/tags-keyword.png", ocr, results);
     assertTextInImage("data/tags-keyword.png", "Passenger Passport", results);
     assertTagInImage("data/tags-keyword.png", "identity document, travel", results);
     results.clear();
 
-
+    // Test keyword and regex tagging.
+    // Keyword and regex tag match to same category for personal.
+    // Regex tagging also picks up financial.
+    // Keyword tagging picks up vehicle.
+    // Three tags should be detected in total.
     runDetections("data/tags-keywordregex.png", ocr, results);
-    assertTagInImage("data/tags-keywordregex.png", "personal", results);
+    assertTagInImage("data/tags-keywordregex.png", "financial, personal, vehicle", results);
     results.clear();
 
+    // Test multiple regex tagging.
     runDetections("data/tags-regex.png", ocr, results);
     assertTagInImage("data/tags-regex.png", "financial, personal", results);
     results.clear();
 
+    // Check no text detected for blank image.
     assertEmptyDetection("data/blank.png", ocr, results);
     results.clear();
 
+    // Check no text detected for image with junk text when hist filter is enabled.
     runDetections("data/junk-text.png", ocr, results);
     results.clear();
     std::map<std::string,std::string> custom_properties = {{"HIST_FILTER","true"}};
     assertEmptyDetection("data/junk-text.png", ocr, results,  custom_properties);
     results.clear();
 
+    // Check no text detected for image with junk text when thrs filter is enabled.
     runDetections("data/junk-text.png", ocr, results);
     results.clear();
     std::map<std::string,std::string> custom_properties2 = {{"THRS_FILTER","true"}};
@@ -162,8 +172,13 @@ TEST(TESSERACTOCR, ImageTest) {
 
     std::map<std::string,std::string> custom_properties3 = {{"TESSERACT_LANGUAGE", "eng, bul"}};
 
+    // Test multilanguage text extraction.
     runDetections("data/eng-bul.png", ocr, results, custom_properties3);
     assertTagInImage("data/eng-bul.png", "foreign-text", results, 1);
     assertTextInImage("data/eng-bul.png", "Всички хора се раждат свободни", results, 1);
+    // Also test mult-keyword phrase tag.
+    assertTagInImage("data/eng-bul.png", "key-phrase", results, 0);
     assertTextInImage("data/eng-bul.png", "All human beings are born free", results, 0);
+
+
 }

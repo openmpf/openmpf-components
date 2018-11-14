@@ -824,7 +824,7 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         // Reset tesseract for the next language process.
         tess_api.End();
         result = text.get();
-        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Tesseract run sucessful.");
+        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Tesseract run successful.");
         std::wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(result);
         std::pair<std::string, std::wstring> output_ocr (lang,t_detection);
         detections_by_lang.push_back(output_ocr);
@@ -947,8 +947,10 @@ set<wstring> TesseractOCRTextDetection::search_string_split(const MPFImageJob &j
             {
                 vector<wstring> tag_tokens;
                 boost::split_regex(tag_tokens, value, rgx);
+
                 if (tag_tokens.size() == 1)
                 {
+                    // For single keyword matching.
                     for (const auto& token : tokenized)
                     {
                         if (token_comparison(token, value))
@@ -958,36 +960,49 @@ set<wstring> TesseractOCRTextDetection::search_string_split(const MPFImageJob &j
                             break;
                         }
                     }
-                    if ( breaker) break;
+                    if (breaker) break;
                 }
                 else
                 {
+                    // For multi-length keyphrase matching.
+                    // Check that each keyword in the phrase matches in order
+                    // with words in the extracted text.
                     int word_id = 0;
                     for (const auto& token : tokenized)
                     {
-                        if (word_id == tag_tokens.size())
+                        if (token_comparison(token, tag_tokens[word_id]))
                         {
+                            // Current word matched part of phrase.
+                            word_id++;
+                            // Check if entire phrase has been matched.
+                            if (word_id == tag_tokens.size())
+                            {
+                                // Entire phrase matched correctly.
                                 found_keys_string.insert(key);
                                 breaker = true;
                                 break;
-                        }
-                        else if (token_comparison(token,tag_tokens[word_id]))
-                        {
-                            word_id++;
+                            }
                         }
                         else if (word_id > 0)
                         {
-                            if (token_comparison(token,tag_tokens[0]))
+                            // If a phrase match fails midway.
+                            // Restart phrase check and compare word with starting
+                            // keyword in that phrase,
+                            if (token_comparison(token, tag_tokens[0]))
                             {
+                                // Current word matches with start of phrase.
+                                // Proceed to check with next keyword in phrase.
                                 word_id = 1;
                             }
                             else
                             {
+                                // Current word does not match start of phrase.
+                                // Compare next word with starting keyword in phrase.
                                 word_id = 0;
                             }
-
                         }
                     }
+
                     if (breaker) break;
                 }
             }

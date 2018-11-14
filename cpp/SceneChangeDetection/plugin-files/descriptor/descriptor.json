@@ -174,7 +174,7 @@
         },
         {
           "name": "USE_MIDDLE_FRAME",
-          "description": "By default only the middle frame of each scene is stored as the scene exemplar. When disabled, every frame in the scene will be stored and represented.",
+          "description": "When true, the middle frame of a scene is selected as the exemplar and only that frame is stored in the track. When false, the first frame of a scene is selected as the exemplar and every frame in the scene is stored in the track.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
