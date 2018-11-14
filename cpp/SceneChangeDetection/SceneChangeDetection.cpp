@@ -163,8 +163,8 @@ void SceneChangeDetection::SetReadConfigParameters() {
     if (parameters.contains("DO_EDGE")) {
         do_edge = (parameters["DO_EDGE"].toInt() > 0);
     }
-    if (parameters.contains("USE_SCENE_EXEMPLAR")) {
-        use_exemplar = (parameters["USE_SCENE_EXEMPLAR"].toInt() > 0);
+    if (parameters.contains("USE_MIDDLE_FRAME")) {
+        use_exemplar = (parameters["USE_MIDDLE_FRAME"].toInt() > 0);
     }
     if (parameters.contains("HIST_THRESHOLD")) {
         hist_thresh = parameters["HIST_THRESHOLD"].toDouble();
@@ -383,7 +383,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         do_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "DO_THRS", do_thrs);
         do_edge = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "DO_EDGE", do_edge);
 
-        use_exemplar = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "USE_SCENE_EXEMPLAR", use_exemplar);
+        use_exemplar = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "USE_MIDDLE_FRAME", use_exemplar);
 
         double msec = cap.GetProperty(CAP_PROP_POS_MSEC);
         rows = lastFrame.rows;

@@ -448,7 +448,7 @@ std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> Tesserac
     std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> json_kvs;
     std::ifstream ifs(jsonfile_path);
     if (!ifs.is_open()) {
-        LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] ERROR READING JSON FILE AT " + jsonfile_path));
+        LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] Error reading JSON file at " + jsonfile_path));
         job_status = MPF_COULD_NOT_READ_DATAFILE;
         return json_kvs;
     }
@@ -461,7 +461,7 @@ std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> Tesserac
     JSONValue *value = JSON::Parse(x.c_str());
     if (value == NULL)
     {
-        LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] JSON is corrupted."));
+        LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] JSON is corrupted. File location: " + jsonfile_path));
         job_status = MPF_COULD_NOT_READ_DATAFILE;
         return json_kvs;
     }
@@ -484,14 +484,15 @@ std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> Tesserac
             auto term = *iter;
             wstring term_temp(term);
             string term_str(term_temp.begin(), term_temp.end());
-            JSONArray array = root3[term]->AsArray();
             if (!root3[term]->IsArray())
             {
                 LOG4CXX_ERROR(hw_logger_, log_print_str( "[" + job.job_name + "] Invalid JSON Array in STRING tags!"));
                 job_status = MPF_COULD_NOT_READ_DATAFILE;
                 // There was a processing error, but continue checking the remaining terms.
+                iter++;
                 continue;
             }
+            JSONArray array = root3[term]->AsArray();
             for (unsigned int i = 0; i < array.size(); i++)
             {
                 wstring temp = array[i]->Stringify();
@@ -516,14 +517,15 @@ std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> Tesserac
             auto term = *iter;
             wstring term_temp(term);
             string term_str(term_temp.begin(), term_temp.end());
-            JSONArray array = root3[term]->AsArray();
             if (!root3[term]->IsArray())
             {
-                LOG4CXX_ERROR(hw_logger_, log_print_str( "[" + job.job_name + "] Invalid JSON Array in SPLIT tags!"));
+                LOG4CXX_ERROR(hw_logger_, log_print_str( "[" + job.job_name + "] Invalid JSON Array in TAGS_BY_KEYWORD!"));
                 job_status = MPF_COULD_NOT_READ_DATAFILE;
                 // There was a processing error, but continue checking the remaining terms.
+                iter++;
                 continue;
             }
+            JSONArray array = root3[term]->AsArray();
             for (unsigned int i = 0; i < array.size(); i++)
             {
                 wstring temp = array[i]->Stringify();
@@ -551,14 +553,15 @@ std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> Tesserac
             auto term = *iter;
             wstring term_temp(term);
             string term_str(term_temp.begin(), term_temp.end());
-            JSONArray array = root3[term]->AsArray();
             if (!root3[term]->IsArray())
             {
-                LOG4CXX_ERROR(hw_logger_, log_print_str( "[" + job.job_name + "] Invalid JSON Array in REGEX tags!"));
+                LOG4CXX_ERROR(hw_logger_, log_print_str( "[" + job.job_name + "] Invalid JSON Array in TAGS_BY_REGEX!"));
                 job_status = MPF_COULD_NOT_READ_DATAFILE;
                 // There was a processing error, but continue checking the remaining terms.
+                iter++;
                 continue;
             }
+            JSONArray array = root3[term]->AsArray();
             for (unsigned int i = 0; i < array.size(); i++)
             {
                 wstring temp = array[i]->Stringify();

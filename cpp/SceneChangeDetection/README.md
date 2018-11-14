@@ -14,7 +14,7 @@ each detected scene as a separate track with start/end frames of each track
 representing video frames associated with that scene (ex.scene 1: [0,41]
 scene 2: [42,200]).
 
-Users may also toggle USE_SCENE_EXEMPLAR to either store a single MPFImageLocation
+Users may also toggle USE_MIDDLE_FRAME to either store a single MPFImageLocation
 representing each scene track or all frames associated with each track. When set
 to true (default), only the middle frame of each scene will be stored
 (ex. frame 20 for a scene ranging from 0 to 40).

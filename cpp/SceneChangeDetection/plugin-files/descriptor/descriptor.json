@@ -173,8 +173,8 @@
           "defaultValue": "true"
         },
         {
-          "name": "USE_SCENE_EXEMPLAR",
-          "description": "By default only the middle frame (exemplar) of each scene is stored. When disabled, each frame in a scene will be stored as an MPFImageLocation.",
+          "name": "USE_MIDDLE_FRAME",
+          "description": "By default only the middle frame of each scene is stored as the scene exemplar. When disabled, every frame in the scene will be stored and represented.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
