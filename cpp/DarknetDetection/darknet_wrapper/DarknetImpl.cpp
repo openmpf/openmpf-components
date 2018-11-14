@@ -143,6 +143,11 @@ namespace {
         ~DetectionHolder() {
             free_detections(detections, num_detections);
         }
+
+        DetectionHolder(const DetectionHolder&) = delete;
+        DetectionHolder& operator=(const DetectionHolder&) = delete;
+        DetectionHolder(DetectionHolder&&) = delete;
+        DetectionHolder& operator=(DetectionHolder&&) = delete;
     };
 
 
@@ -155,12 +160,19 @@ namespace {
     }
 
 
-    DarknetHelpers::network_ptr_t LoadNetwork(const ModelSettings &model_settings) {
+    DarknetHelpers::network_ptr_t LoadNetwork(const std::string &log_prefix, const ModelSettings &model_settings,
+                                              log4cxx::LoggerPtr &logger) {
         auto cfg_file = ToNonConstCStr(model_settings.network_config_file);
         auto weights_file = ToNonConstCStr(model_settings.weights_file);
 
-        return { load_network(cfg_file.get(), weights_file.get(), 0),
-                 free_network };
+        LOG4CXX_DEBUG(logger, log_prefix << "Attempting to load network using config file from \""
+                << model_settings.network_config_file << "\" and weights from \""
+                << model_settings.weights_file << "\"...");
+
+        DarknetHelpers::network_ptr_t network(load_network(cfg_file.get(), weights_file.get(), 0),
+                                              free_network);
+        LOG4CXX_DEBUG(logger, log_prefix << "Successfully loaded network.")
+        return network;
     }
 
 
@@ -290,9 +302,12 @@ namespace {
 
 
 template<typename ClassFilter>
-DarknetImpl<ClassFilter>::DarknetImpl(const std::map<std::string, std::string> &props, const ModelSettings &settings)
+DarknetImpl<ClassFilter>::DarknetImpl(const std::string &job_name, const std::map<std::string, std::string> &props,
+                                      const ModelSettings &settings, log4cxx::LoggerPtr &logger)
     : DarknetInterface(props, settings)
-    , network_(LoadNetwork(settings))
+    , log_prefix_("[" + job_name + "] ")
+    , logger_(logger)
+    , network_(LoadNetwork(log_prefix_, settings, logger_))
     , output_layer_size_(GetOutputLayerSize(*network_))
     , num_classes_(GetNumClasses(*network_))
     , names_(LoadNames(settings, num_classes_))
@@ -323,7 +338,8 @@ void DarknetImpl<ClassFilter>::Detect(int frame_number, const cv::Mat &cv_image,
 template<typename ClassFilter>
 void DarknetImpl<ClassFilter>::Detect(const DarknetHelpers::DarknetImageHolder &image_holder,
                                       std::vector<DarknetResult> &darknet_results) {
-
+    LOG4CXX_DEBUG(logger_, log_prefix_ << "Attempting to run Darknet on frame number "
+            << image_holder.frame_number << "...");
     DetectionHolder detection_holder(*network_, image_holder, confidence_threshold_);
 
     for (const detection& detection : detection_holder) {
@@ -340,6 +356,8 @@ void DarknetImpl<ClassFilter>::Detect(const DarknetHelpers::DarknetImageHolder &
             darknet_results.push_back(std::move(darknet_result));
         }
     }
+    LOG4CXX_DEBUG(logger_, log_prefix_ << "Successfully ran Darknet on frame number " << image_holder.frame_number
+            << ".")
 }
 
 
@@ -351,15 +369,18 @@ cv::Size DarknetImpl<ClassFilter>::GetTargetFrameSize() {
 
 
 
-DarknetAsyncImpl::DarknetAsyncImpl(const Properties &props, const ModelSettings &settings)
+DarknetAsyncImpl::DarknetAsyncImpl(const std::string &job_name, const Properties &props,
+                                   const ModelSettings &settings, log4cxx::LoggerPtr &logger)
     : DarknetAsyncInterface(props, settings)
+    , log_prefix_("[" + job_name + "] ")
+    , logger_(logger)
     , work_queue_(DetectionComponentUtils::GetProperty(props, "FRAME_QUEUE_CAPACITY", 4))
 {
     if (HasWhitelist(props)) {
-        Init<WhitelistFilter>(props, settings);
+        Init<WhitelistFilter>(job_name, props, settings);
     }
     else {
-        Init<NoOpFilter>(props, settings);
+        Init<NoOpFilter>(job_name, props, settings);
     }
 }
 
@@ -373,8 +394,8 @@ DarknetAsyncImpl::~DarknetAsyncImpl() {
 
 
 template<typename ClassFilter>
-void DarknetAsyncImpl::Init(const Properties &props, const ModelSettings &settings) {
-    DarknetImpl<ClassFilter> darknet_impl(props, settings);
+void DarknetAsyncImpl::Init(const std::string &job_name, const Properties &props, const ModelSettings &settings) {
+    DarknetImpl<ClassFilter> darknet_impl(job_name, props, settings, logger_);
     target_frame_size_ = darknet_impl.GetTargetFrameSize();
     work_done_future_ = std::async(std::launch::async,
                                    ProcessFrameQueue<ClassFilter>, std::move(darknet_impl), std::ref(work_queue_));
@@ -382,7 +403,16 @@ void DarknetAsyncImpl::Init(const Properties &props, const ModelSettings &settin
 
 
 void DarknetAsyncImpl::Submit(int frame_number, const cv::Mat &cv_image) {
-    work_queue_.emplace(new DarknetHelpers::DarknetImageHolder(frame_number, cv_image, target_frame_size_));
+    LOG4CXX_DEBUG(logger_, log_prefix_ << "Attempting to convert frame number " << frame_number
+            << " to a Darknet image...")
+
+    std::unique_ptr<DarknetHelpers::DarknetImageHolder> darknet_image_holder(
+            new DarknetHelpers::DarknetImageHolder(frame_number, cv_image, target_frame_size_));
+
+    LOG4CXX_DEBUG(logger_, log_prefix_ << "Successfully converted frame number " << frame_number
+            << " to a Darknet image.");
+
+    work_queue_.push(std::move(darknet_image_holder));
 }
 
 
@@ -471,14 +501,16 @@ void configure_cuda_device(const Properties &job_props) {
 
 
 extern "C" {
-    DarknetInterface* darknet_impl_creator(const std::map<std::string, std::string> *props,
-                                           const ModelSettings *settings) {
+    DarknetInterface* darknet_impl_creator(const std::string *job_name,
+                                           const std::map<std::string, std::string> *props,
+                                           const ModelSettings *settings,
+                                           log4cxx::LoggerPtr *logger) {
         configure_cuda_device(*props);
         if (HasWhitelist(*props)) {
-            return new DarknetImpl<WhitelistFilter>(*props, *settings);
+            return new DarknetImpl<WhitelistFilter>(*job_name, *props, *settings, *logger);
         }
         else {
-            return new DarknetImpl<NoOpFilter>(*props, *settings);
+            return new DarknetImpl<NoOpFilter>(*job_name, *props, *settings, *logger);
         }
     }
 
@@ -487,10 +519,12 @@ extern "C" {
     }
 
 
-    DarknetAsyncInterface* darknet_async_impl_creator(const std::map<std::string, std::string> *props,
-                                                      const ModelSettings *settings) {
+    DarknetAsyncInterface* darknet_async_impl_creator(const std::string *job_name,
+                                                      const std::map<std::string, std::string> *props,
+                                                      const ModelSettings *settings,
+                                                      log4cxx::LoggerPtr *logger) {
         configure_cuda_device(*props);
-        return new DarknetAsyncImpl(*props, *settings);
+        return new DarknetAsyncImpl(*job_name, *props, *settings, *logger);
     }
 
     void darknet_async_impl_deleter(DarknetAsyncInterface *impl) {
