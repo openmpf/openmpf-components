@@ -44,4 +44,5 @@ if (${GTEST_FOUND})
 
     # Install test images and videos.
     file(COPY data/ DESTINATION data)
+    file(COPY config/ DESTINATION config)
 endif()

@@ -439,7 +439,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
                 for(int i = start_frame; i < end_frame; i++)
                 {
                     track.frame_locations.insert(
-                        std::pair<int,MPFImageLocation>(i - start_frame,
+                        std::pair<int,MPFImageLocation>(i,
                             MPFImageLocation(0, 0, cols, rows)
                             )
                         );

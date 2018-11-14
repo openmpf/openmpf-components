@@ -38,7 +38,7 @@ MPFImageJob createOCRJob(const std::string &uri, const std::map<std::string,std:
     Properties algorithm_properties;
     Properties media_properties;
     std::string job_name("OCR_test");
-    algorithm_properties["TAGGING_FILE"] = "test-text-tags-foreign.json";
+    algorithm_properties["TAGGING_FILE"] = "config/test-text-tags-foreign.json";
     algorithm_properties["SHARPEN"] = "1.0";
     algorithm_properties["TESSERACT_LANGUAGE"] = "eng";
     algorithm_properties["THRS_FILTER"] = "false";

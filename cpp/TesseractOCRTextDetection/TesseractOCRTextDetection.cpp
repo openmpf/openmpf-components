@@ -443,12 +443,12 @@ std::vector<std::wstring> TesseractOCRTextDetection::get_tokens(const std::wstri
  * Reads JSON Tag filter file.
  * Setup tags for split-string and regex filters.
  */
-std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> TesseractOCRTextDetection::parse_json(const MPFImageJob &job, const std::string &jsonfile_name, MPFDetectionError &job_status)
+std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> TesseractOCRTextDetection::parse_json(const MPFImageJob &job, const std::string &jsonfile_path, MPFDetectionError &job_status)
 {
     std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> json_kvs;
-    std::ifstream ifs(jsonfile_name);
+    std::ifstream ifs(jsonfile_path);
     if (!ifs.is_open()) {
-        LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] ERROR READING JSON FILE AT " + jsonfile_name));
+        LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] ERROR READING JSON FILE AT " + jsonfile_path));
         job_status = MPF_COULD_NOT_READ_DATAFILE;
         return json_kvs;
     }
@@ -1058,20 +1058,20 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
     MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
 
 
-    string jsonfile_name =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties,"TAGGING_FILE","text-tags.json");
-    if ( jsonfile_name.find('$') != std::string::npos || jsonfile_name.find('/') != std::string::npos ) {
+    string jsonfile_path =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties,"TAGGING_FILE","text-tags.json");
+    if ( jsonfile_path.find('$') != std::string::npos || jsonfile_path.find('/') != std::string::npos ) {
         string new_jsonfile_name = "";
-        Utils::expandFileName(jsonfile_name,new_jsonfile_name);
-        jsonfile_name = new_jsonfile_name;
+        Utils::expandFileName(jsonfile_path,new_jsonfile_name);
+        jsonfile_path = new_jsonfile_name;
     } else {
-        jsonfile_name = plugin_path + "/config/" + jsonfile_name;
+        jsonfile_path = plugin_path + "/config/" + jsonfile_path;
     }
 
     int psm = DetectionComponentUtils::GetProperty<int>(job.job_properties,"TESSERACT_PSM",3);
     std::string lang = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,"TESSERACT_LANGUAGE", ocr_fset.tesseract_lang);
 
-    LOG4CXX_DEBUG(hw_logger_, log_print_str("[" + job.job_name + "] About to read JSON from: " + jsonfile_name));
-    auto json_kvs_full = parse_json(job, jsonfile_name, job_status);
+    LOG4CXX_DEBUG(hw_logger_, log_print_str("[" + job.job_name + "] About to read JSON from: " + jsonfile_path));
+    auto json_kvs_full = parse_json(job, jsonfile_path, job_status);
 
     std::map<std::wstring,std::vector<std::wstring>> json_kvs_string = json_kvs_full[L"TAGS_STRING"];
     std::map<std::wstring,std::vector<std::wstring>> json_kvs_string_split = json_kvs_full[L"TAGS_STRING_SPLIT"];
