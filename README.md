@@ -29,6 +29,8 @@ Included in this repository are the following C++ Components:
 - DLIB Face Detection
 - OpenCV LBP Face Detection
 - OpenALPR Text Detection
+- Video Scene Change Detection
+- Tesseract OCR Text Detection
 - Darknet Object Classification
 
 And the following Java Components:
