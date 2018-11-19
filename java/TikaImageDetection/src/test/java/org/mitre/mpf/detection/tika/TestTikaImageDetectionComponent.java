@@ -39,8 +39,6 @@ import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import static org.hamcrest.CoreMatchers.containsString;
-
 import java.nio.file.Files;
 import java.io.File;
 import java.nio.file.Path;
@@ -68,57 +66,48 @@ public class TestTikaImageDetectionComponent {
     }
 
 
+    private void markTempFiles(File directory){
+        for (File tmpfile: directory.listFiles()) {
+            tmpfile.deleteOnExit();
+            if (tmpfile.isDirectory()) {
+               markTempFiles(tmpfile);
+            }
+        }
+    }
+
+    private boolean pageCheck(String filepath) {
+       String[] files = filepath.split(";");
+       boolean files_found = true;
+       for (String file: files) {
+           if (!Files.exists((new File(file.trim())).toPath())){
+               files_found = false;
+           }
+       }
+       return files_found;
+    }
+
+
     @Test
     public void testGetDetectionsGeneric() throws Exception {
         String uri = "./test/data/TestImageExtraction.pdf";
         Map<String, String> jobProperties = new HashMap<String, String>();
         Map<String, String> mediaProperties = new HashMap<String, String>();
 
+        File testDirF = new File("./test/data/");
+        Path testDir= Files.createTempDirectory(testDirF.toPath(), "temp");
+        testDir.toFile().deleteOnExit();
 
-        //String textTags = "text-tags.json";
-        //String rundirectory = tikaComponent.getRunDirectory();
-        jobProperties.put("SAVE_PATH", "./test/data/");
+
+        jobProperties.put("SAVE_PATH", testDir.toString());
         jobProperties.put("ORGANIZE_BY_PAGE", "false");
-        MPFGenericJob genericJob = new MPFGenericJob("TestRun:TestGenericJob", uri, jobProperties, mediaProperties);
+        jobProperties.put("ALLOW_EMPTY_PAGES", "true");
+        jobProperties.put("STORE_REPEAT_IMAGES", "true");
+        MPFGenericJob genericJob = new MPFGenericJob("Job TestRun:TestGenericJob", uri, jobProperties, mediaProperties);
         boolean debug = false;
 
         try {
             List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-
-            assertEquals("Number of expected tracks does not match.", 4 ,tracks.size());
-            // Test each output type.
-
-            //Test extraction of image 0, page 0
-            //image 0 stored multiple times, should only be reported once.
-            MPFGenericTrack testTrack = tracks.get(0);
-            assertEquals("Page number not correct", "0", testTrack.getDetectionProperties().get("PAGE"));
-            assertEquals("Expected images not listed.", "image0.jpg", testTrack.getDetectionProperties().get("IMAGE_FILES"));
-
-            //Test extraction of image 1, page 1
-            //image 0 should be listed again.
-            testTrack = tracks.get(1);
-            assertEquals("Page number not correct", "1", testTrack.getDetectionProperties().get("PAGE"));
-            assertEquals("Expected images not listed.", "image0.jpg, image1.jpg", testTrack.getDetectionProperties().get("IMAGE_FILES"));
-
-            //Test empty page
-            testTrack = tracks.get(2);
-            assertEquals("Page number not correct", "2", testTrack.getDetectionProperties().get("PAGE"));
-            assertEquals("No images should have been reported.", null, testTrack.getDetectionProperties().get("IMAGE_FILES"));
-
-            //Test extraction of image 2, page 2
-            testTrack = tracks.get(3);
-            assertEquals("Page number not correct", "3", testTrack.getDetectionProperties().get("PAGE"));
-            assertEquals("Expected images not listed.", "image2.jpg", testTrack.getDetectionProperties().get("IMAGE_FILES"));
-
-            //Check that images were saved correctly, then clean up test folder.
-            assertTrue(Files.exists((new File("./test/data/TestRun")).toPath()));
-            assertTrue(Files.exists((new File("./test/data/TestRun/image0.jpg")).toPath()));
-            assertTrue(Files.exists((new File("./test/data/TestRun/image1.jpg")).toPath()));
-            assertTrue(Files.exists((new File("./test/data/TestRun/image2.jpg")).toPath()));
-            Files.deleteIfExists((new File("./test/data/TestRun/image0.jpg")).toPath());
-            Files.deleteIfExists((new File("./test/data/TestRun/image1.jpg")).toPath());
-            Files.deleteIfExists((new File("./test/data/TestRun/image2.jpg")).toPath());
-            Files.deleteIfExists((new File("./test/data/TestRun")).toPath());
+            markTempFiles(testDir.toFile());
 
             // For human testing.
             if (debug) {
@@ -130,6 +119,65 @@ public class TestTikaImageDetectionComponent {
                     System.out.println(String.format("  Images = %s", track.getDetectionProperties().get("IMAGE_FILES")));
                 }
             }
+
+
+
+            assertEquals("Number of expected tracks does not match.", 5 ,tracks.size());
+            // Test each output type.
+
+            //Test extraction of image 0, page 0.
+            //Image 0 stored multiple times, should only be reported once.
+            MPFGenericTrack testTrack = tracks.get(0);
+            assertEquals("Page number not correct", "0", testTrack.getDetectionProperties().get("PAGE"));
+            assertTrue("Expected image0.jpg in page 0.", testTrack.getDetectionProperties().get("IMAGE_FILES").contains("image0.jpg"));
+            assertTrue("Invalid file paths for page 0.", pageCheck(testTrack.getDetectionProperties().get("IMAGE_FILES")));
+
+            //Test extraction of image 1, page 1.
+            //Image 0 should be listed again.
+            testTrack = tracks.get(1);
+            assertEquals("Page number not correct", "1", testTrack.getDetectionProperties().get("PAGE"));
+            assertTrue("Expected image0.jpg in page 1.", testTrack.getDetectionProperties().get("IMAGE_FILES").contains("image0.jpg"));
+            assertTrue("Expected image1.jpg in page 1.", testTrack.getDetectionProperties().get("IMAGE_FILES").contains("image1.jpg"));
+            assertTrue("Invalid file paths for page 1.", pageCheck(testTrack.getDetectionProperties().get("IMAGE_FILES")));
+
+            //Test extraction of page 2.
+            //Images 0 amd 1 should be listed again.
+            testTrack = tracks.get(2);
+            assertEquals("Page number not correct", "2", testTrack.getDetectionProperties().get("PAGE"));
+            assertTrue("Expected image0.jpg in page 2.", testTrack.getDetectionProperties().get("IMAGE_FILES").contains("image0.jpg"));
+            assertTrue("Expected image1.jpg in page 2.", testTrack.getDetectionProperties().get("IMAGE_FILES").contains("image1.jpg"));
+            assertTrue("Invalid file paths for page 2.", pageCheck(testTrack.getDetectionProperties().get("IMAGE_FILES")));
+
+
+            //Test empty page.
+            testTrack = tracks.get(3);
+            assertEquals("Page number not correct", "3", testTrack.getDetectionProperties().get("PAGE"));
+            assertEquals("No images should have been reported.", "", testTrack.getDetectionProperties().get("IMAGE_FILES"));
+
+            //Test extraction of image 2, page 4.
+            testTrack = tracks.get(4);
+            assertEquals("Page number not correct", "4", testTrack.getDetectionProperties().get("PAGE"));
+            assertTrue("Expected image2.jpg in page 4.", testTrack.getDetectionProperties().get("IMAGE_FILES").contains("image2.jpg"));
+            assertTrue("Invalid file paths for page 4.", pageCheck(testTrack.getDetectionProperties().get("IMAGE_FILES")));
+
+            //Check that images were saved correctly, then clean up test folder.
+            assertTrue("Test run directory not created." + testDir.toString() + "./TestRun", Files.exists((new File(testDir.toString() + "/TestRun")).toPath()));
+            assertTrue("Expected image not found (common/image0.jpg).", Files.exists((new File(testDir.toString() + "/TestRun/tika-extracted/common/image0.jpg")).toPath()));
+            assertTrue("Expected image not found (common/image1.jpg).", Files.exists((new File(testDir.toString() + "/TestRun/tika-extracted/common/image1.jpg")).toPath()));
+            assertTrue("Expected image not found (tika-extracted/image0.jpg).", Files.exists((new File(testDir.toString() + "/TestRun/tika-extracted/image0.jpg")).toPath()));
+            assertTrue("Expected image not found (tika-extracted/image1.jpg).", Files.exists((new File(testDir.toString() + "/TestRun/tika-extracted/image1.jpg")).toPath()));
+            assertTrue("Expected image not found (tika-extracted/image2.jpg).", Files.exists((new File(testDir.toString() + "/TestRun/tika-extracted/image2.jpg")).toPath()));
+            Files.deleteIfExists((new File(testDir.toString() + "/TestRun/tika-extracted/image0.jpg")).toPath());
+            Files.deleteIfExists((new File(testDir.toString() + "/TestRun/tika-extracted/image1.jpg")).toPath());
+            Files.deleteIfExists((new File(testDir.toString() + "/TestRun/tika-extracted/image2.jpg")).toPath());
+            Files.deleteIfExists((new File(testDir.toString() + "/TestRun/tika-extracted/common/image0.jpg")).toPath());
+            Files.deleteIfExists((new File(testDir.toString() + "/TestRun/tika-extracted/common/image1.jpg")).toPath());
+            Files.deleteIfExists((new File(testDir.toString() + "/TestRun/tika-extracted/common")).toPath());
+            Files.deleteIfExists((new File(testDir.toString() + "/TestRun/tika-extracted")).toPath());
+            Files.deleteIfExists((new File(testDir.toString() + "/TestRun")).toPath());
+            Files.deleteIfExists((new File(testDir.toString())).toPath());
+
+
         } catch (MPFComponentDetectionError e) {
             System.err.println(String.format("An error occurred of type ", e.getDetectionError().name()));
             fail(String.format("An error occurred of type ", e.getDetectionError().name()));

@@ -26,18 +26,14 @@
 
 package org.mitre.mpf.detection.tika;
 
-import org.xml.sax.ContentHandler;
-import org.xml.sax.SAXException;
-import org.xml.sax.SAXParseException;
+
 import org.xml.sax.Attributes;
-import org.apache.tika.sax.EmbeddedContentHandler;
 import org.apache.tika.sax.ToTextContentHandler;
-import java.lang.StringBuilder;
-import java.util.ArrayList;
+
 
 public class ImageExtractionContentHandler extends ToTextContentHandler{
-    private String pageTag = "div";
-    protected int pageNumber = 0;
+    private String pageTag;
+    protected int pageNumber;
     private boolean skipTitle;
 
     public ImageExtractionContentHandler(){
@@ -48,7 +44,7 @@ public class ImageExtractionContentHandler extends ToTextContentHandler{
         skipTitle = true;
     }
 
-    public void startElement (String uri, String localName, String qName, Attributes atts) throws SAXException  {
+    public void startElement (String uri, String localName, String qName, Attributes atts) {
         if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) {
            startPage();
         }
@@ -65,35 +61,27 @@ public class ImageExtractionContentHandler extends ToTextContentHandler{
     }
 
 
-    public void endElement (String uri, String localName, String qName) throws SAXException {
+    public void endElement (String uri, String localName, String qName) {
         if (pageTag.equals(qName)) {
             endPage();
         }
     }
 
-    public void characters(char[] ch, int start, int length) throws SAXException {
-        return;
+    public void characters(char[] ch, int start, int length) {}
+
+
+    protected void startPage() {
+        pageNumber++;
     }
 
+    protected void endPage() {}
 
-    protected void startPage() throws SAXException {
-        pageNumber ++;
-    }
-
-    protected void endPage() throws SAXException {
-        return;
-    }
-
-    protected void resetPage() throws SAXException {
+    protected void resetPage() {
         pageNumber = 0;
     }
 
     public String toString(){
         return String.valueOf(pageNumber);
-    }
-
-    public int getPageNum(){
-        return pageNumber;
     }
 
 }
