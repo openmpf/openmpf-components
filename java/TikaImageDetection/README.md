@@ -16,9 +16,13 @@ time and avoid infinite recursion. However, modifications were made to the PDF
 parser to allow for tracking of images repeatedly used across multiple pages.
 If an image occurs across two or more pages it will be extracted once from the
 first page then reported in the detection tracks of the following pages whenever
-it found again.
+it found again. Users can toggle STORE_REPEAT_IMAGES to store any duplicate images
+into a common subdirectory. For empty pages or pages with no extracted images,
+users can allow empty tracks to be reported by setting ALLOW_EMPTY_PAGES to true.
+
 
 Images extracted are automatically stored in a directory named after the job in
 the $MPF_HOME/share/artifacts directory. Users can toggle the job parameter
 (ORGANIZE_BY_PAGE) to store each set of images in sub-directories labeled by
-page number, otherwise all unique images are stored in the main job directory.
+page number, otherwise all unique images are stored in the main job directory
+under $MPF_HOME/share/artifacts/job#/tika-extracted.
