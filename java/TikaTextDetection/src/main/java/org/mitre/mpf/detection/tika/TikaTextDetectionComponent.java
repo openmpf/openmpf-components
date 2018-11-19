@@ -273,11 +273,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         }
         // If entire document is empty, generate a single track reporting no detections.
         if (tracks.size() == 0) {
-            Map<String, String> genericDetectionProperties = new HashMap<String, String>();
-            genericDetectionProperties.put("STATUS_EMPTY_DOCUMENT", "");
             LOG.warn("Empty or invalid document. No extracted text.");
-            MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
-            tracks.add(genericTrack);
         }
 
         LOG.info("[{}] Processing complete. Generated {} generic tracks.", mpfGenericJob.getJobName(), tracks.size());
@@ -361,14 +357,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         map.put("zh-cn", "Simplified Chinese");
         map.put("zh-tw", "Traditional Chinese");
         return map;
-    }
-
-    // Extract stack trace as a string.
-    public static String extractStackTrace(Exception e) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        e.printStackTrace(pw);
-        return sw.toString();
     }
 
     // The TikeDetection component supports generic file types (pdfs, documents, txt, etc.).
