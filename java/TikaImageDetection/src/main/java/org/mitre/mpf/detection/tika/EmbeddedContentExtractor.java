@@ -161,7 +161,7 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
         if (current.length() == 0) {
             current.append(filename);
         } else {
-            current.append("; " + filename);
+            current.append(";" + filename);
         }
 
     }
