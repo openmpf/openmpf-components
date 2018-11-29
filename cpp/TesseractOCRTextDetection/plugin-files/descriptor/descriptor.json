@@ -1,0 +1,293 @@
+{
+  "componentName" : "TesseractOCRTextDetection",
+  "componentVersion" : "3.0.0",
+  "middlewareVersion" :  "3.0.0",
+  "sourceLanguage" : "c++",
+  "batchLibrary": "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib/libmpfTesseractOCRTextDetection.so",
+  "environmentVariables" : [ {
+    "name" : "LD_LIBRARY_PATH",
+    "value" : "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib:${LD_LIBRARY_PATH}",
+    "sep" : ":"
+  } ],
+  "algorithm" : {
+    "name" : "TESSERACTOCR",
+    "description" : "This component applies Tesseract optical character recognition to an image.",
+    "actionType" : "DETECTION",
+    "requiresCollection" : {
+      "states" : []
+    },
+    "providesCollection" : {
+      "states" : [
+        "DETECTION",
+        "DETECTION_TEXT",
+        "DETECTION_TEXT_TESSERACT"
+      ],
+      "properties" : [
+         {"name": "FEED_FORWARD_TYPE",
+          "description": "Applies to images and videos. The type of feed-forward behavior. Controls how this algorithm will make use of the tracks generated in the previous pipeline stage. If this algorithm is used in the first pipeline stage then this property has no effect. Instead, the default segmenting behavior is used, where tracks from the previous stage are used to generate segments based on the TARGET_SEGMENT_LENGTH and MIN_SEGMENT_LENGTH properties. Can be set to “NONE”, “FRAME”, or “SUPERSET_REGION”. If set to “NONE”, the default segmenting behavior is used. If set to “FRAME” or “SUPERSET_REGION”, then the segment length properties are ignored and instead this algorithm will process one segment per track generated in the previous stage. If set to “FRAME”, then this algorithm will ignore the regions associated with previous detections and instead process the entire frame associated with each of those detections. If set to “SUPERSET_REGION”, then this algorithm will generate a superset region for each of the previous tracks – a bounding box of constant size and position that encloses all of the track’s detection regions. This algorithm will only process the data within the superset region.",
+          "type": "STRING",
+          "defaultValue": "NONE"
+        },
+        {
+          "name": "FEED_FORWARD_TOP_CONFIDENCE_COUNT",
+          "description": "Only applies if FEED_FORWARD_TYPE is set to a value other than “NONE”. If set to a value <= 0, then for each track generated in the previous pipeline stage, this algorithm will process the frame associated with each detection in that track, ignoring frames that don’t have detections. If FEED_FORWARD_TYPE is set to “FRAME”, then the entire frame is processed. If FEED_FORWARD_TYPE is set to “SUPERSET_REGION”, then only the superset region for those frames is processed. If this property is set to “1” then only the exemplar frame for each of the previous tracks is processed. If this property is set to a value > 1, say 5, then each of the detections in the previous track are sorted by confidence and this algorithm will only process the frames associated with the top 5 detections with the highest confidence. For detections with the same confidence values, it will select those with a lower frame index. If the track contains less than 5 detections, then all of the available detections are used. In practice, setting this property to a value > 1 has no effect on image and audio jobs because each track only contains one detection.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
+          "type": "DOUBLE",
+          "defaultValue": "-2"
+        },
+        {
+          "name": "SEARCH_REGION_ENABLE_DETECTION",
+          "description": "Enable cropping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_X_DETECTION",
+          "description": "X coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_Y_DETECTION",
+          "description": "Y coordinate for top left corner of cropped frame. If negative, 0 will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION",
+          "description": "X coordinate for bottom right corner of cropped frame. If negative, bottom right X of input media will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION",
+          "description": "Y coordinate for bottom right corner of cropped frame. If negative, bottom right Y of input media. will be used.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "ROTATION",
+          "description": "Specifies the number of degrees in the clockwise direction that the media will be rotated. Only 90, 180 and 270 degrees are supported.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "HORIZONTAL_FLIP",
+          "description": "Specifies whether or not the original media is flipped. Rotation occurs before flipping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_ROTATE",
+          "description": "Specifies whether not to rotate media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_FLIP",
+          "description": "Specifies whether or not to flip media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "TAGGING_FILE",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. $MPF_HOME/.../text-tags.json).",
+          "type": "STRING",
+          "defaultValue": "text-tags.json"
+        },
+        {
+          "name": "TESSERACT_LANGUAGE",
+          "description": "The language OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+ara' = run English, German, Arabic together as one track detection, and 'eng, ara+deu'= run English as the first track and Arabic + German as the second track. Language model files for Bulgarian (bul), Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus), Russian (rus), and Spanish (spa) are stored in plugin-files/bin/tessdata. Note the osd language file (osd.traindata) is for extraction of script orientation rather than language. Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00.",
+          "type": "STRING",
+          "defaultValue": "eng"
+        },
+        {
+          "name": "TESSERACT_PSM",
+          "description": "Tesseract Page Segmentation Mode. Refer to Tesseract docs (https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage) for details.",
+          "type": "INT",
+          "defaultValue": "3"
+        },
+        {
+          "name": "ENABLE_SHARPEN",
+          "description": "Enables image sharpening as a preprocessing step.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "ENABLE_RESCALE",
+          "description": "Enables image rescaling as a preprocessing step. Combine with image sharpening to improve text resolution.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "ENABLE_OTSU_THRS",
+          "description": "Enables Otsu image thresholding. Adaptive_thrs overrides Otsu when both are enabled. Improves text extraction by converting image to black and white. Works best for images with uniform lighting. For multicolor images with gradients, use adaptive threshold. ",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "ENABLE_ADAPTIVE_THRS",
+          "description": "Enables adaptive image thresholding (overrides Otsu). Works better for images with lighting/color gradients.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "SHARPEN",
+          "description": "Weight of the sharpening paremeter. Default is 1.0, 0.0 = original image, higher = sharper.",
+          "type": "DOUBLE",
+          "defaultValue": "1.0"
+        },
+        {
+          "name": "SCALE",
+          "description": "Image rescaling factor. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.6.",
+          "type": "DOUBLE",
+          "defaultValue": "2.6"
+        },
+        {
+          "name": "INVERT",
+          "description": "Toggles image color inversion during preprocessing.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "THRS_FILTER",
+          "description": "Toggles filtering of OCR results by character frequencies (vowels, punctuation, etc.). Effective for shorter sequences of strings.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "HIST_FILTER",
+          "description": "Toggles filtering of OCR results by histogram correlation to english character frequencies. Needs longer sequences of words to be effective.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "NUM_ONLY",
+          "description": "Specifies whether to allow OCR detections that include only numbers.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "MIN_WORD_LEN",
+          "description": "Specifies minimum word length required for a detection. Default value 3 = reject any output where all words are less than 3 characters in length.",
+          "type": "INT",
+          "defaultValue": "3"
+        },
+        {
+          "name": "MIN_HIST_SIZE",
+          "description": "Specifies minimum number of english characters needed for a histogram comparison. Strings with less than specified number will only go through threshold check to avoid false negatives.",
+          "type": "INT",
+          "defaultValue": "60"
+        },
+        {
+          "name": "MIN_HIST_SCORE",
+          "description": "Specifies minimum threshold comparison score (0-1.0). Higher values result in less detections.",
+          "type": "DOUBLE",
+          "defaultValue": "0.52"
+        },
+        {
+          "name": "MAX_ENG_PNCT",
+          "description": "Specifies max fraction of english punctuation in a detection. Default value .40 = any detection with >40% punctuation characters would be removed. Ignores whitespace.",
+          "type": "DOUBLE",
+          "defaultValue": "0.40"
+        },
+        {
+          "name": "MAX_FRN_CHAR",
+          "description": "Specifies max fraction of non-english characters in a detection.",
+          "type": "DOUBLE",
+          "defaultValue": "0.20"
+        },
+        {
+          "name": "VOWEL_MIN",
+          "description": "Specifies min fraction of english vowels in a detection.",
+          "type": "DOUBLE",
+          "defaultValue": "0.05"
+        },
+        {
+          "name": "VOWEL_MAX",
+          "description": "Specifies max fraction of english vowels in a detection.",
+          "type": "DOUBLE",
+          "defaultValue": "0.95"
+        },
+        {
+          "name": "ADAPTIVE_THRS_BLOCKSIZE",
+          "description": "Specifies pixel radius for calculating adaptive threshold value.",
+          "type": "INT",
+          "defaultValue": "51"
+        },
+        {
+          "name": "ADAPTIVE_THRS_CONSTANT",
+          "description": "Specifies constant subtracted from adaptive threshold mean.",
+          "type": "DOUBLE",
+          "defaultValue": "5"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "TESSERACT IMAGE OCR ACTION",
+      "description": "Runs the Tesseract OCR model on an image.",
+      "algorithm": "TESSERACTOCR",
+      "properties": [
+        {
+        "name" : "TAGGING_FILE",
+        "value" : "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
+        }
+    ]
+    },
+    {
+      "name": "TESSERACT IMAGE OCR ACTION SPARSE TEXT",
+      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
+      "algorithm": "TESSERACTOCR",
+      "properties": [
+        {
+        "name" : "TAGGING_FILE",
+        "value" : "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
+        },
+        {
+          "name": "TESSERACT_PSM",
+          "value": "11"
+        }
+
+    ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "TESSERACT IMAGE OCR TASK",
+      "description": "Runs the Tesseract OCR model on an image.",
+      "actions": [
+        "TESSERACT IMAGE OCR ACTION"
+      ]
+    },
+    {
+      "name": "TESSERACT IMAGE OCR TASK SPARSE TEXT",
+      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
+      "actions": [
+        "TESSERACT IMAGE OCR ACTION SPARSE TEXT"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "TESSERACT IMAGE OCR PIPELINE",
+      "description": "Runs the Tesseract OCR model on an image.",
+      "tasks": [
+        "TESSERACT IMAGE OCR TASK"
+      ]
+    },
+    {
+      "name": "TESSERACT IMAGE OCR PIPELINE SPARSE TEXT",
+      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
+      "tasks": [
+        "TESSERACT IMAGE OCR TASK SPARSE TEXT"
+      ]
+    }
+  ]
+}
