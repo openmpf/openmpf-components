@@ -26,41 +26,32 @@
 
 package org.mitre.mpf.detection.tika;
 
-import org.mitre.mpf.component.api.detection.*;
-import org.mitre.mpf.component.api.detection.util.MPFEnvironmentVariablePathExpander;
-
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.util.LinkedList;
-
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.IOException;
-import java.io.FileNotFoundException;
-
-import java.lang.StringBuilder;
-import java.util.regex.Pattern;
-
+import org.apache.tika.config.TikaConfig;
+import org.apache.tika.exception.TikaException;
+import org.apache.tika.extractor.EmbeddedDocumentExtractor;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.pdf.PDFParserConfig;
-import org.apache.tika.config.TikaConfig;
-
-import org.apache.tika.extractor.EmbeddedDocumentExtractor;
-import org.apache.tika.exception.TikaException;
-
+import org.mitre.mpf.component.api.detection.*;
+import org.mitre.mpf.component.api.detection.util.MPFEnvironmentVariablePathExpander;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.*;
+import java.util.regex.Pattern;
 
 public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TikaImageDetectionComponent.class);
+
+    private String configDirectory;
 
     private static void setPdfConfig(ParseContext context) {
         PDFParserConfig pdfConfig = new PDFParserConfig();
@@ -69,13 +60,24 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         context.set(PDFParserConfig.class, pdfConfig);
     }
 
-    private static ArrayList<StringBuilder> parseDocument(final String input, final String path, final boolean separatePages, final boolean repeatImages) throws MPFComponentDetectionError{
-        TikaConfig config = TikaConfig.getDefaultConfig() ;
+    public void setConfigDirectory(String configDirectory) {
+        this.configDirectory = configDirectory;
+    }
+
+    public void init() {
+        if (configDirectory == null) {
+            configDirectory = getRunDirectory() + "/TikaImageDetection/config";
+        }
+    }
+
+    private ArrayList<StringBuilder> parseDocument(final String input, final String docPath, final boolean separatePages, final boolean repeatImages) throws MPFComponentDetectionError{
+        TikaConfig config = TikaConfig.getDefaultConfig();
+        String configPath = configDirectory + "/tika-config.xml";
         try {
-            config = new TikaConfig("plugin-files/config/tika-config.xml");
+            config = new TikaConfig(configPath);
         } catch (SAXException | IOException | TikaException e) {
             e.printStackTrace();
-            String errMsg = "Failed to load tika config file: plugin-files/config/tika-config.xml";
+            String errMsg = "Failed to load tika config file: " + configPath;
             LOG.error(errMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_OPEN_DATAFILE, errMsg);
         }
@@ -84,7 +86,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         ContentHandler handler = new ImageExtractionContentHandler();
         Metadata metadata = new Metadata();
         ParseContext context = new ParseContext();
-        EmbeddedDocumentExtractor embeddedDocumentExtractor = new EmbeddedContentExtractor(path, separatePages, repeatImages);
+        EmbeddedDocumentExtractor embeddedDocumentExtractor = new EmbeddedContentExtractor(docPath, separatePages, repeatImages);
         String errMsg = ((EmbeddedContentExtractor) embeddedDocumentExtractor).init(LOG);
         if( errMsg.length() > 0) {
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_FILE_WRITE_ERROR, errMsg);
@@ -97,13 +99,13 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
             InputStream stream = new FileInputStream(input);
             parser.parse(stream, handler, metadata, context);
         } catch (FileNotFoundException e) {
-            errMsg = "Error opening file at : " + path;
+            errMsg = "Error opening file at : " + docPath;
             LOG.error(errMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_OPEN_DATAFILE, errMsg);
         } catch (SAXException | IOException | TikaException e) {
-            errMsg = "Error processing file at : " + path;
+            errMsg = "Error processing file at : " + docPath;
             LOG.error(errMsg, e);
-            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, "Error processing file at : " + path);
+            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, "Error processing file at : " + docPath);
         }
         EmbeddedContentExtractor x = ((EmbeddedContentExtractor) embeddedDocumentExtractor);
         return x.getImageList();
