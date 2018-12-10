@@ -46,6 +46,7 @@ find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
+find_package(ImageMagick 7.0.8 COMPONENTS Magick++ REQUIRED)
 
 find_library(TESSERACT_LIB tesseract)
 find_library(LEPT_LIB lept)

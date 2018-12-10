@@ -73,14 +73,11 @@ std::string TesseractOCRTextDetection::GetDetectionType() {
     ocr_fset.vowel_max = 0.95;
     ocr_fset.correl_limit = 0.52;
     ocr_fset.invert = false;
-
     ocr_fset.enable_sharpen = false;
     ocr_fset.enable_rescale = true;
     ocr_fset.enable_otsu_thrs = false;
     ocr_fset.enable_adaptive_thrs = false;
-
     ocr_fset.tesseract_lang = "eng";
-
     ocr_fset.adaptive_thrs_pixel = 11;
     ocr_fset.adaptive_thrs_c = 0;
 }
@@ -714,7 +711,6 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
 
     tesseract::TessBaseAPI tess_api;
 
-
     MPFImageReader image_reader(job);
     cv::Mat image_data;
     image_data = image_reader.GetImage();
@@ -725,16 +721,6 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     } else {
         LOG4CXX_DEBUG(hw_logger_,  "[" + job.job_name + "] Transformed image opened." );
     }
-
-
-    ocr_fset.scale = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SCALE",ocr_fset.scale);
-    ocr_fset.adaptive_thrs_c = DetectionComponentUtils::GetProperty<double>(job.job_properties,"ADAPTIVE_THRS_CONSTANT", ocr_fset.adaptive_thrs_c);
-    ocr_fset.adaptive_thrs_pixel = DetectionComponentUtils::GetProperty<int>(job.job_properties,"ADAPTIVE_THRS_BLOCKSIZE", ocr_fset.adaptive_thrs_pixel);
-    ocr_fset.enable_adaptive_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_ADAPTIVE_THRS", ocr_fset.enable_adaptive_thrs);
-    ocr_fset.enable_otsu_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_OTSU_THRS", ocr_fset.enable_otsu_thrs);
-    ocr_fset.enable_sharpen = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_SHARPEN", ocr_fset.enable_sharpen);
-    ocr_fset.enable_rescale = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_RESCALE", ocr_fset.enable_rescale);
-
     // Image preprocessig to improve text extraction results.
 
     // Image thresholding.
@@ -1063,6 +1049,27 @@ set<wstring> TesseractOCRTextDetection::search_string(const MPFImageJob &job, co
         return found_keys_string;
 }
 
+
+// return the filenames of all files that have the specified extension
+// in the specified directory and all subdirectories
+void TesseractOCRTextDetection::get_path_files(const std::string root, const std::string& ext, std::vector<std::string> &ret)
+{
+
+    if (!boost::filesystem::exists(root) || !boost::filesystem::is_directory(root)) {
+        return;
+    }
+
+    boost::filesystem::recursive_directory_iterator iter(root);
+    boost::filesystem::recursive_directory_iterator iter_end;
+
+    while (iter != iter_end) {
+        if (boost::filesystem::is_regular_file(*iter) && iter->path().extension() == ext) {
+            ret.push_back(root + "/" + iter->path().filename().string());
+        }
+        ++iter;
+    }
+}
+
 MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, std::vector <MPFImageLocation> &locations)
 {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name+ "] Processing \"" + job.data_uri + "\".");
@@ -1095,89 +1102,132 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
     std::map<std::wstring,std::vector<std::wstring>> json_kvs_string_split = json_kvs_full[L"TAGS_STRING_SPLIT"];
     std::map<std::wstring,std::vector<std::wstring>> json_kvs_regex = json_kvs_full[L"TAGS_REGEX"];
     LOG4CXX_DEBUG(hw_logger_, log_print_str("[" + job.job_name + "] Read JSON"));
-
-
-    std::vector<std::pair<std::string, std::wstring>> ocr_outputs;
     LOG4CXX_DEBUG(hw_logger_, log_print_str("[" + job.job_name + "] About to run tesseract"));
     cv::Mat image;
+
     ocr_fset.sharpen = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SHARPEN",ocr_fset.sharpen);
     ocr_fset.invert = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"INVERT",ocr_fset.invert);
+    //String Filtering.
+    ocr_fset.threshold_check = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"THRS_FILTER",ocr_fset.threshold_check);
+    ocr_fset.hist_check = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"HIST_FILTER",ocr_fset.hist_check);
+    ocr_fset.num_only_ok = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"NUM_ONLY",ocr_fset.num_only_ok);
+    ocr_fset.min_word_len = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_WORD_LEN",ocr_fset.min_word_len);
+    ocr_fset.hist_min_char = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_HIST_SIZE",ocr_fset.hist_min_char);
+    ocr_fset.excess_eng_symbols = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MAX_ENG_PNCT",ocr_fset.excess_eng_symbols);
+    ocr_fset.excess_non_eng_symbols = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MAX_FRN_CHAR",ocr_fset.excess_non_eng_symbols);
+    ocr_fset.vowel_min = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MIN",ocr_fset.vowel_min);
+    ocr_fset.vowel_max = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MAX",ocr_fset.vowel_max);
+    ocr_fset.correl_limit = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MIN_HIST_SCORE",ocr_fset.correl_limit);
+    //Image Preprocessing
+    ocr_fset.scale = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SCALE",ocr_fset.scale);
+    ocr_fset.adaptive_thrs_c = DetectionComponentUtils::GetProperty<double>(job.job_properties,"ADAPTIVE_THRS_CONSTANT", ocr_fset.adaptive_thrs_c);
+    ocr_fset.adaptive_thrs_pixel = DetectionComponentUtils::GetProperty<int>(job.job_properties,"ADAPTIVE_THRS_BLOCKSIZE", ocr_fset.adaptive_thrs_pixel);
+    ocr_fset.enable_adaptive_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_ADAPTIVE_THRS", ocr_fset.enable_adaptive_thrs);
+    ocr_fset.enable_otsu_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_OTSU_THRS", ocr_fset.enable_otsu_thrs);
+    ocr_fset.enable_sharpen = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_SHARPEN", ocr_fset.enable_sharpen);
+    ocr_fset.enable_rescale = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_RESCALE", ocr_fset.enable_rescale);
 
-    if (!get_tesseract_detections(job,ocr_outputs, image, ocr_fset.sharpen, psm, lang, job_status))
-    {
-        LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] Could not run tesseract!"));
-        return job_status;
+
+
+    bool multi_page = false;
+    std::string temp_im_directory;
+    vector<std::string> filelist;
+    //Detects pdf documents and converts pdf to image files.
+    if (boost::iequals(boost::filesystem::extension(job.data_uri), ".pdf")) {
+        multi_page = true;
+        temp_im_directory = plugin_path + "/" + random_string(20);
+        if (boost::filesystem::exists(temp_im_directory)) {
+            LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] Unable to write temporary directory: " + temp_im_directory));
+            return MPF_FILE_WRITE_ERROR;
+         }
+        boost::filesystem::create_directory(temp_im_directory);
+        std::string convert_command = plugin_path + "/bin/convert -density 300 " + job.data_uri
+            + " -depth 8 -strip -background white -alpha off "
+            + temp_im_directory + "/"
+            + "results_extracted%d.tiff";
+        system(convert_command.c_str());
+        get_path_files(temp_im_directory, ".tiff", filelist);
     }
-    for (auto ocr_out: ocr_outputs) {
-        std::string ocr_lang = ocr_out.first;
-        std::wstring ocr_detections = ocr_out.second;
-        ocr_detections = clean_whitespace(ocr_detections);
-            //String Filtering.
-            ocr_fset.threshold_check = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"THRS_FILTER",ocr_fset.threshold_check);
-            ocr_fset.hist_check = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"HIST_FILTER",ocr_fset.hist_check);
-            ocr_fset.num_only_ok = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"NUM_ONLY",ocr_fset.num_only_ok);
-            ocr_fset.min_word_len = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_WORD_LEN",ocr_fset.min_word_len);
-            ocr_fset.hist_min_char = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_HIST_SIZE",ocr_fset.hist_min_char);
-            ocr_fset.excess_eng_symbols = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MAX_ENG_PNCT",ocr_fset.excess_eng_symbols);
-            ocr_fset.excess_non_eng_symbols = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MAX_FRN_CHAR",ocr_fset.excess_non_eng_symbols);
-            ocr_fset.vowel_min = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MIN",ocr_fset.vowel_min);
-            ocr_fset.vowel_max = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MAX",ocr_fset.vowel_max);
-            ocr_fset.correl_limit = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MIN_HIST_SCORE",ocr_fset.correl_limit);
 
-        if (ocr_fset.hist_check || ocr_fset.threshold_check) {
-            ocr_detections = TesseractOCRTextDetection::check_string(ocr_detections,ocr_fset);
+    if (!multi_page) {
+        filelist.push_back(job.data_uri);
+    }
+
+
+    int page_num = 0;
+    for (std::string filename : filelist) {
+        MPFImageJob c_job(job.job_name, filename, job.job_properties, job.media_properties);
+        std::vector<std::pair<std::string, std::wstring>> ocr_outputs;
+        if (!get_tesseract_detections(c_job, ocr_outputs, image, ocr_fset.sharpen, psm, lang, job_status)) {
+            LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] Could not run tesseract!"));
+            return job_status;
         }
 
-        LOG4CXX_DEBUG(hw_logger_, log_print_str("[" + job.job_name + "] Ran tesseract"));
-        LOG4CXX_DEBUG(hw_logger_, log_print_str("[" + job.job_name + "] Tesseract output was: " + boost::locale::conv::utf_to_utf<char>(ocr_detections)));
+        for (auto ocr_out: ocr_outputs) {
+            std::string ocr_lang = ocr_out.first;
+            std::wstring ocr_detections = ocr_out.second;
+            ocr_detections = clean_whitespace(ocr_detections);
+            if (ocr_fset.hist_check || ocr_fset.threshold_check) {
+                ocr_detections = TesseractOCRTextDetection::check_string(ocr_detections,ocr_fset);
+            }
+
+            LOG4CXX_DEBUG(hw_logger_, log_print_str("[" + job.job_name + "] Ran tesseract"));
+            LOG4CXX_DEBUG(hw_logger_, log_print_str("[" + job.job_name + "] Tesseract output was: " + boost::locale::conv::utf_to_utf<char>(ocr_detections)));
 
 
-        MPFImageLocation image_location(0, 0, image.cols, image.rows);
+            MPFImageLocation image_location(0, 0, image.cols, image.rows);
 
 
-        if (is_only_ascii_whitespace(ocr_detections)) {
-            LOG4CXX_WARN(hw_logger_, log_print_str("[" + job.job_name + "] No text found in image!"));
+            if (is_only_ascii_whitespace(ocr_detections)) {
+                LOG4CXX_WARN(hw_logger_, log_print_str("[" + job.job_name + "] No text found in image!"));
+            }
+            else {
+                auto tokenized = get_tokens(ocr_detections);
+                std::wstring norm_detections = to_lowercase(ocr_detections);
+                auto found_tags_regex = search_regex(job, norm_detections, json_kvs_regex, job_status);
+                auto found_tags_string_split = search_string_split(job, tokenized, json_kvs_string_split);
+                auto found_tags_string = search_string(job, norm_detections, json_kvs_string);
+
+                for ( auto tag: found_tags_string_split) {
+                    found_tags_string.insert(tag);
+                }
+                for ( auto tag: found_tags_regex) {
+                    found_tags_string.insert(tag);
+                }
+                std::wstring tag_string = L"";
+                int num_found = 0;
+                for (auto tags : found_tags_string)
+                {
+                    tag_string += tags + L", ";
+                    num_found++;
+                }
+                if (num_found > 0)
+                {
+                    tag_string = tag_string.substr(0,tag_string.size() - 2);
+                }
+
+                image_location.detection_properties["LANGUAGE"] = ocr_lang;
+                image_location.detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
+                image_location.detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(ocr_detections);
+                if (multi_page) {
+                    image_location.detection_properties["PAGE_NUM"] = std::to_string(page_num);
+                }
+                locations.push_back(image_location);
+            }
         }
-        else {
-            auto tokenized = get_tokens(ocr_detections);
-            std::wstring norm_detections = to_lowercase(ocr_detections);
-            auto found_tags_regex = search_regex(job, norm_detections, json_kvs_regex, job_status);
-            auto found_tags_string_split = search_string_split(job, tokenized, json_kvs_string_split);
-            auto found_tags_string = search_string(job, norm_detections, json_kvs_string);
-
-            for ( auto tag: found_tags_string_split) {
-                found_tags_string.insert(tag);
-            }
-            for ( auto tag: found_tags_regex) {
-                found_tags_string.insert(tag);
-            }
-            std::wstring tag_string = L"";
-            int num_found = 0;
-            for (auto tags : found_tags_string)
-            {
-                tag_string += tags + L", ";
-                num_found++;
-            }
-            if (num_found > 0)
-            {
-                tag_string = tag_string.substr(0,tag_string.size() - 2);
-            }
-
-            image_location.detection_properties["LANGUAGE"] = ocr_lang;
-            image_location.detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
-            image_location.detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(ocr_detections);
-            locations.push_back(image_location);
-        }
+        page_num++;
+    }
+    if (multi_page) {
+        boost::filesystem::remove_all(temp_im_directory);
     }
     LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Processing complete. Found " + std::to_string(locations.size()) + " tracks.");
-    ocr_outputs.clear();
-
     return job_status;
 }
 
 bool TesseractOCRTextDetection::Supports(MPFDetectionDataType data_type) {
 
-    return data_type == MPFDetectionDataType::IMAGE;
+    //Supports images and documents, no audio or video data types.
+    return data_type == MPFDetectionDataType::IMAGE || data_type == data_type == MPFDetectionDataType::UNKNOWN;
 }
 
 MPF_COMPONENT_CREATOR(TesseractOCRTextDetection);
