@@ -24,8 +24,8 @@ Language models supported by Tesseract must be stored in /bin/tessdata.
 Users are able to store new models into the tessdata folder to expand
 supported languages.
 
-Most languages will only require the *.traineddata file. Languages like Arabic will
-also require the [lang].cube.* files to be present within the tessdata directory.
+Most languages will only require the *.traineddata file. Certain languages will
+also require the [lang].cube.* files to be present within the tessdata directory as well.
 
 Each language module follows ISO 639-2 designations, with character variations
 of a language (ex. uzb_cyrl) also supported. Users must enter the same designation
@@ -38,10 +38,10 @@ specified language using the '+' delimiter to run multiple languages
 together in one track and ',' to run them as separate tracks. Delimiters
 can also be combined for separate multilingual tracks.
 
-Example 1: 'eng+deu+ara' = run English, German, Arabic together as one track detection.
-Example 2: 'eng, deu+ara'= run English as the first track and German + Arabic
-as the second track. Languages that use a .cube modelfile (like Arabic) should be specified
-last to avoid Tesseract language model errors (ex. ara+eng will trigger errors while eng+ara
+Example 1: 'eng+deu' = run English, German together as one track detection.
+Example 2: 'eng, deu+fra'= run English as the first track and German + French
+as the second track. Languages that use a .cube model file should be specified
+last to avoid Tesseract language model errors (ex. cube_lang+eng will trigger errors while eng+cube_lang
 will work properly).
 
 

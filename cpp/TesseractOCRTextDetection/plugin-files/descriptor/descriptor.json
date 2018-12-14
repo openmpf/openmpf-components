@@ -102,7 +102,7 @@
         },
         {
           "name": "TESSERACT_LANGUAGE",
-          "description": "The language OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+ara' = run English, German, Arabic together as one track detection, and 'eng, ara+deu'= run English as the first track and Arabic + German as the second track. Language model files for Bulgarian (bul), Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus), Russian (rus), and Spanish (spa) are stored in plugin-files/bin/tessdata. Note the osd language file (osd.traindata) is for extraction of script orientation rather than language. Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00.",
+          "description": "The language OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+fra' = run English, German, French together as one track detection, and 'eng, fra+deu'= run English as the first track and French + German as the second track. Language model files for Bulgarian (bul), Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus), Russian (rus), and Spanish (spa) are stored in plugin-files/bin/tessdata. Note the osd language file (osd.traindata) is for extraction of script orientation rather than language. Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00.",
           "type": "STRING",
           "defaultValue": "eng"
         },
