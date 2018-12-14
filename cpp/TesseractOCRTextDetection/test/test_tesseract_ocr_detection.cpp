@@ -47,9 +47,24 @@ MPFImageJob createOCRJob(const std::string &uri, const std::map<std::string,std:
     for (auto const& x : custom) {
         algorithm_properties[x.first] = x.second;
     }
-
-
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
+    return job;
+}
+
+MPFGenericJob createPDFJob(const std::string &uri, const std::map<std::string,std::string> & custom = {}){
+    Properties algorithm_properties;
+    Properties media_properties;
+    std::string job_name("OCR_test");
+    algorithm_properties["TAGGING_FILE"] = "config/test-text-tags-foreign.json";
+    algorithm_properties["SHARPEN"] = "1.0";
+    algorithm_properties["TESSERACT_LANGUAGE"] = "eng";
+    algorithm_properties["THRS_FILTER"] = "false";
+    algorithm_properties["HIST_FILTER"] = "false";
+
+    for (auto const& x : custom) {
+        algorithm_properties[x.first] = x.second;
+    }
+    MPFGenericJob job(job_name, uri, algorithm_properties, media_properties);
     return job;
 }
 
@@ -60,6 +75,13 @@ void runDetections(const std::string &image_path, TesseractOCRTextDetection &ocr
 
     ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
     ASSERT_FALSE(image_locations.empty());
+}
+
+void runDocumentDetections(const std::string &image_path, TesseractOCRTextDetection &ocr, std::vector<MPFGenericTrack> &image_tracks, const std::map<std::string,std::string> & custom = {}) {
+      MPFGenericJob job = createPDFJob(image_path, custom);
+      MPFDetectionError rc = ocr.GetDetections(job, image_tracks);
+      ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+      ASSERT_FALSE(image_tracks.empty());
 }
 
 void assertEmptyDetection(const std::string &image_path, TesseractOCRTextDetection &ocr, std::vector<MPFImageLocation> &image_locations, const std::map<std::string,std::string> & custom = {}) {
@@ -117,11 +139,20 @@ void assertTagNotInImage(const std::string &image_path, const std::string &expec
                                << "Expected OCR to NOT detect keyword tag \"" << expected_tag << "\" in " << image_path;
 }
 
+void format_results(std::vector<MPFImageLocation>& im_track, const std::vector<MPFGenericTrack>& gen_track ) {
+    for (int i = 0; i < gen_track.size(); i++) {
+        MPFImageLocation image_location(0, 0, 1, 1);
+        image_location.detection_properties = gen_track[i].detection_properties;
+        im_track.push_back(image_location);
+    }
+}
+
 TEST(TESSERACTOCR, ImageTest) {
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
     std::vector<MPFImageLocation> results;
+    std::vector<MPFGenericTrack> results_pdf;
 
     ASSERT_TRUE(ocr.Init());
 
@@ -180,5 +211,13 @@ TEST(TESSERACTOCR, ImageTest) {
     assertTagInImage("data/eng-bul.png", "key-phrase", results, 0);
     assertTextInImage("data/eng-bul.png", "All human beings are born free", results, 0);
 
+    results.clear();
+    // Test document text extraction.
+    runDocumentDetections("data/test.pdf", ocr, results_pdf);
+    format_results(results, results_pdf);
+    assertTagInImage("data/test.pdf", "personal", results, 0);
+    assertTextInImage("data/test.pdf", "This is a test", results, 0);
+    assertTagInImage("data/test.pdf", "vehicle", results, 1);
+    assertTextInImage("data/test.pdf", "Vehicle", results, 1);
 
 }

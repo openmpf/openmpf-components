@@ -42,11 +42,12 @@ find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0
     COMPONENTS opencv_highgui opencv_objdetect opencv_features2d opencv_ml opencv_flann opencv_video)
 
 
+find_package(ImageMagick COMPONENTS Magick++ convert REQUIRED)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
-find_package(ImageMagick 7.0.8 COMPONENTS Magick++ REQUIRED)
+
 
 find_library(TESSERACT_LIB tesseract)
 find_library(LEPT_LIB lept)
@@ -61,7 +62,7 @@ endforeach()
 
 find_package(Boost 1.53.0 COMPONENTS regex locale filesystem)
 include_directories(${Boost_INCLUDE_DIRS})
-
+include_directories(${ImageMagick_INCLUDE_DIRS})
 
 set(OCR_SOURCE_FILES
         TesseractOCRTextDetection.cpp TesseractOCRTextDetection.h JSON.cpp JSONValue.cpp JSON.h JSONValue.h)
@@ -72,8 +73,7 @@ set(OCR_SOURCE_FILES
 add_library(mpfTesseractOCRTextDetection SHARED ${OCR_SOURCE_FILES})
 
 
-target_link_libraries(mpfTesseractOCRTextDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${TESSERACT_LIB} ${LEPT_LIB} ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES})
-
+target_link_libraries(mpfTesseractOCRTextDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${TESSERACT_LIB} ${LEPT_LIB} ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES} ${ImageMagick_LIBRARIES})
 configure_mpf_component(TesseractOCRTextDetection TARGETS  mpfTesseractOCRTextDetection EXTRA_LIB_PATHS "${extra_lib_dirs}")
 
 

@@ -29,6 +29,8 @@
 #include <iostream>
 #include "TesseractOCRTextDetection.h"
 #include "MPFComponentInterface.h"
+#include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 
 /**
  * NOTE: This main is only intended to serve as a test harness for compiling a
@@ -63,31 +65,62 @@ int main(int argc, char* argv[]) {
     if (argc == 3) {
         algorithm_properties["TESSERACT_LANGUAGE"] = argv[2];
     }
-    MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
-    // Instantiate the component.
-    TesseractOCRTextDetection im;
-    im.SetRunDirectory("./plugin");
-    im.Init();
-    // Declare the vector of image locations to be filled in by the
-    // component.
-    std::vector<MPFImageLocation> locations;
-    // Pass the job to the image detection component.
-    MPFDetectionError rc = MPF_DETECTION_SUCCESS;
-    rc = im.GetDetections(job, locations);
-    if (rc == MPF_DETECTION_SUCCESS) {
-        std::cout << "Number of image locations = "
-                  << locations.size() << std::endl;
 
-        for (int i = 0; i < locations.size(); i++) {
-            std::cout << "OCR result: " << i << "\n"
-                      << "   metadata = \"" << locations[i].detection_properties.at("TEXT") << "\"" << std::endl;
-            std::cout << "OCR text tags: " << i << "\n"
-                      << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS") << "\"" << std::endl;
+    if (boost::iequals(boost::filesystem::extension(uri), ".pdf")) {
+        MPFGenericJob job(job_name, uri, algorithm_properties, media_properties);
+        // Instantiate the component.
+        TesseractOCRTextDetection im;
+        im.SetRunDirectory("./plugin");
+        im.Init();
+        // Declare the vector of image locations to be filled in by the
+        // component.
+        std::vector<MPFGenericTrack> locations;
+        // Pass the job to the image detection component.
+        MPFDetectionError rc = MPF_DETECTION_SUCCESS;
+        rc = im.GetDetections(job, locations);
+        if (rc == MPF_DETECTION_SUCCESS) {
+            std::cout << "Number of image locations = "
+                      << locations.size() << std::endl;
+
+            for (int i = 0; i < locations.size(); i++) {
+                std::cout << "OCR result: " << i << "\n"
+                          << "   metadata = \"" << locations[i].detection_properties.at("TEXT") << "\"" << std::endl;
+                std::cout << "OCR text tags: " << i << "\n"
+                          << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS") << "\"" << std::endl;
+                std::cout << "OCR page_num: " << locations[i].detection_properties.at("PAGE_NUM") << "\"" << std::endl;
+
+            }
+        } else {
+            std::cout << "GetDetections failed" << std::endl;
         }
-    }
-    else {
-        std::cout << "GetDetections failed" << std::endl;
-    }
+    } else {
+        MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
+        // Instantiate the component.
+        TesseractOCRTextDetection im;
+        im.SetRunDirectory("./plugin");
+        im.Init();
+        // Declare the vector of image locations to be filled in by the
+        // component.
+        std::vector<MPFImageLocation> locations;
+        // Pass the job to the image detection component.
+        MPFDetectionError rc = MPF_DETECTION_SUCCESS;
+        rc = im.GetDetections(job, locations);
+        if (rc == MPF_DETECTION_SUCCESS) {
+            std::cout << "Number of image locations = "
+                      << locations.size() << std::endl;
+
+            for (int i = 0; i < locations.size(); i++) {
+                std::cout << "OCR result: " << i << "\n"
+                          << "   metadata = \"" << locations[i].detection_properties.at("TEXT") << "\"" << std::endl;
+                std::cout << "OCR text tags: " << i << "\n"
+                          << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS") << "\"" << std::endl;
+            }
+        } else {
+                std::cout << "GetDetections failed" << std::endl;
+        }
+     }
+
+
   }
 
     return 0;

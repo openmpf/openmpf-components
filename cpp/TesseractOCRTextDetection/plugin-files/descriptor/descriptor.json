@@ -122,7 +122,7 @@
           "name": "ENABLE_RESCALE",
           "description": "Enables image rescaling as a preprocessing step. Combine with image sharpening to improve text resolution.",
           "type": "BOOLEAN",
-          "defaultValue": "false"
+          "defaultValue": "true"
         },
         {
           "name": "ENABLE_OTSU_THRS",
@@ -146,7 +146,7 @@
           "name": "SCALE",
           "description": "Image rescaling factor. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.6.",
           "type": "DOUBLE",
-          "defaultValue": "2.6"
+          "defaultValue": "1.6"
         },
         {
           "name": "INVERT",
