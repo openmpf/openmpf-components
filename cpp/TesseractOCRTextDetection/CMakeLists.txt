@@ -67,7 +67,8 @@ include_directories(${ImageMagick_INCLUDE_DIRS})
 set(OCR_SOURCE_FILES
         TesseractOCRTextDetection.cpp TesseractOCRTextDetection.h JSON.cpp JSONValue.cpp JSON.h JSONValue.h)
 
-
+add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=16 )
+add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
 
 # Build library
 add_library(mpfTesseractOCRTextDetection SHARED ${OCR_SOURCE_FILES})
