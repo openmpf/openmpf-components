@@ -24,25 +24,13 @@
   ~ See the License for the specific language governing permissions and       ~
   ~ limitations under the License.                                            ~
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+<!-- The applicationContext.xml must be named exactly as here, and must contain the component bean. -->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+	   					   http://www.springframework.org/schema/beans/spring-beans.xsd">
 
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+    <bean id="component"
+          class="org.mitre.mpf.detection.tika.TikaTextDetectionComponent"/>
 
-    <groupId>org.mitre.mpf</groupId>
-    <artifactId>mpf-java-components</artifactId>
-    <version>3.0.0</version>
-    <modules>
-        <module>SphinxSpeechDetection</module>
-        <module>TikaImageDetection</module>
-        <module>TikaTextDetection</module>
-    </modules>
-    <packaging>pom</packaging>
-
-    <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-    </properties>
-
-</project>
+</beans>

@@ -6,7 +6,7 @@ component.
 Detects and segments a given video by scenes. Each scene change is detected using
 histogram comparison, edge comparison, brightness (fades outs), and overall
 hue/saturation/value differences between adjacent frames. Users can toggle each
-type of of scene change detection technique using (DO_HIST, DO_THRS, DO_EDGE, DO_CONT)
+type of scene change detection technique using (DO_HIST, DO_THRS, DO_EDGE, DO_CONT)
 respectively as well as threshold parameters for each detection method.
 
 For a video with a given frame interval  (ex.[0,200]), this module will report

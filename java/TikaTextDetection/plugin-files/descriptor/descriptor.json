@@ -1,0 +1,87 @@
+{
+  "componentName" : "TikaTextDetection",
+  "componentVersion" : "3.0.0",
+  "middlewareVersion" : "3.0.0",
+  "sourceLanguage" : "java",
+  "batchLibrary" : "mpf-tika-text-detection-component-3.0.0.jar",
+  "environmentVariables" : [],
+  "algorithm" : {
+    "name": "TIKATEXT",
+    "description": "The Apache Tika text detection component.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TEXT",
+        "DETECTION_TEXT_TIKA"
+      ],
+      "properties": [
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
+          "type": "DOUBLE",
+          "defaultValue": "-2"
+        },
+        {
+          "name": "TAGGING_FILE",
+          "description": "Name of a JSON file (in the plugin's config folder) that describes a tag hierarchy to be used on the full text returned from Tika text detection.",
+          "type": "STRING",
+          "defaultValue": "$MPF_HOME/plugins/TikaTextDetection/config/text-tags.json"
+        },
+        {
+          "name": "STORE_METADATA",
+          "description": "Specifies whether or not to store metadata as a separate track detection.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "TRIM_TEXT",
+          "description": "Specifies whether or not to trim out trailing whitespace in extracted text.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "LIST_ALL_PAGES",
+          "description": "Specifies whether or not to store each page as a track, even if no text is extracted.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "MIN_CHARS_FOR_LANGUAGE_DETECTION",
+          "description": "Specifies minimum length of detected text before language filtering is applied.",
+          "type": "INT",
+          "defaultValue": "20"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "TIKA TEXT DETECTION ACTION",
+      "description": "Executes the Tika text detection algorithm using the default parameters.",
+      "algorithm": "TIKATEXT",
+      "properties": []
+    }
+  ],
+  "tasks": [
+    {
+      "name": "TIKA TEXT DETECTION TASK",
+      "description": "Performs Tika text detection.",
+      "actions": [
+        "TIKA TEXT DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "TIKA TEXT DETECTION PIPELINE",
+      "description": "Performs Tika text detection.",
+      "tasks": [
+        "TIKA TEXT DETECTION TASK"
+      ]
+    }
+  ]
+}

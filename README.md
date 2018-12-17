@@ -36,6 +36,7 @@ Included in this repository are the following C++ Components:
 And the following Java Components:
 - Sphinx Speech Detection
 - Tika Image (from document) Detection
+- Tika Text Detection
 
 ## Where Am I?
 

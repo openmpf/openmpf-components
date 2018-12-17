@@ -28,42 +28,66 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+
 
     <groupId>org.mitre.mpf</groupId>
-    <artifactId>mpf-sphinx-speech-detection-component</artifactId>
     <version>3.0.0</version>
 
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>mpf-tika-text-detection-component</artifactId>
+
     <properties>
+        <junit.version>4.12</junit.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
     <dependencies>
+        <!-- All MPF Java Components must include the mpf-java-component-api as a dependency -->
         <dependency>
             <groupId>org.mitre.mpf</groupId>
             <artifactId>mpf-java-component-api</artifactId>
             <version>3.0.0</version>
         </dependency>
         <dependency>
-            <groupId>edu.cmu.sphinx</groupId>
-            <artifactId>sphinx4-core</artifactId>
-            <version>5prealpha-20151218.160007-5</version>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>edu.cmu.sphinx</groupId>
-            <artifactId>sphinx4-data</artifactId>
-            <version>5prealpha-20151218.160017-5</version>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>1.18</version>
         </dependency>
         <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>2.4</version>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parsers</artifactId>
+            <version>1.18</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-langdetect</artifactId>
+            <version>1.18</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.9.2</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.9.2</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- Make this jar executable -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -72,23 +96,26 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
+                            <!-- Ensures that any libraries for the component are accessible from the plugin -->
                             <classpathPrefix>./lib/</classpathPrefix>
                         </manifest>
                     </archive>
                 </configuration>
             </plugin>
             <plugin>
+                <!-- Assembles the tar.gz which can be deployed as a component. assemblyDescriptor.xml defines the
+                 tar.gz directory structure. -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>assemble-sphinx-speech-detection-package</id>
+                        <id>assemble-tika-text-detection-package</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
                         <configuration>
-                            <finalName>SphinxSpeechDetection</finalName>
+                            <finalName>TikaTextDetection</finalName>
                             <descriptor>assemblyDescriptor.xml</descriptor>
                             <outputDirectory>target/plugin-packages</outputDirectory>
                             <appendAssemblyId>false</appendAssemblyId>
@@ -96,7 +123,6 @@
                     </execution>
                 </executions>
             </plugin>
-
         </plugins>
     </build>
 
