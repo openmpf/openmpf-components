@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
         MPFDetectionError rc = MPF_DETECTION_SUCCESS;
         rc = im.GetDetections(job, tracks);
         if (rc == MPF_DETECTION_SUCCESS) {
-            std::cout << "Number of image tracks = "
+            std::cout << "Number of tracks = "
                       << tracks.size() << std::endl;
 
             for (int i = 0; i < tracks.size(); i++) {
