@@ -4,10 +4,10 @@ This repository contains source code and model data for the OpenMPF Tesseract
 OCR text detection component.
 
 The component extracts text found in an image, reported as a single track detection.
-PDF, PPTX documents can also be processed with one track detection per page. The first page
+PDF and PPTX documents can also be processed with one track detection per page. The first page
 corresponds to the detection property PAGE_NUM = 1. For debugging purposes, images converted
 from documents are stored in a temporary job directory under
-plugin/TesseractOCR/tmp-[job-id]-[random tag].
+plugin/TesseractOCR/tmp-[job-id]-[random tag]. This directory is removed when the job completes successfully.
 
 Please refer to https://imagemagick.org/script/formats.php for support of other document file formats.
 

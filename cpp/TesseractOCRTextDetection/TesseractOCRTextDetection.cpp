@@ -1234,7 +1234,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
         run_dir = ".";
     }
     string plugin_path = run_dir + "/TesseractOCRTextDetection";
-    temp_im_directory = plugin_path + "/tmp-" + job_name + random_string(20);
+    temp_im_directory = plugin_path + "/tmp-" + job_name + "-" + random_string(20);
 
     if (boost::filesystem::exists(temp_im_directory)) {
         LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] Unable to write temporary directory (already exists): " + temp_im_directory));
