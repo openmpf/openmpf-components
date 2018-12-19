@@ -76,10 +76,10 @@ int main(int argc, char* argv[]) {
         // Run uri as a generic data file.
         std::cout << "Running job on generic data uri: " << uri << std::endl;
         MPFGenericJob job(job_name, uri, algorithm_properties, media_properties);
-        // Declare the vector of image tracks to be filled in by the
+        // Declare the vector of tracks to be filled in by the
         // component.
         std::vector<MPFGenericTrack> tracks;
-        // Pass the job to the image detection component.
+        // Pass the job to the ocr component.
         MPFDetectionError rc = MPF_DETECTION_SUCCESS;
         rc = im.GetDetections(job, tracks);
         if (rc == MPF_DETECTION_SUCCESS) {
@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
         // Declare the vector of image locations to be filled in by the
         // component.
         std::vector<MPFImageLocation> locations;
-        // Pass the job to the image detection component.
+        // Pass the job to the ocr component.
         MPFDetectionError rc = MPF_DETECTION_SUCCESS;
         rc = im.GetDetections(job, locations);
         if (rc == MPF_DETECTION_SUCCESS) {
