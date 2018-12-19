@@ -4,6 +4,11 @@ This repository contains source code and model data for the OpenMPF Tesseract
 OCR text detection component.
 
 The component extracts text found in an image, reported as a single track detection.
+Documents (pdf, text) can also be processed with one track detection per page. The first page
+corresponds to the detection property PAGE_NUM = 1. For debugging purposes, images converted
+from documents are stored in a temporary job directory under
+plugin/TesseractOCR/tmp-[job-id]-[random tag].
+
 Users may set the language of each track using the TESSERACT_LANGUAGE parameter
 as well as adjust image preprocessing settings for text extraction.
 
@@ -41,8 +46,8 @@ can also be combined for separate multilingual tracks.
 Example 1: 'eng+deu' = run English, German together as one track detection.
 Example 2: 'eng, deu+fra'= run English as the first track and German + French
 as the second track. Languages that use a .cube model file should be specified
-last to avoid Tesseract language model errors (ex. cube_lang+eng will trigger errors while eng+cube_lang
-will work properly).
+last to avoid Tesseract language model errors (ex. cube_lang+eng will trigger errors
+while eng+cube_lang will work properly).
 
 
 By default this component contains model files for Bulgarian (bul),
