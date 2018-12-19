@@ -1169,7 +1169,7 @@ bool TesseractOCRTextDetection::process_text_tagging(Properties &detection_prope
     detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(ocr_detections);
 
     if (page_num >= 0) {
-        detection_properties["PAGE_NUM"] = std::to_string(page_num);
+        detection_properties["PAGE_NUM"] = std::to_string(page_num + 1);
     }
     return true;
 
