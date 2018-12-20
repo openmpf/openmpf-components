@@ -118,7 +118,7 @@ public class TestTikaImageDetectionComponent {
                     MPFGenericTrack track = tracks.get(i);
                     System.out.println(String.format("Generic track number %d", i));
                     System.out.println(String.format("  Confidence = %f", track.getConfidence()));
-                    System.out.println(String.format("  Page = %s", track.getDetectionProperties().get("PAGE")));
+                    System.out.println(String.format("  Page = %s", track.getDetectionProperties().get("PAGE_NUM")));
                     System.out.println(String.format("  Images = %s", track.getDetectionProperties().get("SAVED_IMAGES")));
                 }
             }
@@ -129,14 +129,14 @@ public class TestTikaImageDetectionComponent {
             //Test extraction of image 0, page 0.
             //Image 0 stored multiple times, should only be reported once.
             MPFGenericTrack testTrack = tracks.get(0);
-            assertEquals("Page number not correct", "1", testTrack.getDetectionProperties().get("PAGE"));
+            assertEquals("Page number not correct", "1", testTrack.getDetectionProperties().get("PAGE_NUM"));
             assertTrue("Expected image0.jpg in page 1.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
             assertTrue("Invalid file paths for page 1.", pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
 
             //Test extraction of image 1, page 1.
             //Image 0 should be listed again.
             testTrack = tracks.get(1);
-            assertEquals("Page number not correct", "2", testTrack.getDetectionProperties().get("PAGE"));
+            assertEquals("Page number not correct", "2", testTrack.getDetectionProperties().get("PAGE_NUM"));
             assertTrue("Expected image0.jpg in page 2.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
             assertTrue("Expected image1.jpg in page 2.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.jpg"));
             assertTrue("Invalid file paths for page 2.", pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
@@ -144,7 +144,7 @@ public class TestTikaImageDetectionComponent {
             //Test extraction of page 2.
             //Images 0 and 1 should be listed again.
             testTrack = tracks.get(2);
-            assertEquals("Page number not correct", "3", testTrack.getDetectionProperties().get("PAGE"));
+            assertEquals("Page number not correct", "3", testTrack.getDetectionProperties().get("PAGE_NUM"));
             assertTrue("Expected image0.jpg in page 3.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
             assertTrue("Expected image1.jpg in page 3.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.jpg"));
             assertTrue("Invalid file paths for page 3.", pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
@@ -152,12 +152,12 @@ public class TestTikaImageDetectionComponent {
 
             //Test empty page.
             testTrack = tracks.get(3);
-            assertEquals("Page number not correct", "4", testTrack.getDetectionProperties().get("PAGE"));
+            assertEquals("Page number not correct", "4", testTrack.getDetectionProperties().get("PAGE_NUM"));
             assertEquals("No images should have been reported.", "", testTrack.getDetectionProperties().get("SAVED_IMAGES"));
 
             //Test extraction of image 2, page 5.
             testTrack = tracks.get(4);
-            assertEquals("Page number not correct", "5", testTrack.getDetectionProperties().get("PAGE"));
+            assertEquals("Page number not correct", "5", testTrack.getDetectionProperties().get("PAGE_NUM"));
             assertTrue("Expected image2.jpg in page 5.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image2.jpg"));
             assertTrue("Invalid file paths for page 5.", pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
 

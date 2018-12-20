@@ -73,8 +73,8 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
 
     }
 
-    public String init(Logger log) {
-        log = log;
+    public String init(Logger mainLog) {
+        log = mainLog;
         String errMsg = "";
         try {
             if (!Files.exists(outputDir)) {

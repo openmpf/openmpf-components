@@ -162,7 +162,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         boolean emptyDocument = true;
         for (String imList: parseDocument(mpfGenericJob.getDataUri(), defaultSavePath, separatePages)) {
             Map<String, String> genericDetectionProperties = new HashMap<String, String>();
-            genericDetectionProperties.put("PAGE",String.valueOf(page + 1));
+            genericDetectionProperties.put("PAGE_NUM",String.valueOf(page + 1));
             if (imList.length() > 0) {
                 emptyDocument = false;
                 genericDetectionProperties.put("SAVED_IMAGES",imList.toString());
