@@ -29,8 +29,13 @@ package org.mitre.mpf.detection.tika;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mitre.mpf.component.api.detection.*;
+import org.mitre.mpf.component.api.detection.MPFComponentDetectionError;
+import org.mitre.mpf.component.api.detection.MPFGenericJob;
+import org.mitre.mpf.component.api.detection.MPFGenericTrack;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,9 +45,6 @@ import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import java.nio.file.Files;
-import java.io.File;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
@@ -58,8 +60,8 @@ public class TestTikaImageDetectionComponent {
     @Before
     public void setUp() {
         tikaComponent = new TikaImageDetectionComponent();
+        tikaComponent.setConfigDirectory("plugin-files/config");
         tikaComponent.init();
-        tikaComponent.setRunDirectory("..");
     }
 
     @After
