@@ -1,0 +1,3 @@
+From Apache Tika 1.8 Parsers library.
+Modifications to pdf parsers to access image ID information during content
+extraction.
