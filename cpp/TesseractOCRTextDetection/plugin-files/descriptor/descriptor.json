@@ -102,7 +102,7 @@
         },
         {
           "name": "TESSERACT_LANGUAGE",
-          "description": "The language OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+ara' = run English, German, Arabic together as one track detection, and 'eng, ara+deu'= run English as the first track and Arabic + German as the second track. Language model files for Bulgarian (bul), Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus), Russian (rus), and Spanish (spa) are stored in plugin-files/bin/tessdata. Note the osd language file (osd.traindata) is for extraction of script orientation rather than language. Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00.",
+          "description": "The language OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+fra' = run English, German, French together as one track detection, and 'eng, fra+deu'= run English as the first track and French + German as the second track. Language model files for Bulgarian (bul), Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus), Russian (rus), and Spanish (spa) are stored in plugin-files/bin/tessdata. Note the osd language file (osd.traindata) is for extraction of script orientation rather than language. Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00.",
           "type": "STRING",
           "defaultValue": "eng"
         },
@@ -122,7 +122,7 @@
           "name": "ENABLE_RESCALE",
           "description": "Enables image rescaling as a preprocessing step. Combine with image sharpening to improve text resolution.",
           "type": "BOOLEAN",
-          "defaultValue": "false"
+          "defaultValue": "true"
         },
         {
           "name": "ENABLE_OTSU_THRS",
@@ -146,7 +146,7 @@
           "name": "SCALE",
           "description": "Image rescaling factor. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.6.",
           "type": "DOUBLE",
-          "defaultValue": "2.6"
+          "defaultValue": "1.6"
         },
         {
           "name": "INVERT",
@@ -231,7 +231,7 @@
   },
   "actions": [
     {
-      "name": "TESSERACT IMAGE OCR ACTION",
+      "name": "TESSERACT OCR ACTION",
       "description": "Runs the Tesseract OCR model on an image.",
       "algorithm": "TESSERACTOCR",
       "properties": [
@@ -242,7 +242,7 @@
     ]
     },
     {
-      "name": "TESSERACT IMAGE OCR ACTION SPARSE TEXT",
+      "name": "TESSERACT OCR ACTION SPARSE TEXT",
       "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "algorithm": "TESSERACTOCR",
       "properties": [
@@ -260,33 +260,33 @@
   ],
   "tasks": [
     {
-      "name": "TESSERACT IMAGE OCR TASK",
+      "name": "TESSERACT OCR TASK",
       "description": "Runs the Tesseract OCR model on an image.",
       "actions": [
-        "TESSERACT IMAGE OCR ACTION"
+        "TESSERACT OCR ACTION"
       ]
     },
     {
-      "name": "TESSERACT IMAGE OCR TASK SPARSE TEXT",
+      "name": "TESSERACT OCR TASK SPARSE TEXT",
       "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "actions": [
-        "TESSERACT IMAGE OCR ACTION SPARSE TEXT"
+        "TESSERACT OCR ACTION SPARSE TEXT"
       ]
     }
   ],
   "pipelines": [
     {
-      "name": "TESSERACT IMAGE OCR PIPELINE",
+      "name": "TESSERACT OCR PIPELINE",
       "description": "Runs the Tesseract OCR model on an image.",
       "tasks": [
-        "TESSERACT IMAGE OCR TASK"
+        "TESSERACT OCR TASK"
       ]
     },
     {
-      "name": "TESSERACT IMAGE OCR PIPELINE SPARSE TEXT",
+      "name": "TESSERACT OCR PIPELINE SPARSE TEXT",
       "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "tasks": [
-        "TESSERACT IMAGE OCR TASK SPARSE TEXT"
+        "TESSERACT OCR TASK SPARSE TEXT"
       ]
     }
   ]
