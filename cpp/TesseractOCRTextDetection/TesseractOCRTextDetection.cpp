@@ -1262,7 +1262,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
         }
 
     } catch (Magick::Exception & error) {
-        LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] Error processing file " + job.data_uri + " ."));
+        LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] Error processing file " + job.data_uri + ": " + error.what()));
         if (boost::filesystem::exists(temp_im_directory)) {
             boost::filesystem::remove_all(temp_im_directory);
         }
