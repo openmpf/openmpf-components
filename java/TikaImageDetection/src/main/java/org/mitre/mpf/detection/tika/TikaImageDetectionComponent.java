@@ -78,7 +78,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
     }
 
     private ArrayList<String> parseDocument(final String input, final String docPath, final boolean separatePages) throws MPFComponentDetectionError {
-        TikaConfig config = TikaConfig.getDefaultConfig();
+        TikaConfig config;
         String configPath = configDirectory + "/tika-config.xml";
 
         try {
@@ -121,7 +121,6 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
 
     // Handles the case where the media is a generic type.
     public List<MPFGenericTrack>  getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
-
         log.info("[{}] Starting job.", mpfGenericJob.getJobName());
         log.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),

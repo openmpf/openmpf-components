@@ -46,7 +46,6 @@ import java.util.HashMap;
 
 
 public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
-
     private String path;
     private HashMap<String, String> imagesFound, imagesIndex;
     private ArrayList<String> commonImages;
@@ -59,7 +58,6 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
     private Logger log;
 
     public EmbeddedContentExtractor(String savePath, boolean separate) {
-
         path = savePath;
         pagenum = -1;
         imagesFound = new HashMap<String, String>();
@@ -76,7 +74,6 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
     }
 
     public String init(Logger log) {
-
         log = log;
         String errMsg = "";
         try {
@@ -117,7 +114,6 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
 
     public void parseEmbedded(InputStream stream, ContentHandler imHandler, Metadata metadata, boolean outputHtml)
             throws IOException {
-
         //Create a new page
         int nextpage = Integer.parseInt(imHandler.toString()) - 1;
         while (pagenum < nextpage) {
@@ -129,7 +125,6 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
                 Files.createDirectories(outputDir);
             }
         }
-
 
         String cosID = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
         String filename = "image" + String.valueOf(id) + "." + metadata.get(Metadata.CONTENT_TYPE);
