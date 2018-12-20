@@ -45,11 +45,16 @@ using namespace COMPONENT;
 
 using std::to_string;
 
+void print_usage(char* argv[]){
+
+    std::cout << "Usage: " << argv[0] << " -i <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+    std::cout << "Usage: " << argv[0] << " -g <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+}
+
 int main(int argc, char* argv[]) {
 
   if ((argc < 3)) {
-        std::cout << "Usage: " << argv[0] << " -i <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
-        std::cout << "Usage: " << argv[0] << " -g <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+        print_usage(argv);
         return 0;
     }
   else{
@@ -121,8 +126,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "GetDetections failed" << std::endl;
         }
      } else {
-        std::cout << "Usage: " << argv[0] << " -i <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
-        std::cout << "Usage: " << argv[0] << " -g <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+        print_usage(argv);
         return 0;
      }
 
