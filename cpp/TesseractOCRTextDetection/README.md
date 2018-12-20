@@ -4,6 +4,13 @@ This repository contains source code and model data for the OpenMPF Tesseract
 OCR text detection component.
 
 The component extracts text found in an image, reported as a single track detection.
+PDF and PPTX documents can also be processed with one track detection per page. The first page
+corresponds to the detection property PAGE_NUM = 1. For debugging purposes, images converted
+from documents are stored in a temporary job directory under
+plugin/TesseractOCR/tmp-[job-id]-[random tag]. This directory is removed when the job completes successfully.
+
+Please refer to https://imagemagick.org/script/formats.php for support of other document file formats.
+
 Users may set the language of each track using the TESSERACT_LANGUAGE parameter
 as well as adjust image preprocessing settings for text extraction.
 
@@ -24,6 +31,9 @@ Language models supported by Tesseract must be stored in /bin/tessdata.
 Users are able to store new models into the tessdata folder to expand
 supported languages.
 
+Most languages will only require the *.traineddata file. Certain languages will
+also require the [lang].cube.* files to be present within the tessdata directory as well.
+
 Each language module follows ISO 639-2 designations, with character variations
 of a language (ex. uzb_cyrl) also supported. Users must enter the same designation
 to enable the corresponding language detection (ex. TESSERACT_LANGUAGE = "deu"
@@ -35,9 +45,11 @@ specified language using the '+' delimiter to run multiple languages
 together in one track and ',' to run them as separate tracks. Delimiters
 can also be combined for separate multilingual tracks.
 
-Example 1: 'eng+deu+ara' = run English, German, Arabic together as one track detection.
-Example 2: 'eng, ara+deu'= run English as the first track and Arabic + German
-as the second track.
+Example 1: 'eng+deu' = run English, German together as one track detection.
+Example 2: 'eng, deu+fra'= run English as the first track and German + French
+as the second track. Languages that use a .cube model file should be specified
+last to avoid Tesseract language model errors (ex. cube_lang+eng will trigger errors
+while eng+cube_lang will work properly).
 
 
 By default this component contains model files for Bulgarian (bul),

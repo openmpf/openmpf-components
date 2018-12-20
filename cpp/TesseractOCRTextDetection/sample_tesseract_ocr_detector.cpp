@@ -29,6 +29,8 @@
 #include <iostream>
 #include "TesseractOCRTextDetection.h"
 #include "MPFComponentInterface.h"
+#include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 
 /**
  * NOTE: This main is only intended to serve as a test harness for compiling a
@@ -43,51 +45,92 @@ using namespace COMPONENT;
 
 using std::to_string;
 
+void print_usage(char* argv[]){
+
+    std::cout << "Usage: " << argv[0] << " -i <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+    std::cout << "Usage: " << argv[0] << " -g <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+}
+
 int main(int argc, char* argv[]) {
 
-  if ((argc < 2)) {
-        std::cout << "Usage: " << argv[0] << " <IMAGE_FILE_URI> [TESSERACT_LANGUAGES]" << std::endl;
+  if ((argc < 3)) {
+        print_usage(argv);
         return 0;
     }
   else{
+	std::string option(argv[1]);
+	std::string uri(argv[2]);
 
-	std::string uri(argv[1]);
 	Properties algorithm_properties;
-
     Properties media_properties;
     std::string job_name("OCR_test");
     algorithm_properties["TAGGING_FILE"] = "text-tags.json";
     algorithm_properties["THRS_FILTER"] = "false";
     algorithm_properties["HIST_FILTER"] = "false";
     algorithm_properties["SHARPEN"] = "1.0";
-    if (argc == 3) {
-        algorithm_properties["TESSERACT_LANGUAGE"] = argv[2];
+    if (argc == 4) {
+        algorithm_properties["TESSERACT_LANGUAGE"] = argv[3];
     }
-    MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
+
     // Instantiate the component.
     TesseractOCRTextDetection im;
     im.SetRunDirectory("./plugin");
     im.Init();
-    // Declare the vector of image locations to be filled in by the
-    // component.
-    std::vector<MPFImageLocation> locations;
-    // Pass the job to the image detection component.
-    MPFDetectionError rc = MPF_DETECTION_SUCCESS;
-    rc = im.GetDetections(job, locations);
-    if (rc == MPF_DETECTION_SUCCESS) {
-        std::cout << "Number of image locations = "
-                  << locations.size() << std::endl;
 
-        for (int i = 0; i < locations.size(); i++) {
-            std::cout << "OCR result: " << i << "\n"
-                      << "   metadata = \"" << locations[i].detection_properties.at("TEXT") << "\"" << std::endl;
-            std::cout << "OCR text tags: " << i << "\n"
-                      << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS") << "\"" << std::endl;
+    if (option == "-g") {
+        // Run uri as a generic data file.
+        std::cout << "Running job on generic data uri: " << uri << std::endl;
+        MPFGenericJob job(job_name, uri, algorithm_properties, media_properties);
+        // Declare the vector of tracks to be filled in by the
+        // component.
+        std::vector<MPFGenericTrack> tracks;
+        // Pass the job to the ocr component.
+        MPFDetectionError rc = MPF_DETECTION_SUCCESS;
+        rc = im.GetDetections(job, tracks);
+        if (rc == MPF_DETECTION_SUCCESS) {
+            std::cout << "Number of tracks = "
+                      << tracks.size() << std::endl;
+
+            for (int i = 0; i < tracks.size(); i++) {
+                std::cout << "OCR result: " << i << "\n"
+                          << "   metadata = \"" << tracks[i].detection_properties.at("TEXT") << "\"" << std::endl;
+                std::cout << "OCR text tags: " << i << "\n"
+                          << "   detected string tags = \"" << tracks[i].detection_properties.at("TAGS") << "\"" << std::endl;
+                std::cout << "OCR page_num: " << tracks[i].detection_properties.at("PAGE_NUM") << "\"" << std::endl;
+
+            }
+        } else {
+            std::cout << "GetDetections failed" << std::endl;
         }
-    }
-    else {
-        std::cout << "GetDetections failed" << std::endl;
-    }
+    } else if (option == "-i") {
+        // Run uri as an image data file.
+        std::cout << "Running job on image data uri: " << uri << std::endl;
+        MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
+        // Declare the vector of image locations to be filled in by the
+        // component.
+        std::vector<MPFImageLocation> locations;
+        // Pass the job to the ocr component.
+        MPFDetectionError rc = MPF_DETECTION_SUCCESS;
+        rc = im.GetDetections(job, locations);
+        if (rc == MPF_DETECTION_SUCCESS) {
+            std::cout << "Number of image locations = "
+                      << locations.size() << std::endl;
+
+            for (int i = 0; i < locations.size(); i++) {
+                std::cout << "OCR result: " << i << "\n"
+                          << "   metadata = \"" << locations[i].detection_properties.at("TEXT") << "\"" << std::endl;
+                std::cout << "OCR text tags: " << i << "\n"
+                          << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS") << "\"" << std::endl;
+            }
+        } else {
+                std::cout << "GetDetections failed" << std::endl;
+        }
+     } else {
+        print_usage(argv);
+        return 0;
+     }
+
+
   }
 
     return 0;

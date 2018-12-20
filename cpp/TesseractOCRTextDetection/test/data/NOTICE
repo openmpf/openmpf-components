@@ -17,5 +17,8 @@ Custom generated image for testing keyword and regex tags.
 # tags-regex.png
 Custom generated image for testing regex tags.
 
+# test.pdf
+Custom generated pdf for testing document text extraction.
+
 # text-demo.png
 Text extracted from open source project https://github.com/tesseract-ocr/tesseract.
