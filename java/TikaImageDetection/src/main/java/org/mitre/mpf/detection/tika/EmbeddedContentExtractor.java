@@ -37,8 +37,8 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
-import java.lang.StringBuilder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,123 +46,133 @@ import java.util.HashMap;
 
 
 public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
+
     private String path;
     private HashMap<String, String> imagesFound, imagesIndex;
     private ArrayList<String> commonImages;
-    private boolean separatePages, repeatImages;
+    private boolean separatePages;
     private int id, pagenum;
-    private ArrayList<StringBuilder> imageMap;
-    private StringBuilder current;
+    private ArrayList<ArrayList<String>> imageMap;
+    private ArrayList<String> current;
     private Path outputDir;
     private Path commonImgDir;
-    private Logger LOG;
-    public EmbeddedContentExtractor(String savePath, boolean separate, boolean repeat) {
+    private Logger log;
+
+    public EmbeddedContentExtractor(String savePath, boolean separate) {
+
         path = savePath;
         pagenum = -1;
         imagesFound = new HashMap<String, String>();
         imagesIndex = new HashMap<String, String>();
         commonImages = new ArrayList<String>();
         separatePages = separate;
-        repeatImages = repeat;
         id = 0;
-        imageMap = new ArrayList<StringBuilder>();
-        current = new StringBuilder();
+        imageMap = new ArrayList<ArrayList<String>>();
+        current = new ArrayList<String>();
 
-        outputDir = (new File(path + "/tika-extracted")).toPath();
-        commonImgDir =  (new File(path + "/tika-extracted/common")).toPath();
+        outputDir = Paths.get(path + "/tika-extracted");
+        commonImgDir = Paths.get(path + "/tika-extracted/common");
 
     }
+
     public String init(Logger log) {
-        LOG = log;
+
+        log = log;
         String errMsg = "";
         try {
             if (!Files.exists(outputDir)) {
                 Files.createDirectories(outputDir);
             }
-            if (repeatImages && !Files.exists(commonImgDir)) {
+            if (separatePages && !Files.exists(commonImgDir)) {
                 Files.createDirectories(commonImgDir);
             }
         } catch (IOException e) {
-            e.printStackTrace();
             errMsg = String.format("Unable to create the following directories: \n%s\n%s",
                     outputDir.toAbsolutePath(), commonImgDir.toAbsolutePath());
-            LOG.error(errMsg, e);
+            log.error(errMsg, e);
         }
         return errMsg;
 
     }
 
-    public ArrayList<StringBuilder> getImageList() {
-        return imageMap;
+    public ArrayList<String> getImageList() {
+        ArrayList<String> results = new ArrayList<String>();
+        for (ArrayList<String> pageResults: imageMap) {
+            results.add(String.join("; ", pageResults));
+        }
+        return results;
     }
 
     public boolean shouldParseEmbedded(Metadata metadata) {
         return true;
     }
 
+    public void updateFileLocation(String originalLocation, String newLocation) {
+        for (ArrayList<String> pageList: imageMap) {
+            if (pageList.indexOf(originalLocation) > -1) {
+                pageList.set(pageList.indexOf(originalLocation), newLocation);
+            }
+        }
+    }
+
     public void parseEmbedded(InputStream stream, ContentHandler imHandler, Metadata metadata, boolean outputHtml)
             throws IOException {
+
         //Create a new page
         int nextpage = Integer.parseInt(imHandler.toString()) - 1;
         while (pagenum < nextpage) {
             pagenum++;
-            current = new StringBuilder();
+            current = new ArrayList<String>();
             imageMap.add(current);
             if (separatePages) {
-                outputDir = (new File(path + "/page-" + String.valueOf(pagenum))).toPath();
+                outputDir = Paths.get(path + "/tika-extracted/page-" + String.valueOf(pagenum + 1));
+                Files.createDirectories(outputDir);
             }
-            Files.createDirectories(outputDir);
         }
 
 
         String cosID = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
         String filename = "image" + String.valueOf(id) + "." + metadata.get(Metadata.CONTENT_TYPE);
         if (imagesFound.containsKey(cosID) ) {
-            if (repeatImages && !commonImages.contains(cosID)) {
+            if (separatePages && !commonImages.contains(cosID)) {
                 // For images already encountered, save into a common images folder.
                 // Save each image only once in the common images folder.
                 commonImages.add(cosID);
                 String imageFile = imagesIndex.get(cosID);
-                File outputFPath = new File(commonImgDir.toString() + "/" + imageFile);
-                Path outputPath = outputFPath.toPath();
-
+                Path originalFile = Paths.get(imagesFound.get(cosID));
+                Path outputPath = Paths.get(commonImgDir.toString() + "/" + imageFile);
 
 
                 if (Files.exists(outputPath)) {
                     // Warn users that folder already contains images being overwritten
                     // This only happens if the same jobID was used on separate runs.
-                    LOG.warn("File {} already exists and will be overwritten", outputPath.toAbsolutePath());
-                    Files.deleteIfExists(outputPath);
+                    log.warn("File {} already exists. Can't write file.", outputPath.toAbsolutePath());
+                    throw new IOException(String.format("File %s already exists. Can't write new file.", outputPath.toAbsolutePath()));
                 }
-                Files.copy(stream, outputPath);
 
-                filename = outputFPath.getAbsolutePath();
+                Files.move(originalFile, outputPath);
+                updateFileLocation(originalFile.toString(), outputPath.toString());
+
+                filename = outputPath.toAbsolutePath().toString();
                 imagesFound.put(cosID, filename);
             } else {
                 filename = imagesFound.get(cosID);
             }
         } else {
             imagesIndex.put(cosID, filename);
-            File outputFPath = new File(outputDir.toString() + "/" + filename);
-            Path outputPath = outputFPath.toPath();
+            Path outputPath = Paths.get(outputDir.toString() + "/" + filename);
 
             if (Files.exists(outputPath)) {
                 // Warn users that folder already contains images being overwritten
                 // This only happens if the same jobID was used on separate runs.
-                LOG.warn("File {} already exists and will be overwritten", outputPath.toAbsolutePath());
-                Files.deleteIfExists(outputPath);
+                log.warn("File {} already exists. Can't write new file.", outputPath.toAbsolutePath());
+                throw new IOException(String.format("File %s already exists. Can't write file.", outputPath.toAbsolutePath()));
             }
             Files.copy(stream, outputPath);
-            filename = outputFPath.getAbsolutePath();
+            filename = outputPath.toAbsolutePath().toString();
             imagesFound.put(cosID, filename);
             id++;
         }
-
-        if (current.length() == 0) {
-            current.append(filename);
-        } else {
-            current.append(";" + filename);
-        }
-
+        current.add(filename);
     }
 }

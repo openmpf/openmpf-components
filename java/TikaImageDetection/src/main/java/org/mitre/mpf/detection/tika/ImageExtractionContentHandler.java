@@ -32,6 +32,7 @@ import org.apache.tika.sax.ToTextContentHandler;
 
 
 public class ImageExtractionContentHandler extends ToTextContentHandler{
+
     private String pageTag;
     protected int pageNumber;
     private boolean skipTitle;

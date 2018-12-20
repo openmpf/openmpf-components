@@ -35,12 +35,12 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.FileNotFoundException;
 
-import java.lang.StringBuilder;
 import java.util.regex.Pattern;
 
 import org.apache.tika.metadata.Metadata;
@@ -60,23 +60,24 @@ import org.xml.sax.SAXException;
 
 public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TikaImageDetectionComponent.class);
+    private static final Logger log = LoggerFactory.getLogger(TikaImageDetectionComponent.class);
 
     private static void setPdfConfig(ParseContext context) {
+
         PDFParserConfig pdfConfig = new PDFParserConfig();
         pdfConfig.setExtractInlineImages(true);
         pdfConfig.setExtractUniqueInlineImagesOnly(false);
         context.set(PDFParserConfig.class, pdfConfig);
     }
 
-    private static ArrayList<StringBuilder> parseDocument(final String input, final String path, final boolean separatePages, final boolean repeatImages) throws MPFComponentDetectionError{
-        TikaConfig config = TikaConfig.getDefaultConfig() ;
+    private static ArrayList<String> parseDocument(final String input, final String path, final boolean separatePages) throws MPFComponentDetectionError{
+
+        TikaConfig config = TikaConfig.getDefaultConfig();
         try {
             config = new TikaConfig("plugin-files/config/tika-config.xml");
         } catch (SAXException | IOException | TikaException e) {
-            e.printStackTrace();
             String errMsg = "Failed to load tika config file: plugin-files/config/tika-config.xml";
-            LOG.error(errMsg, e);
+            log.error(errMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_OPEN_DATAFILE, errMsg);
         }
 
@@ -84,8 +85,8 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         ContentHandler handler = new ImageExtractionContentHandler();
         Metadata metadata = new Metadata();
         ParseContext context = new ParseContext();
-        EmbeddedDocumentExtractor embeddedDocumentExtractor = new EmbeddedContentExtractor(path, separatePages, repeatImages);
-        String errMsg = ((EmbeddedContentExtractor) embeddedDocumentExtractor).init(LOG);
+        EmbeddedDocumentExtractor embeddedDocumentExtractor = new EmbeddedContentExtractor(path, separatePages);
+        String errMsg = ((EmbeddedContentExtractor) embeddedDocumentExtractor).init(log);
         if( errMsg.length() > 0) {
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_FILE_WRITE_ERROR, errMsg);
         }
@@ -98,11 +99,11 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
             parser.parse(stream, handler, metadata, context);
         } catch (FileNotFoundException e) {
             errMsg = "Error opening file at : " + path;
-            LOG.error(errMsg, e);
+            log.error(errMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_OPEN_DATAFILE, errMsg);
         } catch (SAXException | IOException | TikaException e) {
             errMsg = "Error processing file at : " + path;
-            LOG.error(errMsg, e);
+            log.error(errMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, "Error processing file at : " + path);
         }
         EmbeddedContentExtractor x = ((EmbeddedContentExtractor) embeddedDocumentExtractor);
@@ -111,8 +112,9 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
 
     // Handles the case where the media is a generic type.
     public List<MPFGenericTrack>  getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
-        LOG.info("[{}] Starting job.", mpfGenericJob.getJobName());
-        LOG.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
+
+        log.info("[{}] Starting job.", mpfGenericJob.getJobName());
+        log.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
             mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
 
@@ -125,7 +127,6 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         Map<String,String> properties = mpfGenericJob.getJobProperties();
         boolean separatePages = false;
         boolean emptyPages = false;
-        boolean repeatImages = false;
 
         if (properties.get("SAVE_PATH") != null) {
             defaultSavePath = properties.get("SAVE_PATH");
@@ -137,9 +138,6 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         }
         if (properties.get("ALLOW_EMPTY_PAGES") != null) {
             emptyPages = Boolean.valueOf(properties.get("ALLOW_EMPTY_PAGES"));
-        }
-        if (properties.get("STORE_REPEAT_IMAGES") != null) {
-            repeatImages = Boolean.valueOf(properties.get("STORE_REPEAT_IMAGES"));
         }
 
         if (mpfGenericJob.getJobName().length() != 0) {
@@ -153,18 +151,18 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         List<MPFGenericTrack> tracks = new LinkedList<MPFGenericTrack>();
         int page = 0;
         float confidence = -1.0f;
-        boolean empty_document = true;
-        for (StringBuilder imList: parseDocument(mpfGenericJob.getDataUri(), defaultSavePath, separatePages, repeatImages)) {
+        boolean emptyDocument = true;
+        for (String imList: parseDocument(mpfGenericJob.getDataUri(), defaultSavePath, separatePages)) {
             Map<String, String> genericDetectionProperties = new HashMap<String, String>();
-            genericDetectionProperties.put("PAGE",String.valueOf(page));
-            if (imList.toString().length() > 0) {
-                empty_document = false;
-                genericDetectionProperties.put("IMAGE_FILES",imList.toString());
+            genericDetectionProperties.put("PAGE",String.valueOf(page + 1));
+            if (imList.length() > 0) {
+                emptyDocument = false;
+                genericDetectionProperties.put("SAVED_IMAGES",imList.toString());
                 MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                 tracks.add(genericTrack);
             } else {
                 if (emptyPages) {
-                    genericDetectionProperties.put("IMAGE_FILES", "");
+                    genericDetectionProperties.put("SAVED_IMAGES", "");
                     MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                     tracks.add(genericTrack);
                 }
@@ -172,19 +170,34 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
             page++;
         }
 
-        if (empty_document) {
+        if (emptyDocument) {
             // If no images were found at all, wipe out empty tracks.
-            LOG.info("No images detected in document");
+            log.info("No images detected in document");
             tracks.clear();
         }
+        deleteEmptySubDirectories(new File(defaultSavePath + "/tika-extracted"));
 
-        LOG.info("[{}] Processing complete. Generated {} generic tracks.",
-                        mpfGenericJob.getJobName(),
-                        tracks.size());
+        log.info("[{}] Processing complete. Generated {} generic tracks.",
+                mpfGenericJob.getJobName(),
+                tracks.size());
 
         return tracks;
     }
 
+    // Recursively walks through the given directory and clears out empty subdirectories
+    // If all subdirectories are empty and nothing else is contained, the given directory is also deleted.
+    private void deleteEmptySubDirectories(File path){
+        if (path.isDirectory()) {
+           for(File file: path.listFiles()) {
+               if (file.isDirectory()) {
+                   deleteEmptySubDirectories(file);
+               }
+           }
+           if (path.list().length == 0) {
+               path.delete();
+           }
+        }
+    }
 
     // The TikeDetection component supports generic file types (pdfs, documents, txt, etc.).
     public boolean supports(MPFDataType mpfDataType) {

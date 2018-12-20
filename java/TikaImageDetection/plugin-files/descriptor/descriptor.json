@@ -42,12 +42,6 @@
           "description": "Specifies whether or not to store images sorted into subdirectories by page.",
           "type": "BOOLEAN",
           "defaultValue": "false"
-        },
-        {
-          "name": "STORE_REPEAT_IMAGES",
-          "description": "When true, identical images detected in multiple pages will be stored into a shared common folder. When false, images will only be stored once within a page subdirectory or within the general job directory.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
         }
       ]
     }

@@ -236,9 +236,9 @@ class PDF2XHTML extends AbstractPDF2XHTML {
                 if (imageNumber == null) {
                     imageNumber = inlineImageCounter++;
                 }
-                String fileName = "image" + imageNumber + "."+extension;
+                String fileName = "image" + imageNumber + "." + extension;
                 embeddedMetadata.set(Metadata.RESOURCE_NAME_KEY, fileName);
-                embeddedMetadata.set(Metadata.CONTENT_TYPE, extension.toString());
+                embeddedMetadata.set(Metadata.CONTENT_TYPE, extension);
 
                 // Output the img tag
                 AttributesImpl attr = new AttributesImpl();
