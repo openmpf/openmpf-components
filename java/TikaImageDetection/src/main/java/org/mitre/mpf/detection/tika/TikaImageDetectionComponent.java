@@ -149,11 +149,11 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         }
 
         if (mpfGenericJob.getJobName().length() != 0) {
-            String inputpath = mpfGenericJob.getJobName().split(":")[0];
-            inputpath = Pattern.compile("job"
-                    , Pattern.LITERAL | Pattern.CASE_INSENSITIVE).matcher(inputpath).replaceAll("");
-            inputpath = inputpath.trim();
-            defaultSavePath += "/" + inputpath;
+            String jobId = mpfGenericJob.getJobName().split(":")[0];
+            jobId = Pattern.compile("job"
+                    , Pattern.LITERAL | Pattern.CASE_INSENSITIVE).matcher(jobId).replaceAll("");
+            jobId = jobId.trim();
+            defaultSavePath += "/" + jobId;
         }
 
         List<MPFGenericTrack> tracks = new LinkedList<MPFGenericTrack>();
