@@ -231,7 +231,7 @@
   },
   "actions": [
     {
-      "name": "TESSERACT OCR TEXT DETECTION ACTION",
+      "name": "TESSERACT OCR TEXT ACTION",
       "description": "Runs the Tesseract OCR model on an image.",
       "algorithm": "TESSERACTOCR",
       "properties": [
@@ -242,7 +242,7 @@
     ]
     },
     {
-      "name": "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT",
+      "name": "TESSERACT OCR TEXT ACTION SPARSE TEXT",
       "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "algorithm": "TESSERACTOCR",
       "properties": [
@@ -260,33 +260,33 @@
   ],
   "tasks": [
     {
-      "name": "TESSERACT OCR TEXT DETECTION TASK",
+      "name": "TESSERACT OCR TEXT TASK",
       "description": "Runs the Tesseract OCR model on an image.",
       "actions": [
-        "TESSERACT OCR TEXT DETECTION ACTION"
+        "TESSERACT OCR TEXT ACTION"
       ]
     },
     {
-      "name": "TESSERACT OCR TEXT DETECTION TASK SPARSE TEXT",
+      "name": "TESSERACT OCR TEXT TASK SPARSE TEXT",
       "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "actions": [
-        "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT"
+        "TESSERACT OCR TEXT ACTION SPARSE TEXT"
       ]
     }
   ],
   "pipelines": [
     {
-      "name": "TESSERACT OCR TEXT DETECTION PIPELINE",
+      "name": "TESSERACT OCR TEXT PIPELINE",
       "description": "Runs the Tesseract OCR model on an image.",
       "tasks": [
-        "TESSERACT OCR TEXT DETECTION TASK"
+        "TESSERACT OCR TEXT TASK"
       ]
     },
     {
-      "name": "TESSERACT OCR TEXT DETECTION PIPELINE SPARSE TEXT",
+      "name": "TESSERACT OCR TEXT PIPELINE SPARSE TEXT",
       "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "tasks": [
-        "TESSERACT OCR TEXT DETECTION TASK SPARSE TEXT"
+        "TESSERACT OCR TEXT TASK SPARSE TEXT"
       ]
     }
   ]
