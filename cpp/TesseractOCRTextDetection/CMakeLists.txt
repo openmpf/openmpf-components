@@ -41,9 +41,7 @@ unset(OpenCV_CONFIG_PATH CACHE)
 find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0
     COMPONENTS opencv_highgui opencv_objdetect opencv_features2d opencv_ml opencv_flann opencv_video)
 
-
-set(ImageMagick_INCLUDE_DIRS /apps/install/include/ImageMagick-6)
-set(ImageMagick_LIBRARIES /apps/install/lib/libMagick++-6.Q16.so)
+find_package(ImageMagick COMPONENTS Magick++ REQUIRED)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
