@@ -42,8 +42,8 @@ find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0
     COMPONENTS opencv_highgui opencv_objdetect opencv_features2d opencv_ml opencv_flann opencv_video)
 
 
-set(ImageMagick_INCLUDE_DIRS /usr/include/ImageMagick)
-set(ImageMagick_LIBRARIES /usr/lib64/libMagick++.so)
+set(ImageMagick_INCLUDE_DIRS /usr/include/ImageMagick-7)
+set(ImageMagick_LIBRARIES /usr/lib64/libMagick++-7.Q16HDRI.so)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
