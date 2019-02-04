@@ -191,14 +191,14 @@ TEST(TESSERACTOCR, FilterTest) {
     // Check no text detected for image with junk text when hist filter is enabled.
     runImageDetection("data/junk-text.png", ocr, results);
     results.clear();
-    std::map<std::string,std::string> custom_properties = {{"HIST_FILTER","true"}};
+    std::map<std::string,std::string> custom_properties = {{"HIST_FILTER","true"}, {"TESSERACT_OEM","0"}};
     assertEmptyDetection("data/junk-text.png", ocr, results,  custom_properties);
     results.clear();
 
     // Check no text detected for image with junk text when thrs filter is enabled.
     runImageDetection("data/junk-text.png", ocr, results);
     results.clear();
-    std::map<std::string,std::string> custom_properties2 = {{"THRS_FILTER","true"}};
+    std::map<std::string,std::string> custom_properties2 = {{"THRS_FILTER","true"}, {"TESSERACT_OEM","0"}};
     assertEmptyDetection("data/junk-text.png", ocr, results, custom_properties2);
     results.clear();
 }

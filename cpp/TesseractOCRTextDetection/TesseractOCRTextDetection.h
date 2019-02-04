@@ -85,6 +85,7 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         int min_word_len;
         int hist_min_char;
         int psm;
+        int oem;
         double adaptive_thrs_c;
         double scale;
         double sharpen;

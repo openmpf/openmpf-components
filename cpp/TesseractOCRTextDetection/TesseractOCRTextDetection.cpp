@@ -62,6 +62,7 @@ std::string TesseractOCRTextDetection::GetDetectionType() {
  */
  void TesseractOCRTextDetection::SetDefaultParameters() {
     default_ocr_fset.psm = 3;
+    default_ocr_fset.oem = 3;
     default_ocr_fset.sharpen = 1.0;
     default_ocr_fset.scale = 2.4;
     default_ocr_fset.threshold_check = true;
@@ -152,6 +153,9 @@ void TesseractOCRTextDetection::SetReadConfigParameters() {
     }
     if (parameters.contains("TESSERACT_PSM")) {
         default_ocr_fset.psm = parameters["TESSERACT_PSM"].toInt();
+    }
+    if (parameters.contains("TESSERACT_OEM")) {
+        default_ocr_fset.oem = parameters["TESSERACT_OEM"].toInt();
     }
 }
 
@@ -807,7 +811,7 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         }
 
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to call tesseract. Specified language: " + lang);
-        int init_rc = tess_api.Init(tessdata_path.c_str(), lang.c_str());
+        int init_rc = tess_api.Init(tessdata_path.c_str(), lang.c_str(), (tesseract::OcrEngineMode)ocr_fset.oem);
         if (init_rc != 0) {
             LOG4CXX_ERROR(hw_logger_,  "[" + job.job_name + "] Failed to initialize Tesseract! Error code: " + std::to_string(init_rc));
             // Update job status to reflect initialization error.
@@ -1116,6 +1120,7 @@ void TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTex
     ocr_fset.enable_rescale = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_RESCALE", default_ocr_fset.enable_rescale);
     ocr_fset.tesseract_lang  = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,"TESSERACT_LANGUAGE", default_ocr_fset.tesseract_lang);
     ocr_fset.psm = DetectionComponentUtils::GetProperty<int>(job.job_properties,"TESSERACT_PSM", default_ocr_fset.psm);
+    ocr_fset.oem = DetectionComponentUtils::GetProperty<int>(job.job_properties,"TESSERACT_OEM", default_ocr_fset.oem);
 }
 
 // Tag results and store into track detection properties.
