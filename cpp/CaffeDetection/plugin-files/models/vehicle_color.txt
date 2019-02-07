@@ -1,0 +1,8 @@
+0 yellow
+1 white
+2 blue
+3 cyan
+4 red
+5 gray
+6 black
+7 green

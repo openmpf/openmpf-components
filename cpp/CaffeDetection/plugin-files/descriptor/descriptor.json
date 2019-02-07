@@ -330,6 +330,41 @@
           "value": "123.0"
         }
       ]
+    },
+    {
+      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION ACTION",
+      "description": "Performs caffe detection using the 'vehicle_color' model.",
+      "algorithm": "CAFFE",
+      "properties": [
+        {
+          "name": "MODEL_NAME",
+          "value": "vehicle_color"
+        },
+        {
+          "name": "NUMBER_OF_CLASSIFICATIONS",
+          "value": "8"
+        },
+        {
+          "name": "RESIZE_HEIGHT",
+          "value": "227"
+        },
+        {
+          "name": "RESIZE_WIDTH",
+          "value": "227"
+        },
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "102.1"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "104.7"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "106.5"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -352,6 +387,13 @@
       "description": "Performs caffe detection using the 'yahoo_nsfw' model.",
       "actions": [
         "CAFFE YAHOO NSFW DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION TASK",
+      "description": "Performs caffe detection using the 'vehicle_color' model.",
+      "actions": [
+        "CAFFE REZAFUAD VEHICLE COLOR DETECTION ACTION"
       ]
     }
   ],
@@ -376,7 +418,13 @@
       "tasks": [
         "CAFFE YAHOO NSFW DETECTION TASK"
       ]
+    },
+    {
+      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION PIPELINE",
+      "description": "Performs caffe detection using the 'vehicle_color' model.",
+      "tasks": [
+        "CAFFE REZAFUAD VEHICLE COLOR DETECTION TASK"
+      ]
     }
   ]
 }
-
