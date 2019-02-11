@@ -225,6 +225,25 @@
       ]
     },
     {
+      "name": "TINY YOLO VEHICLE DETECTION ACTION",
+      "description": "Runs the Tiny YOLO object detection Darknet model, and only detects road vehicles (cars, busses, trucks).",
+      "algorithm": "DARKNET",
+      "properties": [
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "value": "0.5"
+        },
+        {
+          "name": "MODEL_NAME",
+          "value": "TINY YOLO"
+        },
+        {
+          "name": "CLASS_WHITELIST_FILE",
+          "value": "$MPF_HOME/plugins/DarknetDetection/models/vehicle_whitelist.txt"
+        }
+      ]
+    },
+    {
       "name": "TINY YOLO OBJECT DETECTION PREPROCESSOR ACTION",
       "description": "Runs the Tiny YOLO object detection Darknet model in preprocessor mode.",
       "algorithm": "DARKNET",
@@ -259,6 +278,25 @@
       ]
     },
     {
+      "name": "YOLO VEHICLE DETECTION ACTION",
+      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, busses, trucks).",
+      "algorithm": "DARKNET",
+      "properties": [
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "value": "0.5"
+        },
+        {
+          "name": "MODEL_NAME",
+          "value": "YOLO"
+        },
+        {
+          "name": "CLASS_WHITELIST_FILE",
+          "value": "$MPF_HOME/plugins/DarknetDetection/models/vehicle_whitelist.txt"
+        }
+      ]
+    },
+    {
       "name": "YOLO OBJECT DETECTION PREPROCESSOR ACTION",
       "description": "Runs the YOLO object detection Darknet model in preprocessor mode.",
       "algorithm": "DARKNET",
@@ -287,6 +325,13 @@
       ]
     },
     {
+      "name": "TINY YOLO VEHICLE DETECTION TASK",
+      "description": "Runs the Tiny YOLO object detection Darknet model, and only detects road vehicles (cars, busses, trucks).",
+      "actions": [
+        "TINY YOLO VEHICLE DETECTION ACTION"
+      ]
+    },
+    {
       "name": "TINY YOLO OBJECT DETECTION PREPROCESSOR TASK",
       "description": "Runs the Tiny YOLO object detection Darknet model in preprocessor mode.",
       "actions": [
@@ -298,6 +343,13 @@
       "description": "Runs the YOLO object detection Darknet model.",
       "actions": [
         "YOLO OBJECT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "YOLO VEHICLE DETECTION TASK",
+      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, busses, trucks).",
+      "actions": [
+        "YOLO VEHICLE DETECTION ACTION"
       ]
     },
     {

@@ -365,6 +365,45 @@
           "value": "106.5"
         }
       ]
+    },
+    {
+      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION) ACTION",
+      "description": "Performs caffe detection on regions using the 'vehicle_color' model.",
+      "algorithm": "CAFFE",
+      "properties": [
+        {
+          "name": "MODEL_NAME",
+          "value": "vehicle_color"
+        },
+        {
+          "name": "NUMBER_OF_CLASSIFICATIONS",
+          "value": "8"
+        },
+        {
+          "name": "RESIZE_HEIGHT",
+          "value": "227"
+        },
+        {
+          "name": "RESIZE_WIDTH",
+          "value": "227"
+        },
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "102.1"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "104.7"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "106.5"
+        },
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -395,6 +434,13 @@
       "actions": [
         "CAFFE REZAFUAD VEHICLE COLOR DETECTION ACTION"
       ]
+    },
+    {
+      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION) TASK",
+      "description": "Performs caffe detection on regions using the 'vehicle_color' model.",
+      "actions": [
+        "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION) ACTION"
+      ]
     }
   ],
   "pipelines": [
@@ -424,6 +470,22 @@
       "description": "Performs caffe detection using the 'vehicle_color' model.",
       "tasks": [
         "CAFFE REZAFUAD VEHICLE COLOR DETECTION TASK"
+      ]
+    },
+    {
+      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION FROM TINY YOLO VEHICLE DETECTOR) PIPELINE",
+      "description": "Performs caffe detection on feed forward regions for Tiny YOLO using the 'vehicle_color' model.",
+      "tasks": [
+        "TINY YOLO VEHICLE DETECTION TASK",
+        "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION FROM YOLO VEHICLE DETECTOR) PIPELINE",
+      "description": "Performs caffe detection on feed forward regions for YOLO using the 'vehicle_color' model.",
+      "tasks": [
+        "YOLO VEHICLE DETECTION TASK",
+        "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
       ]
     }
   ]
