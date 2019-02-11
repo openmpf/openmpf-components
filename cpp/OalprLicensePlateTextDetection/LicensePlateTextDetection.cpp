@@ -66,6 +66,9 @@ LicensePlateTextDetection::~LicensePlateTextDetection() {
 //-----------------------------------------------------------------------------
 /* virtual */ bool LicensePlateTextDetection::Init() {
 
+    //Set locale
+    std::setlocale(LC_ALL, "C");
+
     // Determine where the executable is running
     string run_dir = GetRunDirectory();
     if (run_dir.empty()) {
