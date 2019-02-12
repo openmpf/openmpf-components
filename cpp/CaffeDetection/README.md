@@ -8,11 +8,13 @@ The Caffe classification component uses the OpenCV Deep Neural Network (DNN) mod
 
 # Trained Caffe Models
 
-The Caffe component has two trained Caffe models that are available when the component is registered with the workflow manager:
+The Caffe component has three trained Caffe models that are available when the component is registered with the workflow manager:
 
 - The BAIR GoogLeNet model, bvlc_googlenet, from the BAIR model zoo [(http://caffe.berkeleyvision.org/model_zoo.html)](http://caffe.berkeleyvision.org/model_zoo.html), which was trained on the ImageNet Large Scale Visual Recognition Challenge (ILSVRC) 2012 dataset.
 
 - The Yahoo Not Suitable/Safe for Work (yahoo_nsfw) model from [https://github.com/yahoo/open_nsfw](https://github.com/yahoo/open_nsfw).
+
+- Reza Fuad Rachmadi's vehicle color recognition model from [https://github.com/rezafuad/vehicle-color-recognition](https://github.com/rezafuad/vehicle-color-recognition).
 
 ## Adding a new model
 
