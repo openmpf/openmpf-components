@@ -45,17 +45,6 @@ Properties getGoogleNetProperties() {
     };
 }
 
-Properties getVehicleColorProperties() {
-    return {
-            { "MODEL_NAME", "vehicle_color" },
-            { "RESIZE_HEIGHT", "227" },
-            { "RESIZE_WIDTH", "227" },
-            { "SUBTRACT_BLUE_VALUE", "102.1" },
-            { "SUBTRACT_GREEN_VALUE", "104.7" },
-            { "SUBTRACT_RED_VALUE", "106.5" },
-    };
-}
-
 
 bool containsObject(const std::string &object_name, const Properties &props) {
     auto class_prop_iter = props.find("CLASSIFICATION");
@@ -85,20 +74,6 @@ void assertObjectDetectedInImage(const std::string &expected_object, const std::
                                 << "Expected Caffe to detect a \"" << expected_object << "\" in " << image_path;
 }
 
-void assertCorrectColorDetectionInImage(const std::string &expected_color, const std::string &image_path,
-                                 CaffeDetection &caffe) {
-    MPFImageJob job("Test", image_path, getVehicleColorProperties(), {});
-
-    std::vector<MPFImageLocation> image_locations;
-    MPFDetectionError rc = caffe.GetDetections(job, image_locations);
-
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
-    ASSERT_FALSE(image_locations.empty());
-
-    ASSERT_TRUE(containsObject(expected_color, image_locations))
-                                << "Expected Caffe to detect a \"" << expected_color << "\" in " << image_path;
-}
-
 TEST(CAFFE, ImageTest) {
 
     CaffeDetection caffe;
@@ -108,7 +83,6 @@ TEST(CAFFE, ImageTest) {
 
     assertObjectDetectedInImage("digital clock", "test/digital-clock.jpg", caffe);
     assertObjectDetectedInImage("sundial", "test/sundial.jpg", caffe);
-    assertCorrectColorDetectionInImage("red", "test/red.jpg", caffe);
 
     ASSERT_TRUE(caffe.Close());
 }
