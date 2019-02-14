@@ -226,7 +226,7 @@
     },
     {
       "name": "TINY YOLO VEHICLE DETECTION ACTION",
-      "description": "Runs the Tiny YOLO object detection Darknet model, and only detects road vehicles (cars, busses, trucks).",
+      "description": "Runs the Tiny YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
       "algorithm": "DARKNET",
       "properties": [
         {
@@ -279,7 +279,7 @@
     },
     {
       "name": "YOLO VEHICLE DETECTION ACTION",
-      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, busses, trucks).",
+      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
       "algorithm": "DARKNET",
       "properties": [
         {
@@ -326,7 +326,7 @@
     },
     {
       "name": "TINY YOLO VEHICLE DETECTION TASK",
-      "description": "Runs the Tiny YOLO object detection Darknet model, and only detects road vehicles (cars, busses, trucks).",
+      "description": "Runs the Tiny YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
       "actions": [
         "TINY YOLO VEHICLE DETECTION ACTION"
       ]
@@ -347,7 +347,7 @@
     },
     {
       "name": "YOLO VEHICLE DETECTION TASK",
-      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, busses, trucks).",
+      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
       "actions": [
         "YOLO VEHICLE DETECTION ACTION"
       ]
