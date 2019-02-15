@@ -64,7 +64,7 @@ TESSERACT_OEM respectively.
 
 The parameter options for the OCR Engine mode are:
 
-TESSERACT_OEM =
+TESSERACT_OEM :
   0    Legacy engine only.
   1    Neural nets LSTM engine only.
   2    Legacy + LSTM engines.
@@ -73,7 +73,7 @@ TESSERACT_OEM =
 
 The parameter options for the Page Segmentation mode are:
 
-TESSERACT_PSM =
+TESSERACT_PSM :
   0    Orientation and script detection (OSD) only.
   1    Automatic page segmentation with OSD.
   2    Automatic page segmentation, but no OSD, or OCR.
@@ -87,8 +87,7 @@ TESSERACT_PSM =
  10    Treat the image as a single character.
  11    Sparse text. Find as much text as possible in no particular order.
  12    Sparse text with OSD.
- 13    Raw line. Treat the image as a single text line,
-       bypassing hacks that are Tesseract-specific.
+ 13    Raw line. Treat the image as a single text line, bypassing hacks that are Tesseract-specific.
 
 For more details please consult the Tesseract command line usage documentation
 (https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage).

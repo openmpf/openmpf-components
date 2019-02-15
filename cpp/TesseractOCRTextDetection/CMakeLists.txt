@@ -34,9 +34,6 @@ message("Package in ${PACKAGE_DIR}")
 file(MAKE_DIRECTORY ${PACKAGE_DIR}/bin)
 
 
-file(COPY /usr/local/bin/tesseract DESTINATION ${PACKAGE_DIR}/bin/)
-
-
 unset(OpenCV_CONFIG_PATH CACHE)
 find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0
     COMPONENTS opencv_highgui opencv_objdetect opencv_features2d opencv_ml opencv_flann opencv_video)
@@ -49,8 +46,18 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
+#Check Tesseract version.
+execute_process(COMMAND tesseract --version OUTPUT_VARIABLE TESSERACT_INFO)
+string(TOUPPER ${TESSERACT_INFO} TESSERACT_INFO)
+if( TESSERACT_INFO MATCHES "^.*TESSERACT.([4-9])\\.([0-9]+)\\.([0-9+])[\n]*.*$" )
+    message( "-- NOTE: Valid version of Tesseract found." )
+else()
+    message( FATAL_ERROR "-- Invalid version of Tesseract (Needs version 4.0.0 or greater)." )
+endif()
+
 
 find_library(TESSERACT_LIB tesseract)
+
 find_library(LEPT_LIB lept)
 
 set(extra_lib_dirs)

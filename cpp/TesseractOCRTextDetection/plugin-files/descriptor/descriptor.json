@@ -114,7 +114,7 @@
         },
         {
           "name": "TESSERACT_OEM",
-          "description": "# (int) - Tesseract OCR Engine Mode. Set to 0 for legacy engine only, 1 for LSTM engine only, 2 for both LSTM and legacy, and 3 for default (runs both engines at once if possible). Refer to Tesseract docs (https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage) for details.",
+          "description": "Tesseract OCR Engine Mode. Set to 0 for legacy engine only, 1 for LSTM engine only, 2 for both LSTM and legacy, and 3 for default (runs both engines at once if possible). Refer to Tesseract docs (https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage) for details.",
           "type": "INT",
           "defaultValue": "3"
         },
