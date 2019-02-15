@@ -64,7 +64,7 @@ TESSERACT_OEM respectively.
 
 The parameter options for the OCR Engine mode are:
 
-TESSERACT_OEM Parameters| Description
+TESSERACT_OEM Value| Description
 ------------- | -------------
 0  |  Legacy engine only.
 1  |  Neural nets LSTM engine only.
@@ -74,7 +74,7 @@ TESSERACT_OEM Parameters| Description
 
 The parameter options for the Page Segmentation mode are:
 
-TESSERACT_PSM Parameters| Description
+TESSERACT_PSM Value| Description
 ------------- | -------------
 0  |  Orientation and script detection (OSD) only.
 1  |  Automatic page segmentation with OSD.
