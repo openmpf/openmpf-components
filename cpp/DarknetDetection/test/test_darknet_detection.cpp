@@ -156,7 +156,7 @@ TEST(DarknetStreaming, VideoTest) {
             }
             frame_number++;
         }
-        ASSERT_EQ(1, true_count);
+        ASSERT_EQ(5, true_count);
 
         std::vector<MPFVideoTrack> results = component.EndSegment();
         for (int i = segment_info.start_frame; i <= segment_info.end_frame; i++) {
@@ -233,7 +233,7 @@ TEST(DarknetStreaming, UsePreprocessorVideoTest) {
             }
             frame_number++;
         }
-        ASSERT_EQ(1, true_count);
+        ASSERT_EQ(5, true_count);
 
         std::vector<MPFVideoTrack> results = component.EndSegment();
 
