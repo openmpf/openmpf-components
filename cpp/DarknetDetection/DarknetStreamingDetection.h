@@ -69,8 +69,6 @@ private:
 
     std::vector<DarknetResult> current_segment_detections_;
 
-    bool found_track_in_current_segment_ = false;
-
     DarknetStreamingDetection(const MPF::COMPONENT::MPFStreamingVideoJob &job, log4cxx::LoggerPtr logger);
 
     [[noreturn]] void LogError(const std::string &message);

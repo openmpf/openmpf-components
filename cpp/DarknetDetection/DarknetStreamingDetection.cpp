@@ -170,11 +170,7 @@ bool DarknetStreamingDetection::ProcessFrame(const cv::Mat &frame, int frame_num
         if (current_segment_detections_.empty()) {
             return false;
         }
-        if (found_track_in_current_segment_) {
-            return false;
-        }
         LOG4CXX_INFO(logger_, log_prefix_ << "Found first detection in segment in frame number: " << frame_number);
-        found_track_in_current_segment_ = true;
         return true;
     }
     catch (...) {
@@ -195,7 +191,6 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> DarknetStreamingDetection::EndSegment
         // Assumes that the next segment will have a similar number of detections.
         current_segment_detections_.reserve(detection_count);
 
-        found_track_in_current_segment_ = false;
         return tracks;
     }
     catch (...) {
