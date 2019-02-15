@@ -74,7 +74,6 @@ void assertObjectDetectedInImage(const std::string &expected_object, const std::
                                 << "Expected Caffe to detect a \"" << expected_object << "\" in " << image_path;
 }
 
-
 TEST(CAFFE, ImageTest) {
 
     CaffeDetection caffe;
