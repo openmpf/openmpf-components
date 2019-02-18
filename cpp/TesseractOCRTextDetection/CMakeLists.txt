@@ -32,7 +32,7 @@ include(../ComponentSetup.cmake)
 set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
 message("Package in ${PACKAGE_DIR}")
 file(MAKE_DIRECTORY ${PACKAGE_DIR}/bin)
-
+file(COPY /usr/local/bin/tesseract DESTINATION ${PACKAGE_DIR}/bin/)
 
 unset(OpenCV_CONFIG_PATH CACHE)
 find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0
