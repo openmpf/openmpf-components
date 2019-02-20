@@ -44,16 +44,6 @@ find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
-
-#Check Tesseract version.
-execute_process(COMMAND tesseract --version OUTPUT_VARIABLE TESSERACT_INFO)
-string(TOUPPER ${TESSERACT_INFO} TESSERACT_INFO)
-if( TESSERACT_INFO MATCHES "^.*TESSERACT.([4-9])\\.([0-9]+)\\.([0-9+])[\n]*.*$" )
-    message( "-- NOTE: Valid version of Tesseract found." )
-else()
-    message( FATAL_ERROR "-- Invalid version of Tesseract (Needs version 4.0.0 or greater)." )
-endif()
-
 find_package( Leptonica 1.75.0 REQUIRED )
 find_package( Tesseract 4.0.0 REQUIRED )
 
