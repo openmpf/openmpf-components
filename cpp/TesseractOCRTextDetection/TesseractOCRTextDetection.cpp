@@ -165,12 +165,12 @@ void TesseractOCRTextDetection::SetReadConfigParameters() {
 TesseractOCRTextDetection::OCR_char_stats TesseractOCRTextDetection::char_count(const std::wstring &s, const std::wstring &white_space, const std::wstring &eng_symbol, const std::wstring &eng_num) {
 
     TesseractOCRTextDetection::OCR_char_stats stats = {
-        0,  //alphabet_count
-        0,  //num_count
-        0,  //whspace_count
-        0,  //punct_count
-        0,  //non_eng_count
-        {0} //char_list
+        0,  // alphabet_count
+        0,  // num_count
+        0,  // whspace_count
+        0,  // punct_count
+        0,  // non_eng_count
+        {0} // char_list
     };
 
     static std::locale locale("en_US");
@@ -218,29 +218,29 @@ std::wstring TesseractOCRTextDetection::check_string(const std::wstring &s, cons
     int hist_min_char = ocrset.hist_min_char;
     float correl_limit = ocrset.correl_limit;
 
-    //The following are characters commonly used in the english language.
-    //We should not penalize the OCR for detecting these.
-    //Only start penalizing when they become excessive.
+    // The following are characters commonly used in the english language.
+    // We should not penalize the OCR for detecting these.
+    // Only start penalizing when they become excessive.
 
-    //Allow white space to be ignored.
+    // Allow white space to be ignored.
     std::wstring white_space = L" \n\t\f\v\r";
 
-    //Common english characters and punctuation.
-    //May need to penalize if these occur too frequently.
-    //If a large portion of the sentences are composed of these characters,
-    //it's likely gibberish so toss them out.
+    // Common english characters and punctuation.
+    // May need to penalize if these occur too frequently.
+    // If a large portion of the sentences are composed of these characters,
+    // it's likely gibberish so toss them out.
     std::wstring eng_symbol = L".,?!-()[]{}<>:;/@#$%^&*-+_='\\~\"";
 
-    //Allow numbers by default.
-    //Text could be from an academic source, or a phone number.
+    // Allow numbers by default.
+    // Text could be from an academic source, or a phone number.
     std::wstring eng_num = L"0123456789";
 
-    //Histogram of english characters
+    // Histogram of english characters
     float eng_list[] = {8.167,1.492,2.782,4.253,12.702,2.228,2.015,6.094,
             6.966,0.153,0.772,4.025,2.406,6.749,7.507,1.929,0.095,
             5.987,6.327,9.056,2.758,0.978,2.360,0.150,1.974,0.074};
 
-    //Histogram parameters:
+    // Histogram parameters:
     int nbins = 200;
     int histSize[] = {nbins};
     float range[]  = {0,100};
@@ -306,7 +306,7 @@ std::wstring TesseractOCRTextDetection::check_string(const std::wstring &s, cons
             return L"";
         }
 
-        //Calculate vowel percentage and check if threshold is met.
+        // Calculate vowel percentage and check if threshold is met.
         float vowel_percent = (float) (char_list[0] + char_list[4] + char_list[8]
             + char_list[14] + char_list[20] + char_list[24]) / (float) alphabet_count;
         if (vowel_percent < vowel_min || vowel_percent > vowel_max) {
@@ -331,14 +331,20 @@ std::wstring TesseractOCRTextDetection::check_string(const std::wstring &s, cons
 }
 
 bool TesseractOCRTextDetection::Init() {
-    //Set global locale
+    // Set global C++ locale.
+    // Required for boost function calls.
+    // Also overwrites C locale:
+    // https://en.cppreference.com/w/cpp/locale/locale/global.
     boost::locale::generator gen;
     locale loc = gen("");
     locale::global(loc);
-    //Set C locale
+
+    // Reset C locale back to default.
+    // Required for Tesseract API calls:
+    // https://github.com/tesseract-ocr/tesseract/commit/3292484f67af8bdda23aa5e510918d0115785291
     std::setlocale(LC_ALL, "C");
 
-    // Determine where the executable is running
+    // Determine where the executable is running.
     std::string run_dir = GetRunDirectory();
     if (run_dir == "") {
         run_dir = ".";
@@ -369,8 +375,8 @@ bool TesseractOCRTextDetection::Init() {
 
 
     SetDefaultParameters();
-    //Once this is done - parameters will be set and SetReadConfigParameters() can be called again to revert back
-    //to the params read at initialization.
+    // Once this is done - parameters will be set and SetReadConfigParameters() can be called again to revert back
+    // to the params read at initialization.
     std::string config_params_path = config_path + "/mpfOCR.ini";
     int rc = LoadConfig(config_params_path, parameters);
     if (rc) {
@@ -872,7 +878,7 @@ bool is_only_ascii_whitespace(const std::wstring& str)
             return true;
         }
     } while (*it >= 0 && *it <= 0x7f && std::iswspace(*(it++)));
-             // one of these conditions will be optimized away by the compiler,
+             // One of these conditions will be optimized away by the compiler,
              // which one depends on whether char is signed or not
     return false;
 }
@@ -1098,10 +1104,10 @@ void TesseractOCRTextDetection::load_tags_json(const MPFJob &job, MPFDetectionEr
 }
 
 void TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset) {
-    //Load in settings specified from job_properties and default configuration.
+    // Load in settings specified from job_properties and default configuration.
     ocr_fset.sharpen = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SHARPEN", default_ocr_fset.sharpen);
     ocr_fset.invert = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"INVERT", default_ocr_fset.invert);
-    //String Filtering.
+    // String Filtering.
     ocr_fset.threshold_check = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"THRS_FILTER", default_ocr_fset.threshold_check);
     ocr_fset.hist_check = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"HIST_FILTER", default_ocr_fset.hist_check);
     ocr_fset.num_only_ok = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"NUM_ONLY", default_ocr_fset.num_only_ok);
@@ -1112,7 +1118,7 @@ void TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTex
     ocr_fset.vowel_min = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MIN", default_ocr_fset.vowel_min);
     ocr_fset.vowel_max = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MAX", default_ocr_fset.vowel_max);
     ocr_fset.correl_limit = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MIN_HIST_SCORE", default_ocr_fset.correl_limit);
-    //Image Preprocessing
+    // Image Preprocessing.
     ocr_fset.scale = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SCALE", default_ocr_fset.scale);
     ocr_fset.adaptive_thrs_c = DetectionComponentUtils::GetProperty<double>(job.job_properties,"ADAPTIVE_THRS_CONSTANT", default_ocr_fset.adaptive_thrs_c);
     ocr_fset.adaptive_thrs_pixel = DetectionComponentUtils::GetProperty<int>(job.job_properties,"ADAPTIVE_THRS_BLOCKSIZE", default_ocr_fset.adaptive_thrs_pixel);
@@ -1308,7 +1314,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
 
 bool TesseractOCRTextDetection::Supports(MPFDetectionDataType data_type) {
 
-    //Supports images and documents, no audio or video data types.
+    // Supports images and documents, no audio or video data types.
     return data_type == MPFDetectionDataType::IMAGE || data_type == MPFDetectionDataType::UNKNOWN;
 }
 
