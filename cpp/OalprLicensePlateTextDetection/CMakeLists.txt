@@ -41,11 +41,14 @@ find_package(Qt4 REQUIRED)
 
 # Find openalpr
 find_library(OALPR_LIB openalpr)
-find_library(TESSERACT_LIB tesseract)
-find_library(LEPT_LIB lept)
+find_package( Leptonica REQUIRED )
+find_package( Tesseract REQUIRED )
+
+include_directories(${Tesseract_INCLUDE_DIRS})
+include_directories(${Leptonica_INCLUDE_DIRS})
 
 set(extra_lib_dirs)
-foreach(lib_full_path ${OALPR_LIB} ${TESSERACT_LIB} ${LEPT_LIB})
+foreach(lib_full_path ${OALPR_LIB})
     get_filename_component(lib_dir ${lib_full_path} DIRECTORY)
     list(APPEND extra_lib_dirs ${lib_dir})
 endforeach()
@@ -56,7 +59,7 @@ set(OALPR_TEXT_SOURCE_FILES LicensePlateTextDetection.cpp LicensePlateTextDetect
 add_library(mpfOALPRLicensePlateTextDetection SHARED ${OALPR_TEXT_SOURCE_FILES})
 
 target_link_libraries(mpfOALPRLicensePlateTextDetection
-    ${OALPR_LIB} ${TESSERACT_LIB} ${LEPT_LIB} ${OpenCV_LIBS}
+    ${OALPR_LIB} ${Tesseract_LIBRARIES} ${Leptonica_LIBRARIES} ${OpenCV_LIBS}
     mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils )
 
 configure_mpf_component(OalprLicensePlateTextDetection TARGETS mpfOALPRLicensePlateTextDetection EXTRA_LIB_PATHS ${extra_lib_dirs})

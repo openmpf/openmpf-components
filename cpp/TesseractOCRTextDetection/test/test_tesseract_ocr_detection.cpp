@@ -217,7 +217,7 @@ TEST(TESSERACTOCR, ModeTest) {
     custom_properties = {{"TESSERACT_OEM","3"}};
     runImageDetection("data/junk-text.png", ocr, results_new,  custom_properties);
 
-    ASSERT_FALSE(results_old[0].detection_properties.at("TEXT").compare(results_new[0].detection_properties.at("TEXT")) == 0);
+    ASSERT_FALSE(results_old[0].detection_properties.at("TEXT") == results_new[0].detection_properties.at("TEXT"));
 
     results_old.clear();
     results_new.clear();
@@ -228,10 +228,7 @@ TEST(TESSERACTOCR, ModeTest) {
     custom_properties = {{"TESSERACT_PSM","13"}};
     runImageDetection("data/junk-text.png", ocr, results_new,  custom_properties);
 
-    ASSERT_FALSE(results_old[0].detection_properties.at("TEXT").compare(results_new[0].detection_properties.at("TEXT")) == 0);
-
-    results_old.clear();
-    results_new.clear();
+    ASSERT_FALSE(results_old[0].detection_properties.at("TEXT") == results_new[0].detection_properties.at("TEXT"));
 }
 
 TEST(TESSERACTOCR, LanguageTest) {

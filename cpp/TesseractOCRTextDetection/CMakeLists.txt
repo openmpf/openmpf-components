@@ -32,7 +32,6 @@ include(../ComponentSetup.cmake)
 set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
 message("Package in ${PACKAGE_DIR}")
 file(MAKE_DIRECTORY ${PACKAGE_DIR}/bin)
-file(COPY /usr/local/bin/tesseract DESTINATION ${PACKAGE_DIR}/bin/)
 
 unset(OpenCV_CONFIG_PATH CACHE)
 find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0
@@ -55,22 +54,14 @@ else()
     message( FATAL_ERROR "-- Invalid version of Tesseract (Needs version 4.0.0 or greater)." )
 endif()
 
-
-find_library(TESSERACT_LIB tesseract)
-
-find_library(LEPT_LIB lept)
-
-set(extra_lib_dirs)
-foreach(lib_full_path ${TESSERACT_LIB} ${LEPT_LIB})
-    get_filename_component(lib_dir ${lib_full_path} DIRECTORY)
-    list(APPEND extra_lib_dirs ${lib_dir})
-endforeach()
-
-
+find_package( Leptonica 1.75.0 REQUIRED )
+find_package( Tesseract 4.0.0 REQUIRED )
 
 find_package(Boost 1.53.0 COMPONENTS regex locale filesystem)
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${ImageMagick_INCLUDE_DIRS})
+include_directories(${Tesseract_INCLUDE_DIRS})
+include_directories(${Leptonica_INCLUDE_DIRS})
 
 set(OCR_SOURCE_FILES
         TesseractOCRTextDetection.cpp TesseractOCRTextDetection.h JSON.cpp JSONValue.cpp JSON.h JSONValue.h)
@@ -82,7 +73,7 @@ add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
 add_library(mpfTesseractOCRTextDetection SHARED ${OCR_SOURCE_FILES})
 
 
-target_link_libraries(mpfTesseractOCRTextDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${TESSERACT_LIB} ${LEPT_LIB} ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES} ${ImageMagick_LIBRARIES})
+target_link_libraries(mpfTesseractOCRTextDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${Tesseract_LIBRARIES} ${Leptonica_LIBRARIES} ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES} ${ImageMagick_LIBRARIES})
 configure_mpf_component(TesseractOCRTextDetection TARGETS  mpfTesseractOCRTextDetection EXTRA_LIB_PATHS "${extra_lib_dirs}")
 
 

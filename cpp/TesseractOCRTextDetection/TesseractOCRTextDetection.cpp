@@ -719,7 +719,7 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     if (run_dir.empty()) {
         run_dir = ".";
     }
-
+    std::setlocale(LC_ALL, "C");
     tesseract::TessBaseAPI tess_api;
 
     MPFImageReader image_reader(job);
@@ -809,7 +809,7 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
             }
 
         }
-
+        std::setlocale(LC_ALL, "C");
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to call tesseract. Specified language: " + lang);
         int init_rc = tess_api.Init(tessdata_path.c_str(), lang.c_str(), (tesseract::OcrEngineMode)ocr_fset.oem);
         if (init_rc != 0) {
@@ -825,6 +825,10 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         // Reset tesseract for the next language process.
         tess_api.End();
         result = text.get();
+        boost::locale::generator gen;
+        locale loc = gen("");
+        locale::global(loc);
+
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Tesseract run successful.");
         std::wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(result);
         std::pair<std::string, std::wstring> output_ocr (lang,t_detection);
