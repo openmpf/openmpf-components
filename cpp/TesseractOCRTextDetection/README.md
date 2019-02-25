@@ -52,6 +52,10 @@ specified language and script using the '+' delimiter to run multiple models
 together in one track and ',' to run them as separate tracks. Delimiters
 can also be combined for separate multilingual tracks.
 
+Please note that the order of the specified language matters. Languages specified first
+will have priority (ex. 'eng+deu', English language model will run first and its results will have
+priority over German language model).
+
 Example 1: 'eng+deu' = run English, German together as one track detection.
 Example 2: 'eng,deu+fra'= run English as the first track and German + French
 as the second track.
