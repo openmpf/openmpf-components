@@ -28,7 +28,7 @@ English and foreign text tags following UTF-8 encoding are supported.
 
 
 Language models supported by Tesseract must be stored in `plugin-files/tessdata`
-and script models must be stored in `plugin-files/tessdata/scripts`.
+and script models must be stored in `plugin-files/tessdata/script`.
 Users are able to store new models into the tessdata folder to expand
 supported languages and scripts.
 
