@@ -27,9 +27,11 @@ however users can provide an alternate full path to a tagging file of their choi
 English and foreign text tags following UTF-8 encoding are supported.
 
 
-Language models supported by Tesseract must be stored in /bin/tessdata.
+Language models supported by Tesseract must be stored in /bin/tessdata
+and script models must be stored in /bin/tessdata/scripts.
 Users are able to store new models into the tessdata folder to expand
-supported languages.
+supported languages and scripts.
+
 
 Most languages will only require the *.traineddata file. Certain languages will
 also require the [lang].cube.* files to be present within the tessdata directory as well.
@@ -40,23 +42,31 @@ to enable the corresponding language detection (ex. TESSERACT_LANGUAGE = "deu"
 for German text). Users will be warned when a given language is not supported when the
 corresponding language module cannot be located in this directory.
 
-There are two options to run multiple languages. Users can separate each
-specified language using the '+' delimiter to run multiple languages
+Each script module is contained within the 'tessdata/script' directory with the
+first letter of its type capitalized (ex. "Latin.traineddata"). Users will need to
+specify the 'script/' path followed by the full name of the script being processed.
+(ex. TESSERACT_LANGUAGE='script/Latin' will enable Latin script text extraction).
+
+There are two options to run multiple languages/scripts. Users can separate each
+specified language and script using the '+' delimiter to run multiple models
 together in one track and ',' to run them as separate tracks. Delimiters
 can also be combined for separate multilingual tracks.
 
 Example 1: 'eng+deu' = run English, German together as one track detection.
-Example 2: 'eng, deu+fra'= run English as the first track and German + French
-as the second track. Languages that use a .cube model file should be specified
+Example 2: 'eng,deu+fra'= run English as the first track and German + French
+as the second track.
+Example 3: 'fra,script/Latin'= run French as the first track, and Latin script as
+the second track.
+Languages that use a .cube model file should be specified
 last to avoid Tesseract language model errors (ex. cube_lang+eng will trigger errors
 while eng+cube_lang will work properly).
 
 
-By default this component contains model files for Bulgarian (bul),
+By default this component contains language model files for Bulgarian (bul),
 Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus),
-Russian (rus), and Spanish (spa). Note the osd language file (osd.traindata) is
-for extraction of script orientation rather than language. Users may download and
-load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00,
+Russian (rus), and Spanish (spa) as well as the script model file for Latin (script/Latin).
+Note the osd language file (osd.traindata) is for extraction of script orientation rather than language.
+Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00,
 stored in the component's bin/tessdata directory.
 
 Users may also set Page Segmentation and OCR Engine modes by adjusting TESSERACT_PSM and
