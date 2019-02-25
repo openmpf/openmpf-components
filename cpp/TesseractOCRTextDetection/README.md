@@ -66,7 +66,7 @@ By default this component contains language model files for Bulgarian (bul),
 Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus),
 Russian (rus), and Spanish (spa) as well as the script model file for Latin (script/Latin).
 Note the osd language file (osd.traindata) is for extraction of script orientation rather than language.
-Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00,
+Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata,
 stored in the component's bin/tessdata directory.
 
 Users may also set Page Segmentation and OCR Engine modes by adjusting TESSERACT_PSM and
