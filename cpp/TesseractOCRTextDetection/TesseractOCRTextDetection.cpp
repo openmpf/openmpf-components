@@ -784,13 +784,12 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
 
     vector<std::string> lang_tracks;
     boost::algorithm::split(lang_tracks, ocr_fset.tesseract_lang, boost::algorithm::is_any_of(","));
-    std::string tessdata_path =  plugin_path + "/bin/tessdata";
+    std::string tessdata_path =  plugin_path + "/tessdata";
     for(std::string lang: lang_tracks) {
         // Process each language specified by user.
         lang = boost::trim_copy(lang);
         std::array<char, 128> buffer;
         std::string result;
-        std::string bin_path = plugin_path + "/bin";
 
         bool missing_lang_model = false;
         vector<std::string> languages;
@@ -804,12 +803,12 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         // Confirm each language model is supported.
         for (std::string &c_lang : languages) {
 
-            std::string language_model = bin_path + "/tessdata/" + c_lang + ".traineddata";
+            std::string language_model = plugin_path + "/tessdata/" + c_lang + ".traineddata";
             if (!boost::filesystem::exists(language_model)) {
                 missing_lang_model = true;
                 LOG4CXX_WARN(hw_logger_,  "[" + job.job_name + "] Tesseract language model (" + c_lang
                 + ".traineddata) not found. This language is not supported. To support this language, please add "
-                + c_lang + ".traineddata and any (if they exist) associated [lang].cube.* files to your tessdata directory ($MPF_HOME/plugins/TesseractOCRTextDetection/bin/tessdata)." );
+                + c_lang + ".traineddata and any (if they exist) associated [lang].cube.* files to your tessdata directory ($MPF_HOME/plugins/TesseractOCRTextDetection/tessdata)." );
 
                 job_status =  MPF_COULD_NOT_READ_DATAFILE;
                 return false;
