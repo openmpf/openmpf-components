@@ -33,8 +33,8 @@ Users are able to store new models into the tessdata folder to expand
 supported languages and scripts.
 
 
-Most languages will only require the *.traineddata file. Certain languages will
-also require the [lang].cube.* files to be present within the tessdata directory as well.
+Most languages will only require the \*.traineddata file. Certain languages will
+also require the [lang].cube.\* files to be present within the tessdata directory as well.
 
 Each language module follows ISO 639-2 designations, with character variations
 of a language (ex. uzb_cyrl) also supported. Users must enter the same designation
