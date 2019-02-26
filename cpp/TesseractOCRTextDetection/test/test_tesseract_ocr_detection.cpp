@@ -191,18 +191,45 @@ TEST(TESSERACTOCR, FilterTest) {
     // Check no text detected for image with junk text when hist filter is enabled.
     runImageDetection("data/junk-text.png", ocr, results);
     results.clear();
-    std::map<std::string,std::string> custom_properties = {{"HIST_FILTER","true"}};
+    std::map<std::string,std::string> custom_properties = {{"HIST_FILTER","true"}, {"TESSERACT_OEM","0"}};
     assertEmptyDetection("data/junk-text.png", ocr, results,  custom_properties);
     results.clear();
 
     // Check no text detected for image with junk text when thrs filter is enabled.
     runImageDetection("data/junk-text.png", ocr, results);
     results.clear();
-    std::map<std::string,std::string> custom_properties2 = {{"THRS_FILTER","true"}};
+    std::map<std::string,std::string> custom_properties2 = {{"THRS_FILTER","true"}, {"TESSERACT_OEM","0"}};
     assertEmptyDetection("data/junk-text.png", ocr, results, custom_properties2);
     results.clear();
 }
 
+TEST(TESSERACTOCR, ModeTest) {
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results_old, results_new;
+    ASSERT_TRUE(ocr.Init());
+
+    // Check that PSM and OEM settings impact text extraction behavior.
+    std::map<std::string,std::string> custom_properties = {{"TESSERACT_OEM","0"}};
+    runImageDetection("data/junk-text.png", ocr, results_old,  custom_properties);
+
+    custom_properties = {{"TESSERACT_OEM","3"}};
+    runImageDetection("data/junk-text.png", ocr, results_new,  custom_properties);
+
+    ASSERT_FALSE(results_old[0].detection_properties.at("TEXT") == results_new[0].detection_properties.at("TEXT"));
+
+    results_old.clear();
+    results_new.clear();
+
+    custom_properties = {{"TESSERACT_PSM","3"}};
+    runImageDetection("data/junk-text.png", ocr, results_old,  custom_properties);
+
+    custom_properties = {{"TESSERACT_PSM","13"}};
+    runImageDetection("data/junk-text.png", ocr, results_new,  custom_properties);
+
+    ASSERT_FALSE(results_old[0].detection_properties.at("TEXT") == results_new[0].detection_properties.at("TEXT"));
+}
 
 TEST(TESSERACTOCR, LanguageTest) {
 
