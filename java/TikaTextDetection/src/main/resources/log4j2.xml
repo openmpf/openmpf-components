@@ -57,10 +57,5 @@
             <AppenderRef ref="STDOUT"/>
             <AppenderRef ref="TIKA_TEXT_FILE"/>
         </Root>
-
-        <Logger name="org.dstovall" level="WARN"/>
-        <Logger name="org.springframework.context.annotation" level="WARN"/>
-        <Logger name="org.springframework.beans.factory" level="WARN"/>
-        <Logger name="org.apache.xbean.spring" level="WARN"/>
     </Loggers>
 </Configuration>
