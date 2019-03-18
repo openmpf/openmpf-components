@@ -101,6 +101,12 @@
           "defaultValue": "text-tags.json"
         },
         {
+          "name": "TESSDATA_DIR",
+          "description": "Path for Tessdata model files directory. If left blank, will default to the plugin's tessdata path.",
+          "type": "STRING",
+          "defaultValue": "$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata"
+        },
+        {
           "name": "TESSERACT_LANGUAGE",
           "description": "The language or script OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+fra' = run English, German, French together as one track detection, 'eng, fra+deu'= run English as the first track and French + German as the second track, and 'fra, script/Latin'= run French as the first track, and Latin script as the second track. Language model files for Bulgarian (bul), Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus), Russian (rus), and Spanish (spa) are stored in `$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata`. Script model file for Latin(script/Latin) stored in `$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata/script`. Note the osd language file (osd.traindata) is for extraction of script orientation rather than language. Users may download and load in additional language and script models from https://github.com/tesseract-ocr/tessdata.",
           "type": "STRING",
@@ -117,6 +123,48 @@
           "description": "Tesseract OCR Engine Mode. Set to 0 for legacy engine only, 1 for LSTM engine only, 2 for both LSTM and legacy, and 3 for default (runs both engines at once if possible). Refer to Tesseract docs (https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage) for details.",
           "type": "INT",
           "defaultValue": "3"
+        },
+        {
+          "name": "ENABLE_OSD",
+          "description": "When enabled, automatically rotate image and set language based on detected orientation and script. Use default settings when orientation and script confidence values are low.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "ENABLE_OSD_TRACK_REPORT",
+          "description": "When enabled, store OSD results (either from setting PSM=0 or ENABLE_OSD=1) as an additional track separate from text results.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "MIN_ORIENTATION_CONFIDENCE",
+          "description": "Specifies the minimum confidence value required to use the detected text orientation (>= 0).",
+          "type": "DOUBLE",
+          "defaultValue": "2.0"
+        },
+        {
+          "name": "MIN_SCRIPT_CONFIDENCE",
+          "description": "Specifies minimum confidence value required to use the detected script (>= 0).",
+          "type": "DOUBLE",
+          "defaultValue": "2.0"
+        },
+        {
+          "name": "MIN_SECONDARY_SCRIPT_THRESHOLD",
+          "description": "For any secondary scripts, sets the min relative score threshold. I.e. If set to 0.80, only scripts that are within 80% confidence to primary script are allowed.",
+          "type": "DOUBLE",
+          "defaultValue": "0.80"
+        },
+        {
+          "name": "MAX_SCRIPTS",
+          "description": "Specifies maximum number of detected scripts by OSD. When set to 0 or below, allow any number of scripts with acceptable threshold scores.",
+          "type": "INT",
+          "defaultValue": "1"
+        },
+        {
+          "name": "MAX_TEXT_TRACKS",
+          "description": "Specifies number of reported text tracks per page based on average confidence scores. When set to 0 or below, allow any number of tracks.",
+          "type": "INT",
+          "defaultValue": "0"
         },
         {
           "name": "ENABLE_SHARPEN",

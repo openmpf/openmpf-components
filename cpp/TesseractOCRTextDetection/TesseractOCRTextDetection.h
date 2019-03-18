@@ -36,6 +36,7 @@
 #include <boost/regex.hpp>
 #include <boost/locale.hpp>
 
+#include <tesseract/osdetect.h>
 #include <QHash>
 #include <QString>
 
@@ -63,7 +64,7 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     std::string TesseractOCRMagickCheckFileType(const std::string uri);
 
   private:
-    struct OCR_char_stats{
+    struct OCR_char_stats {
         int alphabet_count;
         int num_count;
         int whspace_count;
@@ -72,7 +73,7 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         int char_list[26];
     };
 
-    struct OCR_filter_settings{
+    struct OCR_filter_settings {
         bool num_only_ok;
         bool threshold_check;
         bool hist_check;
@@ -81,11 +82,15 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         bool enable_otsu_thrs;
         bool enable_rescale;
         bool enable_sharpen;
+        bool enable_osd;
+        bool enable_osd_track_report;
         int adaptive_thrs_pixel;
         int min_word_len;
         int hist_min_char;
         int psm;
         int oem;
+        int max_scripts;
+        int max_text_tracks;
         double adaptive_thrs_c;
         double scale;
         double sharpen;
@@ -94,8 +99,41 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         double vowel_min;
         double vowel_max;
         double correl_limit;
+        double min_orientation_confidence;
+        double min_script_confidence;
+        double min_secondary_script_thrs;
         std::string tesseract_lang;
+        std::string tessdata_dir;
+    };
 
+    struct OCR_output {
+        double confidence;
+        std::string language;
+        std::wstring text;
+
+        bool operator < (const OCR_output& ocr_out) const
+        {
+            return (confidence < ocr_out.confidence);
+        }
+
+        bool operator > (const OCR_output& ocr_out) const
+        {
+            return (confidence > ocr_out.confidence);
+        }
+    };
+
+    struct OSD_script {
+        int id;
+        double score;
+        bool operator < (const OSD_script& script) const
+        {
+            return (score < script.score);
+        }
+
+        bool operator > (const OSD_script& script) const
+        {
+            return (score > script.score);
+        }
     };
 
     QHash<QString, QString> parameters;
@@ -105,7 +143,8 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     std::map<std::wstring,std::wstring> regTable;
     std::wstring fix_regex(std::wstring inreg);
     std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> parse_json(const MPFJob &job, const std::string &jsonfile_path, MPFDetectionError &job_status);
-    bool get_tesseract_detections(const MPFImageJob &job, std::vector<std::pair<std::string, std::wstring>> &detection, std::pair<int, int> &image_dim, const OCR_filter_settings &ocr_fset, MPFDetectionError &job_status);
+    bool get_tesseract_detections(const MPFImageJob &job, std::vector<OCR_output> &detection, cv::Mat &imi, const OCR_filter_settings &ocr_fset, MPFDetectionError &job_status);
+    bool preprocess_image(const MPFImageJob &job, std::pair<int, int> &image_dim, cv::Mat &image_result, const OCR_filter_settings &ocr_fset,  MPFDetectionError &job_status);
 
     void SetDefaultParameters();
     void SetReadConfigParameters();
@@ -136,11 +175,13 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     std::set<std::wstring> search_string(const MPFImageJob &job, const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
     std::set<std::wstring> search_string_split(const MPFImageJob &job, const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
 
-    bool process_text_tagging(Properties &detection_properties, const MPFImageJob &job, std::pair<std::string, std::wstring> &ocr_out, MPFDetectionError  &job_status,
+    bool process_text_tagging(Properties &detection_properties, const MPFImageJob &job, OCR_output &ocr_out, MPFDetectionError  &job_status,
         const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
         const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex,
         const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string_split,
         const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string, int page_num = -1);
+
+    bool getOSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, OCR_filter_settings &ocr_fset, Properties &detection_properties, MPFDetectionError &job_status);
 };
 
 }

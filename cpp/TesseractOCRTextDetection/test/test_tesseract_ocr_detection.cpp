@@ -231,6 +231,21 @@ TEST(TESSERACTOCR, ModeTest) {
     ASSERT_FALSE(results_old[0].detection_properties.at("TEXT") == results_new[0].detection_properties.at("TEXT"));
 }
 
+TEST(TESSERACTOCR, OSDTest) {
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    // Check that OSD works.
+    std::map<std::string,std::string> custom_properties = {{"ENABLE_OSD","true"}, {"ENABLE_OSD_TRACK_REPORT","false"},
+        {"MIN_SCRIPT_CONFIDENCE","0.80"}};
+    runImageDetection("data/eng.png", ocr, results,  custom_properties);
+    ASSERT_TRUE(results[0].detection_properties.at("LANGUAGE") == "script/Latin");
+}
+
+
 TEST(TESSERACTOCR, LanguageTest) {
 
     TesseractOCRTextDetection ocr;
