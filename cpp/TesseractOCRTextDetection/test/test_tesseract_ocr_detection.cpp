@@ -239,10 +239,19 @@ TEST(TESSERACTOCR, OSDTest) {
     ASSERT_TRUE(ocr.Init());
 
     // Check that OSD works.
+
+    // Check script detection.
     std::map<std::string,std::string> custom_properties = {{"ENABLE_OSD","true"}, {"ENABLE_OSD_TRACK_REPORT","false"},
         {"MIN_SCRIPT_CONFIDENCE","0.80"}};
     runImageDetection("data/eng.png", ocr, results,  custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("LANGUAGE") == "script/Latin");
+
+    results.clear();
+
+    // Check orientation detection.
+    runImageDetection("data/eng_rotated.png", ocr, results,  custom_properties);
+    ASSERT_TRUE(results[0].detection_properties.at("LANGUAGE") == "script/Latin");
+    assertTextInImage("data/eng_rotated.png", "All human beings", results);
 }
 
 
