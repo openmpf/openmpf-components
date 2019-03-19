@@ -42,7 +42,7 @@ find_package(Qt4 REQUIRED)
 # Find openalpr
 find_library(OALPR_LIB openalpr)
 find_library(TESSERACT_LIB tesseract)
-find_library(LEPT_LIB lept)
+find_library(LEPT_LIB leptonica)
 
 set(extra_lib_dirs)
 foreach(lib_full_path ${OALPR_LIB} ${TESSERACT_LIB} ${LEPT_LIB})
