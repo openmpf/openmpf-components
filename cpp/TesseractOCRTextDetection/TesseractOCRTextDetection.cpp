@@ -88,10 +88,12 @@ std::string TesseractOCRTextDetection::GetDetectionType() {
     default_ocr_fset.enable_osd = false;
     default_ocr_fset.enable_osd_track_report = false;
     default_ocr_fset.min_script_confidence = 2.0;
+    default_ocr_fset.min_script_score = 50.0;
     default_ocr_fset.min_orientation_confidence = 2.0;
     default_ocr_fset.max_scripts = 1;
     default_ocr_fset.max_text_tracks = 0;
     default_ocr_fset.min_secondary_script_thrs = 0.80;
+
 }
 
 /*
@@ -186,6 +188,9 @@ void TesseractOCRTextDetection::SetReadConfigParameters() {
     }
     if (parameters.contains("MIN_SCRIPT_CONFIDENCE")) {
             default_ocr_fset.min_script_confidence = parameters["MIN_SCRIPT_CONFIDENCE"].toDouble();
+    }
+    if (parameters.contains("MIN_SCRIPT_SCORE")) {
+            default_ocr_fset.min_script_score = parameters["MIN_SCRIPT_SCORE"].toDouble();
     }
 }
 
@@ -406,6 +411,8 @@ bool TesseractOCRTextDetection::Init() {
 
     SetDefaultParameters();
     default_ocr_fset.tessdata_dir = plugin_path + "/tessdata";
+    default_ocr_fset.model_dir = "";
+
     // Once this is done - parameters will be set and SetReadConfigParameters() can be called again to revert back
     // to the params read at initialization.
     std::string config_params_path = config_path + "/mpfOCR.ini";
@@ -822,33 +829,33 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         std::array<char, 128> buffer;
         std::string result;
 
-        bool missing_lang_model = false;
         vector<std::string> languages;
         boost::algorithm::split(languages, lang, boost::algorithm::is_any_of("+"));
+
+        // Trim whitespace.
         for ( std::string &c_lang : languages) {
             c_lang = boost::trim_copy(c_lang);
         }
 
         lang = boost::algorithm::join(languages, "+");
 
-        // Confirm each language model is supported.
-        for (std::string &c_lang : languages) {
+        // Confirm each language model is present in tessdata or shared model directory.
+        // Language models that run together must be present in the same directory.
 
-            std::string language_model = ocr_fset.tessdata_dir + "/" + c_lang + ".traineddata";
-            if (!boost::filesystem::exists(language_model)) {
-                missing_lang_model = true;
-                LOG4CXX_WARN(hw_logger_,  "[" + job.job_name + "] Tesseract language model (" + c_lang
-                + ".traineddata) not found. This language is not supported. To support this language, please add "
-                + c_lang + ".traineddata and any (if they exist) associated [lang].cube.* files to your tessdata directory ($MPF_HOME/plugins/TesseractOCRTextDetection/tessdata)." );
-
-                job_status =  MPF_COULD_NOT_READ_DATAFILE;
-                return false;
+        std::string tessdata_dir = ocr_fset.model_dir;
+        if (ocr_fset.model_dir == "" || !checkTessModelExists(job, lang, tessdata_dir)) {
+            tessdata_dir = ocr_fset.tessdata_dir;
+            if(!checkTessModelExists(job, lang, tessdata_dir)) {
+                LOG4CXX_WARN(hw_logger_,  "[" + job.job_name + "] Tesseract language models not found. Please add the "
+                    + "associated *.traineddata files to your tessdata directory ($MPF_HOME/plugins/TesseractOCRTextDetection/tessdata) "
+                    + "or shared models directory ($MPF_HOME/share/models)." );
+                    job_status =  MPF_COULD_NOT_READ_DATAFILE;
+                    return false;
             }
-
         }
 
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to call tesseract. Specified language: " + lang);
-        int init_rc = tess_api.Init(ocr_fset.tessdata_dir.c_str(), lang.c_str(), (tesseract::OcrEngineMode)ocr_fset.oem);
+        int init_rc = tess_api.Init(tessdata_dir.c_str(), lang.c_str(), (tesseract::OcrEngineMode)ocr_fset.oem);
         if (init_rc != 0) {
             LOG4CXX_ERROR(hw_logger_,  "[" + job.job_name + "] Failed to initialize Tesseract! Error code: " + std::to_string(init_rc));
             // Update job status to reflect initialization error.
@@ -880,6 +887,24 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     return true;
 }
 
+bool TesseractOCRTextDetection::checkTessModelExists(const MPFImageJob &job, const std::string &lang_str, const std::string &directory) {
+
+    LOG4CXX_DEBUG(hw_logger_,  "[" + job.job_name + "] Checking tessdata models in " + directory + ".");
+    vector<std::string> langs;
+    boost::split(langs,lang_str,boost::is_any_of(",+"));
+
+    for (std::string lang : langs) {
+        boost::trim(lang);
+        if (!boost::filesystem::exists(directory + "/" + lang + ".traineddata")) {
+            LOG4CXX_WARN(hw_logger_,  "[" + job.job_name + "] Tessdata file " +  lang + ".traineddata does not exist in "
+                + directory + "." );
+            return false;
+        }
+    }
+    LOG4CXX_DEBUG(hw_logger_,  "[" + job.job_name + "] All tessdata models found in " + directory + ".");
+    return true;
+}
+
 bool TesseractOCRTextDetection::getOSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset, Properties &detection_properties, MPFDetectionError &job_status)
 {
     tesseract::TessBaseAPI tess_api;
@@ -905,10 +930,13 @@ bool TesseractOCRTextDetection::getOSD(OSResults &results, cv::Mat &imi, const M
         detection_properties["ORIENTATION_CONFIDENCE"] = std::to_string(results.best_result.oconfidence);
     }
 
-    if (ocr_fset.min_script_confidence < results.best_result.sconfidence ) {
-        int best_ori = results.best_result.orientation_id;
-        int best_id = results.best_result.script_id;
-        double best_score = results.scripts_na[best_ori][best_id];
+    int best_ori = results.best_result.orientation_id;
+    int best_id = results.best_result.script_id;
+    int candidates = 0;
+    double best_score = results.scripts_na[best_ori][best_id];
+
+    if (ocr_fset.min_script_confidence <= results.best_result.sconfidence || ocr_fset.min_script_score <= best_score) {
+
         TesseractOCRTextDetection::OSD_script best_script = {best_id, best_score};
         vector<TesseractOCRTextDetection::OSD_script> script_list;
 
@@ -916,38 +944,65 @@ bool TesseractOCRTextDetection::getOSD(OSResults &results, cv::Mat &imi, const M
             // Max number of scripts in ICU + "NULL" + Japanese and Korean + Fraktur
             const int kMaxNumberOfScripts = 116 + 1 + 2 + 1;
             double score_cutoff = best_score * ocr_fset.min_secondary_script_thrs;
+            if (score_cutoff < ocr_fset.min_script_score) {
+                score_cutoff = ocr_fset.min_script_score;
+            }
             // Skip index 0 to ignore the "Common" script.
             for (int i = 1; i < kMaxNumberOfScripts; ++i) {
                 double score = results.scripts_na[best_ori][i];
-                if (i != best_id && score > score_cutoff) {
+                if (i != best_id && score >= score_cutoff) {
                     TesseractOCRTextDetection::OSD_script script_out;
                     script_out.id = i;
                     script_out.score = score;
                     script_list.push_back(script_out);
+                    candidates += 1;
                 }
 
             }
             sort(script_list.begin(), script_list.end(), greater<TesseractOCRTextDetection::OSD_script>());
             // Limit number of accepted scripts if user set max_scripts to 2 or greater.
             // Unlimited number when users sets max_scripts to 0 or below.
-            if (ocr_fset.max_scripts > 1) {
+            if (ocr_fset.max_scripts > 1 && candidates > ocr_fset.max_scripts - 1) {
                 script_list.resize(ocr_fset.max_scripts - 1);
             }
         }
         // Include best script result.
         script_list.push_back(best_script);
-        ocr_fset.tesseract_lang = "";
+        bool added_japanese = false;
+        std::vector<std::string> script_results;
         for (TesseractOCRTextDetection::OSD_script script : script_list) {
             std::string script_type = results.unicharset->get_script_from_script_id(script.id);
             // For scripts that support vertical text, run both horizontal and vertical language models.
             if (script_type == "Han") {
-                ocr_fset.tesseract_lang +=  "script/HanS+script/HanT,script/HanS_vert+script/HanT_vert";
-            } else if (script_type == "Korean") {
-                ocr_fset.tesseract_lang +=  "script/Hangul,script/Hangul_vert";
-            } else if (script_type == "Japanese") {
-                ocr_fset.tesseract_lang += "script/Japanese,script/Japanese_vert";
+                script_results.push_back("script/HanS+script/HanT,script/HanS_vert+script/HanT_vert");
+            } else if (script_type == "Korean" || script_type == "Hangul") {
+                script_results.push_back("script/Hangul,script/Hangul_vert");
+            } else if ((script_type == "Japanese" || script_type == "Katakana" || script_type == "Hiragana" || script_type == "Katakana")) {
+                if (added_japanese) {
+                    continue;
+                }
+                // Don't add same language multiple times.
+                added_japanese = true;
+                script_results.push_back("script/Japanese,script/Japanese_vert");
+            } else if (script_type == "Common") {
+                continue;
             } else {
-                ocr_fset.tesseract_lang +=  "script/" + script_type;
+                script_results.push_back("script/" + script_type);
+            }
+        }
+        std::string lang_str = boost::algorithm::join(script_results, ",");
+        // Check if selected models are present in either models or tessdata directory.
+        // All language models must be present in one directory.
+        // If scripts are not found, revert to default.
+
+        if (ocr_fset.model_dir != "" && TesseractOCRTextDetection::checkTessModelExists(job, lang_str, ocr_fset.model_dir)) {
+            ocr_fset.tesseract_lang = lang_str;
+        } else {
+            if (TesseractOCRTextDetection::checkTessModelExists(job, lang_str, ocr_fset.tessdata_dir)) {
+                ocr_fset.tesseract_lang = lang_str;
+            } else {
+                LOG4CXX_DEBUG(hw_logger_,  "[" + job.job_name + "] Script models not found in model and tessdata directories,"
+                    + " reverting to default language setting: " +  ocr_fset.tesseract_lang);
             }
         }
     }
@@ -1267,6 +1322,7 @@ void TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTex
     ocr_fset.enable_osd_track_report = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_OSD_TRACK_REPORT", default_ocr_fset.enable_osd_track_report);
     ocr_fset.min_orientation_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_ORIENTATION_CONFIDENCE", default_ocr_fset.min_orientation_confidence);
     ocr_fset.min_script_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_SCRIPT_CONFIDENCE", default_ocr_fset.min_script_confidence);
+    ocr_fset.min_script_score = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_SCRIPT_SCORE", default_ocr_fset.min_script_score);
 
     ocr_fset.max_scripts = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MAX_SCRIPTS", default_ocr_fset.max_scripts);
 
@@ -1276,6 +1332,11 @@ void TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTex
 
     // Tessdata setup
     ocr_fset.tessdata_dir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "TESSDATA_DIR", default_ocr_fset.tessdata_dir);
+    ocr_fset.model_dir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODELS_DIR_PATH", default_ocr_fset.model_dir);
+    if (ocr_fset.model_dir != "") {
+        ocr_fset.model_dir = ocr_fset.model_dir + "/TesseractOCRTextDetection";
+        Utils::expandFileName(ocr_fset.model_dir, ocr_fset.model_dir);
+    }
     Utils::expandFileName(ocr_fset.tessdata_dir, ocr_fset.tessdata_dir);
 }
 
@@ -1460,6 +1521,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
             OSResults os_results;
             getOSD(os_results, input_image, c_job, ocr_fset, image_track.detection_properties, job_status);
             if (ocr_fset.enable_osd_track_report) {
+                image_track.detection_properties["PAGE_NUM"] = std::to_string(page_num + 1);
                 tracks.push_back(image_track);
             }
         }

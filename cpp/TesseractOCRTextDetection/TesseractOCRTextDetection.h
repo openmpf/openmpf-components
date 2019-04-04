@@ -101,9 +101,11 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         double correl_limit;
         double min_orientation_confidence;
         double min_script_confidence;
+        double min_script_score;
         double min_secondary_script_thrs;
         std::string tesseract_lang;
         std::string tessdata_dir;
+        std::string model_dir;
     };
 
     struct OCR_output {
@@ -182,6 +184,7 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string, int page_num = -1);
 
     bool getOSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, OCR_filter_settings &ocr_fset, Properties &detection_properties, MPFDetectionError &job_status);
+    bool checkTessModelExists(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
 };
 
 }

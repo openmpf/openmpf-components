@@ -95,6 +95,12 @@
           "defaultValue": "false"
         },
         {
+          "name": "MODELS_DIR_PATH",
+          "description": "Path to models directory",
+          "type": "STRING",
+          "propertiesKey": "detection.models.dir.path"
+        },
+        {
           "name": "TAGGING_FILE",
           "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
           "type": "STRING",
@@ -147,6 +153,12 @@
           "description": "Specifies minimum confidence value required to use the detected script (>= 0).",
           "type": "DOUBLE",
           "defaultValue": "2.0"
+        },
+        {
+          "name": "MIN_SCRIPT_SCORE",
+          "description": "Specifies minimum required score to use the detected script (>= 0).",
+          "type": "DOUBLE",
+          "defaultValue": "50.0"
         },
         {
           "name": "MIN_SECONDARY_SCRIPT_THRESHOLD",
