@@ -28,12 +28,19 @@ however users can provide an alternate full path to a tagging file of their choi
 English and foreign text tags following UTF-8 encoding are supported.
 
 
-Furthermore, language models supported by Tesseract are stored by default in
+Language models supported by Tesseract are stored by default in
 `$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata/tessdata` directory and script models
 are stored in `tessdata/script`.
+
 For development and testing purposes outside of the workflow manager, the tessdata directory is located in
-`TesseractOCRTextDetection/plugin-files/tessdata`. Users can set a new tessdata directory by
-modifying the TESSDATA_DIR job property. Additional tessdata models can then be added to the specified
+`TesseractOCRTextDetection/plugin-files/tessdata` specified under TESSDATA_DIR. Users can set a new tessdata directory by
+modifying either the TESSDATA_DIR or MODELS_DIR_PATH job properties. If both directories are specified,
+the component will first check for models in the MODELS_DIR_PATH followed by the TESSDATA_DIR path. Please ensure that
+any language models that run together are stored together in the same directory (i.e. while running "eng+bul",
+both eng.traineddata and bul.traineddata should be stored together in at least one specified directory, while running
+"eng,bul" the models can be stored separately).
+
+Additional tessdata models can then be added to the specified
 tessdata folder to expand supported languages and scripts.
 
 Each language module follows ISO 639-2 designations, with character variations
@@ -49,8 +56,8 @@ specify the `script/` path followed by the full name of the script being process
 
 Users can set ENABLE_OSD to true to enable automatic orientation and script detection in
 place of a prespecified language. Setting ENABLE_OSD_TRACK_REPORT to true will report script and
-orientation results as an additional separate track. Based on MIN_ORIENTATION_CONFIDENCE and MIN_SCRIPT_CONFIDENCE
-thresholds the component will then use the detected script and text orientation (0, 90, 180, and 270 degree rotations)
+orientation results as an additional separate track. Based on MIN_ORIENTATION_CONFIDENCE, MIN_SCRIPT_CONFIDENCE, and
+MIN_SCRIPT_SCORE thresholds the component will then use the detected script and text orientation (0, 90, 180, and 270 degree rotations)
 instead of default language and orientation (no rotation). By default only one detected script will be reported and
 used, however users can set MAX_SCRIPTS to 2 or greater to predict and process multiple scripts. Users must
 also set the MIN_SECONDARY_SCRIPT_THRESHOLD value for multi-script detection to allow for score comparisons between

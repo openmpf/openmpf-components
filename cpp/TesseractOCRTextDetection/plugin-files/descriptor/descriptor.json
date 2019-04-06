@@ -134,7 +134,7 @@
           "name": "ENABLE_OSD",
           "description": "When enabled, automatically rotate image and set language based on detected orientation and script. Use default settings when orientation and script confidence values are low.",
           "type": "BOOLEAN",
-          "defaultValue": "false"
+          "defaultValue": "true"
         },
         {
           "name": "ENABLE_OSD_TRACK_REPORT",

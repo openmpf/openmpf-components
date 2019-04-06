@@ -875,7 +875,6 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         std::wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(result);
 
         TesseractOCRTextDetection::OCR_output output_ocr = {confidence, lang, t_detection};
-        //std::pair<std::string, std::wstring> output_ocr (lang,t_detection);
         detections_by_lang.push_back(output_ocr);
     }
 
@@ -922,18 +921,19 @@ bool TesseractOCRTextDetection::getOSD(OSResults &results, cv::Mat &imi, const M
     tess_api.SetImage(imi.data, imi.cols, imi.rows, imi.channels(), static_cast<int>(imi.step));
     tess_api.DetectOS(&results);
 
-    // Store OCR results into a separate detection track.
-    if (ocr_fset.enable_osd_track_report) {
-        detection_properties["SCRIPT"] = results.unicharset->get_script_from_script_id(results.best_result.script_id);
-        detection_properties["SCRIPT_CONFIDENCE"] = std::to_string(results.best_result.sconfidence);
-        detection_properties["ORIENTATION"] = std::to_string(results.best_result.orientation_id);
-        detection_properties["ORIENTATION_CONFIDENCE"] = std::to_string(results.best_result.oconfidence);
-    }
-
     int best_ori = results.best_result.orientation_id;
     int best_id = results.best_result.script_id;
     int candidates = 0;
     double best_score = results.scripts_na[best_ori][best_id];
+
+    // Store OCR results into a separate detection track.
+    if (ocr_fset.enable_osd_track_report || ocr_fset.psm == 0) {
+        detection_properties["PRIMARY_SCRIPT"] = results.unicharset->get_script_from_script_id(results.best_result.script_id);
+        detection_properties["PRIMARY_SCRIPT_CONFIDENCE"] = std::to_string(results.best_result.sconfidence);
+        detection_properties["PRIMARY_SCRIPT_SCORE"] = std::to_string(best_score);
+        detection_properties["ORIENTATION"] = std::to_string(results.best_result.orientation_id);
+        detection_properties["ORIENTATION_CONFIDENCE"] = std::to_string(results.best_result.oconfidence);
+    }
 
     if (ocr_fset.min_script_confidence <= results.best_result.sconfidence || ocr_fset.min_script_score <= best_score) {
 
@@ -966,6 +966,23 @@ bool TesseractOCRTextDetection::getOSD(OSResults &results, cv::Mat &imi, const M
                 script_list.resize(ocr_fset.max_scripts - 1);
             }
         }
+
+        // Store OCR results into a separate detection track.
+        if ((ocr_fset.enable_osd_track_report || ocr_fset.psm == 0) && script_list.size() > 0) {
+
+            std::vector<std::string> scripts;
+            std::vector<std::string> scores;
+
+            for (TesseractOCRTextDetection::OSD_script script : script_list) {
+                scripts.push_back(results.unicharset->get_script_from_script_id(script.id));
+                scores.push_back(std::to_string(script.score));
+            }
+
+            detection_properties["SECONDARY_SCRIPTS"] = boost::algorithm::join(scripts, ", ");
+            detection_properties["SECONDARY_SCRIPT_SCORES"] = boost::algorithm::join(scores, ", ");
+        }
+
+
         // Include best script result.
         script_list.push_back(best_script);
         bool added_japanese = false;
@@ -1424,8 +1441,14 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
         MPFImageLocation image_location(0, 0, image_dim.first, image_dim.second);
         OSResults os_results;
         getOSD(os_results, input_image, job, ocr_fset, image_location.detection_properties, job_status);
-        if (ocr_fset.enable_osd_track_report) {
+        if (ocr_fset.psm == 0 || ocr_fset.enable_osd_track_report) {
            locations.push_back(image_location);
+        }
+
+        // When PSM is set to 0, there is no need to process any further.
+        if (ocr_fset.psm == 0) {
+            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Processing complete. Found " + std::to_string(locations.size()) + " tracks.");
+            return job_status;
         }
     }
 
@@ -1520,9 +1543,16 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
             MPFGenericTrack image_track(-1);
             OSResults os_results;
             getOSD(os_results, input_image, c_job, ocr_fset, image_track.detection_properties, job_status);
-            if (ocr_fset.enable_osd_track_report) {
+            if (ocr_fset.psm == 0 || ocr_fset.enable_osd_track_report) {
                 image_track.detection_properties["PAGE_NUM"] = std::to_string(page_num + 1);
                 tracks.push_back(image_track);
+            }
+
+            // When PSM is set to 0, there is no need to process any further.
+            // Proceed to next page for OSD processing.
+            if (ocr_fset.psm == 0) {
+                page_num++;
+                continue;
             }
         }
 

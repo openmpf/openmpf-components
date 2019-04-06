@@ -1,12 +1,25 @@
 # blank.png
 Custom generated image, contains no text.
 
+# eng.png
+Custom generated image, contains english text from the Universal
+Declaration of Human Rights. http://www.un.org/en/universal-declaration-human-rights/
+
 # eng-bul.png
 Custom generated image, contains English and Bulgarian text from the Universal
 Declaration of Human Rights (http://www.un.org/en/universal-declaration-human-rights).
 
+# eng-rotated.png
+Custom generated image, contains english text from the Universal
+Declaration of Human Rights. http://www.un.org/en/universal-declaration-human-rights/
+
 # junk-text.png
 Custom generated image containing gibberish text.
+
+# osd-tests.pdf
+Custom generated pdf for testing script and orientation detection.
+Contains chinese text from the Universal Declaration of Human Rights.
+https://www.ohchr.org/en/udhr/pages/searchbylang.aspx
 
 # tags-keyword.png
 Custom generated image for testing keyword tags.
