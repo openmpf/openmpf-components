@@ -176,7 +176,7 @@ TEST(VideoGeneration, TestOnKnownVideo) {
 TEST(ImageGeneration, TestOnKnownImage) {
 
     string current_working_dir = GetCurrentWorkingDirectory();
-    string test_output_dir = current_working_dir + "/test/gtest_output/";
+    string test_output_dir = current_working_dir + "/test/test_output/";
 
     std::string known_image_file;
     std::string known_detections_file;
