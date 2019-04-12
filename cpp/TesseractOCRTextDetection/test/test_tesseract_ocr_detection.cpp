@@ -26,8 +26,12 @@
 
 #include <string>
 #include <MPFDetectionComponent.h>
-
+#include <unistd.h>
 #include <gtest/gtest.h>
+
+#define BOOST_NO_CXX11_SCOPED_ENUMS
+#include <boost/filesystem.hpp>
+#undef BOOST_NO_CXX11_SCOPED_ENUMS
 
 #include "TesseractOCRTextDetection.h"
 
@@ -88,12 +92,17 @@ void assertEmptyDetection(const std::string &image_path, TesseractOCRTextDetecti
 }
 
 bool containsText(const std::string &exp_text, const std::vector<MPFImageLocation> &locations, int index = -1) {
-
     if (index != -1) {
+        if ( locations[index].detection_properties.count("TEXT") == 0 ) {
+            return false;
+        }
         std::string text = locations[index].detection_properties.at("TEXT");
         return text.find(exp_text) != std::string::npos;
     }
     for (int i = 0; i < locations.size(); i++) {
+        if ( locations[i].detection_properties.count("TEXT") == 0 ) {
+            continue;
+        }
         std::string text = locations[i].detection_properties.at("TEXT");
         if(text.find(exp_text) != std::string::npos)
             return true;
@@ -103,10 +112,16 @@ bool containsText(const std::string &exp_text, const std::vector<MPFImageLocatio
 
 bool containsTag(const std::string &exp_tag, const std::vector<MPFImageLocation> &locations, int index = -1) {
     if (index != -1) {
+        if ( locations[index].detection_properties.count("TAGS") == 0 ) {
+            return false;
+        }
         std::string text = locations[index].detection_properties.at("TAGS");
         return text.find(exp_tag) != std::string::npos;
     }
     for (int i = 0; i < locations.size(); i++) {
+        if ( locations[i].detection_properties.count("TAGS") == 0 ) {
+            continue;
+        }
         std::string text = locations[i].detection_properties.at("TAGS");
         if(text.find(exp_tag) != std::string::npos)
             return true;
@@ -144,19 +159,29 @@ void convert_results(std::vector<MPFImageLocation>& im_track, const std::vector<
 
 TEST(TESSERACTOCR, ModelTest) {
 
-    // Ensure user can specify custom model/tessdata directory locations.
+    // Ensure user can specify custom model directory locations.
+
+    if (!boost::filesystem::exists("data/model_dir/TesseractOCRTextDetection")) {
+        if (!boost::filesystem::exists("data/model_dir")) {
+            boost::filesystem::create_directory("data/model_dir");
+        }
+        boost::filesystem::create_directory("data/model_dir/TesseractOCRTextDetection");
+    }
+    std::string model = boost::filesystem::absolute("../plugin/TesseractOCRTextDetection/tessdata/eng.traineddata").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/custom.traineddata");
+
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
     std::vector<MPFImageLocation> results;
     ASSERT_TRUE(ocr.Init());
-
-    std::map<std::string,std::string> custom_properties = {{"TESSERACT_LANGUAGE","custom,custom2"},
-        {"MODELS_DIR_PATH", "data/model_dir"}, {"TESSDATA_DIR", "data/tess_dir"}, {"ENABLE_OSD","false"}};
+    std::map<std::string,std::string> custom_properties = {{"TESSERACT_LANGUAGE","custom,eng"},
+        {"MODELS_DIR_PATH", "data/model_dir"}, {"ENABLE_OSD","false"}};
 
     runImageDetection("data/eng.png", ocr, results,  custom_properties);
 
+    boost::filesystem::remove_all("data/model_dir");
     ASSERT_TRUE(results[0].detection_properties.at("LANGUAGE") == "custom") << "Shared models directory not loaded.";
-    ASSERT_TRUE(results[1].detection_properties.at("LANGUAGE") == "custom2") << "Tessdata directory not loaded.";
+    ASSERT_TRUE(results[1].detection_properties.at("LANGUAGE") == "eng") << "Tessdata directory not loaded.";
     ASSERT_TRUE(results.size() == 2) << "Expected two models to be properly loaded into component.";
 }
 
@@ -261,23 +286,27 @@ TEST(TESSERACTOCR, OSDTest) {
     // Check that OSD works.
 
     // Check script detection.
-    std::map<std::string,std::string> custom_properties = {{"ENABLE_OSD","true"}, {"ENABLE_OSD_TRACK_REPORT","false"},
-        {"MIN_SCRIPT_CONFIDENCE","0.80"}};
+    std::map<std::string,std::string> custom_properties = {{"ENABLE_OSD","true"}, {"ENABLE_OSD_TRACK_REPORT","true"},
+        {"MIN_SCRIPT_CONFIDENCE","0.30"}};
     runImageDetection("data/eng.png", ocr, results,  custom_properties);
-    ASSERT_TRUE(results[0].detection_properties.at("LANGUAGE") == "script/Latin") << "Expected latin script.";
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[1].detection_properties.at("LANGUAGE") == "script/Latin") << "Expected latin script.";
     results.clear();
 
     // Check orientation detection. Text should be properly extracted.
     runImageDetection("data/eng-rotated.png", ocr, results,  custom_properties);
-    ASSERT_TRUE(results[0].detection_properties.at("LANGUAGE") == "script/Latin") << "Expected latin script.";
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "180") << "Expected 180 degree text rotation.";
+    ASSERT_TRUE(results[1].detection_properties.at("LANGUAGE") == "script/Latin") << "Expected latin script.";
     assertTextInImage("data/eng-rotated.png", "All human beings", results);
     results.clear();
 
 
     // Check multi-language script detection.
     // Set max scripts to three, however based on filters only two scripts should be processed.
-    custom_properties = {{"TESSERACT_PSM","0"}, {"MAX_SCRIPTS","3"}, {"MIN_SCRIPT_SCORE", "45.0"}};
+    custom_properties = {{"TESSERACT_PSM","0"}, {"ENABLE_OSD_TRACK_REPORT", "true"}, {"MAX_SCRIPTS","3"}
+        , {"MIN_SCRIPT_SCORE", "45.0"}};
     runImageDetection("data/eng-bul.png", ocr, results,  custom_properties);
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
     ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Cyrillic") << "Expected Cyrillic as primary script.";
     ASSERT_TRUE(results[0].detection_properties.at("SECONDARY_SCRIPTS") == "Latin") << "Expected Latin as secondary script.";
     results.clear();
@@ -288,8 +317,10 @@ TEST(TESSERACTOCR, OSDTest) {
     custom_properties = {{"TESSERACT_PSM","0"}, {"ENABLE_OSD_TRACK_REPORT","true"}};
     runDocumentDetection("data/osd-tests.pdf", ocr, results_pdf,  custom_properties);
     convert_results(results, results_pdf);
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Han") << "Expected Chinese/Han detected as main script.";
-    ASSERT_TRUE(results[1].detection_properties.at("ORIENTATION") == "2") << "Expected 180 degree text rotation.";
+    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Han") << "Expected Chinese/Han detected as primary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[1].detection_properties.at("PRIMARY_SCRIPT") == "Cyrillic") << "Expected Cyrillic detected as primary script.";
+    ASSERT_TRUE(results[1].detection_properties.at("ROTATION") == "180") << "Expected 180 degree text rotation.";
 
 }
 
