@@ -1,7 +1,7 @@
 {
   "componentName" : "TesseractOCRTextDetection",
-  "componentVersion" : "3.0.0",
-  "middlewareVersion" :  "3.0.0",
+  "componentVersion" : "4.0.0",
+  "middlewareVersion" :  "4.0.0",
   "sourceLanguage" : "c++",
   "batchLibrary": "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib/libmpfTesseractOCRTextDetection.so",
   "environmentVariables" : [ {
@@ -96,19 +96,25 @@
         },
         {
           "name": "TAGGING_FILE",
-          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. $MPF_HOME/.../text-tags.json).",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
           "type": "STRING",
           "defaultValue": "text-tags.json"
         },
         {
           "name": "TESSERACT_LANGUAGE",
-          "description": "The language OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+fra' = run English, German, French together as one track detection, and 'eng, fra+deu'= run English as the first track and French + German as the second track. Language model files for Bulgarian (bul), Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus), Russian (rus), and Spanish (spa) are stored in plugin-files/bin/tessdata. Note the osd language file (osd.traindata) is for extraction of script orientation rather than language. Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata/tree/3.04.00.",
+          "description": "The language or script OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+fra' = run English, German, French together as one track detection, 'eng, fra+deu'= run English as the first track and French + German as the second track, and 'fra, script/Latin'= run French as the first track, and Latin script as the second track. Language model files for Bulgarian (bul), Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus), Russian (rus), and Spanish (spa) are stored in `$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata`. Script model file for Latin(script/Latin) stored in `$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata/script`. Note the osd language file (osd.traindata) is for extraction of script orientation rather than language. Users may download and load in additional language and script models from https://github.com/tesseract-ocr/tessdata.",
           "type": "STRING",
           "defaultValue": "eng"
         },
         {
           "name": "TESSERACT_PSM",
           "description": "Tesseract Page Segmentation Mode. Refer to Tesseract docs (https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage) for details.",
+          "type": "INT",
+          "defaultValue": "3"
+        },
+        {
+          "name": "TESSERACT_OEM",
+          "description": "Tesseract OCR Engine Mode. Set to 0 for legacy engine only, 1 for LSTM engine only, 2 for both LSTM and legacy, and 3 for default (runs both engines at once if possible). Refer to Tesseract docs (https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage) for details.",
           "type": "INT",
           "defaultValue": "3"
         },
