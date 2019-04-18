@@ -48,26 +48,26 @@
         },
         {
           "name": "SEARCH_REGION_TOP_LEFT_X_DETECTION",
-          "description": "X coordinate for top left corner of cropped frame. If negative, 0 will be used.",
-          "type": "INT",
+          "description": "X coordinate for top left corner of cropped frame. If this string contains the % sign, then its numeric value will be interpreted as a percentage of the width of the frame, and its value will be capped between 0% and 100%, inclusive. If this string does not contain the % sign, then it will be interpreted as a pixel position. If negative, the top left X position will be set to 0.",
+          "type": "STRING",
           "defaultValue": "-1"
         },
         {
           "name": "SEARCH_REGION_TOP_LEFT_Y_DETECTION",
-          "description": "Y coordinate for top left corner of cropped frame. If negative, 0 will be used.",
-          "type": "INT",
+          "description": "Y coordinate for top left corner of cropped frame. If this string contains the % sign, then its numeric value will be interpreted as a percentage of the height of the frame, and its value will be capped between 0% and 100%, inclusive. If this string does not contain the % sign, then it will be interpreted as a pixel position. If negative, the top left Y position will be set to 0.",
+          "type": "STRING",
           "defaultValue": "-1"
         },
         {
           "name": "SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION",
-          "description": "X coordinate for bottom right corner of cropped frame. If negative, bottom right X of input media will be used.",
-          "type": "INT",
+          "description": "X coordinate for bottom right corner of cropped frame. If this string contains the % sign, then its numeric value will be interpreted as a percentage of the width of the frame, and its value will be capped between 0% and 100%, inclusive. If this string does not contain the % sign, then it will be interpreted as a pixel position. If zero or negative, the bottom right X position will be set to the width of the frame.",
+          "type": "STRING",
           "defaultValue": "-1"
         },
         {
           "name": "SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION",
-          "description": "Y coordinate for bottom right corner of cropped frame. If negative, bottom right Y of input media. will be used.",
-          "type": "INT",
+          "description": "Y coordinate for bottom right corner of cropped frame. If this string contains the % sign, then its numeric value will be interpreted as a percentage of the height of the frame, and its value will be capped between 0% and 100%, inclusive. If this string does not contain the % sign, then it will be interpreted as a pixel position. If zero or negative, the bottom right Y position will be set to the height of the frame.",
+          "type": "STRING",
           "defaultValue": "-1"
         },
         {
