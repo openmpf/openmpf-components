@@ -125,38 +125,38 @@
           "defaultValue": "3"
         },
         {
-          "name": "ENABLE_OSD",
+          "name": "ENABLE_OSD_AUTOMATION",
           "description": "When enabled, automatically rotate image and set language based on detected orientation and script. Use default settings when orientation and script confidence values are low.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
         {
-          "name": "ENABLE_OSD_TRACK_REPORT",
-          "description": "When enabled, store OSD results (either from setting PSM=0 or ENABLE_OSD=1) as an additional track separate from text results.",
+          "name": "COMBINE_DETECTED_SCRIPTS",
+          "description": "When enabled, scripts detected during OSD processing are run together as a single track (ex. script/Latin+script/Secondary_Script). Disable to run detected scripts individually, stored in separate tracks.",
           "type": "BOOLEAN",
-          "defaultValue": "false"
+          "defaultValue": "true"
         },
         {
-          "name": "MIN_ORIENTATION_CONFIDENCE",
-          "description": "Specifies the minimum confidence value required to use the detected text orientation (>= 0).",
+          "name": "MIN_OSD_ROTATION_CONFIDENCE",
+          "description": "Specifies the minimum confidence value (>= 0) required to use the detected text orientation when OSD automation is enabled. Top rotation confidence is calculated based on comparison of top detected rotation score against secondary (lower confidence) rotation scores.",
           "type": "DOUBLE",
           "defaultValue": "2.0"
         },
         {
-          "name": "MIN_SCRIPT_CONFIDENCE",
-          "description": "Specifies minimum confidence value required to use the detected script (>= 0).",
+          "name": "MIN_OSD_SCRIPT_CONFIDENCE",
+          "description": "Specifies minimum confidence value (>= 0) required to use the top detected script when OSD automation is enabled. Script confidence is calculated based on comparison of top detected script score against the second best script score.",
           "type": "DOUBLE",
-          "defaultValue": "2.0"
+          "defaultValue": "0.5"
         },
         {
-          "name": "MIN_SCRIPT_SCORE",
-          "description": "Specifies minimum required score to use the detected script (>= 0).",
+          "name": "MIN_OSD_SCRIPT_SCORE",
+          "description": "Specifies minimum required score (>= 0) to use the detected script when OSD automation is enabled. Unlike script confidence which only applies for the top detected script, each secondary script processed during OSD also has its own script score. Thus, this threshold can be used to support multiple script detections.",
           "type": "DOUBLE",
           "defaultValue": "50.0"
         },
         {
-          "name": "MIN_SECONDARY_SCRIPT_THRESHOLD",
-          "description": "For any secondary scripts, sets the min relative score threshold. I.e. If set to 0.80, only scripts that are within 80% confidence to primary script are allowed.",
+          "name": "MIN_OSD_SECONDARY_SCRIPT_THRESHOLD",
+          "description": "When running OSD automation, sets the min relative score threshold for running any secondary scripts. I.e. If set to 0.80, only scripts with raw scores that are at least 80% of the primary script score are allowed.",
           "type": "DOUBLE",
           "defaultValue": "0.80"
         },

@@ -97,23 +97,22 @@ int main(int argc, char* argv[]) {
                     std::cout << "Script confidence: " << tracks[i].detection_properties.at("PRIMARY_SCRIPT_CONFIDENCE") << "\n";
                     std::cout << "Script score: " << tracks[i].detection_properties.at("PRIMARY_SCRIPT_SCORE") << "\n";
                     std::cout << "Detected orientation: " << tracks[i].detection_properties.at("ROTATION") << "\n";
-                    std::cout << "Orientation confidence: " << tracks[i].detection_properties.at("ROTATION_CONFIDENCE") << "\n" << std::endl;
+                    std::cout << "Orientation confidence: " << tracks[i].detection_properties.at("ROTATION_CONFIDENCE") << "\n";
 
                     if (tracks[i].detection_properties.count("SECONDARY_SCRIPTS") > 0) {
                         std::cout << "Secondary scripts: " << tracks[i].detection_properties.at("SECONDARY_SCRIPTS") << "\n";
                         std::cout << "Secondary script scores: " << tracks[i].detection_properties.at("SECONDARY_SCRIPT_SCORES") << "\n"<< std::endl;
                     }
-
-                    std::cout << "OCR page_num: " << tracks[i].detection_properties.at("PAGE_NUM") << "\"" << std::endl;
-                    continue;
                 }
-                std::cout << "OCR result: " << i << "\n"
-                          << "   metadata = \"" << tracks[i].detection_properties.at("TEXT") << "\"" << std::endl;
-                std::cout << "OCR text tags: " << i << "\n"
-                          << "   detected string tags = \"" << tracks[i].detection_properties.at("TAGS") << "\"" << std::endl;
-                std::cout << "OCR language: " << tracks[i].detection_properties.at("LANGUAGE") << "\n";
-                std::cout << "Confidence: " << tracks[i].confidence << "\n";
-                std::cout << "OCR page_num: " << tracks[i].detection_properties.at("PAGE_NUM") << "\"" << std::endl;
+                if (tracks[i].detection_properties.count("TEXT") > 0) {
+                    std::cout << "OCR result: " << i << "\n"
+                              << "   metadata = \"" << tracks[i].detection_properties.at("TEXT") << "\"" << std::endl;
+                    std::cout << "OCR text tags: " << i << "\n"
+                              << "   detected string tags = \"" << tracks[i].detection_properties.at("TAGS") << "\"" << std::endl;
+                    std::cout << "OCR language: " << tracks[i].detection_properties.at("LANGUAGE") << "\n";
+                    std::cout << "Confidence: " << tracks[i].confidence << "\n";
+                    std::cout << "OCR page_num: " << tracks[i].detection_properties.at("PAGE_NUM") << "\"" << std::endl  << "\n";
+                }
             }
         } else {
             std::cout << "GetDetections failed" << std::endl;
@@ -139,22 +138,21 @@ int main(int argc, char* argv[]) {
                     std::cout << "Script confidence: " << locations[i].detection_properties.at("PRIMARY_SCRIPT_CONFIDENCE") << "\n";
                     std::cout << "Script score: " << locations[i].detection_properties.at("PRIMARY_SCRIPT_SCORE") << "\n";
                     std::cout << "Detected orientation: " << locations[i].detection_properties.at("ROTATION") << "\n";
-                    std::cout << "Orientation confidence: " << locations[i].detection_properties.at("ROTATION_CONFIDENCE") << "\n" << std::endl;
-
+                    std::cout << "Orientation confidence: " << locations[i].detection_properties.at("ROTATION_CONFIDENCE") << "\n";
                     if (locations[i].detection_properties.count("SECONDARY_SCRIPTS") > 0) {
                         std::cout << "Secondary scripts: " << locations[i].detection_properties.at("SECONDARY_SCRIPTS") << "\n";
                         std::cout << "Secondary script scores: " << locations[i].detection_properties.at("SECONDARY_SCRIPT_SCORES") << "\n" << std::endl;
                     }
-                    continue;
+
                 }
-
-                std::cout << "OCR result: " << i << "\n"
-                          << "   metadata = \"" << locations[i].detection_properties.at("TEXT") << "\"" << std::endl;
-                std::cout << "OCR language: " << locations[i].detection_properties.at("LANGUAGE") << "\n";
-                std::cout << "Confidence: " << locations[i].confidence << "\n";
-                std::cout << "OCR text tags: " << i << "\n"
-                          << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS") << "\"" << std::endl;
-
+                if (locations[i].detection_properties.count("TEXT") > 0) {
+                    std::cout << "OCR result: " << i << "\n"
+                              << "   metadata = \"" << locations[i].detection_properties.at("TEXT") << "\"" << std::endl;
+                    std::cout << "OCR language: " << locations[i].detection_properties.at("LANGUAGE") << "\n";
+                    std::cout << "Confidence: " << locations[i].confidence << "\n";
+                    std::cout << "OCR text tags: " << i << "\n"
+                              << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS") << "\"" << std::endl  << "\n";
+                }
             }
         } else {
                 std::cout << "GetDetections failed" << std::endl;

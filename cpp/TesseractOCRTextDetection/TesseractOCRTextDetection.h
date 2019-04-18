@@ -61,8 +61,6 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     MPFDetectionError GetDetections(const MPFGenericJob &job,
                                     std::vector<MPFGenericTrack> &tracks);
 
-    std::string TesseractOCRMagickCheckFileType(const std::string uri);
-
   private:
     struct OCR_char_stats {
         int alphabet_count;
@@ -83,7 +81,7 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         bool enable_rescale;
         bool enable_sharpen;
         bool enable_osd;
-        bool enable_osd_track_report;
+        bool combine_detected_scripts;
         int adaptive_thrs_pixel;
         int min_word_len;
         int hist_min_char;
@@ -147,8 +145,8 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     bool get_tesseract_detections(const MPFImageJob &job, std::vector<OCR_output> &detection, cv::Mat &imi, const OCR_filter_settings &ocr_fset, MPFDetectionError &job_status);
     bool preprocess_image(const MPFImageJob &job, std::pair<int, int> &image_dim, cv::Mat &image_result, const OCR_filter_settings &ocr_fset,  MPFDetectionError &job_status);
 
-    void SetDefaultParameters();
-    void SetReadConfigParameters();
+    void set_default_parameters();
+    void set_read_config_parameters();
     void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset);
     void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
         std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string,
@@ -170,7 +168,7 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     std::string log_print_str(const wchar_t* text);
     std::vector<std::wstring> get_tokens(const std::wstring &str);
 
-    std::string parseRegexCode(boost::regex_constants::error_type etype);
+    std::string parse_regex_code(boost::regex_constants::error_type etype);
 
     std::set<std::wstring> search_regex(const MPFImageJob &job, const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex, MPFDetectionError &job_status);
     std::set<std::wstring> search_string(const MPFImageJob &job, const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
@@ -182,9 +180,9 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string_split,
         const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string, int page_num = -1);
 
-    bool getOSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, OCR_filter_settings &ocr_fset, Properties &detection_properties, MPFDetectionError &job_status);
-    std::string returnValidTessDir(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
-    bool checkTessModelDirectory(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
+    bool get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, OCR_filter_settings &ocr_fset, Properties &detection_properties, MPFDetectionError &job_status);
+    std::string return_valid_tessdir(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
+    bool check_tess_model_directory(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
 };
 
 }

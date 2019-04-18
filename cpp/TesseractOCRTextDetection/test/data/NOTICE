@@ -16,6 +16,11 @@ Declaration of Human Rights. http://www.un.org/en/universal-declaration-human-ri
 # junk-text.png
 Custom generated image containing gibberish text.
 
+# osd-check-defaults.pdf
+Custom generated pdf for checking script and default language settings.
+Contains Bulgarian text from the Universal Declaration of Human Rights 
+(http://www.un.org/en/universal-declaration-human-rights).
+
 # osd-tests.pdf
 Custom generated pdf for testing script and orientation detection.
 Contains chinese text from the Universal Declaration of Human Rights.
