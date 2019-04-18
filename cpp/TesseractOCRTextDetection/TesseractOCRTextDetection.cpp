@@ -1484,7 +1484,7 @@ bool TesseractOCRTextDetection::process_text_tagging(Properties &detection_prope
         tag_string = tag_string.substr(0,tag_string.size() - 2);
     }
 
-    detection_properties["LANGUAGE"] = ocr_lang;
+    detection_properties["TEXT_LANGUAGE"] = ocr_lang;
     detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
     detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(ocr_detections);
 
