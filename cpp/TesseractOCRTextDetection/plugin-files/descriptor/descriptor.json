@@ -36,7 +36,7 @@
         },
         {
           "name": "CONFIDENCE_THRESHOLD",
-          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
+          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded. Confidence value represents the average OCR confidence reported by Tesseract for a given TESSERACT_LANGUAGE setting. When PSM 0 (OSD only) is run, this value is set to default value of -1, as no OCR confidence score is available.",
           "type": "DOUBLE",
           "defaultValue": "-2"
         },
@@ -95,6 +95,12 @@
           "defaultValue": "false"
         },
         {
+          "name": "MODELS_DIR_PATH",
+          "description": "Path to models directory",
+          "type": "STRING",
+          "propertiesKey": "detection.models.dir.path"
+        },
+        {
           "name": "TAGGING_FILE",
           "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
           "type": "STRING",
@@ -104,7 +110,7 @@
           "name": "TESSERACT_LANGUAGE",
           "description": "The language or script OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+fra' = run English, German, French together as one track detection, 'eng, fra+deu'= run English as the first track and French + German as the second track, and 'fra, script/Latin'= run French as the first track, and Latin script as the second track. Language model files for Bulgarian (bul), Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus), Russian (rus), and Spanish (spa) are stored in `$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata`. Script model file for Latin(script/Latin) stored in `$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata/script`. Note the osd language file (osd.traindata) is for extraction of script orientation rather than language. Users may download and load in additional language and script models from https://github.com/tesseract-ocr/tessdata.",
           "type": "STRING",
-          "defaultValue": "eng"
+          "defaultValue": "script/Latin"
         },
         {
           "name": "TESSERACT_PSM",
@@ -117,6 +123,54 @@
           "description": "Tesseract OCR Engine Mode. Set to 0 for legacy engine only, 1 for LSTM engine only, 2 for both LSTM and legacy, and 3 for default (runs both engines at once if possible). Refer to Tesseract docs (https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage) for details.",
           "type": "INT",
           "defaultValue": "3"
+        },
+        {
+          "name": "ENABLE_OSD_AUTOMATION",
+          "description": "When enabled, automatically rotate image and set language based on detected orientation and script. Use default settings when orientation and script confidence values are low.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "COMBINE_OSD_SCRIPTS",
+          "description": "When enabled, perform OCR on the combination of detected scripts. When disabled, perform OCR on each detected script independently.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "MIN_OSD_ROTATION_CONFIDENCE",
+          "description": "Specifies the minimum confidence value (>= 0) required to use the detected text orientation when OSD automation is enabled. Top rotation confidence is calculated based on comparison of top-detected rotation score against secondary (lower confidence) rotation scores.",
+          "type": "DOUBLE",
+          "defaultValue": "2.0"
+        },
+        {
+          "name": "MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE",
+          "description": "Specifies minimum confidence value (>= 0) required to use the top-detected script when OSD automation is enabled. Script confidence is calculated based on comparison of top-detected script score against the second-best script score.",
+          "type": "DOUBLE",
+          "defaultValue": "0.5"
+        },
+        {
+          "name": "MIN_OSD_SCRIPT_SCORE",
+          "description": "Specifies minimum required score (>= 0) to use the detected script when OSD automation is enabled. Unlike script confidence which only applies for the top-detected script, each secondary script processed during OSD also has its own script score. Thus, this threshold can be used to support multiple script detections.",
+          "type": "DOUBLE",
+          "defaultValue": "50.0"
+        },
+        {
+          "name": "MIN_OSD_SECONDARY_SCRIPT_THRESHOLD",
+          "description": "When running OSD automation, sets the min relative score threshold for running any secondary scripts. I.e. If set to 0.80, only scripts with raw scores that are at least 80% of the primary script score are allowed.",
+          "type": "DOUBLE",
+          "defaultValue": "0.80"
+        },
+        {
+          "name": "MAX_OSD_SCRIPTS",
+          "description": "Specifies maximum number of detected scripts by OSD. When set to 0 or below, allow any number of scripts with acceptable threshold scores.",
+          "type": "INT",
+          "defaultValue": "1"
+        },
+        {
+          "name": "MAX_TEXT_TRACKS",
+          "description": "Specifies number of reported text tracks per page based on average confidence scores. When set to 0 or below, allow any number of tracks.",
+          "type": "INT",
+          "defaultValue": "0"
         },
         {
           "name": "ENABLE_SHARPEN",
