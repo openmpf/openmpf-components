@@ -320,7 +320,7 @@ TEST(TESSERACTOCR, OSDTest) {
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "180") << "Expected 180 degree text rotation.";
     ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Latin") << "Expected latin script.";
-    assertTextInImage("data/eng-rotated.png", "All human beings", results); 
+    assertTextInImage("data/eng-rotated.png", "All human beings", results);
 }
     
     
