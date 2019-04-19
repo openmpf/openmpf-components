@@ -361,6 +361,32 @@ TEST(TESSERACTOCR, OSDConfidenceFilteringTest) {
     
 }
 
+TEST(TESSERACTOCR, OSDCommonTest) {
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    // Check that "Common" script is reported but secondary script is used to run OCR.
+    std::map<std::string,std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION","true"}, {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE","0.0"}
+    , {"MIN_OSD_SCRIPT_SCORE","0"}, {"MAX_OSD_SCRIPTS","1"}, {"MIN_OSD_SECONDARY_SCRIPT_THRESHOLD", "0.0"}};
+    runImageDetection("data/numeric.png", ocr, results,  custom_properties);
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Common") << "Expected Common script.";
+    ASSERT_TRUE(results[0].detection_properties.at("SECONDARY_SCRIPTS") == "Cyrillic") << "Expected Cyrillic script.";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Cyrillic") << "Expected Cyrillic script.";
+
+    results.clear();
+
+    // Check that "Common" script is reported but default language is used to run OCR.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION","true"}, {"MAX_OSD_SCRIPTS","1"}};
+    runImageDetection("data/numeric.png", ocr, results,  custom_properties);
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Common") << "Expected Common script.";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected default language (eng).";
+}
+
 TEST(TESSERACTOCR, OSDMultilanguageScriptTest) {
 
     TesseractOCRTextDetection ocr;

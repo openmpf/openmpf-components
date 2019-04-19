@@ -913,8 +913,8 @@ std::string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &j
 
 
     LOG4CXX_WARN(hw_logger_,  "[" + job.job_name + "] Some Tessdata models were not found, or are not co-located." +
-        " Please ensure that all of the following models exist in the same directory, either " + directory + "or " +
-        local_plugin_directory + " : " + lang_str + " .");
+        " Please ensure that all of the following models exist in the same directory, either " + directory + " or " +
+        local_plugin_directory + ": " + lang_str + " .");
     return "";
 }
 
