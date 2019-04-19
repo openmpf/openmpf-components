@@ -111,7 +111,7 @@ int main(int argc, char* argv[]) {
                               << "   detected string tags = \"" << tracks[i].detection_properties.at("TAGS") << "\"" << std::endl;
                     std::cout << "OCR language: " << tracks[i].detection_properties.at("TEXT_LANGUAGE") << "\n";
                     std::cout << "Confidence: " << tracks[i].confidence << "\n";
-                    std::cout << "OCR page_num: " << tracks[i].detection_properties.at("PAGE_NUM") << "\"" << std::endl  << "\n";
+                    std::cout << "OCR page_num: " << tracks[i].detection_properties.at("PAGE_NUM")  << "\n" << std::endl ;
                 }
             }
         } else {
@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
                     std::cout << "OCR language: " << locations[i].detection_properties.at("TEXT_LANGUAGE") << "\n";
                     std::cout << "Confidence: " << locations[i].confidence << "\n";
                     std::cout << "OCR text tags: " << i << "\n"
-                              << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS") << "\"" << std::endl  << "\n";
+                              << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS") << "\""  << "\n" << std::endl ;
                 }
             }
         } else {
