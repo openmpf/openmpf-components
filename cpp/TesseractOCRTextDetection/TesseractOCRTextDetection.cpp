@@ -1006,12 +1006,22 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     detection_properties["ROTATION"] = std::to_string(rotation);
     detection_properties["ROTATION_CONFIDENCE"] = std::to_string(results.best_result.oconfidence);
 
+    int max_scripts = ocr_fset.max_scripts;
+    if( detection_properties["PRIMARY_SCRIPT"] == "Common") {
+        // When "Common" is detected, swap over to secondary scripts for consideration.
+        // Common script is automatically excluded from model selection, but still reported in the results as the top
+        // script.
+        if (max_scripts > 0) {
+            max_scripts = max_scripts + 1;
+        }
+    }
+
     if (ocr_fset.min_script_confidence <= results.best_result.sconfidence && ocr_fset.min_script_score <= best_score) {
 
         TesseractOCRTextDetection::OSD_script best_script = {best_id, best_score};
         vector<TesseractOCRTextDetection::OSD_script> script_list;
 
-        if ( ocr_fset.max_scripts != 1 ) {
+        if ( max_scripts != 1 ) {
             // Max number of scripts in ICU + "NULL" + Japanese and Korean + Fraktur
             const int kMaxNumberOfScripts = 116 + 1 + 2 + 1;
             double score_cutoff = best_score * ocr_fset.min_secondary_script_thrs;
@@ -1033,8 +1043,8 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             sort(script_list.begin(), script_list.end(), greater<TesseractOCRTextDetection::OSD_script>());
             // Limit number of accepted scripts if user set max_scripts to 2 or greater.
             // Unlimited number when users sets max_scripts to 0 or below.
-            if (ocr_fset.max_scripts > 1 && candidates > ocr_fset.max_scripts - 1) {
-                script_list.resize(ocr_fset.max_scripts - 1);
+            if (max_scripts > 1 && candidates > max_scripts - 1) {
+                script_list.resize(max_scripts - 1);
             }
         }
 
