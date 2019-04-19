@@ -321,17 +321,17 @@ TEST(TESSERACTOCR, OSDTest) {
     ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Latin") << "Expected latin script.";
     assertTextInImage("data/eng-rotated.png", "All human beings", results); 
-    }
+}
     
     
-TEST(TESSERACTOCR, OSDTest2) {
+TEST(TESSERACTOCR, OSDConfidenceFilteringTest) {
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
     std::vector<MPFImageLocation> results;
     ASSERT_TRUE(ocr.Init());
 
     // Check script confidence filtering.
-    // In the previous tests, the component will accept the detected script and run it as the text_language model (script/Latin).
+    // In the OSDTest for eng.png, the component will accept the detected script and run it as the text_language model (script/Latin).
     // By setting the min script confidence level too high, the component must default back to original setting (eng).
     std::map<std::string,std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION","true"}, {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE","100"} , {"MIN_OSD_SCRIPT_SCORE","40"}};
     runImageDetection("data/eng.png", ocr, results,  custom_properties);
@@ -342,7 +342,7 @@ TEST(TESSERACTOCR, OSDTest2) {
     results.clear();
 
     // Check script score filtering
-    // In the previous tests, the component will accept the detected script and run it as the text_language model (script/Latin).
+    // In the OSDTest for eng.png, the component will accept the detected script and run it as the text_language model (script/Latin).
     // By setting the min script score level too high, the component must default back to original setting (eng).
      custom_properties = {{"ENABLE_OSD_AUTOMATION","true"}, {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE","0"} , {"MIN_OSD_SCRIPT_SCORE","60"}};
     runImageDetection("data/eng.png", ocr, results,  custom_properties);
@@ -353,7 +353,7 @@ TEST(TESSERACTOCR, OSDTest2) {
     results.clear();
 
     // Check orientation confidence filtering.
-    // In the previous tests, thecomponent will accept a detected rotation of 180 degrees.
+    // In the OSDTest for eng-rotated.png, the component will accept a detected rotation of 180 degrees.
     // By setting the min rotation confidence level too high, the component must default back to original setting (0 degrees rotation).
     custom_properties = {{"TESSERACT_PSM","0"}, {"MIN_OSD_ROTATION_CONFIDENCE","200"}};
     runImageDetection("data/eng-rotated.png", ocr, results,  custom_properties);
@@ -361,7 +361,7 @@ TEST(TESSERACTOCR, OSDTest2) {
     
 }
 
-TEST(TESSERACTOCR, OSDTest3) {
+TEST(TESSERACTOCR, OSDMultilanguageScriptTest) {
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
@@ -399,7 +399,7 @@ TEST(TESSERACTOCR, OSDTest3) {
     assertTextInImage("data/eng-bul.png", "All human beings", results, 1);
 }
 
-TEST(TESSERACTOCR, OSDTest4) {
+TEST(TESSERACTOCR, OSDMultiPageTest) {
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
@@ -433,8 +433,7 @@ TEST(TESSERACTOCR, OSDTest4) {
     ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected default language (eng) for second track.";
 }
 
-
-TEST(TESSERACTOCR, OSDTest5) {
+TEST(TESSERACTOCR, OSDSecondaryScriptThresholdTest) {
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
@@ -459,10 +458,7 @@ TEST(TESSERACTOCR, OSDTest5) {
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Cyrillic") << "Expected only Cyrillic script due to threshold filtering.";
 }
 
-
-
-
-TEST(TESSERACTOCR, OSDTest6) {
+TEST(TESSERACTOCR, OSDHanOrientationTest) {
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
@@ -475,9 +471,6 @@ TEST(TESSERACTOCR, OSDTest6) {
     ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Han") << "Expected Chinese as primary script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/HanS+script/HanT") << "Expected Chinese horizontal text to be the correct output model";
 }
-
-
-
 
 TEST(TESSERACTOCR, LanguageTest) {
 

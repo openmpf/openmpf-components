@@ -180,7 +180,7 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
         const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string_split,
         const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string, int page_num = -1);
 
-    bool get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, OCR_filter_settings &ocr_fset, Properties &detection_properties, MPFDetectionError &job_status, std::string &tessdata_script_dir);
+    void get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, OCR_filter_settings &ocr_fset, Properties &detection_properties, MPFDetectionError &job_status, std::string &tessdata_script_dir);
     std::string return_valid_tessdir(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
     bool check_tess_model_directory(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
 };

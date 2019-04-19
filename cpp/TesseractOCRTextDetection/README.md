@@ -69,6 +69,7 @@ normalized (large non-positive values that provide little insight into predictio
     * Each detected script must be >= the MIN_OSD_SCRIPT_SCORE threshold.
     * The detected script with the highest score is considered the primary script. The others are considered secondary scripts. Secondary scripts must have scores are >= the MIN_OSD_SECONDARY_SCRIPT_THRESHOLD, which is a % applied primary script score. For example, if MIN_OSD_SECONDARY_SCRIPT_THRESHOLD=80%, then the secondary scripts must have scores that are at least 80% of the primary script score.
     * Note that if the number of detected scripts exceeds the MAX_OSD_SCRIPTS setting, then only the scripts with the highest scores are considered.
+    * By default, the "Common" or numeric script model is skipped as a possible primary script under Tesseract OSD. This behavior is extended to the secondary script selection to prevent the "Common" script from overriding another valid script.
 
 There are two options to run multiple user-specified languages/scripts. Users can separate each
 specified language and script using the '+' delimiter to run multiple models

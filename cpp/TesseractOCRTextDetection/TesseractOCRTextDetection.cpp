@@ -892,21 +892,10 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
 std::string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &job, const std::string &lang_str, const std::string &directory) {
 
 
-    LOG4CXX_INFO(hw_logger_,  "[" + job.job_name + "] Checking tessdata models in " + directory + ".");
+    LOG4CXX_DEBUG(hw_logger_,  "[" + job.job_name + "] Checking tessdata models in " + directory + ".");
 
     if (check_tess_model_directory(job, lang_str, directory)) {
         return directory;
-    }
-
-    std::string default_plugin_directory = "$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata";
-    Utils::expandFileName(default_plugin_directory, default_plugin_directory);
-
-    LOG4CXX_INFO(hw_logger_,  "[" + job.job_name + "] Not all models found in " + directory + ". Checking default plugin directory "
-        + default_plugin_directory + ".");
-
-    if (check_tess_model_directory(job, lang_str, default_plugin_directory)) {
-        return default_plugin_directory;
-
     }
 
     std::string run_dir = GetRunDirectory();
@@ -915,7 +904,7 @@ std::string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &j
     }
 
     std::string local_plugin_directory = run_dir + "/TesseractOCRTextDetection/tessdata";
-    LOG4CXX_INFO(hw_logger_,  "[" + job.job_name + "] Not all models found in " + default_plugin_directory + ". Checking local plugin directory "
+    LOG4CXX_DEBUG(hw_logger_,  "[" + job.job_name + "] Not all models found in " + directory + ". Checking local plugin directory "
         + local_plugin_directory + ".");
 
     if (check_tess_model_directory(job, lang_str, local_plugin_directory)) {
@@ -923,7 +912,9 @@ std::string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &j
     }
 
 
-    LOG4CXX_WARN(hw_logger_,  "[" + job.job_name + "] Some Tessdata models were not found!");
+    LOG4CXX_WARN(hw_logger_,  "[" + job.job_name + "] Some Tessdata models were not found, or are not co-located." +
+        " Please ensure that all of the following models exist in the same directory, either " + directory + "or " +
+        local_plugin_directory + " : " + lang_str + " .");
     return "";
 }
 
@@ -936,17 +927,17 @@ bool TesseractOCRTextDetection::check_tess_model_directory(const MPFImageJob &jo
     for (std::string lang : langs) {
         boost::trim(lang);
         if (!boost::filesystem::exists(directory + "/" + lang + ".traineddata")) {
-            LOG4CXX_WARN(hw_logger_,  "[" + job.job_name + "] Tessdata file " +  lang + ".traineddata does not exist in "
+            LOG4CXX_DEBUG(hw_logger_,  "[" + job.job_name + "] Tessdata file " +  lang + ".traineddata does not exist in "
                 + directory + "." );
             return false;
         }
-        LOG4CXX_INFO(hw_logger_,  "[" + job.job_name + "] Tessdata file " +  lang + ".traineddata found in  " + directory + "." );
+        LOG4CXX_DEBUG(hw_logger_,  "[" + job.job_name + "] Tessdata file " +  lang + ".traineddata found in  " + directory + "." );
     }
-    LOG4CXX_INFO(hw_logger_,  "[" + job.job_name + "] All tessdata models found in " + directory + ".");
+    LOG4CXX_INFO(hw_logger_,  "[" + job.job_name + "] All tessdata models found in " + directory + ": " + lang_str + ".");
     return true;
 }
 
-bool TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset, Properties &detection_properties, MPFDetectionError &job_status, std::string &tessdata_script_dir)
+void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset, Properties &detection_properties, MPFDetectionError &job_status, std::string &tessdata_script_dir)
 {
     tesseract::TessBaseAPI tess_api;
 
@@ -958,7 +949,7 @@ bool TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         LOG4CXX_ERROR(hw_logger_,  "[" + job.job_name + "] OSD model not found!");
         // Update job status to reflect initialization error.
         job_status = MPF_COULD_NOT_OPEN_DATAFILE;
-        return false;
+        return;
     }
     LOG4CXX_DEBUG(hw_logger_,  "[" + job.job_name + "] OSD model ready." );
 
@@ -967,7 +958,7 @@ bool TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             LOG4CXX_ERROR(hw_logger_,  "[" + job.job_name + "] Failed to initialize Tesseract! Error code: " + std::to_string(init_rc));
             // Update job status to reflect initialization error.
             job_status = MPF_DETECTION_NOT_INITIALIZED;
-            return false;
+            return;
         }
 
     tess_api.SetPageSegMode(tesseract::PSM_AUTO_OSD);
@@ -1121,7 +1112,7 @@ bool TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         // Check if selected models are present in either models or tessdata directory.
         // All language models must be present in one directory.
         // If scripts are not found, revert to default.
-        // IF scripts are found, set return_valid_tessdir so that get_tesseract_detections will skip searching for models.
+        // If scripts are found, set return_valid_tessdir so that get_tesseract_detections will skip searching for models.
         tessdata_script_dir = TesseractOCRTextDetection::return_valid_tessdir(job, lang_str, ocr_fset.model_dir);
         if ( tessdata_script_dir == "") {
             LOG4CXX_WARN(hw_logger_,  "[" + job.job_name + "] Script models not found in model and tessdata directories,"
@@ -1130,7 +1121,7 @@ bool TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             ocr_fset.tesseract_lang = lang_str;
         }
     }
-    return true;
+
 }
 
 template <typename T, typename U>
