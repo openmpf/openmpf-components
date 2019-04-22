@@ -39,7 +39,7 @@ class EASTProcessor(object):
         return (frame_width, frame_height)
 
 
-    def _load_model(self, rotate_on, model_bin, **kwargs):
+    def _load_model(self, rotate_on, model_bin):
         self._model = None
         self._model_90 = None
         try:
@@ -62,11 +62,7 @@ class EASTProcessor(object):
                 and self._rotate_on == rotate_on
                 and self._model_bin == model_bin
                 and self._layer_names == layer_names):
-            self._load_model(
-                rotate_on=rotate_on,
-                model_bin=model_bin,
-                **kwargs
-            )
+            self._load_model(rotate_on=rotate_on, model_bin=model_bin)
             self._input_shape = input_shape
             self._rotate_on = rotate_on
             self._model_bin = model_bin
@@ -110,7 +106,7 @@ class EASTProcessor(object):
         blob_w = blob.shape[3]
 
         # Run blob through model to get geometry and scores
-        data = self._run_model(blob)
+        data = self._run_model(blob, **kwargs)
         feat_h = batch.shape[2]
         feat_w = batch.shape[3]
 
