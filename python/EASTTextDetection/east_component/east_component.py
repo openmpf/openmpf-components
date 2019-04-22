@@ -9,6 +9,13 @@ import mpf_component_util as mpf_util
 from east_processor import EASTProcessor
 
 logger = mpf.configure_logging('east-detection.log', __name__ == '__main__')
+ModelSettings = (
+    util.ModelsIniParser(pkg_resources.resource_filename(__name__, 'models'))
+    .register_path_field('model_bin')
+    .register_field('rbox_layer_name')
+    .register_field('score_layer_name')
+    .build_class()
+)
 
 
 class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
@@ -16,7 +23,7 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
 
     def __init__(self):
         logger.info('Creating instance of EASTComponent')
-        self.processor =
+        self.processor = EASTProcessor(logger)
 
 
     @staticmethod
@@ -37,22 +44,11 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         mean = (mean_r,mean_g,mean_b)
 
         rotate_on = (job_properties.get('ROTATE_ON','').lower() == 'true')
-        plugin_path = os.path.realpath(job_properties.get('MODELS_DIR_PATH','.'))
-        common_models_dir = os.path.join(plugin_path, 'models')
-        settings = (
-            util.ModelsIniParser(pkg_resources.resource_filename(__name__, 'models'))
-            .register_path_field('model_bin')
-            .register_field('rbox_layer_name')
-            .register_field('score_layer_name')
-            .build_class()(model_name, common_models_dir)
-        )
+        common_models_dir = os.path.realpath(job_properties.get('MODELS_DIR_PATH', '.'))
+        plugin_models_dir = os.path.join(common_models_dir, 'EASTTextDetection')
+        settings = ModelSettings(model_name, plugin_models_dir)
 
         model_bin = os.path.realpath(settings.model_bin)
-        if not os.path.isfile(model_bin):
-            error_str = 'Model protobuf file could not be found: ' + model_bin
-            logger.error(error_str)
-            raise mpf.DetectionException(error_str, mpf.DetectionError.INVALID_PROPERTY)
-
         layer_names = [settings.rbox_layer_name, settings.score_layer_name]
         return dict(
             max_side_len=max_side_len,

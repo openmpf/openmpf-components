@@ -1,0 +1,118 @@
+{
+  "componentName": "EASTTextDetection",
+  "componentVersion": "0.0.1",
+  "middlewareVersion": "0.0.1",
+  "sourceLanguage": "python",
+  "batchLibrary": "EASTTextDetection",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "EAST",
+    "description": "EAST scene text detection.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_EAST",
+        "DETECTION_EAST_PYTHON"
+      ],
+      "properties": [
+        {
+          "name": "MODELS_DIR_PATH",
+          "description": "Path to models directory",
+          "type": "STRING",
+          "propertiesKey": "detection.models.dir.path"
+        },
+        {
+          "name": "MAX_SIDE_LENGTH",
+          "description": "Maximum side length of image (pixels). Larger values improve recall, but cause significant slowdown. For unlimited, supply -1.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "description": "Thershold for filtering detections based on model confidence.",
+          "type": "FLOAT",
+          "defaultValue": "0.8"
+        },
+        {
+          "name": "NMS_THRESHOLD",
+          "description": "Theshold for filtering detections based on IOU (intersect over union)",
+          "type": "FLOAT",
+          "defaultValue": "0.2"
+        },
+        {
+          "name": "ROTATE_ON",
+          "description": "Whether to perform a second pass on the image rotated 90 degrees, to pick up more vertical text.",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "BATCH_SIZE",
+          "description": "Number of frames to pass at a time when running on video.",
+          "type": "INT",
+          "defaultValue": "32"
+        },
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "description": "After the input image is resized and cropped, subtract this value from the blue color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "description": "After the input image is resized and cropped, subtract this value from the green color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0.0, 255.0].",
+          "type": "FLOAT",
+          "defaultValue": "0.0"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "EAST TEXT DETECTION ACTION",
+      "description": "Runs EAST text detection.",
+      "algorithm": "EAST",
+      "properties": [
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "103.94"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "116.78"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "123.68"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "EAST TEXT DETECTION TASK",
+      "description": "Runs EAST text detection.",
+      "actions": [
+        "EAST TEXT DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "EAST TEXT DETECTION PIPELINE",
+      "description": "Runs EAST text detection.",
+      "tasks": [
+        "EAST TEXT DETECTION TASK"
+      ]
+    }
+  ]
+}
