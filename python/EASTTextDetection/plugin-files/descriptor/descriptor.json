@@ -101,6 +101,14 @@
       "algorithm": "EAST",
       "properties": [
         {
+          "name": "MAX_SIDE_LENGTH",
+          "value": "640"
+        },
+        {
+          "name": "BATCH_SIZE",
+          "value": "4"
+        },
+        {
           "name": "SUBTRACT_BLUE_VALUE",
           "value": "103.94"
         },

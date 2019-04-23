@@ -85,7 +85,7 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             frames.append(frame)
             if len(frames) >= batch_size:
                 yield np.stack(frames)
-            frames = []
+                frames = []
         if len(frames):
             yield np.stack(frames)
 
@@ -94,18 +94,24 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
 
         kwargs = self._parse_properties(video_job.job_properties)
-        batch_size = int(job_properties.get('BATCH_SIZE','32'))
+        batch_size = int(video_job.job_properties.get('BATCH_SIZE','32'))
 
         tracks = []
 
         batch_offset = 0
         batch_gen = self._batches_from_video_capture(video_capture, batch_size)
         for batch in batch_gen:
-            frames_dets = self.processor.process_frames(frames=batch, **kwargs)
+            try:
+                frames_dets = self.processor.process_frames(frames=batch, **kwargs)
+            except Exception as e:
+                error_str = "Exception occurred while processing batch: " + str(e)
+                logger.error(error_str)
+                raise
+
             for i, frame_dets in enumerate(frames_dets):
                 frame_index = batch_offset + i
                 for image_loc in frame_dets:
-                    tracks.append(mp.VideoTrack(
+                    tracks.append(mpf.VideoTrack(
                         start_frame=frame_index,
                         stop_frame=frame_index,
                         confidence=image_loc.confidence,
