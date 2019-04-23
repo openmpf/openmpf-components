@@ -8,12 +8,11 @@ import mpf_component_util as mpf_util
 
 from east_processor import EASTProcessor
 
+import pkg_resources
 logger = mpf.configure_logging('east-detection.log', __name__ == '__main__')
 ModelSettings = (
-    util.ModelsIniParser(pkg_resources.resource_filename(__name__, 'models'))
+    mpf_util.ModelsIniParser(pkg_resources.resource_filename(__name__, 'models'))
     .register_path_field('model_bin')
-    .register_field('rbox_layer_name')
-    .register_field('score_layer_name')
     .build_class()
 )
 
@@ -32,8 +31,10 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         :param job_properties: Properties object from VideoJob or ImageJob
         :return: Dictionary of properties, pass as **kwargs to processor
         """
+        # Get the maximum side length (pixels) of the images
         max_side_len = int(job_properties.get('MAX_SIDE_LENGTH','-1'))
 
+        # Get the threshold values for filtering bounding boxes
         confidence_thresh = float(job_properties.get('CONFIDENCE_THRESHOLD','0.8'))
         nms_thresh = float(job_properties.get('NMS_THRESHOLD','0.2'))
 
@@ -43,13 +44,21 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         mean_b = float(job_properties.get('SUBTRACT_GREEN_VALUE','0'))
         mean = (mean_r,mean_g,mean_b)
 
+        # Get whether to doa second pass at 90 degrees
         rotate_on = (job_properties.get('ROTATE_ON','').lower() == 'true')
+
+        # Get the model filename
+        model_name = job_properties.get('MODEL_NAME', 'resnet')
         common_models_dir = os.path.realpath(job_properties.get('MODELS_DIR_PATH', '.'))
         plugin_models_dir = os.path.join(common_models_dir, 'EASTTextDetection')
         settings = ModelSettings(model_name, plugin_models_dir)
-
         model_bin = os.path.realpath(settings.model_bin)
-        layer_names = [settings.rbox_layer_name, settings.score_layer_name]
+
+        # Get the output layer names
+        layer_names = [
+            job_properties.get('MODEL_GEOMETRY_LAYER', 'feature_fusion/concat_3'),
+            job_properties.get('MODEL_SCORE_LAYER', 'feature_fusion/Conv_7/Sigmoid')
+        ]
         return dict(
             max_side_len=max_side_len,
             mean=mean,
@@ -67,6 +76,7 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             image=image_reader.get_image(),
             **self._parse_properties(image_job.job_properties)
         )
+
 
     @staticmethod
     def _batches_from_video_capture(video_capture, batch_size):
@@ -102,7 +112,8 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
                         frame_locations={frame_index: image_loc},
                         detection_properties=image_loc.detection_properties
                     ))
-                ])
             batch_offset += len(batch)
 
         return tracks
+
+EXPORT_MPF_COMPONENT = EASTComponent

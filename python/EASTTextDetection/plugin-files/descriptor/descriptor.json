@@ -20,6 +20,12 @@
       ],
       "properties": [
         {
+          "name": "MODEL_NAME",
+          "description": "The trained EAST model to be used. 'resnet' is provided by default. Other models can be provided separately.",
+          "type": "STRING",
+          "defaultValue": "resnet"
+        },
+        {
           "name": "MODELS_DIR_PATH",
           "description": "Path to models directory",
           "type": "STRING",
@@ -54,6 +60,18 @@
           "description": "Number of frames to pass at a time when running on video.",
           "type": "INT",
           "defaultValue": "32"
+        },
+        {
+          "name": "MODEL_GEOMETRY_LAYER",
+          "description": "The name of the layer within the specified model corresponding to the bounding box geometry.",
+          "type": "STRING",
+          "defaultValue": "feature_fusion/concat_3"
+        },
+        {
+          "name": "MODEL_SCORE_LAYER",
+          "description": "The name of the layer within the specified model corresponding to the bounding box confidence scores.",
+          "type": "STRING",
+          "defaultValue": "feature_fusion/Conv_7/Sigmoid"
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",

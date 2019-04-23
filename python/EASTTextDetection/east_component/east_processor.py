@@ -17,8 +17,8 @@ class EASTProcessor(object):
         self._model_90 = None
 
 
-    @staticmethod
-    def _get_blob_dimensions(frame_width, frame_height, max_side_len):
+    # @staticmethod
+    def _get_blob_dimensions(self, frame_width, frame_height, max_side_len):
         # limit the max side
         if max_side_len > 0:
             long_side = max(frame_width, frame_height)
@@ -36,6 +36,7 @@ class EASTProcessor(object):
         frame_width = max(32, frame_width)
         frame_height = max(32, frame_height)
 
+        self.logger.info('(%d, %d)'%(frame_width, frame_height))
         return (frame_width, frame_height)
 
 
@@ -80,44 +81,23 @@ class EASTProcessor(object):
         return data
 
 
-    def _process_blob(self, batch, max_side_len, mean, confidence_thresh, **kwargs):
-        # If "batch" is a single image, prepend an axis
-        single = (len(batch.shape) == 3)
-        if single:
-            batch = batch[None,...]
-
-        batch_size = batch.shape[0]
-        frame_h = batch.shape[1]
-        frame_w = batch.shape[2]
-
-        # Convert to compatible shape
-        blob = cv2.dnn.blobFromImages(
-            images=batch,
-            size=self._get_blob_dimensions(
-                frame_width=frame_w,
-                frame_height=frame_h,
-                max_side_len=max_side_len
-            ),
-            mean=mean,
-            swapRB=True,
-            crop=False
-        )
-        blob_h = blob.shape[2]
-        blob_w = blob.shape[3]
+    def _process_blob(self, blob, frame_height, frame_width, rotate_on, confidence_thresh, **kwargs):
+        blob_height = blob.shape[2]
+        blob_width = blob.shape[3]
 
         # Run blob through model to get geometry and scores
-        data = self._run_model(blob, **kwargs)
-        feat_h = batch.shape[2]
-        feat_w = batch.shape[3]
+        data = self._run_model(blob, rotate_on, **kwargs)
+        feat_height = data.shape[2]
+        feat_width = data.shape[3]
 
         # Reshape into [n_frames, feat_h, feat_w, 6]
         data = np.moveaxis(data, 1, -1)
 
         # Get scaling factor from feature map to blob (should be (4.0,4.0))
         # and from blob to image
-        frame_dims = np.array([frame_w, frame_h],dtype=np.float32)
-        blob_dims = np.array([blob_w, blob_h],dtype=np.float32)
-        feat_dims = np.array([feat_w, feat_h],dtype=np.float32)
+        frame_dims = np.array([frame_width, frame_height], dtype=np.float32)
+        blob_dims = np.array([blob_width, blob_height], dtype=np.float32)
+        feat_dims = np.array([feat_width, feat_height], dtype=np.float32)
         feat2blob_scale = blob_dims / feat_dims
         blob2frame_scale = frame_dims / blob_dims
 
@@ -196,13 +176,14 @@ class EASTProcessor(object):
         return np.hstack((
             batch_idx[:,None],
             center,
+            tl,
             bbox_dims,
             theta[:,None],
             scores[:,None]
         ))
 
 
-    def _frame_nms(self, frame_detections, confidence_thresh, nms_thresh):
+    def _frame_nms(self, frame_detections, confidence_thresh, nms_thresh, **kwargs):
         boxes = zip(
             frame_detections[:,0:2].tolist(),
             frame_detections[:,4:6].tolist(),
@@ -229,49 +210,59 @@ class EASTProcessor(object):
             width=w,
             height=h,
             confidence=score,
-            detection_properties={'ROTATION': theta}
+            detection_properties={'ROTATION': (720 - theta) % 360}
         )
 
 
     def process_image(self, image, max_side_len, mean, **kwargs):
-        frame_h = image.shape[0]
-        frame_w = image.shape[1]
+        frame_height = image.shape[0]
+        frame_width = image.shape[1]
 
         # Convert to compatible shape
         blob = cv2.dnn.blobFromImage(
             image=image,
             size=self._get_blob_dimensions(
-                frame_width=frame_w,
-                frame_height=frame_h,
+                frame_width=frame_width,
+                frame_height=frame_height,
                 max_side_len=max_side_len
             ),
             mean=mean,
             swapRB=True,
             crop=False
         )
-        dets = self._process_blob(blob, frame_h, frame_w, **kwargs)
+        dets = self._process_blob(
+            blob=blob,
+            frame_height=frame_height,
+            frame_width=frame_width,
+            **kwargs
+        )
         dets = self._frame_nms(dets[:,1:], **kwargs)
         return [self._get_image_location(d) for d in dets]
 
 
     def process_frames(self, frames, max_side_len, mean, **kwargs):
         batch_size = frames.shape[0]
-        frame_h = frames.shape[1]
-        frame_w = frames.shape[2]
+        frame_height = frames.shape[1]
+        frame_width = frames.shape[2]
 
         # Convert to compatible shape
         blob = cv2.dnn.blobFromImages(
             images=frames,
             size=self._get_blob_dimensions(
-                frame_width=frame_w,
-                frame_height=frame_h,
+                frame_width=frame_width,
+                frame_height=frame_height,
                 max_side_len=max_side_len
             ),
             mean=mean,
             swapRB=True,
             crop=False
         )
-        dets = self._process_blob(blob, frame_h, frame_w, **kwargs)
+        dets = self._process_blob(
+            blob=blob,
+            frame_height=frame_height,
+            frame_width=frame_width,
+            **kwargs
+        )
 
         # Split by frame so that boxes in different frames don't interfere
         # with one another during non-max suppression
@@ -285,6 +276,6 @@ class EASTProcessor(object):
                 dets = self._frame_nms(group, **kwargs)
                 image_locs.append([self._get_image_location(d) for d in dets])
             else:
-                image_locs.append([]])
+                image_locs.append([])
 
         return image_locs

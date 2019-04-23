@@ -31,11 +31,12 @@ setuptools.setup(
     name='EASTTextDetection',
     version='0.1',
     packages=setuptools.find_packages(),
+    package_data={'': ['models/*']},
     install_requires=(
         'mpf_component_api>=0.1',
         'mpf_component_util>=0.1',
     ),
     entry_points={
-        'mpf.exported_component': 'component = east_component.east_component:EastComponent'
+        'mpf.exported_component': 'component = east_component.east_component:EASTComponent'
     }
 )
