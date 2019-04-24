@@ -2,8 +2,18 @@ from __future__ import division, print_function
 
 import numpy as np
 import cv2
+import os
 
 import mpf_component_api as mpf
+
+# Get the path to the EAST model
+from pkg_resources import resource_filename
+_model_filename = os.path.realpath(resource_filename(__name__, 'east_resnet50.pb'))
+
+# The output layer names for the EAST model. Respectively: the layer
+# corresponding to the bounding box geometry, and the layer corresponding to
+# the bounding box confidence scores
+_layer_names = ['feature_fusion/concat_3', 'feature_fusion/Conv_7/Sigmoid']
 
 class EASTProcessor(object):
 
@@ -11,8 +21,6 @@ class EASTProcessor(object):
         self.logger = logger
         self._input_shape = None
         self._rotate_on = None
-        self._model_bin = None
-        self._layer_names = None
         self._model = None
         self._model_90 = None
 
@@ -41,12 +49,10 @@ class EASTProcessor(object):
 
         return (blob_width, blob_height)
 
-    def _load_model(self, model_bin, layer_names, blob_width, blob_height, rotate_on):
+    def _load_model(self, blob_width, blob_height, rotate_on):
         # Check if cached model can be used (this saves time for video)
         if self._model is None:
             pass
-        elif self._model_bin != model_bin or self._layer_names != layer_names:
-            self.logger.info("Replacing cached model.")
         elif self._blob_width != blob_width or self._blob_height != blob_height:
             self.logger.info("Cached model incompatible with job properties.")
         elif self._model_90 is None and rotate_on:
@@ -57,21 +63,19 @@ class EASTProcessor(object):
 
         self._model = None
         self._model_90 = None
-        self.logger.info("Loading model: " + model_bin)
+        self.logger.info("Loading model: " + _model_filename)
         try:
-            self._model = cv2.dnn.readNet(model_bin)
+            self._model = cv2.dnn.readNet(_model_filename)
             if rotate_on:
-                self._model_90 = cv2.dnn.readNet(model_bin)
+                self._model_90 = cv2.dnn.readNet(_model_filename)
         except Exception as e:
             error_str = "Exception occurred while loading {:s}: {:s}".format(
-                model_bin,
+                _model_filename,
                 str(e)
             )
             self.logger.error(error_str)
             raise mpf.DetectionException(error_str, mpf.DetectionError.INVALID_PROPERTY)
 
-        self._model_bin = model_bin
-        self._layer_names = layer_names
         self._blob_width = blob_width
         self._blob_height = blob_height
         self._rotate_on = rotate_on
@@ -82,11 +86,11 @@ class EASTProcessor(object):
 
         # Run blob through model to get geometry and scores
         self._model.setInput(blob)
-        data = np.concatenate(self._model.forward(self._layer_names), axis=1)
+        data = np.concatenate(self._model.forward(_layer_names), axis=1)
         if self._rotate_on:
             # Rotate input, run model, rotate output back, interleave
             self._model_90.setInput(np.rot90(blob, k=1, axes=(2,3)))
-            data_r = np.concatenate(self._model_90.forward(self._layer_names), axis=1)
+            data_r = np.concatenate(self._model_90.forward(_layer_names), axis=1)
             data_r = np.rot90(data_r, k=-1, axes=(2,3))
             data = np.repeat(data, 2, axis=0)
             data[1::2,...] = data_r
@@ -217,16 +221,11 @@ class EASTProcessor(object):
         )
 
 
-    def process_image(self, image, model_bin, layer_names, max_side_len, mean,
+    def process_image(self, image, max_side_len, mean,
                       rotate_on, confidence_thresh, nms_thresh):
         """ Process a single image using the given arguments
         :param image: The image to be processed. Takes the following shape:
                 (frame_height, frame_width, num_channels)
-        :param model_bin: Filename for the model protobuf binary (.pb file)
-        :param layer_names: Name of the layers where bounding box geometry and
-                scores are produced (in that order). The default as set by the
-                descriptor is the following:
-                ['feature_fusion/concat_3','feature_fusion/Conv_7/Sigmoid']
         :param max_side_len: Maximum length (pixels) for one side of the image.
                 Before being processed, the image will be resized such that the
                 long edge is at most max_side_length, while maintaining the same
@@ -257,8 +256,6 @@ class EASTProcessor(object):
 
         # Load the model (may return immediately if compatible model is cached)
         self._load_model(
-            model_bin=model_bin,
-            layer_names=layer_names,
             blob_width=blob_width,
             blob_height=blob_height,
             rotate_on=rotate_on
@@ -289,7 +286,7 @@ class EASTProcessor(object):
         return [self._get_image_location(d) for d in dets]
 
 
-    def process_frames(self, frames, model_bin, layer_names, max_side_len, mean,
+    def process_frames(self, frames, max_side_len, mean,
                        rotate_on, confidence_thresh, nms_thresh):
         """ Process a volume of images using the given arguments
         :param frames: The images to be processed. Takes the following shape:
@@ -304,11 +301,6 @@ class EASTProcessor(object):
         :param rotate_on: Whether to perform a second pass on the image after
                 rotating 90 degrees. This can potentially pick up more text at
                 high angles (larger than +/-60 degrees).
-        :param model_bin: Filename for the model protobuf binary (.pb file)
-        :param layer_names: Name of the layers where bounding box geometry and
-                scores are produced (in that order). The default as set by the
-                descriptor is the following:
-                ['feature_fusion/concat_3','feature_fusion/Conv_7/Sigmoid']
         :param confidence_thresh: Threshold to use for filtering detections by
                 bounding box confidence.
         :param nms_thresh: Threshold value to use for filtering detections by
@@ -330,8 +322,6 @@ class EASTProcessor(object):
 
         # Load the model (may return immediately if compatible model is cached)
         self._load_model(
-            model_bin=model_bin,
-            layer_names=layer_names,
             blob_width=blob_width,
             blob_height=blob_height,
             rotate_on=rotate_on

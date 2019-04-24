@@ -1,20 +1,13 @@
 from __future__ import division, print_function
 
 import numpy as np
-import os
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 from east_processor import EASTProcessor
 
-import pkg_resources
 logger = mpf.configure_logging('east-detection.log', __name__ == '__main__')
-ModelSettings = (
-    mpf_util.ModelsIniParser(pkg_resources.resource_filename(__name__, 'models'))
-    .register_path_field('model_bin')
-    .build_class()
-)
 
 
 class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
@@ -47,28 +40,13 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         # Get whether to doa second pass at 90 degrees
         rotate_on = (job_properties.get('ROTATE_ON','').lower() == 'true')
 
-        # Get the model filename
-        model_name = job_properties.get('MODEL_NAME', 'resnet')
-        common_models_dir = os.path.realpath(job_properties.get('MODELS_DIR_PATH', '.'))
-        plugin_models_dir = os.path.join(common_models_dir, 'EASTTextDetection')
-        settings = ModelSettings(model_name, plugin_models_dir)
-        model_bin = os.path.realpath(settings.model_bin)
-
-        # Get the output layer names
-        layer_names = [
-            job_properties.get('MODEL_GEOMETRY_LAYER', 'feature_fusion/concat_3'),
-            job_properties.get('MODEL_SCORE_LAYER', 'feature_fusion/Conv_7/Sigmoid')
-        ]
         return dict(
             max_side_len=max_side_len,
             mean=mean,
             rotate_on=rotate_on,
-            model_bin=model_bin,
-            layer_names=layer_names,
             confidence_thresh=confidence_thresh,
             nms_thresh=nms_thresh
         )
-
 
     def get_detections_from_image_reader(self, image_job, image_reader):
         logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
@@ -76,7 +54,6 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             image=image_reader.get_image(),
             **self._parse_properties(image_job.job_properties)
         )
-
 
     @staticmethod
     def _batches_from_video_capture(video_capture, batch_size):
@@ -88,7 +65,6 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
                 frames = []
         if len(frames):
             yield np.stack(frames)
-
 
     def get_detections_from_video_capture(self, video_job, video_capture):
         logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
@@ -106,7 +82,7 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             except Exception as e:
                 error_str = "Exception occurred while processing batch: " + str(e)
                 logger.error(error_str)
-                raise
+                raise mpf.DetectionException(error_str, mpf.DetectionError.DETECTION_FAILED)
 
             for i, frame_dets in enumerate(frames_dets):
                 frame_index = batch_offset + i
@@ -121,5 +97,6 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             batch_offset += len(batch)
 
         return tracks
+
 
 EXPORT_MPF_COMPONENT = EASTComponent

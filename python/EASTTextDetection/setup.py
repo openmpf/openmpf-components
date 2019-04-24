@@ -31,7 +31,7 @@ setuptools.setup(
     name='EASTTextDetection',
     version='0.1',
     packages=setuptools.find_packages(),
-    package_data={'': ['models/*']},
+    package_data={'': ['east_resnet50.pb']},
     install_requires=(
         'mpf_component_api>=0.1',
         'mpf_component_util>=0.1',
