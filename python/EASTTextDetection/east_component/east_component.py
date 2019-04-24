@@ -17,7 +17,6 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         logger.info('Creating instance of EASTComponent')
         self.processor = EASTProcessor(logger)
 
-
     @staticmethod
     def _parse_properties(job_properties):
         """
@@ -63,6 +62,8 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             if len(frames) >= batch_size:
                 yield np.stack(frames)
                 frames = []
+        # Pass leftover frames as their own batch; EAST doesn't require
+        # consistent batch sizes
         if len(frames):
             yield np.stack(frames)
 
@@ -84,6 +85,7 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
                 logger.error(error_str)
                 raise mpf.DetectionException(error_str, mpf.DetectionError.DETECTION_FAILED)
 
+            # Convert from lists of ImageLocations to VideoTracks
             for i, frame_dets in enumerate(frames_dets):
                 frame_index = batch_offset + i
                 for image_loc in frame_dets:

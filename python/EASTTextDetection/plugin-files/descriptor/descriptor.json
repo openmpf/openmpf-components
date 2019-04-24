@@ -21,33 +21,33 @@
       "properties": [
         {
           "name": "MAX_SIDE_LENGTH",
-          "description": "Maximum side length of image (pixels). Larger values improve recall, but cause significant slowdown. For unlimited, supply -1.",
+          "description": "Maximum length (pixels) for one side of the image. Before being processed, the image will be resized such that the long edge is at most MAX_SIDE_LENGTH, while maintaining the same aspect ratio, and then further resized such that both dimensions are divisible by 32 (a requirement for EAST). Larger values improve recall, but cause significant slowdown. For unlimited input size, supply -1.",
           "type": "INT",
           "defaultValue": "-1"
         },
         {
           "name": "CONFIDENCE_THRESHOLD",
-          "description": "Thershold for filtering detections based on model confidence.",
+          "description": "Threshold value for filtering detections by bounding box confidence.",
           "type": "FLOAT",
           "defaultValue": "0.8"
         },
         {
           "name": "NMS_THRESHOLD",
-          "description": "Theshold for filtering detections based on IOU (intersect over union)",
+          "description": "Threshold value for filtering detections by overlap with other bounding boxes (non-max suppression).",
           "type": "FLOAT",
           "defaultValue": "0.2"
         },
         {
           "name": "ROTATE_ON",
-          "description": "Whether to perform a second pass on the image rotated 90 degrees, to pick up more vertical text.",
+          "description": "Whether to perform a second pass on the image after rotating 90 degrees. This can potentially pick up more text at high angles (larger than +/-60 degrees).",
           "type": "BOOLEAN",
           "defaultValue": "FALSE"
         },
         {
           "name": "BATCH_SIZE",
-          "description": "Number of frames to pass at a time when running on video.",
+          "description": "Number of frames to pass at a time when running on video. Larger batch sizes (e.g. 32 or 64) will result in a larger memory footprint, but also faster processing for video.",
           "type": "INT",
-          "defaultValue": "32"
+          "defaultValue": "1"
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",
@@ -76,14 +76,6 @@
       "description": "Runs EAST text detection.",
       "algorithm": "EAST",
       "properties": [
-        {
-          "name": "MAX_SIDE_LENGTH",
-          "value": "640"
-        },
-        {
-          "name": "BATCH_SIZE",
-          "value": "4"
-        },
         {
           "name": "SUBTRACT_BLUE_VALUE",
           "value": "103.94"

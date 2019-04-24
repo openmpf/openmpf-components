@@ -16,14 +16,13 @@ _model_filename = os.path.realpath(resource_filename(__name__, 'east_resnet50.pb
 _layer_names = ['feature_fusion/concat_3', 'feature_fusion/Conv_7/Sigmoid']
 
 class EASTProcessor(object):
-
     def __init__(self, logger):
         self.logger = logger
-        self._input_shape = None
+        self._blob_width = None
+        self._blob_height = None
         self._rotate_on = None
         self._model = None
         self._model_90 = None
-
 
     @staticmethod
     def _get_blob_dimensions(frame_width, frame_height, max_side_len):
@@ -39,6 +38,7 @@ class EASTProcessor(object):
             blob_width = int(blob_width * ratio)
             blob_height = int(blob_height * ratio)
 
+        # Ensure dimensions are divisible by 32 (required for EAST)
         if blob_width % 32:
             blob_width = (blob_width // 32) * 32
         if blob_height % 32:
@@ -54,7 +54,7 @@ class EASTProcessor(object):
         if self._model is None:
             pass
         elif self._blob_width != blob_width or self._blob_height != blob_height:
-            self.logger.info("Cached model incompatible with job properties.")
+            self.logger.info("Cached model incompatible with media properties.")
         elif self._model_90 is None and rotate_on:
             self.logger.info("Cached model can't handle rotated inputs.")
         else:
@@ -189,7 +189,6 @@ class EASTProcessor(object):
             scores[:,None]
         ))
 
-
     def _frame_nms(self, frame_detections, confidence_thresh, nms_thresh):
         boxes = zip(
             frame_detections[:,0:2].tolist(),
@@ -207,7 +206,6 @@ class EASTProcessor(object):
         # Return data required for MPF detections (no center coords)
         return frame_detections[indices,2:]
 
-
     @staticmethod
     def _get_image_location(detection):
         x, y, w, h, theta, score = detection
@@ -219,7 +217,6 @@ class EASTProcessor(object):
             confidence=score,
             detection_properties={'ROTATION': (720 - theta) % 360}
         )
-
 
     def process_image(self, image, max_side_len, mean,
                       rotate_on, confidence_thresh, nms_thresh):
@@ -288,7 +285,6 @@ class EASTProcessor(object):
         # Convert to mpf.ImageLocation detections and return
         return [self._get_image_location(d) for d in dets]
 
-
     def process_frames(self, frames, max_side_len, mean,
                        rotate_on, confidence_thresh, nms_thresh):
         """ Process a volume of images using the given arguments
@@ -308,10 +304,11 @@ class EASTProcessor(object):
                 bounding box confidence.
         :param nms_thresh: Threshold value to use for filtering detections by
                 overlap with other bounding boxes (non-max suppression).
-        :return: List of mpf.ImageLocation detections. The angles of detected
-                bounding boxes are stored in detection_properties['ROTATION'].
-                The rotation is expressed in positive degrees counterclockwise
-                from the 3 o'clock position.
+        :return: List lists of mpf.ImageLocation detections. Each list
+                corresponds with one frame of the input volume. The angles of
+                detected bounding boxes are stored in
+                detection_properties['ROTATION']. The rotation is expressed in
+                positive degrees counterclockwise from the 3 o'clock position.
         """
         # Convert to compatible shape
         batch_size = frames.shape[0]
