@@ -275,6 +275,9 @@ class EASTProcessor(object):
             confidence_thresh=confidence_thresh
         )
 
+        if not len(dets):
+            return []
+
         # Perform non-max suppression to filter out overlapping boxes
         dets = self._frame_nms(
             frame_detections=dets[:,1:],
