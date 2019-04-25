@@ -27,13 +27,13 @@
         },
         {
           "name": "CONFIDENCE_THRESHOLD",
-          "description": "Threshold value for filtering detections by bounding box confidence.",
+          "description": "Threshold value for filtering detections by bounding box confidence, between 0.0 and 1.0. Detections with scores lower than this value are dropped prior to non-maximum suppression.",
           "type": "FLOAT",
           "defaultValue": "0.8"
         },
         {
           "name": "NMS_THRESHOLD",
-          "description": "Threshold value for filtering detections by overlap with other bounding boxes (non-max suppression).",
+          "description": "Threshold value for non-maximum suppression, between 0.0 and 1.0. When the ratio between the intersect and union of two bounding boxes is greater than this value, the one with the lesser confidence is dropped. Larger values result in fewer overlapping boxes.",
           "type": "FLOAT",
           "defaultValue": "0.2"
         },
@@ -45,7 +45,7 @@
         },
         {
           "name": "BATCH_SIZE",
-          "description": "Number of frames to pass at a time when running on video. Larger batch sizes (e.g. 32 or 64) will result in a larger memory footprint, but also faster processing for video.",
+          "description": "Number of frames to pass at a time when running on video.",
           "type": "INT",
           "defaultValue": "1"
         }

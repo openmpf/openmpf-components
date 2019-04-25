@@ -6,13 +6,13 @@ import os
 
 import mpf_component_api as mpf
 
-# Get the path to the EAST model
+# The path to the serialized EAST model file.
 from pkg_resources import resource_filename
 _model_filename = os.path.realpath(resource_filename(__name__, 'east_resnet50.pb'))
 
 # The output layer names for the EAST model. Respectively: the layer
 # corresponding to the bounding box geometry, and the layer corresponding to
-# the bounding box confidence scores
+# the bounding box confidence scores.
 _layer_names = ['feature_fusion/concat_3', 'feature_fusion/Conv_7/Sigmoid']
 
 # Mean pixel values used when training the model. These values will be
