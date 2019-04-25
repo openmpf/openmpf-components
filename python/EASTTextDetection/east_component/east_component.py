@@ -30,18 +30,11 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         confidence_thresh = float(job_properties.get('CONFIDENCE_THRESHOLD','0.8'))
         nms_thresh = float(job_properties.get('NMS_THRESHOLD','0.2'))
 
-        # Get mean channel values
-        mean_r = float(job_properties.get('SUBTRACT_RED_VALUE','0'))
-        mean_g = float(job_properties.get('SUBTRACT_BLUE_VALUE','0'))
-        mean_b = float(job_properties.get('SUBTRACT_GREEN_VALUE','0'))
-        mean = (mean_r,mean_g,mean_b)
-
         # Get whether to doa second pass at 90 degrees
         rotate_on = (job_properties.get('ROTATE_ON','').lower() == 'true')
 
         return dict(
             max_side_len=max_side_len,
-            mean=mean,
             rotate_on=rotate_on,
             confidence_thresh=confidence_thresh,
             nms_thresh=nms_thresh

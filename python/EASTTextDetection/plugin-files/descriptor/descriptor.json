@@ -48,24 +48,6 @@
           "description": "Number of frames to pass at a time when running on video. Larger batch sizes (e.g. 32 or 64) will result in a larger memory footprint, but also faster processing for video.",
           "type": "INT",
           "defaultValue": "1"
-        },
-        {
-          "name": "SUBTRACT_BLUE_VALUE",
-          "description": "After the input image is resized and cropped, subtract this value from the blue color channel for all of the pixels. The range is [0.0, 255.0].",
-          "type": "FLOAT",
-          "defaultValue": "0.0"
-        },
-        {
-          "name": "SUBTRACT_GREEN_VALUE",
-          "description": "After the input image is resized and cropped, subtract this value from the green color channel for all of the pixels. The range is [0.0, 255.0].",
-          "type": "FLOAT",
-          "defaultValue": "0.0"
-        },
-        {
-          "name": "SUBTRACT_RED_VALUE",
-          "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0.0, 255.0].",
-          "type": "FLOAT",
-          "defaultValue": "0.0"
         }
       ]
     }
@@ -75,20 +57,7 @@
       "name": "EAST TEXT DETECTION ACTION",
       "description": "Runs EAST text detection.",
       "algorithm": "EAST",
-      "properties": [
-        {
-          "name": "SUBTRACT_BLUE_VALUE",
-          "value": "103.94"
-        },
-        {
-          "name": "SUBTRACT_GREEN_VALUE",
-          "value": "116.78"
-        },
-        {
-          "name": "SUBTRACT_RED_VALUE",
-          "value": "123.68"
-        }
-      ]
+      "properties": []
     }
   ],
   "tasks": [

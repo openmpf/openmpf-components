@@ -15,6 +15,10 @@ _model_filename = os.path.realpath(resource_filename(__name__, 'east_resnet50.pb
 # the bounding box confidence scores
 _layer_names = ['feature_fusion/concat_3', 'feature_fusion/Conv_7/Sigmoid']
 
+# Mean pixel values used when training the model. These values will be
+# subtracted from each pixel of the input image before processing.
+_mean_rgb = (123.68, 116.78, 103.94)
+
 class EASTProcessor(object):
     def __init__(self, logger):
         self.logger = logger
@@ -218,7 +222,7 @@ class EASTProcessor(object):
             detection_properties={'ROTATION': (720 - theta) % 360}
         )
 
-    def process_image(self, image, max_side_len, mean,
+    def process_image(self, image, max_side_len,
                       rotate_on, confidence_thresh, nms_thresh):
         """ Process a single image using the given arguments
         :param image: The image to be processed. Takes the following shape:
@@ -228,8 +232,6 @@ class EASTProcessor(object):
                 long edge is at most max_side_length, while maintaining the same
                 aspect ratio, and then further resized such that both dimensions
                 are divisible by 32 (a requirement for EAST).
-        :param mean: The mean pixel value (R,G,B) which will be subtracted from
-                the image before processing.
         :param rotate_on: Whether to perform a second pass on the image after
                 rotating 90 degrees. This can potentially pick up more text at
                 high angles (larger than +/-60 degrees).
@@ -263,7 +265,7 @@ class EASTProcessor(object):
             blob=cv2.dnn.blobFromImage(
                 image=image,
                 size=(blob_width, blob_height),
-                mean=mean,
+                mean=_mean_rgb,
                 swapRB=True,
                 crop=False
             ),
@@ -285,7 +287,7 @@ class EASTProcessor(object):
         # Convert to mpf.ImageLocation detections and return
         return [self._get_image_location(d) for d in dets]
 
-    def process_frames(self, frames, max_side_len, mean,
+    def process_frames(self, frames, max_side_len,
                        rotate_on, confidence_thresh, nms_thresh):
         """ Process a volume of images using the given arguments
         :param frames: The images to be processed. Takes the following shape:
@@ -295,8 +297,6 @@ class EASTProcessor(object):
                 long edge is at most max_side_length, while maintaining the same
                 aspect ratio, and then further resized such that both dimensions
                 are divisible by 32 (a requirement for EAST).
-        :param mean: The mean pixel value (R,G,B) which will be subtracted from
-                the image before processing.
         :param rotate_on: Whether to perform a second pass on the image after
                 rotating 90 degrees. This can potentially pick up more text at
                 high angles (larger than +/-60 degrees).
@@ -332,7 +332,7 @@ class EASTProcessor(object):
             blob=cv2.dnn.blobFromImages(
                 images=frames,
                 size=(blob_width, blob_height),
-                mean=mean,
+                mean=_mean_rgb,
                 swapRB=True,
                 crop=False
             ),
