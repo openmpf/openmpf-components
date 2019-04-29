@@ -48,6 +48,12 @@
           "description": "Number of frames to pass at a time when running on video.",
           "type": "INT",
           "defaultValue": "1"
+        },
+        {
+          "name": "PADDING",
+          "description": "The padding to add around bounding boxes to ensure the text is fully enclosed. The bounding box will be symmetrically padded on all sides with space equal to PADDING * <box_height> before non-maximum suppression.",
+          "type": "FLOAT",
+          "defaultValue": "0.15"
         }
       ]
     }

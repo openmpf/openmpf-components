@@ -84,7 +84,8 @@ class EASTProcessor(object):
         self._blob_height = blob_height
         self._rotate_on = rotate_on
 
-    def _process_blob(self, blob, frame_width, frame_height, confidence_thresh):
+    def _process_blob(self, blob, frame_width, frame_height,
+                      confidence_thresh, padding):
         blob_width = self._blob_width
         blob_height = self._blob_height
 
@@ -163,6 +164,9 @@ class EASTProcessor(object):
         # Rescale origin coordinates to frame dimensions
         origin_coords *= feat2blob_scale * blob2frame_scale
 
+        # Add padding
+        rbox[:,:4] += padding * (rbox[:,[0]] + rbox[:,[2]])
+
         # Get dimesions (w,h) of detected bounding boxes
         bbox_dims = rbox[:,(1,0)] + rbox[:,(3,2)]
 
@@ -222,7 +226,7 @@ class EASTProcessor(object):
             detection_properties={'ROTATION': (720 - theta) % 360}
         )
 
-    def process_image(self, image, max_side_len,
+    def process_image(self, image, max_side_len, padding,
                       rotate_on, confidence_thresh, nms_thresh):
         """ Process a single image using the given arguments
         :param image: The image to be processed. Takes the following shape:
@@ -232,6 +236,8 @@ class EASTProcessor(object):
                 long edge is at most max_side_length, while maintaining the same
                 aspect ratio, and then further resized such that both dimensions
                 are divisible by 32 (a requirement for EAST).
+        :param padding: Padding to symmetrically add to bounding boxes. Each
+                side is extended by 0.5 * padding * box_height.
         :param rotate_on: Whether to perform a second pass on the image after
                 rotating 90 degrees. This can potentially pick up more text at
                 high angles (larger than +/-60 degrees).
@@ -271,7 +277,8 @@ class EASTProcessor(object):
             ),
             frame_width=frame_width,
             frame_height=frame_height,
-            confidence_thresh=confidence_thresh
+            confidence_thresh=confidence_thresh,
+            padding=padding
         )
 
         if not len(dets):

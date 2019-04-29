@@ -33,11 +33,14 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         # Get whether to doa second pass at 90 degrees
         rotate_on = (job_properties.get('ROTATE_ON','').lower() == 'true')
 
+        padding = float(job_properties.get('PADDING','0.15'))
+
         return dict(
             max_side_len=max_side_len,
             rotate_on=rotate_on,
             confidence_thresh=confidence_thresh,
-            nms_thresh=nms_thresh
+            nms_thresh=nms_thresh,
+            padding=padding
         )
 
     def get_detections_from_image_reader(self, image_job, image_reader):
