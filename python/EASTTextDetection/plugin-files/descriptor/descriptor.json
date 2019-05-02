@@ -32,10 +32,22 @@
           "defaultValue": "0.8"
         },
         {
-          "name": "NMS_THRESHOLD",
-          "description": "Threshold value for non-maximum suppression, between 0.0 and 1.0. When the ratio between the intersect and union of two bounding boxes is greater than this value, the one with the lesser confidence is dropped. Larger values result in fewer overlapping boxes.",
+          "name": "OVERLAP_THRESHOLD",
+          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the ratio between the area of intersection of two regions and the area of the smaller region is greater than this value, the boxes may be merged.",
+          "type": "FLOAT",
+          "defaultValue": "0.1"
+        },
+        {
+          "name": "TEXT_HEIGHT_THRESHOLD",
+          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the relative difference in text height for two regions is below this value, the boxes may be merged.",
           "type": "FLOAT",
           "defaultValue": "0.2"
+        },
+        {
+          "name": "ROTATION_THRESHOLD",
+          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 180.0. When the absolute difference (in degrees) between the orientations of two regions is below this value, the boxes may be merged.",
+          "type": "FLOAT",
+          "defaultValue": "5.0"
         },
         {
           "name": "ROTATE_ON",

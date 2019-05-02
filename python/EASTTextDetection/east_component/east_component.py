@@ -27,8 +27,10 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         max_side_len = int(job_properties.get('MAX_SIDE_LENGTH','-1'))
 
         # Get the threshold values for filtering bounding boxes
-        confidence_thresh = float(job_properties.get('CONFIDENCE_THRESHOLD','0.8'))
-        nms_thresh = float(job_properties.get('NMS_THRESHOLD','0.2'))
+        confidence_threshold = float(job_properties.get('CONFIDENCE_THRESHOLD','0.8'))
+        overlap_threshold = float(job_properties.get('OVERLAP_THRESHOLD','0.2'))
+        text_height_threshold = float(job_properties.get('TEXT_HEIGHT_THRESHOLD','0.2'))
+        rotation_threshold = float(job_properties.get('ROTATION_THRESHOLD','5'))
 
         # Get whether to doa second pass at 90 degrees
         rotate_on = (job_properties.get('ROTATE_ON','').lower() == 'true')
@@ -37,10 +39,12 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
 
         return dict(
             max_side_len=max_side_len,
+            padding=padding,
             rotate_on=rotate_on,
-            confidence_thresh=confidence_thresh,
-            nms_thresh=nms_thresh,
-            padding=padding
+            confidence_threshold=confidence_threshold,
+            overlap_threshold=overlap_threshold,
+            text_height_threshold=text_height_threshold,
+            rotation_threshold=rotation_threshold
         )
 
     def get_detections_from_image_reader(self, image_job, image_reader):

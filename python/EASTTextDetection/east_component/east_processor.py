@@ -5,6 +5,7 @@ import cv2
 import os
 
 import mpf_component_api as mpf
+from bbox_utils import *
 
 # The path to the serialized EAST model file.
 from pkg_resources import resource_filename
@@ -113,9 +114,9 @@ class EASTProcessor(object):
         feat2blob_scale = blob_dims / feat_dims
         blob2frame_scale = frame_dims / blob_dims
 
-        # Split into RBOX, angle, and confidence
-        # RBOX: [dist2top, dist2right, dist2bottom, dist2left]
-        rbox, theta, scores = data[...,:4], data[...,4], data[...,5]
+        # Split into AABB, angle, and confidence
+        # AABB: [dist2top, dist2right, dist2bottom, dist2left]
+        aabb, theta, scores = data[...,:4], data[...,4], data[...,5]
 
         # Take only detections with reasonably high confidence scores
         found = scores > confidence_thresh
@@ -126,7 +127,7 @@ class EASTProcessor(object):
         origin_coords = origin_coords[:,(2,1)].astype(np.float32)
 
         # Filter detections based on confidence
-        rbox = rbox[found]
+        aabb = aabb[found]
         theta = theta[found]
         scores = scores[found]
         if self._rotate_on:
@@ -140,9 +141,9 @@ class EASTProcessor(object):
         cos = np.cos(theta)[:,None]
         sin = np.sin(theta)[:,None]
 
-        # Rescale RBOX values to frame dimensions
-        w = rbox[:,(1,3)]
-        h = rbox[:,(0,2)]
+        # Rescale AABB values to frame dimensions
+        w = aabb[:,(1,3)]
+        h = aabb[:,(0,2)]
         wx = blob2frame_scale[0] * cos * w
         wy = blob2frame_scale[1] * sin * w
         hx = blob2frame_scale[0] * sin * h
@@ -153,8 +154,8 @@ class EASTProcessor(object):
             wy[rotated,:] /= inv
             hx[rotated,:] *= inv
             hy[rotated,:] /= inv
-        rbox[:,(1,3)] = np.sqrt(wx ** 2.0 + wy ** 2.0)
-        rbox[:,(0,2)] = np.sqrt(hx ** 2.0 + hy ** 2.0)
+        aabb[:,(1,3)] = np.sqrt(wx ** 2.0 + wy ** 2.0)
+        aabb[:,(0,2)] = np.sqrt(hx ** 2.0 + hy ** 2.0)
 
         # Correct box angles for rescale
         theta = np.arctan2(wy.sum(axis=-1),wx.sum(axis=-1))
@@ -165,69 +166,19 @@ class EASTProcessor(object):
         origin_coords *= feat2blob_scale * blob2frame_scale
 
         # Add padding
-        rbox[:,:4] += padding * (rbox[:,[0]] + rbox[:,[2]])
+        aabb += padding * (aabb[:,[0]] + aabb[:,[2]])
 
-        # Get dimesions (w,h) of detected bounding boxes
-        bbox_dims = rbox[:,(1,0)] + rbox[:,(3,2)]
-
-        # Get sin and cosine of adjusted angles
-        cos = np.cos(theta)
-        sin = np.sin(theta)
-
-        # Get coordinates (x,y) of bounding boxes' top left corners
-        tl = np.empty_like(origin_coords)
-        tl[:,0] = origin_coords[:,0] - sin*rbox[:,0] - cos*rbox[:,3]
-        tl[:,1] = origin_coords[:,1] - cos*rbox[:,0] + sin*rbox[:,3]
-
-        # Get coordinates of bounding boxes' centers
-        center = np.empty_like(origin_coords)
-        center[:,0] = tl[:,0] + 0.5 * (cos*bbox_dims[:,0] + sin*bbox_dims[:,1])
-        center[:,1] = tl[:,1] - 0.5 * (sin*bbox_dims[:,0] - cos*bbox_dims[:,1])
-
-        # Convert radians to degrees, the format expected by NMS
-        theta = np.degrees(-theta)
-
-        # Return in format (batch_idx, cx, cy, tlx, tly, w, h, theta, score)
-        return np.hstack((
-            batch_idx[:,None],
-            center,
-            tl,
-            bbox_dims,
-            theta[:,None],
-            scores[:,None]
+        rboxes = np.hstack((
+            origin_coords,
+            aabb,
+            theta[:,None]
         ))
 
-    def _frame_nms(self, frame_detections, confidence_thresh, nms_thresh):
-        boxes = zip(
-            frame_detections[:,0:2].tolist(),
-            frame_detections[:,4:6].tolist(),
-            frame_detections[:,6].tolist()
-        )
-        confidences = frame_detections[:,7].tolist()
-        indices = cv2.dnn.NMSBoxesRotated(
-            boxes,
-            confidences,
-            confidence_thresh,
-            nms_thresh
-        ).flatten()
-
-        # Return data required for MPF detections (no center coords)
-        return frame_detections[indices,2:]
-
-    @staticmethod
-    def _get_image_location(detection):
-        x, y, w, h, theta, score = detection
-        return mpf.ImageLocation(
-            x_left_upper=x,
-            y_left_upper=y,
-            width=w,
-            height=h,
-            confidence=score,
-            detection_properties={'ROTATION': (720 - theta) % 360}
-        )
+        return batch_idx, rboxes, scores
 
     def process_image(self, image, max_side_len, padding,
-                      rotate_on, confidence_thresh, nms_thresh):
+                      rotate_on, confidence_threshold, overlap_threshold,
+                      text_height_threshold, rotation_threshold):
         """ Process a single image using the given arguments
         :param image: The image to be processed. Takes the following shape:
                 (frame_height, frame_width, num_channels)
@@ -241,10 +192,14 @@ class EASTProcessor(object):
         :param rotate_on: Whether to perform a second pass on the image after
                 rotating 90 degrees. This can potentially pick up more text at
                 high angles (larger than +/-60 degrees).
-        :param confidence_thresh: Threshold to use for filtering detections by
-                bounding box confidence.
-        :param nms_thresh: Threshold value to use for filtering detections by
-                overlap with other bounding boxes (non-max suppression).
+        :param confidence_threshold: Threshold to use for filtering detections
+                by bounding box confidence.
+        :param overlap_threshold: Threshold value for deciding whether
+                regions overlap enough to be merged.
+        :param text_height_threshold: Threshold value for deciding whether
+                regions containing different text sizes should be merged.
+        :param rotation_threshold: Threshold value for deciding whether regions
+                containing text at different orientations should be merged.
         :return: List of mpf.ImageLocation detections. The angles of detected
                 bounding boxes are stored in detection_properties['ROTATION'].
                 The rotation is expressed in positive degrees counterclockwise
@@ -267,7 +222,7 @@ class EASTProcessor(object):
         )
 
         # Convert the image to OpenCV-compatible blob, pass to processor
-        dets = self._process_blob(
+        batch_idx, rboxes, scores = self._process_blob(
             blob=cv2.dnn.blobFromImage(
                 image=image,
                 size=(blob_width, blob_height),
@@ -277,25 +232,35 @@ class EASTProcessor(object):
             ),
             frame_width=frame_width,
             frame_height=frame_height,
-            confidence_thresh=confidence_thresh,
+            confidence_thresh=confidence_threshold,
             padding=padding
         )
 
-        if not len(dets):
+        if not len(rboxes):
             return []
 
-        # Perform non-max suppression to filter out overlapping boxes
-        dets = self._frame_nms(
-            frame_detections=dets[:,1:],
-            confidence_thresh=confidence_thresh,
-            nms_thresh=nms_thresh
+        quads, scores = lanms_approx(
+            rboxes=rboxes,
+            scores=scores,
+            overlap_threshold=overlap_threshold,
+            text_height_threshold=text_height_threshold,
+            rotation_threshold=rotation_threshold
         )
+        return [
+            mpf.ImageLocation(
+                x_left_upper=x,
+                y_left_upper=y,
+                width=w,
+                height=h,
+                confidence=score,
+                detection_properties={'ROTATION': rot}
+            )
+            for x, y, w, h, rot, score in quad_to_iloc(quads, scores)
+        ]
 
-        # Convert to mpf.ImageLocation detections and return
-        return [self._get_image_location(d) for d in dets]
-
-    def process_frames(self, frames, max_side_len,
-                       rotate_on, confidence_thresh, nms_thresh):
+    def process_frames(self, frames, max_side_len, padding,
+                       rotate_on, confidence_threshold, overlap_threshold,
+                       text_height_threshold, rotation_threshold):
         """ Process a volume of images using the given arguments
         :param frames: The images to be processed. Takes the following shape:
                 (batch_size, frame_height, frame_width, num_channels)
@@ -304,13 +269,19 @@ class EASTProcessor(object):
                 long edge is at most max_side_length, while maintaining the same
                 aspect ratio, and then further resized such that both dimensions
                 are divisible by 32 (a requirement for EAST).
+        :param padding: Padding to symmetrically add to bounding boxes. Each
+                side is extended by 0.5 * padding * box_height.
         :param rotate_on: Whether to perform a second pass on the image after
                 rotating 90 degrees. This can potentially pick up more text at
                 high angles (larger than +/-60 degrees).
-        :param confidence_thresh: Threshold to use for filtering detections by
-                bounding box confidence.
-        :param nms_thresh: Threshold value to use for filtering detections by
-                overlap with other bounding boxes (non-max suppression).
+        :param confidence_threshold: Threshold to use for filtering detections
+                by bounding box confidence.
+        :param overlap_threshold: Threshold value for deciding whether
+                regions overlap enough to be merged.
+        :param text_height_threshold: Threshold value for deciding whether
+                regions containing different text sizes should be merged.
+        :param rotation_threshold: Threshold value for deciding whether regions
+                containing text at different orientations should be merged.
         :return: List lists of mpf.ImageLocation detections. Each list
                 corresponds with one frame of the input volume. The angles of
                 detected bounding boxes are stored in
@@ -335,7 +306,7 @@ class EASTProcessor(object):
         )
 
         # Convert the image to OpenCV-compatible blob, pass to processor
-        dets = self._process_blob(
+        batch_idx, rboxes, scores = self._process_blob(
             blob=cv2.dnn.blobFromImages(
                 images=frames,
                 size=(blob_width, blob_height),
@@ -345,24 +316,38 @@ class EASTProcessor(object):
             ),
             frame_width=frame_width,
             frame_height=frame_height,
-            confidence_thresh=confidence_thresh
+            confidence_thresh=confidence_thresh,
+            padding=padding
         )
 
         # Split by frame so that boxes in different frames don't interfere
         # with one another during non-max suppression
-        split_points = np.cumsum(np.bincount(dets[:,0].astype(int), minlength=batch_size))
-        groups = np.split(dets[:,1:], split_points)
+        split_points = np.cumsum(np.bincount(batch_idx, minlength=batch_size))
+        split_points = [0] + split_points.tolist()
 
         # Apply non-max suppression to the detections in each frame
         image_locs = []
-        for group in groups:
-            if len(group):
-                dets = self._frame_nms(
-                    frame_detections=group,
-                    confidence_thresh=confidence_thresh,
-                    nms_thresh=nms_thresh
+        for i in range(len(split_points)-1):
+            j0, j1 = split_points[i], split_points[i+1]
+            if j1 > j0:
+                quads, scores = lanms_approx(
+                    rboxes=rboxes[j0:j1],
+                    scores=scores[j0:j1],
+                    overlap_threshold=overlap_threshold,
+                    text_height_threshold=text_height_threshold,
+                    rotation_threshold=rotation_threshold
                 )
-                image_locs.append([self._get_image_location(d) for d in dets])
+                image_locs.append([
+                    mpf.ImageLocation(
+                        x_left_upper=x,
+                        y_left_upper=y,
+                        width=w,
+                        height=h,
+                        confidence=score,
+                        detection_properties={'ROTATION': rot}
+                    )
+                    for x, y, w, h, rot, score in quad_to_iloc(quads, scores)
+                ])
             else:
                 image_locs.append([])
 
