@@ -37,6 +37,6 @@ setuptools.setup(
         'mpf_component_util>=0.1',
     ),
     entry_points={
-        'mpf.exported_component': 'component = east_component.east_component:EASTComponent'
+        'mpf.exported_component': 'component = east_component.east_component:EastComponent'
     }
 )

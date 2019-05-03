@@ -45,7 +45,7 @@ _layer_names = ['feature_fusion/concat_3', 'feature_fusion/Conv_7/Sigmoid']
 # subtracted from each pixel of the input image before processing.
 _mean_rgb = (123.68, 116.78, 103.94)
 
-class EASTProcessor(object):
+class EastProcessor(object):
     def __init__(self, logger):
         self.logger = logger
         self._blob_width = None

@@ -30,12 +30,12 @@ import numpy as np
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-from east_processor import EASTProcessor
+from east_processor import EastProcessor
 
 logger = mpf.configure_logging('east-text-detection.log', __name__ == '__main__')
 
 
-class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
+class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
     detection_type = 'TEXT'
 
     def __init__(self):
@@ -134,4 +134,4 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         return tracks
 
 
-EXPORT_MPF_COMPONENT = EASTComponent
+EXPORT_MPF_COMPONENT = EastComponent

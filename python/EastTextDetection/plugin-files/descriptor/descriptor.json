@@ -1,9 +1,9 @@
 {
-  "componentName": "EASTTextDetection",
-  "componentVersion": "0.0.1",
-  "middlewareVersion": "0.0.1",
+  "componentName": "EastTextDetection",
+  "componentVersion": "4.1.0",
+  "middlewareVersion": "4.1.0",
   "sourceLanguage": "python",
-  "batchLibrary": "EASTTextDetection",
+  "batchLibrary": "EastTextDetection",
   "environmentVariables": [],
   "algorithm": {
     "name": "EAST",
