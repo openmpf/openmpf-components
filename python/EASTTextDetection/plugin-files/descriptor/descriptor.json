@@ -50,7 +50,7 @@
           "defaultValue": "5.0"
         },
         {
-          "name": "ROTATE_ON",
+          "name": "ROTATE_AND_DETECT",
           "description": "Whether to perform a second pass on the image after rotating 90 degrees. This can potentially pick up more text at high angles (larger than +/-60 degrees).",
           "type": "BOOLEAN",
           "defaultValue": "FALSE"
