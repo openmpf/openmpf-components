@@ -39,8 +39,8 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
     detection_type = 'TEXT'
 
     def __init__(self):
-        logger.info('Creating instance of EASTComponent')
-        self.processor = EASTProcessor(logger)
+        logger.info('Creating instance of EastComponent')
+        self.processor = EastProcessor(logger)
 
     @staticmethod
     def _parse_properties(job_properties):
@@ -75,6 +75,7 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
     def get_detections_from_image_reader(self, image_job, image_reader):
         logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
         return self.processor.process_image(
+            job_name=video_job.job_name,
             image=image_reader.get_image(),
             **self._parse_properties(image_job.job_properties)
         )
@@ -104,10 +105,17 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         batch_gen = self._batches_from_video_capture(video_capture, batch_size)
         for batch in batch_gen:
             try:
-                frames_dets = self.processor.process_frames(frames=batch, **kwargs)
+                frames_dets = self.processor.process_frames(
+                    job_name=video_job.job_name,
+                    frames=batch,
+                    **kwargs
+                )
             except Exception as e:
-                error_str = "Exception occurred while processing batch: " + str(e)
-                logger.error(error_str)
+                error_str = "[{:s}] Exception occurred while processing batch: {:s}".format(
+                    video_job.job_name,
+                    str(e)
+                )
+                logger.exception(error_str)
                 raise mpf.DetectionException(error_str, mpf.DetectionError.DETECTION_FAILED)
 
             # Convert from lists of ImageLocations to VideoTracks

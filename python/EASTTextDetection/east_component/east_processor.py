@@ -79,31 +79,32 @@ class EASTProcessor(object):
 
         return (blob_width, blob_height)
 
-    def _load_model(self, blob_width, blob_height, rotate_on):
+    def _load_model(self, job_name, blob_width, blob_height, rotate_on):
         # Check if cached model can be used (this saves time for video)
         if self._model is None:
-            pass
+            model_load_str = "no cached model"
         elif self._blob_width != blob_width or self._blob_height != blob_height:
-            self.logger.info("Cached model incompatible with media properties.")
+            model_load_str = "cached model incompatible with media properties"
         elif self._model_90 is None and rotate_on:
-            self.logger.info("Cached model can't handle rotated inputs.")
+            model_load_str = "cached model can't handle rotated inputs"
         else:
-            self.logger.info("Using cached model.")
+            self.logger.info('[%s] Using cached model', job_name)
             return
 
         self._model = None
         self._model_90 = None
-        self.logger.info("Loading model: " + _model_filename)
+        self.logger.info('[%s] Loading model (%s)', job_name, model_load_str)
         try:
             self._model = cv2.dnn.readNet(_model_filename)
             if rotate_on:
                 self._model_90 = cv2.dnn.readNet(_model_filename)
         except Exception as e:
-            error_str = "Exception occurred while loading {:s}: {:s}".format(
+            error_str = "[{:s}] Exception occurred while loading {:s}: {:s}".format(
+                job_name,
                 _model_filename,
                 str(e)
             )
-            self.logger.error(error_str)
+            self.logger.exception(error_str)
             raise mpf.DetectionException(error_str, mpf.DetectionError.INVALID_PROPERTY)
 
         self._blob_width = blob_width
@@ -201,10 +202,11 @@ class EASTProcessor(object):
 
         return batch_idx, rboxes, scores
 
-    def process_image(self, image, max_side_len, padding,
+    def process_image(self, job_name, image, max_side_len, padding,
                       rotate_on, confidence_threshold, overlap_threshold,
                       text_height_threshold, rotation_threshold):
         """ Process a single image using the given arguments
+        :param job_name: The name of the job (used for logging)
         :param image: The image to be processed. Takes the following shape:
                 (frame_height, frame_width, num_channels)
         :param max_side_len: Maximum length (pixels) for one side of the image.
@@ -241,6 +243,7 @@ class EASTProcessor(object):
 
         # Load the model (may return immediately if compatible model is cached)
         self._load_model(
+            job_name=job_name,
             blob_width=blob_width,
             blob_height=blob_height,
             rotate_on=rotate_on
@@ -283,10 +286,11 @@ class EASTProcessor(object):
             for x, y, w, h, rot, score in quad_to_iloc(quads, scores)
         ]
 
-    def process_frames(self, frames, max_side_len, padding,
+    def process_frames(self, job_name, frames, max_side_len, padding,
                        rotate_on, confidence_threshold, overlap_threshold,
                        text_height_threshold, rotation_threshold):
         """ Process a volume of images using the given arguments
+        :param job_name: The name of the job (used for logging)
         :param frames: The images to be processed. Takes the following shape:
                 (batch_size, frame_height, frame_width, num_channels)
         :param max_side_len: Maximum length (pixels) for one side of the image.
@@ -325,6 +329,7 @@ class EASTProcessor(object):
 
         # Load the model (may return immediately if compatible model is cached)
         self._load_model(
+            job_name=job_name,
             blob_width=blob_width,
             blob_height=blob_height,
             rotate_on=rotate_on
