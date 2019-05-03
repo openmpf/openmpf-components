@@ -112,7 +112,7 @@ class EastProcessor(object):
         self._rotate_on = rotate_on
 
     def _process_blob(self, blob, frame_width, frame_height,
-                      confidence_thresh, padding):
+                      confidence_threshold, padding):
         blob_width = self._blob_width
         blob_height = self._blob_height
 
@@ -145,7 +145,7 @@ class EastProcessor(object):
         aabb, theta, scores = data[...,:4], data[...,4], data[...,5]
 
         # Take only detections with reasonably high confidence scores
-        found = scores > confidence_thresh
+        found = scores > confidence_threshold
 
         # Get image index and feature map coordinates (x,y) of detections
         origin_coords = np.argwhere(found)
@@ -260,7 +260,7 @@ class EastProcessor(object):
             ),
             frame_width=frame_width,
             frame_height=frame_height,
-            confidence_thresh=confidence_threshold,
+            confidence_threshold=confidence_threshold,
             padding=padding
         )
 
@@ -280,10 +280,10 @@ class EastProcessor(object):
                 y_left_upper=y,
                 width=w,
                 height=h,
-                confidence=score,
-                detection_properties={'ROTATION': rot}
+                confidence=s,
+                detection_properties={'ROTATION': r}
             )
-            for x, y, w, h, rot, score in quad_to_iloc(quads, scores)
+            for x, y, w, h, r, s in quad_to_iloc(quads, scores)
         ]
 
     def process_frames(self, job_name, frames, max_side_len, padding,
@@ -346,7 +346,7 @@ class EastProcessor(object):
             ),
             frame_width=frame_width,
             frame_height=frame_height,
-            confidence_thresh=confidence_thresh,
+            confidence_threshold=confidence_threshold,
             padding=padding
         )
 
@@ -360,7 +360,7 @@ class EastProcessor(object):
         for i in range(len(split_points)-1):
             j0, j1 = split_points[i], split_points[i+1]
             if j1 > j0:
-                quads, scores = lanms_approx(
+                quads, merged_scores = lanms_approx(
                     rboxes=rboxes[j0:j1],
                     scores=scores[j0:j1],
                     overlap_threshold=overlap_threshold,
@@ -373,10 +373,10 @@ class EastProcessor(object):
                         y_left_upper=y,
                         width=w,
                         height=h,
-                        confidence=score,
-                        detection_properties={'ROTATION': rot}
+                        confidence=s,
+                        detection_properties={'ROTATION': r}
                     )
-                    for x, y, w, h, rot, score in quad_to_iloc(quads, scores)
+                    for x, y, w, h, r, s in quad_to_iloc(quads, merged_scores)
                 ])
             else:
                 image_locs.append([])

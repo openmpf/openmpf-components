@@ -118,20 +118,27 @@ def merge(quads, rotation):
     return merged.dot(rot)
 
 
+class MergedRegions(object):
+    def __init__(self, rboxes, scores):
+        self.quads = rbox_to_quad(rboxes)
+        self.rotations = rboxes[:,6]
+        self.heights = rboxes[:,2] + rboxes[:,4]
+        self.areas = contour_area(self.quads)
+        self.scores = scores
 
-def nms_merge(quads, rotations, heights, areas, scores,
-              overlap_threshold, text_height_threshold, rotation_threshold):
-    order = np.argsort(areas)[::-1]
-    quads = quads[order]
-    rotations = rotations[order]
-    heights = heights[order]
-    scores = scores[order]
-    areas = areas[order]
+def nms_merge(regions, overlap_threshold, text_height_threshold, rotation_threshold):
+    order = np.argsort(regions.areas)[::-1]
+    quads = regions.quads[order]
+    rotations = regions.rotations[order]
+    heights = regions.heights[order]
+    scores = regions.scores[order]
+    areas = regions.areas[order]
 
     merged_quads = []
     merged_rotations = []
     merged_heights = []
     merged_scores = []
+    merged_any = False
     while len(quads) > 0:
         inter = contour_intersect_area(
             quads[0].astype(np.float32),
@@ -183,30 +190,25 @@ def nms_merge(quads, rotations, heights, areas, scores,
         areas = areas[unmerged]
         scores = scores[unmerged]
 
-    quads = np.stack(merged_quads)
-    areas = contour_area(quads.astype(np.float32))
-    return dict(
-        quads=quads,
-        rotations=np.array(merged_rotations),
-        heights=np.array(merged_heights),
-        areas=areas,
-        scores=np.array(merged_scores)
-    )
+        merged_any = True
+
+    regions.quads = np.stack(merged_quads)
+    regions.rotations = np.array(merged_rotations)
+    regions.heights = np.array(merged_heights)
+    regions.areas = contour_area(regions.quads.astype(np.float32))
+    regions.scores = np.array(merged_scores)
+
+    return merged_any
 
 def lanms_approx(rboxes, scores, overlap_threshold, text_height_threshold, rotation_threshold):
-    quads = rbox_to_quad(rboxes)
-    kwargs = dict(
-        quads=quads,
-        rotations=rboxes[:,6],
-        heights=rboxes[:,2] + rboxes[:,4],
-        areas=contour_area(quads),
-        scores=scores
-    )
-    for i in range(30):
-        kwargs = nms_merge(
+    regions = MergedRegions(rboxes, scores)
+    while True:
+        merged_any = nms_merge(
+            regions,
             overlap_threshold=overlap_threshold,
             text_height_threshold=text_height_threshold,
-            rotation_threshold=rotation_threshold,
-            **kwargs
+            rotation_threshold=rotation_threshold
         )
-    return kwargs['quads'], kwargs['scores']
+        if not merged_any:
+            break
+    return regions.quads, regions.scores
