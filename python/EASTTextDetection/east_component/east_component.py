@@ -32,7 +32,7 @@ import mpf_component_util as mpf_util
 
 from east_processor import EASTProcessor
 
-logger = mpf.configure_logging('east-detection.log', __name__ == '__main__')
+logger = mpf.configure_logging('east-text-detection.log', __name__ == '__main__')
 
 
 class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
@@ -58,7 +58,7 @@ class EASTComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         rotation_threshold = float(job_properties.get('ROTATION_THRESHOLD','5'))
 
         # Get whether to doa second pass at 90 degrees
-        rotate_on = (job_properties.get('ROTATE_ON','').lower() == 'true')
+        rotate_on = (job_properties.get('ROTATE_AND_DETECT','').lower() == 'true')
 
         padding = float(job_properties.get('PADDING','0.15'))
 

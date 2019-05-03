@@ -1,6 +1,9 @@
 # Overview
 
-This repository contains source code and model data for the OpenMPF EAST text detection component.
+This repository contains source code and model data for the OpenMPF EAST text
+detection component. EAST (Efficient and Accurate Scene Text detector) was
+developed by Xinyu Zhou, Cong Yao, He Wen, Yuzhi Wang, Shuchang Zhou, Weiran
+He, and Jiajun Liang, and published in 2017. https://arxiv.org/abs/1704.03155
 
 # Introduction
 

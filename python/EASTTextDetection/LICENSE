@@ -28,7 +28,7 @@ This software makes use of a data model derived from third party software:
 The TensorFlow implementation of the Efficient and Accurate Scene Text
 Detector (EAST) model used by this component is a serialized version of:
 
- 1. The Resnet V1 50 model:
+1. The Resnet V1 50 model:
     http://download.tensorflow.org/models/resnet_v1_50_2016_08_28.tar.gz
 
 2. The trained EAST model described here:
