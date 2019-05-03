@@ -75,7 +75,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
     def get_detections_from_image_reader(self, image_job, image_reader):
         logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
         return self.processor.process_image(
-            job_name=video_job.job_name,
+            job_name=image_job.job_name,
             image=image_reader.get_image(),
             **self._parse_properties(image_job.job_properties)
         )
