@@ -202,6 +202,59 @@ def nms_merge(regions, overlap_threshold, text_height_threshold, rotation_thresh
 
 def lanms_approx(rboxes, scores, overlap_threshold, text_height_threshold, rotation_threshold):
     regions = MergedRegions(rboxes, scores)
+
+    quads = regions.quads
+    rotations = regions.rotations
+    heights = regions.heights
+    scores = regions.scores
+    areas = regions.areas
+
+    inter = contour_intersect_area(
+        quads[:-1].astype(np.float32),
+        quads[1:].astype(np.float32)
+    )
+    to_merge = inter / (areas[:-1] + areas[1:] - inter) > overlap_threshold
+
+    h_dist = 2 * np.abs(heights[:-1]-heights[1:]) / (heights[:-1]+heights[1:])
+    height_matches = h_dist < text_height_threshold
+    to_merge = np.logical_and(to_merge, height_matches)
+
+    r_dist = np.abs(rotations[:-1] - rotations[1:])
+    rotation_matches = r_dist < (rotation_threshold * np.pi / 180)
+    to_merge = np.logical_and(to_merge, rotation_matches)
+
+    if np.any(to_merge):
+        to_merge = np.hstack((to_merge, False))
+
+        diffs = np.diff(np.hstack((False, to_merge, False)).astype(np.int8))
+        run_starts = np.flatnonzero(diffs > 0)
+        run_ends = np.flatnonzero(diffs < 0)
+
+        merged_quads = []
+        merged_rotations = []
+        merged_heights = []
+        merged_scores = []
+        for i0,i1 in zip(run_starts, run_ends):
+            weights = scores[i0:i1]
+            scale = 1.0 / weights.sum()
+
+            merged_rotation = np.sum(rotations[i0:i1] * weights) * scale
+            merged_quad = merge(quads[i0:i1], merged_rotation)
+
+            merged_quads.append(merged_quad)
+            merged_rotations.append(merged_rotation)
+            merged_heights.append(np.sum(heights[i0:i1] * weights) * scale)
+            merged_scores.append(np.sum(scores[i0:i1] * weights) * scale)
+
+        to_merge[1:] += to_merge[:-1]
+        unmerged = np.logical_not(to_merge)
+
+        regions.quads = np.vstack((quads[unmerged], np.stack(merged_quads)))
+        regions.rotations = np.hstack((rotations[unmerged], merged_rotations))
+        regions.heights = np.hstack((heights[unmerged], merged_heights))
+        regions.areas = contour_area(regions.quads.astype(np.float32))
+        regions.scores = np.hstack((scores[unmerged], merged_scores))
+
     while True:
         merged_any = nms_merge(
             regions,
