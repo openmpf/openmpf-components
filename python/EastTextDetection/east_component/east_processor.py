@@ -267,7 +267,7 @@ class EastProcessor(object):
         if not len(rboxes):
             return []
 
-        quads, scores = lanms_approx(
+        quads, scores = lanms_approx_merge(
             rboxes=rboxes,
             scores=scores,
             overlap_threshold=overlap_threshold,
@@ -360,7 +360,7 @@ class EastProcessor(object):
         for i in range(len(split_points)-1):
             j0, j1 = split_points[i], split_points[i+1]
             if j1 > j0:
-                quads, merged_scores = lanms_approx(
+                quads, merged_scores = lanms_approx_merge(
                     rboxes=rboxes[j0:j1],
                     scores=scores[j0:j1],
                     overlap_threshold=overlap_threshold,
