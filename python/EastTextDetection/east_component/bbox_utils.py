@@ -131,6 +131,7 @@ class MergedRegions(object):
         self.rotations = rboxes[:,6]
         self.heights = rboxes[:,2] + rboxes[:,4]
         self.areas = contour_area(self.quads)
+        self.weights = scores
         self.scores = scores
 
 def nms_merge(regions, overlap_threshold, text_height_threshold, rotation_threshold):
@@ -145,12 +146,14 @@ def nms_merge(regions, overlap_threshold, text_height_threshold, rotation_thresh
     quads = regions.quads[order]
     rotations = regions.rotations[order]
     heights = regions.heights[order]
+    weights = regions.weights[order]
     scores = regions.scores[order]
     areas = regions.areas[order]
 
     merged_quads = []
     merged_rotations = []
     merged_heights = []
+    merged_weights = []
     merged_scores = []
     merged_any = False
     while len(quads) > 0:
@@ -159,9 +162,6 @@ def nms_merge(regions, overlap_threshold, text_height_threshold, rotation_thresh
             quads[1:].astype(np.float32)
         )
         # Divide by smaller area, not the union
-        #  As merged aread get bigger, the true IOU will continuously shrink,
-        #  to the point where fully encompassed boxes will not be merged for
-        #  any overlap_threshold > 0
         to_merge = (inter / areas[1:]) > overlap_threshold
 
         # Filter out boxes whose text height does not match
@@ -179,36 +179,48 @@ def nms_merge(regions, overlap_threshold, text_height_threshold, rotation_thresh
             merged_quads.append(quads[0])
             merged_rotations.append(rotations[0])
             merged_heights.append(heights[0])
+            merged_weights.append(weights[0])
             merged_scores.append(scores[0])
             quads = quads[1:]
             rotations = rotations[1:]
             heights = heights[1:]
-            areas = areas[1:]
+            weights = weights[1:]
             scores = scores[1:]
+            areas = areas[1:]
             continue
 
         # Merge the eligible boxes in the tail with the head box
         to_merge = np.hstack((True, to_merge))
 
-        # Take weighted averages based on confidence
-        weights = scores[to_merge]
-        scale = 1.0 / weights.sum()
+        # The rotation and text height for a merged region is a weighted
+        #  average of the constituent boxes' rotations and text heights
+        merging_weights = weights[to_merge]
+        scale = 1.0 / merging_weights.sum()
+        merged_rotation = np.sum(rotations[to_merge] * merging_weights) * scale
+        merged_height = np.sum(heights[to_merge] * merging_weights) * scale
+
+        # The weight for a merged region is the sum of constituent weights
+        merged_weight = merging_weights.sum()
+
+        # The score for a merged region is the maximum score of constituents
+        merged_score = scores[to_merge].max()
 
         # Merge the boxes at the weighted average rotation
-        merged_rotation = np.sum(rotations[to_merge] * weights) * scale
         merged_quad = merge(quads[to_merge], merged_rotation)
 
         # Save the merged box
         merged_quads.append(merged_quad)
         merged_rotations.append(merged_rotation)
-        merged_heights.append(np.sum(heights[to_merge] * weights) * scale)
-        merged_scores.append(np.sum(scores[to_merge] * weights) * scale)
+        merged_heights.append(merged_height)
+        merged_weights.append(merged_weight)
+        merged_scores.append(merged_score)
 
         # Continue to merge together all the boxes that were not just merged
         unmerged = np.logical_not(to_merge)
         quads = quads[unmerged]
         rotations = rotations[unmerged]
         heights = heights[unmerged]
+        weights = weights[unmerged]
         areas = areas[unmerged]
         scores = scores[unmerged]
 
@@ -218,8 +230,9 @@ def nms_merge(regions, overlap_threshold, text_height_threshold, rotation_thresh
     regions.quads = np.stack(merged_quads)
     regions.rotations = np.array(merged_rotations)
     regions.heights = np.array(merged_heights)
-    regions.areas = contour_area(regions.quads.astype(np.float32))
+    regions.weights = np.array(merged_weights)
     regions.scores = np.array(merged_scores)
+    regions.areas = contour_area(regions.quads.astype(np.float32))
 
     return merged_any
 
@@ -236,6 +249,7 @@ def lanms_approx_merge(rboxes, scores, overlap_threshold, text_height_threshold,
     quads = regions.quads
     rotations = regions.rotations
     heights = regions.heights
+    weights = regions.weights
     scores = regions.scores
     areas = regions.areas
 
@@ -243,9 +257,8 @@ def lanms_approx_merge(rboxes, scores, overlap_threshold, text_height_threshold,
         quads[:-1].astype(np.float32),
         quads[1:].astype(np.float32)
     )
-    # For first pass, divide by union, not the smallest area. At this first
-    #  stage, regions will have similar relative scales
-    to_merge = inter / (areas[:-1] + areas[1:] - inter) > overlap_threshold
+    # Divide by smaller area, not the union
+    to_merge = inter / np.minimum(areas[:-1], areas[1:]) > overlap_threshold
 
     # Filter out boxes whose text height does not match
     h_dist = 2 * np.abs(heights[:-1]-heights[1:]) / (heights[:-1]+heights[1:])
@@ -259,7 +272,7 @@ def lanms_approx_merge(rboxes, scores, overlap_threshold, text_height_threshold,
 
     if np.any(to_merge):
         # Here, to_merge is the boolean map indicating whether the box at each
-        #  index can be merged with the one directly beside it.
+        #  index can be merged with the one directly after it.
         to_merge = np.hstack((to_merge, False))
 
         # Break down into runs of True cells. These runs can all be merged
@@ -274,21 +287,31 @@ def lanms_approx_merge(rboxes, scores, overlap_threshold, text_height_threshold,
         merged_quads = []
         merged_rotations = []
         merged_heights = []
+        merged_weights = []
         merged_scores = []
         for i0,i1 in zip(run_starts, run_ends):
-            # Take weighted averages based on confidence
-            weights = scores[i0:i1]
-            scale = 1.0 / weights.sum()
+            # The rotation and text height for a merged region is a weighted
+            #  average of the constituent boxes' rotations and text heights
+            merging_weights = weights[i0:i1]
+            scale = 1.0 / merging_weights.sum()
+            merged_rotation = np.sum(rotations[i0:i1] * merging_weights) * scale
+            merged_height = np.sum(heights[i0:i1] * merging_weights) * scale
+
+            # The weight for a merged region is the sum of constituent weights
+            merged_weight = merging_weights.sum()
+
+            # The score for a merged region is the maximum score of constituents
+            merged_score = scores[i0:i1].max()
 
             # Merge the boxes at the weighted average rotation
-            merged_rotation = np.sum(rotations[i0:i1] * weights) * scale
             merged_quad = merge(quads[i0:i1], merged_rotation)
 
             # Save the merged box
             merged_quads.append(merged_quad)
             merged_rotations.append(merged_rotation)
-            merged_heights.append(np.sum(heights[i0:i1] * weights) * scale)
-            merged_scores.append(np.sum(scores[i0:i1] * weights) * scale)
+            merged_heights.append(merged_height)
+            merged_weights.append(merged_weight)
+            merged_scores.append(merged_score)
 
         # The first in a run of False cells was merged with the previous run
         to_merge[1:] += to_merge[:-1]
@@ -299,6 +322,7 @@ def lanms_approx_merge(rboxes, scores, overlap_threshold, text_height_threshold,
         regions.quads = np.vstack((quads[unmerged], np.stack(merged_quads)))
         regions.rotations = np.hstack((rotations[unmerged], merged_rotations))
         regions.heights = np.hstack((heights[unmerged], merged_heights))
+        regions.weights = np.hstack((weights[unmerged], merged_weights))
         regions.areas = contour_area(regions.quads.astype(np.float32))
         regions.scores = np.hstack((scores[unmerged], merged_scores))
 
