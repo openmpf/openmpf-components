@@ -86,7 +86,7 @@ class EastProcessor(object):
         elif self._blob_width != blob_width or self._blob_height != blob_height:
             model_load_str = "cached model incompatible with media properties"
         elif self._model_90 is None and rotate_on:
-            model_load_str = "cached model can't handle rotated inputs"
+            model_load_str = "no cached model for rotated inputs"
         else:
             self.logger.info('[%s] Using cached model', job_name)
             return
@@ -142,7 +142,7 @@ class EastProcessor(object):
 
         # Split into AABB, angle, and confidence
         # AABB: [dist2top, dist2right, dist2bottom, dist2left]
-        aabb, theta, scores = data[...,:4], data[...,4], data[...,5]
+        aabb, rotation, scores = data[...,:4], data[...,4], data[...,5]
 
         # Take only detections with reasonably high confidence scores
         found = scores > confidence_threshold
@@ -154,7 +154,7 @@ class EastProcessor(object):
 
         # Filter detections based on confidence
         aabb = aabb[found]
-        theta = theta[found]
+        rotation = rotation[found]
         scores = scores[found]
         if self._rotate_on:
             rotated = (batch_idx % 2).astype(np.bool)
@@ -163,17 +163,17 @@ class EastProcessor(object):
         if self._rotate_on:
             batch_idx = (batch_idx / 2).astype(int)
 
-        # Get sin and cosine of box angles
-        cos = np.cos(theta)[:,None]
-        sin = np.sin(theta)[:,None]
+        # Get sine and cosine of box rotation
+        c = np.cos(rotation)[:,None]
+        s = np.sin(rotation)[:,None]
 
         # Rescale AABB values to frame dimensions
         w = aabb[:,(1,3)]
         h = aabb[:,(0,2)]
-        wx = blob2frame_scale[0] * cos * w
-        wy = blob2frame_scale[1] * sin * w
-        hx = blob2frame_scale[0] * sin * h
-        hy = blob2frame_scale[1] * cos * h
+        wx = blob2frame_scale[0] * c * w
+        wy = blob2frame_scale[1] * s * w
+        hx = blob2frame_scale[0] * s * h
+        hy = blob2frame_scale[1] * c * h
         if self._rotate_on:
             inv = blob2frame_scale[1] / blob2frame_scale[0]
             wx[rotated,:] *= inv
@@ -184,9 +184,9 @@ class EastProcessor(object):
         aabb[:,(0,2)] = np.sqrt(hx ** 2.0 + hy ** 2.0)
 
         # Correct box angles for rescale
-        theta = np.arctan2(wy.sum(axis=-1),wx.sum(axis=-1))
+        rotation = np.arctan2(wy.sum(axis=-1),wx.sum(axis=-1))
         if self._rotate_on:
-            theta[rotated] -= np.pi / 2
+            rotation[rotated] -= np.pi / 2
 
         # Rescale origin coordinates to frame dimensions
         origin_coords *= feat2blob_scale * blob2frame_scale
@@ -197,7 +197,7 @@ class EastProcessor(object):
         rboxes = np.hstack((
             origin_coords,
             aabb,
-            theta[:,None]
+            rotation[:,None]
         ))
 
         return batch_idx, rboxes, scores
@@ -267,7 +267,7 @@ class EastProcessor(object):
         if not len(rboxes):
             return []
 
-        quads, scores = lanms_approx_merge(
+        quads, scores = merge_regions(
             rboxes=rboxes,
             scores=scores,
             overlap_threshold=overlap_threshold,
@@ -360,7 +360,7 @@ class EastProcessor(object):
         for i in range(len(split_points)-1):
             j0, j1 = split_points[i], split_points[i+1]
             if j1 > j0:
-                quads, merged_scores = lanms_approx_merge(
+                quads, merged_scores = merge_regions(
                     rboxes=rboxes[j0:j1],
                     scores=scores[j0:j1],
                     overlap_threshold=overlap_threshold,

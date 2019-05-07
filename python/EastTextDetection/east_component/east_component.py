@@ -36,7 +36,7 @@ logger = mpf.configure_logging('east-text-detection.log', __name__ == '__main__'
 
 
 class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
-    detection_type = 'TEXT'
+    detection_type = 'TEXT REGION'
 
     def __init__(self):
         logger.info('Creating instance of EastComponent')
@@ -53,11 +53,11 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
 
         # Get the threshold values for filtering bounding boxes
         confidence_threshold = float(job_properties.get('CONFIDENCE_THRESHOLD','0.8'))
-        overlap_threshold = float(job_properties.get('OVERLAP_THRESHOLD','0.2'))
-        text_height_threshold = float(job_properties.get('TEXT_HEIGHT_THRESHOLD','0.2'))
+        overlap_threshold = float(job_properties.get('OVERLAP_THRESHOLD','0.1'))
+        text_height_threshold = float(job_properties.get('TEXT_HEIGHT_THRESHOLD','0.3'))
         rotation_threshold = float(job_properties.get('ROTATION_THRESHOLD','5'))
 
-        # Get whether to doa second pass at 90 degrees
+        # Get whether to do a second pass at 90 degrees
         rotate_on = (job_properties.get('ROTATE_AND_DETECT','').lower() == 'true')
 
         padding = float(job_properties.get('PADDING','0.15'))
@@ -97,7 +97,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
 
         kwargs = self._parse_properties(video_job.job_properties)
-        batch_size = int(video_job.job_properties.get('BATCH_SIZE','32'))
+        batch_size = int(video_job.job_properties.get('BATCH_SIZE','1'))
 
         tracks = []
 

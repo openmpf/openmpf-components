@@ -134,7 +134,8 @@ class MergedRegions(object):
         self.weights = scores
         self.scores = scores
 
-def nms_merge(regions, overlap_threshold, text_height_threshold, rotation_threshold):
+def merge_pass(regions, overlap_threshold, text_height_threshold,
+               rotation_threshold):
     """ Complete one merge pass. This takes one box at a time (largest area
         first) and merges it with all eligible boxes. This merged box is added
         to a list, and all constituent boxes removed from the original list.
@@ -236,12 +237,59 @@ def nms_merge(regions, overlap_threshold, text_height_threshold, rotation_thresh
 
     return merged_any
 
-def lanms_approx_merge(rboxes, scores, overlap_threshold, text_height_threshold, rotation_threshold):
+def merge_regions(rboxes, scores, overlap_threshold, text_height_threshold,
+                  rotation_threshold):
     """ An approximate locality-aware variant of non-maximum suppression, which
-        merges together overlapping boxes rather than suppressing them. First,
-        a single pass over the entire input set is performed, merging adjacent
-        boxes. Then, the remaining boxes are passed through multiple merging
-        passes until all eligible merges have been performed.
+        merges together overlapping boxes rather than suppressing them.
+
+        Non-maximum suppression (NMS) selects regions in order of decreasing
+        confidence and discards all lower-confidence regions whose intersection
+        over union with the current region is greater than some threshold value.
+        This has the effect of pruning overlapping boxes from the set of
+        detections, retaining only those with the highest confidence scores.
+
+        Locality-Aware NMS (LANMS), proposed by Zhou et al. in EAST: An
+        Efficient and Accurate Scene Text Detector, performs an initial linear
+        time row-merging pass which significantly reduces the number of
+        detections before performing the standard quadratic time NMS procedure.
+        In the row-merging pass, adjacent overlapping regions are combined via a
+        confidence-weighted average of their geometries. This is done
+        iteratively, so the combined region is then compared with the next
+        adjacent detection.
+
+        We make several key changes to the LANMS algorithm.
+        1. The initial row-merging pass is not iterative: we
+           instead take "runs" of overlapping bounding boxes (essentially
+           connected components in the flattened grid) and merge them together.
+           This allows for a significant speedup through NumPy vectorization.
+        2. In the standard LANMS scheme, "merging" means to take the
+           score-weighted average of bounding box corner coordinates. In our
+           algorithm, we replace overlapping regions with a minimal oriented
+           bounding box which encloses the set of regions to be merged, whose
+           rotation is defined as the score-weighted average of the constituent
+           bounding box orientations.
+        3. Even after the locality-aware first pass, we merge boxes rather than
+           suppress the ones with lower confidence. As above, the orientation
+           of the merged box is a confidence-weighted average.
+        4. After the first pass, we threshold not the intersect over union, but
+           the intersect over smallest area. This is because, as merged regions
+           grow larger, the IOU between them and smaller boxes will shrink.
+           Because the threshold value is constant, large boxes will eventually
+           never merge with smaller boxes.
+        5. In addition to thresholding the overlap, we theshold the similarity
+           between regions in rotation and text height. This way, text with very
+           dissimilar orientations or scales will not be combined. The text
+           height at the first pass is defined as the height of the bounding
+           box. When merged, the merged region's text height is the
+           confidence-weighted average of the text heights of the constituent
+           boxes (so a large region composed of many small boxes will still be
+           associated with small text).
+
+        Note: During merging, the confidence "weight" of a merged box is the sum
+           of the constituent confidences. This is to prevent a small box
+           significantly altering the properties of a large merged region
+           containing many constituent boxes. However, the reported confidence
+           of a merged region is the maximum of its constituent scores.
     """
     regions = MergedRegions(rboxes, scores)
 
@@ -328,7 +376,7 @@ def lanms_approx_merge(rboxes, scores, overlap_threshold, text_height_threshold,
 
     # Continue until all eligible boxes have been merged
     while True:
-        merged_any = nms_merge(
+        merged_any = merge_pass(
             regions,
             overlap_threshold=overlap_threshold,
             text_height_threshold=text_height_threshold,
