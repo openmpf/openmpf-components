@@ -86,6 +86,32 @@ def quad_to_iloc(quads, scores):
     ilocs[:,5] = scores
     return ilocs
 
+def iloc_to_quad(ilocs):
+    """ Convert RBOX geometry to bounding box corner coordinates
+    OpenMPF ImageLocation format:
+        [tl_x, tl_y, w, h, rotation, score]
+    QUAD format:
+        [[tl_x, tl_y],
+         [tr_x, tr_y],
+         [br_x, br_y],
+         [bl_x, bl_y]]]
+    """
+    # Get cosine and sine of the box angles
+    rotation = np.radians(360 - ilocs[:,[4]])
+    cs = np.hstack((np.cos(rotation), np.sin(rotation)))
+
+    quads = np.empty((ilocs.shape[0],4,2),dtype=np.float32)
+
+    # Set all to the top left
+    quads[:] = ilocs[:,None,[0,1]]
+
+    # Translate to the right side
+    quads[:,[1,2],:] += (ilocs[:,[2]] * cs * [+1, -1])[:,None,:]
+
+    # Translate to the bottom side
+    quads[:,[2,3],:] += (cs * ilocs[:,[3]])[:,None,::-1]
+
+    return quads
 
 def nms(quads, scores, overlap_threshold):
     areas = contour_area(quads)

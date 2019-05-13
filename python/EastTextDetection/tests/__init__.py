@@ -23,20 +23,3 @@
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
-
-
-import setuptools
-
-setuptools.setup(
-    name='EastTextDetection',
-    version='4.1.0',
-    packages=setuptools.find_packages(exclude=('*test*',)),
-    package_data={'': ['east_resnet50.pb']},
-    install_requires=(
-        'mpf_component_api>=0.1',
-        'mpf_component_util>=0.1',
-    ),
-    entry_points={
-        'mpf.exported_component': 'component = east_component.east_component:EastComponent'
-    }
-)
