@@ -51,6 +51,9 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         # Get the maximum side length (pixels) of the images
         max_side_len = int(job_properties.get('MAX_SIDE_LENGTH','-1'))
 
+        # Get the batch size for video
+        batch_size = int(job_properties.get('BATCH_SIZE','1'))
+
         # Get the threshold values for filtering bounding boxes
         confidence_threshold = float(job_properties.get('CONFIDENCE_THRESHOLD','0.8'))
         overlap_threshold = float(job_properties.get('OVERLAP_THRESHOLD','0.1'))
@@ -64,6 +67,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
 
         return dict(
             max_side_len=max_side_len,
+            batch_size=batch_size,
             padding=padding,
             rotate_on=rotate_on,
             confidence_threshold=confidence_threshold,
@@ -73,12 +77,38 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         )
 
     def get_detections_from_image_reader(self, image_job, image_reader):
-        logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
-        return self.processor.process_image(
-            job_name=image_job.job_name,
-            image=image_reader.get_image(),
-            **self._parse_properties(image_job.job_properties)
+        logger.info(
+            '[%s] Received image job: %s',
+            image_job.job_name,
+            image_job
         )
+
+        kwargs = self._parse_properties(image_job.job_properties)
+        image = image_reader.get_image()
+
+        try:
+            logger.info('[%s] Loading model', image_job.job_name)
+            self.processor.load_model(
+                frame_width=image.shape[1],
+                frame_height=image.shape[0],
+                max_side_len=kwargs['max_side_len'],
+                rotate_on=kwargs['rotate_on']
+            )
+        except Exception as e:
+            error_str = "[{:s}] Exception occurred while loading model: {:s}".format(
+                image_job.job_name,
+                str(e)
+            )
+            logger.exception(error_str)
+            raise mpf.DetectionException(error_str, mpf.DetectionError.INVALID_PROPERTY)
+
+        dets = self.processor.process_image(image, **kwargs)
+        logger.info(
+            '[%s] Processing complete. Found %d detections',
+            image_job.job_name,
+            len(dets)
+        )
+        return dets
 
     @staticmethod
     def _batches_from_video_capture(video_capture, batch_size):
@@ -94,22 +124,41 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             yield np.stack(frames)
 
     def get_detections_from_video_capture(self, video_job, video_capture):
-        logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
+        logger.info(
+            '[%s] Received video job: %s',
+            video_job.job_name,
+            video_job
+        )
 
         kwargs = self._parse_properties(video_job.job_properties)
-        batch_size = int(video_job.job_properties.get('BATCH_SIZE','1'))
+
+        try:
+            frame_width, frame_height = video_capture.frame_size
+            logger.info('[%s] Loading model', video_job.job_name)
+            self.processor.load_model(
+                frame_width=frame_width,
+                frame_height=frame_height,
+                max_side_len=kwargs['max_side_len'],
+                rotate_on=kwargs['rotate_on']
+            )
+        except Exception as e:
+            error_str = "[{:s}] Exception occurred while loading model: {:s}".format(
+                video_job.job_name,
+                str(e)
+            )
+            logger.exception(error_str)
+            raise mpf.DetectionException(error_str, mpf.DetectionError.INVALID_PROPERTY)
 
         tracks = []
 
         batch_offset = 0
-        batch_gen = self._batches_from_video_capture(video_capture, batch_size)
+        batch_gen = self._batches_from_video_capture(
+            video_capture,
+            kwargs['batch_size']
+        )
         for batch in batch_gen:
             try:
-                frames_dets = self.processor.process_frames(
-                    job_name=video_job.job_name,
-                    frames=batch,
-                    **kwargs
-                )
+                frames_dets = self.processor.process_frames(batch, **kwargs)
             except Exception as e:
                 error_str = "[{:s}] Exception occurred while processing batch: {:s}".format(
                     video_job.job_name,
@@ -131,6 +180,11 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
                     ))
             batch_offset += len(batch)
 
+        logger.info(
+            '[%s] Processing complete. Found %d detections',
+            video_job.job_name,
+            len(tracks)
+        )
         return tracks
 
 

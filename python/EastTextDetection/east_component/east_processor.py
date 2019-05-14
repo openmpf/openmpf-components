@@ -54,12 +54,13 @@ class EastProcessor(object):
         self._model = None
         self._model_90 = None
 
-    @staticmethod
-    def _get_blob_dimensions(frame_width, frame_height, max_side_len):
+    def _set_input_dimensions(self, frame_width, frame_height, max_side_len=-1):
+        self._frame_width = frame_width
+        self._frame_height = frame_height
         blob_width = frame_width
         blob_height = frame_height
 
-        # limit the max side
+        # Limit the max side
         if max_side_len > 0:
             long_side = max(blob_width, blob_height)
             resized_long_side = min(max_side_len, long_side)
@@ -74,48 +75,29 @@ class EastProcessor(object):
         if blob_height % 32:
             blob_height = (blob_height // 32) * 32
 
-        blob_width = max(32, blob_width)
-        blob_height = max(32, blob_height)
+        self._blob_width = max(32, blob_width)
+        self._blob_height = max(32, blob_height)
 
-        return (blob_width, blob_height)
+        # Scaling from feature map to blob is 4
+        # Get scaling factors to map to frame dimensions
+        frame_dims = np.array([self._frame_width, self._frame_height])
+        blob_dims = np.array([self._blob_width, self._blob_height])
+        self._blob2frame_scale = frame_dims.astype(float) / blob_dims
+        self._feat2frame_scale = self._blob2frame_scale * 4.0
 
-    def _load_model(self, job_name, blob_width, blob_height, rotate_on):
-        # Check if cached model can be used (this saves time for video)
-        if self._model is None:
-            model_load_str = "no cached model"
-        elif self._blob_width != blob_width or self._blob_height != blob_height:
-            model_load_str = "cached model incompatible with media properties"
-        elif self._model_90 is None and rotate_on:
-            model_load_str = "no cached model for rotated inputs"
-        else:
-            self.logger.info('[%s] Using cached model', job_name)
-            return
+    def load_model(self, frame_width, frame_height, max_side_len, rotate_on):
+        self._set_input_dimensions(
+            frame_width=frame_width,
+            frame_height=frame_height,
+            max_side_len=max_side_len
+        )
 
-        self._model = None
-        self._model_90 = None
-        self.logger.info('[%s] Loading model (%s)', job_name, model_load_str)
-        try:
-            self._model = cv2.dnn.readNet(_model_filename)
-            if rotate_on:
-                self._model_90 = cv2.dnn.readNet(_model_filename)
-        except Exception as e:
-            error_str = "[{:s}] Exception occurred while loading {:s}: {:s}".format(
-                job_name,
-                _model_filename,
-                str(e)
-            )
-            self.logger.exception(error_str)
-            raise mpf.DetectionException(error_str, mpf.DetectionError.INVALID_PROPERTY)
-
-        self._blob_width = blob_width
-        self._blob_height = blob_height
         self._rotate_on = rotate_on
+        self._model = cv2.dnn.readNetFromTensorflow(_model_filename)
+        if self._rotate_on:
+            self._model_90 = cv2.dnn.readNetFromTensorflow(_model_filename)
 
-    def _process_blob(self, blob, frame_width, frame_height,
-                      confidence_threshold, padding):
-        blob_width = self._blob_width
-        blob_height = self._blob_height
-
+    def _process_blob(self, blob, confidence_threshold, padding):
         # Run blob through model to get geometry and scores
         self._model.setInput(blob)
         data = np.concatenate(self._model.forward(_layer_names), axis=1)
@@ -126,19 +108,9 @@ class EastProcessor(object):
             data_r = np.rot90(data_r, k=-1, axes=(2,3))
             data = np.repeat(data, 2, axis=0)
             data[1::2,...] = data_r
-        feat_height = data.shape[2]
-        feat_width = data.shape[3]
 
         # Reshape into [n_frames, feat_h, feat_w, 6]
         data = np.moveaxis(data, 1, -1)
-
-        # Get scaling factor from feature map to blob (should be (4.0,4.0))
-        # and from blob to image
-        frame_dims = np.array([frame_width, frame_height], dtype=np.float32)
-        blob_dims = np.array([blob_width, blob_height], dtype=np.float32)
-        feat_dims = np.array([feat_width, feat_height], dtype=np.float32)
-        feat2blob_scale = blob_dims / feat_dims
-        blob2frame_scale = frame_dims / blob_dims
 
         # Split into AABB, angle, and confidence
         # AABB: [dist2top, dist2right, dist2bottom, dist2left]
@@ -170,12 +142,12 @@ class EastProcessor(object):
         # Rescale AABB values to frame dimensions
         w = aabb[:,(1,3)]
         h = aabb[:,(0,2)]
-        wx = blob2frame_scale[0] * c * w
-        wy = blob2frame_scale[1] * s * w
-        hx = blob2frame_scale[0] * s * h
-        hy = blob2frame_scale[1] * c * h
+        wx = self._blob2frame_scale[0] * c * w
+        wy = self._blob2frame_scale[1] * s * w
+        hx = self._blob2frame_scale[0] * s * h
+        hy = self._blob2frame_scale[1] * c * h
         if self._rotate_on:
-            inv = blob2frame_scale[1] / blob2frame_scale[0]
+            inv = self._blob2frame_scale[1] / self._blob2frame_scale[0]
             wx[rotated,:] *= inv
             wy[rotated,:] /= inv
             hx[rotated,:] *= inv
@@ -189,7 +161,7 @@ class EastProcessor(object):
             rotation[rotated] -= np.pi / 2
 
         # Rescale origin coordinates to frame dimensions
-        origin_coords *= feat2blob_scale * blob2frame_scale
+        origin_coords *= self._feat2frame_scale
 
         # Add padding
         aabb += padding * (aabb[:,[0]] + aabb[:,[2]])
@@ -202,23 +174,13 @@ class EastProcessor(object):
 
         return batch_idx, rboxes, scores
 
-    def process_image(self, job_name, image, max_side_len, padding,
-                      rotate_on, confidence_threshold, overlap_threshold,
-                      text_height_threshold, rotation_threshold):
+    def process_image(self, image, padding,confidence_threshold, overlap_threshold,
+                      text_height_threshold, rotation_threshold, **kwargs):
         """ Process a single image using the given arguments
-        :param job_name: The name of the job (used for logging)
         :param image: The image to be processed. Takes the following shape:
                 (frame_height, frame_width, num_channels)
-        :param max_side_len: Maximum length (pixels) for one side of the image.
-                Before being processed, the image will be resized such that the
-                long edge is at most max_side_length, while maintaining the same
-                aspect ratio, and then further resized such that both dimensions
-                are divisible by 32 (a requirement for EAST).
         :param padding: Padding to symmetrically add to bounding boxes. Each
                 side is extended by 0.5 * padding * box_height.
-        :param rotate_on: Whether to perform a second pass on the image after
-                rotating 90 degrees. This can potentially pick up more text at
-                high angles (larger than +/-60 degrees).
         :param confidence_threshold: Threshold to use for filtering detections
                 by bounding box confidence.
         :param overlap_threshold: Threshold value for deciding whether
@@ -232,34 +194,15 @@ class EastProcessor(object):
                 The rotation is expressed in positive degrees counterclockwise
                 from the 3 o'clock position.
         """
-        # Convert to compatible shape
-        frame_height = image.shape[0]
-        frame_width = image.shape[1]
-        blob_width, blob_height = self._get_blob_dimensions(
-            frame_width=frame_width,
-            frame_height=frame_height,
-            max_side_len=max_side_len
-        )
-
-        # Load the model (may return immediately if compatible model is cached)
-        self._load_model(
-            job_name=job_name,
-            blob_width=blob_width,
-            blob_height=blob_height,
-            rotate_on=rotate_on
-        )
-
         # Convert the image to OpenCV-compatible blob, pass to processor
         batch_idx, rboxes, scores = self._process_blob(
             blob=cv2.dnn.blobFromImage(
                 image=image,
-                size=(blob_width, blob_height),
+                size=(self._blob_width, self._blob_height),
                 mean=_mean_rgb,
                 swapRB=True,
                 crop=False
             ),
-            frame_width=frame_width,
-            frame_height=frame_height,
             confidence_threshold=confidence_threshold,
             padding=padding
         )
@@ -286,23 +229,13 @@ class EastProcessor(object):
             for x, y, w, h, r, s in quad_to_iloc(quads, scores)
         ]
 
-    def process_frames(self, job_name, frames, max_side_len, padding,
-                       rotate_on, confidence_threshold, overlap_threshold,
-                       text_height_threshold, rotation_threshold):
+    def process_frames(self, frames, padding, confidence_threshold, overlap_threshold,
+                       text_height_threshold, rotation_threshold, **kwargs):
         """ Process a volume of images using the given arguments
-        :param job_name: The name of the job (used for logging)
         :param frames: The images to be processed. Takes the following shape:
                 (batch_size, frame_height, frame_width, num_channels)
-        :param max_side_len: Maximum length (pixels) for one side of the image.
-                Before being processed, the image will be resized such that the
-                long edge is at most max_side_length, while maintaining the same
-                aspect ratio, and then further resized such that both dimensions
-                are divisible by 32 (a requirement for EAST).
         :param padding: Padding to symmetrically add to bounding boxes. Each
                 side is extended by 0.5 * padding * box_height.
-        :param rotate_on: Whether to perform a second pass on the image after
-                rotating 90 degrees. This can potentially pick up more text at
-                high angles (larger than +/-60 degrees).
         :param confidence_threshold: Threshold to use for filtering detections
                 by bounding box confidence.
         :param overlap_threshold: Threshold value for deciding whether
@@ -319,33 +252,16 @@ class EastProcessor(object):
         """
         # Convert to compatible shape
         batch_size = frames.shape[0]
-        frame_height = frames.shape[1]
-        frame_width = frames.shape[2]
-        blob_width, blob_height = self._get_blob_dimensions(
-            frame_width=frame_width,
-            frame_height=frame_height,
-            max_side_len=max_side_len
-        )
-
-        # Load the model (may return immediately if compatible model is cached)
-        self._load_model(
-            job_name=job_name,
-            blob_width=blob_width,
-            blob_height=blob_height,
-            rotate_on=rotate_on
-        )
 
         # Convert the image to OpenCV-compatible blob, pass to processor
         batch_idx, rboxes, scores = self._process_blob(
             blob=cv2.dnn.blobFromImages(
                 images=frames,
-                size=(blob_width, blob_height),
+                size=(self._blob_width, self._blob_height),
                 mean=_mean_rgb,
                 swapRB=True,
                 crop=False
             ),
-            frame_width=frame_width,
-            frame_height=frame_height,
             confidence_threshold=confidence_threshold,
             padding=padding
         )
