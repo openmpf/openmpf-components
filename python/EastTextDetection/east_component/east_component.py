@@ -181,7 +181,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             batch_offset += len(batch)
 
         logger.info(
-            '[%s] Processing complete. Found %d detections',
+            '[%s] Processing complete. Found %d tracks',
             video_job.job_name,
             len(tracks)
         )

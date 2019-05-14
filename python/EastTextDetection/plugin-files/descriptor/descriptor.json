@@ -15,8 +15,8 @@
     "providesCollection": {
       "states": [
         "DETECTION",
-        "DETECTION_EAST",
-        "DETECTION_EAST_PYTHON"
+        "DETECTION_TEXT_REGION",
+        "DETECTION_TEXT_REGION_EAST"
       ],
       "properties": [
         {
