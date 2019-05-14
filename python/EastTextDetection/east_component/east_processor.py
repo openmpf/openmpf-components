@@ -116,6 +116,8 @@ class EastProcessor(object):
         # AABB: [dist2top, dist2right, dist2bottom, dist2left]
         aabb, rotation, scores = data[...,:4], data[...,4], data[...,5]
 
+        structure_score = scores.mean()
+
         # Take only detections with reasonably high confidence scores
         found = scores > confidence_threshold
 
@@ -172,15 +174,19 @@ class EastProcessor(object):
             rotation[:,None]
         ))
 
-        return batch_idx, rboxes, scores
+        return batch_idx, rboxes, scores, structure_score
 
-    def process_image(self, image, padding,confidence_threshold, overlap_threshold,
-                      text_height_threshold, rotation_threshold, **kwargs):
+    def process_image(self, image, padding, merge_on,
+                      confidence_threshold, overlap_threshold,
+                      text_height_threshold, rotation_threshold,
+                      type_threshold, **kwargs):
         """ Process a single image using the given arguments
         :param image: The image to be processed. Takes the following shape:
                 (frame_height, frame_width, num_channels)
         :param padding: Padding to symmetrically add to bounding boxes. Each
                 side is extended by 0.5 * padding * box_height.
+        :param merge_on: Whether to merge regions according to the provided
+                thresholds.
         :param confidence_threshold: Threshold to use for filtering detections
                 by bounding box confidence.
         :param overlap_threshold: Threshold value for deciding whether
@@ -189,13 +195,15 @@ class EastProcessor(object):
                 regions containing different text sizes should be merged.
         :param rotation_threshold: Threshold value for deciding whether regions
                 containing text at different orientations should be merged.
+        :param type_threshold: Threshold value for deciding whether
+                detected text should be considered structured or unstructured.
         :return: List of mpf.ImageLocation detections. The angles of detected
                 bounding boxes are stored in detection_properties['ROTATION'].
                 The rotation is expressed in positive degrees counterclockwise
                 from the 3 o'clock position.
         """
         # Convert the image to OpenCV-compatible blob, pass to processor
-        batch_idx, rboxes, scores = self._process_blob(
+        batch_idx, rboxes, scores, structure_score = self._process_blob(
             blob=cv2.dnn.blobFromImage(
                 image=image,
                 size=(self._blob_width, self._blob_height),
@@ -207,16 +215,24 @@ class EastProcessor(object):
             padding=padding
         )
 
+        text_type = 'UNSTRUCTURED'
+        if structure_score > type_threshold:
+            text_type = 'STRUCTURED'
+
         if not len(rboxes):
             return []
 
-        quads, scores = merge_regions(
-            rboxes=rboxes,
-            scores=scores,
-            overlap_threshold=overlap_threshold,
-            text_height_threshold=text_height_threshold,
-            rotation_threshold=rotation_threshold
-        )
+        if merge_on:
+            quads, scores = merge_regions(
+                rboxes=rboxes,
+                scores=scores,
+                overlap_threshold=overlap_threshold,
+                text_height_threshold=text_height_threshold,
+                rotation_threshold=rotation_threshold
+            )
+        else:
+            quads = rbox_to_quad(rboxes)
+
         return [
             mpf.ImageLocation(
                 x_left_upper=x,
@@ -224,18 +240,25 @@ class EastProcessor(object):
                 width=w,
                 height=h,
                 confidence=s,
-                detection_properties={'ROTATION': r}
+                detection_properties=dict(
+                    ROTATION=r,
+                    TEXT_TYPE=text_type
+                )
             )
             for x, y, w, h, r, s in quad_to_iloc(quads, scores)
         ]
 
-    def process_frames(self, frames, padding, confidence_threshold, overlap_threshold,
-                       text_height_threshold, rotation_threshold, **kwargs):
+    def process_frames(self, frames, padding, merge_on,
+                       confidence_threshold, overlap_threshold,
+                       text_height_threshold, rotation_threshold,
+                       type_threshold, **kwargs):
         """ Process a volume of images using the given arguments
         :param frames: The images to be processed. Takes the following shape:
                 (batch_size, frame_height, frame_width, num_channels)
         :param padding: Padding to symmetrically add to bounding boxes. Each
                 side is extended by 0.5 * padding * box_height.
+        :param merge_on: Whether to merge regions according to the provided
+                thresholds.
         :param confidence_threshold: Threshold to use for filtering detections
                 by bounding box confidence.
         :param overlap_threshold: Threshold value for deciding whether
@@ -244,6 +267,8 @@ class EastProcessor(object):
                 regions containing different text sizes should be merged.
         :param rotation_threshold: Threshold value for deciding whether regions
                 containing text at different orientations should be merged.
+        :param type_threshold: Threshold value for deciding whether
+                detected text should be considered structured or unstructured.
         :return: List lists of mpf.ImageLocation detections. Each list
                 corresponds with one frame of the input volume. The angles of
                 detected bounding boxes are stored in
@@ -254,7 +279,7 @@ class EastProcessor(object):
         batch_size = frames.shape[0]
 
         # Convert the image to OpenCV-compatible blob, pass to processor
-        batch_idx, rboxes, scores = self._process_blob(
+        batch_idx, rboxes, scores, structure_score = self._process_blob(
             blob=cv2.dnn.blobFromImages(
                 images=frames,
                 size=(self._blob_width, self._blob_height),
@@ -266,6 +291,10 @@ class EastProcessor(object):
             padding=padding
         )
 
+        text_type = 'UNSTRUCTURED'
+        if structure_score > type_threshold:
+            text_type = 'STRUCTURED'
+
         # Split by frame so that boxes in different frames don't interfere
         # with one another during non-max suppression
         split_points = np.cumsum(np.bincount(batch_idx, minlength=batch_size))
@@ -276,13 +305,18 @@ class EastProcessor(object):
         for i in range(len(split_points)-1):
             j0, j1 = split_points[i], split_points[i+1]
             if j1 > j0:
-                quads, merged_scores = merge_regions(
-                    rboxes=rboxes[j0:j1],
-                    scores=scores[j0:j1],
-                    overlap_threshold=overlap_threshold,
-                    text_height_threshold=text_height_threshold,
-                    rotation_threshold=rotation_threshold
-                )
+                if merge_on:
+                    quads, merged_scores = merge_regions(
+                        rboxes=rboxes[j0:j1],
+                        scores=scores[j0:j1],
+                        overlap_threshold=overlap_threshold,
+                        text_height_threshold=text_height_threshold,
+                        rotation_threshold=rotation_threshold
+                    )
+                else:
+                    quads = rbox_to_quad(rboxes)
+                    merged_scores = scores
+
                 image_locs.append([
                     mpf.ImageLocation(
                         x_left_upper=x,
@@ -290,7 +324,10 @@ class EastProcessor(object):
                         width=w,
                         height=h,
                         confidence=s,
-                        detection_properties={'ROTATION': r}
+                        detection_properties=dict(
+                            ROTATION=r,
+                            TEXT_TYPE=text_type
+                        )
                     )
                     for x, y, w, h, r, s in quad_to_iloc(quads, merged_scores)
                 ])

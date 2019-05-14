@@ -59,9 +59,11 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         overlap_threshold = float(job_properties.get('OVERLAP_THRESHOLD','0.1'))
         text_height_threshold = float(job_properties.get('TEXT_HEIGHT_THRESHOLD','0.3'))
         rotation_threshold = float(job_properties.get('ROTATION_THRESHOLD','5'))
+        type_threshold = float(job_properties.get('TEXT_TYPE_THRESHOLD','0.01'))
 
         # Get whether to do a second pass at 90 degrees
-        rotate_on = (job_properties.get('ROTATE_AND_DETECT','').lower() == 'true')
+        rotate_on = (job_properties.get('ROTATE_AND_DETECT','FALSE').lower() == 'true')
+        merge_on = (job_properties.get('MERGE_REGIONS','TRUE').lower() == 'true')
 
         padding = float(job_properties.get('PADDING','0.15'))
 
@@ -70,10 +72,12 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             batch_size=batch_size,
             padding=padding,
             rotate_on=rotate_on,
+            merge_on=merge_on,
             confidence_threshold=confidence_threshold,
             overlap_threshold=overlap_threshold,
             text_height_threshold=text_height_threshold,
-            rotation_threshold=rotation_threshold
+            rotation_threshold=rotation_threshold,
+            type_threshold=type_threshold
         )
 
     def get_detections_from_image_reader(self, image_job, image_reader):

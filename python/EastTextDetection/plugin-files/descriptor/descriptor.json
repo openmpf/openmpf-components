@@ -50,10 +50,22 @@
           "defaultValue": "5.0"
         },
         {
+          "name": "TEXT_TYPE_THRESHOLD",
+          "description": "Threshold value used to determine whether to text is considered to be structured or unstructured, between 0.0 and 1.0. Larger values will result in less text being marked as structured.",
+          "type": "FLOAT",
+          "defaultValue": "0.01"
+        },
+        {
           "name": "ROTATE_AND_DETECT",
           "description": "Whether to perform a second pass on the image after rotating 90 degrees. This can potentially pick up more text at high angles (larger than +/-60 degrees).",
           "type": "BOOLEAN",
           "defaultValue": "FALSE"
+        },
+        {
+          "name": "MERGE_REGIONS",
+          "description": "Whether to merge regions of text. If this is not TRUE, then OVERLAP_THRESHOLD, TEXT_HEIGHT_THRESHOLD, and ROTATION_THRESHOLD have no effect.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
         },
         {
           "name": "BATCH_SIZE",

@@ -67,7 +67,9 @@ if __name__ == '__main__':
     parser.add_argument('--overlap_threshold', type=float, default=0.1)
     parser.add_argument('--text_height_threshold', type=float, default=0.3)
     parser.add_argument('--rotation_threshold', type=float, default=5.0)
-    parser.add_argument('--rotate_and_detect', type=bool, default=False)
+    parser.add_argument('--text_type_threshold', type=float, default=0.01)
+    parser.add_argument('--rotate_and_detect', action='store_true')
+    parser.add_argument('--merge_regions', action='store_true')
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--padding', type=float, default=0.15)
     parser.add_argument(
@@ -93,7 +95,9 @@ if __name__ == '__main__':
         OVERLAP_THRESHOLD=str(args.overlap_threshold),
         TEXT_HEIGHT_THRESHOLD=str(args.text_height_threshold),
         ROTATION_THRESHOLD=str(args.rotation_threshold),
+        TEXT_TYPE_THRESHOLD=str(args.text_type_threshold),
         ROTATE_AND_DETECT=str(args.rotate_and_detect),
+        MERGE_REGIONS=str(args.merge_regions),
         BATCH_SIZE=str(args.batch_size),
         PADDING=str(args.padding)
     )
@@ -184,6 +188,7 @@ if __name__ == '__main__':
             for j,d in enumerate(frame_dets):
                 print((
                         "   Detection {:d}:\n"
+                        "     Type:        {:s}\n"
                         "     Location:    ({:d}, {:d})\n"
                         "     Orientation: {:.3f} degrees\n"
                         "     Width:       {:d}\n"
@@ -191,6 +196,7 @@ if __name__ == '__main__':
                         "     Confidence:  {:.3%}\n"
                     ).format(
                         j,
+                        d.detection_properties['TEXT_TYPE'],
                         int(d.x_left_upper),
                         int(d.y_left_upper),
                         float(d.detection_properties['ROTATION']),

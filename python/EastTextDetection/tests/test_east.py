@@ -45,7 +45,7 @@ class TestEast(unittest.TestCase):
 
     def test_image_file(self):
         job = mpf.ImageJob(
-            job_name='Test_Unstructured',
+            job_name='test-image',
             data_uri=self._get_test_file('unstructured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
@@ -58,12 +58,11 @@ class TestEast(unittest.TestCase):
         results = list(EastComponent().get_detections_from_image(job))
         self.assertEqual(3, len(results))
 
-    def test_padding(self):
+    def test_merging(self):
         comp = EastComponent()
 
-        # With plenty of padding, Most text of the same size should be grouped
         job = mpf.ImageJob(
-            job_name='Test_Structured',
+            job_name='test-structured-no-padding',
             data_uri=self._get_test_file('structured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
@@ -73,10 +72,25 @@ class TestEast(unittest.TestCase):
             media_properties={},
             feed_forward_location=None
         )
-        results_nopad = list(comp.get_detections_from_image(job))
+        num_dets_nopad = len(list(comp.get_detections_from_image(job)))
 
+        # With a higher overlap threshold, lots of text will remain unmerged
         job = mpf.ImageJob(
-            job_name='Test_Structured',
+            job_name='test-structured-high-overlap',
+            data_uri=self._get_test_file('structured.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                OVERLAP_THRESHOLD='0.2',
+                PADDING='0.0'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        num_dets_high_overlap = len(list(comp.get_detections_from_image(job)))
+
+        # With plenty of padding, Most text of the same size should be grouped
+        job = mpf.ImageJob(
+            job_name='test-structured-high-padding',
             data_uri=self._get_test_file('structured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
@@ -86,19 +100,68 @@ class TestEast(unittest.TestCase):
             media_properties={},
             feed_forward_location=None
         )
-        results_pad = list(comp.get_detections_from_image(job))
-        self.assertTrue(len(results_pad) < len(results_nopad))
+        num_dets_pad = len(list(comp.get_detections_from_image(job)))
+
+        job = mpf.ImageJob(
+            job_name='test-structured-no-merging',
+            data_uri=self._get_test_file('structured.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                PADDING='0.0',
+                MERGE_REGIONS='FALSE'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        num_dets_no_merge = len(list(comp.get_detections_from_image(job)))
+        self.assertTrue(
+            num_dets_pad
+            < num_dets_nopad
+            < num_dets_high_overlap
+            < num_dets_no_merge
+        )
+
+    def test_structured_text_detection(self):
+        comp = EastComponent()
+
+        job = mpf.ImageJob(
+            job_name='test-structured',
+            data_uri=self._get_test_file('structured.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MERGE_REGIONS='FALSE'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        res = next(iter(comp.get_detections_from_image(job)))
+        self.assertTrue(res.detection_properties['TEXT_TYPE'] == 'STRUCTURED')
+
+        # With a higher overlap threshold, lots of text will remain unmerged
+        job = mpf.ImageJob(
+            job_name='test-unstructured',
+            data_uri=self._get_test_file('unstructured.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MERGE_REGIONS='FALSE'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        res = next(iter(comp.get_detections_from_image(job)))
+        self.assertTrue(res.detection_properties['TEXT_TYPE'] == 'UNSTRUCTURED')
 
     def test_video_file(self):
         job = mpf.VideoJob(
-            job_name='Test_Video',
+            job_name='test-video',
             data_uri=self._get_test_file('toronto-highway-shortened.mp4'),
             start_frame=0,
             stop_frame=-1,
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
                 OVERLAP_THRESHOLD='0.0',
-                PADDING='0.15'
+                PADDING='0.15',
+                MERGE_REGIONS='FALSE'
             ),
             media_properties={},
             feed_forward_track=None
