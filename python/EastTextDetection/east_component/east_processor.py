@@ -278,7 +278,7 @@ class EastProcessor(object):
         # Convert to compatible shape
         batch_size = frames.shape[0]
 
-        # Convert the image to OpenCV-compatible blob, pass to processor
+        # Convert the images to OpenCV-compatible blob, pass to processor
         batch_idx, rboxes, scores, structure_score = self._process_blob(
             blob=cv2.dnn.blobFromImages(
                 images=frames,
