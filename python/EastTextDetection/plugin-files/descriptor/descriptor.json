@@ -32,25 +32,31 @@
           "defaultValue": "0.8"
         },
         {
-          "name": "OVERLAP_THRESHOLD",
+          "name": "MERGE_MIN_OVERLAP",
           "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the ratio between the area of intersection of two regions and the area of the smaller region is greater than this value, the boxes may be merged.",
           "type": "FLOAT",
           "defaultValue": "0.1"
         },
         {
-          "name": "TEXT_HEIGHT_THRESHOLD",
+          "name": "NMS_MIN_OVERLAP",
+          "description": "Threshold value used during non-maximum suppression, between 0.0 and 1.0. When the ratio between the areas of intersection and union between two regions is greater than this value, the lower-confidence detection will be dropped.",
+          "type": "FLOAT",
+          "defaultValue": "0.1"
+        },
+        {
+          "name": "MERGE_MAX_TEXT_HEIGHT_DIFFERENCE",
           "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the relative difference in text height for two regions is below this value, the boxes may be merged.",
           "type": "FLOAT",
           "defaultValue": "0.3"
         },
         {
-          "name": "ROTATION_THRESHOLD",
+          "name": "MERGE_MAX_ROTATION_DIFFERENCE",
           "description": "Threshold value used to determine whether to merge regions, between 0.0 and 180.0. When the absolute difference (in degrees) between the orientations of two regions is below this value, the boxes may be merged.",
           "type": "FLOAT",
           "defaultValue": "5.0"
         },
         {
-          "name": "TEXT_TYPE_THRESHOLD",
+          "name": "MIN_STRUCTURED_TEXT_THRESHOLD",
           "description": "Threshold value used to determine whether to text is considered to be structured or unstructured, between 0.0 and 1.0. Larger values will result in less text being marked as structured.",
           "type": "FLOAT",
           "defaultValue": "0.01"
@@ -63,7 +69,7 @@
         },
         {
           "name": "MERGE_REGIONS",
-          "description": "Whether to merge regions of text. If this is not TRUE, then OVERLAP_THRESHOLD, TEXT_HEIGHT_THRESHOLD, and ROTATION_THRESHOLD have no effect.",
+          "description": "Whether to merge regions of text. If this is not TRUE, then non-max-suppression will instead be used to filter detections, and properties prefixed by MERGE_ will have no effect.",
           "type": "BOOLEAN",
           "defaultValue": "TRUE"
         },

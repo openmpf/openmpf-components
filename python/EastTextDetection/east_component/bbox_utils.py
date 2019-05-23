@@ -113,7 +113,10 @@ def iloc_to_quad(ilocs):
 
     return quads
 
-def nms(quads, scores, overlap_threshold):
+def nms(quads, scores, min_nms_overlap):
+    """ Perform Non-Maximum Suppression (NMS) on the given QUAD-formatted
+        bounding boxes.
+    """
     areas = contour_area(quads)
     order = np.argsort(scores)[::-1]
     keep = []
@@ -124,7 +127,7 @@ def nms(quads, scores, overlap_threshold):
         inter = contour_intersect_area(quads[i], quads[js])
         union = areas[i] + areas[js] - inter
         iou = inter / union
-        inds = np.flatnonzero(iou <= overlap_threshold)
+        inds = np.flatnonzero(iou < min_nms_overlap)
         order = order[inds+1]
     return keep
 
@@ -160,8 +163,7 @@ class MergedRegions(object):
         self.weights = scores
         self.scores = scores
 
-def merge_pass(regions, overlap_threshold, text_height_threshold,
-               rotation_threshold):
+def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
     """ Complete one merge pass. This takes one box at a time (largest area
         first) and merges it with all eligible boxes. This merged box is added
         to a list, and all constituent boxes removed from the original list.
@@ -189,16 +191,16 @@ def merge_pass(regions, overlap_threshold, text_height_threshold,
             quads[1:].astype(np.float32)
         )
         # Divide by smaller area, not the union
-        to_merge = (inter / areas[1:]) > overlap_threshold
+        to_merge = (inter / areas[1:]) >= min_merge_overlap
 
         # Filter out boxes whose text height does not match
         h_dist = 2 * np.abs(heights[0]-heights[1:]) / (heights[0]+heights[1:])
-        height_matches = h_dist < text_height_threshold
+        height_matches = h_dist <= max_height_delta
         to_merge = np.logical_and(to_merge, height_matches)
 
         # Filter out boxes whose rotation does not match
         r_dist = np.abs(rotations[0] - rotations[1:])
-        rotation_matches = r_dist < (rotation_threshold * np.pi / 180)
+        rotation_matches = r_dist <= (max_rot_delta * np.pi / 180)
         to_merge = np.logical_and(to_merge, rotation_matches)
 
         # If no boxes can be merged with this one, pop it off and continue
@@ -263,8 +265,8 @@ def merge_pass(regions, overlap_threshold, text_height_threshold,
 
     return merged_any
 
-def merge_regions(rboxes, scores, overlap_threshold, text_height_threshold,
-                  rotation_threshold):
+def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
+                  max_rot_delta):
     """ An approximate locality-aware variant of non-maximum suppression, which
         merges together overlapping boxes rather than suppressing them.
 
@@ -297,11 +299,11 @@ def merge_regions(rboxes, scores, overlap_threshold, text_height_threshold,
         3. Even after the locality-aware first pass, we merge boxes rather than
            suppress the ones with lower confidence. As above, the orientation
            of the merged box is a confidence-weighted average.
-        4. After the first pass, we threshold not the intersect over union, but
-           the intersect over smallest area. This is because, as merged regions
-           grow larger, the IOU between them and smaller boxes will shrink.
-           Because the threshold value is constant, large boxes will eventually
-           never merge with smaller boxes.
+        4. We threshold not the intersect over union, but the intersect over
+           smallest area. This is because, as merged regions grow larger, the
+           IoU between them and smaller boxes will shrink. Because the
+           threshold value is constant, large boxes will eventually never merge
+           with smaller boxes.
         5. In addition to thresholding the overlap, we theshold the similarity
            between regions in rotation and text height. This way, text with very
            dissimilar orientations or scales will not be combined. The text
@@ -332,16 +334,16 @@ def merge_regions(rboxes, scores, overlap_threshold, text_height_threshold,
         quads[1:].astype(np.float32)
     )
     # Divide by smaller area, not the union
-    to_merge = inter / np.minimum(areas[:-1], areas[1:]) > overlap_threshold
+    to_merge = inter / np.minimum(areas[:-1], areas[1:]) >= min_merge_overlap
 
     # Filter out boxes whose text height does not match
     h_dist = 2 * np.abs(heights[:-1]-heights[1:]) / (heights[:-1]+heights[1:])
-    height_matches = h_dist < text_height_threshold
+    height_matches = h_dist <= max_height_delta
     to_merge = np.logical_and(to_merge, height_matches)
 
     # Filter out boxes whose rotation does not match
     r_dist = np.abs(rotations[:-1] - rotations[1:])
-    rotation_matches = r_dist < (rotation_threshold * np.pi / 180)
+    rotation_matches = r_dist <= (max_rot_delta * np.pi / 180)
     to_merge = np.logical_and(to_merge, rotation_matches)
 
     if np.any(to_merge):
@@ -404,9 +406,9 @@ def merge_regions(rboxes, scores, overlap_threshold, text_height_threshold,
     while True:
         merged_any = merge_pass(
             regions,
-            overlap_threshold=overlap_threshold,
-            text_height_threshold=text_height_threshold,
-            rotation_threshold=rotation_threshold
+            min_merge_overlap=min_merge_overlap,
+            max_height_delta=max_height_delta,
+            max_rot_delta=max_rot_delta
         )
         # If no boxes were merged, we're done
         if not merged_any:

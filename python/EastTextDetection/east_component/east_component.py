@@ -55,11 +55,12 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         batch_size = int(job_properties.get('BATCH_SIZE','1'))
 
         # Get the threshold values for filtering bounding boxes
-        confidence_threshold = float(job_properties.get('CONFIDENCE_THRESHOLD','0.8'))
-        overlap_threshold = float(job_properties.get('OVERLAP_THRESHOLD','0.1'))
-        text_height_threshold = float(job_properties.get('TEXT_HEIGHT_THRESHOLD','0.3'))
-        rotation_threshold = float(job_properties.get('ROTATION_THRESHOLD','5'))
-        type_threshold = float(job_properties.get('TEXT_TYPE_THRESHOLD','0.01'))
+        min_confidence = float(job_properties.get('CONFIDENCE_THRESHOLD','0.8'))
+        min_merge_overlap = float(job_properties.get('MERGE_MIN_OVERLAP','0.1'))
+        min_nms_overlap = float(job_properties.get('NMS_MIN_OVERLAP','0.1'))
+        max_height_delta = float(job_properties.get('MERGE_MAX_TEXT_HEIGHT_DIFFERENCE','0.3'))
+        max_rot_delta = float(job_properties.get('MERGE_MAX_ROTATION_DIFFERENCE','5'))
+        min_structured_score = float(job_properties.get('MIN_STRUCTURED_TEXT_THRESHOLD','0.01'))
 
         # Get whether to do a second pass at 90 degrees
         rotate_on = (job_properties.get('ROTATE_AND_DETECT','FALSE').lower() == 'true')
@@ -73,11 +74,12 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             padding=padding,
             rotate_on=rotate_on,
             merge_on=merge_on,
-            confidence_threshold=confidence_threshold,
-            overlap_threshold=overlap_threshold,
-            text_height_threshold=text_height_threshold,
-            rotation_threshold=rotation_threshold,
-            type_threshold=type_threshold
+            min_confidence=min_confidence,
+            min_merge_overlap=min_merge_overlap,
+            min_nms_overlap=min_nms_overlap,
+            max_height_delta=max_height_delta,
+            max_rot_delta=max_rot_delta,
+            min_structured_score=min_structured_score
         )
 
     def get_detections_from_image_reader(self, image_job, image_reader):
@@ -104,7 +106,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
                 str(e)
             )
             logger.exception(error_str)
-            raise mpf.DetectionException(error_str, mpf.DetectionError.INVALID_PROPERTY)
+            raise mpf.DetectionException(error_str, mpf.DetectionError.DETECTION_NOT_INITIALIZED)
 
         dets = self.processor.process_image(image, **kwargs)
         logger.info(

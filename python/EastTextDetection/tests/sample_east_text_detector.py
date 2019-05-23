@@ -64,38 +64,42 @@ if __name__ == '__main__':
     )
     parser.add_argument('--max_side_length', type=int, default=-1)
     parser.add_argument('--confidence_threshold', type=float, default=0.8)
-    parser.add_argument('--overlap_threshold', type=float, default=0.1)
-    parser.add_argument('--text_height_threshold', type=float, default=0.3)
-    parser.add_argument('--rotation_threshold', type=float, default=5.0)
-    parser.add_argument('--text_type_threshold', type=float, default=0.01)
+    parser.add_argument('--merge_min_overlap', type=float, default=0.1)
+    parser.add_argument('--nms_min_overlap', type=float, default=0.1)
+    parser.add_argument('--merge_max_text_height_difference', type=float, default=0.3)
+    parser.add_argument('--merge_max_rotation_difference', type=float, default=5.0)
+    parser.add_argument('--min_structured_text_threshold', type=float, default=0.01)
     parser.add_argument('--rotate_and_detect', action='store_true')
     parser.add_argument('--merge_regions', action='store_true')
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--padding', type=float, default=0.15)
     parser.add_argument(
-        '--out',
+        '--out_dir',
         nargs='?',
         help='directory to store marked-up images'
     )
     parser.add_argument(
         'files',
         nargs='+',
-        help='location of the image or video files'
+        help='locations of the image or video files'
     )
     args = parser.parse_args()
 
     markup = False
-    if args.out is not None:
+    if args.out_dir is not None:
         markup = True
-        out_dir = os.path.realpath(args.out)
+        out_dir = os.path.realpath(args.out_dir)
+        if not os.path.isdir(out_dir):
+            os.mkdir(out_dir)
 
     properties = dict(
         MAX_SIDE_LENGTH=str(args.max_side_length),
         CONFIDENCE_THRESHOLD=str(args.confidence_threshold),
-        OVERLAP_THRESHOLD=str(args.overlap_threshold),
-        TEXT_HEIGHT_THRESHOLD=str(args.text_height_threshold),
-        ROTATION_THRESHOLD=str(args.rotation_threshold),
-        TEXT_TYPE_THRESHOLD=str(args.text_type_threshold),
+        MERGE_MIN_OVERLAP=str(args.merge_min_overlap),
+        NMS_MIN_OVERLAP=str(args.nms_min_overlap),
+        MERGE_MAX_TEXT_HEIGHT_DIFFERENCE=str(args.merge_max_text_height_difference),
+        MERGE_MAX_ROTATION_DIFFERENCE=str(args.merge_max_rotation_difference),
+        MIN_STRUCTURED_TEXT_THRESHOLD=str(args.min_structured_text_threshold),
         ROTATE_AND_DETECT=str(args.rotate_and_detect),
         MERGE_REGIONS=str(args.merge_regions),
         BATCH_SIZE=str(args.batch_size),
@@ -118,7 +122,9 @@ if __name__ == '__main__':
             dets = {-1: list(comp.get_detections_from_image(job))}
 
             # If indicated, draw the detections and write to output directory
-            if markup:
+            if markup and len(dets[-1]):
+                ttype = dets[-1][0].detection_properties['TEXT_TYPE']
+                color = (0,255,0) if ttype == 'UNSTRUCTURED' else (255,0,255)
                 ilocs = np.array([
                     [
                         float(d.x_left_upper),
@@ -130,7 +136,7 @@ if __name__ == '__main__':
                 ])
                 quads = iloc_to_quad(ilocs)
                 frame = util.ImageReader(job).get_image().copy()
-                cv2.drawContours(frame, np.int0(quads), -1, (64,255,64), 2)
+                cv2.drawContours(frame, np.int0(quads), -1, color, 2)
                 outpath = os.path.join(out_dir, os.path.split(uri)[1])
                 cv2.imwrite(outpath, frame)
 
@@ -163,6 +169,8 @@ if __name__ == '__main__':
                     for fnum, frame in enumerate(cap):
                         frame = frame.copy()
                         if fnum in dets:
+                            ttype = dets[fnum][0].detection_properties['TEXT_TYPE']
+                            color = (0,255,0) if ttype == 'UNSTRUCTURED' else (255,0,255)
                             ilocs = np.array([
                                 [
                                     float(d.x_left_upper),
@@ -173,7 +181,7 @@ if __name__ == '__main__':
                                 ] for d in dets[fnum]
                             ])
                             quads = np.int0(iloc_to_quad(ilocs))
-                            cv2.drawContours(frame, quads, -1, (64,255,64), 2)
+                            cv2.drawContours(frame, quads, -1, color, 2)
                         writer.write(frame)
         else:
             print("Unreadable input file")

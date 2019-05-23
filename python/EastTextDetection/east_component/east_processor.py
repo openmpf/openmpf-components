@@ -97,7 +97,7 @@ class EastProcessor(object):
         if self._rotate_on:
             self._model_90 = cv2.dnn.readNetFromTensorflow(_model_filename)
 
-    def _process_blob(self, blob, confidence_threshold, padding):
+    def _process_blob(self, blob, min_confidence, padding):
         # Run blob through model to get geometry and scores
         self._model.setInput(blob)
         data = np.concatenate(self._model.forward(_layer_names), axis=1)
@@ -119,7 +119,7 @@ class EastProcessor(object):
         structure_score = scores.mean()
 
         # Take only detections with reasonably high confidence scores
-        found = scores > confidence_threshold
+        found = scores > min_confidence
 
         # Get image index and feature map coordinates (x,y) of detections
         origin_coords = np.argwhere(found)
@@ -176,10 +176,9 @@ class EastProcessor(object):
 
         return batch_idx, rboxes, scores, structure_score
 
-    def process_image(self, image, padding, merge_on,
-                      confidence_threshold, overlap_threshold,
-                      text_height_threshold, rotation_threshold,
-                      type_threshold, **kwargs):
+    def process_image(self, image, padding, merge_on, min_confidence,
+                      min_merge_overlap, min_nms_overlap, max_height_delta,
+                      max_rot_delta, min_structured_score, **kwargs):
         """ Process a single image using the given arguments
         :param image: The image to be processed. Takes the following shape:
                 (frame_height, frame_width, num_channels)
@@ -187,15 +186,16 @@ class EastProcessor(object):
                 side is extended by 0.5 * padding * box_height.
         :param merge_on: Whether to merge regions according to the provided
                 thresholds.
-        :param confidence_threshold: Threshold to use for filtering detections
+        :param min_confidence: Threshold to use for filtering detections
                 by bounding box confidence.
-        :param overlap_threshold: Threshold value for deciding whether
+        :param min_merge_overlap: Threshold value for deciding whether
                 regions overlap enough to be merged.
-        :param text_height_threshold: Threshold value for deciding whether
+        :param min_nms_overlap: Threshold value for non-maximum suppression.
+        :param max_height_delta: Threshold value for deciding whether
                 regions containing different text sizes should be merged.
-        :param rotation_threshold: Threshold value for deciding whether regions
+        :param max_rot_delta: Threshold value for deciding whether regions
                 containing text at different orientations should be merged.
-        :param type_threshold: Threshold value for deciding whether
+        :param min_structured_score: Threshold value for deciding whether
                 detected text should be considered structured or unstructured.
         :return: List of mpf.ImageLocation detections. The angles of detected
                 bounding boxes are stored in detection_properties['ROTATION'].
@@ -211,12 +211,12 @@ class EastProcessor(object):
                 swapRB=True,
                 crop=False
             ),
-            confidence_threshold=confidence_threshold,
+            min_confidence=min_confidence,
             padding=padding
         )
 
         text_type = 'UNSTRUCTURED'
-        if structure_score > type_threshold:
+        if structure_score > min_structured_score:
             text_type = 'STRUCTURED'
 
         if not len(rboxes):
@@ -226,12 +226,19 @@ class EastProcessor(object):
             quads, scores = merge_regions(
                 rboxes=rboxes,
                 scores=scores,
-                overlap_threshold=overlap_threshold,
-                text_height_threshold=text_height_threshold,
-                rotation_threshold=rotation_threshold
+                min_merge_overlap=min_merge_overlap,
+                max_height_delta=max_height_delta,
+                max_rot_delta=max_rot_delta
             )
         else:
             quads = rbox_to_quad(rboxes)
+            keep = nms(
+                quads=quads,
+                scores=scores,
+                min_nms_overlap=min_nms_overlap
+            )
+            quads = quads[keep]
+            scores = scores[keep]
 
         return [
             mpf.ImageLocation(
@@ -248,10 +255,9 @@ class EastProcessor(object):
             for x, y, w, h, r, s in quad_to_iloc(quads, scores)
         ]
 
-    def process_frames(self, frames, padding, merge_on,
-                       confidence_threshold, overlap_threshold,
-                       text_height_threshold, rotation_threshold,
-                       type_threshold, **kwargs):
+    def process_frames(self, frames, padding, merge_on, min_confidence,
+                       min_merge_overlap, min_nms_overlap, max_height_delta,
+                       max_rot_delta, min_structured_score, **kwargs):
         """ Process a volume of images using the given arguments
         :param frames: The images to be processed. Takes the following shape:
                 (batch_size, frame_height, frame_width, num_channels)
@@ -259,15 +265,16 @@ class EastProcessor(object):
                 side is extended by 0.5 * padding * box_height.
         :param merge_on: Whether to merge regions according to the provided
                 thresholds.
-        :param confidence_threshold: Threshold to use for filtering detections
+        :param min_confidence: Threshold to use for filtering detections
                 by bounding box confidence.
-        :param overlap_threshold: Threshold value for deciding whether
+        :param min_merge_overlap: Threshold value for deciding whether
                 regions overlap enough to be merged.
-        :param text_height_threshold: Threshold value for deciding whether
+        :param min_nms_overlap: Threshold value for non-maximum suppression.
+        :param max_height_delta: Threshold value for deciding whether
                 regions containing different text sizes should be merged.
-        :param rotation_threshold: Threshold value for deciding whether regions
+        :param max_rot_delta: Threshold value for deciding whether regions
                 containing text at different orientations should be merged.
-        :param type_threshold: Threshold value for deciding whether
+        :param min_structured_score: Threshold value for deciding whether
                 detected text should be considered structured or unstructured.
         :return: List lists of mpf.ImageLocation detections. Each list
                 corresponds with one frame of the input volume. The angles of
@@ -287,12 +294,12 @@ class EastProcessor(object):
                 swapRB=True,
                 crop=False
             ),
-            confidence_threshold=confidence_threshold,
+            min_confidence=min_confidence,
             padding=padding
         )
 
         text_type = 'UNSTRUCTURED'
-        if structure_score > type_threshold:
+        if structure_score > min_structured_score:
             text_type = 'STRUCTURED'
 
         # Split by frame so that boxes in different frames don't interfere
@@ -309,13 +316,19 @@ class EastProcessor(object):
                     quads, merged_scores = merge_regions(
                         rboxes=rboxes[j0:j1],
                         scores=scores[j0:j1],
-                        overlap_threshold=overlap_threshold,
-                        text_height_threshold=text_height_threshold,
-                        rotation_threshold=rotation_threshold
+                        min_merge_overlap=min_merge_overlap,
+                        max_height_delta=max_height_delta,
+                        max_rot_delta=max_rot_delta
                     )
                 else:
                     quads = rbox_to_quad(rboxes)
-                    merged_scores = scores
+                    keep = nms(
+                        quads=quads,
+                        scores=scores,
+                        min_nms_overlap=min_nms_overlap
+                    )
+                    quads = quads[keep]
+                    merged_scores = scores[keep]
 
                 image_locs.append([
                     mpf.ImageLocation(

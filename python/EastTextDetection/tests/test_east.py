@@ -49,7 +49,7 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('unstructured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                OVERLAP_THRESHOLD='0.0',
+                MERGE_MIN_OVERLAP='0.0',
                 PADDING='0.0'
             ),
             media_properties={},
@@ -66,7 +66,7 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('structured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                OVERLAP_THRESHOLD='0.0',
+                MERGE_MIN_OVERLAP='0.0',
                 PADDING='0.0'
             ),
             media_properties={},
@@ -80,7 +80,7 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('structured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                OVERLAP_THRESHOLD='0.2',
+                MERGE_MIN_OVERLAP='0.2',
                 PADDING='0.0'
             ),
             media_properties={},
@@ -94,7 +94,7 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('structured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                OVERLAP_THRESHOLD='0.0',
+                MERGE_MIN_OVERLAP='0.0',
                 PADDING='0.5'
             ),
             media_properties={},
@@ -108,7 +108,8 @@ class TestEast(unittest.TestCase):
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
                 PADDING='0.0',
-                MERGE_REGIONS='FALSE'
+                MERGE_REGIONS='FALSE',
+                NMS_MIN_OVERLAP='1.0'
             ),
             media_properties={},
             feed_forward_location=None
@@ -159,9 +160,8 @@ class TestEast(unittest.TestCase):
             stop_frame=-1,
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                OVERLAP_THRESHOLD='0.0',
-                PADDING='0.15',
-                MERGE_REGIONS='FALSE'
+                MERGE_MIN_OVERLAP='0.0',
+                MERGE_REGIONS='TRUE'
             ),
             media_properties={},
             feed_forward_track=None
