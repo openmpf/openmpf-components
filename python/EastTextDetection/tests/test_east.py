@@ -100,7 +100,6 @@ class TestEast(unittest.TestCase):
             feed_forward_location=None
         )
         num_dets_pad = len(list(comp.get_detections_from_image(job)))
-        print(num_dets_pad, num_dets_nopad, num_dets_high_overlap)
         self.assertTrue(
             num_dets_pad
             < num_dets_nopad
