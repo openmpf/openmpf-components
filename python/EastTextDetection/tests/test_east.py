@@ -49,7 +49,6 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('unstructured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                MERGE_MIN_OVERLAP='0.0',
                 PADDING='0.0'
             ),
             media_properties={},
@@ -66,7 +65,7 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('structured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                MERGE_MIN_OVERLAP='0.0',
+                MERGE_MIN_OVERLAP='0.0001',
                 PADDING='0.0'
             ),
             media_properties={},
@@ -94,32 +93,18 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('structured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                MERGE_MIN_OVERLAP='0.0',
+                MERGE_MIN_OVERLAP='0.0001',
                 PADDING='0.5'
             ),
             media_properties={},
             feed_forward_location=None
         )
         num_dets_pad = len(list(comp.get_detections_from_image(job)))
-
-        job = mpf.ImageJob(
-            job_name='test-structured-no-merging',
-            data_uri=self._get_test_file('structured.jpg'),
-            job_properties=dict(
-                MAX_SIDE_LENGTH='1280',
-                PADDING='0.0',
-                MERGE_REGIONS='FALSE',
-                NMS_MIN_OVERLAP='1.0'
-            ),
-            media_properties={},
-            feed_forward_location=None
-        )
-        num_dets_no_merge = len(list(comp.get_detections_from_image(job)))
+        print(num_dets_pad, num_dets_nopad, num_dets_high_overlap)
         self.assertTrue(
             num_dets_pad
             < num_dets_nopad
             < num_dets_high_overlap
-            < num_dets_no_merge
         )
 
     def test_structured_text_detection(self):
@@ -130,7 +115,6 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('structured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                MERGE_REGIONS='FALSE'
             ),
             media_properties={},
             feed_forward_location=None
@@ -144,7 +128,6 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('unstructured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                MERGE_REGIONS='FALSE'
             ),
             media_properties={},
             feed_forward_location=None
@@ -160,7 +143,7 @@ class TestEast(unittest.TestCase):
             stop_frame=-1,
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                MERGE_MIN_OVERLAP='0.0',
+                MERGE_MIN_OVERLAP='0.0001',
                 MERGE_REGIONS='TRUE'
             ),
             media_properties={},

@@ -153,7 +153,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
                 str(e)
             )
             logger.exception(error_str)
-            raise mpf.DetectionException(error_str, mpf.DetectionError.INVALID_PROPERTY)
+            raise mpf.DetectionException(error_str, mpf.DetectionError.DETECTION_NOT_INITIALIZED)
 
         tracks = []
 

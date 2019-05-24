@@ -90,7 +90,7 @@ if __name__ == '__main__':
         markup = True
         out_dir = os.path.realpath(args.out_dir)
         if not os.path.isdir(out_dir):
-            os.mkdir(out_dir)
+            os.makedirs(out_dir)
 
     properties = dict(
         MAX_SIDE_LENGTH=str(args.max_side_length),

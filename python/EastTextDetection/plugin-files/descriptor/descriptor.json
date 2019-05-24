@@ -33,25 +33,25 @@
         },
         {
           "name": "MERGE_MIN_OVERLAP",
-          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the ratio between the area of intersection of two regions and the area of the smaller region is greater than this value, the boxes may be merged.",
+          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the ratio between the area of intersection of two regions and the area of the smaller region is greater than or equal to this value, the boxes may be merged.",
           "type": "FLOAT",
           "defaultValue": "0.1"
         },
         {
           "name": "NMS_MIN_OVERLAP",
-          "description": "Threshold value used during non-maximum suppression, between 0.0 and 1.0. When the ratio between the areas of intersection and union between two regions is greater than this value, the lower-confidence detection will be dropped.",
+          "description": "Threshold value used during non-maximum suppression, between 0.0 and 1.0, only used when MERGE_REGIONS is false. When the ratio between the areas of intersection and union between two regions is greater than or equal to this value, the lower-confidence detection will be dropped.",
           "type": "FLOAT",
           "defaultValue": "0.1"
         },
         {
           "name": "MERGE_MAX_TEXT_HEIGHT_DIFFERENCE",
-          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the relative difference in text height for two regions is below this value, the boxes may be merged.",
+          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the relative difference in text height for two regions is less than or equal to this value, the boxes may be merged.",
           "type": "FLOAT",
           "defaultValue": "0.3"
         },
         {
           "name": "MERGE_MAX_ROTATION_DIFFERENCE",
-          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 180.0. When the absolute difference (in degrees) between the orientations of two regions is below this value, the boxes may be merged.",
+          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 180.0. When the absolute difference (in degrees) between the orientations of two regions is less than or equal to this value, the boxes may be merged.",
           "type": "FLOAT",
           "defaultValue": "5.0"
         },
