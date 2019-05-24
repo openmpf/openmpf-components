@@ -162,6 +162,9 @@ class EastProcessor(object):
         if self._rotate_on:
             rotation[rotated] -= np.pi / 2
 
+        # Ensure rotation is in the range [-pi, pi]
+        rotation = (rotation + np.pi) % (2 * np.pi) - np.pi
+
         # Rescale origin coordinates to frame dimensions
         origin_coords *= self._feat2frame_scale
 

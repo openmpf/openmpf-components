@@ -153,6 +153,20 @@ def merge(quads, rotation):
     # Rotate the points back
     return merged.dot(rot)
 
+def close_under_modulus(a, b, abs_diff, modulus):
+    """ Determines whether the absolute difference between a and b is less than
+        abs_diff under modulus. For example, if a = -5, b = 13, and modulus =
+        12, their difference is 6 under the modulus, so this function will
+        return True when abs_diff >= 6, False otherwise.
+
+        Functionally, this checks whether b falls in the modular range [a-
+        abs_diff, a+abs_diff]. Note that if abs_diff >= modulus/2, the function
+        will always return True.
+
+        This function will work with numpy arrays, as long as a and b can be
+        broadcasted together.
+    """
+    return (b + abs_diff - a) % modulus <= (2 * abs_diff)
 
 class MergedRegions(object):
     def __init__(self, rboxes, scores):
@@ -199,8 +213,12 @@ def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
         to_merge = np.logical_and(to_merge, height_matches)
 
         # Filter out boxes whose rotation does not match
-        r_dist = np.abs(rotations[0] - rotations[1:])
-        rotation_matches = r_dist <= (max_rot_delta * np.pi / 180)
+        rotation_matches = close_under_modulus(
+            rotations[0],
+            rotations[1:],
+            np.radians(max_rot_delta),
+            180
+        )
         to_merge = np.logical_and(to_merge, rotation_matches)
 
         # If no boxes can be merged with this one, pop it off and continue
@@ -342,8 +360,12 @@ def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
     to_merge = np.logical_and(to_merge, height_matches)
 
     # Filter out boxes whose rotation does not match
-    r_dist = np.abs(rotations[:-1] - rotations[1:])
-    rotation_matches = r_dist <= (max_rot_delta * np.pi / 180)
+    rotation_matches = close_under_modulus(
+        rotations[:-1],
+        rotations[1:],
+        np.radians(max_rot_delta),
+        180
+    )
     to_merge = np.logical_and(to_merge, rotation_matches)
 
     if np.any(to_merge):
