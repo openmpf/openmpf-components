@@ -758,15 +758,8 @@ std::string random_string( size_t length )
 /*
  * Preprocess image before running OSD and OCR.
  */
-bool TesseractOCRTextDetection::preprocess_image(const MPFImageJob &job, std::pair<int, int> &image_dim, cv::Mat &image_result, const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,  MPFDetectionError &job_status)
+bool TesseractOCRTextDetection::preprocess_image(const MPFImageJob &job, cv::Mat &image_data, const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,  MPFDetectionError &job_status)
 {
-    MPFImageReader image_reader(job);
-    cv::Mat image_data;
-    image_data = image_reader.GetImage();
-
-    image_dim.first = image_data.cols;
-    image_dim.second = image_data.rows;
-
     if (image_data.empty()) {
         LOG4CXX_ERROR(hw_logger_,  "[" + job.job_name + "] Could not open transformed image and will not return detections" );
         job_status = MPF_IMAGE_READ_ERROR;
@@ -795,20 +788,16 @@ bool TesseractOCRTextDetection::preprocess_image(const MPFImageJob &job, std::pa
     if (ocr_fset.enable_sharpen) {
         Sharpen(image_data, ocr_fset.sharpen);
     }
-    cv::Mat imb, imi;
-    imb = image_data;
 
     // Image inversion.
     if (ocr_fset.invert) {
         double min, max;
-        cv::Mat tmp_imb(imb.size(), imb.type());
-        cv::minMaxLoc(imb, &min, &max);
+        cv::Mat tmp_imb(image_data.size(), image_data.type());
+        cv::minMaxLoc(image_data, &min, &max);
         tmp_imb.setTo(cv::Scalar::all(max));
-        cv::subtract(tmp_imb, imb, imi);
-    } else {
-        imi = imb;
+        cv::subtract(tmp_imb, image_data, image_data);
     }
-    image_result = imi;
+
     return true;
 }
 
@@ -1520,17 +1509,17 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
     std::map<std::wstring,std::vector<std::wstring>> json_kvs_regex;
     load_tags_json(job, job_status, json_kvs_string, json_kvs_string_split, json_kvs_regex);
 
-
     LOG4CXX_DEBUG(hw_logger_, log_print_str("[" + job.job_name + "] About to run tesseract"));
     std::vector<TesseractOCRTextDetection::OCR_output> ocr_outputs;
-    std::pair<int, int> image_dim;
 
-    cv::Mat input_image;
-    if (!preprocess_image(job, image_dim, input_image, ocr_fset, job_status)) {
+    MPFImageReader image_reader(job);
+    cv::Mat input_image = image_reader.GetImage();
+
+    if (!preprocess_image(job, input_image, ocr_fset, job_status)) {
         return job_status;
     }
 
-    MPFImageLocation osd_track_results(0, 0, image_dim.first, image_dim.second);
+    MPFImageLocation osd_track_results(0, 0, input_image.cols, input_image.rows);
     std::string tessdata_script_dir = "";
 
     if (ocr_fset.psm == 0 || ocr_fset.enable_osd) {
@@ -1552,7 +1541,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
     }
 
     for (auto ocr_out: ocr_outputs) {
-        MPFImageLocation image_location(0, 0, image_dim.first, image_dim.second, ocr_out.confidence);
+        MPFImageLocation image_location(0, 0, input_image.cols, input_image.rows, ocr_out.confidence);
         // Copy over OSD detection results into OCR output track.
         image_location.detection_properties = osd_track_results.detection_properties;
         bool process_text = process_text_tagging(image_location.detection_properties, job, ocr_out, job_status, ocr_fset,
@@ -1627,12 +1616,15 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
     }
 
     int page_num = 0;
-    std::pair<int, int> image_dim;
     cv::Mat input_image;
     std::string default_lang = ocr_fset.tesseract_lang;
     for (std::string filename : filelist) {
         MPFImageJob c_job(job.job_name, filename, job.job_properties, job.media_properties);
-        if (!preprocess_image(c_job, image_dim, input_image, ocr_fset, job_status)) {
+
+        MPFImageReader image_reader(c_job);
+        cv::Mat input_image = image_reader.GetImage();
+
+        if (!preprocess_image(c_job, input_image, ocr_fset, job_status)) {
             return job_status;
         }
 
