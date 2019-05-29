@@ -82,7 +82,7 @@ def quad_to_iloc(quads, scores):
     ilocs[:,[0,1]] = quads[:,0]
     ilocs[:,2] = np.sqrt(np.sum(w_vec*w_vec, -1))
     ilocs[:,3] = np.sqrt(np.sum(h_vec*h_vec, -1))
-    ilocs[:,4] = (720 - np.degrees(np.arctan2(-w_vec[:,1], w_vec[:,0]))) % 360
+    ilocs[:,4] = np.degrees(np.arctan2(-w_vec[:,1], w_vec[:,0])) % 360
     ilocs[:,5] = scores
     return ilocs
 
@@ -97,7 +97,7 @@ def iloc_to_quad(ilocs):
          [bl_x, bl_y]]]
     """
     # Get cosine and sine of the box angles
-    rotation = np.radians(360 - ilocs[:,[4]])
+    rotation = np.radians(ilocs[:,[4]])
     cs = np.hstack((np.cos(rotation), np.sin(rotation)))
 
     quads = np.empty((ilocs.shape[0],4,2),dtype=np.float32)
