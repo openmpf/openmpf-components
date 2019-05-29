@@ -143,7 +143,7 @@ class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
     std::wstring fix_regex(std::wstring inreg);
     std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> parse_json(const MPFJob &job, const std::string &jsonfile_path, MPFDetectionError &job_status);
     bool get_tesseract_detections(const MPFImageJob &job, std::vector<OCR_output> &detection, cv::Mat &imi, const OCR_filter_settings &ocr_fset, MPFDetectionError &job_status, const std::string &tessdata_script_dir);
-    bool preprocess_image(const MPFImageJob &job, std::pair<int, int> &image_dim, cv::Mat &image_result, const OCR_filter_settings &ocr_fset,  MPFDetectionError &job_status);
+    bool preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset,  MPFDetectionError &job_status);
 
     void set_default_parameters();
     void set_read_config_parameters();
