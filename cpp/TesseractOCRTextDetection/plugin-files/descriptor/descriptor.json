@@ -1,29 +1,32 @@
 {
-  "componentName" : "TesseractOCRTextDetection",
-  "componentVersion" : "4.0.0",
-  "middlewareVersion" :  "4.0.0",
-  "sourceLanguage" : "c++",
+  "componentName": "TesseractOCRTextDetection",
+  "componentVersion": "4.0.0",
+  "middlewareVersion": "4.0.0",
+  "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib/libmpfTesseractOCRTextDetection.so",
-  "environmentVariables" : [ {
-    "name" : "LD_LIBRARY_PATH",
-    "value" : "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib:${LD_LIBRARY_PATH}",
-    "sep" : ":"
-  } ],
-  "algorithm" : {
-    "name" : "TESSERACTOCR",
-    "description" : "Performs Tesseract optical character recognition.",
-    "actionType" : "DETECTION",
-    "requiresCollection" : {
-      "states" : []
+  "environmentVariables": [
+    {
+      "name": "LD_LIBRARY_PATH",
+      "value": "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib:${LD_LIBRARY_PATH}",
+      "sep": ":"
+    }
+  ],
+  "algorithm": {
+    "name": "TESSERACTOCR",
+    "description": "Performs Tesseract optical character recognition.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
     },
-    "providesCollection" : {
-      "states" : [
+    "providesCollection": {
+      "states": [
         "DETECTION",
         "DETECTION_TEXT",
         "DETECTION_TEXT_TESSERACT"
       ],
-      "properties" : [
-         {"name": "FEED_FORWARD_TYPE",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
           "description": "Applies to images and videos. The type of feed-forward behavior. Controls how this algorithm will make use of the tracks generated in the previous pipeline stage. If this algorithm is used in the first pipeline stage then this property has no effect. Instead, the default segmenting behavior is used, where tracks from the previous stage are used to generate segments based on the TARGET_SEGMENT_LENGTH and MIN_SEGMENT_LENGTH properties. Can be set to “NONE”, “FRAME”, “SUPERSET_REGION”, or “REGION”. If set to “NONE”, the default segmenting behavior is used. If set to “FRAME”, “SUPERSET_REGION”, or “REGION” then the segment length properties are ignored and instead this algorithm will process one segment per track generated in the previous stage. If set to “FRAME”, then this algorithm will ignore the regions associated with previous detections and instead process the entire frame associated with each of those detections. If set to “SUPERSET_REGION”, then this algorithm will generate a superset region for each of the previous tracks – a bounding box of constant size and position that encloses all of the track’s detection regions. This algorithm will only process the data within the superset region. If set to “REGION”, then this algorithm will use the regions associated with previous detections, which may vary in size and position from frame to frame.",
           "type": "STRING",
           "defaultValue": "NONE"
@@ -296,10 +299,10 @@
       "algorithm": "TESSERACTOCR",
       "properties": [
         {
-        "name" : "TAGGING_FILE",
-        "value" : "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
+          "name": "TAGGING_FILE",
+          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
         }
-    ]
+      ]
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT",
@@ -307,15 +310,14 @@
       "algorithm": "TESSERACTOCR",
       "properties": [
         {
-        "name" : "TAGGING_FILE",
-        "value" : "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
+          "name": "TAGGING_FILE",
+          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
         },
         {
           "name": "TESSERACT_PSM",
           "value": "11"
         }
-
-    ]
+      ]
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION (WITH FF REGION) ACTION",
@@ -323,12 +325,12 @@
       "algorithm": "TESSERACTOCR",
       "properties": [
         {
-          "name" : "TAGGING_FILE",
-          "value" : "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
+          "name": "TAGGING_FILE",
+          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
         },
         {
-          "name" : "FEED_FORWARD_TYPE",
-          "value" : "REGION"
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
         }
       ]
     }
