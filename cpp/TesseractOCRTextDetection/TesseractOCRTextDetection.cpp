@@ -1513,19 +1513,20 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
     std::vector<TesseractOCRTextDetection::OCR_output> ocr_outputs;
 
     MPFImageReader image_reader(job);
-    cv::Mat input_image = image_reader.GetImage();
+    cv::Mat image_data = image_reader.GetImage();
+    cv::Size input_size = image_data.size();
 
-    if (!preprocess_image(job, input_image, ocr_fset, job_status)) {
+    if (!preprocess_image(job, image_data, ocr_fset, job_status)) {
         return job_status;
     }
 
-    MPFImageLocation osd_track_results(0, 0, input_image.cols, input_image.rows);
+    MPFImageLocation osd_track_results(0, 0, input_size.width, input_size.height);
     std::string tessdata_script_dir = "";
 
     if (ocr_fset.psm == 0 || ocr_fset.enable_osd) {
 
         OSResults os_results;
-        get_OSD(os_results, input_image, job, ocr_fset, osd_track_results.detection_properties, job_status, tessdata_script_dir);
+        get_OSD(os_results, image_data, job, ocr_fset, osd_track_results.detection_properties, job_status, tessdata_script_dir);
 
         // When PSM is set to 0, there is no need to process any further.
         if (ocr_fset.psm == 0) {
@@ -1535,13 +1536,13 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFImageJob &jo
         }
     }
 
-    if (!get_tesseract_detections(job, ocr_outputs, input_image, ocr_fset, job_status, tessdata_script_dir)) {
+    if (!get_tesseract_detections(job, ocr_outputs, image_data, ocr_fset, job_status, tessdata_script_dir)) {
         LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] Could not run tesseract!"));
         return job_status;
     }
 
     for (auto ocr_out: ocr_outputs) {
-        MPFImageLocation image_location(0, 0, input_image.cols, input_image.rows, ocr_out.confidence);
+        MPFImageLocation image_location(0, 0, input_size.width, input_size.height, ocr_out.confidence);
         // Copy over OSD detection results into OCR output track.
         image_location.detection_properties = osd_track_results.detection_properties;
         bool process_text = process_text_tagging(image_location.detection_properties, job, ocr_out, job_status, ocr_fset,
@@ -1620,15 +1621,15 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
     }
 
     int page_num = 0;
-    cv::Mat input_image;
+    cv::Mat image_data;
     std::string default_lang = ocr_fset.tesseract_lang;
     for (std::string filename : filelist) {
         MPFImageJob c_job(job.job_name, filename, job.job_properties, job.media_properties);
 
         MPFImageReader image_reader(c_job);
-        cv::Mat input_image = image_reader.GetImage();
+        cv::Mat image_data = image_reader.GetImage();
 
-        if (!preprocess_image(c_job, input_image, ocr_fset, job_status)) {
+        if (!preprocess_image(c_job, image_data, ocr_fset, job_status)) {
             return job_status;
         }
 
@@ -1638,7 +1639,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
             OSResults os_results;
             // Reset to original specified language before processing OSD.
             ocr_fset.tesseract_lang = default_lang;
-            get_OSD(os_results, input_image, c_job, ocr_fset, osd_track_results.detection_properties, job_status, tessdata_script_dir);
+            get_OSD(os_results, image_data, c_job, ocr_fset, osd_track_results.detection_properties, job_status, tessdata_script_dir);
 
             // When PSM is set to 0, there is no need to process any further.
             // Proceed to next page for OSD processing.
@@ -1651,7 +1652,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
         }
 
         std::vector<TesseractOCRTextDetection::OCR_output> ocr_outputs;
-        if (!get_tesseract_detections(c_job, ocr_outputs, input_image, ocr_fset, job_status, tessdata_script_dir)) {
+        if (!get_tesseract_detections(c_job, ocr_outputs, image_data, ocr_fset, job_status, tessdata_script_dir)) {
             LOG4CXX_ERROR(hw_logger_, log_print_str("[" + job.job_name + "] Could not run tesseract!"));
             boost::filesystem::remove_all(temp_im_directory);
             return job_status;
