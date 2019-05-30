@@ -1621,7 +1621,6 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
     }
 
     int page_num = 0;
-    cv::Mat image_data;
     std::string default_lang = ocr_fset.tesseract_lang;
     for (std::string filename : filelist) {
         MPFImageJob c_job(job.job_name, filename, job.job_properties, job.media_properties);
