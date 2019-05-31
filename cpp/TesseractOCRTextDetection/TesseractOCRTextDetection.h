@@ -140,8 +140,10 @@ namespace MPF {
             log4cxx::LoggerPtr hw_logger_;
             QHash<QString, QString> parameters;
             OCR_filter_settings default_ocr_fset;
-            std::map<std::string, tesseract::TessBaseAPI *> tess_api_map;
             std::map<std::wstring, std::wstring> reg_table;
+
+            // Map of {OCR engine, language} pairs to Tesseract API pointers
+            std::map<std::pair<int, std::string>, tesseract::TessBaseAPI *> tess_api_map;
 
             std::wstring fix_regex(std::wstring inreg);
 

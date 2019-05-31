@@ -807,9 +807,10 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         }
 
         lang = boost::algorithm::join(languages, "+");
+        pair<int, string> tess_api_key = make_pair(ocr_fset.oem, lang);
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Running Tesseract with specified language: " + lang);
 
-        if (tess_api_map.find(lang) == tess_api_map.end()) {
+        if (tess_api_map.find(tess_api_key) == tess_api_map.end()) {
 
             // Confirm each language model is present in tessdata or shared model directory.
             // Language models that run together must be present in the same directory.
@@ -842,10 +843,10 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
                 return false;
             }
 
-            tess_api_map[lang] = tess_api;
+            tess_api_map[tess_api_key] = tess_api;
         }
 
-        tesseract::TessBaseAPI *tess_api = tess_api_map[lang];
+        tesseract::TessBaseAPI *tess_api = tess_api_map[tess_api_key];
         tess_api->SetPageSegMode((tesseract::PageSegMode) ocr_fset.psm);
         tess_api->SetImage(imi.data, imi.cols, imi.rows, imi.channels(), static_cast<int>(imi.step));
         unique_ptr<char[]> text{tess_api->GetUTF8Text()};
@@ -873,7 +874,6 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
 
 string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &job, const string &lang_str,
                                                        const string &directory) {
-
 
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Checking tessdata models in " + directory + ".");
 
@@ -929,7 +929,10 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
                                         string &tessdata_script_dir) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Running Tesseract OSD.");
 
-    if (tess_api_map.find("osd") == tess_api_map.end()) {
+    int oem = 3;
+    pair<int, string> tess_api_key = make_pair(oem, "osd");
+
+    if (tess_api_map.find(tess_api_key) == tess_api_map.end()) {
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Loading OSD model.");
 
         string tessdata_dir = return_valid_tessdir(job, "osd", ocr_fset.model_dir);
@@ -940,7 +943,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         }
 
         tesseract::TessBaseAPI *tess_api = new tesseract::TessBaseAPI();
-        int init_rc = tess_api->Init(tessdata_dir.c_str(), "osd", (tesseract::OcrEngineMode) 3);
+        int init_rc = tess_api->Init(tessdata_dir.c_str(), "osd", (tesseract::OcrEngineMode) oem);
 
         if (init_rc != 0) {
             LOG4CXX_ERROR(hw_logger_,
@@ -949,12 +952,12 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             return;
         }
 
-        tess_api_map["osd"] = tess_api;
+        tess_api_map[tess_api_key] = tess_api;
 
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] OSD model ready.");
     }
 
-    tesseract::TessBaseAPI *tess_api = tess_api_map["osd"];
+    tesseract::TessBaseAPI *tess_api = tess_api_map[tess_api_key];
     tess_api->SetPageSegMode(tesseract::PSM_AUTO_OSD);
     tess_api->SetImage(imi.data, imi.cols, imi.rows, imi.channels(), static_cast<int>(imi.step));
     tess_api->DetectOS(&results);
