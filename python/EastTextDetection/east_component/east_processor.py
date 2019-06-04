@@ -219,7 +219,7 @@ class EastProcessor(object):
         )
 
         text_type = 'UNSTRUCTURED'
-        if structure_score > min_structured_score:
+        if structure_score >= min_structured_score:
             text_type = 'STRUCTURED'
 
         if not len(rboxes):
@@ -302,7 +302,7 @@ class EastProcessor(object):
         )
 
         text_type = 'UNSTRUCTURED'
-        if structure_score > min_structured_score:
+        if structure_score >= min_structured_score:
             text_type = 'STRUCTURED'
 
         # Split by frame so that boxes in different frames don't interfere

@@ -19,9 +19,9 @@ Users can control how frequently text is detected. `CONFIDENCE_THRESHOLD` is the
 The `MERGE_REGIONS` property dictates how detections are filtered and/or combined. When set to `FALSE`, standard non-maximum suppression is used with `NMS_MIN_OVERLAP` as a threshold value. In this case, when the ratio between the areas of intersection and union of two regions is greater than or equal to `NMS_MIN_OVERLAP`, the detection with the lower confidence score is dropped.
 
 When `MERGE_REGIONS` is `TRUE`, detections are merged (replaced with a minimal enclosing bounding box at the same orientation) rather than filtered. Users can control how aggressively the component merges regions of text with the `MERGE_MIN_OVERLAP`, `MERGE_MAX_TEXT_HEIGHT_DIFFERENCE`, and `MERGE_MAX_ROTATION_DIFFERENCE` parameters. For two detections to be merged, all of the following must be true:
-1. The ratio between the area of intersection of two regions and the area of the smaller region is greater than `MERGE_MIN_OVERLAP`. For example, if `MERGE_MIN_OVERLAP = 0.5`, then the larger region must cover at least half of the smaller region.
-2. The relative difference in detected text height for two regions is below `MERGE_MAX_TEXT_HEIGHT_DIFFERENCE`.
-3. The absolute difference (in degrees) between the orientations of two regions is below `MERGE_MAX_ROTATION_DIFFERENCE`.
+1. The ratio between the area of intersection of two regions and the area of the smaller region is greater or equal to than `MERGE_MIN_OVERLAP`. For example, if `MERGE_MIN_OVERLAP = 0.5`, then the larger region must cover at least half of the smaller region.
+2. The relative difference in detected text height for two regions is less than or equal to `MERGE_MAX_TEXT_HEIGHT_DIFFERENCE`.
+3. The absolute difference (in degrees) between the orientations of two regions is less than or equal to `MERGE_MAX_ROTATION_DIFFERENCE`.
 
 Note that `MERGE_MIN_OVERLAP` and `NMS_MIN_OVERLAP` work with different measures of "overlap"; in standard non-max-suppression, the intersect over union (IoU) between boxes is used, while our merging algorithm compares the area of intersect over the smaller area (IoSA).
 
