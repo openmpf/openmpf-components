@@ -36,156 +36,189 @@
 #include <boost/regex.hpp>
 #include <boost/locale.hpp>
 
+#include <tesseract/baseapi.h>
 #include <tesseract/osdetect.h>
 #include <QHash>
 #include <QString>
 
 namespace MPF {
 
-namespace COMPONENT {
+    namespace COMPONENT {
 
-class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
+        class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
-  public:
-    TesseractOCRTextDetection() = default;
-    ~TesseractOCRTextDetection() = default;
+        public:
+            TesseractOCRTextDetection() = default;
 
-    std::string GetDetectionType();
+            ~TesseractOCRTextDetection();
 
-    bool Init();
-    bool Close();
+            bool Init() override;
 
-    MPFDetectionError GetDetections(const MPFImageJob &job,
-                                    std::vector<MPFImageLocation> &locations);
+            bool Close() override;
 
-    MPFDetectionError GetDetections(const MPFGenericJob &job,
-                                    std::vector<MPFGenericTrack> &tracks);
+            MPFDetectionError GetDetections(const MPFImageJob &job,
+                                            std::vector<MPFImageLocation> &locations) override;
 
-  private:
-    struct OCR_char_stats {
-        int alphabet_count;
-        int num_count;
-        int whspace_count;
-        int punct_count;
-        int non_eng_count;
-        int char_list[26];
-    };
+            MPFDetectionError GetDetections(const MPFGenericJob &job,
+                                            std::vector<MPFGenericTrack> &tracks) override;
 
-    struct OCR_filter_settings {
-        bool num_only_ok;
-        bool threshold_check;
-        bool hist_check;
-        bool invert;
-        bool enable_adaptive_thrs;
-        bool enable_otsu_thrs;
-        bool enable_rescale;
-        bool enable_sharpen;
-        bool enable_osd;
-        bool combine_detected_scripts;
-        int adaptive_thrs_pixel;
-        int min_word_len;
-        int hist_min_char;
-        int psm;
-        int oem;
-        int max_scripts;
-        int max_text_tracks;
-        double adaptive_thrs_c;
-        double scale;
-        double sharpen;
-        double excess_eng_symbols;
-        double excess_non_eng_symbols;
-        double vowel_min;
-        double vowel_max;
-        double correl_limit;
-        double min_orientation_confidence;
-        double min_script_confidence;
-        double min_script_score;
-        double min_secondary_script_thrs;
-        std::string tesseract_lang;
-        std::string model_dir;
-    };
+            std::string GetDetectionType() override;
 
-    struct OCR_output {
-        double confidence;
-        std::string language;
-        std::wstring text;
+            bool Supports(MPFDetectionDataType data_type) override;
 
-        bool operator < (const OCR_output& ocr_out) const
-        {
-            return (confidence < ocr_out.confidence);
-        }
+        private:
+            struct OCR_char_stats {
+                int alphabet_count;
+                int num_count;
+                int whspace_count;
+                int punct_count;
+                int non_eng_count;
+                int char_list[26];
+            };
 
-        bool operator > (const OCR_output& ocr_out) const
-        {
-            return (confidence > ocr_out.confidence);
-        }
-    };
+            struct OCR_filter_settings {
+                bool num_only_ok;
+                bool threshold_check;
+                bool hist_check;
+                bool invert;
+                bool enable_adaptive_thrs;
+                bool enable_otsu_thrs;
+                bool enable_rescale;
+                bool enable_sharpen;
+                bool enable_osd;
+                bool combine_detected_scripts;
+                int adaptive_thrs_pixel;
+                int min_word_len;
+                int hist_min_char;
+                int psm;
+                int oem;
+                int max_scripts;
+                int max_text_tracks;
+                double adaptive_thrs_c;
+                double scale;
+                double sharpen;
+                double excess_eng_symbols;
+                double excess_non_eng_symbols;
+                double vowel_min;
+                double vowel_max;
+                double correl_limit;
+                double min_orientation_confidence;
+                double min_script_confidence;
+                double min_script_score;
+                double min_secondary_script_thrs;
+                std::string tesseract_lang;
+                std::string model_dir;
+            };
 
-    struct OSD_script {
-        int id;
-        double score;
-        bool operator < (const OSD_script& script) const
-        {
-            return (score < script.score);
-        }
+            struct OCR_output {
+                double confidence;
+                std::string language;
+                std::wstring text;
 
-        bool operator > (const OSD_script& script) const
-        {
-            return (score > script.score);
-        }
-    };
+                bool operator<(const OCR_output &ocr_out) const {
+                    return (confidence < ocr_out.confidence);
+                }
 
-    QHash<QString, QString> parameters;
-    OCR_filter_settings default_ocr_fset;
+                bool operator>(const OCR_output &ocr_out) const {
+                    return (confidence > ocr_out.confidence);
+                }
+            };
 
-    log4cxx::LoggerPtr hw_logger_;
-    std::map<std::wstring,std::wstring> regTable;
-    std::wstring fix_regex(std::wstring inreg);
-    std::map<std::wstring,std::map<std::wstring,std::vector<std::wstring>>> parse_json(const MPFJob &job, const std::string &jsonfile_path, MPFDetectionError &job_status);
-    bool get_tesseract_detections(const MPFImageJob &job, std::vector<OCR_output> &detection, cv::Mat &imi, const OCR_filter_settings &ocr_fset, MPFDetectionError &job_status, const std::string &tessdata_script_dir);
-    bool preprocess_image(const MPFImageJob &job, std::pair<int, int> &image_dim, cv::Mat &image_result, const OCR_filter_settings &ocr_fset,  MPFDetectionError &job_status);
+            struct OSD_script {
+                int id;
+                double score;
 
-    void set_default_parameters();
-    void set_read_config_parameters();
-    void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset);
-    void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
-        std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string,
-        std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string_split,
-        std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex);
+                bool operator<(const OSD_script &script) const {
+                    return (score < script.score);
+                }
 
-    void get_path_files(const std::string root, const std::string& ext, std::vector<std::string> &ret);
-    OCR_char_stats char_count(const std::wstring &s, const std::wstring &white_space, const std::wstring &eng_symbol, const std::wstring &eng_num );
-    std::wstring check_string(const std::wstring &s, const OCR_filter_settings &ocrset);
+                bool operator>(const OSD_script &script) const {
+                    return (score > script.score);
+                }
+            };
 
-    bool comp_strcmp(const std::wstring &strHaystack, const std::wstring &strNeedle);
-    bool comp_regex(const MPFImageJob &job, const std::wstring &detection, const std::wstring &regstr, MPFDetectionError &job_status);
-    bool Supports(MPFDetectionDataType data_type);
-    bool token_comparison(const std::wstring &token, const std::wstring &value);
-    void Sharpen(cv::Mat &image, double weight);
-    std::string log_print_str(const std::string &text);
-    std::string log_print_str(const std::wstring &text);
-    std::string log_print_str(const char* text);
-    std::string log_print_str(const wchar_t* text);
-    std::vector<std::wstring> get_tokens(const std::wstring &str);
+            log4cxx::LoggerPtr hw_logger_;
+            QHash<QString, QString> parameters;
+            OCR_filter_settings default_ocr_fset;
+            std::map<std::wstring, std::wstring> reg_table;
 
-    std::string parse_regex_code(boost::regex_constants::error_type etype);
+            // Map of {OCR engine, language} pairs to Tesseract API pointers
+            std::map<std::pair<int, std::string>, tesseract::TessBaseAPI *> tess_api_map;
 
-    std::set<std::wstring> search_regex(const MPFImageJob &job, const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex, MPFDetectionError &job_status);
-    std::set<std::wstring> search_string(const MPFImageJob &job, const std::wstring &ocr_detections, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
-    std::set<std::wstring> search_string_split(const MPFImageJob &job, const std::vector<std::wstring> &tokenized, const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string);
+            std::wstring fix_regex(std::wstring inreg);
 
-    bool process_text_tagging(Properties &detection_properties, const MPFImageJob &job, OCR_output &ocr_out, MPFDetectionError  &job_status,
-        const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
-        const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_regex,
-        const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string_split,
-        const std::map<std::wstring,std::vector<std::wstring>> &json_kvs_string, int page_num = -1);
+            std::map<std::wstring, std::map<std::wstring, std::vector<std::wstring>>> parse_json(const MPFJob &job,
+                                                                                                 const std::string &jsonfile_path,
+                                                                                                 MPFDetectionError &job_status);
 
-    void get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, OCR_filter_settings &ocr_fset, Properties &detection_properties, MPFDetectionError &job_status, std::string &tessdata_script_dir);
-    std::string return_valid_tessdir(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
-    bool check_tess_model_directory(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
-};
+            bool get_tesseract_detections(const MPFImageJob &job, std::vector<OCR_output> &detection, cv::Mat &imi,
+                                          const OCR_filter_settings &ocr_fset, MPFDetectionError &job_status,
+                                          const std::string &tessdata_script_dir);
 
-}
+            bool preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset,
+                                  MPFDetectionError &job_status);
+
+            void set_default_parameters();
+
+            void set_read_config_parameters();
+
+            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset);
+
+            void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
+                                std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string,
+                                std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string_split,
+                                std::map<std::wstring, std::vector<std::wstring>> &json_kvs_regex);
+
+            OCR_char_stats
+            char_count(const std::wstring &s, const std::wstring &white_space, const std::wstring &eng_symbol,
+                       const std::wstring &eng_num);
+
+            std::wstring check_string(const std::wstring &s, const OCR_filter_settings &ocrset);
+
+            bool comp_strcmp(const std::wstring &strHaystack, const std::wstring &strNeedle);
+
+            bool comp_regex(const MPFImageJob &job, const std::wstring &detection, const std::wstring &regstr,
+                            MPFDetectionError &job_status);
+
+            bool token_comparison(const std::wstring &token, const std::wstring &value);
+
+            void sharpen(cv::Mat &image, double weight);
+
+            std::vector<std::wstring> get_tokens(const std::wstring &str);
+
+            std::string parse_regex_code(boost::regex_constants::error_type etype);
+
+            std::set<std::wstring> search_regex(const MPFImageJob &job, const std::wstring &ocr_detections,
+                                                const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_regex,
+                                                MPFDetectionError &job_status);
+
+            std::set<std::wstring> search_string(const MPFImageJob &job, const std::wstring &ocr_detections,
+                                                 const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string);
+
+            std::set<std::wstring>
+            search_string_split(const MPFImageJob &job, const std::vector<std::wstring> &tokenized,
+                                const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string);
+
+            bool process_text_tagging(Properties &detection_properties, const MPFImageJob &job, OCR_output &ocr_out,
+                                      MPFDetectionError &job_status,
+                                      const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                      const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_regex,
+                                      const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string_split,
+                                      const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string,
+                                      int page_num = -1);
+
+            void get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, OCR_filter_settings &ocr_fset,
+                         Properties &detection_properties, MPFDetectionError &job_status,
+                         std::string &tessdata_script_dir);
+
+            std::string
+            return_valid_tessdir(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
+
+            bool check_tess_model_directory(const MPFImageJob &job, const std::string &lang_str,
+                                            const std::string &directory);
+        };
+
+    }
 }
 
 #endif
