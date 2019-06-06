@@ -42,7 +42,7 @@ using namespace MPF::COMPONENT;
 
 void setAlgorithmProperties(Properties &algorithm_properties, const std::map<std::string, std::string> &custom) {
     algorithm_properties["TAGGING_FILE"] = "config/test-text-tags-foreign.json";
-    algorithm_properties["SHARPEN"] = "1.0";
+    algorithm_properties["SHARPEN_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING"] = "1.0";
     algorithm_properties["TESSERACT_LANGUAGE"] = "eng";
     algorithm_properties["THRS_FILTER"] = "false";
     algorithm_properties["HIST_FILTER"] = "false";
@@ -168,6 +168,36 @@ void convert_results(std::vector<MPFImageLocation> &im_track, const std::vector<
         im_track.push_back(image_location);
     }
 }
+
+TEST(TESSERACTOCR, ImageProcessingTest) {
+
+    // Ensure user can specify custom model directory locations.
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    std::map<std::string,std::string> custom_properties = {};
+
+    runImageDetection("data/limited-contrast.png", ocr, results,  custom_properties);
+    assertTextNotInImage("data/limited-contrast.png", "Contrast Text", results);
+
+    results.clear();
+    runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties);
+    assertTextNotInImage("data/wild-small-text.png", "PLACE", results);
+
+    results.clear();
+    custom_properties = {{"ENABLE_WILD_TEXT_PREPROCESSING","true"}, {"ENABLE_ADAPTIVE_HIST_EQUALIZATION_WILD_TEXT_IMAGE_PREPROCESSING","true"}};
+    runImageDetection("data/limited-contrast.png", ocr, results,  custom_properties);
+    assertTextInImage("data/limited-contrast.png", "Contrast Text", results);
+
+    results.clear();
+    custom_properties = {{"ENABLE_WILD_TEXT_PREPROCESSING","true"}, {"MIN_IMAGE_HEIGHT_WILD_TEXT_IMAGE_PREPROCESSING","60"}};
+    runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties);
+    assertTextInImage("data/wild-small-text.png", "PLACE", results);
+}
+
 
 TEST(TESSERACTOCR, ModelTest) {
 

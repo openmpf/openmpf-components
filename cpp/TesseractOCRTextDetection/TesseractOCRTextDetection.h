@@ -81,12 +81,15 @@ namespace MPF {
                 bool threshold_check;
                 bool hist_check;
                 bool invert;
+                bool enable_hist_equalization;
+                bool enable_adaptive_hist_equalization;
                 bool enable_adaptive_thrs;
                 bool enable_otsu_thrs;
                 bool enable_rescale;
                 bool enable_sharpen;
                 bool enable_osd;
                 bool combine_detected_scripts;
+                bool processing_wild_text;
                 int adaptive_thrs_pixel;
                 int min_word_len;
                 int hist_min_char;
@@ -94,6 +97,10 @@ namespace MPF {
                 int oem;
                 int max_scripts;
                 int max_text_tracks;
+                int min_height;
+                int min_width;
+                int adaptive_hist_tile_size;
+                double adaptive_hist_clip_limit;
                 double adaptive_thrs_c;
                 double scale;
                 double sharpen;
