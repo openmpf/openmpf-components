@@ -64,15 +64,15 @@ if __name__ == '__main__':
     )
     parser.add_argument('--max_side_length', type=int, default=-1)
     parser.add_argument('--confidence_threshold', type=float, default=0.8)
-    parser.add_argument('--merge_min_overlap', type=float, default=0.1)
+    parser.add_argument('--merge_min_overlap', type=float, default=0.01)
     parser.add_argument('--nms_min_overlap', type=float, default=0.1)
     parser.add_argument('--merge_max_text_height_difference', type=float, default=0.3)
-    parser.add_argument('--merge_max_rotation_difference', type=float, default=5.0)
+    parser.add_argument('--merge_max_rotation_difference', type=float, default=10.0)
     parser.add_argument('--min_structured_text_threshold', type=float, default=0.01)
     parser.add_argument('--rotate_and_detect', action='store_true')
     parser.add_argument('--merge_regions', action='store_true')
     parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--padding', type=float, default=0.15)
+    parser.add_argument('--padding', type=float, default=0.1)
     parser.add_argument(
         '--out_dir',
         nargs='?',

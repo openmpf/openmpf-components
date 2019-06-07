@@ -56,17 +56,17 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
 
         # Get the threshold values for filtering bounding boxes
         min_confidence = float(job_properties.get('CONFIDENCE_THRESHOLD','0.8'))
-        min_merge_overlap = float(job_properties.get('MERGE_MIN_OVERLAP','0.1'))
+        min_merge_overlap = float(job_properties.get('MERGE_MIN_OVERLAP','0.01'))
         min_nms_overlap = float(job_properties.get('NMS_MIN_OVERLAP','0.1'))
         max_height_delta = float(job_properties.get('MERGE_MAX_TEXT_HEIGHT_DIFFERENCE','0.3'))
-        max_rot_delta = float(job_properties.get('MERGE_MAX_ROTATION_DIFFERENCE','5'))
+        max_rot_delta = float(job_properties.get('MERGE_MAX_ROTATION_DIFFERENCE','10.0'))
         min_structured_score = float(job_properties.get('MIN_STRUCTURED_TEXT_THRESHOLD','0.01'))
 
         # Get whether to do a second pass at 90 degrees
         rotate_on = (job_properties.get('ROTATE_AND_DETECT','FALSE').lower() == 'true')
         merge_on = (job_properties.get('MERGE_REGIONS','TRUE').lower() == 'true')
 
-        padding = float(job_properties.get('PADDING','0.15'))
+        padding = float(job_properties.get('PADDING','0.1'))
 
         return dict(
             max_side_len=max_side_len,

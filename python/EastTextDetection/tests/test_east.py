@@ -27,6 +27,7 @@ from __future__ import division, print_function
 
 import sys
 import os
+from collections import Counter
 
 try:
     # Add east_component to path.
@@ -49,90 +50,12 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('unstructured.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                PADDING='0.0'
             ),
             media_properties={},
             feed_forward_location=None
         )
         results = list(EastComponent().get_detections_from_image(job))
         self.assertEqual(3, len(results))
-
-    def test_merging(self):
-        comp = EastComponent()
-
-        job = mpf.ImageJob(
-            job_name='test-structured-no-padding',
-            data_uri=self._get_test_file('structured.jpg'),
-            job_properties=dict(
-                MAX_SIDE_LENGTH='1280',
-                MERGE_MIN_OVERLAP='0.0001',
-                PADDING='0.0'
-            ),
-            media_properties={},
-            feed_forward_location=None
-        )
-        num_dets_nopad = len(list(comp.get_detections_from_image(job)))
-
-        # With a higher overlap threshold, lots of text will remain unmerged
-        job = mpf.ImageJob(
-            job_name='test-structured-high-overlap',
-            data_uri=self._get_test_file('structured.jpg'),
-            job_properties=dict(
-                MAX_SIDE_LENGTH='1280',
-                MERGE_MIN_OVERLAP='0.2',
-                PADDING='0.0'
-            ),
-            media_properties={},
-            feed_forward_location=None
-        )
-        num_dets_high_overlap = len(list(comp.get_detections_from_image(job)))
-
-        # With plenty of padding, Most text of the same size should be grouped
-        job = mpf.ImageJob(
-            job_name='test-structured-high-padding',
-            data_uri=self._get_test_file('structured.jpg'),
-            job_properties=dict(
-                MAX_SIDE_LENGTH='1280',
-                MERGE_MIN_OVERLAP='0.0001',
-                PADDING='0.5'
-            ),
-            media_properties={},
-            feed_forward_location=None
-        )
-        num_dets_pad = len(list(comp.get_detections_from_image(job)))
-        self.assertTrue(
-            num_dets_pad
-            < num_dets_nopad
-            < num_dets_high_overlap
-        )
-
-    def test_structured_text_detection(self):
-        comp = EastComponent()
-
-        job = mpf.ImageJob(
-            job_name='test-structured',
-            data_uri=self._get_test_file('structured.jpg'),
-            job_properties=dict(
-                MAX_SIDE_LENGTH='1280',
-            ),
-            media_properties={},
-            feed_forward_location=None
-        )
-        res = next(iter(comp.get_detections_from_image(job)))
-        self.assertTrue(res.detection_properties['TEXT_TYPE'] == 'STRUCTURED')
-
-        # With a higher overlap threshold, lots of text will remain unmerged
-        job = mpf.ImageJob(
-            job_name='test-unstructured',
-            data_uri=self._get_test_file('unstructured.jpg'),
-            job_properties=dict(
-                MAX_SIDE_LENGTH='1280',
-            ),
-            media_properties={},
-            feed_forward_location=None
-        )
-        res = next(iter(comp.get_detections_from_image(job)))
-        self.assertTrue(res.detection_properties['TEXT_TYPE'] == 'UNSTRUCTURED')
 
     def test_video_file(self):
         job = mpf.VideoJob(
@@ -142,15 +65,231 @@ class TestEast(unittest.TestCase):
             stop_frame=-1,
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                MERGE_MIN_OVERLAP='0.0001',
-                MERGE_REGIONS='TRUE'
             ),
             media_properties={},
             feed_forward_track=None
         )
 
-        results = list(EastComponent().get_detections_from_video(job))
-        self.assertTrue(len(results) > 0)
+        results = EastComponent().get_detections_from_video(job)
+        present_frames = set([t.start_frame for t in results])
+        self.assertEqual(len(present_frames), 150)
+
+    def test_baseline_thresholds(self):
+        comp = EastComponent()
+
+        job = mpf.ImageJob(
+            job_name='test-baseline-thresholds',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        detections = list(comp.get_detections_from_image(job))
+
+        # There should be 9 detections
+        self.assertEqual(len(detections), 9)
+
+        # Check that all detections are structured text
+        props = [d.detection_properties for d in detections]
+        for p in props:
+            self.assertEqual(p['TEXT_TYPE'], 'STRUCTURED')
+
+        # Check that there are 6 horizontal detections and 3 at about -25 degs
+        round5 = lambda x: int(5 * round(float(x) / 5.0))
+        rot_counts = Counter([round5(p['ROTATION']) for p in props])
+        self.assertEqual(len(rot_counts), 2)
+        self.assertIn(0, rot_counts)
+        self.assertIn(335, rot_counts)
+        self.assertEqual(rot_counts[0], 6)
+        self.assertEqual(rot_counts[335], 3)
+
+
+    def test_nms(self):
+        comp = EastComponent()
+
+        job = mpf.ImageJob(
+            job_name='test-nms',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MERGE_REGIONS='FALSE',
+                MAX_SIDE_LENGTH='1280',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        detections = list(comp.get_detections_from_image(job))
+
+        # Check that NMS produces many more detections than merging
+        self.assertTrue(len(detections) > 20)
+
+        # Check that most detections are small (>80% smaller than mean)
+        areas = [d.width * d.height for d in detections]
+        mean = sum(areas) / float(len(areas))
+        smaller_than_mean = sum(a < mean for a in areas) / float(len(areas))
+        self.assertTrue(smaller_than_mean > 0.8)
+
+    def test_padding(self):
+        comp = EastComponent()
+
+        job = mpf.ImageJob(
+            job_name='test-low-padding',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                PADDING='0.0',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        low_padding = len(list(comp.get_detections_from_image(job)))
+
+        # Check that no padding results in less merging
+        self.assertTrue(low_padding > 9)
+
+    def test_max_side_length(self):
+        comp = EastComponent()
+
+        job = mpf.ImageJob(
+            job_name='test-low-max-side-length',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='320',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        small_image = len(list(comp.get_detections_from_image(job)))
+
+        # Check that low side length results in only large text detected
+        self.assertEqual(small_image, 4)
+
+    def test_overlap_threshold(self):
+        comp = EastComponent()
+
+        job = mpf.ImageJob(
+            job_name='test-low-overlap-threshold',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MERGE_MIN_OVERLAP='0.0',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        low_threshold = len(list(comp.get_detections_from_image(job)))
+
+        # The zero threshold should merge the two axis-aligned pieces of small
+        # text, and the two rotated pieces of small text.
+        self.assertEqual(low_threshold, 7)
+
+    def test_rotation_threshold(self):
+        comp = EastComponent()
+
+        job = mpf.ImageJob(
+            job_name='test-high-rotation-threshold',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MERGE_MAX_ROTATION_DIFFERENCE='90',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        high_threshold = len(list(comp.get_detections_from_image(job)))
+
+        # The high threshold should should merge the three pieces of small text
+        # in the middle of the image
+        self.assertEqual(high_threshold, 7)
+
+    def test_text_height_threshold(self):
+        comp = EastComponent()
+
+        job = mpf.ImageJob(
+            job_name='test-high-text-height-threshold',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MERGE_MAX_TEXT_HEIGHT_DIFFERENCE='10',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        high_threshold = len(list(comp.get_detections_from_image(job)))
+
+        # The high threshold should merge the four pieces of text in the top
+        # left of the image, as well as the two rotated piees below that
+        self.assertEqual(high_threshold, 5)
+
+    def test_text_type_threshold(self):
+        comp = EastComponent()
+
+        job = mpf.ImageJob(
+            job_name='test-standard-text-type-threshold-structured',
+            data_uri=self._get_test_file('structured.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MIN_STRUCTURED_TEXT_THRESHOLD='0.01',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        ttype = next(iter(
+            comp.get_detections_from_image(job))
+        ).detection_properties['TEXT_TYPE']
+        self.assertEqual(ttype, 'STRUCTURED')
+
+        job = mpf.ImageJob(
+            job_name='test-standard-text-type-threshold-unstructured',
+            data_uri=self._get_test_file('unstructured.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MIN_STRUCTURED_TEXT_THRESHOLD='0.01',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        ttype = next(iter(
+            comp.get_detections_from_image(job))
+        ).detection_properties['TEXT_TYPE']
+        self.assertEqual(ttype, 'UNSTRUCTURED')
+
+        job = mpf.ImageJob(
+            job_name='test-high-text-type-threshold-structured',
+            data_uri=self._get_test_file('structured.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MIN_STRUCTURED_TEXT_THRESHOLD='0.5',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        ttype = next(iter(
+            comp.get_detections_from_image(job))
+        ).detection_properties['TEXT_TYPE']
+
+        # With a high structured text threshold, most images will be classified
+        # as unstructured text
+        self.assertEqual(ttype, 'UNSTRUCTURED')
+
+        job = mpf.ImageJob(
+            job_name='test-low-text-type-threshold-unstructured',
+            data_uri=self._get_test_file('unstructured.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MIN_STRUCTURED_TEXT_THRESHOLD='0.0001',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        ttype = next(iter(
+            comp.get_detections_from_image(job))
+        ).detection_properties['TEXT_TYPE']
+
+        # With a low structured text threshold, most images will be classified
+        # as structured text
+        self.assertEqual(ttype, 'STRUCTURED')
 
     @staticmethod
     def _get_test_file(filename):
