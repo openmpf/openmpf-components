@@ -50,13 +50,16 @@ class EastProcessor(object):
         self.logger = logger
         self._blob_width = None
         self._blob_height = None
+        self._batch_size = None
         self._rotate_on = None
         self._model = None
         self._model_90 = None
 
-    def _set_input_dimensions(self, frame_width, frame_height, max_side_len=-1):
+    def _set_input_dimensions(self, frame_width, frame_height, batch_size,
+                              max_side_len=-1):
         self._frame_width = frame_width
         self._frame_height = frame_height
+        self._batch_size = batch_size
         blob_width = frame_width
         blob_height = frame_height
 
@@ -85,17 +88,33 @@ class EastProcessor(object):
         self._blob2frame_scale = frame_dims.astype(float) / blob_dims
         self._feat2frame_scale = self._blob2frame_scale * 4.0
 
-    def load_model(self, frame_width, frame_height, max_side_len, rotate_on):
+    def load_model(self, frame_width, frame_height, max_side_len, rotate_on,
+                   batch_size=1):
+        old_params = (
+            self._blob_width,
+            self._blob_height,
+            self._batch_size
+        )
         self._set_input_dimensions(
             frame_width=frame_width,
             frame_height=frame_height,
+            batch_size=batch_size,
             max_side_len=max_side_len
         )
+        new_params = (
+            self._blob_width,
+            self._blob_height,
+            self._batch_size
+        )
+        use_cached = (old_params == new_params)
+
+        if not use_cached:
+            self._model = cv2.dnn.readNetFromTensorflow(_model_filename)
+
+        if not use_cached or (rotate_on and not self._rotate_on):
+            self._model_90 = cv2.dnn.readNetFromTensorflow(_model_filename)
 
         self._rotate_on = rotate_on
-        self._model = cv2.dnn.readNetFromTensorflow(_model_filename)
-        if self._rotate_on:
-            self._model_90 = cv2.dnn.readNetFromTensorflow(_model_filename)
 
     def _process_blob(self, blob, min_confidence, suppress_vertical, padding):
         # Run blob through model to get geometry and scores

@@ -124,12 +124,18 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         for frame in video_capture:
             frames.append(frame)
             if len(frames) >= batch_size:
-                yield np.stack(frames)
+                yield len(frames), np.stack(frames)
                 frames = []
-        # Pass leftover frames as their own batch; EAST doesn't require
-        # consistent batch sizes
+
+        # Pad the leftover frames rather than reload the model potentially twice
         if len(frames):
-            yield np.stack(frames)
+            padded = np.pad(
+                array=np.stack(frames),
+                pad_width=((0, batch_size - len(frames)), (0,0), (0,0), (0,0)),
+                mode='constant',
+                constant_values=0
+            )
+            yield len(frames), padded
 
     def get_detections_from_video_capture(self, video_job, video_capture):
         logger.info(
@@ -147,7 +153,8 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
                 frame_width=frame_width,
                 frame_height=frame_height,
                 max_side_len=kwargs['max_side_len'],
-                rotate_on=kwargs['rotate_on']
+                rotate_on=kwargs['rotate_on'],
+                batch_size=kwargs['batch_size']
             )
         except Exception as e:
             error_str = "[{:s}] Exception occurred while loading model: {:s}".format(
@@ -164,9 +171,9 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             video_capture,
             kwargs['batch_size']
         )
-        for batch in batch_gen:
+        for n, batch in batch_gen:
             try:
-                frames_dets = self.processor.process_frames(batch, **kwargs)
+                frames_dets = self.processor.process_frames(batch, **kwargs)[:n]
             except Exception as e:
                 error_str = "[{:s}] Exception occurred while processing batch: {:s}".format(
                     video_job.job_name,
