@@ -14,7 +14,7 @@ When handling video, the component processes frames in batches. Users can contro
 
 Users can control how frequently text is detected with the `CONFIDENCE_THRESHOLD` property, which is the threshold value for filtering detections by bounding box confidence. By raising this parameter, fewer detections will be reported, but those detections will tend to be of higher quality. Lowering it will have the opposite effect; many bounding boxes will be returned, but many of them may represent false positives, and contain no text in truth. By default, this property is set to 0.8, which works well for Latin script (used in most western European languages).
 
-The EAST model naturally prefers horizontal text, as text at high degrees of rotation is rare in unstructured reading datasets. If the user anticipates a large amount rotated of text, they can indicate with the `ROTATE_AND_DETECT` parameter that the input should be processed a second time after rotating 90 degrees.
+The EAST model naturally prefers horizontal text, as text at high degrees of rotation is rare in unstructured reading datasets. If the user anticipates a large amount of rotated text, they can indicate with the `ROTATE_AND_DETECT` parameter that the input should be processed a second time after rotating 90 degrees.
 
 The `SUPPRESS_VERTICAL` property controls whether to discard detections which are taller than they are wide. When dealing with English text, such detections are usually incorrect, and when `ROTATE_AND_DETECT` is `TRUE`, these spurious bounding boxes will often interfere with correct detections.
 
