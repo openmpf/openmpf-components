@@ -74,6 +74,12 @@
           "defaultValue": "TRUE"
         },
         {
+          "name": "SUPPRESS_VERTICAL",
+          "description": "Whether to suppress vertical detections (those whose height is greater than width). This will dramatically improve performance when ROTATE_AND_DETECT is TRUE, but will usually stop the detection of vertical scripts.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
           "name": "BATCH_SIZE",
           "description": "Number of frames to pass at a time when running on video.",
           "type": "INT",

@@ -71,6 +71,7 @@ if __name__ == '__main__':
     parser.add_argument('--min_structured_text_threshold', type=float, default=0.01)
     parser.add_argument('--rotate_and_detect', action='store_true')
     parser.add_argument('--merge_regions', action='store_true')
+    parser.add_argument('--suppress_vertical', action='store_true')
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--padding', type=float, default=0.1)
     parser.add_argument(
@@ -102,6 +103,7 @@ if __name__ == '__main__':
         MIN_STRUCTURED_TEXT_THRESHOLD=str(args.min_structured_text_threshold),
         ROTATE_AND_DETECT=str(args.rotate_and_detect),
         MERGE_REGIONS=str(args.merge_regions),
+        SUPPRESS_VERTICAL=str(args.suppress_vertical),
         BATCH_SIZE=str(args.batch_size),
         PADDING=str(args.padding)
     )

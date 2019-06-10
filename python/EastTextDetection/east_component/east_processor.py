@@ -97,7 +97,7 @@ class EastProcessor(object):
         if self._rotate_on:
             self._model_90 = cv2.dnn.readNetFromTensorflow(_model_filename)
 
-    def _process_blob(self, blob, min_confidence, padding):
+    def _process_blob(self, blob, min_confidence, suppress_vertical, padding):
         # Run blob through model to get geometry and scores
         self._model.setInput(blob)
         data = np.concatenate(self._model.forward(_layer_names), axis=1)
@@ -119,17 +119,22 @@ class EastProcessor(object):
         structure_score = scores.mean()
 
         # Take only detections with reasonably high confidence scores
-        found = scores > min_confidence
+        selected = scores > min_confidence
+
+        # If specified, take only detections whose width is larger than height
+        if suppress_vertical:
+            vertical = aabb[...,0] + aabb[...,2] > aabb[...,1] + aabb[...,3]
+            selected = np.logical_and(selected, np.logical_not(vertical))
 
         # Get image index and feature map coordinates (x,y) of detections
-        origin_coords = np.argwhere(found)
+        origin_coords = np.argwhere(selected)
         batch_idx = origin_coords[:,0]
         origin_coords = origin_coords[:,(2,1)].astype(np.float32)
 
         # Filter detections based on confidence
-        aabb = aabb[found]
-        rotation = rotation[found]
-        scores = scores[found]
+        aabb = aabb[selected]
+        rotation = rotation[selected]
+        scores = scores[selected]
         if self._rotate_on:
             rotated = (batch_idx % 2).astype(np.bool)
 
@@ -179,9 +184,10 @@ class EastProcessor(object):
 
         return batch_idx, rboxes, scores, structure_score
 
-    def process_image(self, image, padding, merge_on, min_confidence,
-                      min_merge_overlap, min_nms_overlap, max_height_delta,
-                      max_rot_delta, min_structured_score, **kwargs):
+    def process_image(self, image, padding, merge_on, suppress_vertical,
+                      min_confidence, min_merge_overlap, min_nms_overlap,
+                      max_height_delta, max_rot_delta, min_structured_score,
+                      **kwargs):
         """ Process a single image using the given arguments
         :param image: The image to be processed. Takes the following shape:
                 (frame_height, frame_width, num_channels)
@@ -189,6 +195,7 @@ class EastProcessor(object):
                 side is extended by 0.5 * padding * box_height.
         :param merge_on: Whether to merge regions according to the provided
                 thresholds.
+        :param suppress_vertical: Whether to suppress vertical detections.
         :param min_confidence: Threshold to use for filtering detections
                 by bounding box confidence.
         :param min_merge_overlap: Threshold value for deciding whether
@@ -215,6 +222,7 @@ class EastProcessor(object):
                 crop=False
             ),
             min_confidence=min_confidence,
+            suppress_vertical=suppress_vertical,
             padding=padding
         )
 
@@ -258,9 +266,10 @@ class EastProcessor(object):
             for x, y, w, h, r, s in quad_to_iloc(quads, scores)
         ]
 
-    def process_frames(self, frames, padding, merge_on, min_confidence,
-                       min_merge_overlap, min_nms_overlap, max_height_delta,
-                       max_rot_delta, min_structured_score, **kwargs):
+    def process_frames(self, frames, padding, merge_on, suppress_vertical,
+                       min_confidence, min_merge_overlap, min_nms_overlap,
+                       max_height_delta, max_rot_delta, min_structured_score,
+                       **kwargs):
         """ Process a volume of images using the given arguments
         :param frames: The images to be processed. Takes the following shape:
                 (batch_size, frame_height, frame_width, num_channels)
@@ -268,6 +277,7 @@ class EastProcessor(object):
                 side is extended by 0.5 * padding * box_height.
         :param merge_on: Whether to merge regions according to the provided
                 thresholds.
+        :param suppress_vertical: Whether to suppress vertical detections.
         :param min_confidence: Threshold to use for filtering detections
                 by bounding box confidence.
         :param min_merge_overlap: Threshold value for deciding whether
@@ -298,6 +308,7 @@ class EastProcessor(object):
                 crop=False
             ),
             min_confidence=min_confidence,
+            suppress_vertical=suppress_vertical,
             padding=padding
         )
 

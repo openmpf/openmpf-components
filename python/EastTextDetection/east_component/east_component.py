@@ -43,30 +43,31 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         self.processor = EastProcessor(logger)
 
     @staticmethod
-    def _parse_properties(job_properties):
+    def _parse_properties(props):
         """
         :param job_properties: Properties object from VideoJob or ImageJob
         :return: Dictionary of properties, pass as **kwargs to processor
         """
         # Get the maximum side length (pixels) of the images
-        max_side_len = int(job_properties.get('MAX_SIDE_LENGTH','-1'))
+        max_side_len = int(props.get('MAX_SIDE_LENGTH','-1'))
 
         # Get the batch size for video
-        batch_size = int(job_properties.get('BATCH_SIZE','1'))
+        batch_size = int(props.get('BATCH_SIZE','1'))
 
         # Get the threshold values for filtering bounding boxes
-        min_confidence = float(job_properties.get('CONFIDENCE_THRESHOLD','0.8'))
-        min_merge_overlap = float(job_properties.get('MERGE_MIN_OVERLAP','0.01'))
-        min_nms_overlap = float(job_properties.get('NMS_MIN_OVERLAP','0.1'))
-        max_height_delta = float(job_properties.get('MERGE_MAX_TEXT_HEIGHT_DIFFERENCE','0.3'))
-        max_rot_delta = float(job_properties.get('MERGE_MAX_ROTATION_DIFFERENCE','10.0'))
-        min_structured_score = float(job_properties.get('MIN_STRUCTURED_TEXT_THRESHOLD','0.01'))
+        min_confidence = float(props.get('CONFIDENCE_THRESHOLD','0.8'))
+        min_merge_overlap = float(props.get('MERGE_MIN_OVERLAP','0.01'))
+        min_nms_overlap = float(props.get('NMS_MIN_OVERLAP','0.1'))
+        max_height_delta = float(props.get('MERGE_MAX_TEXT_HEIGHT_DIFFERENCE','0.3'))
+        max_rot_delta = float(props.get('MERGE_MAX_ROTATION_DIFFERENCE','10.0'))
+        min_structured_score = float(props.get('MIN_STRUCTURED_TEXT_THRESHOLD','0.01'))
 
         # Get whether to do a second pass at 90 degrees
-        rotate_on = (job_properties.get('ROTATE_AND_DETECT','FALSE').lower() == 'true')
-        merge_on = (job_properties.get('MERGE_REGIONS','TRUE').lower() == 'true')
+        rotate_on = (props.get('ROTATE_AND_DETECT','FALSE').lower() == 'true')
+        merge_on = (props.get('MERGE_REGIONS','TRUE').lower() == 'true')
+        vsupp_on = (props.get('SUPPRESS_VERTICAL','TRUE').lower() == 'true')
 
-        padding = float(job_properties.get('PADDING','0.1'))
+        padding = float(props.get('PADDING','0.1'))
 
         return dict(
             max_side_len=max_side_len,
@@ -74,6 +75,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             padding=padding,
             rotate_on=rotate_on,
             merge_on=merge_on,
+            suppress_vertical=vsupp_on,
             min_confidence=min_confidence,
             min_merge_overlap=min_merge_overlap,
             min_nms_overlap=min_nms_overlap,

@@ -97,14 +97,9 @@ class TestEast(unittest.TestCase):
             self.assertEqual(p['TEXT_TYPE'], 'STRUCTURED')
 
         # Check that there are 6 horizontal detections and 3 at about -25 degs
-        round5 = lambda x: int(5 * round(float(x) / 5.0))
+        round5 = lambda x: int(5 * round(float(x) / 5.0)) % 360
         rot_counts = Counter([round5(p['ROTATION']) for p in props])
-        self.assertEqual(len(rot_counts), 2)
-        self.assertIn(0, rot_counts)
-        self.assertIn(335, rot_counts)
-        self.assertEqual(rot_counts[0], 6)
-        self.assertEqual(rot_counts[335], 3)
-
+        self.assertItemsEqual(rot_counts, {0:6, 335:3})
 
     def test_nms(self):
         comp = EastComponent()
@@ -122,13 +117,13 @@ class TestEast(unittest.TestCase):
         detections = list(comp.get_detections_from_image(job))
 
         # Check that NMS produces many more detections than merging
-        self.assertTrue(len(detections) > 20)
+        self.assertGreater(len(detections), 20)
 
         # Check that most detections are small (>80% smaller than mean)
         areas = [d.width * d.height for d in detections]
         mean = sum(areas) / float(len(areas))
         smaller_than_mean = sum(a < mean for a in areas) / float(len(areas))
-        self.assertTrue(smaller_than_mean > 0.8)
+        self.assertGreater(smaller_than_mean, 0.8)
 
     def test_padding(self):
         comp = EastComponent()
@@ -146,7 +141,7 @@ class TestEast(unittest.TestCase):
         low_padding = len(list(comp.get_detections_from_image(job)))
 
         # Check that no padding results in less merging
-        self.assertTrue(low_padding > 9)
+        self.assertGreater(low_padding, 9)
 
     def test_max_side_length(self):
         comp = EastComponent()
@@ -290,6 +285,95 @@ class TestEast(unittest.TestCase):
         # With a low structured text threshold, most images will be classified
         # as structured text
         self.assertEqual(ttype, 'STRUCTURED')
+
+    def test_vertical_suppression(self):
+        comp = EastComponent()
+
+        job = mpf.ImageJob(
+            job_name='test-vsupp-off',
+            data_uri=self._get_test_file('rotation.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MERGE_REGIONS='FALSE',
+                ROTATE_AND_DETECT='TRUE',
+                SUPPRESS_VERTICAL='FALSE'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        detections = list(comp.get_detections_from_image(job))
+        vsupp_off = len(detections)
+
+        # Confirm that vertical detections were not suppressed
+        at_least_one_vertical = False
+        for d in detections:
+            if d.height > d.width:
+                at_least_one_vertical = True
+                break
+        self.assertTrue(at_least_one_vertical)
+
+        job = mpf.ImageJob(
+            job_name='test-vsupp-on',
+            data_uri=self._get_test_file('rotation.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MERGE_REGIONS='FALSE',
+                ROTATE_AND_DETECT='TRUE'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        detections = list(comp.get_detections_from_image(job))
+        vsupp_on = len(detections)
+
+        # Confirm that vertical detections were suppressed
+        for d in detections:
+            self.assertGreater(d.width, d.height)
+
+        # Without vertical suppression, there are many low-quality detections
+        self.assertGreater(vsupp_off, vsupp_on)
+
+    def test_rotate_and_detect(self):
+        comp = EastComponent()
+
+        job = mpf.ImageJob(
+            job_name='test-rotate-off',
+            data_uri=self._get_test_file('rotation.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        detections = comp.get_detections_from_image(job)
+
+        # Filter out small single-word detections that failed to be merged
+        detections = [d for d in detections if d.height > 200 or d.width > 200]
+
+        # There should be only three merged detections, all horizontal
+        self.assertEqual(len(detections), 3)
+        round5 = lambda x: int(5 * round(float(x) / 5.0)) % 180
+        for d in detections:
+            self.assertEqual(round5(d.detection_properties['ROTATION']), 0)
+
+        job = mpf.ImageJob(
+            job_name='test-rotate-on',
+            data_uri=self._get_test_file('rotation.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                ROTATE_AND_DETECT='TRUE'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        detections = comp.get_detections_from_image(job)
+
+        # Filter out small single-word detections that failed to be merged
+        detections = [d for d in detections if d.height > 200 or d.width > 200]
+
+        # Check that there are 3 horizontal and 3 vertical detections
+        rots = [round5(d.detection_properties['ROTATION']) for d in detections]
+        self.assertItemsEqual(Counter(rots), {0:3, 90:3})
 
     @staticmethod
     def _get_test_file(filename):
