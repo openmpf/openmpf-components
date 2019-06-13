@@ -1503,12 +1503,39 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
 
     MPFImageLocation osd_track_results(0, 0, input_size.width, input_size.height);
     string tessdata_script_dir = "";
+    int xLeftUpper = 0;
+    int yLeftUpper = 0;
 
     if (ocr_fset.psm == 0 || ocr_fset.enable_osd) {
 
         OSResults os_results;
         get_OSD(os_results, image_data, job, ocr_fset, osd_track_results.detection_properties, job_status,
                 tessdata_script_dir);
+
+        // Rotate upper left coordinates based on OSD results.
+        if (ocr_fset.min_orientation_confidence <= os_results.best_result.oconfidence) {
+            switch (os_results.best_result.orientation_id) {
+                case 0:
+                    // Do not rotate.
+                    break;
+                case 1:
+                    // 90 degree counterclockwise rotation.
+                    yLeftUpper = input_size.height - 1;
+                    break;
+                case 2:
+                    // 180 degree rotation.
+                    xLeftUpper = input_size.width - 1;
+                    yLeftUpper = input_size.height - 1;
+                    break;
+                case 3:
+                    // 90 degree clockwise rotation.
+                    // 270 degree counterclockwise rotation.
+                    xLeftUpper = input_size.width - 1;
+                    break;
+                default:
+                    break;
+            }
+        }
 
         // When PSM is set to 0, there is no need to process any further.
         if (ocr_fset.psm == 0) {
@@ -1526,7 +1553,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
     }
 
     for (auto ocr_out: ocr_outputs) {
-        MPFImageLocation image_location(0, 0, input_size.width, input_size.height, ocr_out.confidence);
+        MPFImageLocation image_location(xLeftUpper, yLeftUpper, input_size.width, input_size.height, ocr_out.confidence);
         // Copy over OSD detection results into OCR output track.
         image_location.detection_properties = osd_track_results.detection_properties;
         bool process_text = process_text_tagging(image_location.detection_properties, job, ocr_out, job_status,
