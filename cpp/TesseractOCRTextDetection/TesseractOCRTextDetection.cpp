@@ -977,10 +977,12 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
                 // Do not rotate.
                 break;
             case 1:
-                // 270 degree clockwise rotation.
-                // 90 degree counterclockwise rotation.
+                // Text is rotated 270 degrees counterclockwise.
+                // Image will need to be rotated 90 degrees counterclockwise to fix this.
                 cv::rotate(imi, imi, cv::ROTATE_90_COUNTERCLOCKWISE);
-                rotation = 90;
+
+                // Report current orientation of image (uncorrected, counterclockwise).
+                rotation = 270;
                 break;
             case 2:
                 // 180 degree rotation.
@@ -988,10 +990,12 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
                 rotation = 180;
                 break;
             case 3:
-                // 90 degree clockwise rotation.
-                // 270 degree counterclockwise rotation.
+                // Text is rotated 90 degrees counterclockwise.
+                // Image will need to be rotated 270 degrees counterclockwise to fix this.
                 cv::rotate(imi, imi, cv::ROTATE_90_CLOCKWISE);
-                rotation = 270;
+
+                // Report current orientation of image (uncorrected, counterclockwise).
+                rotation = 90;
                 break;
             default:
                 break;
@@ -1519,8 +1523,9 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
                     // Do not rotate.
                     break;
                 case 1:
-                    // 90 degree counterclockwise rotation.
-                    yLeftUpper = input_size.height - 1;
+                    // Text is rotated 270 degrees counterclockwise.
+                    // Image will need to be rotated 90 degrees counterclockwise to fix this.
+                    xLeftUpper = input_size.width - 1;
                     break;
                 case 2:
                     // 180 degree rotation.
@@ -1528,9 +1533,9 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
                     yLeftUpper = input_size.height - 1;
                     break;
                 case 3:
-                    // 90 degree clockwise rotation.
-                    // 270 degree counterclockwise rotation.
-                    xLeftUpper = input_size.width - 1;
+                    // Text is rotated 90 degrees counterclockwise.
+                    // Image will be rotated 270 degrees counterclockwise.
+                    yLeftUpper = input_size.height - 1;
                     break;
                 default:
                     break;
