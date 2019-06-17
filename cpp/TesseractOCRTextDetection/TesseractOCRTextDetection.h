@@ -177,7 +177,8 @@ namespace MPF {
 
             bool comp_strcmp(const std::wstring &strHaystack, const std::wstring &strNeedle);
 
-            bool comp_regex(const MPFImageJob &job, const std::wstring &detection, const std::wstring &regstr,
+            bool comp_regex(const MPFImageJob &job, const std::wstring &detection, const std::wstring &reverse_det,
+                            const std::wstring &regstr, std::set<std::wstring> &trigger_words,
                             MPFDetectionError &job_status);
 
             bool token_comparison(const std::wstring &token, const std::wstring &value);
@@ -190,14 +191,16 @@ namespace MPF {
 
             std::set<std::wstring> search_regex(const MPFImageJob &job, const std::wstring &ocr_detections,
                                                 const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_regex,
-                                                MPFDetectionError &job_status);
+                                                std::set<std::wstring> &trigger_words, MPFDetectionError &job_status);
 
             std::set<std::wstring> search_string(const MPFImageJob &job, const std::wstring &ocr_detections,
-                                                 const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string);
+                                                 const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string,
+                                                 std::set<std::wstring> &trigger_words);
 
             std::set<std::wstring>
             search_string_split(const MPFImageJob &job, const std::vector<std::wstring> &tokenized,
-                                const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string);
+                                const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string,
+                                std::set<std::wstring> &trigger_words);
 
             bool process_text_tagging(Properties &detection_properties, const MPFImageJob &job, OCR_output &ocr_out,
                                       MPFDetectionError &job_status,

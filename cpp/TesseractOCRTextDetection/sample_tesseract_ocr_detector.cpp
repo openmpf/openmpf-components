@@ -116,6 +116,10 @@ int main(int argc, char *argv[]) {
                     std::cout << "OCR text tags: " << i << "\n"
                               << "   detected string tags = \"" << tracks[i].detection_properties.at("TAGS") << "\""
                               << std::endl;
+                    std::cout << "OCR text trigger words: " << i << "\n"
+                              << "   detected trigger words = \""
+                              << tracks[i].detection_properties.at("TRIGGER_WORDS") << "\""
+                              << std::endl;
                     std::cout << "OCR language: " << tracks[i].detection_properties.at("TEXT_LANGUAGE") << "\n";
                     std::cout << "Confidence: " << tracks[i].confidence << "\n";
                     std::cout << "OCR page_num: " << tracks[i].detection_properties.at("PAGE_NUM") << "\n"
@@ -169,6 +173,10 @@ int main(int argc, char *argv[]) {
                     std::cout << "Confidence: " << locations[i].confidence << "\n";
                     std::cout << "OCR text tags: " << i << "\n"
                               << "   detected string tags = \"" << locations[i].detection_properties.at("TAGS")
+                              << "\"" << "\n" << std::endl;
+                    std::cout << "OCR trigger words: " << i << "\n"
+                              << "   detected trigger words = \""
+                              << locations[i].detection_properties.at("TRIGGER_WORDS")
                               << "\"" << "\n" << std::endl;
                 }
             }
