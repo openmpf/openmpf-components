@@ -74,6 +74,93 @@ class TestEast(unittest.TestCase):
         present_frames = set([t.start_frame for t in results])
         self.assertEqual(len(present_frames), 150)
 
+    # TODO: Move these track comparison methods to openmpf-python-component-sdk test utils.
+
+    @staticmethod
+    def _image_locations_equal(loc_a, loc_b):
+        return loc_a.x_left_upper == loc_b.x_left_upper \
+               and loc_a.y_left_upper == loc_b.y_left_upper \
+               and loc_a.width == loc_b.width \
+               and loc_a.height == loc_b.height \
+               and loc_a.confidence == loc_b.confidence \
+               and loc_a.detection_properties == loc_b.detection_properties
+
+    @staticmethod
+    def _frame_locations_equal(flocs_a, flocs_b):
+        if set(flocs_a.keys()) != set(flocs_b.keys()):
+            return False
+        for k in flocs_a.keys():
+            if not TestEast._image_locations_equal(flocs_a[k], flocs_b[k]):
+                return False
+        return True
+
+    @staticmethod
+    def _video_tracks_equal(track_a, track_b):
+        return track_a.start_frame == track_b.start_frame \
+            and track_a.stop_frame == track_b.stop_frame \
+            and track_a.confidence == track_b.confidence \
+            and TestEast._frame_locations_equal(track_a.frame_locations, track_b.frame_locations) \
+            and track_a.detection_properties == track_b.detection_properties
+
+    @staticmethod
+    def _all_video_tracks_equal(tracks_a, tracks_b):
+        if len(tracks_a) != len(tracks_b):
+            return False
+        for track_a, track_b in zip(tracks_a, tracks_b):
+            if not TestEast._video_tracks_equal(track_a, track_b):
+                return False
+        return True
+
+    def test_video_batch_size(self):
+        job = mpf.VideoJob(
+            job_name='test-batch-remainder',
+            data_uri=self._get_test_file('toronto-highway-shortened.mp4'),
+            start_frame=0,
+            stop_frame=15,
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                BATCH_SIZE='4'
+            ),
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        results_r0 = list(EastComponent().get_detections_from_video(job))
+
+        job = mpf.VideoJob(
+            job_name='test-batch-remainder-1',
+            data_uri=self._get_test_file('toronto-highway-shortened.mp4'),
+            start_frame=0,
+            stop_frame=15,
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                BATCH_SIZE='5'
+            ),
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        results_r1 = list(EastComponent().get_detections_from_video(job))
+        self.assertTrue(self._all_video_tracks_equal(results_r0, results_r1))
+        del results_r1
+
+        job = mpf.VideoJob(
+            job_name='test-batch-remainder-4',
+            data_uri=self._get_test_file('toronto-highway-shortened.mp4'),
+            start_frame=0,
+            stop_frame=15,
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                BATCH_SIZE='6'
+            ),
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        results_r4 = list(EastComponent().get_detections_from_video(job))
+        self.assertTrue(self._all_video_tracks_equal(results_r0, results_r4))
+        del results_r4
+
     def test_baseline_thresholds(self):
         comp = EastComponent()
 
