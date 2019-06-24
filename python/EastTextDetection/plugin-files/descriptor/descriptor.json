@@ -1,0 +1,249 @@
+{
+  "componentName": "EastTextDetection",
+  "componentVersion": "4.1.0",
+  "middlewareVersion": "4.1.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "EastTextDetection",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "EAST",
+    "description": "EAST scene text detection.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TEXT_REGION",
+        "DETECTION_TEXT_REGION_EAST"
+      ],
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "description": "Applies to images and videos. The type of feed-forward behavior. Controls how this algorithm will make use of the tracks generated in the previous pipeline stage. If this algorithm is used in the first pipeline stage then this property has no effect. Instead, the default segmenting behavior is used, where tracks from the previous stage are used to generate segments based on the TARGET_SEGMENT_LENGTH and MIN_SEGMENT_LENGTH properties. Can be set to “NONE”, “FRAME”, “SUPERSET_REGION”, or “REGION”. If set to “NONE”, the default segmenting behavior is used. If set to “FRAME”, “SUPERSET_REGION”, or “REGION” then the segment length properties are ignored and instead this algorithm will process one segment per track generated in the previous stage. If set to “FRAME”, then this algorithm will ignore the regions associated with previous detections and instead process the entire frame associated with each of those detections. If set to “SUPERSET_REGION”, then this algorithm will generate a superset region for each of the previous tracks – a bounding box of constant size and position that encloses all of the track’s detection regions. This algorithm will only process the data within the superset region. If set to “REGION”, then this algorithm will use the regions associated with previous detections, which may vary in size and position from frame to frame.",
+          "type": "STRING",
+          "defaultValue": "NONE"
+        },
+        {
+          "name": "FEED_FORWARD_TOP_CONFIDENCE_COUNT",
+          "description": "Only applies if FEED_FORWARD_TYPE is set to a value other than “NONE”. If set to a value <= 0, then for each track generated in the previous pipeline stage, this algorithm will process the frame associated with each detection in that track, ignoring frames that don’t have detections. If FEED_FORWARD_TYPE is set to “FRAME”, then the entire frame is processed. If FEED_FORWARD_TYPE is set to “SUPERSET_REGION”, then only the superset region for those frames is processed. If FEED_FORWARD_TYPE is set to “REGION”, then the specific detection region for each frame is processed. If this property is set to “1” then only the exemplar frame for each of the previous tracks is processed. If this property is set to a value > 1, say 5, then each of the detections in the previous track are sorted by confidence and this algorithm will only process the frames associated with the top 5 detections with the highest confidence. For detections with the same confidence values, it will select those with a lower frame index. If the track contains less than 5 detections, then all of the available detections are used. In practice, setting this property to a value > 1 has no effect on image and audio jobs because each track only contains one detection.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "USE_KEY_FRAMES",
+          "description": "When true the component will only look at key frames (I-frames) from the input video. Can be used in conjunction with FRAME_INTERVAL. For example, when USE_KEY_FRAMES is true, and FRAME_INTERVAL is set to \"2\", then every other key frame will be processed.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "FRAME_INTERVAL",
+          "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval. Must be set to a value >= 0. If set to 0 or 1, a frame interval of 1 will be used, meaning that detection is performed on every frame. If set to N > 1, every N-1 frames will be skipped. Default value is defined by the OpenMPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.sampling.interval"
+        },
+        {
+          "name": "FRAME_RATE_CAP",
+          "description": "The threshold on the maximum number of frames to process in the video segment within one second of the native video time. If set to a value > 0, then an internal frame interval value is calculated as max(1, floor(mediaNativeFPS / FRAME_RATE_CAP)) and the FRAME_INTERVAL property is not used. To disable, set to a value <= 0. When disabled, the FRAME_INTERVAL property is used, if valid. Default value is defined by the OpenMPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.frame.rate.cap"
+        },
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "description": "Threshold value for filtering detections by bounding box confidence, between 0.0 and 1.0. Detections with scores lower than this value are dropped prior to non-maximum suppression.",
+          "type": "FLOAT",
+          "defaultValue": "0.8"
+        },
+        {
+          "name": "MIN_GAP_BETWEEN_SEGMENTS",
+          "description": "In the context of videos, the minimum number of frames between segments which are not adjacent. Value must be greater than or equal to 1. Default value is defined by the OpenMPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.gap"
+        },
+        {
+          "name": "TARGET_SEGMENT_LENGTH",
+          "description": "In the context of videos, the preferred length of segments which are to be processed by this algorithm. Value is expected to be greater than 10. Default value is defined by the OpenMPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.target.length"
+        },
+        {
+          "name": "MIN_SEGMENT_LENGTH",
+          "description": "In the context of videos, the minimum length of a segment which will be processed by this algorithm. Value must be greater than 0. Default value is defined by the OpenMPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.segment.minimum.length"
+        },
+        {
+          "name": "MERGE_TRACKS",
+          "description": "In the context of videos, when set to true, attempt to merge tracks spanning segment boundaries. Default value is defined by the OpenMPF properties file.",
+          "type": "BOOLEAN",
+          "propertiesKey": "detection.video.track.merging.enabled"
+        },
+        {
+          "name": "MIN_GAP_BETWEEN_TRACKS",
+          "description": "In the context of videos, similar tracks with less than this number of frames between them will be merged into a single track. If MERGE_TRACKS is false, this has no effect. Default value is defined by the OpenMPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.video.track.min.gap"
+        },
+        {
+          "name": "MIN_TRACK_LENGTH",
+          "description": "In the context of videos, defines the minimum track length in frames. Tracks shorter than this minimum length will be silently discarded. Default value is defined by the OpenMPF properties file.",
+          "type": "INT",
+          "propertiesKey": "detection.video.track.min.length"
+        },
+        {
+          "name": "MIN_OVERLAP",
+          "description": "In the context of videos, the minimum overlap between detection bounding boxes for adjacent tracks to be considered continuous. Value is expected to be between 0 and 1. Default value is defined by the OpenMPF properties file.",
+          "type": "DOUBLE",
+          "propertiesKey": "detection.video.track.overlap.threshold"
+        },
+        {
+          "name": "SEARCH_REGION_ENABLE_DETECTION",
+          "description": "Enable cropping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_X_DETECTION",
+          "description": "X coordinate for top left corner of cropped frame. If this string contains the % sign, then its numeric value will be interpreted as a percentage of the width of the frame, and its value will be capped between 0% and 100%, inclusive. If this string does not contain the % sign, then it will be interpreted as a pixel position. If negative, the top left X position will be set to 0.",
+          "type": "STRING",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_TOP_LEFT_Y_DETECTION",
+          "description": "Y coordinate for top left corner of cropped frame. If this string contains the % sign, then its numeric value will be interpreted as a percentage of the height of the frame, and its value will be capped between 0% and 100%, inclusive. If this string does not contain the % sign, then it will be interpreted as a pixel position. If negative, the top left Y position will be set to 0.",
+          "type": "STRING",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION",
+          "description": "X coordinate for bottom right corner of cropped frame. If this string contains the % sign, then its numeric value will be interpreted as a percentage of the width of the frame, and its value will be capped between 0% and 100%, inclusive. If this string does not contain the % sign, then it will be interpreted as a pixel position. If zero or negative, the bottom right X position will be set to the width of the frame.",
+          "type": "STRING",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION",
+          "description": "Y coordinate for bottom right corner of cropped frame. If this string contains the % sign, then its numeric value will be interpreted as a percentage of the height of the frame, and its value will be capped between 0% and 100%, inclusive. If this string does not contain the % sign, then it will be interpreted as a pixel position. If zero or negative, the bottom right Y position will be set to the height of the frame.",
+          "type": "STRING",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "ROTATION",
+          "description": "Specifies the number of degrees in the clockwise direction that the media will be rotated. Only 90, 180 and 270 degrees are supported.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "HORIZONTAL_FLIP",
+          "description": "Specifies whether or not the original media is flipped. Rotation occurs before flipping.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_ROTATE",
+          "description": "Specifies whether not to rotate media based on EXIF data or video metadata.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "AUTO_FLIP",
+          "description": "Specifies whether or not to flip media based on EXIF data.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "MAX_SIDE_LENGTH",
+          "description": "Maximum length (pixels) for one side of the image. Before being processed, the image will be resized such that the long edge is at most MAX_SIDE_LENGTH, while maintaining the same aspect ratio, and then further resized such that both dimensions are divisible by 32 (a requirement for EAST). Larger values improve recall, but cause significant slowdown. For unlimited input size, supply -1.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "MERGE_MIN_OVERLAP",
+          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the ratio between the area of intersection of two regions and the area of the smaller region is greater than or equal to this value, the boxes may be merged.",
+          "type": "FLOAT",
+          "defaultValue": "0.01"
+        },
+        {
+          "name": "NMS_MIN_OVERLAP",
+          "description": "Threshold value used during non-maximum suppression, between 0.0 and 1.0, only used when MERGE_REGIONS is false. When the ratio between the areas of intersection and union between two regions is greater than or equal to this value, the lower-confidence detection will be dropped.",
+          "type": "FLOAT",
+          "defaultValue": "0.1"
+        },
+        {
+          "name": "MERGE_MAX_TEXT_HEIGHT_DIFFERENCE",
+          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the relative difference in text height for two regions is less than or equal to this value, the boxes may be merged.",
+          "type": "FLOAT",
+          "defaultValue": "0.3"
+        },
+        {
+          "name": "MERGE_MAX_ROTATION_DIFFERENCE",
+          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 180.0. When the absolute difference (in degrees) between the orientations of two regions is less than or equal to this value, the boxes may be merged.",
+          "type": "FLOAT",
+          "defaultValue": "10.0"
+        },
+        {
+          "name": "MIN_STRUCTURED_TEXT_THRESHOLD",
+          "description": "Threshold value used to determine whether to text is considered to be structured or unstructured, between 0.0 and 1.0. Larger values will result in less text being marked as structured.",
+          "type": "FLOAT",
+          "defaultValue": "0.01"
+        },
+        {
+          "name": "ROTATE_AND_DETECT",
+          "description": "Whether to perform a second pass on the image after rotating 90 degrees. This can potentially pick up more text at high angles (larger than +/-60 degrees).",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "MERGE_REGIONS",
+          "description": "Whether to merge regions of text. If this is not TRUE, then non-max-suppression will instead be used to filter detections, and properties prefixed by MERGE_ will have no effect.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "SUPPRESS_VERTICAL",
+          "description": "Whether to suppress vertical detections (those whose height is greater than width). This will dramatically improve performance when ROTATE_AND_DETECT is TRUE, but will usually stop the detection of vertical scripts.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "BATCH_SIZE",
+          "description": "Number of frames to pass at a time when running on video.",
+          "type": "INT",
+          "defaultValue": "1"
+        },
+        {
+          "name": "PADDING",
+          "description": "The padding to add around bounding boxes to ensure the text is fully enclosed. The bounding box will be symmetrically padded on all sides with space equal to PADDING * <box_height> before non-maximum suppression.",
+          "type": "FLOAT",
+          "defaultValue": "0.1"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "EAST TEXT DETECTION ACTION",
+      "description": "Runs EAST text detection.",
+      "algorithm": "EAST",
+      "properties": []
+    }
+  ],
+  "tasks": [
+    {
+      "name": "EAST TEXT DETECTION TASK",
+      "description": "Runs EAST text detection.",
+      "actions": [
+        "EAST TEXT DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "EAST TEXT DETECTION PIPELINE",
+      "description": "Runs EAST text detection.",
+      "tasks": [
+        "EAST TEXT DETECTION TASK"
+      ]
+    }
+  ]
+}
