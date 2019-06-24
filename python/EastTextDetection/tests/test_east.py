@@ -281,7 +281,7 @@ class TestEast(unittest.TestCase):
         )
         high_threshold = len(list(comp.get_detections_from_image(job)))
 
-        # The high threshold should should merge the three pieces of small text
+        # The high threshold should should merge the three blocks of small text
         # in the middle of the image
         self.assertEqual(7, high_threshold)
 
