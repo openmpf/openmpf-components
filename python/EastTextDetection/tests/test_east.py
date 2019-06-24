@@ -72,7 +72,7 @@ class TestEast(unittest.TestCase):
 
         results = EastComponent().get_detections_from_video(job)
         present_frames = set([t.start_frame for t in results])
-        self.assertEqual(len(present_frames), 150)
+        self.assertEqual(150, len(present_frames))
 
     # TODO: Move these track comparison methods to openmpf-python-component-sdk test utils.
 
@@ -176,12 +176,12 @@ class TestEast(unittest.TestCase):
         detections = list(comp.get_detections_from_image(job))
 
         # There should be 9 detections
-        self.assertEqual(len(detections), 9)
+        self.assertEqual(9, len(detections))
 
         # Check that all detections are structured text
         props = [d.detection_properties for d in detections]
         for p in props:
-            self.assertEqual(p['TEXT_TYPE'], 'STRUCTURED')
+            self.assertEqual('STRUCTURED', p['TEXT_TYPE'])
 
         # Check that there are 6 horizontal detections and 3 at about -25 degs
         round5 = lambda x: int(5 * round(float(x) / 5.0)) % 360
@@ -245,7 +245,7 @@ class TestEast(unittest.TestCase):
         small_image = len(list(comp.get_detections_from_image(job)))
 
         # Check that low side length results in only large text detected
-        self.assertEqual(small_image, 4)
+        self.assertEqual(4, small_image)
 
     def test_overlap_threshold(self):
         comp = EastComponent()
@@ -264,7 +264,7 @@ class TestEast(unittest.TestCase):
 
         # The zero threshold should merge the two axis-aligned pieces of small
         # text, and the two rotated pieces of small text.
-        self.assertEqual(low_threshold, 7)
+        self.assertEqual(7, low_threshold)
 
     def test_rotation_threshold(self):
         comp = EastComponent()
@@ -283,7 +283,7 @@ class TestEast(unittest.TestCase):
 
         # The high threshold should should merge the three pieces of small text
         # in the middle of the image
-        self.assertEqual(high_threshold, 7)
+        self.assertEqual(7, high_threshold)
 
     def test_text_height_threshold(self):
         comp = EastComponent()
@@ -302,7 +302,7 @@ class TestEast(unittest.TestCase):
 
         # The high threshold should merge the four pieces of text in the top
         # left of the image, as well as the two rotated piees below that
-        self.assertEqual(high_threshold, 5)
+        self.assertEqual(5, high_threshold)
 
     def test_text_type_threshold(self):
         comp = EastComponent()
@@ -320,7 +320,7 @@ class TestEast(unittest.TestCase):
         ttype = next(iter(
             comp.get_detections_from_image(job))
         ).detection_properties['TEXT_TYPE']
-        self.assertEqual(ttype, 'STRUCTURED')
+        self.assertEqual('STRUCTURED', ttype)
 
         job = mpf.ImageJob(
             job_name='test-standard-text-type-threshold-unstructured',
@@ -335,7 +335,7 @@ class TestEast(unittest.TestCase):
         ttype = next(iter(
             comp.get_detections_from_image(job))
         ).detection_properties['TEXT_TYPE']
-        self.assertEqual(ttype, 'UNSTRUCTURED')
+        self.assertEqual('UNSTRUCTURED', ttype)
 
         job = mpf.ImageJob(
             job_name='test-high-text-type-threshold-structured',
@@ -353,7 +353,7 @@ class TestEast(unittest.TestCase):
 
         # With a high structured text threshold, most images will be classified
         # as unstructured text
-        self.assertEqual(ttype, 'UNSTRUCTURED')
+        self.assertEqual('UNSTRUCTURED', ttype)
 
         job = mpf.ImageJob(
             job_name='test-low-text-type-threshold-unstructured',
@@ -371,7 +371,7 @@ class TestEast(unittest.TestCase):
 
         # With a low structured text threshold, most images will be classified
         # as structured text
-        self.assertEqual(ttype, 'STRUCTURED')
+        self.assertEqual('STRUCTURED', ttype)
 
     def test_vertical_suppression(self):
         comp = EastComponent()
@@ -438,10 +438,10 @@ class TestEast(unittest.TestCase):
         detections = [d for d in detections if d.height > 200 or d.width > 200]
 
         # There should be only three merged detections, all horizontal
-        self.assertEqual(len(detections), 3)
+        self.assertEqual(3, len(detections))
         round5 = lambda x: int(5 * round(float(x) / 5.0)) % 180
         for d in detections:
-            self.assertEqual(round5(d.detection_properties['ROTATION']), 0)
+            self.assertEqual(0, round5(d.detection_properties['ROTATION']))
 
         job = mpf.ImageJob(
             job_name='test-rotate-on',
