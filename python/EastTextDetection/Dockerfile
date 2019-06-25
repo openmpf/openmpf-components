@@ -33,4 +33,4 @@ COPY . /home/mpf/component_src/
 
 RUN /home/mpf/scripts/install-component.sh
 
-ENV COMPONENT_LOG_NAME python-ocv-test.log
+ENV COMPONENT_LOG_NAME east-text-detection.log
