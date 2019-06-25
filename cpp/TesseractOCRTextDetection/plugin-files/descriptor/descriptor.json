@@ -13,7 +13,7 @@
   ],
   "algorithm": {
     "name": "TESSERACTOCR",
-    "description": "This component applies Tesseract optical character recognition to an image.",
+    "description": "Performs Tesseract optical character recognition.",
     "actionType": "DETECTION",
     "requiresCollection": {
       "states": []
@@ -295,7 +295,7 @@
   "actions": [
     {
       "name": "TESSERACT OCR TEXT DETECTION ACTION",
-      "description": "Runs the Tesseract OCR model on an image.",
+      "description": "Performs Tesseract OCR.",
       "algorithm": "TESSERACTOCR",
       "properties": [
         {
@@ -306,7 +306,7 @@
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT",
-      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
+      "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "algorithm": "TESSERACTOCR",
       "properties": [
         {
@@ -318,37 +318,76 @@
           "value": "11"
         }
       ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION (WITH FF REGION) ACTION",
+      "description": "Performs Tesseract OCR on feed-forward regions.",
+      "algorithm": "TESSERACTOCR",
+      "properties": [
+        {
+          "name": "TAGGING_FILE",
+          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
+        },
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        }
+      ]
     }
   ],
   "tasks": [
     {
       "name": "TESSERACT OCR TEXT DETECTION TASK",
-      "description": "Runs the Tesseract OCR model on an image.",
+      "description": "Performs Tesseract OCR.",
       "actions": [
         "TESSERACT OCR TEXT DETECTION ACTION"
       ]
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION TASK SPARSE TEXT",
-      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
+      "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "actions": [
         "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION (WITH FF REGION) TASK",
+      "description": "Performs Tesseract OCR on feed-forward regions.",
+      "actions": [
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) ACTION"
       ]
     }
   ],
   "pipelines": [
     {
       "name": "TESSERACT OCR TEXT DETECTION PIPELINE",
-      "description": "Runs the Tesseract OCR model on an image.",
+      "description": "Performs Tesseract OCR.",
       "tasks": [
         "TESSERACT OCR TEXT DETECTION TASK"
       ]
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION PIPELINE SPARSE TEXT",
-      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
+      "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "tasks": [
         "TESSERACT OCR TEXT DETECTION TASK SPARSE TEXT"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION (WITH EAST REGIONS) PIPELINE",
+      "description": "Performs Tesseract OCR on feed-forward regions from EAST.",
+      "tasks": [
+        "EAST TEXT DETECTION TASK",
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION (WITH EAST REGIONS AND MARKUP) PIPELINE",
+      "description": "Performs Tesseract OCR on feed-forward regions from EAST and performs markup.",
+      "tasks": [
+        "EAST TEXT DETECTION TASK",
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) TASK",
+        "OCV GENERIC MARKUP TASK"
       ]
     }
   ]
