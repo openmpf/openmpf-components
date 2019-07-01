@@ -54,5 +54,5 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-ref=$BUILD_SHAS \
       org.label-schema.vcs-url="https://github.com/openmpf" \
-      org.label-schema.vendor=MITRE \
+      org.label-schema.vendor="MITRE" \
       org.label-schema.version=$BUILD_TAG
