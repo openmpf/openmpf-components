@@ -140,7 +140,7 @@
           "defaultValue": "true"
         },
         {
-          "name": "MIN_OSD_ROTATION_CONFIDENCE",
+          "name": "MIN_OSD_TEXT_ORIENTATION_CONFIDENCE",
           "description": "Specifies the minimum confidence value (>= 0) required to use the detected text orientation when OSD automation is enabled. Top rotation confidence is calculated based on comparison of top-detected rotation score against secondary (lower confidence) rotation scores.",
           "type": "DOUBLE",
           "defaultValue": "2.0"
@@ -288,6 +288,18 @@
           "description": "Specifies constant subtracted from adaptive threshold mean.",
           "type": "DOUBLE",
           "defaultValue": "5"
+        },
+        {
+          "name": "ROTATE_AND_DETECT",
+          "description": "When enabled, automatically perform OCR using detected orientation as well as a 180 degree rotation with an OCR confidence comparision to correctly parse upside down text.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "ROTATE_AND_DETECT_MIN_CONFIDENCE",
+          "description": "Specifies minimum text confidence required to skip second OCR pass with 180 degree rotation. Negative values will result in ROTATE_AND_DETECT performing two pass OCR regardless of text confidence from the initial pass.",
+          "type": "DOUBLE",
+          "defaultValue": "95.0"
         }
       ]
     }

@@ -199,6 +199,41 @@ TEST(TESSERACTOCR, ModelTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
+TEST(TESSERACTOCR, TwoPassOCRTest) {
+
+    // Ensure that two pass OCR correctly works to process upside down text even w/out OSD support.
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"},
+                                                            {"ROTATE_AND_DETECT",     "true"}};
+
+    runImageDetection("data/eng.png", ocr, results, custom_properties);
+    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("TWO_PASS_OCR_ROTATION")) == 0) << "Expected 0 degree text rotation.";
+    assertTextInImage("data/eng.png", "All human beings", results);
+    results.clear();
+
+    runImageDetection("data/eng-rotated.png", ocr, results, custom_properties);
+    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("TWO_PASS_OCR_ROTATION")) == 180) << "Expected 180 degree text rotation.";
+    assertTextInImage("data/eng-rotated.png", "All human beings", results);
+    results.clear();
+
+    // Test to make sure threshold parameter is working.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION",            "false"},
+                         {"ROTATE_AND_DETECT_MIN_CONFIDENCE", "10"},
+                         {"ROTATE_AND_DETECT",                "true"}};
+
+    runImageDetection("data/eng-rotated.png", ocr, results, custom_properties);
+    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("TWO_PASS_OCR_ROTATION")) == 0) << "Expected 0 degree text rotation.";
+    assertTextNotInImage("data/eng-rotated.png", "All human beings", results);
+    ASSERT_TRUE(ocr.Close());
+
+}
+
+
 
 TEST(TESSERACTOCR, TrackFilterTest) {
 
@@ -207,6 +242,7 @@ TEST(TESSERACTOCR, TrackFilterTest) {
     std::vector<MPFImageLocation> results;
     ASSERT_TRUE(ocr.Init());
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"},
+                                                            {"ROTATE_AND_DETECT",     "true"},
                                                             {"TESSERACT_LANGUAGE",    "eng,chi_sim"},
                                                             {"MAX_TEXT_TRACKS",       "1"}};
 
@@ -397,7 +433,7 @@ TEST(TESSERACTOCR, OSDConfidenceFilteringTest) {
     // In the OSDTest for eng-rotated.png, the component will accept a detected rotation of 180 degrees.
     // By setting the min rotation confidence level too high, the component must default back to original setting (0 degrees rotation).
     custom_properties = {{"TESSERACT_PSM",               "0"},
-                         {"MIN_OSD_ROTATION_CONFIDENCE", "200"}};
+                         {"MIN_OSD_TEXT_ORIENTATION_CONFIDENCE", "200"}};
     runImageDetection("data/eng-rotated.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected default text rotation.";
 

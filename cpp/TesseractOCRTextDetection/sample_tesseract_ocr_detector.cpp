@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
                               << "\n";
                     std::cout << "Detected orientation: " << tracks[i].detection_properties.at("ROTATION") << "\n";
                     std::cout << "Orientation confidence: "
-                              << tracks[i].detection_properties.at("ROTATION_CONFIDENCE") << "\n";
+                              << tracks[i].detection_properties.at("TEXT_ORIENTATION_CONFIDENCE") << "\n";
 
                     if (tracks[i].detection_properties.count("SECONDARY_SCRIPTS") > 0) {
                         std::cout << "Secondary scripts: " << tracks[i].detection_properties.at("SECONDARY_SCRIPTS")
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
                     std::cout << "Detected orientation: " << locations[i].detection_properties.at("ROTATION")
                               << "\n";
                     std::cout << "Orientation confidence: "
-                              << locations[i].detection_properties.at("ROTATION_CONFIDENCE") << "\n";
+                              << locations[i].detection_properties.at("TEXT_ORIENTATION_CONFIDENCE") << "\n";
                     if (locations[i].detection_properties.count("SECONDARY_SCRIPTS") > 0) {
                         std::cout << "Secondary scripts: "
                                   << locations[i].detection_properties.at("SECONDARY_SCRIPTS") << "\n";
