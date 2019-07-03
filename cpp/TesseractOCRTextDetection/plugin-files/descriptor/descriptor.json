@@ -331,6 +331,42 @@
         {
           "name": "FEED_FORWARD_TYPE",
           "value": "REGION"
+        },
+        {
+          "name": "MIN_OSD_ROTATION_CONFIDENCE",
+          "description": "Specifies the minimum confidence value (>= 0) required to use the detected text orientation when OSD automation is enabled. Top rotation confidence is calculated based on comparison of top-detected rotation score against secondary (lower confidence) rotation scores.",
+          "type": "DOUBLE",
+          "defaultValue": "0"
+        },
+        {
+          "name": "MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE",
+          "description": "Specifies minimum confidence value (>= 0) required to use the top-detected script when OSD automation is enabled. Script confidence is calculated based on comparison of top-detected script score against the second-best script score.",
+          "type": "DOUBLE",
+          "defaultValue": "0"
+        },
+        {
+          "name": "MIN_OSD_SCRIPT_SCORE",
+          "description": "Specifies minimum required score (>= 0) to use the detected script when OSD automation is enabled. Unlike script confidence which only applies for the top-detected script, each secondary script processed during OSD also has its own script score. Thus, this threshold can be used to support multiple script detections.",
+          "type": "DOUBLE",
+          "defaultValue": "0"
+        },
+        {
+          "name": "MIN_OSD_SECONDARY_SCRIPT_THRESHOLD",
+          "description": "When running OSD automation, sets the min relative score threshold for running any secondary scripts. I.e. If set to 0.80, only scripts with raw scores that are at least 80% of the primary script score are allowed.",
+          "type": "DOUBLE",
+          "defaultValue": "0.40"
+        },
+        {
+          "name": "MAX_OSD_SCRIPTS",
+          "description": "Specifies maximum number of detected scripts by OSD. When set to 0 or below, allow any number of scripts with acceptable threshold scores.",
+          "type": "INT",
+          "defaultValue": "2"
+        },
+        {
+          "name": "SCALE",
+          "description": "Image rescaling factor. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.6.",
+          "type": "DOUBLE",
+          "defaultValue": "3.2"
         }
       ]
     }
