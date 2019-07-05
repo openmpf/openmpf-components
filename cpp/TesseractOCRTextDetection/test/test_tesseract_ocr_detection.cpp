@@ -193,7 +193,7 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
     assertTextNotInImage("data/limited-contrast.png", "Contrast Text", results);
 
     results.clear();
-    custom_properties = {{"MIN_IMAGE_HEIGHT", "-1"}};
+    custom_properties = {{"MIN_SIDE_LENGTH", "-1"}};
     runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties);
     assertTextNotInImage("data/wild-small-text.png", "PLACE", results);
 
@@ -203,7 +203,7 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
     assertTextInImage("data/limited-contrast.png", "Contrast Text", results);
 
     results.clear();
-    custom_properties = {{"MIN_IMAGE_HEIGHT", "60"}};
+    custom_properties = {{"MIN_SIDE_LENGTH", "60"}};
     runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties, true);
     assertTextInImage("data/wild-small-text.png", "PLACE", results);
     ASSERT_TRUE(ocr.Close());

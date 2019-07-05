@@ -200,7 +200,7 @@
           "defaultValue": "false"
         },
         {
-          "name": "MIN_IMAGE_HEIGHT",
+          "name": "MIN_SIDE_LENGTH",
           "description": "If set to a positive value, rescales all images to specified pixel height if smaller than provided limit. Preserves image aspect ratio.",
           "type": "INT",
           "defaultValue": "60"

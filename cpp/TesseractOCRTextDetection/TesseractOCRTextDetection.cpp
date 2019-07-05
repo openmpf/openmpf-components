@@ -266,8 +266,8 @@ void TesseractOCRTextDetection::set_read_config_parameters() {
     if (parameters.contains("INVERT")) {
         default_ocr_fset.invert = (parameters["INVERT"].toInt() > 0);
     }
-    if (parameters.contains("MIN_IMAGE_HEIGHT")) {
-        default_ocr_fset.min_height = parameters["MIN_IMAGE_HEIGHT"].toInt();
+    if (parameters.contains("MIN_SIDE_LENGTH")) {
+        default_ocr_fset.min_height = parameters["MIN_SIDE_LENGTH"].toInt();
     }
     if (parameters.contains("ADAPTIVE_HIST_TILE_SIZE")){
         default_ocr_fset.adaptive_hist_tile_size = parameters["ADAPTIVE_HIST_TILE_SIZE"].toInt();
@@ -1456,7 +1456,7 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
     }
 
     ocr_fset.invert = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"INVERT", default_ocr_fset.invert);
-    ocr_fset.min_height = DetectionComponentUtils::GetProperty<int>(job.job_properties, "MIN_IMAGE_HEIGHT", default_ocr_fset.min_height);
+    ocr_fset.min_height = DetectionComponentUtils::GetProperty<int>(job.job_properties, "MIN_SIDE_LENGTH", default_ocr_fset.min_height);
     ocr_fset.adaptive_hist_tile_size = DetectionComponentUtils::GetProperty<int>(job.job_properties, "ADAPTIVE_HIST_TILE_SIZE", default_ocr_fset.adaptive_hist_tile_size);
     ocr_fset.adaptive_hist_clip_limit = DetectionComponentUtils::GetProperty<int>(job.job_properties, "ADAPTIVE_HIST_CLIP_LIMIT", default_ocr_fset.adaptive_hist_clip_limit);
     ocr_fset.adaptive_thrs_c = DetectionComponentUtils::GetProperty<double>(job.job_properties,"ADAPTIVE_THRS_CONSTANT", default_ocr_fset.adaptive_thrs_c);
