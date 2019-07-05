@@ -176,190 +176,112 @@
           "defaultValue": "0"
         },
         {
-          "name": "ENABLE_SHARPEN_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "Enables image sharpening as a preprocessing step for default, structured text images.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "ENABLE_RESCALE_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "Enables image rescaling as a preprocessing step for default, structured text images. Combine with image sharpening to improve text resolution.",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
-        },
-        {
-          "name": "ENABLE_OTSU_THRS_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
+          "name": "STRUCTURED_TEXT_ENABLE_OTSU_THRS",
           "description": "Enables Otsu image thresholding for default, structured text images. Adaptive_thrs overrides Otsu when both are enabled. Improves text extraction by converting image to black and white. Works best for images with uniform lighting. For multicolor images with gradients, use adaptive threshold. ",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "ENABLE_ADAPTIVE_THRS_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
+          "name": "STRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS",
           "description": "Enables adaptive image thresholding (overrides Otsu) for default, structured text images. Works better for images with lighting/color gradients.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "ENABLE_ADAPTIVE_HIST_EQUALIZATION_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "Enables CLAHE (Contrast Limited Adaptive Histogram Equalization) preprocessing for default, structured text images. Applies histogram equalization locally across an image, with contrast limits and bilinear interpolation to reduce noise.",
+          "name": "STRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION",
+          "description": "Enables CLAHE (Contrast Limited Adaptive Histogram Equalization) preprocessing for default, structured text images. Applies histogram equalization locally across an image, with contrast limits and bilinear interpolation to reduce noise. Overrides basic histogram equalization when enabled.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "ENABLE_HIST_EQUALIZATION_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "Enables histogram equalization as a preprocessing step for default, structured text images. Improves lighting and contrast for images with narrow pixel color ranges.",
+          "name": "STRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION",
+          "description": "Enables histogram equalization as a preprocessing step for default, structured text images. Improves lighting and contrast for images with narrow pixel color ranges. Disabled when adaptive histogram equalization is enabled.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "MIN_IMAGE_HEIGHT_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "If set to a positive value, rescales default images to specified pixel height if smaller than provided limit. Preserves image aspect ratio.",
+          "name": "MIN_IMAGE_HEIGHT",
+          "description": "If set to a positive value, rescales all images to specified pixel height if smaller than provided limit. Preserves image aspect ratio.",
           "type": "INT",
-          "defaultValue": "0"
+          "defaultValue": "60"
         },
         {
-          "name": "MIN_IMAGE_WIDTH_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "If set to a positive value, rescales default images to specified pixel width if smaller than provided limit. Preserves image aspect ratio.",
-          "type": "INT",
-          "defaultValue": "0"
-        },
-        {
-          "name": "SHARPEN_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "Weight of the sharpening parameter for default images. Default is 1.0, 0.0 = original image, higher = sharper.",
+          "name": "STRUCTURED_TEXT_SHARPEN",
+          "description": "Weight of the sharpening parameter for default images. Higher values increase sharpening while values close to 0 will return the original image. Set to a negative value to disable sharpening.",
           "type": "DOUBLE",
-          "defaultValue": "1.0"
+          "defaultValue": "-1.0"
         },
         {
-          "name": "SCALE_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "Image rescaling factor for default images. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.6.",
+          "name": "STRUCTURED_TEXT_SCALE",
+          "description": "Image rescaling factor for default images. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 1.6. Set to a negative value to disable rescaling.",
           "type": "DOUBLE",
           "defaultValue": "1.6"
         },
         {
-          "name": "INVERT_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
+          "name": "INVERT",
           "description": "Toggles image color inversion during preprocessing for default, structured text images.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "ADAPTIVE_THRS_BLOCKSIZE_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "Specifies pixel radius for calculating adaptive threshold value for default, structured text images.",
+          "name": "ADAPTIVE_THRS_BLOCKSIZE",
+          "description": "Specifies pixel radius for calculating adaptive threshold value for all images preprocessed under adaptive thresholding.",
           "type": "INT",
           "defaultValue": "51"
         },
         {
-          "name": "ADAPTIVE_THRS_CONSTANT_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "Specifies constant subtracted from adaptive threshold mean for default, structured text images.",
+          "name": "ADAPTIVE_THRS_CONSTANT",
+          "description": "Specifies constant subtracted from adaptive threshold mean.",
           "type": "DOUBLE",
           "defaultValue": "5"
         },
         {
-          "name": "ADAPTIVE_HIST_TILE_SIZE_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "In adaptive histogram equalization, images are subdivided into tiles before histogram equalization is applied. This specifies the height and width of each image tile used for adaptive histogram equalization in default images.",
+          "name": "ADAPTIVE_HIST_TILE_SIZE",
+          "description": "In adaptive histogram equalization, images are subdivided into tiles before histogram equalization is applied. This specifies the height and width of each image tile used for adaptive histogram equalization.",
           "type": "INT",
-          "defaultValue": "51"
+          "defaultValue": "5"
         },
         {
-          "name": "ADAPTIVE_HIST_CLIP_LIMIT_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING",
-          "description": "Specifies clip limit parameter for adaptive histogram equalization in default images. Higher values limits contrast amplification of images during histogram equalization, in order to reduce image noise.",
+          "name": "ADAPTIVE_HIST_CLIP_LIMIT",
+          "description": "Specifies clip limit parameter for adaptive histogram equalization. Higher values limits contrast amplification of images during histogram equalization, in order to reduce image noise.",
           "type": "DOUBLE",
-          "defaultValue": "4.0"
+          "defaultValue": "2.0"
         },
         {
-          "name": "ENABLE_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "For images with text in real world scenery, adjust preprocessing settings to account for lower quality text images.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "ENABLE_SHARPEN_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "Enables image sharpening as a preprocessing step for wild images with text.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "ENABLE_RESCALE_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "Enables image rescaling as a preprocessing step for wild images with text. Combine with image sharpening to improve text resolution.",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
-        },
-        {
-          "name": "ENABLE_OTSU_THRS_WILD_TEXT_IMAGE_PREPROCESSING",
+          "name": "UNSTRUCTURED_TEXT_ENABLE_OTSU_THRS",
           "description": "Enables Otsu image thresholding for wild images with text. Adaptive_thrs overrides Otsu when both are enabled. Improves text extraction by converting image to black and white. Works best for images with uniform lighting. For multicolor images with gradients, use adaptive threshold. ",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "ENABLE_ADAPTIVE_THRS_WILD_TEXT_IMAGE_PREPROCESSING",
+          "name": "UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS",
           "description": "Enables adaptive image thresholding (overrides Otsu) for wild images with text. Works better for images with lighting/color gradients.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "ENABLE_ADAPTIVE_HIST_EQUALIZATION_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "Enables CLAHE (Contrast Limited Adaptive Histogram Equalization) preprocessing for wild images with text. Applies histogram equalization locally across an image, with contrast limits and bilinear interpolation to reduce noise.",
+          "name": "UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION",
+          "description": "Enables CLAHE (Contrast Limited Adaptive Histogram Equalization) preprocessing for wild images with text. Applies histogram equalization locally across an image, with contrast limits and bilinear interpolation to reduce noise. Overrides basic histogram equalization when enabled.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "ENABLE_HIST_EQUALIZATION_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "Enables histogram equalization as a preprocessing step for wild images with text. Improves lighting and contrast for images with narrow pixel color ranges.",
+          "name": "UNSTRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION",
+          "description": "Enables histogram equalization as a preprocessing step for wild images with text. Improves lighting and contrast for images with narrow pixel color ranges. Disabled when adaptive histogram equalization is enabled.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "MIN_IMAGE_HEIGHT_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "If set to a positive value, rescale image to specified pixel height if smaller than provided limit for wild images with text. Preserves image aspect ratio.",
-          "type": "INT",
-          "defaultValue": "0"
-        },
-        {
-          "name": "MIN_IMAGE_WIDTH_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "If set to a positive value, rescale image to specified pixel width if smaller than provided limit for wild images with text. Preserves image aspect ratio.",
-          "type": "INT",
-          "defaultValue": "0"
-        },
-        {
-          "name": "SHARPEN_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "Weight of the sharpening parameter for wild images with text. Default is 1.0, 0.0 = original image, higher = sharper.",
+          "name": "UNSTRUCTURED_TEXT_SHARPEN",
+          "description": "Weight of the sharpening parameter for wild images with text. Higher values increase sharpening while values close to 0 will return the original image. Set to a negative value to disable sharpening.",
           "type": "DOUBLE",
           "defaultValue": "1.0"
         },
         {
-          "name": "SCALE_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "Image rescaling factor for wild images with text. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.6.",
+          "name": "UNSTRUCTURED_TEXT_SCALE",
+          "description": "Image rescaling factor for wild images with text. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.6. Set to a negative value to disable rescaling.",
           "type": "DOUBLE",
-          "defaultValue": "1.6"
-        },
-        {
-          "name": "INVERT_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "Toggles image color inversion during preprocessing for wild images with text.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "ADAPTIVE_THRS_BLOCKSIZE_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "Specifies pixel radius for calculating adaptive threshold value. Setting for wild images with text.",
-          "type": "INT",
-          "defaultValue": "51"
-        },
-        {
-          "name": "ADAPTIVE_THRS_CONSTANT_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "Specifies constant subtracted from adaptive threshold mean. Setting for wild images with text.",
-          "type": "DOUBLE",
-          "defaultValue": "5"
-        },
-        {
-          "name": "ADAPTIVE_HIST_TILE_SIZE_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "In adaptive histogram equalization, images are subdivided into tiles before histogram equalization is applied. This specifies the height and width of each image tile used for adaptive histogram equalization on wild images.",
-          "type": "INT",
-          "defaultValue": "5"
-        },
-        {
-          "name": "ADAPTIVE_HIST_CLIP_LIMIT_WILD_TEXT_IMAGE_PREPROCESSING",
-          "description": "Specifies clip limit parameter for adaptive histogram equalization on wild images. Higher values limits contrast amplification of images during histogram equalization, in order to reduce image noise.",
-          "type": "DOUBLE",
-          "defaultValue": "2.0"
+          "defaultValue": "2.6"
         },
         {
           "name": "THRS_FILTER",

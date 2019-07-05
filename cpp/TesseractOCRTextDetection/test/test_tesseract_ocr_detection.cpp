@@ -42,7 +42,7 @@ using namespace MPF::COMPONENT;
 
 void setAlgorithmProperties(Properties &algorithm_properties, const std::map<std::string, std::string> &custom) {
     algorithm_properties["TAGGING_FILE"] = "config/test-text-tags-foreign.json";
-    algorithm_properties["SHARPEN_DEFAULT_STRUCTURED_IMAGE_PREPROCESSING"] = "1.0";
+    algorithm_properties["STRUCTURED_TEXT_SHARPEN"] = "-1.0";
     algorithm_properties["TESSERACT_LANGUAGE"] = "eng";
     algorithm_properties["THRS_FILTER"] = "false";
     algorithm_properties["HIST_FILTER"] = "false";
@@ -51,11 +51,18 @@ void setAlgorithmProperties(Properties &algorithm_properties, const std::map<std
     }
 }
 
-MPFImageJob createImageJob(const std::string &uri, const std::map<std::string, std::string> &custom = {}) {
+MPFImageJob createImageJob(const std::string &uri, const std::map<std::string, std::string> &custom = {},
+                           bool wild_mode = false) {
     Properties algorithm_properties;
     Properties media_properties;
     std::string job_name("OCR_test");
     setAlgorithmProperties(algorithm_properties, custom);
+    MPFImageLocation image_location(0, 0, 1, 1, -1);
+    image_location.detection_properties["TEXT_TYPE"] = "UNSTRUCTURED";
+    if (wild_mode) {
+        MPFImageJob job(job_name, uri, image_location, algorithm_properties, media_properties);
+        return job;
+    }
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
     return job;
 }
@@ -71,8 +78,9 @@ MPFGenericJob createPDFJob(const std::string &uri, const std::map<std::string, s
 
 void runImageDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
                        std::vector<MPFImageLocation> &image_locations,
-                       const std::map<std::string, std::string> &custom = {}) {
-    MPFImageJob job = createImageJob(image_path, custom);
+                       const std::map<std::string, std::string> &custom = {},
+                       bool wild_mode = false) {
+    MPFImageJob job = createImageJob(image_path, custom, wild_mode);
     MPFDetectionError rc = ocr.GetDetections(job, image_locations);
 
     ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
@@ -90,8 +98,9 @@ void runDocumentDetection(const std::string &image_path, TesseractOCRTextDetecti
 
 void assertEmptyDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
                           std::vector<MPFImageLocation> &image_locations,
-                          const std::map<std::string, std::string> &custom = {}) {
-    MPFImageJob job = createImageJob(image_path, custom);
+                          const std::map<std::string, std::string> &custom = {},
+                          bool wild_mode = false) {
+    MPFImageJob job = createImageJob(image_path, custom, wild_mode);
     MPFDetectionError rc = ocr.GetDetections(job, image_locations);
 
     ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
@@ -171,7 +180,7 @@ void convert_results(std::vector<MPFImageLocation> &im_track, const std::vector<
 
 TEST(TESSERACTOCR, ImageProcessingTest) {
 
-    // Ensure user can specify custom model directory locations.
+    // Ensure contrast and unstructured image processing settings are enabled.
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
@@ -184,18 +193,20 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
     assertTextNotInImage("data/limited-contrast.png", "Contrast Text", results);
 
     results.clear();
+    custom_properties = {{"MIN_IMAGE_HEIGHT", "-1"}};
     runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties);
     assertTextNotInImage("data/wild-small-text.png", "PLACE", results);
 
     results.clear();
-    custom_properties = {{"ENABLE_WILD_TEXT_PREPROCESSING","true"}, {"ENABLE_ADAPTIVE_HIST_EQUALIZATION_WILD_TEXT_IMAGE_PREPROCESSING","true"}};
-    runImageDetection("data/limited-contrast.png", ocr, results,  custom_properties);
+    custom_properties = {{"UNSTRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION", "true"}};
+    runImageDetection("data/limited-contrast.png", ocr, results,  custom_properties, true);
     assertTextInImage("data/limited-contrast.png", "Contrast Text", results);
 
     results.clear();
-    custom_properties = {{"ENABLE_WILD_TEXT_PREPROCESSING","true"}, {"MIN_IMAGE_HEIGHT_WILD_TEXT_IMAGE_PREPROCESSING","60"}};
-    runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties);
+    custom_properties = {{"MIN_IMAGE_HEIGHT", "60"}};
+    runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties, true);
     assertTextInImage("data/wild-small-text.png", "PLACE", results);
+    ASSERT_TRUE(ocr.Close());
 }
 
 

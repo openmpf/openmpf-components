@@ -85,11 +85,8 @@ namespace MPF {
                 bool enable_adaptive_hist_equalization;
                 bool enable_adaptive_thrs;
                 bool enable_otsu_thrs;
-                bool enable_rescale;
-                bool enable_sharpen;
                 bool enable_osd;
                 bool combine_detected_scripts;
-                bool processing_wild_text;
                 int adaptive_thrs_pixel;
                 int min_word_len;
                 int hist_min_char;
@@ -98,7 +95,6 @@ namespace MPF {
                 int max_scripts;
                 int max_text_tracks;
                 int min_height;
-                int min_width;
                 int adaptive_hist_tile_size;
                 double adaptive_hist_clip_limit;
                 double adaptive_thrs_c;
@@ -169,7 +165,7 @@ namespace MPF {
 
             void set_read_config_parameters();
 
-            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset);
+            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, bool processing_wild_text);
 
             void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string,

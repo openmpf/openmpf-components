@@ -52,5 +52,6 @@ Custom generated pdf for testing document text extraction.
 Text extracted from open source project https://github.com/tesseract-ocr/tesseract.
 
 # wild-small-text.png
-Extracted text from street sign.
+Extracted text from street sign. Modified to have poor resolution.
+Image author: Dr. Avishai Teicher.
 Image source from https://commons.wikimedia.org/wiki/File:Street_signs_in_Rennes_(1).jpg
