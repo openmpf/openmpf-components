@@ -141,6 +141,8 @@ namespace MPF {
                 }
             };
 
+            enum Text_type{Unknown, Structured, Unstructured};
+
             log4cxx::LoggerPtr hw_logger_;
             QHash<QString, QString> parameters;
             OCR_filter_settings default_ocr_fset;
@@ -166,8 +168,7 @@ namespace MPF {
 
             void set_read_config_parameters();
 
-            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, bool processing_wild_text,
-                               bool processing_structured_text);
+            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, const Text_type &text_type = Unknown);
 
             void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string,

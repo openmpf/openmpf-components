@@ -49,8 +49,8 @@ void print_usage(char *argv[]) {
 
     std::cout << "Usage: " << argv[0] << " -i <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
     std::cout << "Usage: " << argv[0] << " -g <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
-    std::cout << "Usage w/ OSD: " << argv[0] << " -i -osd <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
-    std::cout << "Usage w/ OSD: " << argv[0] << " -g -osd <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+    std::cout << "Usage w/ OSD: " << argv[0] << " -i --osd <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+    std::cout << "Usage w/ OSD: " << argv[0] << " -g --osd <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
 
     std::cout << "OSD = Automatic orientation and script detection. Input tesseract languages are generally ignored" <<
                  " whenever OSD returns successful predictions and can be left out." << std::endl;
@@ -63,8 +63,8 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    std::string image_option(argv[1]);
-    std::string osd_option(argv[2]);
+    std::string media_option(argv[1]);
+    std::string option_2(argv[2]);
     std::string uri = "";
     bool enable_osd = false;
 
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
     algorithm_properties["HIST_FILTER"] = "false";
     algorithm_properties["SHARPEN"] = "1.0";
 
-    if (osd_option == "-osd") {
+    if (option_2 == "--osd") {
         uri = argv[3];
         algorithm_properties["ENABLE_OSD_AUTOMATION"] = "true";
         enable_osd = true;
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
     im.SetRunDirectory("./plugin");
     im.Init();
 
-    if (image_option == "-g") {
+    if (media_option == "-g") {
         // Run uri as a generic data file.
         std::cout << "Running job on generic data uri: " << uri << std::endl;
         MPFGenericJob job(job_name, uri, algorithm_properties, media_properties);
@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
             std::cout << "GetDetections failed" << std::endl;
         }
 
-    } else if (image_option == "-i") {
+    } else if (media_option == "-i") {
         // Run uri as an image data file.
         std::cout << "Running job on image data uri: " << uri << std::endl;
         MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
