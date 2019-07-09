@@ -296,7 +296,7 @@
           "defaultValue": "true"
         },
         {
-          "name": "ROTATE_AND_DETECT_MIN_CONFIDENCE",
+          "name": "ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE",
           "description": "Specifies minimum text confidence required to skip second OCR pass with 180 degree rotation. Negative values will result in ROTATE_AND_DETECT performing two pass OCR regardless of text confidence from the initial pass.",
           "type": "DOUBLE",
           "defaultValue": "95.0"

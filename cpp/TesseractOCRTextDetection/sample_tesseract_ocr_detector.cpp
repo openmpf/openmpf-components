@@ -90,22 +90,22 @@ int main(int argc, char *argv[]) {
             std::cout << "Number of tracks = "
                       << tracks.size() << std::endl;
             for (int i = 0; i < tracks.size(); i++) {
-                if (tracks[i].detection_properties.count("PRIMARY_SCRIPT") > 0) {
+                if (tracks[i].detection_properties.count("OSD_PRIMARY_SCRIPT") > 0) {
                     std::cout << "OSD result: " << "\n";
-                    std::cout << "Detected script: " << tracks[i].detection_properties.at("PRIMARY_SCRIPT") << "\n";
+                    std::cout << "Detected script: " << tracks[i].detection_properties.at("OSD_PRIMARY_SCRIPT") << "\n";
                     std::cout << "Script confidence: "
-                              << tracks[i].detection_properties.at("PRIMARY_SCRIPT_CONFIDENCE") << "\n";
-                    std::cout << "Script score: " << tracks[i].detection_properties.at("PRIMARY_SCRIPT_SCORE")
+                              << tracks[i].detection_properties.at("OSD_PRIMARY_SCRIPT_CONFIDENCE") << "\n";
+                    std::cout << "Script score: " << tracks[i].detection_properties.at("OSD_PRIMARY_SCRIPT_SCORE")
                               << "\n";
                     std::cout << "Detected orientation: " << tracks[i].detection_properties.at("ROTATION") << "\n";
                     std::cout << "Orientation confidence: "
-                              << tracks[i].detection_properties.at("TEXT_ORIENTATION_CONFIDENCE") << "\n";
+                              << tracks[i].detection_properties.at("OSD_TEXT_ORIENTATION_CONFIDENCE") << "\n";
 
-                    if (tracks[i].detection_properties.count("SECONDARY_SCRIPTS") > 0) {
-                        std::cout << "Secondary scripts: " << tracks[i].detection_properties.at("SECONDARY_SCRIPTS")
+                    if (tracks[i].detection_properties.count("OSD_SECONDARY_SCRIPTS") > 0) {
+                        std::cout << "Secondary scripts: " << tracks[i].detection_properties.at("OSD_SECONDARY_SCRIPTS")
                                   << "\n";
                         std::cout << "Secondary script scores: "
-                                  << tracks[i].detection_properties.at("SECONDARY_SCRIPT_SCORES") << "\n"
+                                  << tracks[i].detection_properties.at("OSD_SECONDARY_SCRIPT_SCORES") << "\n"
                                   << std::endl;
                     }
                 }
@@ -140,23 +140,23 @@ int main(int argc, char *argv[]) {
                       << locations.size() << std::endl;
 
             for (int i = 0; i < locations.size(); i++) {
-                if (locations[i].detection_properties.count("PRIMARY_SCRIPT") > 0) {
+                if (locations[i].detection_properties.count("OSD_PRIMARY_SCRIPT") > 0) {
                     std::cout << "OSD result: " << "\n";
-                    std::cout << "Detected script: " << locations[i].detection_properties.at("PRIMARY_SCRIPT")
+                    std::cout << "Detected script: " << locations[i].detection_properties.at("OSD_PRIMARY_SCRIPT")
                               << "\n";
                     std::cout << "Script confidence: "
-                              << locations[i].detection_properties.at("PRIMARY_SCRIPT_CONFIDENCE") << "\n";
-                    std::cout << "Script score: " << locations[i].detection_properties.at("PRIMARY_SCRIPT_SCORE")
+                              << locations[i].detection_properties.at("OSD_PRIMARY_SCRIPT_CONFIDENCE") << "\n";
+                    std::cout << "Script score: " << locations[i].detection_properties.at("OSD_PRIMARY_SCRIPT_SCORE")
                               << "\n";
                     std::cout << "Detected orientation: " << locations[i].detection_properties.at("ROTATION")
                               << "\n";
                     std::cout << "Orientation confidence: "
-                              << locations[i].detection_properties.at("TEXT_ORIENTATION_CONFIDENCE") << "\n";
-                    if (locations[i].detection_properties.count("SECONDARY_SCRIPTS") > 0) {
+                              << locations[i].detection_properties.at("OSD_TEXT_ORIENTATION_CONFIDENCE") << "\n";
+                    if (locations[i].detection_properties.count("OSD_SECONDARY_SCRIPTS") > 0) {
                         std::cout << "Secondary scripts: "
-                                  << locations[i].detection_properties.at("SECONDARY_SCRIPTS") << "\n";
+                                  << locations[i].detection_properties.at("OSD_SECONDARY_SCRIPTS") << "\n";
                         std::cout << "Secondary script scores: "
-                                  << locations[i].detection_properties.at("SECONDARY_SCRIPT_SCORES") << "\n"
+                                  << locations[i].detection_properties.at("OSD_SECONDARY_SCRIPT_SCORES") << "\n"
                                   << std::endl;
                     }
 

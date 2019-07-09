@@ -117,6 +117,7 @@ namespace MPF {
                 std::string language;
                 std::wstring text;
                 std::string two_pass_rotation;
+                bool two_pass_correction;
 
                 bool operator<(const OCR_output &ocr_out) const {
                     return (confidence < ocr_out.confidence);
