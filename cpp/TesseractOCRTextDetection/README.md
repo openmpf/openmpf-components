@@ -82,7 +82,7 @@ If ROTATE_AND_DETECT is enabled, the component will perform two-pass OCR on imag
     * If the first pass is greater than the minimum specified threshold, the second pass of the OCR is skipped.
 * After performing two-pass OCR, the output with the highest OCR confidence is kept as the final track.
 * For multiple, separate language tracks, the previous steps are repeated for each specified language track, such that one high confidence output for each track is returned by the component.
-* To distinguish which track (first pass vs second pass) is returned, the component will also specify the optimal rotation in OSD_TEXT_ORIENTATION_CORRECTION, alongside the ROTATION property detected by OSD. The ROTATION property will be updated by the value specified in OSD_TEXT_ORIENTATION_CORRECTION (either 0 or 180 degree rotation added to existing rotation value).
+* The component will report ROTATE_AND_DETECT_PASS alongside the ROTATION property. The ROTATION property is the rotation of the text region, taking into consideration both the OSD rotation (if OSD was performed), as well as the 2-pass rotation attempt. ROTATE_AND_DETECT_PASS is set to 0 or 180 depending on which pass produced the best results.
 
 There are two options to run multiple user-specified languages/scripts. Users can separate each
 specified language and script using the '+' delimiter to run multiple models

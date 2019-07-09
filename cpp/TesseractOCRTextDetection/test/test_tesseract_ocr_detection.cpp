@@ -212,12 +212,12 @@ TEST(TESSERACTOCR, TwoPassOCRTest) {
                                                             {"ROTATE_AND_DETECT",     "true"}};
 
     runImageDetection("data/eng.png", ocr, results, custom_properties);
-    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("OSD_TEXT_ORIENTATION_CORRECTION")) == 0) << "Expected 0 degree text rotation correction.";
+    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("ROTATE_AND_DETECT_PASS")) == 0) << "Expected 0 degree text rotation correction.";
     assertTextInImage("data/eng.png", "All human beings", results);
     results.clear();
 
     runImageDetection("data/eng-rotated.png", ocr, results, custom_properties);
-    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("OSD_TEXT_ORIENTATION_CORRECTION")) == 180) << "Expected 180 degree text rotation correction.";
+    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("ROTATE_AND_DETECT_PASS")) == 180) << "Expected 180 degree text rotation correction.";
     assertTextInImage("data/eng-rotated.png", "All human beings", results);
     results.clear();
 
@@ -227,7 +227,7 @@ TEST(TESSERACTOCR, TwoPassOCRTest) {
                          {"ROTATE_AND_DETECT",                "true"}};
 
     runImageDetection("data/eng-rotated.png", ocr, results, custom_properties);
-    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("OSD_TEXT_ORIENTATION_CORRECTION")) == 0) << "Expected 0 degree text rotation correction.";
+    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("ROTATE_AND_DETECT_PASS")) == 0) << "Expected 0 degree text rotation correction.";
     assertTextNotInImage("data/eng-rotated.png", "All human beings", results);
     ASSERT_TRUE(ocr.Close());
 

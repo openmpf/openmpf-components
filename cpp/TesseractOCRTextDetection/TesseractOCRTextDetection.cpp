@@ -1021,9 +1021,9 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
 
     if (detection_properties["OSD_PRIMARY_SCRIPT"] == "NULL") {
         //If OSD failed to detect any scripts, automatically set confidence scores to -1 (not enough text).
-        detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = -1;
-        detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = -1;
-        detection_properties["OSD_PRIMARY_SCRIPT_SCORE"]  = -1.0;
+        detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = "-1";
+        detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = "-1";
+        detection_properties["OSD_PRIMARY_SCRIPT_SCORE"]  = "-1";
     }
 
     int max_scripts = ocr_fset.max_scripts;
@@ -1505,11 +1505,16 @@ inline void set_coordinates(int &xLeftUpper, int &yLeftUpper, int &width, int &h
     switch (orientation_id) {
         case 0:
             // Do not rotate.
+            xLeftUpper = 0;
+            yLeftUpper = 0;
+            width = input_size.width;
+            height = input_size.height;
             break;
         case 1:
             // Text is rotated 270 degrees counterclockwise.
             // Image will need to be rotated 90 degrees counterclockwise to fix this.
             xLeftUpper = input_size.width - 1;
+            yLeftUpper = 0;
             width = input_size.height;
             height = input_size.width;
             break;
@@ -1517,11 +1522,14 @@ inline void set_coordinates(int &xLeftUpper, int &yLeftUpper, int &width, int &h
             // 180 degree rotation.
             xLeftUpper = input_size.width - 1;
             yLeftUpper = input_size.height - 1;
+            width = input_size.width;
+            height = input_size.height;
             break;
         case 3:
             // Text is rotated 90 degrees counterclockwise.
             // Image will be rotated 270 degrees counterclockwise.
             yLeftUpper = input_size.height - 1;
+            xLeftUpper = 0;
             width = input_size.height;
             height = input_size.width;
             break;
@@ -1589,7 +1597,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
     set<string> missing_languages;
     string first_pass_rotation, second_pass_rotation;
     double min_ocr_conf = ocr_fset.rotate_and_detect_min_confidence;
-    int corrected_orientation = orientation_result;
+    int corrected_orientation;
     int corrected_X, corrected_Y, corrected_width, corrected_height;
 
     if (ocr_fset.rotate_and_detect) {
@@ -1682,14 +1690,14 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
         if (ocr_fset.rotate_and_detect) {
             image_location.detection_properties["ROTATION"] = final_out.two_pass_rotation;
             if (final_out.two_pass_correction) {
-                image_location.detection_properties["OSD_TEXT_ORIENTATION_CORRECTION"] = "180";
+                image_location.detection_properties["ROTATE_AND_DETECT_PASS"] = "180";
                 // Also correct top left corner designation:
                 image_location.x_left_upper = corrected_X;
                 image_location.y_left_upper = corrected_Y;
                 image_location.width = corrected_width;
                 image_location.height = corrected_height;
             } else {
-                image_location.detection_properties["OSD_TEXT_ORIENTATION_CORRECTION"] = "0";
+                image_location.detection_properties["ROTATE_AND_DETECT_PASS"] = "0";
             }
 
         }
