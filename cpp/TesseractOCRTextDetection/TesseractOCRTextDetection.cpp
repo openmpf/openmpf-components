@@ -969,7 +969,7 @@ bool TesseractOCRTextDetection::check_tess_model_directory(const MPFImageJob &jo
     for (string lang : langs) {
         boost::trim(lang);
         // Don't search for invalid NULL language.
-        if (lang == "NULL") {
+        if (lang == "NULL" || lang == "script/NULL") {
             continue;
         }
         if (!boost::filesystem::exists(directory + "/" + lang + ".traineddata")) {
@@ -1087,7 +1087,8 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         TesseractOCRTextDetection::OSD_script best_script = {best_id, best_score};
         vector<TesseractOCRTextDetection::OSD_script> script_list;
 
-        if (max_scripts != 1) {
+        // If primary script is not NULL, check if secondary scripts are also valid.
+        if (max_scripts != 1 && detection_properties["PRIMARY_SCRIPT"] != "NULL") {
             // Max number of scripts in ICU + "NULL" + Japanese and Korean + Fraktur
             const int kMaxNumberOfScripts = 116 + 1 + 2 + 1;
             double score_cutoff = best_score * ocr_fset.min_secondary_script_thrs;
@@ -1170,7 +1171,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
                 } else {
                     script_results.push_back("script/Japanese,script/Japanese_vert");
                 }
-            } else if (script_type == "Common") {
+            } else if (script_type == "Common" || script_type == "NULL") {
                 continue;
             } else {
                 script_results.push_back("script/" + script_type);
@@ -1184,7 +1185,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             lang_str = boost::algorithm::join(script_results, ",");
         }
 
-        if (lang_str == "NULL" || lang_str == "") {
+        if (lang_str.empty() || lang_str == "script/NULL") {
             LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OSD did not detect any valid scripts,"
                                      + " reverting to default language setting: " + ocr_fset.tesseract_lang);
         } else {
