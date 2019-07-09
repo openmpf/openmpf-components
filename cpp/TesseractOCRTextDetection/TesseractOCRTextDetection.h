@@ -45,6 +45,8 @@ namespace MPF {
 
     namespace COMPONENT {
 
+        enum Text_type{Unknown, Structured, Unstructured};
+
         class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
         public:
@@ -141,8 +143,6 @@ namespace MPF {
                 }
             };
 
-            enum Text_type{Unknown, Structured, Unstructured};
-
             log4cxx::LoggerPtr hw_logger_;
             QHash<QString, QString> parameters;
             OCR_filter_settings default_ocr_fset;
@@ -218,11 +218,10 @@ namespace MPF {
                          std::string &tessdata_script_dir);
 
             std::string
-            return_valid_tessdir(const MPFImageJob &job, const std::string &lang_str, const std::string &directory,
-                                 const bool &skip_null = false);
+            return_valid_tessdir(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
 
             bool check_tess_model_directory(const MPFImageJob &job, const std::string &lang_str,
-                                            const std::string &directory, const bool &skip_null);
+                                            const std::string &directory);
         };
 
     }

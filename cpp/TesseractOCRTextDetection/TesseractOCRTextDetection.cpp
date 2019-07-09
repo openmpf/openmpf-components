@@ -931,11 +931,11 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
 }
 
 string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &job, const string &lang_str,
-                                                       const string &directory, const bool &skip_null) {
+                                                       const string &directory) {
 
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Checking tessdata models in " + directory + ".");
 
-    if (check_tess_model_directory(job, lang_str, directory, skip_null)) {
+    if (check_tess_model_directory(job, lang_str, directory)) {
         return directory;
     }
 
@@ -949,7 +949,7 @@ string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &job, c
                   "[" + job.job_name + "] Not all models found in " + directory + ". Checking local plugin directory "
                   + local_plugin_directory + ".");
 
-    if (check_tess_model_directory(job, lang_str, local_plugin_directory, skip_null)) {
+    if (check_tess_model_directory(job, lang_str, local_plugin_directory)) {
         return local_plugin_directory;
     }
 
@@ -961,14 +961,15 @@ string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &job, c
 }
 
 bool TesseractOCRTextDetection::check_tess_model_directory(const MPFImageJob &job, const string &lang_str,
-                                                           const string &directory, const bool &skip_null) {
+                                                           const string &directory) {
 
     vector<string> langs;
     boost::split(langs, lang_str, boost::is_any_of(",+"));
 
     for (string lang : langs) {
         boost::trim(lang);
-        if (skip_null && lang == "NULL") {
+        // Don't search for invalid NULL language.
+        if (lang == "NULL") {
             continue;
         }
         if (!boost::filesystem::exists(directory + "/" + lang + ".traineddata")) {
@@ -1192,7 +1193,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             // If scripts are not found, revert to default.
             // If scripts are found, set return_valid_tessdir so that get_tesseract_detections will skip searching for models.
             // Also, for script detection results, skip searching for NULL if that gets detected alongside other languages.
-            tessdata_script_dir = TesseractOCRTextDetection::return_valid_tessdir(job, lang_str, ocr_fset.model_dir, true);
+            tessdata_script_dir = TesseractOCRTextDetection::return_valid_tessdir(job, lang_str, ocr_fset.model_dir);
             if (tessdata_script_dir == "") {
                 LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] Script models not found in model and tessdata directories,"
                                          + " reverting to default language setting: " + ocr_fset.tesseract_lang);
@@ -1434,7 +1435,7 @@ void TesseractOCRTextDetection::load_tags_json(const MPFJob &job, MPFDetectionEr
 
 void
 TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
-                                         const TesseractOCRTextDetection::Text_type &text_type) {
+                                         const Text_type &text_type) {
     // Load in settings specified from job_properties and default configuration.
     // String filtering
     ocr_fset.threshold_check = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"THRS_FILTER", default_ocr_fset.threshold_check);
@@ -1451,7 +1452,7 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
     // Image preprocessing
     bool default_processing_wild = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "UNSTRUCTURED_TEXT_ENABLE_PREPROCESSING", default_ocr_fset.processing_wild_text);
 
-    if ((text_type == TesseractOCRTextDetection::Unstructured) || (text_type == TesseractOCRTextDetection::Unknown && default_processing_wild)) {
+    if ((text_type == Unstructured) || (text_type == Unknown && default_processing_wild)) {
         ocr_fset.enable_adaptive_hist_equalization = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION", default_ocr_fset.enable_adaptive_hist_equalization);
         ocr_fset.enable_hist_equalization = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "UNSTRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION",  default_ocr_fset.enable_hist_equalization);
         ocr_fset.scale = DetectionComponentUtils::GetProperty<double>(job.job_properties,"UNSTRUCTURED_TEXT_SCALE", default_ocr_fset.scale);
@@ -1570,13 +1571,13 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
 
     TesseractOCRTextDetection::OCR_filter_settings ocr_fset;
-    TesseractOCRTextDetection::Text_type text_type = TesseractOCRTextDetection::Unknown;
+    Text_type text_type = Unknown;
 
     if (job.has_feed_forward_location && job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
         if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "UNSTRUCTURED") {
-            text_type = TesseractOCRTextDetection::Unstructured;
+            text_type = Unstructured;
         } else if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "STRUCTURED") {
-            text_type = TesseractOCRTextDetection::Structured;
+            text_type = Structured;
         }
 
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Identified text type:  \"" +
