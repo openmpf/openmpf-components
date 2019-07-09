@@ -1186,7 +1186,6 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         if (lang_str == "NULL" || lang_str == "") {
             LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OSD did not detect any valid scripts,"
                                      + " reverting to default language setting: " + ocr_fset.tesseract_lang);
-            ocr_fset.tesseract_lang = lang_str;
         } else {
             // Check if selected models are present in either models or tessdata directory.
             // All language models must be present in one directory.
