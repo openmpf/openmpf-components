@@ -176,46 +176,10 @@
           "defaultValue": "0"
         },
         {
-          "name": "STRUCTURED_TEXT_ENABLE_OTSU_THRS",
-          "description": "Enables Otsu image thresholding for default, structured text images. Adaptive_thrs overrides Otsu when both are enabled. Improves text extraction by converting image to black and white. Works best for images with uniform lighting. For multicolor images with gradients, use adaptive threshold. ",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "STRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS",
-          "description": "Enables adaptive image thresholding (overrides Otsu) for default, structured text images. Works better for images with lighting/color gradients.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "STRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION",
-          "description": "Enables CLAHE (Contrast Limited Adaptive Histogram Equalization) preprocessing for default, structured text images. Applies histogram equalization locally across an image, with contrast limits and bilinear interpolation to reduce noise. Overrides basic histogram equalization when enabled.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "STRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION",
-          "description": "Enables histogram equalization as a preprocessing step for default, structured text images. Improves lighting and contrast for images with narrow pixel color ranges. Disabled when adaptive histogram equalization is enabled.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "MIN_SIDE_LENGTH",
+          "name": "MIN_HEIGHT",
           "description": "If set to a positive value, rescales all images to specified pixel height if smaller than provided limit. Preserves image aspect ratio.",
           "type": "INT",
           "defaultValue": "60"
-        },
-        {
-          "name": "STRUCTURED_TEXT_SHARPEN",
-          "description": "Weight of the sharpening parameter for default images. Higher values increase sharpening while values close to 0 will return the original image. Set to a negative value to disable sharpening.",
-          "type": "DOUBLE",
-          "defaultValue": "-1.0"
-        },
-        {
-          "name": "STRUCTURED_TEXT_SCALE",
-          "description": "Image rescaling factor for default images. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 1.6. Set to a negative value to disable rescaling.",
-          "type": "DOUBLE",
-          "defaultValue": "1.6"
         },
         {
           "name": "INVERT",
@@ -246,6 +210,48 @@
           "description": "Specifies clip limit parameter for adaptive histogram equalization. Higher values limits contrast amplification of images during histogram equalization, in order to reduce image noise.",
           "type": "DOUBLE",
           "defaultValue": "2.0"
+        },
+        {
+          "name": "STRUCTURED_TEXT_ENABLE_OTSU_THRS",
+          "description": "Enables Otsu image thresholding for default, structured text images. Adaptive_thrs overrides Otsu when both are enabled. Improves text extraction by converting image to black and white. Works best for images with uniform lighting. For multicolor images with gradients, use adaptive threshold. ",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "STRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS",
+          "description": "Enables adaptive image thresholding (overrides Otsu) for default, structured text images. Works better for images with lighting/color gradients.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "STRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION",
+          "description": "Enables CLAHE (Contrast Limited Adaptive Histogram Equalization) preprocessing for default, structured text images. Applies histogram equalization locally across an image, with contrast limits and bilinear interpolation to reduce noise. Overrides basic histogram equalization when enabled.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "STRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION",
+          "description": "Enables histogram equalization as a preprocessing step for default, structured text images. Improves lighting and contrast for images with narrow pixel color ranges. Disabled when adaptive histogram equalization is enabled.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "STRUCTURED_TEXT_SHARPEN",
+          "description": "Weight of the sharpening parameter for default images. Higher values increase sharpening while values close to 0 will return the original image. Set to a negative value to disable sharpening.",
+          "type": "DOUBLE",
+          "defaultValue": "-1.0"
+        },
+        {
+          "name": "STRUCTURED_TEXT_SCALE",
+          "description": "Image rescaling factor for default images. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 1.6. Set to a negative value to disable rescaling.",
+          "type": "DOUBLE",
+          "defaultValue": "1.6"
+        },
+        {
+          "name": "UNSTRUCTURED_TEXT_ENABLE_PREPROCESSING",
+          "description": "Switch default image preprocessing behavior from STRUCTURED to UNSTRUCTRED image settings. Is overridden by image text type provided by feed-forward region TEXT_TYPE.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
         },
         {
           "name": "UNSTRUCTURED_TEXT_ENABLE_OTSU_THRS",

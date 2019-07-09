@@ -1,6 +1,9 @@
 # blank.png
 Custom generated image, contains no text.
 
+# blurry.png
+Custom generated image with blurred text.
+
 # chinese.png
 Custom generated image, contains Chinese text from the Universal
 Declaration of Human Rights. http://www.un.org/en/universal-declaration-human-rights/
@@ -16,6 +19,9 @@ Declaration of Human Rights (http://www.un.org/en/universal-declaration-human-ri
 # eng-rotated.png
 Custom generated image, contains English text from the Universal
 Declaration of Human Rights. http://www.un.org/en/universal-declaration-human-rights/
+
+# gradient.png
+Custom generated image, with text against a white and black gradient background.
 
 # junk-text.png
 Custom generated image containing gibberish text.

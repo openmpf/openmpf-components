@@ -87,6 +87,7 @@ namespace MPF {
                 bool enable_otsu_thrs;
                 bool enable_osd;
                 bool combine_detected_scripts;
+                bool processing_wild_text;
                 int adaptive_thrs_pixel;
                 int min_word_len;
                 int hist_min_char;
@@ -165,7 +166,8 @@ namespace MPF {
 
             void set_read_config_parameters();
 
-            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, bool processing_wild_text);
+            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, bool processing_wild_text,
+                               bool processing_structured_text);
 
             void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string,
@@ -215,10 +217,11 @@ namespace MPF {
                          std::string &tessdata_script_dir);
 
             std::string
-            return_valid_tessdir(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
+            return_valid_tessdir(const MPFImageJob &job, const std::string &lang_str, const std::string &directory,
+                                 const bool &skip_null = false);
 
             bool check_tess_model_directory(const MPFImageJob &job, const std::string &lang_str,
-                                            const std::string &directory);
+                                            const std::string &directory, const bool &skip_null);
         };
 
     }
