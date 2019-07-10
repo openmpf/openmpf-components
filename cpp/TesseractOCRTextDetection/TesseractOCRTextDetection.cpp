@@ -149,16 +149,6 @@ void TesseractOCRTextDetection::set_default_parameters() {
     default_ocr_fset.oem = 3;
     default_ocr_fset.sharpen = -1.0;
     default_ocr_fset.scale = 2.4;
-    default_ocr_fset.threshold_check = true;
-    default_ocr_fset.hist_check = true;
-    default_ocr_fset.num_only_ok = true;
-    default_ocr_fset.min_word_len = 3;
-    default_ocr_fset.hist_min_char = 45;
-    default_ocr_fset.excess_eng_symbols = 0.35;
-    default_ocr_fset.excess_non_eng_symbols = 0.10;
-    default_ocr_fset.vowel_min = 0.10;
-    default_ocr_fset.vowel_max = 0.95;
-    default_ocr_fset.correl_limit = 0.52;
     default_ocr_fset.invert = false;
     default_ocr_fset.enable_otsu_thrs = false;
     default_ocr_fset.enable_adaptive_thrs = false;
@@ -191,36 +181,6 @@ void TesseractOCRTextDetection::set_default_parameters() {
  */
 void TesseractOCRTextDetection::set_read_config_parameters() {
 
-    if (parameters.contains("THRS_FILTER")) {
-        default_ocr_fset.threshold_check = (parameters["THRS_FILTER"].toInt() > 0);
-    }
-    if (parameters.contains("HIST_FILTER")) {
-        default_ocr_fset.hist_check = (parameters["HIST_FILTER"].toInt() > 0);
-    }
-    if (parameters.contains("NUM_ONLY")) {
-        default_ocr_fset.num_only_ok = (parameters["NUM_ONLY"].toInt() > 0);
-    }
-    if (parameters.contains("MIN_WORD_LEN")) {
-        default_ocr_fset.min_word_len = parameters["MIN_WORD_LEN"].toInt();
-    }
-    if (parameters.contains("MIN_HIST_SIZE")) {
-        default_ocr_fset.hist_min_char = parameters["MIN_HIST_SIZE"].toInt();
-    }
-    if (parameters.contains("MIN_HIST_SCORE")) {
-        default_ocr_fset.correl_limit = parameters["MIN_HIST_SCORE"].toDouble();
-    }
-    if (parameters.contains("MAX_ENG_PNCT")) {
-        default_ocr_fset.excess_eng_symbols = parameters["MAX_ENG_PNCT"].toDouble();
-    }
-    if (parameters.contains("MAX_FRN_CHAR")) {
-        default_ocr_fset.excess_non_eng_symbols = parameters["MAX_FRN_CHAR"].toDouble();
-    }
-    if (parameters.contains("VOWEL_MIN")) {
-        default_ocr_fset.vowel_min = parameters["VOWEL_MIN"].toDouble();
-    }
-    if (parameters.contains("VOWEL_MAX")) {
-        default_ocr_fset.vowel_max = parameters["VOWEL_MAX"].toDouble();
-    }
     // Load wild image preprocessing settings.
     if (parameters.contains("UNSTRUCTURED_TEXT_ENABLE_PREPROCESSING")) {
         default_ocr_fset.processing_wild_text = (parameters["UNSTRUCTURED_TEXT_ENABLE_PREPROCESSING"].toInt() > 0);
@@ -323,177 +283,6 @@ void TesseractOCRTextDetection::set_read_config_parameters() {
     if (parameters.contains("ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE")) {
             default_ocr_fset.rotate_and_detect_min_confidence = parameters["ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE"].toDouble();
     }
-}
-
-/*
- * Counts whitespace, alphanumeric, non-english characters in string.
- */
-TesseractOCRTextDetection::OCR_char_stats
-TesseractOCRTextDetection::char_count(const wstring &s, const wstring &white_space, const wstring &eng_symbol,
-                                      const wstring &eng_num) {
-
-    TesseractOCRTextDetection::OCR_char_stats stats = {
-            0,  // alphabet_count
-            0,  // num_count
-            0,  // whspace_count
-            0,  // punct_count
-            0,  // non_eng_count
-            {0} // char_list
-    };
-
-    static locale locale("en_US");
-    for (const wchar_t &c : s) {
-        if (isspace(c, locale)) {
-            stats.whspace_count++;
-            continue;
-        }
-
-        if (ispunct(c, locale)) {
-            stats.punct_count++;
-            continue;
-        }
-
-        if (isdigit(c, locale)) {
-            stats.num_count++;
-            continue;
-        }
-
-        int x = tolower(c, locale) - L'a';
-        if (x >= 0 && x <= 25) {
-            stats.alphabet_count++;
-            stats.char_list[x]++;
-            continue;
-        }
-        stats.non_eng_count++;
-    }
-    return stats;
-}
-
-/*
- * Conduct filtering of results.
- * Reject/accept text based on char frequency/histogram comparison to english language.
- */
-wstring TesseractOCRTextDetection::check_string(const wstring &s,
-                                                const TesseractOCRTextDetection::OCR_filter_settings &ocrset) {
-
-    bool num_only_ok = ocrset.num_only_ok;
-    bool threshold_check = ocrset.threshold_check;
-    bool hist_check = ocrset.hist_check;
-    int min_word_len = ocrset.min_word_len;
-    float excess_eng_symbols = ocrset.excess_eng_symbols;
-    float vowel_min = ocrset.vowel_min;
-    float vowel_max = ocrset.vowel_max;
-    int hist_min_char = ocrset.hist_min_char;
-    float correl_limit = ocrset.correl_limit;
-
-    // The following are characters commonly used in the english language.
-    // We should not penalize the OCR for detecting these.
-    // Only start penalizing when they become excessive.
-
-    // Allow white space to be ignored.
-    wstring white_space = L" \n\t\f\v\r";
-
-    // Common english characters and punctuation.
-    // May need to penalize if these occur too frequently.
-    // If a large portion of the sentences are composed of these characters,
-    // it's likely gibberish so toss them out.
-    wstring eng_symbol = L".,?!-()[]{}<>:;/@#$%^&*-+_='\\~\"";
-
-    // Allow numbers by default.
-    // Text could be from an academic source, or a phone number.
-    wstring eng_num = L"0123456789";
-
-    // Histogram of english characters
-    float eng_list[] = {8.167, 1.492, 2.782, 4.253, 12.702, 2.228, 2.015, 6.094,
-                        6.966, 0.153, 0.772, 4.025, 2.406, 6.749, 7.507, 1.929, 0.095,
-                        5.987, 6.327, 9.056, 2.758, 0.978, 2.360, 0.150, 1.974, 0.074};
-
-    // Histogram parameters:
-    int nbins = 200;
-    int histSize[] = {nbins};
-    float range[] = {0, 100};
-    const float *ranges[] = {range};
-    int channels[] = {0};
-
-    cv::Mat eng_mat = cv::Mat(26, 1, CV_32F, eng_list);
-    cv::MatND eng_hist;
-    cv::calcHist(&eng_mat, 1, channels, cv::Mat(), // do not use mask
-                 eng_hist, 1, histSize, ranges);
-
-
-    TesseractOCRTextDetection::OCR_char_stats results = char_count(s, white_space, eng_symbol, eng_num);
-    int alphabet_count = results.alphabet_count;
-    int num_count = results.num_count;
-    int punct_count = results.punct_count;
-    int non_eng_count = results.non_eng_count;
-    int *char_list = results.char_list;
-    float char_f_list[26] = {0};
-    cv::Mat char_mat;
-    cv::MatND char_hist;
-    if (alphabet_count > 0) {
-        for (int i = 0; i < 26; i++) {
-            float f = (float) char_list[i] / (float) alphabet_count * 100.0;
-            char_f_list[i] = f;
-        }
-        char_mat = cv::Mat(26, 1, CV_32F, char_f_list);
-        cv::calcHist(&char_mat, 1, channels, cv::Mat(), // do not use mask
-                     char_hist, 1, histSize, ranges);
-    }
-
-
-    if (threshold_check) {
-        int total_eng_char = num_count + alphabet_count + punct_count;
-        if (alphabet_count + num_count < min_word_len) {
-            return L"";
-        }
-
-        float eng_symb_fraction = float(punct_count) / float(total_eng_char);
-        if (eng_symb_fraction > excess_eng_symbols) {
-            return L"";
-        }
-
-        float non_eng_fraction = float(non_eng_count) / float(total_eng_char + non_eng_count);
-        if (non_eng_fraction > eng_symb_fraction) {
-            return L"";
-        }
-
-        int max_wsize = 0;
-        wstringstream iss(s);
-
-        do {
-            wstring subs;
-            iss >> subs;
-            if (subs.length() > max_wsize) {
-                max_wsize = subs.length();
-            }
-        } while (iss);
-
-        if (max_wsize < min_word_len) {
-            return L"";
-        }
-
-        // Calculate vowel percentage and check if threshold is met.
-        float vowel_percent = (float) (char_list[0] + char_list[4] + char_list[8]
-                                       + char_list[14] + char_list[20] + char_list[24]) / (float) alphabet_count;
-        if (vowel_percent < vowel_min || vowel_percent > vowel_max) {
-            return L"";
-        }
-
-    }
-    if (alphabet_count == 0) {
-        if (num_only_ok) {
-            return s;
-        } else {
-            return L"";
-        }
-    }
-    if (hist_check && alphabet_count >= hist_min_char) {
-        double result = abs(cv::compareHist(eng_hist, char_hist, CV_COMP_CORREL));
-        if (result < correl_limit) {
-            return L"";
-        }
-    }
-    return s;
 }
 
 /*
@@ -1454,17 +1243,6 @@ void
 TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                          const Text_type &text_type) {
     // Load in settings specified from job_properties and default configuration.
-    // String filtering
-    ocr_fset.threshold_check = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"THRS_FILTER", default_ocr_fset.threshold_check);
-    ocr_fset.hist_check = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"HIST_FILTER", default_ocr_fset.hist_check);
-    ocr_fset.num_only_ok = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"NUM_ONLY", default_ocr_fset.num_only_ok);
-    ocr_fset.min_word_len = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_WORD_LEN", default_ocr_fset.min_word_len);
-    ocr_fset.hist_min_char = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MIN_HIST_SIZE", default_ocr_fset.hist_min_char);
-    ocr_fset.excess_eng_symbols = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MAX_ENG_PNCT", default_ocr_fset.excess_eng_symbols);
-    ocr_fset.excess_non_eng_symbols = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MAX_FRN_CHAR", default_ocr_fset.excess_non_eng_symbols);
-    ocr_fset.vowel_min = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MIN", default_ocr_fset.vowel_min);
-    ocr_fset.vowel_max = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MAX", default_ocr_fset.vowel_max);
-    ocr_fset.correl_limit = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MIN_HIST_SCORE", default_ocr_fset.correl_limit);
 
     // Image preprocessing
     bool default_processing_wild = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "UNSTRUCTURED_TEXT_ENABLE_PREPROCESSING", default_ocr_fset.processing_wild_text);
@@ -1539,9 +1317,6 @@ bool TesseractOCRTextDetection::process_text_tagging(Properties &detection_prope
     string ocr_lang = ocr_out.language;
     wstring ocr_detections = ocr_out.text;
     ocr_detections = clean_whitespace(ocr_detections);
-    if (ocr_fset.hist_check || ocr_fset.threshold_check) {
-        ocr_detections = TesseractOCRTextDetection::check_string(ocr_detections, ocr_fset);
-    }
 
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing tags for Tesseract OCR output: ");
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Tesseract OCR output was: " +
@@ -1734,7 +1509,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
             final_out.two_pass_correction = false;
 
             // Perform second pass OCR if min threshold is disabled (negative) or first pass confidence too low.
-            if (min_ocr_conf <= 0 || ocr_out.confidence <= min_ocr_conf) {
+            if (min_ocr_conf <= 0 || ocr_out.confidence < min_ocr_conf) {
                 // Perform second pass OCR and provide best result to output.
                 vector<TesseractOCRTextDetection::OCR_output> ocr_outputs_rotated;
                 ocr_fset.tesseract_lang = ocr_out.language;

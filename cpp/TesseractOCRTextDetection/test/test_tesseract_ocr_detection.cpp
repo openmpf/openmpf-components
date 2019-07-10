@@ -371,7 +371,7 @@ TEST(TESSERACTOCR, ImageTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
-TEST(TESSERACTOCR, FilterTest) {
+TEST(TESSERACTOCR, BlankTest) {
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
@@ -381,24 +381,6 @@ TEST(TESSERACTOCR, FilterTest) {
 
     // Check no text detected for blank image.
     assertEmptyDetection("data/blank.png", ocr, results, custom_properties);
-    results.clear();
-
-    // Check no text detected for image with junk text when hist filter is enabled.
-    runImageDetection("data/junk-text.png", ocr, results, custom_properties);
-    results.clear();
-    custom_properties = {{"HIST_FILTER",           "true"},
-                         {"TESSERACT_OEM",         "0"},
-                         {"ENABLE_OSD_AUTOMATION", "false"}};
-    assertEmptyDetection("data/junk-text.png", ocr, results, custom_properties);
-    results.clear();
-
-    // Check no text detected for image with junk text when thrs filter is enabled.
-    runImageDetection("data/junk-text.png", ocr, results);
-    results.clear();
-    custom_properties = {{"THRS_FILTER",           "true"},
-                         {"TESSERACT_OEM",         "0"},
-                         {"ENABLE_OSD_AUTOMATION", "false"}};
-    assertEmptyDetection("data/junk-text.png", ocr, results, custom_properties);
 
     ASSERT_TRUE(ocr.Close());
 }

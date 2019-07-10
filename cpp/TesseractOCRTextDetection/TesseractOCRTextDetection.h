@@ -69,19 +69,8 @@ namespace MPF {
             bool Supports(MPFDetectionDataType data_type) override;
 
         private:
-            struct OCR_char_stats {
-                int alphabet_count;
-                int num_count;
-                int whspace_count;
-                int punct_count;
-                int non_eng_count;
-                int char_list[26];
-            };
 
             struct OCR_filter_settings {
-                bool num_only_ok;
-                bool threshold_check;
-                bool hist_check;
                 bool invert;
                 bool enable_hist_equalization;
                 bool enable_adaptive_hist_equalization;
@@ -92,8 +81,6 @@ namespace MPF {
                 bool processing_wild_text;
                 bool rotate_and_detect;
                 int adaptive_thrs_pixel;
-                int min_word_len;
-                int hist_min_char;
                 int psm;
                 int oem;
                 int max_scripts;
@@ -104,11 +91,6 @@ namespace MPF {
                 double adaptive_thrs_c;
                 double scale;
                 double sharpen;
-                double excess_eng_symbols;
-                double excess_non_eng_symbols;
-                double vowel_min;
-                double vowel_max;
-                double correl_limit;
                 double min_orientation_confidence;
                 double min_script_confidence;
                 double min_script_score;
@@ -178,12 +160,6 @@ namespace MPF {
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string,
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string_split,
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_regex);
-
-            OCR_char_stats
-            char_count(const std::wstring &s, const std::wstring &white_space, const std::wstring &eng_symbol,
-                       const std::wstring &eng_num);
-
-            std::wstring check_string(const std::wstring &s, const OCR_filter_settings &ocrset);
 
             bool comp_strcmp(const std::wstring &strHaystack, const std::wstring &strNeedle);
 

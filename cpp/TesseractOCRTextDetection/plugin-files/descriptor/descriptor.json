@@ -290,66 +290,6 @@
           "defaultValue": "2.6"
         },
         {
-          "name": "THRS_FILTER",
-          "description": "Toggles filtering of OCR results by character frequencies (vowels, punctuation, etc.). Effective for shorter sequences of strings.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "HIST_FILTER",
-          "description": "Toggles filtering of OCR results by histogram correlation to english character frequencies. Needs longer sequences of words to be effective.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "NUM_ONLY",
-          "description": "Specifies whether to allow OCR detections that include only numbers.",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
-        },
-        {
-          "name": "MIN_WORD_LEN",
-          "description": "Specifies minimum word length required for a detection. Default value 3 = reject any output where all words are less than 3 characters in length.",
-          "type": "INT",
-          "defaultValue": "3"
-        },
-        {
-          "name": "MIN_HIST_SIZE",
-          "description": "Specifies minimum number of english characters needed for a histogram comparison. Strings with less than specified number will only go through threshold check to avoid false negatives.",
-          "type": "INT",
-          "defaultValue": "60"
-        },
-        {
-          "name": "MIN_HIST_SCORE",
-          "description": "Specifies minimum threshold comparison score (0-1.0). Higher values result in less detections.",
-          "type": "DOUBLE",
-          "defaultValue": "0.52"
-        },
-        {
-          "name": "MAX_ENG_PNCT",
-          "description": "Specifies max fraction of english punctuation in a detection. Default value .40 = any detection with >40% punctuation characters would be removed. Ignores whitespace.",
-          "type": "DOUBLE",
-          "defaultValue": "0.40"
-        },
-        {
-          "name": "MAX_FRN_CHAR",
-          "description": "Specifies max fraction of non-english characters in a detection.",
-          "type": "DOUBLE",
-          "defaultValue": "0.20"
-        },
-        {
-          "name": "VOWEL_MIN",
-          "description": "Specifies min fraction of english vowels in a detection.",
-          "type": "DOUBLE",
-          "defaultValue": "0.05"
-        },
-        {
-          "name": "VOWEL_MAX",
-          "description": "Specifies max fraction of english vowels in a detection.",
-          "type": "DOUBLE",
-          "defaultValue": "0.95"
-        },
-        {
           "name": "ROTATE_AND_DETECT",
           "description": "When enabled, automatically perform OCR using detected orientation as well as a 180 degree rotation with an OCR confidence comparision to correctly parse upside down text.",
           "type": "BOOLEAN",
