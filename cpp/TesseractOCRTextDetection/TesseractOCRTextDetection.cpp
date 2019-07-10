@@ -1509,7 +1509,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
             final_out.two_pass_correction = false;
 
             // Perform second pass OCR if min threshold is disabled (negative) or first pass confidence too low.
-            if (min_ocr_conf <= 0 || ocr_out.confidence <= min_ocr_conf) {
+            if (min_ocr_conf <= 0 || ocr_out.confidence < min_ocr_conf) {
                 // Perform second pass OCR and provide best result to output.
                 vector<TesseractOCRTextDetection::OCR_output> ocr_outputs_rotated;
                 ocr_fset.tesseract_lang = ocr_out.language;

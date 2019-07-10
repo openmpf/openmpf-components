@@ -77,7 +77,7 @@ If ROTATE_AND_DETECT is enabled, the component will perform two-pass OCR on imag
 * The first pass will use the rotation detected by OSD if enabled, otherwise it will run on the image directly.
 * The second pass will apply another 180 degree rotation on the image before processing.
     * Users can set ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE to a positive value to enable confidence checks on the first OCR pass.
-    * If the first pass is greater than the minimum specified threshold, the second pass of the OCR is skipped.
+    * If the first pass is greater than or equal to than the minimum specified threshold, the second pass of the OCR is skipped.
 * After performing two-pass OCR, the output with the highest OCR confidence is kept as the final track.
 * For multiple, separate language tracks, the previous steps are repeated for each specified language track, such that one high confidence output for each track is returned by the component.
 * The component will report ROTATE_AND_DETECT_PASS alongside the ROTATION property. The ROTATION property is the rotation of the text region, taking into consideration both the OSD rotation (if OSD was performed), as well as the 2-pass rotation attempt. ROTATE_AND_DETECT_PASS is set to 0 or 180 depending on which pass produced the best results.
