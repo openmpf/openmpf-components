@@ -45,6 +45,8 @@ namespace MPF {
 
     namespace COMPONENT {
 
+        enum Text_type{Unknown, Structured, Unstructured};
+
         class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
         public:
@@ -81,12 +83,13 @@ namespace MPF {
                 bool threshold_check;
                 bool hist_check;
                 bool invert;
+                bool enable_hist_equalization;
+                bool enable_adaptive_hist_equalization;
                 bool enable_adaptive_thrs;
                 bool enable_otsu_thrs;
-                bool enable_rescale;
-                bool enable_sharpen;
                 bool enable_osd;
                 bool combine_detected_scripts;
+                bool processing_wild_text;
                 bool rotate_and_detect;
                 int adaptive_thrs_pixel;
                 int min_word_len;
@@ -95,6 +98,9 @@ namespace MPF {
                 int oem;
                 int max_scripts;
                 int max_text_tracks;
+                int min_height;
+                int adaptive_hist_tile_size;
+                double adaptive_hist_clip_limit;
                 double adaptive_thrs_c;
                 double scale;
                 double sharpen;
@@ -166,7 +172,7 @@ namespace MPF {
 
             void set_read_config_parameters();
 
-            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset);
+            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, const Text_type &text_type = Unknown);
 
             void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string,

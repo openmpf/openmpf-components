@@ -147,7 +147,7 @@ bool TesseractOCRTextDetection::Supports(MPFDetectionDataType data_type) {
 void TesseractOCRTextDetection::set_default_parameters() {
     default_ocr_fset.psm = 3;
     default_ocr_fset.oem = 3;
-    default_ocr_fset.sharpen = 1.0;
+    default_ocr_fset.sharpen = -1.0;
     default_ocr_fset.scale = 2.4;
     default_ocr_fset.threshold_check = true;
     default_ocr_fset.hist_check = true;
@@ -160,8 +160,6 @@ void TesseractOCRTextDetection::set_default_parameters() {
     default_ocr_fset.vowel_max = 0.95;
     default_ocr_fset.correl_limit = 0.52;
     default_ocr_fset.invert = false;
-    default_ocr_fset.enable_sharpen = false;
-    default_ocr_fset.enable_rescale = true;
     default_ocr_fset.enable_otsu_thrs = false;
     default_ocr_fset.enable_adaptive_thrs = false;
     default_ocr_fset.tesseract_lang = "eng";
@@ -178,6 +176,13 @@ void TesseractOCRTextDetection::set_default_parameters() {
     default_ocr_fset.rotate_and_detect = false;
     default_ocr_fset.rotate_and_detect_min_confidence = 95.0;
 
+    default_ocr_fset.enable_hist_equalization = false;
+    default_ocr_fset.enable_adaptive_hist_equalization = false;
+    default_ocr_fset.min_height = -1;
+    default_ocr_fset.adaptive_hist_tile_size = 5;
+    default_ocr_fset.adaptive_hist_clip_limit = 2.0;
+
+    default_ocr_fset.processing_wild_text = false;
 }
 
 /*
@@ -186,15 +191,6 @@ void TesseractOCRTextDetection::set_default_parameters() {
  */
 void TesseractOCRTextDetection::set_read_config_parameters() {
 
-    if (parameters.contains("SHARPEN")) {
-        default_ocr_fset.sharpen = parameters["SHARPEN"].toDouble();
-    }
-    if (parameters.contains("SCALE")) {
-        default_ocr_fset.scale = parameters["SCALE"].toDouble();
-    }
-    if (parameters.contains("INVERT")) {
-        default_ocr_fset.invert = (parameters["INVERT"].toInt() > 0);
-    }
     if (parameters.contains("THRS_FILTER")) {
         default_ocr_fset.threshold_check = (parameters["THRS_FILTER"].toInt() > 0);
     }
@@ -225,17 +221,62 @@ void TesseractOCRTextDetection::set_read_config_parameters() {
     if (parameters.contains("VOWEL_MAX")) {
         default_ocr_fset.vowel_max = parameters["VOWEL_MAX"].toDouble();
     }
-    if (parameters.contains("ENABLE_SHARPEN")) {
-        default_ocr_fset.enable_sharpen = (parameters["ENABLE_SHARPEN"].toInt() > 0);
+    // Load wild image preprocessing settings.
+    if (parameters.contains("UNSTRUCTURED_TEXT_ENABLE_PREPROCESSING")) {
+        default_ocr_fset.processing_wild_text = (parameters["UNSTRUCTURED_TEXT_ENABLE_PREPROCESSING"].toInt() > 0);
     }
-    if (parameters.contains("ENABLE_RESCALE")) {
-        default_ocr_fset.enable_rescale = (parameters["ENABLE_RESCALE"].toInt() > 0);
+    if (default_ocr_fset.processing_wild_text) {
+        if (parameters.contains("UNSTRUCTURED_TEXT_ENABLE_OTSU_THRS")) {
+            default_ocr_fset.enable_otsu_thrs = (parameters["UNSTRUCTURED_TEXT_ENABLE_OTSU_THRS"].toInt() > 0);
+        }
+        if (parameters.contains("UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS")) {
+            default_ocr_fset.enable_adaptive_thrs = (parameters["UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS"].toInt() > 0);
+        }
+        if (parameters.contains("UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION")) {
+            default_ocr_fset.enable_adaptive_hist_equalization= (parameters["UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION"].toInt() > 0);
+        }
+        if (parameters.contains("UNSTRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION")) {
+            default_ocr_fset.enable_hist_equalization= (parameters["UNSTRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION "].toInt() > 0);
+        }
+        if (parameters.contains("UNSTRUCTURED_TEXT_SHARPEN")) {
+            default_ocr_fset.sharpen = parameters["UNSTRUCTURED_TEXT_SHARPEN"].toDouble();
+        }
+        if (parameters.contains("UNSTRUCTURED_TEXT_SCALE")) {
+            default_ocr_fset.scale = parameters["UNSTRUCTURED_TEXT_SCALE"].toDouble();
+        }
+    } else {
+        // Load default image preprocessing settings.
+
+        if (parameters.contains("STRUCTURED_TEXT_ENABLE_OTSU_THRS")) {
+            default_ocr_fset.enable_otsu_thrs = (parameters["STRUCTURED_TEXT_ENABLE_OTSU_THRS"].toInt() > 0);
+        }
+        if (parameters.contains("STRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS")) {
+            default_ocr_fset.enable_adaptive_thrs = (parameters["STRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS"].toInt() > 0);
+        }
+        if (parameters.contains("STRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION")) {
+            default_ocr_fset.enable_adaptive_hist_equalization= (parameters["STRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION"].toInt() > 0);
+        }
+        if (parameters.contains("STRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION")) {
+            default_ocr_fset.enable_hist_equalization= (parameters["STRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION "].toInt() > 0);
+        }
+        if (parameters.contains("STRUCTURED_TEXT_SHARPEN")) {
+            default_ocr_fset.sharpen = parameters["STRUCTURED_TEXT_SHARPEN"].toDouble();
+        }
+        if (parameters.contains("STRUCTURED_TEXT_SCALE")) {
+            default_ocr_fset.scale = parameters["STRUCTURED_TEXT_SCALE"].toDouble();
+        }
     }
-    if (parameters.contains("ENABLE_OTSU_THRS")) {
-        default_ocr_fset.enable_otsu_thrs = (parameters["ENABLE_OTSU_THRS"].toInt() > 0);
+    if (parameters.contains("INVERT")) {
+        default_ocr_fset.invert = (parameters["INVERT"].toInt() > 0);
     }
-    if (parameters.contains("ENABLE_ADAPTIVE_THRS")) {
-        default_ocr_fset.enable_adaptive_thrs = (parameters["ENABLE_ADAPTIVE_THRS"].toInt() > 0);
+    if (parameters.contains("MIN_HEIGHT")) {
+        default_ocr_fset.min_height = parameters["MIN_HEIGHT"].toInt();
+    }
+    if (parameters.contains("ADAPTIVE_HIST_TILE_SIZE")){
+        default_ocr_fset.adaptive_hist_tile_size = parameters["ADAPTIVE_HIST_TILE_SIZE"].toInt();
+    }
+    if (parameters.contains("ADAPTIVE_HIST_CLIP_LIMIT")) {
+        default_ocr_fset.adaptive_hist_clip_limit = parameters["ADAPTIVE_HIST_CLIP_LIMIT"].toDouble();
     }
     if (parameters.contains("ADAPTIVE_THRS_CONSTANT")) {
         default_ocr_fset.adaptive_thrs_c = parameters["ADAPTIVE_THRS_CONSTANT"].toDouble();
@@ -771,7 +812,19 @@ bool TesseractOCRTextDetection::preprocess_image(const MPFImageJob &job, cv::Mat
     } else {
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Transformed image opened.");
     }
-    // Image preprocessig to improve text extraction results.
+    // Image preprocessing to improve text extraction results.
+
+    // Image histogram equalization
+    if (ocr_fset.enable_adaptive_hist_equalization) {
+        cv::cvtColor(image_data, image_data, cv::COLOR_BGR2GRAY);
+        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+        clahe->setTilesGridSize(cv::Size(ocr_fset.adaptive_hist_tile_size, ocr_fset.adaptive_hist_tile_size));
+        clahe->setClipLimit(ocr_fset.adaptive_hist_clip_limit);
+        clahe->apply(image_data, image_data);
+    } else if (ocr_fset.enable_hist_equalization) {
+        cv::cvtColor(image_data, image_data, cv::COLOR_BGR2GRAY);
+        cv::equalizeHist(image_data, image_data);
+    }
 
     // Image thresholding.
     if (ocr_fset.enable_otsu_thrs || ocr_fset.enable_adaptive_thrs) {
@@ -786,11 +839,16 @@ bool TesseractOCRTextDetection::preprocess_image(const MPFImageJob &job, cv::Mat
     }
 
     // Rescale and sharpen image (larger images improve detection results).
-
-    if (ocr_fset.enable_rescale) {
+    if (ocr_fset.scale > 0) {
         cv::resize(image_data, image_data, cv::Size(), ocr_fset.scale, ocr_fset.scale);
     }
-    if (ocr_fset.enable_sharpen) {
+
+    if (ocr_fset.min_height > 0 && image_data.rows < ocr_fset.min_height) {
+        double ratio = (double)ocr_fset.min_height / (double)image_data.rows;
+        cv::resize(image_data, image_data, cv::Size(), ratio, ratio);
+    }
+
+    if (ocr_fset.sharpen > 0) {
         sharpen(image_data, ocr_fset.sharpen);
     }
 
@@ -919,6 +977,10 @@ bool TesseractOCRTextDetection::check_tess_model_directory(const MPFImageJob &jo
 
     for (string lang : langs) {
         boost::trim(lang);
+        // Don't search for invalid NULL language.
+        if (lang == "NULL" || lang == "script/NULL") {
+            continue;
+        }
         if (!boost::filesystem::exists(directory + "/" + lang + ".traineddata")) {
             LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Tessdata file " + lang + ".traineddata does not exist in "
                                       + directory + ".");
@@ -1041,7 +1103,8 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         TesseractOCRTextDetection::OSD_script best_script = {best_id, best_score};
         vector<TesseractOCRTextDetection::OSD_script> script_list;
 
-        if (max_scripts != 1) {
+        // If primary script is not NULL, check if secondary scripts are also valid.
+        if (max_scripts != 1 && detection_properties["PRIMARY_SCRIPT"] != "NULL") {
             // Max number of scripts in ICU + "NULL" + Japanese and Korean + Fraktur
             const int kMaxNumberOfScripts = 116 + 1 + 2 + 1;
             double score_cutoff = best_score * ocr_fset.min_secondary_script_thrs;
@@ -1124,7 +1187,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
                 } else {
                     script_results.push_back("script/Japanese,script/Japanese_vert");
                 }
-            } else if (script_type == "Common") {
+            } else if (script_type == "Common" || script_type == "NULL") {
                 continue;
             } else {
                 script_results.push_back("script/" + script_type);
@@ -1138,16 +1201,22 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             lang_str = boost::algorithm::join(script_results, ",");
         }
 
-        // Check if selected models are present in either models or tessdata directory.
-        // All language models must be present in one directory.
-        // If scripts are not found, revert to default.
-        // If scripts are found, set return_valid_tessdir so that get_tesseract_detections will skip searching for models.
-        tessdata_script_dir = TesseractOCRTextDetection::return_valid_tessdir(job, lang_str, ocr_fset.model_dir);
-        if (tessdata_script_dir == "") {
-            LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] Script models not found in model and tessdata directories,"
+        if (lang_str.empty() || lang_str == "script/NULL") {
+            LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OSD did not detect any valid scripts,"
                                      + " reverting to default language setting: " + ocr_fset.tesseract_lang);
         } else {
-            ocr_fset.tesseract_lang = lang_str;
+            // Check if selected models are present in either models or tessdata directory.
+            // All language models must be present in one directory.
+            // If scripts are not found, revert to default.
+            // If scripts are found, set return_valid_tessdir so that get_tesseract_detections will skip searching for models.
+            // Also, for script detection results, skip searching for NULL if that gets detected alongside other languages.
+            tessdata_script_dir = TesseractOCRTextDetection::return_valid_tessdir(job, lang_str, ocr_fset.model_dir);
+            if (tessdata_script_dir == "") {
+                LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] Script models not found in model and tessdata directories,"
+                                         + " reverting to default language setting: " + ocr_fset.tesseract_lang);
+            } else {
+                ocr_fset.tesseract_lang = lang_str;
+            }
         }
     }
 
@@ -1382,11 +1451,9 @@ void TesseractOCRTextDetection::load_tags_json(const MPFJob &job, MPFDetectionEr
 }
 
 void
-TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset) {
+TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                         const Text_type &text_type) {
     // Load in settings specified from job_properties and default configuration.
-    ocr_fset.sharpen = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SHARPEN", default_ocr_fset.sharpen);
-    ocr_fset.invert = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"INVERT", default_ocr_fset.invert);
-    
     // String filtering
     ocr_fset.threshold_check = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"THRS_FILTER", default_ocr_fset.threshold_check);
     ocr_fset.hist_check = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"HIST_FILTER", default_ocr_fset.hist_check);
@@ -1398,29 +1465,47 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
     ocr_fset.vowel_min = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MIN", default_ocr_fset.vowel_min);
     ocr_fset.vowel_max = DetectionComponentUtils::GetProperty<float>(job.job_properties,"VOWEL_MAX", default_ocr_fset.vowel_max);
     ocr_fset.correl_limit = DetectionComponentUtils::GetProperty<float>(job.job_properties,"MIN_HIST_SCORE", default_ocr_fset.correl_limit);
-    
+
     // Image preprocessing
-    ocr_fset.scale = DetectionComponentUtils::GetProperty<double>(job.job_properties,"SCALE", default_ocr_fset.scale);
+    bool default_processing_wild = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "UNSTRUCTURED_TEXT_ENABLE_PREPROCESSING", default_ocr_fset.processing_wild_text);
+
+    if ((text_type == Unstructured) || (text_type == Unknown && default_processing_wild)) {
+        ocr_fset.enable_adaptive_hist_equalization = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION", default_ocr_fset.enable_adaptive_hist_equalization);
+        ocr_fset.enable_hist_equalization = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "UNSTRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION",  default_ocr_fset.enable_hist_equalization);
+        ocr_fset.scale = DetectionComponentUtils::GetProperty<double>(job.job_properties,"UNSTRUCTURED_TEXT_SCALE", default_ocr_fset.scale);
+        ocr_fset.enable_adaptive_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS", default_ocr_fset.enable_adaptive_thrs);
+        ocr_fset.enable_otsu_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"UNSTRUCTURED_TEXT_ENABLE_OTSU_THRS", default_ocr_fset.enable_otsu_thrs);
+        ocr_fset.sharpen = DetectionComponentUtils::GetProperty<double>(job.job_properties,"UNSTRUCTURED_TEXT_SHARPEN", default_ocr_fset.sharpen);
+    } else {
+        ocr_fset.enable_adaptive_hist_equalization = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "STRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION", default_ocr_fset.enable_adaptive_hist_equalization);
+        ocr_fset.enable_hist_equalization = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "STRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION",  default_ocr_fset.enable_hist_equalization);
+        ocr_fset.scale = DetectionComponentUtils::GetProperty<double>(job.job_properties,"STRUCTURED_TEXT_SCALE", default_ocr_fset.scale);
+        ocr_fset.enable_adaptive_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"STRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS", default_ocr_fset.enable_adaptive_thrs);
+        ocr_fset.enable_otsu_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"STRUCTURED_TEXT_ENABLE_OTSU_THRS", default_ocr_fset.enable_otsu_thrs);
+        ocr_fset.sharpen = DetectionComponentUtils::GetProperty<double>(job.job_properties,"STRUCTURED_TEXT_SHARPEN", default_ocr_fset.sharpen);
+    }
+
+    ocr_fset.invert = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"INVERT", default_ocr_fset.invert);
+    ocr_fset.min_height = DetectionComponentUtils::GetProperty<int>(job.job_properties, "MIN_HEIGHT", default_ocr_fset.min_height);
+    ocr_fset.adaptive_hist_tile_size = DetectionComponentUtils::GetProperty<int>(job.job_properties, "ADAPTIVE_HIST_TILE_SIZE", default_ocr_fset.adaptive_hist_tile_size);
+    ocr_fset.adaptive_hist_clip_limit = DetectionComponentUtils::GetProperty<int>(job.job_properties, "ADAPTIVE_HIST_CLIP_LIMIT", default_ocr_fset.adaptive_hist_clip_limit);
     ocr_fset.adaptive_thrs_c = DetectionComponentUtils::GetProperty<double>(job.job_properties,"ADAPTIVE_THRS_CONSTANT", default_ocr_fset.adaptive_thrs_c);
     ocr_fset.adaptive_thrs_pixel = DetectionComponentUtils::GetProperty<int>(job.job_properties,"ADAPTIVE_THRS_BLOCKSIZE", default_ocr_fset.adaptive_thrs_pixel);
-    ocr_fset.enable_adaptive_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_ADAPTIVE_THRS", default_ocr_fset.enable_adaptive_thrs);
-    ocr_fset.enable_otsu_thrs = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_OTSU_THRS", default_ocr_fset.enable_otsu_thrs);
-    ocr_fset.enable_sharpen = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_SHARPEN", default_ocr_fset.enable_sharpen);
-    ocr_fset.enable_rescale = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_RESCALE", default_ocr_fset.enable_rescale);
+
+    // OCR and OSD Engine Settings.
     ocr_fset.tesseract_lang  = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,"TESSERACT_LANGUAGE", default_ocr_fset.tesseract_lang);
     ocr_fset.psm = DetectionComponentUtils::GetProperty<int>(job.job_properties,"TESSERACT_PSM", default_ocr_fset.psm);
     ocr_fset.oem = DetectionComponentUtils::GetProperty<int>(job.job_properties,"TESSERACT_OEM", default_ocr_fset.oem);
-    
-    // OSD settings
+
+    // OSD Settings
     ocr_fset.enable_osd = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_OSD_AUTOMATION", default_ocr_fset.enable_osd);
     ocr_fset.combine_detected_scripts = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"COMBINE_OSD_SCRIPTS", default_ocr_fset.combine_detected_scripts);
     ocr_fset.min_orientation_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_OSD_TEXT_ORIENTATION_CONFIDENCE", default_ocr_fset.min_orientation_confidence);
     ocr_fset.min_script_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE", default_ocr_fset.min_script_confidence);
     ocr_fset.min_script_score = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_OSD_SCRIPT_SCORE", default_ocr_fset.min_script_score);
     ocr_fset.max_scripts = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MAX_OSD_SCRIPTS", default_ocr_fset.max_scripts);
-    ocr_fset.min_secondary_script_thrs = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_OSD_SECONDARY_SCRIPT_THRESHOLD", default_ocr_fset.min_secondary_script_thrs);
-
     ocr_fset.max_text_tracks = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MAX_TEXT_TRACKS", default_ocr_fset.max_text_tracks);
+    ocr_fset.min_secondary_script_thrs = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_OSD_SECONDARY_SCRIPT_THRESHOLD", default_ocr_fset.min_secondary_script_thrs);
     ocr_fset.rotate_and_detect = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ROTATE_AND_DETECT", default_ocr_fset.rotate_and_detect);
     ocr_fset.rotate_and_detect_min_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties, "ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE", default_ocr_fset.rotate_and_detect_min_confidence);
 
@@ -1543,7 +1628,19 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
 
     TesseractOCRTextDetection::OCR_filter_settings ocr_fset;
-    load_settings(job, ocr_fset);
+    Text_type text_type = Unknown;
+
+    if (job.has_feed_forward_location && job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
+        if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "UNSTRUCTURED") {
+            text_type = Unstructured;
+        } else if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "STRUCTURED") {
+            text_type = Structured;
+        }
+
+        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Identified text type:  \"" +
+                                  job.feed_forward_location.detection_properties.at("TEXT_TYPE") + "\".");
+    }
+    load_settings(job, ocr_fset, text_type);
 
     MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
     map<wstring, vector<wstring>> json_kvs_string;
