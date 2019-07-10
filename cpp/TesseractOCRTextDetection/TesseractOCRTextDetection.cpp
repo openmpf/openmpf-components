@@ -175,6 +175,8 @@ void TesseractOCRTextDetection::set_default_parameters() {
     default_ocr_fset.max_scripts = 1;
     default_ocr_fset.max_text_tracks = 0;
     default_ocr_fset.min_secondary_script_thrs = 0.80;
+    default_ocr_fset.rotate_and_detect = false;
+    default_ocr_fset.rotate_and_detect_min_confidence = 95.0;
 
 }
 
@@ -265,14 +267,20 @@ void TesseractOCRTextDetection::set_read_config_parameters() {
     if (parameters.contains("MIN_OSD_SECONDARY_SCRIPT_THRESHOLD")) {
         default_ocr_fset.min_secondary_script_thrs = parameters["MIN_OSD_SECONDARY_SCRIPT_THRESHOLD"].toDouble();
     }
-    if (parameters.contains("MIN_OSD_ROTATION_CONFIDENCE")) {
-        default_ocr_fset.min_orientation_confidence = parameters["MIN_OSD_ROTATION_CONFIDENCE"].toDouble();
+    if (parameters.contains("MIN_OSD_TEXT_ORIENTATION_CONFIDENCE")) {
+        default_ocr_fset.min_orientation_confidence = parameters["MIN_OSD_TEXT_ORIENTATION_CONFIDENCE"].toDouble();
     }
     if (parameters.contains("MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE")) {
         default_ocr_fset.min_script_confidence = parameters["MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE"].toDouble();
     }
     if (parameters.contains("MIN_OSD_SCRIPT_SCORE")) {
         default_ocr_fset.min_script_score = parameters["MIN_OSD_SCRIPT_SCORE"].toDouble();
+    }
+    if (parameters.contains("ROTATE_AND_DETECT")) {
+            default_ocr_fset.rotate_and_detect = parameters["ROTATE_AND_DETECT"].toInt() > 0;
+    }
+    if (parameters.contains("ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE")) {
+            default_ocr_fset.rotate_and_detect_min_confidence = parameters["ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE"].toDouble();
     }
 }
 
@@ -489,6 +497,23 @@ wstring clean_whitespace(const wstring &input) {
     wstring result2 = boost::regex_replace(result, re2, L"\\\\n");
     result2 = boost::trim_copy(result2);
     return result2;
+}
+
+/*
+ * Helper function for language input processing.
+ */
+string clean_lang(const string &input) {
+        string lang = boost::trim_copy(input);
+
+        vector<string> languages;
+        boost::algorithm::split(languages, lang, boost::algorithm::is_any_of("+"));
+
+        // Trim whitespace.
+        for (string &c_lang : languages) {
+            c_lang = boost::trim_copy(c_lang);
+        }
+        lang = boost::algorithm::join(languages, "+");
+        return lang;
 }
 
 /*
@@ -796,17 +821,7 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     boost::algorithm::split(lang_tracks, ocr_fset.tesseract_lang, boost::algorithm::is_any_of(","));
     for (string lang: lang_tracks) {
         // Process each language specified by user.
-        lang = boost::trim_copy(lang);
-
-        vector<string> languages;
-        boost::algorithm::split(languages, lang, boost::algorithm::is_any_of("+"));
-
-        // Trim whitespace.
-        for (string &c_lang : languages) {
-            c_lang = boost::trim_copy(c_lang);
-        }
-
-        lang = boost::algorithm::join(languages, "+");
+        lang = clean_lang(lang);
         pair<int, string> tess_api_key = make_pair(ocr_fset.oem, lang);
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Running Tesseract with specified language: " + lang);
 
@@ -860,14 +875,8 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Tesseract run successful.");
         wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(result);
 
-        TesseractOCRTextDetection::OCR_output output_ocr = {confidence, lang, t_detection};
+        TesseractOCRTextDetection::OCR_output output_ocr = {confidence, lang, t_detection, "", false};
         detections_by_lang.push_back(output_ocr);
-    }
-
-    // If max_text_tracks is set, filter out to return only the top specified tracks.
-    if (ocr_fset.max_text_tracks > 0) {
-        sort(detections_by_lang.begin(), detections_by_lang.end(), greater<TesseractOCRTextDetection::OCR_output>());
-        detections_by_lang.resize(ocr_fset.max_text_tracks);
     }
     return true;
 }
@@ -1003,15 +1012,22 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     }
 
     // Store OSD results.
-    detection_properties["PRIMARY_SCRIPT"] = results.unicharset->get_script_from_script_id(
+    detection_properties["OSD_PRIMARY_SCRIPT"] = results.unicharset->get_script_from_script_id(
             results.best_result.script_id);
-    detection_properties["PRIMARY_SCRIPT_CONFIDENCE"] = to_string(results.best_result.sconfidence);
-    detection_properties["PRIMARY_SCRIPT_SCORE"] = to_string(best_score);
+    detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = to_string(results.best_result.sconfidence);
+    detection_properties["OSD_PRIMARY_SCRIPT_SCORE"] = to_string(best_score);
     detection_properties["ROTATION"] = to_string(rotation);
-    detection_properties["ROTATION_CONFIDENCE"] = to_string(results.best_result.oconfidence);
+    detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = to_string(results.best_result.oconfidence);
+
+    if (detection_properties["OSD_PRIMARY_SCRIPT"] == "NULL") {
+        //If OSD failed to detect any scripts, automatically set confidence scores to -1 (not enough text).
+        detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = "-1";
+        detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = "-1";
+        detection_properties["OSD_PRIMARY_SCRIPT_SCORE"]  = "-1";
+    }
 
     int max_scripts = ocr_fset.max_scripts;
-    if (detection_properties["PRIMARY_SCRIPT"] == "Common") {
+    if (detection_properties["OSD_PRIMARY_SCRIPT"] == "Common") {
         // When "Common" is detected, swap over to secondary scripts for consideration.
         // Common script is automatically excluded from model selection, but still reported in the results as the top
         // script.
@@ -1063,8 +1079,8 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
                 scores.push_back(to_string(script.score));
             }
 
-            detection_properties["SECONDARY_SCRIPTS"] = boost::algorithm::join(scripts, ", ");
-            detection_properties["SECONDARY_SCRIPT_SCORES"] = boost::algorithm::join(scores, ", ");
+            detection_properties["OSD_SECONDARY_SCRIPTS"] = boost::algorithm::join(scripts, ", ");
+            detection_properties["OSD_SECONDARY_SCRIPT_SCORES"] = boost::algorithm::join(scores, ", ");
         }
 
         // Include best script result and move it to the front.
@@ -1398,13 +1414,16 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
     // OSD settings
     ocr_fset.enable_osd = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_OSD_AUTOMATION", default_ocr_fset.enable_osd);
     ocr_fset.combine_detected_scripts = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"COMBINE_OSD_SCRIPTS", default_ocr_fset.combine_detected_scripts);
-    ocr_fset.min_orientation_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_OSD_ROTATION_CONFIDENCE", default_ocr_fset.min_orientation_confidence);
+    ocr_fset.min_orientation_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_OSD_TEXT_ORIENTATION_CONFIDENCE", default_ocr_fset.min_orientation_confidence);
     ocr_fset.min_script_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE", default_ocr_fset.min_script_confidence);
     ocr_fset.min_script_score = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_OSD_SCRIPT_SCORE", default_ocr_fset.min_script_score);
     ocr_fset.max_scripts = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MAX_OSD_SCRIPTS", default_ocr_fset.max_scripts);
     ocr_fset.min_secondary_script_thrs = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_OSD_SECONDARY_SCRIPT_THRESHOLD", default_ocr_fset.min_secondary_script_thrs);
 
     ocr_fset.max_text_tracks = DetectionComponentUtils::GetProperty<int>(job.job_properties,"MAX_TEXT_TRACKS", default_ocr_fset.max_text_tracks);
+    ocr_fset.rotate_and_detect = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ROTATE_AND_DETECT", default_ocr_fset.rotate_and_detect);
+    ocr_fset.rotate_and_detect_min_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties, "ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE", default_ocr_fset.rotate_and_detect_min_confidence);
+
 
     // Tessdata setup
     ocr_fset.model_dir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODELS_DIR_PATH", default_ocr_fset.model_dir);
@@ -1481,6 +1500,44 @@ bool TesseractOCRTextDetection::process_text_tagging(Properties &detection_prope
 
 }
 
+inline void set_coordinates(int &xLeftUpper, int &yLeftUpper, int &width, int &height, const cv::Size &input_size,
+                            const int &orientation_id) {
+    switch (orientation_id) {
+        case 0:
+            // Do not rotate.
+            xLeftUpper = 0;
+            yLeftUpper = 0;
+            width = input_size.width;
+            height = input_size.height;
+            break;
+        case 1:
+            // Text is rotated 270 degrees counterclockwise.
+            // Image will need to be rotated 90 degrees counterclockwise to fix this.
+            xLeftUpper = input_size.width - 1;
+            yLeftUpper = 0;
+            width = input_size.height;
+            height = input_size.width;
+            break;
+        case 2:
+            // 180 degree rotation.
+            xLeftUpper = input_size.width - 1;
+            yLeftUpper = input_size.height - 1;
+            width = input_size.width;
+            height = input_size.height;
+            break;
+        case 3:
+            // Text is rotated 90 degrees counterclockwise.
+            // Image will be rotated 270 degrees counterclockwise.
+            yLeftUpper = input_size.height - 1;
+            xLeftUpper = 0;
+            width = input_size.height;
+            height = input_size.width;
+            break;
+        default:
+            break;
+    }
+}
+
 MPFDetectionError
 TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImageLocation> &locations) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
@@ -1499,6 +1556,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
 
     MPFImageReader image_reader(job);
     cv::Mat image_data = image_reader.GetImage();
+    cv::Mat image_data_rotated;
     cv::Size input_size = image_data.size();
 
     if (!preprocess_image(job, image_data, ocr_fset, job_status)) {
@@ -1511,6 +1569,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
     int yLeftUpper = 0;
     int width = input_size.width;
     int height = input_size.height;
+    int orientation_result = 0;
 
     if (ocr_fset.psm == 0 || ocr_fset.enable_osd) {
 
@@ -1520,32 +1579,8 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
 
         // Rotate upper left coordinates based on OSD results.
         if (ocr_fset.min_orientation_confidence <= os_results.best_result.oconfidence) {
-            switch (os_results.best_result.orientation_id) {
-                case 0:
-                    // Do not rotate.
-                    break;
-                case 1:
-                    // Text is rotated 270 degrees counterclockwise.
-                    // Image will need to be rotated 90 degrees counterclockwise to fix this.
-                    xLeftUpper = input_size.width - 1;
-                    width = input_size.height;
-                    height = input_size.width;
-                    break;
-                case 2:
-                    // 180 degree rotation.
-                    xLeftUpper = input_size.width - 1;
-                    yLeftUpper = input_size.height - 1;
-                    break;
-                case 3:
-                    // Text is rotated 90 degrees counterclockwise.
-                    // Image will be rotated 270 degrees counterclockwise.
-                    yLeftUpper = input_size.height - 1;
-                    width = input_size.height;
-                    height = input_size.width;
-                    break;
-                default:
-                    break;
-            }
+            orientation_result = os_results.best_result.orientation_id;
+            set_coordinates(xLeftUpper, yLeftUpper, width, height, input_size, os_results.best_result.orientation_id);
         }
 
         // When PSM is set to 0, there is no need to process any further.
@@ -1559,16 +1594,114 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
         }
     }
 
+    set<string> missing_languages;
+    string first_pass_rotation, second_pass_rotation;
+    double min_ocr_conf = ocr_fset.rotate_and_detect_min_confidence;
+    int corrected_orientation;
+    int corrected_X, corrected_Y, corrected_width, corrected_height;
+
+    if (ocr_fset.rotate_and_detect) {
+        cv::rotate(image_data, image_data_rotated, cv::ROTATE_180);
+        vector<string> lang_tracks;
+        boost::algorithm::split(lang_tracks, ocr_fset.tesseract_lang, boost::algorithm::is_any_of(","));
+        for (string lang: lang_tracks) {
+            // Process each language specified by user.
+            lang = clean_lang(lang);
+            missing_languages.insert(lang);
+        }
+        double rotation_val = 0.0;
+        if (osd_detection_properties.count("ROTATION")) {
+            rotation_val = boost::lexical_cast<double>(osd_detection_properties["ROTATION"]);
+        }
+        first_pass_rotation = to_string(rotation_val);
+        second_pass_rotation = to_string(180.0 + rotation_val);
+        corrected_orientation = (orientation_result + 2) % 4;
+        set_coordinates(corrected_X, corrected_Y, corrected_width, corrected_height, input_size, corrected_orientation);
+    }
+
+    // Run initial tesseract_detections. When autorotate is set, for any languages that fall below initial pass
+    // create a second round of extractions with a 180 degree rotation applied on top of the original setting.
+    // Second rotation only triggers if ROTATE_AND_DETECT is set.
     if (!get_tesseract_detections(job, ocr_outputs, image_data, ocr_fset, job_status, tessdata_script_dir)) {
         LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
         return job_status;
     }
 
-    for (auto ocr_out: ocr_outputs) {
-        MPFImageLocation image_location(xLeftUpper, yLeftUpper, width, height, ocr_out.confidence);
+    vector<TesseractOCRTextDetection::OCR_output> all_results;
+
+    for (TesseractOCRTextDetection::OCR_output ocr_out: ocr_outputs) {
+        TesseractOCRTextDetection::OCR_output final_out = ocr_out;
+        if (ocr_fset.rotate_and_detect) {
+            missing_languages.erase(ocr_out.language);
+            final_out.two_pass_rotation = first_pass_rotation;
+            final_out.two_pass_correction = false;
+
+            // Perform second pass OCR if min threshold is disabled (negative) or first pass confidence too low.
+            if (min_ocr_conf <= 0 || ocr_out.confidence <= min_ocr_conf) {
+                // Perform second pass OCR and provide best result to output.
+                vector<TesseractOCRTextDetection::OCR_output> ocr_outputs_rotated;
+                ocr_fset.tesseract_lang = ocr_out.language;
+                if (!get_tesseract_detections(job, ocr_outputs_rotated, image_data_rotated, ocr_fset, job_status,
+                    tessdata_script_dir)) {
+                        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
+                        return job_status;
+                }
+
+                TesseractOCRTextDetection::OCR_output  ocr_out_rotated = ocr_outputs_rotated.front();
+                if (ocr_out_rotated.confidence > ocr_out.confidence) {
+                    final_out = ocr_out_rotated;
+                    final_out.two_pass_rotation = second_pass_rotation;
+                    final_out.two_pass_correction = true;
+                }
+            }
+        }
+        all_results.push_back(final_out);
+    }
+
+    // If two stage OCR is enabled, run the second pass of OCR on any remaining languages where the first pass failed
+    // to generate an output.
+    for (string miss_lang: missing_languages) {
+        // Perform second pass OCR and provide best result to output.
+        vector<TesseractOCRTextDetection::OCR_output> ocr_outputs_rotated;
+        ocr_fset.tesseract_lang = miss_lang;
+        if (!get_tesseract_detections(job, ocr_outputs_rotated, image_data_rotated, ocr_fset, job_status,
+            tessdata_script_dir)) {
+                LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
+                return job_status;
+        }
+        TesseractOCRTextDetection::OCR_output ocr_out_rotated = ocr_outputs_rotated.front();
+        ocr_out_rotated.two_pass_rotation = second_pass_rotation;
+        ocr_out_rotated.two_pass_correction = true;
+        all_results.push_back(ocr_out_rotated);
+    }
+
+    // If max_text_tracks is set, filter out to return only the top specified tracks.
+    if (ocr_fset.max_text_tracks > 0) {
+        sort(all_results.begin(), all_results.end(), greater<TesseractOCRTextDetection::OCR_output>());
+        all_results.resize(ocr_fset.max_text_tracks);
+    }
+
+    for (TesseractOCRTextDetection::OCR_output final_out : all_results) {
+        MPFImageLocation image_location(xLeftUpper, yLeftUpper, width, height, final_out.confidence);
         // Copy over OSD detection results into OCR output.
         image_location.detection_properties = osd_detection_properties;
-        bool process_text = process_text_tagging(image_location.detection_properties, job, ocr_out, job_status,
+
+        // Mark two-pass OCR final selected rotation.
+        if (ocr_fset.rotate_and_detect) {
+            image_location.detection_properties["ROTATION"] = final_out.two_pass_rotation;
+            if (final_out.two_pass_correction) {
+                image_location.detection_properties["ROTATE_AND_DETECT_PASS"] = "180";
+                // Also correct top left corner designation:
+                image_location.x_left_upper = corrected_X;
+                image_location.y_left_upper = corrected_Y;
+                image_location.width = corrected_width;
+                image_location.height = corrected_height;
+            } else {
+                image_location.detection_properties["ROTATE_AND_DETECT_PASS"] = "0";
+            }
+
+        }
+        bool process_text = process_text_tagging(image_location.detection_properties, job, final_out, job_status,
                                                  ocr_fset,
                                                  json_kvs_regex, json_kvs_string_split, json_kvs_string);
         if (process_text) {
@@ -1681,6 +1814,12 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
             LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
             boost::filesystem::remove_all(temp_im_directory);
             return job_status;
+        }
+
+        // If max_text_tracks is set, filter out to return only the top specified tracks.
+        if (ocr_fset.max_text_tracks > 0) {
+            sort(ocr_outputs.begin(), ocr_outputs.end(), greater<TesseractOCRTextDetection::OCR_output>());
+            ocr_outputs.resize(ocr_fset.max_text_tracks);
         }
 
         for (auto ocr_out: ocr_outputs) {

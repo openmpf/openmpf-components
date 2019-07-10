@@ -87,6 +87,7 @@ namespace MPF {
                 bool enable_sharpen;
                 bool enable_osd;
                 bool combine_detected_scripts;
+                bool rotate_and_detect;
                 int adaptive_thrs_pixel;
                 int min_word_len;
                 int hist_min_char;
@@ -106,6 +107,7 @@ namespace MPF {
                 double min_script_confidence;
                 double min_script_score;
                 double min_secondary_script_thrs;
+                double rotate_and_detect_min_confidence;
                 std::string tesseract_lang;
                 std::string model_dir;
             };
@@ -114,6 +116,8 @@ namespace MPF {
                 double confidence;
                 std::string language;
                 std::wstring text;
+                std::string two_pass_rotation;
+                bool two_pass_correction;
 
                 bool operator<(const OCR_output &ocr_out) const {
                     return (confidence < ocr_out.confidence);
