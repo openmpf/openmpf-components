@@ -4,6 +4,7 @@
   "middlewareVersion" :  "4.0.0",
   "sourceLanguage" : "c++",
   "batchLibrary": "${MPF_HOME}/plugins/SceneChangeDetection/lib/libmpfSceneChange.so",
+  "mediaTypesSupported": ["VIDEO"],
   "environmentVariables" : [ {
     "name" : "LD_LIBRARY_PATH",
     "value" : "${MPF_HOME}/plugins/SceneChangeDetection/lib:${LD_LIBRARY_PATH}"

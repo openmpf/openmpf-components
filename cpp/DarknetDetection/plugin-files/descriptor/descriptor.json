@@ -5,6 +5,7 @@
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/DarknetDetection/lib/libmpfDarknetDetection.so",
   "streamLibrary": "${MPF_HOME}/plugins/DarknetDetection/lib/libmpfDarknetStreamingDetection.so",
+  "mediaTypesSupported": ["VIDEO", "IMAGE"],
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",

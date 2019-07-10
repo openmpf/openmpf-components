@@ -4,6 +4,7 @@
   "middlewareVersion": "4.1.0",
   "sourceLanguage": "python",
   "batchLibrary": "EastTextDetection",
+    "mediaTypesSupported": ["VIDEO", "IMAGE"],
   "environmentVariables": [],
   "algorithm": {
     "name": "EAST",

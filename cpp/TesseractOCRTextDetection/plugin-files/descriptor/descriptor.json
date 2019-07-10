@@ -4,6 +4,7 @@
   "middlewareVersion": "4.0.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib/libmpfTesseractOCRTextDetection.so",
+  "mediaTypesSupported": ["UNKNOWN", "IMAGE"],
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",

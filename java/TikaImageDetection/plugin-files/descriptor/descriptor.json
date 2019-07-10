@@ -4,6 +4,7 @@
   "middlewareVersion" : "4.0.0",
   "sourceLanguage" : "java",
   "batchLibrary" : "mpf-tika-image-detection-component-4.0.0.jar",
+  "mediaTypesSupported": ["UNKNOWN"],
   "environmentVariables" : [],
   "algorithm" : {
     "name": "TIKAIMAGE",
@@ -21,7 +22,7 @@
       "properties": [
         {
           "name": "CONFIDENCE_THRESHOLD",
-          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
+          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",x
           "type": "DOUBLE",
           "defaultValue": "-2"
         },

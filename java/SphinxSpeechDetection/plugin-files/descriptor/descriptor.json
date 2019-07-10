@@ -4,6 +4,7 @@
   "middlewareVersion": "4.0.0",
   "sourceLanguage": "java",
   "batchLibrary": "mpf-sphinx-speech-detection-component-4.0.0.jar",
+  "mediaTypesSupported": ["AUDIO", "VIDEO"],
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",

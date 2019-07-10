@@ -5,6 +5,7 @@
   "sourceLanguage": "c++",
   "setupFile": "setup/componentSetup.yml",
   "batchLibrary": "${MPF_HOME}/plugins/OalprLicensePlateTextDetection/lib/libmpfOALPRLicensePlateTextDetection.so",
+  "mediaTypesSupported": ["VIDEO", "IMAGE"],
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",

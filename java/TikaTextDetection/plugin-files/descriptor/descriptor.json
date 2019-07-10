@@ -4,6 +4,7 @@
   "middlewareVersion" : "4.0.0",
   "sourceLanguage" : "java",
   "batchLibrary" : "mpf-tika-text-detection-component-4.0.0.jar",
+  "mediaTypesSupported": ["UNKNOWN"],
   "environmentVariables" : [],
   "algorithm" : {
     "name": "TIKATEXT",
