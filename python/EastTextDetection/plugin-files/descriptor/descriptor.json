@@ -245,6 +245,31 @@
       "tasks": [
         "EAST TEXT DETECTION TASK"
       ]
+    },
+    {
+      "name": "EAST TEXT DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs EAST text detection and performs markup.",
+      "tasks": [
+        "EAST TEXT DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION (WITH EAST REGIONS) PIPELINE",
+      "description": "Performs Tesseract OCR on feed-forward regions from EAST.",
+      "tasks": [
+        "EAST TEXT DETECTION TASK",
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION (WITH EAST REGIONS AND MARKUP) PIPELINE",
+      "description": "Performs Tesseract OCR on feed-forward regions from EAST and performs markup.",
+      "tasks": [
+        "EAST TEXT DETECTION TASK",
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
     }
   ]
 }

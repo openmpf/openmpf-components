@@ -14,7 +14,7 @@
   ],
   "algorithm": {
     "name": "TESSERACTOCR",
-    "description": "This component applies Tesseract optical character recognition to an image.",
+    "description": "Performs Tesseract optical character recognition.",
     "actionType": "DETECTION",
     "requiresCollection": {
       "states": []
@@ -141,7 +141,7 @@
           "defaultValue": "true"
         },
         {
-          "name": "MIN_OSD_ROTATION_CONFIDENCE",
+          "name": "MIN_OSD_TEXT_ORIENTATION_CONFIDENCE",
           "description": "Specifies the minimum confidence value (>= 0) required to use the detected text orientation when OSD automation is enabled. Top rotation confidence is calculated based on comparison of top-detected rotation score against secondary (lower confidence) rotation scores.",
           "type": "DOUBLE",
           "defaultValue": "2.0"
@@ -289,6 +289,18 @@
           "description": "Specifies constant subtracted from adaptive threshold mean.",
           "type": "DOUBLE",
           "defaultValue": "5"
+        },
+        {
+          "name": "ROTATE_AND_DETECT",
+          "description": "When enabled, automatically perform OCR using detected orientation as well as a 180 degree rotation with an OCR confidence comparision to correctly parse upside down text.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE",
+          "description": "Specifies minimum text confidence required to skip second OCR pass with 180 degree rotation. Negative values will result in ROTATE_AND_DETECT performing two pass OCR regardless of text confidence from the initial pass.",
+          "type": "DOUBLE",
+          "defaultValue": "95.0"
         }
       ]
     }
@@ -296,7 +308,7 @@
   "actions": [
     {
       "name": "TESSERACT OCR TEXT DETECTION ACTION",
-      "description": "Runs the Tesseract OCR model on an image.",
+      "description": "Performs Tesseract OCR.",
       "algorithm": "TESSERACTOCR",
       "properties": [
         {
@@ -307,7 +319,7 @@
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT",
-      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
+      "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "algorithm": "TESSERACTOCR",
       "properties": [
         {
@@ -319,35 +331,81 @@
           "value": "11"
         }
       ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION (WITH FF REGION) ACTION",
+      "description": "Performs Tesseract OCR on feed-forward regions.",
+      "algorithm": "TESSERACTOCR",
+      "properties": [
+        {
+          "name": "TAGGING_FILE",
+          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
+        },
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "MIN_OSD_ROTATION_CONFIDENCE",
+          "value": "0"
+        },
+        {
+          "name": "MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE",
+          "value": "0"
+        },
+        {
+          "name": "MIN_OSD_SCRIPT_SCORE",
+          "value": "0"
+        },
+        {
+          "name": "MIN_OSD_SECONDARY_SCRIPT_THRESHOLD",
+          "value": "0.40"
+        },
+        {
+          "name": "MAX_OSD_SCRIPTS",
+          "value": "2"
+        },
+        {
+          "name": "SCALE",
+          "value": "3.2"
+        }
+      ]
     }
   ],
   "tasks": [
     {
       "name": "TESSERACT OCR TEXT DETECTION TASK",
-      "description": "Runs the Tesseract OCR model on an image.",
+      "description": "Performs Tesseract OCR.",
       "actions": [
         "TESSERACT OCR TEXT DETECTION ACTION"
       ]
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION TASK SPARSE TEXT",
-      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
+      "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "actions": [
         "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION (WITH FF REGION) TASK",
+      "description": "Performs Tesseract OCR on feed-forward regions.",
+      "actions": [
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) ACTION"
       ]
     }
   ],
   "pipelines": [
     {
       "name": "TESSERACT OCR TEXT DETECTION PIPELINE",
-      "description": "Runs the Tesseract OCR model on an image.",
+      "description": "Performs Tesseract OCR.",
       "tasks": [
         "TESSERACT OCR TEXT DETECTION TASK"
       ]
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION PIPELINE SPARSE TEXT",
-      "description": "Runs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
+      "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "tasks": [
         "TESSERACT OCR TEXT DETECTION TASK SPARSE TEXT"
       ]

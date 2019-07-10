@@ -24,7 +24,9 @@
 # limitations under the License.                                            #
 #############################################################################
 
-FROM openmpf_python_executor:latest
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
+FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
 
 # Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
 RUN "$COMPONENT_VIRTUALENV/bin/pip" install --no-cache-dir 'opencv-python>=3.3'
@@ -34,3 +36,23 @@ COPY . /home/mpf/component_src/
 RUN /home/mpf/scripts/install-component.sh
 
 ENV COMPONENT_LOG_NAME east-text-detection.log
+
+
+################################################################################
+# Labels                                                                       #
+################################################################################
+
+ARG BUILD_DATE
+ARG BUILD_SHAS
+ARG BUILD_TAG
+
+# Set labels
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.license="Apache 2.0" \
+      org.label-schema.name="OpenMPF EAST Text Detection" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-ref=$BUILD_SHAS \
+      org.label-schema.vcs-url="https://github.com/openmpf" \
+      org.label-schema.vendor="MITRE" \
+      org.label-schema.version=$BUILD_TAG
