@@ -14,9 +14,7 @@ Please refer to https://imagemagick.org/script/formats.php for support of other 
 Users may set the language of each track using the TESSERACT_LANGUAGE parameter
 as well as adjust image preprocessing settings for text extraction.
 
-For processing English text, users can enable filters (THRS_FILTER, HIST_FILTER)
-to eliminate gibberish detections from a given scene. All text extracted from
-an image can also be tagged using regex and keyword tags in a given json file.
+All text extracted from an image can also be tagged using regex and keyword tags in a given json file.
 For keyword tagging, users can provide either words or phrases
 (ex. "bank-tag: [money, bank of america, etc.]"). Phrases must contain
 words separated by white-space. For more complex pattern matching, use regex tags
