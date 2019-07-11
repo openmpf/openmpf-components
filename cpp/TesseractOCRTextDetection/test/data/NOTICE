@@ -1,6 +1,9 @@
 # blank.png
 Custom generated image, contains no text.
 
+# blurry.png
+Custom generated image with blurred text.
+
 # chinese.png
 Custom generated image, contains Chinese text from the Universal
 Declaration of Human Rights. http://www.un.org/en/universal-declaration-human-rights/
@@ -17,8 +20,14 @@ Declaration of Human Rights (http://www.un.org/en/universal-declaration-human-ri
 Custom generated image, contains English text from the Universal
 Declaration of Human Rights. http://www.un.org/en/universal-declaration-human-rights/
 
+# gradient.png
+Custom generated image, with text against a white and black gradient background.
+
 # junk-text.png
 Custom generated image containing gibberish text.
+
+# limited-contrast.png
+Custom generated image containing text with poor contrast.
 
 # numeric.png
 Custom generated image containing only numbers.
@@ -47,3 +56,8 @@ Custom generated pdf for testing document text extraction.
 
 # text-demo.png
 Text extracted from open source project https://github.com/tesseract-ocr/tesseract.
+
+# wild-small-text.png
+Extracted text from street sign. Modified to have poor resolution.
+Image author: Dr. Avishai Teicher.
+Image source from https://commons.wikimedia.org/wiki/File:Street_signs_in_Rennes_(1).jpg

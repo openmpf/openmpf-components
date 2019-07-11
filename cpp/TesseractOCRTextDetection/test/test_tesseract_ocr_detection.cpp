@@ -42,7 +42,7 @@ using namespace MPF::COMPONENT;
 
 void setAlgorithmProperties(Properties &algorithm_properties, const std::map<std::string, std::string> &custom) {
     algorithm_properties["TAGGING_FILE"] = "config/test-text-tags-foreign.json";
-    algorithm_properties["SHARPEN"] = "1.0";
+    algorithm_properties["STRUCTURED_TEXT_SHARPEN"] = "-1.0";
     algorithm_properties["TESSERACT_LANGUAGE"] = "eng";
     algorithm_properties["THRS_FILTER"] = "false";
     algorithm_properties["HIST_FILTER"] = "false";
@@ -51,11 +51,18 @@ void setAlgorithmProperties(Properties &algorithm_properties, const std::map<std
     }
 }
 
-MPFImageJob createImageJob(const std::string &uri, const std::map<std::string, std::string> &custom = {}) {
+MPFImageJob createImageJob(const std::string &uri, const std::map<std::string, std::string> &custom = {},
+                           bool wild_mode = false) {
     Properties algorithm_properties;
     Properties media_properties;
     std::string job_name("OCR_test");
     setAlgorithmProperties(algorithm_properties, custom);
+    if (wild_mode) {
+        MPFImageLocation image_location(0, 0, 1, 1, -1);
+        image_location.detection_properties["TEXT_TYPE"] = "UNSTRUCTURED";
+        MPFImageJob job(job_name, uri, image_location, algorithm_properties, media_properties);
+        return job;
+    }
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
     return job;
 }
@@ -71,8 +78,9 @@ MPFGenericJob createPDFJob(const std::string &uri, const std::map<std::string, s
 
 void runImageDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
                        std::vector<MPFImageLocation> &image_locations,
-                       const std::map<std::string, std::string> &custom = {}) {
-    MPFImageJob job = createImageJob(image_path, custom);
+                       const std::map<std::string, std::string> &custom = {},
+                       bool wild_mode = false) {
+    MPFImageJob job = createImageJob(image_path, custom, wild_mode);
     MPFDetectionError rc = ocr.GetDetections(job, image_locations);
 
     ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
@@ -90,8 +98,9 @@ void runDocumentDetection(const std::string &image_path, TesseractOCRTextDetecti
 
 void assertEmptyDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
                           std::vector<MPFImageLocation> &image_locations,
-                          const std::map<std::string, std::string> &custom = {}) {
-    MPFImageJob job = createImageJob(image_path, custom);
+                          const std::map<std::string, std::string> &custom = {},
+                          bool wild_mode = false) {
+    MPFImageJob job = createImageJob(image_path, custom, wild_mode);
     MPFDetectionError rc = ocr.GetDetections(job, image_locations);
 
     ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
@@ -169,6 +178,68 @@ void convert_results(std::vector<MPFImageLocation> &im_track, const std::vector<
     }
 }
 
+TEST(TESSERACTOCR, ImageProcessingTest) {
+
+    // Ensure contrast and unstructured image processing settings are enabled.
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    std::map<std::string,std::string> custom_properties = {};
+
+    runImageDetection("data/limited-contrast.png", ocr, results,  custom_properties);
+    assertTextNotInImage("data/limited-contrast.png", "Contrast Text", results);
+
+    results.clear();
+    custom_properties = {{"MIN_HEIGHT", "-1"}};
+    runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties);
+    assertTextNotInImage("data/wild-small-text.png", "PLACE", results);
+
+    results.clear();
+    custom_properties = {{"MIN_HEIGHT", "60"}};
+    assertEmptyDetection("data/blurry.png", ocr, results,  custom_properties);
+
+    results.clear();
+    runImageDetection("data/gradient.png", ocr, results,  custom_properties);
+    assertTextNotInImage("data/gradient.png", "obscured", results);
+
+    results.clear();
+    custom_properties = {{"UNSTRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION", "true"}};
+    runImageDetection("data/limited-contrast.png", ocr, results,  custom_properties, true);
+    assertTextInImage("data/limited-contrast.png", "Contrast Text", results);
+
+    results.clear();
+    custom_properties = {{"UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION", "true"}};
+    runImageDetection("data/limited-contrast.png", ocr, results,  custom_properties, true);
+    assertTextInImage("data/limited-contrast.png", "Contrast Text", results);
+
+    results.clear();
+    custom_properties = {{"MIN_HEIGHT", "60"}};
+    runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties, true);
+    assertTextInImage("data/wild-small-text.png", "PLACE", results);
+
+    results.clear();
+    custom_properties = {{"MIN_HEIGHT",             "-1"},
+                         {"STRUCTURED_TEXT_SCALE",  "3.0"}};
+    runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties);
+    assertTextInImage("data/wild-small-text.png", "PLACE", results);
+
+    results.clear();
+    custom_properties = {{"STRUCTURED_TEXT_SHARPEN", "1.4"}};
+    runImageDetection("data/blurry.png", ocr, results,  custom_properties);
+    assertTextInImage("data/blurry.png", "blurred text", results);
+
+    results.clear();
+    custom_properties = {{"STRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS", "true"}};
+    runImageDetection("data/gradient.png", ocr, results,  custom_properties);
+    assertTextInImage("data/gradient.png", "obscured", results);
+
+    ASSERT_TRUE(ocr.Close());
+}
+
+
 TEST(TESSERACTOCR, ModelTest) {
 
     // Ensure user can specify custom model directory locations.
@@ -199,6 +270,41 @@ TEST(TESSERACTOCR, ModelTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
+TEST(TESSERACTOCR, TwoPassOCRTest) {
+
+    // Ensure that two pass OCR correctly works to process upside down text even w/out OSD support.
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"},
+                                                            {"ROTATE_AND_DETECT",     "true"}};
+
+    runImageDetection("data/eng.png", ocr, results, custom_properties);
+    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("ROTATE_AND_DETECT_PASS")) == 0) << "Expected 0 degree text rotation correction.";
+    assertTextInImage("data/eng.png", "All human beings", results);
+    results.clear();
+
+    runImageDetection("data/eng-rotated.png", ocr, results, custom_properties);
+    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("ROTATE_AND_DETECT_PASS")) == 180) << "Expected 180 degree text rotation correction.";
+    assertTextInImage("data/eng-rotated.png", "All human beings", results);
+    results.clear();
+
+    // Test to make sure threshold parameter is working.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION",            "false"},
+                         {"ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE", "10"},
+                         {"ROTATE_AND_DETECT",                "true"}};
+
+    runImageDetection("data/eng-rotated.png", ocr, results, custom_properties);
+    ASSERT_TRUE(std::stoi(results[0].detection_properties.at("ROTATE_AND_DETECT_PASS")) == 0) << "Expected 0 degree text rotation correction.";
+    assertTextNotInImage("data/eng-rotated.png", "All human beings", results);
+    ASSERT_TRUE(ocr.Close());
+
+}
+
+
 
 TEST(TESSERACTOCR, TrackFilterTest) {
 
@@ -207,6 +313,7 @@ TEST(TESSERACTOCR, TrackFilterTest) {
     std::vector<MPFImageLocation> results;
     ASSERT_TRUE(ocr.Init());
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"},
+                                                            {"ROTATE_AND_DETECT",     "true"},
                                                             {"TESSERACT_LANGUAGE",    "eng,chi_sim"},
                                                             {"MAX_TEXT_TRACKS",       "1"}};
 
@@ -264,7 +371,7 @@ TEST(TESSERACTOCR, ImageTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
-TEST(TESSERACTOCR, FilterTest) {
+TEST(TESSERACTOCR, BlankTest) {
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
@@ -274,24 +381,6 @@ TEST(TESSERACTOCR, FilterTest) {
 
     // Check no text detected for blank image.
     assertEmptyDetection("data/blank.png", ocr, results, custom_properties);
-    results.clear();
-
-    // Check no text detected for image with junk text when hist filter is enabled.
-    runImageDetection("data/junk-text.png", ocr, results, custom_properties);
-    results.clear();
-    custom_properties = {{"HIST_FILTER",           "true"},
-                         {"TESSERACT_OEM",         "0"},
-                         {"ENABLE_OSD_AUTOMATION", "false"}};
-    assertEmptyDetection("data/junk-text.png", ocr, results, custom_properties);
-    results.clear();
-
-    // Check no text detected for image with junk text when thrs filter is enabled.
-    runImageDetection("data/junk-text.png", ocr, results);
-    results.clear();
-    custom_properties = {{"THRS_FILTER",           "true"},
-                         {"TESSERACT_OEM",         "0"},
-                         {"ENABLE_OSD_AUTOMATION", "false"}};
-    assertEmptyDetection("data/junk-text.png", ocr, results, custom_properties);
 
     ASSERT_TRUE(ocr.Close());
 }
@@ -345,14 +434,14 @@ TEST(TESSERACTOCR, OSDTest) {
                                                             {"MIN_OSD_SCRIPT_SCORE",              "40"}};
     runImageDetection("data/eng.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Latin") << "Expected latin script.";
     results.clear();
 
     // Check orientation detection. Text should be properly extracted.
     runImageDetection("data/eng-rotated.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "180") << "Expected 180 degree text rotation.";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Latin") << "Expected latin script.";
     assertTextInImage("data/eng-rotated.png", "All human beings", results);
 
@@ -373,7 +462,7 @@ TEST(TESSERACTOCR, OSDConfidenceFilteringTest) {
                                                             {"MIN_OSD_SCRIPT_SCORE",              "40"}};
     runImageDetection("data/eng.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng")
                                 << "Expected default language (eng) due to script confidence rejection.";
     assertTextInImage("data/eng.png", "All human beings", results);
@@ -387,7 +476,7 @@ TEST(TESSERACTOCR, OSDConfidenceFilteringTest) {
                          {"MIN_OSD_SCRIPT_SCORE",              "60"}};
     runImageDetection("data/eng.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng")
                                 << "Expected default language (eng) due to script score rejection.";
     assertTextInImage("data/eng.png", "All human beings", results);
@@ -397,7 +486,7 @@ TEST(TESSERACTOCR, OSDConfidenceFilteringTest) {
     // In the OSDTest for eng-rotated.png, the component will accept a detected rotation of 180 degrees.
     // By setting the min rotation confidence level too high, the component must default back to original setting (0 degrees rotation).
     custom_properties = {{"TESSERACT_PSM",               "0"},
-                         {"MIN_OSD_ROTATION_CONFIDENCE", "200"}};
+                         {"MIN_OSD_TEXT_ORIENTATION_CONFIDENCE", "200"}};
     runImageDetection("data/eng-rotated.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected default text rotation.";
 
@@ -419,8 +508,8 @@ TEST(TESSERACTOCR, OSDCommonTest) {
                                                             {"MIN_OSD_SECONDARY_SCRIPT_THRESHOLD", "0.0"}};
     runImageDetection("data/numeric.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Common") << "Expected Common script.";
-    ASSERT_TRUE(results[0].detection_properties.at("SECONDARY_SCRIPTS") == "Cyrillic") << "Expected Cyrillic script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Common") << "Expected Common script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_SECONDARY_SCRIPTS") == "Cyrillic") << "Expected Cyrillic script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Cyrillic")
                                 << "Expected Cyrillic script.";
 
@@ -431,7 +520,7 @@ TEST(TESSERACTOCR, OSDCommonTest) {
                          {"MAX_OSD_SCRIPTS",       "1"}};
     runImageDetection("data/numeric.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Common") << "Expected Common script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Common") << "Expected Common script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected default language (eng).";
 
     ASSERT_TRUE(ocr.Close());
@@ -452,9 +541,9 @@ TEST(TESSERACTOCR, OSDMultilanguageScriptTest) {
                                                             {"MIN_OSD_SCRIPT_SCORE",  "45.0"}};
     runImageDetection("data/eng-bul.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Cyrillic")
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
                                 << "Expected Cyrillic as primary script.";
-    ASSERT_TRUE(results[0].detection_properties.at("SECONDARY_SCRIPTS") == "Latin")
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_SECONDARY_SCRIPTS") == "Latin")
                                 << "Expected Latin as secondary script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Cyrillic+script/Latin")
                                 << "Expected both scripts to run together.";
@@ -470,17 +559,17 @@ TEST(TESSERACTOCR, OSDMultilanguageScriptTest) {
                          {"MIN_OSD_SCRIPT_SCORE",  "45.0"}};
     runImageDetection("data/eng-bul.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Cyrillic")
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
                                 << "Expected Cyrillic as primary script.";
-    ASSERT_TRUE(results[0].detection_properties.at("SECONDARY_SCRIPTS") == "Latin")
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_SECONDARY_SCRIPTS") == "Latin")
                                 << "Expected Latin as secondary script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Cyrillic")
                                 << "Expected both scripts to run separately.";
 
     ASSERT_TRUE(results[1].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[1].detection_properties.at("PRIMARY_SCRIPT") == "Cyrillic")
+    ASSERT_TRUE(results[1].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
                                 << "Expected Cyrillic as primary script.";
-    ASSERT_TRUE(results[1].detection_properties.at("SECONDARY_SCRIPTS") == "Latin")
+    ASSERT_TRUE(results[1].detection_properties.at("OSD_SECONDARY_SCRIPTS") == "Latin")
                                 << "Expected Latin as secondary script.";
     ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "script/Latin")
                                 << "Expected both scripts to run separately.";
@@ -503,10 +592,10 @@ TEST(TESSERACTOCR, OSDMultiPageTest) {
     std::map<std::string, std::string> custom_properties = {{"TESSERACT_PSM", "0"}};
     runDocumentDetection("data/osd-tests.pdf", ocr, results_pdf, custom_properties);
     convert_results(results, results_pdf);
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Han")
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Han")
                                 << "Expected Chinese/Han detected as primary script.";
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[1].detection_properties.at("PRIMARY_SCRIPT") == "Cyrillic")
+    ASSERT_TRUE(results[1].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
                                 << "Expected Cyrillic detected as primary script.";
     ASSERT_TRUE(results[1].detection_properties.at("ROTATION") == "180") << "Expected 180 degree text rotation.";
     results_pdf.clear();
@@ -522,11 +611,11 @@ TEST(TESSERACTOCR, OSDMultiPageTest) {
     runDocumentDetection("data/osd-check-defaults.pdf", ocr, results_pdf, custom_properties);
     convert_results(results, results_pdf);
     ASSERT_TRUE(results.size() == 2) << "Expected two text tracks (middle page is blank and should be ignored).";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Cyrillic") << "Expected Cyrillic script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic") << "Expected Cyrillic script.";
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Cyrillic")
                                 << "Expected Cyrillic script.";
-    ASSERT_TRUE(results[1].detection_properties.at("PRIMARY_SCRIPT") == "NULL")
+    ASSERT_TRUE(results[1].detection_properties.at("OSD_PRIMARY_SCRIPT") == "NULL")
                                 << "Expected NULL script due to insufficient text.";
     ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng")
                                 << "Expected default language (eng) for second track.";
@@ -547,9 +636,9 @@ TEST(TESSERACTOCR, OSDSecondaryScriptThresholdTest) {
                                                             {"MIN_OSD_SCRIPT_SCORE",  "30.0"}};
     runImageDetection("data/eng-bul.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Cyrillic")
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
                                 << "Expected Cyrillic as primary script.";
-    ASSERT_TRUE(results[0].detection_properties.at("SECONDARY_SCRIPTS") == "Latin")
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_SECONDARY_SCRIPTS") == "Latin")
                                 << "Expected Latin as secondary script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Cyrillic+script/Latin")
                                 << "Expected both Cyrillic and Latin scripts";
@@ -563,7 +652,7 @@ TEST(TESSERACTOCR, OSDSecondaryScriptThresholdTest) {
                          {"MIN_OSD_SECONDARY_SCRIPT_THRESHOLD", "0.99"}};
     runImageDetection("data/eng-bul.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Cyrillic")
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
                                 << "Expected Cyrillic as primary script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Cyrillic")
                                 << "Expected only Cyrillic script due to threshold filtering.";
@@ -584,7 +673,7 @@ TEST(TESSERACTOCR, OSDHanOrientationTest) {
 
     runImageDetection("data/chinese.png", ocr, results, custom_properties);
     ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
-    ASSERT_TRUE(results[0].detection_properties.at("PRIMARY_SCRIPT") == "Han") << "Expected Chinese as primary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Han") << "Expected Chinese as primary script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/HanS+script/HanT")
                                 << "Expected Chinese horizontal text to be the correct output model";
 

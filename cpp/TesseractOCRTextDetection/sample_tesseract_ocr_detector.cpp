@@ -49,6 +49,11 @@ void print_usage(char *argv[]) {
 
     std::cout << "Usage: " << argv[0] << " -i <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
     std::cout << "Usage: " << argv[0] << " -g <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+    std::cout << "Usage w/ OSD: " << argv[0] << " -i --osd <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+    std::cout << "Usage w/ OSD: " << argv[0] << " -g --osd <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+
+    std::cout << "OSD = Automatic orientation and script detection. Input tesseract languages are generally ignored" <<
+                 " whenever OSD returns successful predictions and can be left out." << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -58,8 +63,10 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    std::string option(argv[1]);
-    std::string uri(argv[2]);
+    std::string media_option(argv[1]);
+    std::string option_2(argv[2]);
+    std::string uri = "";
+    bool enable_osd = false;
 
     Properties algorithm_properties;
     Properties media_properties;
@@ -68,8 +75,20 @@ int main(int argc, char *argv[]) {
     algorithm_properties["THRS_FILTER"] = "false";
     algorithm_properties["HIST_FILTER"] = "false";
     algorithm_properties["SHARPEN"] = "1.0";
-    if (argc == 4) {
+
+    if (option_2 == "--osd") {
+        uri = argv[3];
+        algorithm_properties["ENABLE_OSD_AUTOMATION"] = "true";
+        enable_osd = true;
+    } else {
+        algorithm_properties["ENABLE_OSD_AUTOMATION"] = "false";
+        uri = argv[2];
+    }
+    
+    if (argc == 4 && !enable_osd) {
         algorithm_properties["TESSERACT_LANGUAGE"] = argv[3];
+    } else if(argc == 5 && enable_osd) {
+        algorithm_properties["TESSERACT_LANGUAGE"] = argv[4];
     }
 
     // Instantiate the component.
@@ -77,7 +96,7 @@ int main(int argc, char *argv[]) {
     im.SetRunDirectory("./plugin");
     im.Init();
 
-    if (option == "-g") {
+    if (media_option == "-g") {
         // Run uri as a generic data file.
         std::cout << "Running job on generic data uri: " << uri << std::endl;
         MPFGenericJob job(job_name, uri, algorithm_properties, media_properties);
@@ -90,22 +109,22 @@ int main(int argc, char *argv[]) {
             std::cout << "Number of tracks = "
                       << tracks.size() << std::endl;
             for (int i = 0; i < tracks.size(); i++) {
-                if (tracks[i].detection_properties.count("PRIMARY_SCRIPT") > 0) {
+                if (tracks[i].detection_properties.count("OSD_PRIMARY_SCRIPT") > 0) {
                     std::cout << "OSD result: " << "\n";
-                    std::cout << "Detected script: " << tracks[i].detection_properties.at("PRIMARY_SCRIPT") << "\n";
+                    std::cout << "Detected script: " << tracks[i].detection_properties.at("OSD_PRIMARY_SCRIPT") << "\n";
                     std::cout << "Script confidence: "
-                              << tracks[i].detection_properties.at("PRIMARY_SCRIPT_CONFIDENCE") << "\n";
-                    std::cout << "Script score: " << tracks[i].detection_properties.at("PRIMARY_SCRIPT_SCORE")
+                              << tracks[i].detection_properties.at("OSD_PRIMARY_SCRIPT_CONFIDENCE") << "\n";
+                    std::cout << "Script score: " << tracks[i].detection_properties.at("OSD_PRIMARY_SCRIPT_SCORE")
                               << "\n";
                     std::cout << "Detected orientation: " << tracks[i].detection_properties.at("ROTATION") << "\n";
                     std::cout << "Orientation confidence: "
-                              << tracks[i].detection_properties.at("ROTATION_CONFIDENCE") << "\n";
+                              << tracks[i].detection_properties.at("OSD_TEXT_ORIENTATION_CONFIDENCE") << "\n";
 
-                    if (tracks[i].detection_properties.count("SECONDARY_SCRIPTS") > 0) {
-                        std::cout << "Secondary scripts: " << tracks[i].detection_properties.at("SECONDARY_SCRIPTS")
+                    if (tracks[i].detection_properties.count("OSD_SECONDARY_SCRIPTS") > 0) {
+                        std::cout << "Secondary scripts: " << tracks[i].detection_properties.at("OSD_SECONDARY_SCRIPTS")
                                   << "\n";
                         std::cout << "Secondary script scores: "
-                                  << tracks[i].detection_properties.at("SECONDARY_SCRIPT_SCORES") << "\n"
+                                  << tracks[i].detection_properties.at("OSD_SECONDARY_SCRIPT_SCORES") << "\n"
                                   << std::endl;
                     }
                 }
@@ -126,7 +145,7 @@ int main(int argc, char *argv[]) {
             std::cout << "GetDetections failed" << std::endl;
         }
 
-    } else if (option == "-i") {
+    } else if (media_option == "-i") {
         // Run uri as an image data file.
         std::cout << "Running job on image data uri: " << uri << std::endl;
         MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
@@ -140,23 +159,23 @@ int main(int argc, char *argv[]) {
                       << locations.size() << std::endl;
 
             for (int i = 0; i < locations.size(); i++) {
-                if (locations[i].detection_properties.count("PRIMARY_SCRIPT") > 0) {
+                if (locations[i].detection_properties.count("OSD_PRIMARY_SCRIPT") > 0) {
                     std::cout << "OSD result: " << "\n";
-                    std::cout << "Detected script: " << locations[i].detection_properties.at("PRIMARY_SCRIPT")
+                    std::cout << "Detected script: " << locations[i].detection_properties.at("OSD_PRIMARY_SCRIPT")
                               << "\n";
                     std::cout << "Script confidence: "
-                              << locations[i].detection_properties.at("PRIMARY_SCRIPT_CONFIDENCE") << "\n";
-                    std::cout << "Script score: " << locations[i].detection_properties.at("PRIMARY_SCRIPT_SCORE")
+                              << locations[i].detection_properties.at("OSD_PRIMARY_SCRIPT_CONFIDENCE") << "\n";
+                    std::cout << "Script score: " << locations[i].detection_properties.at("OSD_PRIMARY_SCRIPT_SCORE")
                               << "\n";
                     std::cout << "Detected orientation: " << locations[i].detection_properties.at("ROTATION")
                               << "\n";
                     std::cout << "Orientation confidence: "
-                              << locations[i].detection_properties.at("ROTATION_CONFIDENCE") << "\n";
-                    if (locations[i].detection_properties.count("SECONDARY_SCRIPTS") > 0) {
+                              << locations[i].detection_properties.at("OSD_TEXT_ORIENTATION_CONFIDENCE") << "\n";
+                    if (locations[i].detection_properties.count("OSD_SECONDARY_SCRIPTS") > 0) {
                         std::cout << "Secondary scripts: "
-                                  << locations[i].detection_properties.at("SECONDARY_SCRIPTS") << "\n";
+                                  << locations[i].detection_properties.at("OSD_SECONDARY_SCRIPTS") << "\n";
                         std::cout << "Secondary script scores: "
-                                  << locations[i].detection_properties.at("SECONDARY_SCRIPT_SCORES") << "\n"
+                                  << locations[i].detection_properties.at("OSD_SECONDARY_SCRIPT_SCORES") << "\n"
                                   << std::endl;
                     }
 
