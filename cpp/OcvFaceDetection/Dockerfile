@@ -24,38 +24,26 @@
 # limitations under the License.                                            #
 #############################################################################
 
-cmake_minimum_required(VERSION 3.6)
-project(ocv-face-detection-tests)
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
 
-set(CMAKE_CXX_STANDARD 11)
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-find_package(GTest)
-if (${GTEST_FOUND})
+COPY . .
 
-    enable_testing()
-    find_package(Qt4 REQUIRED)
-    find_package(mpfComponentTestUtils REQUIRED)
+RUN build-component.sh
 
-    include_directories(..)
-    add_executable(OcvFaceDetectionTest test_ocv_face_detection.cpp)
-    target_link_libraries(OcvFaceDetectionTest mpfOcvFaceDetection mpfComponentTestUtils GTest::GTest GTest::Main Qt4::QtCore)
-
-    add_test(NAME OcvFaceDetectionTest COMMAND OcvFaceDetectionTest)
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvFaceDetectionTest; fi
 
 
-    # Install config file
-    file(COPY ../plugin-files/config DESTINATION .)
-    file(COPY test_ocv_face_config.ini DESTINATION config)
-    file(COPY ../plugin-files/data DESTINATION .)
 
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-    # Install test images and videos
-    file(GLOB FACE_TEST_IMAGE_FILES data/test_imgs/*)
-    file(COPY ${FACE_TEST_IMAGE_FILES} DESTINATION test/test_imgs)
+ENV COMPONENT_LOG_NAME ocv-face-detection.log
 
-    file(GLOB FACE_TEST_VIDEO_FILES data/test_vids/*)
-    file(COPY ${FACE_TEST_VIDEO_FILES} DESTINATION test/test_vids)
+COPY --from=build_component $BUILD_DIR/plugin/OcvFaceDetection $INSTALL_DIR
 
-    # Create directory for test output files
-    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test/test_output/)
-endif()
+COPY --from=build_component $BUILD_DIR/libmpfOcvFaceDetection.so \
+                            $INSTALL_DIR/lib
+

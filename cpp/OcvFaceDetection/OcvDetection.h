@@ -44,7 +44,7 @@ public:
 
     std::vector<std::pair<cv::Rect, int>> DetectFaces(const cv::Mat &frame_gray, int min_face_size = 48);
 
-    bool Init(std::string &run_directory);
+    bool Init(const std::string &run_directory);
 
 private:
     std::string face_cascade_path;

@@ -93,7 +93,7 @@ OcvDetection::OcvDetection() {
 
 OcvDetection::~OcvDetection() { }
 
-bool OcvDetection::Init(std::string &plugin_path) {
+bool OcvDetection::Init(const std::string &plugin_path) {
     openFaceDetectionLogger = log4cxx::Logger::getLogger("OcvFaceDetection");
 
     //Load cascades

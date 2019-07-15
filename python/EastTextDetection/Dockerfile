@@ -29,11 +29,11 @@ ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
 
 # Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN "$COMPONENT_VIRTUALENV/bin/pip" install --no-cache-dir 'opencv-python>=3.3'
+RUN pip install --no-cache-dir 'opencv-python>=3.3'
 
-COPY . /home/mpf/component_src/
+COPY . .
 
-RUN /home/mpf/scripts/install-component.sh
+RUN install-component.sh
 
 ENV COMPONENT_LOG_NAME east-text-detection.log
 
