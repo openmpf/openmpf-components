@@ -1484,105 +1484,109 @@ bool TesseractOCRTextDetection::process_text_tagging(Properties &detection_prope
 MPFDetectionError
 TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImageLocation> &locations) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
+    try {
+        TesseractOCRTextDetection::OCR_filter_settings ocr_fset;
+        load_settings(job, ocr_fset);
 
-    TesseractOCRTextDetection::OCR_filter_settings ocr_fset;
-    load_settings(job, ocr_fset);
+        MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
+        map<wstring, vector<wstring>> json_kvs_string;
+        map<wstring, vector<wstring>> json_kvs_string_split;
+        map<wstring, vector<wstring>> json_kvs_regex;
+        load_tags_json(job, job_status, json_kvs_string, json_kvs_string_split, json_kvs_regex);
 
-    MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
-    map<wstring, vector<wstring>> json_kvs_string;
-    map<wstring, vector<wstring>> json_kvs_string_split;
-    map<wstring, vector<wstring>> json_kvs_regex;
-    load_tags_json(job, job_status, json_kvs_string, json_kvs_string_split, json_kvs_regex);
+        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to run tesseract");
+        vector<TesseractOCRTextDetection::OCR_output> ocr_outputs;
 
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to run tesseract");
-    vector<TesseractOCRTextDetection::OCR_output> ocr_outputs;
+        MPFImageReader image_reader(job);
+        cv::Mat image_data = image_reader.GetImage();
+        cv::Size input_size = image_data.size();
 
-    MPFImageReader image_reader(job);
-    cv::Mat image_data = image_reader.GetImage();
-    cv::Size input_size = image_data.size();
+        if (!preprocess_image(job, image_data, ocr_fset, job_status)) {
+            return job_status;
+        }
 
-    if (!preprocess_image(job, image_data, ocr_fset, job_status)) {
-        return job_status;
-    }
+        Properties osd_detection_properties;
+        string tessdata_script_dir = "";
+        int xLeftUpper = 0;
+        int yLeftUpper = 0;
+        int width = input_size.width;
+        int height = input_size.height;
 
-    Properties osd_detection_properties;
-    string tessdata_script_dir = "";
-    int xLeftUpper = 0;
-    int yLeftUpper = 0;
-    int width = input_size.width;
-    int height = input_size.height;
+        if (ocr_fset.psm == 0 || ocr_fset.enable_osd) {
 
-    if (ocr_fset.psm == 0 || ocr_fset.enable_osd) {
+            OSResults os_results;
+            get_OSD(os_results, image_data, job, ocr_fset, osd_detection_properties, job_status,
+                    tessdata_script_dir);
 
-        OSResults os_results;
-        get_OSD(os_results, image_data, job, ocr_fset, osd_detection_properties, job_status,
-                tessdata_script_dir);
+            // Rotate upper left coordinates based on OSD results.
+            if (ocr_fset.min_orientation_confidence <= os_results.best_result.oconfidence) {
+                switch (os_results.best_result.orientation_id) {
+                    case 0:
+                        // Do not rotate.
+                        break;
+                    case 1:
+                        // Text is rotated 270 degrees counterclockwise.
+                        // Image will need to be rotated 90 degrees counterclockwise to fix this.
+                        xLeftUpper = input_size.width - 1;
+                        width = input_size.height;
+                        height = input_size.width;
+                        break;
+                    case 2:
+                        // 180 degree rotation.
+                        xLeftUpper = input_size.width - 1;
+                        yLeftUpper = input_size.height - 1;
+                        break;
+                    case 3:
+                        // Text is rotated 90 degrees counterclockwise.
+                        // Image will be rotated 270 degrees counterclockwise.
+                        yLeftUpper = input_size.height - 1;
+                        width = input_size.height;
+                        height = input_size.width;
+                        break;
+                    default:
+                        break;
+                }
+            }
 
-        // Rotate upper left coordinates based on OSD results.
-        if (ocr_fset.min_orientation_confidence <= os_results.best_result.oconfidence) {
-            switch (os_results.best_result.orientation_id) {
-                case 0:
-                    // Do not rotate.
-                    break;
-                case 1:
-                    // Text is rotated 270 degrees counterclockwise.
-                    // Image will need to be rotated 90 degrees counterclockwise to fix this.
-                    xLeftUpper = input_size.width - 1;
-                    width = input_size.height;
-                    height = input_size.width;
-                    break;
-                case 2:
-                    // 180 degree rotation.
-                    xLeftUpper = input_size.width - 1;
-                    yLeftUpper = input_size.height - 1;
-                    break;
-                case 3:
-                    // Text is rotated 90 degrees counterclockwise.
-                    // Image will be rotated 270 degrees counterclockwise.
-                    yLeftUpper = input_size.height - 1;
-                    width = input_size.height;
-                    height = input_size.width;
-                    break;
-                default:
-                    break;
+            // When PSM is set to 0, there is no need to process any further.
+            if (ocr_fset.psm == 0) {
+                LOG4CXX_INFO(hw_logger_,
+                             "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) +
+                             " tracks.");
+                MPFImageLocation osd_detection(xLeftUpper, yLeftUpper, width, height, -1, osd_detection_properties);
+                locations.push_back(osd_detection);
+                return job_status;
             }
         }
 
-        // When PSM is set to 0, there is no need to process any further.
-        if (ocr_fset.psm == 0) {
-            LOG4CXX_INFO(hw_logger_,
-                         "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) +
-                         " tracks.");
-            MPFImageLocation osd_detection(xLeftUpper, yLeftUpper, width, height, -1, osd_detection_properties);
-            locations.push_back(osd_detection);
+        if (!get_tesseract_detections(job, ocr_outputs, image_data, ocr_fset, job_status, tessdata_script_dir)) {
+            LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
             return job_status;
         }
-    }
 
-    if (!get_tesseract_detections(job, ocr_outputs, image_data, ocr_fset, job_status, tessdata_script_dir)) {
-        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
+        for (auto ocr_out: ocr_outputs) {
+            MPFImageLocation image_location(xLeftUpper, yLeftUpper, width, height, ocr_out.confidence);
+            // Copy over OSD detection results into OCR output.
+            image_location.detection_properties = osd_detection_properties;
+            bool process_text = process_text_tagging(image_location.detection_properties, job, ocr_out, job_status,
+                                                     ocr_fset,
+                                                     json_kvs_regex, json_kvs_string_split, json_kvs_string);
+            if (process_text) {
+                locations.push_back(image_location);
+            }
+        }
+
+        for (auto &location : locations) {
+            image_reader.ReverseTransform(location);
+        }
+
+        LOG4CXX_INFO(hw_logger_,
+                     "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) + " tracks.");
         return job_status;
     }
-
-    for (auto ocr_out: ocr_outputs) {
-        MPFImageLocation image_location(xLeftUpper, yLeftUpper, width, height, ocr_out.confidence);
-        // Copy over OSD detection results into OCR output.
-        image_location.detection_properties = osd_detection_properties;
-        bool process_text = process_text_tagging(image_location.detection_properties, job, ocr_out, job_status,
-                                                 ocr_fset,
-                                                 json_kvs_regex, json_kvs_string_split, json_kvs_string);
-        if (process_text) {
-            locations.push_back(image_location);
-        }
+    catch (...) {
+        return Utils::HandleDetectionException(job, hw_logger_);
     }
-
-    for (auto &location : locations) {
-        image_reader.ReverseTransform(location);
-    }
-
-    LOG4CXX_INFO(hw_logger_,
-                 "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) + " tracks.");
-    return job_status;
 }
 
 MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &job, vector<MPFGenericTrack> &tracks) {
@@ -1650,8 +1654,13 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
     for (string filename : filelist) {
         MPFImageJob c_job(job.job_name, filename, job.job_properties, job.media_properties);
 
-        MPFImageReader image_reader(c_job);
-        cv::Mat image_data = image_reader.GetImage();
+        cv::Mat image_data;
+        try {
+            MPFImageReader image_reader(c_job);
+            image_data = image_reader.GetImage();
+        } catch (...) {
+            return Utils::HandleDetectionException(c_job, hw_logger_);
+        }
 
         if (!preprocess_image(c_job, image_data, ocr_fset, job_status)) {
             return job_status;
