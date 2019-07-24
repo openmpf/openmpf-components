@@ -283,6 +283,127 @@ def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
 
     return merged_any
 
+
+class MergedRegions(object):
+    def __init__(self, rboxes, scores):
+        self.quads = rbox_to_quad(rboxes)
+        self.rotations = rboxes[:,6]
+        self.heights = rboxes[:,2] + rboxes[:,4]
+        self.areas = contour_area(self.quads)
+        self.weights = scores
+        self.scores = scores
+        self.constituents = [[i] for i in range(len(scores))]
+
+    def perform_merge(self, constituent_index_lists):
+        post_merge_quads = []
+        post_merge_rotations = []
+        post_merge_heights = []
+        post_merge_weights = []
+        post_merge_scores = []
+        post_merge_constituents = []
+        for indices in constituent_index_lists:
+            if len(indices) == 1:
+                i = indices[0]
+                post_merge_quads.append(self.quads[i])
+                post_merge_rotations.append(self.rotations[i])
+                post_merge_heights.append(self.heights[i])
+                post_merge_weights.append(self.weights[i])
+                post_merge_scores.append(self.scores[i])
+                post_merge_constituents.append(self.constituents[i])
+                continue
+
+            # The score for a merged region is the maximum constituent score
+            score = self.scores[indices].max()
+
+            # The weight for a merged region is the sum of constituent weights
+            weights = self.weights[indices]
+            scale = weights.sum()
+
+            # The rotation and text height for a merged region is a weighted
+            #  average of the constituent boxes' rotations and text heights
+            rotation = np.sum(self.rotations[indices] * weights) / scale
+            height = np.sum(self.heights[indices] * weights) / scale
+
+            # Merge the constituent boxes at the weighted average rotation
+            quad = merge(self.quads[indices], rotation)
+
+            # Merge the constituent index lists
+            constituents = [j for i in indices for j in self.constituents[i]]
+
+            post_merge_quads.append(quad)
+            post_merge_rotations.append(rotation)
+            post_merge_heights.append(height)
+            post_merge_weights.append(scale)
+            post_merge_scores.append(score)
+            post_merge_constituents.append(constituents)
+
+        # Update members
+        self.quads = np.stack(post_merge_quads)
+        self.rotations = np.array(post_merge_rotations)
+        self.heights = np.array(post_merge_heights)
+        self.areas = contour_area(self.quads.astype(np.float32))
+        self.weights = np.array(post_merge_weights)
+        self.scores = np.array(post_merge_scores)
+        self.constituents = post_merge_constituents
+
+
+def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
+    """ Complete one merge pass. This takes one box at a time (largest area
+        first) and merges it with all eligible boxes. This merged box is added
+        to a list, and all constituent boxes removed from the original list.
+        The largest remaining box is then taken, and the process is repeated
+        until the original list is empty.
+    """
+    # Sort by bounding box area (descending)
+    order = np.argsort(regions.areas)[::-1]
+
+    merged_any = False
+    constituent_index_lists = []
+    while len(order) > 0:
+        head = order[0]
+        order = order[1:]
+        constituent_indices = [head]
+
+        # If only one region remains, append and break
+        if len(order) == 0:
+            constituent_index_lists.append(constituent_indices)
+            break
+
+        # Filter out boxes without sufficient overlap. Based on intersection
+        #  over smaller area (IoSA), not intersection over union (IoU). Because #  we select in order of area, the head region is always larger.
+        inter = contour_intersect_area(
+            regions.quads[head].astype(np.float32),
+            regions.quads[order].astype(np.float32)
+        )
+        overlaps = (inter / regions.areas[order]) >= min_merge_overlap
+
+        # Filter out boxes whose text height does not match
+        diff = np.abs(regions.heights[head] - regions.heights[order])
+        rel_diff = 2 * diff / (regions.heights[head] + regions.heights[order])
+        height_matches = rel_diff <= max_height_delta
+
+        # Filter out boxes whose rotation does not match
+        rotation_matches = close_under_modulus(
+            regions.rotations[head],
+            regions.rotations[order],
+            np.radians(max_rot_delta),
+            180
+        )
+
+        # Merge the eligible boxes in the tail with the head box
+        to_merge = np.logical_and(overlaps, height_matches, rotation_matches)
+        if np.any(to_merge):
+            constituent_indices.extend(order[to_merge])
+            order = order[np.logical_not(to_merge)]
+            merged_any = True
+
+        constituent_index_lists.append(constituent_indices)
+
+    # Update the regions structure in place
+    regions.perform_merge(constituent_index_lists)
+
+    return merged_any
+
 def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
                   max_rot_delta):
     """ An approximate locality-aware variant of non-maximum suppression, which
@@ -423,6 +544,130 @@ def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
         regions.weights = np.hstack((weights[unmerged], merged_weights))
         regions.areas = contour_area(regions.quads.astype(np.float32))
         regions.scores = np.hstack((scores[unmerged], merged_scores))
+
+    # Continue until all eligible boxes have been merged
+    while True:
+        merged_any = merge_pass(
+            regions,
+            min_merge_overlap=min_merge_overlap,
+            max_height_delta=max_height_delta,
+            max_rot_delta=max_rot_delta
+        )
+        # If no boxes were merged, we're done
+        if not merged_any:
+            break
+
+    return regions.quads, regions.scores
+
+def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
+                  max_rot_delta):
+    """ An approximate locality-aware variant of non-maximum suppression, which
+        merges together overlapping boxes rather than suppressing them.
+
+        Non-maximum suppression (NMS) selects regions in order of decreasing
+        confidence and discards all lower-confidence regions whose intersection
+        over union with the current region is greater than some threshold value.
+        This has the effect of pruning overlapping boxes from the set of
+        detections, retaining only those with the highest confidence scores.
+
+        Locality-Aware NMS (LANMS), proposed by Zhou et al. in EAST: An
+        Efficient and Accurate Scene Text Detector, performs an initial linear
+        time row-merging pass which significantly reduces the number of
+        detections before performing the standard quadratic time NMS procedure.
+        In the row-merging pass, adjacent overlapping regions are combined via a
+        confidence-weighted average of their geometries. This is done
+        iteratively, so the combined region is then compared with the next
+        adjacent detection.
+
+        We make several key changes to the LANMS algorithm.
+        1. The initial row-merging pass is not iterative: we
+           instead take "runs" of overlapping bounding boxes (essentially
+           connected components in the flattened grid) and merge them together.
+           This allows for a significant speedup through NumPy vectorization.
+        2. In the standard LANMS scheme, "merging" means to take the
+           score-weighted average of bounding box corner coordinates. In our
+           algorithm, we replace overlapping regions with a minimal oriented
+           bounding box which encloses the set of regions to be merged, whose
+           rotation is defined as the score-weighted average of the constituent
+           bounding box orientations.
+        3. Even after the locality-aware first pass, we merge boxes rather than
+           suppress the ones with lower confidence. As above, the orientation
+           of the merged box is a confidence-weighted average.
+        4. We threshold not the intersect over union, but the intersect over
+           smallest area. This is because, as merged regions grow larger, the
+           IoU between them and smaller boxes will shrink. Because the
+           threshold value is constant, large boxes will eventually never merge
+           with smaller boxes.
+        5. In addition to thresholding the overlap, we theshold the similarity
+           between regions in rotation and text height. This way, text with very
+           dissimilar orientations or scales will not be combined. The text
+           height at the first pass is defined as the height of the bounding
+           box. When merged, the merged region's text height is the
+           confidence-weighted average of the text heights of the constituent
+           boxes (so a large region composed of many small boxes will still be
+           associated with small text).
+
+        Note: During merging, the confidence "weight" of a merged box is the sum
+           of the constituent confidences. This is to prevent a small box
+           significantly altering the properties of a large merged region
+           containing many constituent boxes. However, the reported confidence
+           of a merged region is the maximum of its constituent scores.
+    """
+    regions = MergedRegions(rboxes, scores)
+
+    # Do the initial locality-aware pass
+
+    # Filter out boxes without sufficient overlap. Based on intersection
+    #  over smaller area (IoSA), not intersection over union (IoU).
+    inter = contour_intersect_area(
+        regions.quads[:-1].astype(np.float32),
+        regions.quads[1:].astype(np.float32)
+    )
+    smaller_area = np.minimum(regions.areas[:-1], regions.areas[1:])
+    overlaps = (inter / smaller_area) >= min_merge_overlap
+
+    # Filter out boxes whose text height does not match
+    diff = np.abs(regions.heights[:-1] - regions.heights[1:])
+    rel_diff = 2 * diff / (regions.heights[:-1] + regions.heights[1:])
+    height_matches = rel_diff <= max_height_delta
+
+    # Filter out boxes whose rotation does not match
+    rotation_matches = close_under_modulus(
+        regions.rotations[:-1],
+        regions.rotations[1:],
+        np.radians(max_rot_delta),
+        180
+    )
+
+    # Merge the runs of eligible boxes
+    to_merge = np.logical_and(overlaps, height_matches, rotation_matches)
+    if np.any(to_merge):
+        # Here, to_merge is the boolean map indicating whether the box at each
+        #  index can be merged with the one directly after it.
+        to_merge = np.hstack((to_merge, False))
+
+        # Break down into runs of True cells. These runs can all be merged
+        #  together at once. This is the approximation; with true locality
+        #  aware NMS, boxes are merged successively, and the merging is done
+        #  by averaging box corner coordinates. Here, we merge by taking a
+        #  large box which encloses runs of overlapping constituents
+        diffs = np.diff(np.hstack((False, to_merge)).astype(np.int8))
+        run_starts = np.flatnonzero(diffs > 0)
+        run_ends = np.flatnonzero(diffs < 0)
+
+        # The first in a run of False cells is merged with the preceeding run
+        to_merge[run_ends] = True
+
+        constituent_index_lists = [
+            list(range(a, b + 1))
+            for a, b in zip(run_starts, run_ends)
+        ]
+
+        # Update the structure to include the merged runs as well as the
+        #  original boxes left unmerged
+        unmerged = np.flatnonzero(np.logical_not(to_merge))
+        constituent_index_lists.extend([[i] for i in unmerged])
+        regions.perform_merge(constituent_index_lists)
 
     # Continue until all eligible boxes have been merged
     while True:
