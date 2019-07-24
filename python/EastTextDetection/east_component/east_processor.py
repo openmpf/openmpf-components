@@ -116,7 +116,7 @@ class EastProcessor(object):
 
         self._rotate_on = rotate_on
 
-    def _process_blob(self, blob, min_confidence, suppress_vertical, padding):
+    def _process_blob(self, blob, min_confidence, suppress_vertical):
         # Run blob through model to get geometry and scores
         self._model.setInput(blob)
         data = np.concatenate(self._model.forward(_layer_names), axis=1)
@@ -192,9 +192,6 @@ class EastProcessor(object):
         # Rescale origin coordinates to frame dimensions
         origin_coords *= self._feat2frame_scale
 
-        # Add padding
-        aabb += padding * (aabb[:,[0]] + aabb[:,[2]])
-
         rboxes = np.hstack((
             origin_coords,
             aabb,
@@ -241,8 +238,7 @@ class EastProcessor(object):
                 crop=False
             ),
             min_confidence=min_confidence,
-            suppress_vertical=suppress_vertical,
-            padding=padding
+            suppress_vertical=suppress_vertical
         )
 
         text_type = 'UNSTRUCTURED'
@@ -256,6 +252,7 @@ class EastProcessor(object):
             quads, scores = merge_regions(
                 rboxes=rboxes,
                 scores=scores,
+                padding=padding,
                 min_merge_overlap=min_merge_overlap,
                 max_height_delta=max_height_delta,
                 max_rot_delta=max_rot_delta
@@ -327,8 +324,7 @@ class EastProcessor(object):
                 crop=False
             ),
             min_confidence=min_confidence,
-            suppress_vertical=suppress_vertical,
-            padding=padding
+            suppress_vertical=suppress_vertical
         )
 
         text_type = 'UNSTRUCTURED'
@@ -349,6 +345,7 @@ class EastProcessor(object):
                     quads, merged_scores = merge_regions(
                         rboxes=rboxes[j0:j1],
                         scores=scores[j0:j1],
+                        padding=padding,
                         min_merge_overlap=min_merge_overlap,
                         max_height_delta=max_height_delta,
                         max_rot_delta=max_rot_delta

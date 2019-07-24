@@ -288,7 +288,7 @@ def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
 
     return merged_any
 
-def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
+def merge_regions(rboxes, scores, padding, min_merge_overlap, max_height_delta,
                   max_rot_delta):
     """ An approximate locality-aware variant of non-maximum suppression, which
         merges together overlapping boxes rather than suppressing them.
@@ -342,7 +342,12 @@ def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
            containing many constituent boxes. However, the reported confidence
            of a merged region is the maximum of its constituent scores.
     """
-    regions = MergedRegions(rboxes, scores)
+
+
+    # Add padding
+    padded_rboxes = rboxes.copy()
+    padded_rboxes[:,2:6] += padding * (rboxes[:,[2]] + rboxes[:,[4]])
+    regions = MergedRegions(padded_rboxes, scores)
 
     # Do the initial locality-aware pass
 
@@ -410,4 +415,7 @@ def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
         if not merged_any:
             break
 
+    constituent_index_lists = regions.constituents
+    regions = MergedRegions(rboxes, scores)
+    regions.perform_merge(constituent_index_lists)
     return regions.quads, regions.scores
