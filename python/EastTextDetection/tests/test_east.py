@@ -389,7 +389,6 @@ class TestEast(unittest.TestCase):
             feed_forward_location=None
         )
         detections = list(comp.get_detections_from_image(job))
-        vsupp_off = len(detections)
 
         # Confirm that vertical detections were not suppressed
         at_least_one_vertical = False
@@ -411,11 +410,35 @@ class TestEast(unittest.TestCase):
             feed_forward_location=None
         )
         detections = list(comp.get_detections_from_image(job))
-        vsupp_on = len(detections)
 
         # Confirm that vertical detections were suppressed
         for d in detections:
             self.assertGreater(d.width, d.height)
+
+        job = mpf.ImageJob(
+            job_name='test-vsupp-off',
+            data_uri=self._get_test_file('rotation.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                ROTATE_AND_DETECT='TRUE',
+                SUPPRESS_VERTICAL='FALSE'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        vsupp_off = len(list(comp.get_detections_from_image(job)))
+
+        job = mpf.ImageJob(
+            job_name='test-vsupp-on',
+            data_uri=self._get_test_file('rotation.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                ROTATE_AND_DETECT='TRUE'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        vsupp_on = len(list(comp.get_detections_from_image(job)))
 
         # Without vertical suppression, there are many low-quality detections
         self.assertGreater(vsupp_off, vsupp_on)
