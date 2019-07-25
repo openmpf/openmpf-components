@@ -45,6 +45,8 @@ namespace MPF {
 
     namespace COMPONENT {
 
+        enum Text_type{Unknown, Structured, Unstructured};
+
         class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
         public:
@@ -67,45 +69,33 @@ namespace MPF {
             bool Supports(MPFDetectionDataType data_type) override;
 
         private:
-            struct OCR_char_stats {
-                int alphabet_count;
-                int num_count;
-                int whspace_count;
-                int punct_count;
-                int non_eng_count;
-                int char_list[26];
-            };
 
             struct OCR_filter_settings {
-                bool num_only_ok;
-                bool threshold_check;
-                bool hist_check;
                 bool invert;
+                bool enable_hist_equalization;
+                bool enable_adaptive_hist_equalization;
                 bool enable_adaptive_thrs;
                 bool enable_otsu_thrs;
-                bool enable_rescale;
-                bool enable_sharpen;
                 bool enable_osd;
                 bool combine_detected_scripts;
+                bool processing_wild_text;
+                bool rotate_and_detect;
                 int adaptive_thrs_pixel;
-                int min_word_len;
-                int hist_min_char;
                 int psm;
                 int oem;
                 int max_scripts;
                 int max_text_tracks;
+                int min_height;
+                int adaptive_hist_tile_size;
+                double adaptive_hist_clip_limit;
                 double adaptive_thrs_c;
                 double scale;
                 double sharpen;
-                double excess_eng_symbols;
-                double excess_non_eng_symbols;
-                double vowel_min;
-                double vowel_max;
-                double correl_limit;
                 double min_orientation_confidence;
                 double min_script_confidence;
                 double min_script_score;
                 double min_secondary_script_thrs;
+                double rotate_and_detect_min_confidence;
                 std::string tesseract_lang;
                 std::string model_dir;
             };
@@ -114,6 +104,8 @@ namespace MPF {
                 double confidence;
                 std::string language;
                 std::wstring text;
+                std::string two_pass_rotation;
+                bool two_pass_correction;
 
                 bool operator<(const OCR_output &ocr_out) const {
                     return (confidence < ocr_out.confidence);
@@ -162,18 +154,12 @@ namespace MPF {
 
             void set_read_config_parameters();
 
-            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset);
+            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, const Text_type &text_type = Unknown);
 
             void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string,
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string_split,
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_regex);
-
-            OCR_char_stats
-            char_count(const std::wstring &s, const std::wstring &white_space, const std::wstring &eng_symbol,
-                       const std::wstring &eng_num);
-
-            std::wstring check_string(const std::wstring &s, const OCR_filter_settings &ocrset);
 
             bool comp_strcmp(const std::wstring &strHaystack, const std::wstring &strNeedle);
 
