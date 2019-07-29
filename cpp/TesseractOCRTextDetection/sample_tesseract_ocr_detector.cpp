@@ -139,6 +139,11 @@ int main(int argc, char *argv[]) {
                               << "   detected trigger words = \""
                               << tracks[i].detection_properties.at("TRIGGER_WORDS") << "\""
                               << std::endl;
+                    if (tracks[i].detection_properties.at("TRIGGER_WORDS_OFFSET").length()) {
+                        std::cout << "   trigger words offset = "
+                                  << tracks[i].detection_properties.at("TRIGGER_WORDS_OFFSET")
+                                  << std::endl;
+                    }
                     std::cout << "OCR language: " << tracks[i].detection_properties.at("TEXT_LANGUAGE") << "\n";
                     std::cout << "Confidence: " << tracks[i].confidence << "\n";
                     std::cout << "OCR page_num: " << tracks[i].detection_properties.at("PAGE_NUM") << "\n"
@@ -196,7 +201,12 @@ int main(int argc, char *argv[]) {
                     std::cout << "OCR trigger words: " << i << "\n"
                               << "   detected trigger words = \""
                               << locations[i].detection_properties.at("TRIGGER_WORDS")
-                              << "\"" << "\n" << std::endl;
+                              << "\"" << std::endl;
+                              if (locations[i].detection_properties.at("TRIGGER_WORDS_OFFSET").length()) {
+                                  std::cout << "   trigger words offset = "
+                                            << locations[i].detection_properties.at("TRIGGER_WORDS_OFFSET")
+                                            << std::endl;
+                              }
                 }
             }
         } else {

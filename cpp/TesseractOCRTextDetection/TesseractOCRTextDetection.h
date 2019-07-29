@@ -80,6 +80,7 @@ namespace MPF {
                 bool combine_detected_scripts;
                 bool processing_wild_text;
                 bool rotate_and_detect;
+                bool full_regex_search;
                 int adaptive_thrs_pixel;
                 int psm;
                 int oem;
@@ -165,7 +166,7 @@ namespace MPF {
 
             bool comp_regex(const MPFImageJob &job, const std::wstring &detection, const std::wstring &reverse_det,
                             const std::wstring &regstr, std::set<std::wstring> &trigger_words,
-                            MPFDetectionError &job_status);
+                            std::set<std::string> &offset, const bool full_search, MPFDetectionError &job_status);
 
             bool token_comparison(const std::wstring &token, const std::wstring &value);
 
@@ -177,7 +178,9 @@ namespace MPF {
 
             std::set<std::wstring> search_regex(const MPFImageJob &job, const std::wstring &ocr_detections,
                                                 const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_regex,
-                                                std::set<std::wstring> &trigger_words, MPFDetectionError &job_status);
+                                                std::set<std::wstring> &trigger_words, std::set<std::string> &offset,
+                                                const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                                MPFDetectionError &job_status);
 
             std::set<std::wstring> search_string(const MPFImageJob &job, const std::wstring &ocr_detections,
                                                  const std::map<std::wstring, std::vector<std::wstring>> &json_kvs_string,

@@ -161,12 +161,12 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
     std::map<std::string,std::string> custom_properties = {};
 
     runImageDetection("data/limited-contrast.png", ocr, results,  custom_properties);
-    assertTextNotInImage("data/limited-contrast.png", "Contrast Text", results);
+    assertNotInImage("data/limited-contrast.png", "Contrast Text", results, "TEXT");
 
     results.clear();
     custom_properties = {{"MIN_HEIGHT", "-1"}};
     runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties);
-    assertTextNotInImage("data/wild-small-text.png", "PLACE", results);
+    assertNotInImage("data/wild-small-text.png", "PLACE", results, "TEXT");
 
     results.clear();
     custom_properties = {{"MIN_HEIGHT", "60"}};
@@ -174,38 +174,38 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
 
     results.clear();
     runImageDetection("data/gradient.png", ocr, results,  custom_properties);
-    assertTextNotInImage("data/gradient.png", "obscured", results);
+    assertNotInImage("data/gradient.png", "obscured", results, "TEXT");
 
     results.clear();
     custom_properties = {{"UNSTRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION", "true"}};
     runImageDetection("data/limited-contrast.png", ocr, results,  custom_properties, true);
-    assertTextInImage("data/limited-contrast.png", "Contrast Text", results);
+    assertInImage("data/limited-contrast.png", "Contrast Text", results, "TEXT");
 
     results.clear();
     custom_properties = {{"UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION", "true"}};
     runImageDetection("data/limited-contrast.png", ocr, results,  custom_properties, true);
-    assertTextInImage("data/limited-contrast.png", "Contrast Text", results);
+    assertInImage("data/limited-contrast.png", "Contrast Text", results, "TEXT");
 
     results.clear();
     custom_properties = {{"MIN_HEIGHT", "60"}};
     runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties, true);
-    assertTextInImage("data/wild-small-text.png", "PLACE", results);
+    assertInImage("data/wild-small-text.png", "PLACE", results, "TEXT");
 
     results.clear();
     custom_properties = {{"MIN_HEIGHT",             "-1"},
                          {"STRUCTURED_TEXT_SCALE",  "3.0"}};
     runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties);
-    assertTextInImage("data/wild-small-text.png", "PLACE", results);
+    assertInImage("data/wild-small-text.png", "PLACE", results, "TEXT");
 
     results.clear();
     custom_properties = {{"STRUCTURED_TEXT_SHARPEN", "1.4"}};
     runImageDetection("data/blurry.png", ocr, results,  custom_properties);
-    assertTextInImage("data/blurry.png", "blurred text", results);
+    assertInImage("data/blurry.png", "blurred text", results, "TEXT");
 
     results.clear();
     custom_properties = {{"STRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS", "true"}};
     runImageDetection("data/gradient.png", ocr, results,  custom_properties);
-    assertTextInImage("data/gradient.png", "obscured", results);
+    assertInImage("data/gradient.png", "obscured", results, "TEXT");
 
     ASSERT_TRUE(ocr.Close());
 }
@@ -255,12 +255,12 @@ TEST(TESSERACTOCR, TwoPassOCRTest) {
 
     runImageDetection("data/eng.png", ocr, results, custom_properties);
     ASSERT_TRUE(std::stoi(results[0].detection_properties.at("ROTATE_AND_DETECT_PASS")) == 0) << "Expected 0 degree text rotation correction.";
-    assertTextInImage("data/eng.png", "All human beings", results);
+    assertInImage("data/eng.png", "All human beings", results, "TEXT");
     results.clear();
 
     runImageDetection("data/eng-rotated.png", ocr, results, custom_properties);
     ASSERT_TRUE(std::stoi(results[0].detection_properties.at("ROTATE_AND_DETECT_PASS")) == 180) << "Expected 180 degree text rotation correction.";
-    assertTextInImage("data/eng-rotated.png", "All human beings", results);
+    assertInImage("data/eng-rotated.png", "All human beings", results, "TEXT");
     results.clear();
 
     // Test to make sure threshold parameter is working.
@@ -270,7 +270,7 @@ TEST(TESSERACTOCR, TwoPassOCRTest) {
 
     runImageDetection("data/eng-rotated.png", ocr, results, custom_properties);
     ASSERT_TRUE(std::stoi(results[0].detection_properties.at("ROTATE_AND_DETECT_PASS")) == 0) << "Expected 0 degree text rotation correction.";
-    assertTextNotInImage("data/eng-rotated.png", "All human beings", results);
+    assertNotInImage("data/eng-rotated.png", "All human beings", results, "TEXT");
     ASSERT_TRUE(ocr.Close());
 
 }
