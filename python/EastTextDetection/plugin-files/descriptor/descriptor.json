@@ -182,6 +182,12 @@
           "defaultValue": "10.0"
         },
         {
+          "name": "TEMPORARY_PADDING",
+          "description": "The temporary padding to add around bounding boxes before non-maximum suppression or merging, in order to boost the overlap between adjacent detections. Each bounding box will be symmetrically padded on all sides with space equal to PADDING * <box_height>. This padding does not persist after the NMS/merging step; use the FINAL_PADDING property to increase the size of output regions.",
+          "type": "FLOAT",
+          "defaultValue": "0.1"
+        },
+        {
           "name": "MIN_STRUCTURED_TEXT_THRESHOLD",
           "description": "Threshold value used to determine whether to text is considered to be structured or unstructured, between 0.0 and 1.0. Larger values will result in less text being marked as structured.",
           "type": "FLOAT",
@@ -212,10 +218,10 @@
           "defaultValue": "1"
         },
         {
-          "name": "PADDING",
-          "description": "The padding to add around bounding boxes to ensure the text is fully enclosed. The bounding box will be symmetrically padded on all sides with space equal to PADDING * <box_height> before non-maximum suppression.",
+          "name": "FINAL_PADDING",
+          "description": "The padding to add around bounding boxes to ensure the text is fully enclosed. All bounding boxes will be symmetrically padded on all sides with space equal to PADDING * <box_height> after non-maximum suppression or merging.",
           "type": "FLOAT",
-          "defaultValue": "0.1"
+          "defaultValue": "0.0"
         }
       ]
     }

@@ -203,8 +203,8 @@ class TestEast(unittest.TestCase):
         )
         detections = list(comp.get_detections_from_image(job))
 
-        # Check that NMS produces many more detections than merging
-        self.assertGreater(len(detections), 20)
+        # Check that NMS produces many more (>5x) detections than merging
+        self.assertGreater(len(detections), 45)
 
         # Check that most detections are small (>80% smaller than mean)
         areas = [d.width * d.height for d in detections]
@@ -220,15 +220,34 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('thresholds.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                PADDING='0.0',
+                TEMPORARY_PADDING='0.0',
             ),
             media_properties={},
             feed_forward_location=None
         )
-        low_padding = len(list(comp.get_detections_from_image(job)))
+        detections = list(comp.get_detections_from_image(job))
+        low_padding_area = sum(d.width * d.height for d in detections)
+        low_padding = len(detections)
 
         # Check that no padding results in less merging
         self.assertGreater(low_padding, 9)
+
+        job = mpf.ImageJob(
+            job_name='test-low-padding',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                TEMPORARY_PADDING='0.0',
+                FINAL_PADDING='0.1'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        detections = list(comp.get_detections_from_image(job))
+        high_padding_area = sum(d.width * d.height for d in detections)
+
+        # Check that no padding results in less merging
+        self.assertGreater(high_padding_area, low_padding_area)
 
     def test_max_side_length(self):
         comp = EastComponent()

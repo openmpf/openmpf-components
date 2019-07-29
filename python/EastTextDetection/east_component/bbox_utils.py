@@ -40,10 +40,10 @@ contour_intersect_area = np.vectorize(
     signature='(4,2),(4,2)->()'
 )
 
-def rbox_to_quad(geoms):
+def rbox_to_quad(rboxes):
     """ Convert RBOX geometry to bounding box corner coordinates
     RBOX format:
-        [x, y, dt, dr, db, dl, rotation]
+        [x, y, dt, dr, db, dl, rotation (rad)]
     QUAD format:
         [[tl_x, tl_y],
          [tr_x, tr_y],
@@ -51,17 +51,17 @@ def rbox_to_quad(geoms):
          [bl_x, bl_y]]]
     """
     # Get cosine and sine of the box angles
-    cs = np.hstack((np.cos(geoms[:,[6]]), np.sin(geoms[:,[6]])))
+    cs = np.hstack((np.cos(rboxes[:,[6]]), np.sin(rboxes[:,[6]])))
 
-    quads = np.empty((geoms.shape[0],4,2),dtype=np.float32)
+    quads = np.empty((rboxes.shape[0],4,2),dtype=np.float32)
 
     # Translate to the left and right edges
-    quads[:,[0,3],:] = (geoms[:,[0,1]] + geoms[:,[5]] * cs * [-1, +1])[:,None,:]
-    quads[:,[1,2],:] = (geoms[:,[0,1]] + geoms[:,[3]] * cs * [+1, -1])[:,None,:]
+    quads[:,[0,3],:] = (rboxes[:,[0,1]] + rboxes[:,[5]]*cs*[-1, +1])[:,None,:]
+    quads[:,[1,2],:] = (rboxes[:,[0,1]] + rboxes[:,[3]]*cs*[+1, -1])[:,None,:]
 
     # Translate to the top and bottom edges
-    quads[:,(0,1),:] -= (cs * geoms[:,[2]])[:,None,::-1]
-    quads[:,(2,3),:] += (cs * geoms[:,[4]])[:,None,::-1]
+    quads[:,[0,1],:] -= (cs * rboxes[:,[2]])[:,None,::-1]
+    quads[:,[2,3],:] += (cs * rboxes[:,[4]])[:,None,::-1]
 
     return quads
 
@@ -73,7 +73,7 @@ def quad_to_iloc(quads, scores):
          [br_x, br_y],
          [bl_x, bl_y]]]
      OpenMPF ImageLocation format:
-         [tl_x, tl_y, w, h, rotation, score]
+         [tl_x, tl_y, w, h, rotation (deg), score]
     """
     w_vec = quads[:,1] - quads[:,0]
     h_vec = quads[:,3] - quads[:,0]
@@ -86,10 +86,51 @@ def quad_to_iloc(quads, scores):
     ilocs[:,5] = scores
     return ilocs
 
+def quad_to_rbox(quads):
+    """ Convert QUAD geometry to OpenMPF ImageLocation format
+    QUAD format:
+        [[tl_x, tl_y],
+         [tr_x, tr_y],
+         [br_x, br_y],
+         [bl_x, bl_y]]]
+     RBOX format:
+         [x, y, dt, dr, db, dl, rotation (rad)]
+    """
+    w_vec = quads[:,1] - quads[:,0]
+    h_vec = quads[:,3] - quads[:,0]
+
+    rboxes = np.empty((quads.shape[0],7), dtype=np.float32)
+    rboxes[:,[0,1]] = quads[:,0]
+    rboxes[:,[2,5]] = 0
+    rboxes[:,3] = np.sqrt(np.sum(w_vec*w_vec, -1))
+    rboxes[:,4] = np.sqrt(np.sum(h_vec*h_vec, -1))
+    rboxes[:,6] = np.arctan2(-w_vec[:,1], w_vec[:,0])
+    return rboxes
+
+def rbox_to_iloc(rboxes, scores):
+    """ Convert RBOX geometry to OpenMPF ImageLocation format
+     RBOX format:
+         [x, y, dt, dr, db, dl, rotation (rad)]
+     OpenMPF ImageLocation format:
+         [tl_x, tl_y, w, h, rotation (deg), score]
+    """
+    c = np.cos(rboxes[:,6])
+    s = np.sin(rboxes[:,6])
+
+    ilocs = np.empty((rboxes.shape[0],6), dtype=np.float32)
+
+    ilocs[:,0] = rboxes[:,0] - rboxes[:,5] * c - rboxes[:,2] * s
+    ilocs[:,1] = rboxes[:,1] + rboxes[:,5] * s - rboxes[:,2] * c
+    ilocs[:,2] = rboxes[:,3] + rboxes[:,5]
+    ilocs[:,3] = rboxes[:,2] + rboxes[:,4]
+    ilocs[:,4] = np.degrees(rboxes[:,6]) % 360
+    ilocs[:,5] = scores
+    return ilocs
+
 def iloc_to_quad(ilocs):
     """ Convert RBOX geometry to bounding box corner coordinates
     OpenMPF ImageLocation format:
-        [tl_x, tl_y, w, h, rotation, score]
+        [tl_x, tl_y, w, h, rotation (deg), score]
     QUAD format:
         [[tl_x, tl_y],
          [tr_x, tr_y],
@@ -113,10 +154,16 @@ def iloc_to_quad(ilocs):
 
     return quads
 
-def nms(quads, scores, min_nms_overlap):
+def nms(rboxes, scores, temp_padding, final_padding, min_nms_overlap):
     """ Perform Non-Maximum Suppression (NMS) on the given QUAD-formatted
         bounding boxes.
     """
+    # Add temporary padding
+    padded_rboxes = rboxes.copy()
+    padded_rboxes[:,2:6] += temp_padding * (rboxes[:,[2]] + rboxes[:,[4]])
+
+    # Perform NMS
+    quads = rbox_to_quad(padded_rboxes)
     areas = contour_area(quads)
     order = np.argsort(scores)[::-1]
     keep = []
@@ -129,7 +176,14 @@ def nms(quads, scores, min_nms_overlap):
         iou = inter / union
         inds = np.flatnonzero(iou < min_nms_overlap)
         order = order[inds+1]
-    return keep
+
+    # Filter the suppressed detections
+    rboxes = rboxes[keep]
+    scores = scores[keep]
+
+    # Add final padding, convert to Image Loc
+    rboxes[:,2:6] += final_padding * (rboxes[:,[2]] + rboxes[:,[4]])
+    return rbox_to_iloc(rboxes, scores)
 
 def merge(quads, rotation):
     """ Merge a group of QUAD-formatted bounding boxes, enclosing them in a
@@ -288,8 +342,8 @@ def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
 
     return merged_any
 
-def merge_regions(rboxes, scores, padding, min_merge_overlap, max_height_delta,
-                  max_rot_delta):
+def merge_regions(rboxes, scores, temp_padding, final_padding,
+                  min_merge_overlap, max_height_delta, max_rot_delta):
     """ An approximate locality-aware variant of non-maximum suppression, which
         merges together overlapping boxes rather than suppressing them.
 
@@ -344,9 +398,9 @@ def merge_regions(rboxes, scores, padding, min_merge_overlap, max_height_delta,
     """
 
 
-    # Add padding
+    # Add temporary padding
     padded_rboxes = rboxes.copy()
-    padded_rboxes[:,2:6] += padding * (rboxes[:,[2]] + rboxes[:,[4]])
+    padded_rboxes[:,2:6] += temp_padding * (rboxes[:,[2]] + rboxes[:,[4]])
     regions = MergedRegions(padded_rboxes, scores)
 
     # Do the initial locality-aware pass
@@ -415,7 +469,12 @@ def merge_regions(rboxes, scores, padding, min_merge_overlap, max_height_delta,
         if not merged_any:
             break
 
+    # Merge the original unpadded boxes
     constituent_index_lists = regions.constituents
     regions = MergedRegions(rboxes, scores)
     regions.perform_merge(constituent_index_lists)
-    return regions.quads, regions.scores
+
+    # Convert to RBOX geometries, apply final padding, convert to Image Locs
+    rboxes = quad_to_rbox(regions.quads)
+    rboxes[:,2:6] += (final_padding * regions.heights)[:,None]
+    return rbox_to_iloc(rboxes, regions.scores)
