@@ -162,8 +162,8 @@ namespace MPF {
             void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_regex);
 
-            bool comp_regex(const MPFImageJob &job, const std::wstring &detection, const std::wstring &reverse_det,
-                            const std::wstring &regstr, std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
+            bool comp_regex(const MPFImageJob &job, const std::wstring &detection, const std::wstring &regstr,
+                            std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
                             const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset, MPFDetectionError &job_status);
 
 

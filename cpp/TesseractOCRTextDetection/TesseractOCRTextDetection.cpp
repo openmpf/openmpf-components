@@ -439,7 +439,7 @@ TesseractOCRTextDetection::parse_json(const MPFJob &job, const string &jsonfile_
 /*
  * Check if detection string contains regstr pattern.
  */
-bool TesseractOCRTextDetection::comp_regex(const MPFImageJob &job, const wstring &detection, const wstring &reversed_det,
+bool TesseractOCRTextDetection::comp_regex(const MPFImageJob &job, const wstring &detection,
                                            const wstring &regstr, map<wstring, vector<string>> &trigger_words_offset,
                                            const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                            MPFDetectionError &job_status) {
@@ -1057,7 +1057,6 @@ set<wstring> TesseractOCRTextDetection::search_regex(const MPFImageJob &job, con
                                                      const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                                      MPFDetectionError &job_status) {
     wstring found_tags_regex = L"";
-    const wstring reversed_detection(ocr_detections.rbegin(), ocr_detections.rend());
     set<wstring> found_keys_regex;
     if (json_kvs_regex.size() == 0) {
         return found_keys_regex;
@@ -1067,7 +1066,7 @@ set<wstring> TesseractOCRTextDetection::search_regex(const MPFImageJob &job, con
         auto key = kv.first;
         auto values = kv.second;
         for (auto value : values) {
-            if (comp_regex(job, ocr_detections, reversed_detection, value, trigger_words_offset,
+            if (comp_regex(job, ocr_detections, value, trigger_words_offset,
                 ocr_fset, job_status)) {
                 found_keys_regex.insert(key);
                 // Discontinue searching unless full regex search is enabled.
