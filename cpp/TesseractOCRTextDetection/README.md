@@ -14,11 +14,11 @@ Please refer to https://imagemagick.org/script/formats.php for support of other 
 Users may set the language of each track using the TESSERACT_LANGUAGE parameter
 as well as adjust image preprocessing settings for text extraction.
 
-All text extracted from an image can also be tagged using regex and keyword tags in a given json file.
-For keyword tagging, users can provide either words or phrases
-(ex. "bank-tag: [money, bank of america, etc.]"). Phrases must contain
-words separated by white-space. For more complex pattern matching, use regex tags
-instead. Both forms of tagging are case-insensitive.
+All text extracted from an image can also be tagged using regex tags in a given json file.
+For keyword tagging, users can provide either words or phrases that use '\b' word breaks or ‘\\W’ operators
+(ex. "bank-tag: [(\b)money(\b), (\b)bank\\W*of\\W*america\b, etc.]"). Phrases containing
+words separated by white-space can be represented in regex by substituting the whitespace with '\\W*' regex patterns.
+(ex. use "Hello(\\W*)World" to search for "Hello World"). Regex tagging is currently case-insensitive.
 
 
 By default the json tagging file is located in the config folder as text-tags.json,

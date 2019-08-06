@@ -324,7 +324,8 @@ TEST(TESSERACTOCR, ImageTest) {
     runImageDetection("data/tags-keyword.png", ocr, results, custom_properties);
     assertInImage("data/tags-keyword.png", "Passenger Passport", results, "TEXT");
     assertInImage("data/tags-keyword.png", "identity document, travel", results, "TAGS");
-    assertInImage("data/tags-keyword.png", "passenger, passport", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-keyword.png", "passenger; passport", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-keyword.png", "0-8; 10-17", results, "TRIGGER_WORDS_OFFSET");
     results.clear();
 
     // Test keyword and regex tagging.
@@ -334,13 +335,15 @@ TEST(TESSERACTOCR, ImageTest) {
     // Three tags should be detected in total.
     runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties);
     assertInImage("data/tags-keywordregex.png", "financial, personal, vehicle", results, "TAGS");
-    assertInImage("data/tags-keywordregex.png", "01/01/20, finance, text, vehicle", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-keywordregex.png", "01/01/20; financ; text; vehicle", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-keywordregex.png", "20-27; 37-42; 10-13, 15-18; 29-35", results, "TRIGGER_WORDS_OFFSET");
     results.clear();
 
     // Test multiple regex tagging.
     runImageDetection("data/tags-regex.png", ocr, results, custom_properties);
     assertInImage("data/tags-regex.png", "financial, personal", results, "TAGS");
-    assertInImage("data/tags-regex.png", "122-123-1234, financial", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-regex.png", "122-123-1234; financ", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-regex.png", "17-28; 0-5", results, "TRIGGER_WORDS_OFFSET");
     ASSERT_TRUE(ocr.Close());
 }
 

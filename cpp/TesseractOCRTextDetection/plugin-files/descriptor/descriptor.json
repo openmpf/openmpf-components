@@ -306,6 +306,12 @@
           "description": "Toggles REGEX search to include all matching words associated with each regex tag. When disabled, only the first matching word for each tag category is included.",
           "type": "BOOLEAN",
           "defaultValue": "true"
+        },
+        {
+          "name": "TRIM_TRIGGER_WORDS",
+          "description": "When enabled, trim whitespace from trigger words detected by regex search and update trigger word offsets to also exclude whitespace.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
         }
       ]
     }
