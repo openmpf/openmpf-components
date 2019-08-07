@@ -65,6 +65,18 @@ But not:
 
 Removing the leading and trailing `\b` will allow these phrases to be matched, excluding the extraneous leading/trailing characters.
 
+To escape and search for special regex characters encapsulate these characters within brackets '[]'.
+
+Example, to search for periods or dots '.' we use:
+
+* Regex tag: '[.]'
+
+Rather than:
+
+*Regex tag: '.'
+
+As the '.' symbol is typically used in regex to match any character instead and must be escaped for a direct search.
+
 Detected tags will be stored in the "TAGS" output parameter with the substring and index that triggered the TAG stored in
 "TRIGGER_WORDS" and "TRIGGER_WORDS_OFFSET" respectively. Because the same trigger word can be encountered multiple times,
 the results are organized as follows:
