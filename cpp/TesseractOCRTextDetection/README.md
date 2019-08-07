@@ -15,10 +15,13 @@ Users may set the language of each track using the TESSERACT_LANGUAGE parameter
 as well as adjust image preprocessing settings for text extraction.
 
 All text extracted from an image can also be tagged using regex tags in a given json file.
-For keyword tagging, users can provide either words or phrases that use '\b' word breaks or ‘\\W’ operators
-(ex. "bank-tag: [(\b)money(\b), (\b)bank\\W*of\\W*america\b, etc.]"). Phrases containing
-words separated by white-space can be represented in regex by substituting the whitespace with '\\W*' regex patterns.
-(ex. use "Hello(\\W*)World" to search for "Hello World"). Regex tagging is currently case-insensitive.
+For keyword tagging, users can provide either words or phrases that use ‘\\W+’ operators and optional '\b' word breaks.
+(ex. 'bank-tag: [money, bank\\W+of\\W+america, etc.]'). Phrases containing
+words separated by white-space can be represented in regex by substituting the whitespace with '\\W+' regex patterns.
+(ex. use 'Hello\\W+World' to search for 'Hello World'). Adding '\b' to the start or end of a regex tag also forces
+the component to reject any word characters attached to the start or end of the pattern being searched.
+Example: '(\b)search(\\W+)this(\\W+)phrase(\b)' will accept 'search this phrase' but not 'research this phrase', removing
+'\b' will allow 'research this phrase' to be accepted as well. Regex tagging is currently case-insensitive.
 
 
 By default the json tagging file is located in the config folder as text-tags.json,

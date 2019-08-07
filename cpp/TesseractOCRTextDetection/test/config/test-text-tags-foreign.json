@@ -88,7 +88,7 @@
 			"свободни"
 		],
 		"key-phrase": [
-			"(\b)spirit\\W*of\\W*brotherhood(\b)"
+			"(\b)spirit\\W+of\\W+brotherhood(\b)"
 		]
 	}
 }
