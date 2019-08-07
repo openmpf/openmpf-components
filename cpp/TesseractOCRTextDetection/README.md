@@ -63,7 +63,7 @@ But not:
 * "research this phrase"
 * "search this phrasejunk"
 
-Removing the leading and trailing `\b` will allow these phrases to be matched, exluding the extraneous leading/trailing characters.
+Removing the leading and trailing `\b` will allow these phrases to be matched, excluding the extraneous leading/trailing characters.
 
 # Tessdata Models
 
