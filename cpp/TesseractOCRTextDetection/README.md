@@ -22,6 +22,8 @@ words separated by white-space or punctuation can be represented in regex by sub
 the component to reject any word characters attached to the start or end of the pattern being searched.
 Example: '(\b)search(\\W+)this(\\W+)phrase(\b)' will accept 'search this phrase' but not 'research this phrase', removing
 '\b' will allow 'research this phrase' to be accepted as well. Regex tagging is currently case-insensitive.
+To escape and search for special regex characters (ex. '.' which is used in regex to match any character) encapsulate
+these characters within brackets '[]' (ex. '[.]' to match the punctuation symbol '.' ).
 
 
 By default the json tagging file is located in the config folder as text-tags.json,
