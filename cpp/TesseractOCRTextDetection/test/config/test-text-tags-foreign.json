@@ -89,6 +89,9 @@
 		],
 		"key-phrase": [
 			"(\b)spirit\\W+of\\W+brotherhood(\b)"
+		],
+		"delimiter-test": [
+			"a[[]; []]b"
 		]
 	}
 }

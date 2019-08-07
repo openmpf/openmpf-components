@@ -174,7 +174,6 @@ void TesseractOCRTextDetection::set_default_parameters() {
 
     default_ocr_fset.processing_wild_text = false;
     default_ocr_fset.full_regex_search = false;
-    default_ocr_fset.trim_trigger_words = false;
 }
 
 /*
@@ -287,9 +286,6 @@ void TesseractOCRTextDetection::set_read_config_parameters() {
     }
     if (parameters.contains("FULL_REGEX_SEARCH")) {
         default_ocr_fset.full_regex_search = parameters["FULL_REGEX_SEARCH"].toInt() > 0;
-    }
-    if (parameters.contains("TRIM_TRIGGER_WORDS")) {
-        default_ocr_fset.trim_trigger_words = parameters["TRIM_TRIGGER_WORDS"].toInt() > 0;
     }
 }
 
@@ -461,22 +457,21 @@ bool TesseractOCRTextDetection::comp_regex(const MPFImageJob &job, const wstring
                 int start = m.position(0Lu);
                 int end = m.position(0Lu) + m[0].length();
 
-                if (ocr_fset.trim_trigger_words) {
-                    int trim_start = start, trim_end = end;
-                    while (trim_start < end && iswspace(detection.at(trim_start))) {
-                        trim_start++;
-                    }
-                    if (trim_start != end) {
-                        while (start < trim_end && iswspace(detection.at(trim_end - 1))) {
-                            trim_end--;
-                        }
-                    }
-                    start = trim_start;
-                    end = trim_end;
+                // Trim trigger words.
+                int trim_start = start, trim_end = end;
+                while (trim_start < end && iswspace(detection.at(trim_start))) {
+                    trim_start++;
                 }
+                if (trim_start != end) {
+                    while (start < trim_end && iswspace(detection.at(trim_end - 1))) {
+                        trim_end--;
+                    }
+                }
+                start = trim_start;
+                end = trim_end;
 
                 wstring trigger_word = detection.substr(start , end - start);
-                boost::trim(trigger_word);
+                boost::replace_all(trigger_word, ";", "[;]");
                 if (!(trigger_words_offset.count(trigger_word))) {
                     vector<string> offsets;
                     offsets.push_back(to_string(start) + "-" + to_string(end - 1));
@@ -493,21 +488,21 @@ bool TesseractOCRTextDetection::comp_regex(const MPFImageJob &job, const wstring
             int start = m.position(0Lu);
             int end = m.position(0Lu) + m[0].length();
 
-            if (ocr_fset.trim_trigger_words) {
-                int trim_start = start, trim_end = end;
-                while (trim_start < end && iswspace(detection.at(trim_start))) {
-                    trim_start++;
-                }
-                if (trim_start != end) {
-                    while (start < trim_end && iswspace(detection.at(trim_end - 1))) {
-                        trim_end--;
-                    }
-                }
-                start = trim_start;
-                end = trim_end;
+            // Trim trigger words.
+            int trim_start = start, trim_end = end;
+            while (trim_start < end && iswspace(detection.at(trim_start))) {
+                trim_start++;
             }
+            if (trim_start != end) {
+                while (start < trim_end && iswspace(detection.at(trim_end - 1))) {
+                    trim_end--;
+                }
+            }
+            start = trim_start;
+            end = trim_end;
+
             wstring trigger_word = detection.substr(start , end - start);
-            boost::trim(trigger_word);
+            boost::replace_all(trigger_word, L";", L"[;]");
             if (!(trigger_words_offset.count(trigger_word))) {
                 vector<string> offsets;
                 offsets.push_back(to_string(start) + "-" + to_string(end - 1));
@@ -1159,7 +1154,6 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
     ocr_fset.rotate_and_detect = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ROTATE_AND_DETECT", default_ocr_fset.rotate_and_detect);
     ocr_fset.rotate_and_detect_min_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties, "ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE", default_ocr_fset.rotate_and_detect_min_confidence);
     ocr_fset.full_regex_search = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"FULL_REGEX_SEARCH", default_ocr_fset.full_regex_search);
-    ocr_fset.trim_trigger_words = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"TRIM_TRIGGER_WORDS", default_ocr_fset.trim_trigger_words);
 
     // Tessdata setup
     ocr_fset.model_dir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODELS_DIR_PATH", default_ocr_fset.model_dir);

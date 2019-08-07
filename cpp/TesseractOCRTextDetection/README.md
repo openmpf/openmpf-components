@@ -25,6 +25,13 @@ Example: '(\b)search(\\W+)this(\\W+)phrase(\b)' will accept 'search this phrase'
 To escape and search for special regex characters (ex. '.' which is used in regex to match any character) encapsulate
 these characters within brackets '[]' (ex. '[.]' to match the punctuation symbol '.' ).
 
+Detected tags will be stored in the "TAGS" output parameter with the substring and index that triggered the TAG stored in
+"TRIGGER_WORDS" and "TRIGGER_WORDS_OFFSET" respectively. Because the same trigger word can be encountered multiple times,
+the results are organized as follows:
+* TRIGGER_WORDS: Each distinct trigger_word is separated by a semicolon followed by a space (ex. "trigger1; trigger2"). Because semicolons can also be encountered as part of the trigger word or phrase, text based semicolons found will be encapsulated in brackets (i.e TRIGGER_WORDS: "detected trigger with a ;" is reported as "detected trigger with a [;]").
+* TRIGGER_WORDS_OFFSET: Each group of indexes, referring to the same trigger word reported in sequence, is separated by a semicolon followed by a space. Indexes within a single group are separated by commas. (ex. TRIGGER_WORDS_OFFSET: "0-5, 6-10; 12-15" means the first reported trigger occurs twice in the text at the specified indexes and second reported trigger occurs at index 12-15.)
+All TRIGGER_WORD results are trimmed of whitespace alongside their respective TRIGGER_WORDS_OFFSET (indexes refer to trimmed substrings).
+
 
 By default the json tagging file is located in the config folder as text-tags.json,
 however users can provide an alternate full path to a tagging file of their choice.

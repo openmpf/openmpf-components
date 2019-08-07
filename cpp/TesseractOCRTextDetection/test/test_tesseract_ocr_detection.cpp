@@ -344,6 +344,14 @@ TEST(TESSERACTOCR, ImageTest) {
     assertInImage("data/tags-regex.png", "financial, personal", results, "TAGS");
     assertInImage("data/tags-regex.png", "122-123-1234; financ", results, "TRIGGER_WORDS");
     assertInImage("data/tags-regex.png", "17-28; 0-5", results, "TRIGGER_WORDS_OFFSET");
+    results.clear();
+
+
+    // Test multiple regex tagging w/ delimiter tag.
+    runImageDetection("data/tags-regex-delimiter.png", ocr, results, custom_properties);
+    assertInImage("data/tags-regex-delimiter.png", "delimiter-test, financial, personal", results, "TAGS");
+    assertInImage("data/tags-regex-delimiter.png", "122-123-1234; a[[;] ]b; financ", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-regex-delimiter.png", "22-33; 15-20; 0-5", results, "TRIGGER_WORDS_OFFSET");
     ASSERT_TRUE(ocr.Close());
 }
 
