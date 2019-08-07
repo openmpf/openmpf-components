@@ -3,124 +3,181 @@
 This repository contains source code and model data for the OpenMPF Tesseract
 OCR text detection component.
 
-The component extracts text found in an image, reported as a single track detection.
-PDF documents can also be processed with one track detection per page. The first page
-corresponds to the detection property PAGE_NUM = 1. For debugging purposes, images converted
-from documents are stored in a temporary job directory under
-`plugin/TesseractOCR/tmp-[job-id]-[random tag]`. This directory is removed when the job completes successfully.
+The component extracts text found in an image, reported as a single track
+detection. PDF documents can also be processed with one track detection per
+page. The first page corresponds to the detection property `PAGE_NUM=1`. For
+debugging purposes, images converted from documents are stored in a temporary
+job directory under `plugin/TesseractOCR/tmp-[job-id]-[random tag]`. This
+directory is removed when the job completes successfully.
 
-Please refer to https://imagemagick.org/script/formats.php for support of other document file formats.
+Please refer to https://imagemagick.org/script/formats.php for support of other
+document file formats.
 
-Users may set the language of each track using the TESSERACT_LANGUAGE parameter
+Users may set the language of each track using the `TESSERACT_LANGUAGE` parameter
 as well as adjust image preprocessing settings for text extraction.
 
-All text extracted from an image can also be tagged using regex tags in a given json file.
-For keyword tagging, users can provide either words or phrases that use ‘\\W+’ operators and optional '\b' word breaks.
-(ex. 'bank-tag: [money, bank\\W+of\\W+america, etc.]'). Phrases containing
-words separated by white-space or punctuation can be represented in regex by substituting the whitespace with '\\W+' regex patterns.
-(ex. use 'Hello\\W+World' to search for 'Hello World'). Adding '\b' to the start or end of a regex tag also forces
-the component to reject any word characters attached to the start or end of the pattern being searched.
-Example: '(\b)search(\\W+)this(\\W+)phrase(\b)' will accept 'search this phrase' but not 'research this phrase', removing
-'\b' will allow 'research this phrase' to be accepted as well. Regex tagging is currently case-insensitive.
-To escape and search for special regex characters (ex. '.' which is used in regex to match any character) encapsulate
-these characters within brackets '[]' (ex. '[.]' to match the punctuation symbol '.' ).
+# Text Tagging
+
+All text extracted from an image can also be tagged using regular expression (regex) patterns
+specified in a JSON tagging file. By default this file is located in the
+`config` folder as `text-tags.json`. Users can provide an alternate path to a
+tagging file of their choice. English and foreign regex patterns following UTF-8
+encoding are supported. Regex searches are case-insensitive.
+
+In the tagging file, users can specify regex patterns using the [Boost library
+regex operators](https://cs.brown.edu/~jwicks/boost/libs/regex/doc/syntax.html).
+Of note, the `\W` non-word operator and `\b` word-break operator may prove
+useful.
+
+Phrases containing words separated by **zero** or more whitespace and/or
+punctuation characters can be represented using `\W*`. For example, the
+`Hello(\\W*)World` regex pattern will match:
+
+* "Hello World"
+* "HelloWorld"
+* "Hello.World"
+* "Hello. &$#World"
+
+Phrases containing words separated by **one** or more whitespace and/or
+punctuation characters can be represented using `\W+`.
+
+For example, the `Hello(\\W+)World` regex pattern will match:
+
+* "Hello World"
+* "Hello.World"
+* "Hello. &$#World"
+
+But not:
+
+* "HelloWorld"
+
+Adding `\b` to the start or end of a regex pattern will reject any word
+characters attached to the start or end of the pattern being searched. For
+example, `(\b)search(\\W+)this(\\W+)phrase(\b)` will match:
+
+* "search this phrase"
+* "search  this, phrase"
+
+But not:
+
+* "research this phrase"
+* "search this phrasejunk"
+
+Removing the leading and trailing `\b` will allow these phrases to be matched, excluding the extraneous leading/trailing characters.
 
 Detected tags will be stored in the "TAGS" output parameter with the substring and index that triggered the TAG stored in
 "TRIGGER_WORDS" and "TRIGGER_WORDS_OFFSET" respectively. Because the same trigger word can be encountered multiple times,
 the results are organized as follows:
-* TRIGGER_WORDS: Each distinct trigger_word is separated by a semicolon followed by a space (ex. "trigger1; trigger2"). Because semicolons can also be encountered as part of the trigger word or phrase, text based semicolons found will be encapsulated in brackets (i.e TRIGGER_WORDS: "detected trigger with a ;" is reported as "detected trigger with a [;]").
-* TRIGGER_WORDS_OFFSET: Each group of indexes, referring to the same trigger word reported in sequence, is separated by a semicolon followed by a space. Indexes within a single group are separated by commas. (ex. TRIGGER_WORDS_OFFSET: "0-5, 6-10; 12-15" means the first reported trigger occurs twice in the text at the specified indexes and second reported trigger occurs at index 12-15.)
+
+* TRIGGER_WORDS: Each distinct trigger_word is separated by a semicolon followed by a space (ex. "trigger1; trigger2").
+    * Because semicolons can also be encountered as part of the trigger word or phrase, text based semicolons found will be encapsulated in brackets
+    * Example: "detected trigger with a ;" is reported as TRIGGER_WORDS: "detected trigger with a [;]".
+* TRIGGER_WORDS_OFFSET: Each group of indexes, referring to the same trigger word reported in sequence, is separated by a semicolon followed by a space. Indexes within a single group are separated by commas.
+    * Example TRIGGER_WORDS_OFFSET: "0-5, 6-10; 12-15", means the first reported trigger occurs twice in the text at the indexes 0-5, 6-10, and second reported trigger occurs at index 12-15.
 All TRIGGER_WORD results are trimmed of whitespace alongside their respective TRIGGER_WORDS_OFFSET (indexes refer to trimmed substrings).
 
-
-By default the json tagging file is located in the config folder as text-tags.json,
-however users can provide an alternate full path to a tagging file of their choice.
-English and foreign text tags following UTF-8 encoding are supported.
-
+# Tessdata Models
 
 Language models supported by Tesseract are stored by default in
-`$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata` directory and script models
-are stored in `tessdata/script`. Users can set a new tessdata directory by
-modifying the MODELS_DIR_PATH job property. Once set, the component will look for tessdata files in
-`[MODELS_DIR_PATH]/TesseractOCRTextDetection/tessdata`.
+`$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata` directory and script
+models are stored in `tessdata/script`. Users can set a new tessdata directory
+by modifying the `MODELS_DIR_PATH` job property. Once set, the component will look
+for tessdata files in `[MODELS_DIR_PATH]/TesseractOCRTextDetection/tessdata`.
 
-By default, the component will first check for models in the MODELS_DIR_PATH followed
-by the default tessdata path. Please ensure that any language models that run together are stored together in the same
-directory (i.e. while running "eng+bul", both eng.traineddata and bul.traineddata should be stored together in at least
-one specified directory, while running "eng,bul" the models can be stored separately).
+By default, the component will first check for models in the `MODELS_DIR_PATH`
+followed by the default tessdata path. Please ensure that any language models
+that run together are stored together in the same directory (i.e. while running
+`eng+bul`, both `eng.traineddata` and `bul.traineddata` should be stored
+together in at least one specified directory, while running `eng,bul` the models
+can be stored separately).
 
-Additional tessdata models can then be added to the specified
-tessdata folder to expand supported languages and scripts.
+Additional tessdata models can then be added to the specified tessdata folder to
+expand supported languages and scripts.
 
 Each language module follows ISO 639-2 designations, with character variations
-of a language (ex. uzb_cyrl) also supported. Users must enter the same designation
-to enable the corresponding language detection (ex. TESSERACT_LANGUAGE = "deu"
-for German text). Users will be warned when a given language is not supported when the
-corresponding language module cannot be located in this directory.
+of a language (ex. `uzb_cyrl`) also supported. Users must enter the same
+designation to enable the corresponding language detection (ex.
+`TESSERACT_LANGUAGE=deu` for German text). Users will be warned when a given
+language is not supported when the corresponding language module cannot be
+located in this directory.
 
 Each script module is contained within the `tessdata/script` directory with the
-first letter of its type capitalized (ex. `tessdata/script/Latin.traineddata`). Users will need to
-specify the `script/` path followed by the full name of the script being processed.
-(ex. TESSERACT_LANGUAGE='script/Latin' will enable Latin script text extraction).
+first letter of its type capitalized (ex. `tessdata/script/Latin.traineddata`).
+Users will need to specify the `script/` path followed by the full name of the
+script being processed. (ex. `TESSERACT_LANGUAGE=script/Latin` will enable Latin
+script text extraction).
 
-Users can set ENABLE_OSD_AUTOMATION to true to enable automatic orientation and script detection:
-* An additional 7 parameters are reported in corresponding OCR tracks:
-    * OSD_PRIMARY_SCRIPT, OSD_SECONDARY_SCRIPTS, and ROTATION of text (0, 90, 180, and 270 degrees counterclockwise) in an image.
-    * ROTATION represents the current counterclockwise orientation of the text. Thus when ROTATION = 90, Tesseract will
-apply a 90 degree clockwise rotation to reverse the text to an upright position.
-    * For primary and secondary detected scripts, raw scores for each prediction are stored
-inside of OSD_PRIMARY_SCRIPT_SCORE and OSD_SECONDARY_SCRIPT_SCORES.
-    * For the primary script, OSD_PRIMARY_SCRIPT_CONFIDENCE is also generated by Tesseract, specifying the relative confidence
-of the primary script score against the second top-detected script score.
-    * Similarly, OSD_TEXT_ORIENTATION_CONFIDENCE represents the relative confidence of the top text orientation prediction score against the
-second-best text orientation prediction score. Raw text orientation scores are excluded from the report as the individual values are not
-normalized (large non-positive values that provide little insight into prediction confidence, unlike individual script scores).
-* If the detected text orientation is >= MIN_OSD_TEXT_ORIENTATION_CONFIDENCE threshold, then the frame will automatically be rotated 0, 90, 180, or 270 degrees before performing OCR. If the threshold is not exceeded, then OCR is performed on the default orientation (0 degree rotation).
-* If the detected primary script confidence is >= the MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE threshold, and script score is >= the MIN_OSD_SCRIPT_SCORE threshold, then OCR will be performed for the script and the TESSERACT_LANGUAGE setting will be ignored. If either threshold is not exceeded, then OCR is performed using the TESSERACT_LANGUAGE setting.
-* If OSD detects multiple scripts, and MAX_OSD_SCRIPTS is >= 2, then OCR will be performed on each detected script given these rules:
-    * Each detected script must be >= the MIN_OSD_SCRIPT_SCORE threshold.
-    * The detected script with the highest score is considered the primary script. The others are considered secondary scripts. Secondary scripts must have scores are >= the MIN_OSD_SECONDARY_SCRIPT_THRESHOLD, which is a % applied primary script score. For example, if MIN_OSD_SECONDARY_SCRIPT_THRESHOLD=80%, then the secondary scripts must have scores that are at least 80% of the primary script score.
-    * Note that if the number of detected scripts exceeds the MAX_OSD_SCRIPTS setting, then only the scripts with the highest scores are considered.
-    * If COMBINE_OSD_SCRIPTS is set to true (default setting), a single output track will be generated using a combination of all detected scripts (primary and secondary) that are considered acceptable for processing. Otherwise one track is generated for each accepted script. 
-* When using one of the PSM modes that performs OSD and OCR, if the detected script with the highest confidence is "Common" (a.k.a. the numeric script model), then Tesseract will choose the script with the second-highest confidence to perform OCR. For consistency, this component performs the same behavior when ENABLE_OSD_AUTOMATION is true. Thus, when "Common" becomes the primary script, the component will instead search for the next best secondary script for OCR text processing, or use the TESSERACT_LANGUAGE setting when the secondary script score is too low.
-
-
-If ROTATE_AND_DETECT is enabled, the component will perform two-pass OCR on images as follows:
-* The first pass will use the rotation detected by OSD if enabled, otherwise it will run on the image directly.
-* The second pass will apply another 180 degree rotation on the image before processing.
-    * Users can set ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE to a positive value to enable confidence checks on the first OCR pass.
-    * If the first pass is greater than or equal to than the minimum specified threshold, the second pass of the OCR is skipped.
-* After performing two-pass OCR, the output with the highest OCR confidence is kept as the final track.
-* For multiple, separate language tracks, the previous steps are repeated for each specified language track, such that one high confidence output for each track is returned by the component.
-* The component will report ROTATE_AND_DETECT_PASS alongside the ROTATION property. The ROTATION property is the rotation of the text region, taking into consideration both the OSD rotation (if OSD was performed), as well as the 2-pass rotation attempt. ROTATE_AND_DETECT_PASS is set to 0 or 180 depending on which pass produced the best results.
+# Detecting Multiple Languages
 
 There are two options to run multiple user-specified languages/scripts. Users can separate each
-specified language and script using the '+' delimiter to run multiple models
-together in one track and ',' to run them as separate tracks. Delimiters
-can also be combined for separate multilingual tracks. Lastly, users can set MAX_TEXT_TRACKS to limit the number of
+specified language and script using the `+` delimiter to run multiple models
+together in one track and `,` to run them as separate tracks. Delimiters
+can also be combined for separate multilingual tracks. Lastly, users can set `MAX_TEXT_TRACKS` to limit the number of
 reported OCR tracks so that only the tracks with the highest scores are reported.
 Note that if this is set lower than the number of scripts detected by OSD, then the OCR tracks for the scripts with the
 lowest scores will not be reported.
 
 Please note that the order of the specified language matters. Languages specified first
-will have priority (ex. 'eng+deu', English language model will run first and its results will have
+will have priority (ex. `eng+deu`, English language model will run first and its results will have
 priority over German language model).
 
-Example 1: 'eng+deu' = run English, German together as one track detection.
-Example 2: 'eng,deu+fra'= run English as the first track and German + French
+Example 1: `eng+deu` means run English, German together as one track detection.
+
+Example 2: `eng,deu+fra` means run English as the first track and German + French
 as the second track.
-Example 3: 'fra,script/Latin'= run French as the first track, and Latin script as
+
+Example 3: `fra,script/Latin` means run French as the first track, and Latin script as
 the second track.
 
-By default this component contains language model files for Bulgarian (bul),
-Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus),
-Russian (rus), and Spanish (spa) as well as the script model file for Latin (script/Latin).
-Note the osd language file (osd.traindata) is for extraction of script orientation rather than language.
-Users may download and load in additional language models from https://github.com/tesseract-ocr/tessdata,
-stored in the component's `tessdata` directory.
+By default this component contains language model files for:
+* Bulgarian (`bul`)
+* Chinese - Simplified (`chi_sim`)
+* German (`deu`)
+* English (`eng`)
+* French (`fra`)
+* Pashto (`pus`)
+* Russian (`rus`)
+* Spanish (`spa`)
 
-Users may also set Page Segmentation and OCR Engine modes by adjusting TESSERACT_PSM and
-TESSERACT_OEM respectively. Please be warned that running TESSERACT_OEM with values 2 or 3 can occasionally
+As well as the script model file for:
+* Latin (`script/Latin`)
+
+Note the OSD language file (`osd.traindata`) is for extraction of script orientation rather than language.
+Users may download additional language/script models from https://github.com/tesseract-ocr/tessdata and place them in the component's `tessdata` directory or `[MODELS_DIR_PATH]/TesseractOCRTextDetection/tessdata`.
+
+# OSD Automation
+
+Users can set `ENABLE_OSD_AUTOMATION` to true to enable automatic orientation and script detection:
+* An additional 7 parameters are reported in corresponding OCR tracks:
+    * `OSD_PRIMARY_SCRIPT`, `OSD_SECONDARY_SCRIPTS`, and `ROTATION` of text (0, 90, 180, and 270 degrees counterclockwise) in an image.
+    * `ROTATION` represents the current counterclockwise orientation of the text. Thus when `ROTATION=90`, Tesseract will apply a 90 degree clockwise rotation to reverse the text to an upright position.
+    * For primary and secondary detected scripts, raw scores for each prediction are stored inside of `OSD_PRIMARY_SCRIPT_SCORE` and `OSD_SECONDARY_SCRIPT_SCORES`.
+    * For the primary script, `OSD_PRIMARY_SCRIPT_CONFIDENCE` is also generated by Tesseract, specifying the relative confidence of the primary script score against the second top-detected script score.
+    * Similarly, `OSD_TEXT_ORIENTATION_CONFIDENCE` represents the relative confidence of the top text orientation prediction score against the second-best text orientation prediction score. Raw text orientation scores are excluded from the report as the individual values are not normalized (large non-positive values that provide little insight into prediction confidence, unlike individual script scores).
+* If the detected text orientation is >= `MIN_OSD_TEXT_ORIENTATION_CONFIDENCE` threshold, then the frame will automatically be rotated 0, 90, 180, or 270 degrees before performing OCR. If the threshold is not exceeded, then OCR is performed on the default orientation (0 degree rotation).
+* If the detected primary script confidence is >= the `MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE` threshold, and script score is >= the `MIN_OSD_SCRIPT_SCORE` threshold, then OCR will be performed for the script and the `TESSERACT_LANGUAGE` setting will be ignored. If either threshold is not exceeded, then OCR is performed using the `TESSERACT_LANGUAGE` setting.
+* If OSD detects multiple scripts, and `MAX_OSD_SCRIPTS` is >= 2, then OCR will be performed on each detected script given these rules:
+    * Each detected script must be >= the `MIN_OSD_SCRIPT_SCORE` threshold.
+    * The detected script with the highest score is considered the primary script. The others are considered secondary scripts. Secondary scripts must have scores are >= the `MIN_OSD_SECONDARY_SCRIPT_THRESHOLD`, which is a % applied primary script score. For example, if `MIN_OSD_SECONDARY_SCRIPT_THRESHOLD=0.8`, then the secondary scripts must have scores that are at least 80% of the primary script score.
+    * Note that if the number of detected scripts exceeds the `MAX_OSD_SCRIPTS` setting, then only the scripts with the highest scores are considered.
+    * If `COMBINE_OSD_SCRIPTS` is set to true (default setting), a single output track will be generated using a combination of all detected scripts (primary and secondary) that are considered acceptable for processing. Otherwise one track is generated for each accepted script.
+* When using one of the PSM modes that performs OSD and OCR, if the detected script with the highest confidence is `Common` (a.k.a. the numeric script model), then Tesseract will choose the script with the second-highest confidence to perform OCR. For consistency, this component performs the same behavior when `ENABLE_OSD_AUTOMATION` is true. Thus, when `Common` becomes the primary script, the component will instead search for the next best secondary script for OCR text processing, or use the `TESSERACT_LANGUAGE` setting when the secondary script score is too low.
+
+# Two-pass OCR
+
+If `ROTATE_AND_DETECT` is enabled, the component will perform two-pass OCR on images as follows:
+* The first pass will use the rotation detected by OSD if enabled, otherwise it will run on the image directly.
+* The second pass will apply another 180 degree rotation on the image before processing.
+    * Users can set `ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE` to a positive value to enable confidence checks on the first OCR pass.
+    * If the first pass is greater than or equal to than the minimum specified threshold, the second pass of the OCR is skipped.
+* After performing two-pass OCR, the output with the highest OCR confidence is kept as the final track.
+* For multiple, separate language tracks, the previous steps are repeated for each specified language track, such that one high confidence output for each track is returned by the component.
+* The component will report `ROTATE_AND_DETECT_PASS` alongside the `ROTATION` property. The `ROTATION` property is the rotation of the text region, taking into consideration both the OSD rotation (if OSD was performed), as well as the 2-pass rotation attempt. `ROTATE_AND_DETECT_PASS` is set to 0 or 180 depending on which pass produced the best results.
+
+# Page Segmentation and OCR Engine Modes
+
+Users may also set Page Segmentation and OCR Engine modes by adjusting `TESSERACT_PSM` and
+`TESSERACT_OEM`, respectively. Please be warned that running `TESSERACT_OEM` with values 2 or 3 can occasionally
 lead to conflicts between the legacy and LSTM engines. Therefore, the default OEM has been set to use the LSTM engine
 until this issue is resolved.
 
@@ -132,7 +189,6 @@ TESSERACT_OEM Value| Description
 1  |  Neural nets LSTM engine only.
 2  |  Legacy + LSTM engines.
 3  |  Default, based on what is available.
-
 
 The parameter options for the Page Segmentation mode are:
 
