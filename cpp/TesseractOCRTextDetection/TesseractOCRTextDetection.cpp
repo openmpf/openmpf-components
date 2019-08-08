@@ -440,7 +440,6 @@ bool TesseractOCRTextDetection::comp_regex(const MPFImageJob &job, const wstring
                                            const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                            MPFDetectionError &job_status) {
 
-    static const wstring white_space_punct = L"!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \f\n\r\t\v";
     bool found = false;
     try {
         boost::wregex reg_matcher(regstr, boost::regex_constants::extended);
@@ -1203,7 +1202,7 @@ bool TesseractOCRTextDetection::process_text_tagging(Properties &detection_prope
 
     found_tags_string.insert(found_tags_string_split.begin(), found_tags_string_split.end());
     found_tags_string.insert(found_tags_regex.begin(), found_tags_regex.end());
-    wstring tag_string = boost::algorithm::join(found_tags_string, L", ");
+    wstring tag_string = boost::algorithm::join(found_tags_string, L"; ");
     vector<string> offsets_list;
     vector<wstring> triggers_list;
     wstring tag_trigger = boost::algorithm::join(trigger_words, L"; ");

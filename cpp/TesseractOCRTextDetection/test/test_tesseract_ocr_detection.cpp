@@ -128,16 +128,16 @@ bool containsProp(const std::string &exp_text, const std::vector<MPFImageLocatio
 }
 
 
-void assertInImage(const std::string &image_path, const std::string &expected_tag,
+void assertInImage(const std::string &image_path, const std::string &expected_value,
                       const std::vector<MPFImageLocation> &locations, const std::string &prop, int index = -1) {
-    ASSERT_TRUE(containsProp(expected_tag, locations, prop, index))
-                                << "Expected OCR to detect " << prop << " \"" << expected_tag << "\" in " << image_path;
+    ASSERT_TRUE(containsProp(expected_value, locations, prop, index))
+                                << "Expected OCR to detect " << prop << " \"" << expected_value << "\" in " << image_path;
 }
 
 void assertNotInImage(const std::string &image_path, const std::string &expected_text,
                           const std::vector<MPFImageLocation> &locations, const std::string &prop, int index = -1) {
     ASSERT_FALSE(containsProp(expected_text, locations, prop, index))
-                                << "Expected OCR to NOT detect text "<< prop << " \""  << expected_text << "\" in "
+                                << "Expected OCR to NOT detect "<< prop << " \""  << expected_text << "\" in "
                                 << image_path;
 }
 
@@ -305,25 +305,28 @@ TEST(TESSERACTOCR, TrackFilterTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
-TEST(TESSERACTOCR, ImageTest) {
+TEST(TESSERACTOCR, TaggingTest) {
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
     std::vector<MPFImageLocation> results;
     ASSERT_TRUE(ocr.Init());
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
+    std::map<std::string, std::string> custom_properties_disabled = {{"ENABLE_OSD_AUTOMATION", "false"},
+                                                                     {"FULL_REGEX_SEARCH", "false"}};
 
     // Test basic keyword and text detection.
     runImageDetection("data/text-demo.png", ocr, results, custom_properties);
     assertInImage("data/text-demo.png", "TESTING 123", results, "TEXT");
     assertNotInImage("data/text-demo.png", "Ponies", results, "TEXT");
     assertNotInImage("data/text-demo.png", "personal", results, "TAGS");
+    ASSERT_TRUE(results[0].detection_properties.at("TAGS").length() == 0);
     results.clear();
 
     // Test multiple keyword tagging.
     runImageDetection("data/tags-keyword.png", ocr, results, custom_properties);
     assertInImage("data/tags-keyword.png", "Passenger Passport", results, "TEXT");
-    assertInImage("data/tags-keyword.png", "identity document, travel", results, "TAGS");
+    assertInImage("data/tags-keyword.png", "identity document; travel", results, "TAGS");
     assertInImage("data/tags-keyword.png", "passenger; passport", results, "TRIGGER_WORDS");
     assertInImage("data/tags-keyword.png", "0-8; 10-17", results, "TRIGGER_WORDS_OFFSET");
     results.clear();
@@ -334,14 +337,21 @@ TEST(TESSERACTOCR, ImageTest) {
     // Keyword tagging picks up vehicle.
     // Three tags should be detected in total.
     runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties);
-    assertInImage("data/tags-keywordregex.png", "financial, personal, vehicle", results, "TAGS");
+    assertInImage("data/tags-keywordregex.png", "financial; personal; vehicle", results, "TAGS");
     assertInImage("data/tags-keywordregex.png", "01/01/20; financ; text; vehicle", results, "TRIGGER_WORDS");
     assertInImage("data/tags-keywordregex.png", "20-27; 37-42; 10-13, 15-18; 29-35", results, "TRIGGER_WORDS_OFFSET");
     results.clear();
 
+    // With full regex search disabled, number of reported triggers and offsets will decrease.
+    runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties_disabled);
+    assertInImage("data/tags-keywordregex.png", "financial; personal; vehicle", results, "TAGS");
+    assertInImage("data/tags-keywordregex.png", "01/01/20; financ; vehicle", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-keywordregex.png", "20-27; 37-42; 29-35", results, "TRIGGER_WORDS_OFFSET");
+    results.clear();
+
     // Test multiple regex tagging.
     runImageDetection("data/tags-regex.png", ocr, results, custom_properties);
-    assertInImage("data/tags-regex.png", "financial, personal", results, "TAGS");
+    assertInImage("data/tags-regex.png", "financial; personal", results, "TAGS");
     assertInImage("data/tags-regex.png", "122-123-1234; financ", results, "TRIGGER_WORDS");
     assertInImage("data/tags-regex.png", "17-28; 0-5", results, "TRIGGER_WORDS_OFFSET");
     results.clear();
@@ -349,7 +359,7 @@ TEST(TESSERACTOCR, ImageTest) {
 
     // Test multiple regex tagging w/ delimiter tag.
     runImageDetection("data/tags-regex-delimiter.png", ocr, results, custom_properties);
-    assertInImage("data/tags-regex-delimiter.png", "delimiter-test, financial, personal", results, "TAGS");
+    assertInImage("data/tags-regex-delimiter.png", "delimiter-test; financial; personal", results, "TAGS");
     assertInImage("data/tags-regex-delimiter.png", "122-123-1234; a[[;] ]b; financ", results, "TRIGGER_WORDS");
     assertInImage("data/tags-regex-delimiter.png", "22-33; 15-20; 0-5", results, "TRIGGER_WORDS_OFFSET");
     ASSERT_TRUE(ocr.Close());
@@ -677,10 +687,12 @@ TEST(TESSERACTOCR, LanguageTest) {
     runImageDetection("data/eng-bul.png", ocr, results, custom_properties);
     assertInImage("data/eng-bul.png", "foreign-text", results, "TAGS", 1);
     assertInImage("data/eng-bul.png", "свободни", results, "TRIGGER_WORDS", 1);
+    assertInImage("data/eng-bul.png", "103-110", results, "TRIGGER_WORDS_OFFSET", 1);
     assertInImage("data/eng-bul.png", "Всички хора се раждат свободни", results, "TEXT", 1);
     // Also test mult-keyword phrase tag.
     assertInImage("data/eng-bul.png", "key-phrase", results, "TAGS", 0 );
     assertInImage("data/eng-bul.png", "brotherhood", results, "TRIGGER_WORDS", 0);
+    assertInImage("data/eng-bul.png", "439-459", results, "TRIGGER_WORDS_OFFSET", 0);
     assertInImage("data/eng-bul.png", "All human beings are born free", results, "TEXT", 0);
 
     ASSERT_TRUE(ocr.Close());

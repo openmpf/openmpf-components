@@ -20,7 +20,6 @@
 			"bank",
 			"(\b)ATM(\b)",
 			"(\b)balance(\b)",
-			"(\b)bank(\b)",
 			"(\b)bill(\b)",
 			"(\b)cash(\b)",
 			"(\b)credit(\b)",
@@ -88,7 +87,7 @@
 			"свободни"
 		],
 		"key-phrase": [
-			"(\b)spirit\\W+of\\W+brotherhood(\b)"
+			"(\b)spirit(\\W+)of(\\W+)brotherhood(\b)"
 		],
 		"delimiter-test": [
 			"a[[]; []]b"
