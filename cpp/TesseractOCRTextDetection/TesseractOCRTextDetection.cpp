@@ -432,6 +432,41 @@ TesseractOCRTextDetection::parse_json(const MPFJob &job, const string &jsonfile_
     return json_kvs_regex;
 }
 
+void TesseractOCRTextDetection::process_regex_match(const boost::wsmatch &m, const wstring &detection,
+                                 map<wstring, vector<string>> &trigger_words_offset) {
+    // Find and return matching pattern.
+    int start = m.position(0Lu);
+    int end = m.position(0Lu) + m[0].length();
+
+    // Trim trigger words.
+    int trim_start = start, trim_end = end;
+    while (trim_start < end && iswspace(detection.at(trim_start))) {
+        trim_start++;
+    }
+    if (trim_start != end) {
+        while (start < trim_end && iswspace(detection.at(trim_end - 1))) {
+            trim_end--;
+        }
+    }
+    start = trim_start;
+    end = trim_end;
+
+    wstring trigger_word = detection.substr(start , end - start);
+    boost::replace_all(trigger_word, ";", "[;]");
+    if (!(trigger_words_offset.count(trigger_word))) {
+        vector<string> offsets;
+        offsets.push_back(to_string(start) + "-" + to_string(end - 1));
+        trigger_words_offset.insert({trigger_word, offsets});
+    } else {
+        vector<string> &offsets = trigger_words_offset.at(trigger_word);
+        string offset = to_string(start) + "-" + to_string(end - 1);
+        if (std::find(offsets.begin(), offsets.end(), offset) == offsets.end()) {
+            offsets.push_back(offset);
+        }
+    }
+
+}
+
 /*
  * Check if detection string contains regstr pattern.
  */
@@ -450,74 +485,12 @@ bool TesseractOCRTextDetection::comp_regex(const MPFImageJob &job, const wstring
             boost::wsregex_iterator end;
 
             for( iter; iter != end; ++iter ) {
-
-                m = *iter;
-                // Find and return matching pattern.
-                int start = m.position(0Lu);
-                int end = m.position(0Lu) + m[0].length();
-
-                // Trim trigger words.
-                int trim_start = start, trim_end = end;
-                while (trim_start < end && iswspace(detection.at(trim_start))) {
-                    trim_start++;
-                }
-                if (trim_start != end) {
-                    while (start < trim_end && iswspace(detection.at(trim_end - 1))) {
-                        trim_end--;
-                    }
-                }
-                start = trim_start;
-                end = trim_end;
-
-                wstring trigger_word = detection.substr(start , end - start);
-                boost::replace_all(trigger_word, ";", "[;]");
-                if (!(trigger_words_offset.count(trigger_word))) {
-                    vector<string> offsets;
-                    offsets.push_back(to_string(start) + "-" + to_string(end - 1));
-                    trigger_words_offset.insert({trigger_word, offsets});
-                } else {
-                    vector<string> &offsets = trigger_words_offset.at(trigger_word);
-                    string offset = to_string(start) + "-" + to_string(end - 1);
-                    if (std::find(offsets.begin(), offsets.end(), offset) == offsets.end()) {
-                        offsets.push_back(offset);
-                    }
-                }
-
+                process_regex_match(*iter, detection, trigger_words_offset);
                 found = true;
             }
         }
         else if (boost::regex_search(detection, m, reg_matcher)) {
-            // Find and return matching pattern.
-            int start = m.position(0Lu);
-            int end = m.position(0Lu) + m[0].length();
-
-            // Trim trigger words.
-            int trim_start = start, trim_end = end;
-            while (trim_start < end && iswspace(detection.at(trim_start))) {
-                trim_start++;
-            }
-            if (trim_start != end) {
-                while (start < trim_end && iswspace(detection.at(trim_end - 1))) {
-                    trim_end--;
-                }
-            }
-            start = trim_start;
-            end = trim_end;
-
-            wstring trigger_word = detection.substr(start , end - start);
-            boost::replace_all(trigger_word, L";", L"[;]");
-            if (!(trigger_words_offset.count(trigger_word))) {
-                vector<string> offsets;
-                offsets.push_back(to_string(start) + "-" + to_string(end - 1));
-                trigger_words_offset.insert({trigger_word, offsets });
-            } else {
-                vector<string> &offsets = trigger_words_offset.at(trigger_word);
-                string offset = to_string(start) + "-" + to_string(end - 1);
-                if (std::find(offsets.begin(), offsets.end(), offset) == offsets.end()) {
-                    offsets.push_back(offset);
-                }
-            }
-
+            process_regex_match(m, detection, trigger_words_offset);
             found = true;
         }
     } catch (const boost::regex_error &e) {
