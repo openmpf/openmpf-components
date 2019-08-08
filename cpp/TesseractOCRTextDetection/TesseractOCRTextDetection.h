@@ -165,7 +165,7 @@ namespace MPF {
                             std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
                             const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset, MPFDetectionError &job_status);
 
-            void process_regex_match(const boost::wsmatch &m, const std::wstring &detection,
+            void process_regex_match(const boost::wsmatch &match, const std::wstring &detection,
                                      std::map<std::wstring, std::vector<std::string>> &trigger_words_offset);
 
             void sharpen(cv::Mat &image, double weight);
