@@ -69,7 +69,7 @@ To escape and search for special regex characters encapsulate these characters w
 
 For example, to search for periods we use `[.]` rather than `.`, so the regex pattern becomes `(\b)end(\\W+)of(\\W+)a(\\W+)sentence[.]`. Note that the `.` symbol is typically used in regex to match any character, which is why we use `[.]` instead.
 
-The OCR'ed text will be stored in the `TEXT` output property and each detected tag will be stored in the `TAGS` output property, separated by semicolons. The substring(s) that triggered each tag will be stored in `TRIGGER_WORDS`. For each trigger word the substring index range relative to the `TEXT` output will be stored in `TRIGGER_WORDS_OFFSET`. Because the same trigger word can be encountered multiple times in the `TEXT` output, the results are organized as follows:
+The OCR'ed text will be stored in the `TEXT` output property. Each detected tag will be stored in `TAGS`, separated by commas. The substring(s) that triggered each tag will be stored in `TRIGGER_WORDS`. For each trigger word the substring index range relative to the `TEXT` output will be stored in `TRIGGER_WORDS_OFFSET`. Because the same trigger word can be encountered multiple times in the `TEXT` output, the results are organized as follows:
 
 * `TRIGGER_WORDS`: Each distinct trigger word is separated by a semicolon followed by a space. For example: `TRIGGER_WORDS=trigger1; trigger2`
     * Because semicolons can be part of the trigger word itself, those semicolons will be encapsulated in brackets. For example, `detected trigger with a ;` in the OCR'ed `TEXT` is reported as `TRIGGER_WORDS=detected trigger with a [;]; some other trigger`.
