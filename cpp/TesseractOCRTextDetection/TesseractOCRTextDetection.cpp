@@ -1203,14 +1203,10 @@ bool TesseractOCRTextDetection::process_text_tagging(Properties &detection_prope
     set<wstring> trigger_words;
     map<wstring, vector<string>> trigger_words_offset;
     wstring norm_detections = to_lowercase(ocr_detections);
-    auto found_tags_regex = search_regex(job, norm_detections, json_kvs_regex, trigger_words_offset,
+    set<wstring> found_tags_regex = search_regex(job, norm_detections, json_kvs_regex, trigger_words_offset,
                                          ocr_fset, job_status);
-    set<wstring>  found_tags_string_split ;
-    set<wstring> found_tags_string ;
 
-    found_tags_string.insert(found_tags_string_split.begin(), found_tags_string_split.end());
-    found_tags_string.insert(found_tags_regex.begin(), found_tags_regex.end());
-    wstring tag_string = boost::algorithm::join(found_tags_string, L"; ");
+    wstring tag_string = boost::algorithm::join(found_tags_regex, L"; ");
     vector<string> offsets_list;
     vector<wstring> triggers_list;
     wstring tag_trigger = boost::algorithm::join(trigger_words, L"; ");
