@@ -303,7 +303,7 @@
         },
         {
           "name": "FULL_REGEX_SEARCH",
-          "description": "Toggles REGEX search to include all matching words associated with each regex tag. When disabled, only the first matching word for each tag category is included.",
+          "description": "Toggles REGEX search to include all matching trigger words associated with the regex patterns for each tag. When disabled, only the first instance of the first matching trigger word for each tag category is included.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         }
