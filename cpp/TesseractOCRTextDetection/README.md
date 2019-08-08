@@ -65,28 +65,18 @@ But not:
 
 Removing the leading and trailing `\b` will allow these phrases to be matched, excluding the extraneous leading/trailing characters.
 
-To escape and search for special regex characters encapsulate these characters within brackets '[]'.
+To escape and search for special regex characters encapsulate these characters within brackets `[]`.
 
-Example, to search for periods or dots '.' we use:
+For example, to search for periods we use `[.]` rather than `.`, so the regex pattern becomes `(\b)end(\\W+)of(\\W+)a(\\W+)sentence[.]`. Note that the `.` symbol is typically used in regex to match any character, which is why we use `[.]` instead.
 
-* Regex tag: '[.]'
+The OCR'ed text will be stored in the `TEXT` output property and each detected tag will be stored in the `TAGS` output property, separated by semicolons. The substring(s) that triggered each tag will be stored in `TRIGGER_WORDS`. For each trigger word the substring index range relative to the `TEXT` output will be stored in `TRIGGER_WORDS_OFFSET`. Because the same trigger word can be encountered multiple times in the `TEXT` output, the results are organized as follows:
 
-Rather than:
+* `TRIGGER_WORDS`: Each distinct trigger word is separated by a semicolon followed by a space. For example: `TRIGGER_WORDS=trigger1; trigger2`
+    * Because semicolons can be part of the trigger word itself, those semicolons will be encapsulated in brackets. For example, `detected trigger with a ;` in the OCR'ed `TEXT` is reported as `TRIGGER_WORDS=detected trigger with a [;]; some other trigger`.
+* `TRIGGER_WORDS_OFFSET`: Each group of indexes, referring to the same trigger word reported in sequence, is separated by a semicolon followed by a space. Indexes within a single group are separated by commas.
+    * Example `TRIGGER_WORDS=trigger1; trigger2`, `TRIGGER_WORDS_OFFSET=0-5, 6-10; 12-15`, means that `trigger1` occurs twice in the text at the index ranges 0-5 and 6-10, and `trigger2` occurs at index range 12-15.
 
-*Regex tag: '.'
-
-As the '.' symbol is typically used in regex to match any character instead and must be escaped for a direct search.
-
-Detected tags will be stored in the "TAGS" output parameter with the substring and index that triggered the TAG stored in
-"TRIGGER_WORDS" and "TRIGGER_WORDS_OFFSET" respectively. Because the same trigger word can be encountered multiple times,
-the results are organized as follows:
-
-* TRIGGER_WORDS: Each distinct trigger_word is separated by a semicolon followed by a space (ex. "trigger1; trigger2").
-    * Because semicolons can also be encountered as part of the trigger word or phrase, text based semicolons found will be encapsulated in brackets
-    * Example: "detected trigger with a ;" is reported as TRIGGER_WORDS: "detected trigger with a [;]".
-* TRIGGER_WORDS_OFFSET: Each group of indexes, referring to the same trigger word reported in sequence, is separated by a semicolon followed by a space. Indexes within a single group are separated by commas.
-    * Example TRIGGER_WORDS_OFFSET: "0-5, 6-10; 12-15", means the first reported trigger occurs twice in the text at the indexes 0-5, 6-10, and second reported trigger occurs at index 12-15.
-All TRIGGER_WORD results are trimmed of whitespace alongside their respective TRIGGER_WORDS_OFFSET (indexes refer to trimmed substrings).
+Note that all `TRIGGER_WORD` results are trimmed of leading and trailing whitespace, regardless of the regex pattern used. The respective `TRIGGER_WORDS_OFFSET` indexes refer to the trimmed substrings.
 
 # Tessdata Models
 
