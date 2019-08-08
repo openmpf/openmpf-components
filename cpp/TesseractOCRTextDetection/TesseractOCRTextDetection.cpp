@@ -432,11 +432,11 @@ TesseractOCRTextDetection::parse_json(const MPFJob &job, const string &jsonfile_
     return json_kvs_regex;
 }
 
-void TesseractOCRTextDetection::process_regex_match(const boost::wsmatch &m, const wstring &detection,
+void TesseractOCRTextDetection::process_regex_match(const boost::wsmatch &match, const wstring &detection,
                                  map<wstring, vector<string>> &trigger_words_offset) {
     // Find and return matching pattern.
-    int start = m.position(0Lu);
-    int end = m.position(0Lu) + m[0].length();
+    int start = match.position(0Lu);
+    int end = match.position(0Lu) + match[0].length();
 
     // Trim trigger words.
     int trim_start = start, trim_end = end;
