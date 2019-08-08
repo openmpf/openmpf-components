@@ -476,7 +476,11 @@ bool TesseractOCRTextDetection::comp_regex(const MPFImageJob &job, const wstring
                     offsets.push_back(to_string(start) + "-" + to_string(end - 1));
                     trigger_words_offset.insert({trigger_word, offsets});
                 } else {
-                    trigger_words_offset.at(trigger_word).push_back(to_string(start) + "-" + to_string(end - 1));
+                    vector<string> &offsets = trigger_words_offset.at(trigger_word);
+                    string offset = to_string(start) + "-" + to_string(end - 1);
+                    if (std::find(offsets.begin(), offsets.end(), offset) == offsets.end()) {
+                        offsets.push_back(offset);
+                    }
                 }
 
                 found = true;
@@ -507,7 +511,11 @@ bool TesseractOCRTextDetection::comp_regex(const MPFImageJob &job, const wstring
                 offsets.push_back(to_string(start) + "-" + to_string(end - 1));
                 trigger_words_offset.insert({trigger_word, offsets });
             } else {
-                trigger_words_offset.at(trigger_word).push_back(to_string(start) + "-" + to_string(end - 1));
+                vector<string> &offsets = trigger_words_offset.at(trigger_word);
+                string offset = to_string(start) + "-" + to_string(end - 1);
+                if (std::find(offsets.begin(), offsets.end(), offset) == offsets.end()) {
+                    offsets.push_back(offset);
+                }
             }
 
             found = true;
