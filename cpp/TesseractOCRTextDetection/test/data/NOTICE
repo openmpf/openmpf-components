@@ -51,6 +51,9 @@ Custom generated image for testing keyword and regex tags.
 # tags-regex.png
 Custom generated image for testing regex tags.
 
+# tags-regex-delimiter.png
+Custom generated image for testing regex tags with ';' delimiter.
+
 # test.pdf
 Custom generated pdf for testing document text extraction.
 

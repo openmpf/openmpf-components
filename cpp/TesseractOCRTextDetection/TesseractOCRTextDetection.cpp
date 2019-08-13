@@ -173,6 +173,7 @@ void TesseractOCRTextDetection::set_default_parameters() {
     default_ocr_fset.adaptive_hist_clip_limit = 2.0;
 
     default_ocr_fset.processing_wild_text = false;
+    default_ocr_fset.full_regex_search = false;
 }
 
 /*
@@ -278,10 +279,13 @@ void TesseractOCRTextDetection::set_read_config_parameters() {
         default_ocr_fset.min_script_score = parameters["MIN_OSD_SCRIPT_SCORE"].toDouble();
     }
     if (parameters.contains("ROTATE_AND_DETECT")) {
-            default_ocr_fset.rotate_and_detect = parameters["ROTATE_AND_DETECT"].toInt() > 0;
+        default_ocr_fset.rotate_and_detect = parameters["ROTATE_AND_DETECT"].toInt() > 0;
     }
     if (parameters.contains("ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE")) {
-            default_ocr_fset.rotate_and_detect_min_confidence = parameters["ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE"].toDouble();
+        default_ocr_fset.rotate_and_detect_min_confidence = parameters["ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE"].toDouble();
+    }
+    if (parameters.contains("FULL_REGEX_SEARCH")) {
+        default_ocr_fset.full_regex_search = parameters["FULL_REGEX_SEARCH"].toInt() > 0;
     }
 }
 
@@ -365,14 +369,14 @@ vector<wstring> TesseractOCRTextDetection::get_tokens(const wstring &str) {
  * Reads JSON Tag filter file.
  * Setup tags for split-string and regex filters.
  */
-map<wstring, map<wstring, vector<wstring>>>
+map<wstring, vector<wstring>>
 TesseractOCRTextDetection::parse_json(const MPFJob &job, const string &jsonfile_path, MPFDetectionError &job_status) {
-    map<wstring, map<wstring, vector<wstring>>> json_kvs;
+    map<wstring, vector<wstring>> json_kvs_regex;
     ifstream ifs(jsonfile_path);
     if (!ifs.is_open()) {
         LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error reading JSON file at " + jsonfile_path);
         job_status = MPF_COULD_NOT_READ_DATAFILE;
-        return json_kvs;
+        return json_kvs_regex;
     }
     string j;
     stringstream buffer2;
@@ -385,76 +389,13 @@ TesseractOCRTextDetection::parse_json(const MPFJob &job, const string &jsonfile_
         LOG4CXX_ERROR(hw_logger_,
                       "[" + job.job_name + "] JSON is corrupted. File location: " + jsonfile_path);
         job_status = MPF_COULD_NOT_READ_DATAFILE;
-        return json_kvs;
+        return json_kvs_regex;
     }
     JSONObject root;
     root = value->AsObject();
 
 
-    map<wstring, vector<wstring>> json_kvs_string;
-    map<wstring, vector<wstring>> json_kvs_regex;
-    map<wstring, vector<wstring>> json_kvs_string_split;
-    if (root.find(L"TAGS_STRING") != root.end() && root[L"TAGS_STRING"]->IsObject()) {
-        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] String tags found.");
-        JSONValue *root2 = JSON::Parse(root[L"TAGS_STRING"]->Stringify().c_str());
-        vector<wstring> keys = root2->ObjectKeys();
-        vector<wstring>::iterator iter = keys.begin();
-        JSONObject root3 = root2->AsObject();
-        while (iter != keys.end()) {
-            auto term = *iter;
-            wstring term_temp(term);
-            string term_str(term_temp.begin(), term_temp.end());
-            if (!root3[term]->IsArray()) {
-                LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Invalid JSON Array in STRING tags!");
-                job_status = MPF_COULD_NOT_READ_DATAFILE;
-                // There was a processing error, but continue checking the remaining terms.
-                iter++;
-                continue;
-            }
-            JSONArray array = root3[term]->AsArray();
-            for (unsigned int i = 0; i < array.size(); i++) {
-                wstring temp = array[i]->Stringify();
-                temp = temp.substr(1, temp.size() - 2);
-                temp = to_lowercase(temp);
-                json_kvs_string[term].push_back(temp);
-            }
-            iter++;
-        }
-    }
-
-
-    if (root.find(L"TAGS_BY_KEYWORD") != root.end() && root[L"TAGS_BY_KEYWORD"]->IsObject()) {
-        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Split tags found.");
-        JSONValue *root2 = JSON::Parse(root[L"TAGS_BY_KEYWORD"]->Stringify().c_str());
-        vector<wstring> keys = root2->ObjectKeys();
-        vector<wstring>::iterator iter = keys.begin();
-        JSONObject root3 = root2->AsObject();
-        while (iter != keys.end()) {
-            auto term = *iter;
-            wstring term_temp(term);
-            string term_str(term_temp.begin(), term_temp.end());
-            if (!root3[term]->IsArray()) {
-                LOG4CXX_ERROR(hw_logger_,
-                              "[" + job.job_name + "] Invalid JSON Array in TAGS_BY_KEYWORD!");
-                job_status = MPF_COULD_NOT_READ_DATAFILE;
-                // There was a processing error, but continue checking the remaining terms.
-                iter++;
-                continue;
-            }
-            JSONArray array = root3[term]->AsArray();
-            for (unsigned int i = 0; i < array.size(); i++) {
-                wstring temp = array[i]->Stringify();
-                temp = temp.substr(1, temp.size() - 2);
-                temp = to_lowercase(temp);
-                json_kvs_string_split[term].push_back(temp);
-            }
-            iter++;
-        }
-    } else {
-        LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] TAGS_BY_KEYWORD NOT FOUND.");
-    }
-
-    // REGEX STUFF
+    // REGEX TAG LOADING
     if (root.find(L"TAGS_BY_REGEX") != root.end() && root[L"TAGS_BY_REGEX"]->IsObject()) {
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Regex tags found.");
         JSONValue *root2 = JSON::Parse(root[L"TAGS_BY_REGEX"]->Stringify().c_str());
@@ -488,34 +429,68 @@ TesseractOCRTextDetection::parse_json(const MPFJob &job, const string &jsonfile_
 
 
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] successfully read JSON.");
-    json_kvs[L"TAGS_STRING"] = json_kvs_string;
-    json_kvs[L"TAGS_STRING_SPLIT"] = json_kvs_string_split;
-    json_kvs[L"TAGS_REGEX"] = json_kvs_regex;
-    return json_kvs;
+    return json_kvs_regex;
 }
 
-/*
- * Verify that two strings are identical (ignore letter case).
- */
-bool TesseractOCRTextDetection::comp_strcmp(const wstring &strHaystack, const wstring &strNeedle) {
-    auto it = search(
-            strHaystack.begin(), strHaystack.end(),
-            strNeedle.begin(), strNeedle.end(),
-            [](char ch1, char ch2) { return toupper(ch1) == toupper(ch2); }
-    );
-    return (it != strHaystack.end());
+void TesseractOCRTextDetection::process_regex_match(const boost::wsmatch &match, const wstring &detection,
+                                 map<wstring, vector<string>> &trigger_words_offset) {
+    // Find and return matching pattern.
+    int start = match.position(0Lu);
+    int end = match.position(0Lu) + match[0].length();
+
+    // Trim trigger words.
+    int trim_start = start, trim_end = end;
+    while (trim_start < end && iswspace(detection.at(trim_start))) {
+        trim_start++;
+    }
+    if (trim_start != end) {
+        while (start < trim_end && iswspace(detection.at(trim_end - 1))) {
+            trim_end--;
+        }
+    }
+    start = trim_start;
+    end = trim_end;
+
+    wstring trigger_word = detection.substr(start , end - start);
+    boost::replace_all(trigger_word, ";", "[;]");
+    if (!(trigger_words_offset.count(trigger_word))) {
+        vector<string> offsets;
+        offsets.push_back(to_string(start) + "-" + to_string(end - 1));
+        trigger_words_offset.insert({trigger_word, offsets});
+    } else {
+        vector<string> &offsets = trigger_words_offset.at(trigger_word);
+        string offset = to_string(start) + "-" + to_string(end - 1);
+        if (std::find(offsets.begin(), offsets.end(), offset) == offsets.end()) {
+            offsets.push_back(offset);
+        }
+    }
+
 }
 
 /*
  * Check if detection string contains regstr pattern.
  */
-bool TesseractOCRTextDetection::comp_regex(const MPFImageJob &job, const wstring &detection, const wstring &regstr,
+bool TesseractOCRTextDetection::comp_regex(const MPFImageJob &job, const wstring &detection,
+                                           const wstring &regstr, map<wstring, vector<string>> &trigger_words_offset,
+                                           const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                            MPFDetectionError &job_status) {
+
     bool found = false;
     try {
         boost::wregex reg_matcher(regstr, boost::regex_constants::extended);
         boost::wsmatch m;
-        if (boost::regex_search(detection, m, reg_matcher)) {
+
+        if (ocr_fset.full_regex_search) {
+            boost::wsregex_iterator iter(detection.begin(), detection.end(), reg_matcher);
+            boost::wsregex_iterator end;
+
+            for( iter; iter != end; ++iter ) {
+                process_regex_match(*iter, detection, trigger_words_offset);
+                found = true;
+            }
+        }
+        else if (boost::regex_search(detection, m, reg_matcher)) {
+            process_regex_match(m, detection, trigger_words_offset);
             found = true;
         }
     } catch (const boost::regex_error &e) {
@@ -1053,6 +1028,8 @@ bool is_only_ascii_whitespace(const wstring &str) {
  */
 set<wstring> TesseractOCRTextDetection::search_regex(const MPFImageJob &job, const wstring &ocr_detections,
                                                      const map<wstring, vector<wstring>> &json_kvs_regex,
+                                                     map<wstring, vector<string>> &trigger_words_offset,
+                                                     const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                                      MPFDetectionError &job_status) {
     wstring found_tags_regex = L"";
     set<wstring> found_keys_regex;
@@ -1064,20 +1041,18 @@ set<wstring> TesseractOCRTextDetection::search_regex(const MPFImageJob &job, con
         auto key = kv.first;
         auto values = kv.second;
         for (auto value : values) {
-            if (comp_regex(job, ocr_detections, value, job_status)) {
+            if (comp_regex(job, ocr_detections, value, trigger_words_offset,
+                ocr_fset, job_status)) {
                 found_keys_regex.insert(key);
-                break;
+                // Discontinue searching unless full regex search is enabled.
+                if (!ocr_fset.full_regex_search) {
+                    break;
+                }
             }
         }
     }
-    int num_found = 0;
-    for (auto tags : found_keys_regex) {
-        found_tags_regex += tags + L", ";
-        num_found++;
-    }
-    if (num_found > 0) {
-        found_tags_regex = found_tags_regex.substr(0, found_tags_regex.size() - 2);
-    }
+    int num_found = found_keys_regex.size();
+    found_tags_regex = boost::algorithm::join(found_keys_regex, L", ");
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Done searching for regex tags, found: " + to_string(num_found));
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Found regex tags are: " +
                               boost::locale::conv::utf_to_utf<char>(found_tags_regex));
@@ -1085,132 +1060,8 @@ set<wstring> TesseractOCRTextDetection::search_regex(const MPFImageJob &job, con
     return found_keys_regex;
 }
 
-bool TesseractOCRTextDetection::token_comparison(const wstring &token, const wstring &value) {
-    static locale loc = locale();
-    int result = use_facet<boost::locale::collator<wchar_t>>(loc).compare(boost::locale::collator_base::primary, token,
-                                                                          value);
-    return result == 0;
-}
-
-/*
- * Performs split-string-tagging of ocr text detection.
- */
-set<wstring> TesseractOCRTextDetection::search_string_split(const MPFImageJob &job, const vector<wstring> &tokenized,
-                                                            const map<wstring, vector<wstring>> &json_kvs_string) {
-    wstring found_tags_string = L"";
-    set<wstring> found_keys_string;
-    if (json_kvs_string.size() == 0) {
-        return found_keys_string;
-    }
-    boost::wregex rgx(L"\\s+");
-    for (const auto &kv : json_kvs_string) {
-        auto key = kv.first;
-        auto values = kv.second;
-        bool breaker = false;
-        for (auto value : values) {
-            vector<wstring> tag_tokens;
-            boost::split_regex(tag_tokens, value, rgx);
-
-            if (tag_tokens.size() == 1) {
-                // For single keyword matching.
-                for (const auto &token : tokenized) {
-                    if (token_comparison(token, value)) {
-                        found_keys_string.insert(key);
-                        breaker = true;
-                        break;
-                    }
-                }
-                if (breaker) break;
-            } else {
-                // For multi-length keyphrase matching.
-                // Check that each keyword in the phrase matches in order
-                // with words in the extracted text.
-                int word_id = 0;
-                for (const auto &token : tokenized) {
-                    if (token_comparison(token, tag_tokens[word_id])) {
-                        // Current word matched part of phrase.
-                        word_id++;
-                        // Check if entire phrase has been matched.
-                        if (word_id == tag_tokens.size()) {
-                            // Entire phrase matched correctly.
-                            found_keys_string.insert(key);
-                            breaker = true;
-                            break;
-                        }
-                    } else if (word_id > 0) {
-                        // If a phrase match fails midway.
-                        // Restart phrase check and compare word with starting
-                        // keyword in that phrase,
-                        if (token_comparison(token, tag_tokens[0])) {
-                            // Current word matches with start of phrase.
-                            // Proceed to check with next keyword in phrase.
-                            word_id = 1;
-                        } else {
-                            // Current word does not match start of phrase.
-                            // Compare next word with starting keyword in phrase.
-                            word_id = 0;
-                        }
-                    }
-                }
-
-                if (breaker) break;
-            }
-        }
-    }
-    int num_found = 0;
-    for (auto tags : found_keys_string) {
-        found_tags_string += tags + L", ";
-        num_found++;
-    }
-    if (num_found > 0) {
-        found_tags_string = found_tags_string.substr(0, found_tags_string.size() - 2);
-    }
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Done searching for string tags, found: " + to_string(num_found));
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Found string tags are: " +
-                              boost::locale::conv::utf_to_utf<char>(found_tags_string));
-    return found_keys_string;
-}
-
-/*
- * Performs full-string tagging of ocr text detection.
- */
-set<wstring> TesseractOCRTextDetection::search_string(const MPFImageJob &job, const wstring &ocr_detections,
-                                                      const map<wstring, vector<wstring>> &json_kvs_string) {
-    wstring found_tags_string = L"";
-    set<wstring> found_keys_string;
-    if (json_kvs_string.size() == 0) {
-        return found_keys_string;
-    }
-    for (const auto &kv : json_kvs_string) {
-        auto key = kv.first;
-        auto values = kv.second;
-
-        for (auto value : values) {
-            if (comp_strcmp(ocr_detections, value)) {
-                found_keys_string.insert(key);
-                break;
-            }
-        }
-    }
-    int num_found = 0;
-    for (auto tags : found_keys_string) {
-        found_tags_string += tags + L", ";
-        num_found++;
-    }
-    if (num_found > 0) {
-        found_tags_string = found_tags_string.substr(0, found_tags_string.size() - 2);
-    }
-    LOG4CXX_DEBUG(hw_logger_,
-                  "[" + job.job_name + "] Done searching for full string tags, found: " + to_string(num_found));
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Found full string tags are: " +
-                              boost::locale::conv::utf_to_utf<char>(found_tags_string));
-    return found_keys_string;
-}
-
 
 void TesseractOCRTextDetection::load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
-                                               map<wstring, vector<wstring>> &json_kvs_string,
-                                               map<wstring, vector<wstring>> &json_kvs_string_split,
                                                map<wstring, vector<wstring>> &json_kvs_regex) {
 
     string run_dir = GetRunDirectory();
@@ -1231,12 +1082,8 @@ void TesseractOCRTextDetection::load_tags_json(const MPFJob &job, MPFDetectionEr
     }
 
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to read JSON from: " + jsonfile_path);
-    auto json_kvs_full = parse_json(job, jsonfile_path, job_status);
+    json_kvs_regex = parse_json(job, jsonfile_path, job_status);
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Read JSON");
-
-    json_kvs_string = json_kvs_full[L"TAGS_STRING"];
-    json_kvs_string_split = json_kvs_full[L"TAGS_STRING_SPLIT"];
-    json_kvs_regex = json_kvs_full[L"TAGS_REGEX"];
 }
 
 void
@@ -1286,7 +1133,7 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
     ocr_fset.min_secondary_script_thrs = DetectionComponentUtils::GetProperty<double>(job.job_properties,"MIN_OSD_SECONDARY_SCRIPT_THRESHOLD", default_ocr_fset.min_secondary_script_thrs);
     ocr_fset.rotate_and_detect = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ROTATE_AND_DETECT", default_ocr_fset.rotate_and_detect);
     ocr_fset.rotate_and_detect_min_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties, "ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE", default_ocr_fset.rotate_and_detect_min_confidence);
-
+    ocr_fset.full_regex_search = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"FULL_REGEX_SEARCH", default_ocr_fset.full_regex_search);
 
     // Tessdata setup
     ocr_fset.model_dir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODELS_DIR_PATH", default_ocr_fset.model_dir);
@@ -1310,8 +1157,6 @@ bool TesseractOCRTextDetection::process_text_tagging(Properties &detection_prope
                                                      MPFDetectionError &job_status,
                                                      const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                                      const map<wstring, vector<wstring>> &json_kvs_regex,
-                                                     const map<wstring, vector<wstring>> &json_kvs_string_split,
-                                                     const map<wstring, vector<wstring>> &json_kvs_string,
                                                      int page_num) {
 
     string ocr_lang = ocr_out.language;
@@ -1328,29 +1173,28 @@ bool TesseractOCRTextDetection::process_text_tagging(Properties &detection_prope
     }
 
     auto tokenized = get_tokens(ocr_detections);
+    set<wstring> trigger_words;
+    map<wstring, vector<string>> trigger_words_offset;
     wstring norm_detections = to_lowercase(ocr_detections);
-    auto found_tags_regex = search_regex(job, norm_detections, json_kvs_regex, job_status);
-    auto found_tags_string_split = search_string_split(job, tokenized, json_kvs_string_split);
-    auto found_tags_string = search_string(job, norm_detections, json_kvs_string);
+    set<wstring> found_tags_regex = search_regex(job, norm_detections, json_kvs_regex, trigger_words_offset,
+                                         ocr_fset, job_status);
 
-    for (auto tag: found_tags_string_split) {
-        found_tags_string.insert(tag);
+    wstring tag_string = boost::algorithm::join(found_tags_regex, L"; ");
+    vector<string> offsets_list;
+    vector<wstring> triggers_list;
+    wstring tag_trigger = boost::algorithm::join(trigger_words, L"; ");
+    for (auto const& word_offset : trigger_words_offset )
+    {
+        triggers_list.push_back(word_offset.first);
+        offsets_list.push_back(boost::algorithm::join(word_offset.second, ", "));
     }
-    for (auto tag: found_tags_regex) {
-        found_tags_string.insert(tag);
-    }
-    wstring tag_string = L"";
-    int num_found = 0;
-    for (auto tags : found_tags_string) {
-        tag_string += tags + L", ";
-        num_found++;
-    }
-    if (num_found > 0) {
-        tag_string = tag_string.substr(0, tag_string.size() - 2);
-    }
+    string tag_offset = boost::algorithm::join(offsets_list, "; ");
+    tag_trigger = tag_trigger + boost::algorithm::join(triggers_list, L"; ");
 
     detection_properties["TEXT_LANGUAGE"] = ocr_lang;
     detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
+    detection_properties["TRIGGER_WORDS"] = boost::locale::conv::utf_to_utf<char>(tag_trigger);
+    detection_properties["TRIGGER_WORDS_OFFSET"] = tag_offset;
     detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(ocr_detections);
 
     if (page_num >= 0) {
@@ -1401,193 +1245,195 @@ inline void set_coordinates(int &xLeftUpper, int &yLeftUpper, int &width, int &h
 MPFDetectionError
 TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImageLocation> &locations) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
+    try{
+        TesseractOCRTextDetection::OCR_filter_settings ocr_fset;
+        Text_type text_type = Unknown;
 
-    TesseractOCRTextDetection::OCR_filter_settings ocr_fset;
-    Text_type text_type = Unknown;
+        if (job.has_feed_forward_location && job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
+            if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "UNSTRUCTURED") {
+                text_type = Unstructured;
+            } else if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "STRUCTURED") {
+                text_type = Structured;
+            }
 
-    if (job.has_feed_forward_location && job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
-        if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "UNSTRUCTURED") {
-            text_type = Unstructured;
-        } else if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "STRUCTURED") {
-            text_type = Structured;
+            LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Identified text type:  \"" +
+                                      job.feed_forward_location.detection_properties.at("TEXT_TYPE") + "\".");
         }
+        load_settings(job, ocr_fset, text_type);
 
-        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Identified text type:  \"" +
-                                  job.feed_forward_location.detection_properties.at("TEXT_TYPE") + "\".");
-    }
-    load_settings(job, ocr_fset, text_type);
+        MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
+        map<wstring, vector<wstring>> json_kvs_regex;
+        load_tags_json(job, job_status, json_kvs_regex);
 
-    MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
-    map<wstring, vector<wstring>> json_kvs_string;
-    map<wstring, vector<wstring>> json_kvs_string_split;
-    map<wstring, vector<wstring>> json_kvs_regex;
-    load_tags_json(job, job_status, json_kvs_string, json_kvs_string_split, json_kvs_regex);
+        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to run tesseract");
+        vector<TesseractOCRTextDetection::OCR_output> ocr_outputs;
 
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to run tesseract");
-    vector<TesseractOCRTextDetection::OCR_output> ocr_outputs;
+        MPFImageReader image_reader(job);
+        cv::Mat image_data = image_reader.GetImage();
+        cv::Mat image_data_rotated;
+        cv::Size input_size = image_data.size();
 
-    MPFImageReader image_reader(job);
-    cv::Mat image_data = image_reader.GetImage();
-    cv::Mat image_data_rotated;
-    cv::Size input_size = image_data.size();
-
-    if (!preprocess_image(job, image_data, ocr_fset, job_status)) {
-        return job_status;
-    }
-
-    Properties osd_detection_properties;
-    string tessdata_script_dir = "";
-    int xLeftUpper = 0;
-    int yLeftUpper = 0;
-    int width = input_size.width;
-    int height = input_size.height;
-    int orientation_result = 0;
-
-    if (ocr_fset.psm == 0 || ocr_fset.enable_osd) {
-
-        OSResults os_results;
-        get_OSD(os_results, image_data, job, ocr_fset, osd_detection_properties, job_status,
-                tessdata_script_dir);
-
-        // Rotate upper left coordinates based on OSD results.
-        if (ocr_fset.min_orientation_confidence <= os_results.best_result.oconfidence) {
-            orientation_result = os_results.best_result.orientation_id;
-            set_coordinates(xLeftUpper, yLeftUpper, width, height, input_size, os_results.best_result.orientation_id);
-        }
-
-        // When PSM is set to 0, there is no need to process any further.
-        if (ocr_fset.psm == 0) {
-            LOG4CXX_INFO(hw_logger_,
-                         "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) +
-                         " tracks.");
-            MPFImageLocation osd_detection(xLeftUpper, yLeftUpper, width, height, -1, osd_detection_properties);
-            locations.push_back(osd_detection);
+        if (!preprocess_image(job, image_data, ocr_fset, job_status)) {
             return job_status;
         }
-    }
 
-    set<string> missing_languages;
-    string first_pass_rotation, second_pass_rotation;
-    double min_ocr_conf = ocr_fset.rotate_and_detect_min_confidence;
-    int corrected_orientation;
-    int corrected_X, corrected_Y, corrected_width, corrected_height;
+        Properties osd_detection_properties;
+        string tessdata_script_dir = "";
+        int xLeftUpper = 0;
+        int yLeftUpper = 0;
+        int width = input_size.width;
+        int height = input_size.height;
+        int orientation_result = 0;
 
-    if (ocr_fset.rotate_and_detect) {
-        cv::rotate(image_data, image_data_rotated, cv::ROTATE_180);
-        vector<string> lang_tracks;
-        boost::algorithm::split(lang_tracks, ocr_fset.tesseract_lang, boost::algorithm::is_any_of(","));
-        for (string lang: lang_tracks) {
-            // Process each language specified by user.
-            lang = clean_lang(lang);
-            missing_languages.insert(lang);
+        if (ocr_fset.psm == 0 || ocr_fset.enable_osd) {
+
+            OSResults os_results;
+            get_OSD(os_results, image_data, job, ocr_fset, osd_detection_properties, job_status,
+                    tessdata_script_dir);
+
+            // Rotate upper left coordinates based on OSD results.
+            if (ocr_fset.min_orientation_confidence <= os_results.best_result.oconfidence) {
+                orientation_result = os_results.best_result.orientation_id;
+                set_coordinates(xLeftUpper, yLeftUpper, width, height, input_size, os_results.best_result.orientation_id);
+            }
+
+            // When PSM is set to 0, there is no need to process any further.
+            if (ocr_fset.psm == 0) {
+                LOG4CXX_INFO(hw_logger_,
+                             "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) +
+                             " tracks.");
+                MPFImageLocation osd_detection(xLeftUpper, yLeftUpper, width, height, -1, osd_detection_properties);
+                locations.push_back(osd_detection);
+                return job_status;
+            }
         }
-        double rotation_val = 0.0;
-        if (osd_detection_properties.count("ROTATION")) {
-            rotation_val = boost::lexical_cast<double>(osd_detection_properties["ROTATION"]);
-        }
-        first_pass_rotation = to_string(rotation_val);
-        second_pass_rotation = to_string(180.0 + rotation_val);
-        corrected_orientation = (orientation_result + 2) % 4;
-        set_coordinates(corrected_X, corrected_Y, corrected_width, corrected_height, input_size, corrected_orientation);
-    }
 
-    // Run initial tesseract_detections. When autorotate is set, for any languages that fall below initial pass
-    // create a second round of extractions with a 180 degree rotation applied on top of the original setting.
-    // Second rotation only triggers if ROTATE_AND_DETECT is set.
-    if (!get_tesseract_detections(job, ocr_outputs, image_data, ocr_fset, job_status, tessdata_script_dir)) {
-        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
+        set<string> missing_languages;
+        string first_pass_rotation, second_pass_rotation;
+        double min_ocr_conf = ocr_fset.rotate_and_detect_min_confidence;
+        int corrected_orientation;
+        int corrected_X, corrected_Y, corrected_width, corrected_height;
+
+        if (ocr_fset.rotate_and_detect) {
+            cv::rotate(image_data, image_data_rotated, cv::ROTATE_180);
+            vector<string> lang_tracks;
+            boost::algorithm::split(lang_tracks, ocr_fset.tesseract_lang, boost::algorithm::is_any_of(","));
+            for (string lang: lang_tracks) {
+                // Process each language specified by user.
+                lang = clean_lang(lang);
+                missing_languages.insert(lang);
+            }
+            double rotation_val = 0.0;
+            if (osd_detection_properties.count("ROTATION")) {
+                rotation_val = boost::lexical_cast<double>(osd_detection_properties["ROTATION"]);
+            }
+            first_pass_rotation = to_string(rotation_val);
+            second_pass_rotation = to_string(180.0 + rotation_val);
+            corrected_orientation = (orientation_result + 2) % 4;
+            set_coordinates(corrected_X, corrected_Y, corrected_width, corrected_height, input_size, corrected_orientation);
+        }
+
+        // Run initial tesseract_detections. When autorotate is set, for any languages that fall below initial pass
+        // create a second round of extractions with a 180 degree rotation applied on top of the original setting.
+        // Second rotation only triggers if ROTATE_AND_DETECT is set.
+        if (!get_tesseract_detections(job, ocr_outputs, image_data, ocr_fset, job_status, tessdata_script_dir)) {
+            LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
+            return job_status;
+        }
+
+        vector<TesseractOCRTextDetection::OCR_output> all_results;
+
+        for (TesseractOCRTextDetection::OCR_output ocr_out: ocr_outputs) {
+            TesseractOCRTextDetection::OCR_output final_out = ocr_out;
+            if (ocr_fset.rotate_and_detect) {
+                missing_languages.erase(ocr_out.language);
+                final_out.two_pass_rotation = first_pass_rotation;
+                final_out.two_pass_correction = false;
+
+                // Perform second pass OCR if min threshold is disabled (negative) or first pass confidence too low.
+                if (min_ocr_conf <= 0 || ocr_out.confidence < min_ocr_conf) {
+                    // Perform second pass OCR and provide best result to output.
+                    vector<TesseractOCRTextDetection::OCR_output> ocr_outputs_rotated;
+                    ocr_fset.tesseract_lang = ocr_out.language;
+                    if (!get_tesseract_detections(job, ocr_outputs_rotated, image_data_rotated, ocr_fset, job_status,
+                        tessdata_script_dir)) {
+                            LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
+                            return job_status;
+                    }
+
+                    TesseractOCRTextDetection::OCR_output  ocr_out_rotated = ocr_outputs_rotated.front();
+                    if (ocr_out_rotated.confidence > ocr_out.confidence) {
+                        final_out = ocr_out_rotated;
+                        final_out.two_pass_rotation = second_pass_rotation;
+                        final_out.two_pass_correction = true;
+                    }
+                }
+            }
+            all_results.push_back(final_out);
+        }
+
+        // If two stage OCR is enabled, run the second pass of OCR on any remaining languages where the first pass failed
+        // to generate an output.
+        for (string miss_lang: missing_languages) {
+            // Perform second pass OCR and provide best result to output.
+            vector<TesseractOCRTextDetection::OCR_output> ocr_outputs_rotated;
+            ocr_fset.tesseract_lang = miss_lang;
+            if (!get_tesseract_detections(job, ocr_outputs_rotated, image_data_rotated, ocr_fset, job_status,
+                tessdata_script_dir)) {
+                    LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
+                    return job_status;
+            }
+            TesseractOCRTextDetection::OCR_output ocr_out_rotated = ocr_outputs_rotated.front();
+            ocr_out_rotated.two_pass_rotation = second_pass_rotation;
+            ocr_out_rotated.two_pass_correction = true;
+            all_results.push_back(ocr_out_rotated);
+        }
+
+        // If max_text_tracks is set, filter out to return only the top specified tracks.
+        if (ocr_fset.max_text_tracks > 0) {
+            sort(all_results.begin(), all_results.end(), greater<TesseractOCRTextDetection::OCR_output>());
+            all_results.resize(ocr_fset.max_text_tracks);
+        }
+
+        for (TesseractOCRTextDetection::OCR_output final_out : all_results) {
+            MPFImageLocation image_location(xLeftUpper, yLeftUpper, width, height, final_out.confidence);
+            // Copy over OSD detection results into OCR output.
+            image_location.detection_properties = osd_detection_properties;
+
+            // Mark two-pass OCR final selected rotation.
+            if (ocr_fset.rotate_and_detect) {
+                image_location.detection_properties["ROTATION"] = final_out.two_pass_rotation;
+                if (final_out.two_pass_correction) {
+                    image_location.detection_properties["ROTATE_AND_DETECT_PASS"] = "180";
+                    // Also correct top left corner designation:
+                    image_location.x_left_upper = corrected_X;
+                    image_location.y_left_upper = corrected_Y;
+                    image_location.width = corrected_width;
+                    image_location.height = corrected_height;
+                } else {
+                    image_location.detection_properties["ROTATE_AND_DETECT_PASS"] = "0";
+                }
+
+            }
+            bool process_text = process_text_tagging(image_location.detection_properties, job, final_out, job_status,
+                                                     ocr_fset,
+                                                     json_kvs_regex);
+            if (process_text) {
+                locations.push_back(image_location);
+            }
+        }
+
+        for (auto &location : locations) {
+            image_reader.ReverseTransform(location);
+        }
+
+        LOG4CXX_INFO(hw_logger_,
+                     "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) + " tracks.");
         return job_status;
     }
-
-    vector<TesseractOCRTextDetection::OCR_output> all_results;
-
-    for (TesseractOCRTextDetection::OCR_output ocr_out: ocr_outputs) {
-        TesseractOCRTextDetection::OCR_output final_out = ocr_out;
-        if (ocr_fset.rotate_and_detect) {
-            missing_languages.erase(ocr_out.language);
-            final_out.two_pass_rotation = first_pass_rotation;
-            final_out.two_pass_correction = false;
-
-            // Perform second pass OCR if min threshold is disabled (negative) or first pass confidence too low.
-            if (min_ocr_conf <= 0 || ocr_out.confidence < min_ocr_conf) {
-                // Perform second pass OCR and provide best result to output.
-                vector<TesseractOCRTextDetection::OCR_output> ocr_outputs_rotated;
-                ocr_fset.tesseract_lang = ocr_out.language;
-                if (!get_tesseract_detections(job, ocr_outputs_rotated, image_data_rotated, ocr_fset, job_status,
-                    tessdata_script_dir)) {
-                        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
-                        return job_status;
-                }
-
-                TesseractOCRTextDetection::OCR_output  ocr_out_rotated = ocr_outputs_rotated.front();
-                if (ocr_out_rotated.confidence > ocr_out.confidence) {
-                    final_out = ocr_out_rotated;
-                    final_out.two_pass_rotation = second_pass_rotation;
-                    final_out.two_pass_correction = true;
-                }
-            }
-        }
-        all_results.push_back(final_out);
+    catch (...) {
+        return Utils::HandleDetectionException(job, hw_logger_);
     }
-
-    // If two stage OCR is enabled, run the second pass of OCR on any remaining languages where the first pass failed
-    // to generate an output.
-    for (string miss_lang: missing_languages) {
-        // Perform second pass OCR and provide best result to output.
-        vector<TesseractOCRTextDetection::OCR_output> ocr_outputs_rotated;
-        ocr_fset.tesseract_lang = miss_lang;
-        if (!get_tesseract_detections(job, ocr_outputs_rotated, image_data_rotated, ocr_fset, job_status,
-            tessdata_script_dir)) {
-                LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
-                return job_status;
-        }
-        TesseractOCRTextDetection::OCR_output ocr_out_rotated = ocr_outputs_rotated.front();
-        ocr_out_rotated.two_pass_rotation = second_pass_rotation;
-        ocr_out_rotated.two_pass_correction = true;
-        all_results.push_back(ocr_out_rotated);
-    }
-
-    // If max_text_tracks is set, filter out to return only the top specified tracks.
-    if (ocr_fset.max_text_tracks > 0) {
-        sort(all_results.begin(), all_results.end(), greater<TesseractOCRTextDetection::OCR_output>());
-        all_results.resize(ocr_fset.max_text_tracks);
-    }
-
-    for (TesseractOCRTextDetection::OCR_output final_out : all_results) {
-        MPFImageLocation image_location(xLeftUpper, yLeftUpper, width, height, final_out.confidence);
-        // Copy over OSD detection results into OCR output.
-        image_location.detection_properties = osd_detection_properties;
-
-        // Mark two-pass OCR final selected rotation.
-        if (ocr_fset.rotate_and_detect) {
-            image_location.detection_properties["ROTATION"] = final_out.two_pass_rotation;
-            if (final_out.two_pass_correction) {
-                image_location.detection_properties["ROTATE_AND_DETECT_PASS"] = "180";
-                // Also correct top left corner designation:
-                image_location.x_left_upper = corrected_X;
-                image_location.y_left_upper = corrected_Y;
-                image_location.width = corrected_width;
-                image_location.height = corrected_height;
-            } else {
-                image_location.detection_properties["ROTATE_AND_DETECT_PASS"] = "0";
-            }
-
-        }
-        bool process_text = process_text_tagging(image_location.detection_properties, job, final_out, job_status,
-                                                 ocr_fset,
-                                                 json_kvs_regex, json_kvs_string_split, json_kvs_string);
-        if (process_text) {
-            locations.push_back(image_location);
-        }
-    }
-
-    for (auto &location : locations) {
-        image_reader.ReverseTransform(location);
-    }
-
-    LOG4CXX_INFO(hw_logger_,
-                 "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) + " tracks.");
-    return job_status;
 }
 
 MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &job, vector<MPFGenericTrack> &tracks) {
@@ -1597,10 +1443,8 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
     load_settings(job, ocr_fset);
 
     MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
-    map<wstring, vector<wstring>> json_kvs_string;
-    map<wstring, vector<wstring>> json_kvs_string_split;
     map<wstring, vector<wstring>> json_kvs_regex;
-    load_tags_json(job, job_status, json_kvs_string, json_kvs_string_split, json_kvs_regex);
+    load_tags_json(job, job_status, json_kvs_regex);
 
     string temp_im_directory;
     vector<string> job_names;
@@ -1654,10 +1498,13 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
     string default_lang = ocr_fset.tesseract_lang;
     for (string filename : filelist) {
         MPFImageJob c_job(job.job_name, filename, job.job_properties, job.media_properties);
-
-        MPFImageReader image_reader(c_job);
-        cv::Mat image_data = image_reader.GetImage();
-
+        cv::Mat image_data;
+        try {
+            MPFImageReader image_reader(c_job);
+            image_data = image_reader.GetImage();
+        } catch (...) {
+            return Utils::HandleDetectionException(c_job, hw_logger_);
+        }
         if (!preprocess_image(c_job, image_data, ocr_fset, job_status)) {
             return job_status;
         }
@@ -1700,8 +1547,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
             generic_track.detection_properties = osd_track_results.detection_properties;
 
             bool process_text = process_text_tagging(generic_track.detection_properties, c_job, ocr_out, job_status,
-                                                     ocr_fset,
-                                                     json_kvs_regex, json_kvs_string_split, json_kvs_string, page_num);
+                                                     ocr_fset, json_kvs_regex, page_num);
             if (process_text) {
                 tracks.push_back(generic_track);
             }
