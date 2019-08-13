@@ -27,7 +27,7 @@
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+FROM ${BUILD_REGISTRY}openmpf_cpp-component-build:${BUILD_TAG} as build_component
 
 COPY . .
 
@@ -38,7 +38,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvFaceDetecti
 
 
 
-FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
+FROM ${BUILD_REGISTRY}openmpf_cpp-executor:${BUILD_TAG} as install_component
 
 ENV COMPONENT_LOG_NAME ocv-face-detection.log
 
