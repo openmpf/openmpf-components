@@ -509,6 +509,30 @@ TEST(TESSERACTOCR, OSDCommonTest) {
 
     results.clear();
 
+    // Check that two pass OSD works to detect proper scripts.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION",              "true"},
+                         {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE",  "0.0"},
+                         {"MIN_OSD_SCRIPT_SCORE",               "0"},
+                         {"MAX_OSD_SCRIPTS",                    "2"},
+                         {"MIN_OSD_SECONDARY_SCRIPT_THRESHOLD", "0.0"}};
+    runImageDetection("data/text-insufficient.png", ocr, results, custom_properties);
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic") << "Expected Cyrillic script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_SECONDARY_SCRIPTS") == "Latin") << "Expected Latin script.";
+    results.clear();
+
+    // When two pass OSD is disabled, no script is detected.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION",              "true"},
+                         {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE",  "0.0"},
+                         {"MIN_OSD_SCRIPT_SCORE",               "0"},
+                         {"MAX_OSD_SCRIPTS",                    "2"},
+                         {"TWO_PASS_OSD",                       "false"},
+                         {"MIN_OSD_SECONDARY_SCRIPT_THRESHOLD", "0.0"}};
+    runImageDetection("data/text-insufficient.png", ocr, results, custom_properties);
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "NULL") << "Expected no script detected.";
+    results.clear();
+
     // Check that "Common" script is reported but default language is used to run OCR.
     custom_properties = {{"ENABLE_OSD_AUTOMATION", "true"},
                          {"MAX_OSD_SCRIPTS",       "1"}};
@@ -597,6 +621,7 @@ TEST(TESSERACTOCR, OSDMultiPageTest) {
 
     custom_properties = {{"ENABLE_OSD_AUTOMATION",             "true"},
                          {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE", "0.30"},
+                         {"TWO_PASS_OSD",                      "false"},
                          {"MIN_OSD_SCRIPT_SCORE",              "40"}};
 
     // Check multiple page OSD processing.

@@ -174,6 +174,7 @@ void TesseractOCRTextDetection::set_default_parameters() {
 
     default_ocr_fset.processing_wild_text = false;
     default_ocr_fset.full_regex_search = false;
+    default_ocr_fset.two_pass_osd = true;
 }
 
 /*
@@ -286,6 +287,9 @@ void TesseractOCRTextDetection::set_read_config_parameters() {
     }
     if (parameters.contains("FULL_REGEX_SEARCH")) {
         default_ocr_fset.full_regex_search = parameters["FULL_REGEX_SEARCH"].toInt() > 0;
+    }
+    if (parameters.contains("TWO_PASS_OSD")) {
+        default_ocr_fset.two_pass_osd = parameters["TWO_PASS_OSD"].toInt() > 0;
     }
 }
 
@@ -800,6 +804,20 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     // Free up recognition results and any stored image data.
     tess_api->Clear();
 
+    if (ocr_fset.two_pass_osd && (ocr_fset.min_orientation_confidence > results.best_result.oconfidence ||
+        results.unicharset->get_script_from_script_id(results.best_result.script_id) == "NULL")) {
+
+        // Replicate the image, four times across.
+        cv::Mat amplified_im = cv::repeat(imi, 1, 4);
+        tess_api->SetPageSegMode(tesseract::PSM_AUTO_OSD);
+        tess_api->SetImage(amplified_im.data, amplified_im.cols, amplified_im.rows, amplified_im.channels(),
+                           static_cast<int>(amplified_im.step));
+        tess_api->DetectOS(&results);
+
+        // Free up recognition results and any stored image data.
+        tess_api->Clear();
+    }
+
     int best_ori = results.best_result.orientation_id;
     int best_id = results.best_result.script_id;
     int candidates = 0;
@@ -1134,6 +1152,7 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
     ocr_fset.rotate_and_detect = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ROTATE_AND_DETECT", default_ocr_fset.rotate_and_detect);
     ocr_fset.rotate_and_detect_min_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties, "ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE", default_ocr_fset.rotate_and_detect_min_confidence);
     ocr_fset.full_regex_search = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"FULL_REGEX_SEARCH", default_ocr_fset.full_regex_search);
+    ocr_fset.two_pass_osd = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"TWO_PASS_OSD", default_ocr_fset.two_pass_osd);
 
     // Tessdata setup
     ocr_fset.model_dir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODELS_DIR_PATH", default_ocr_fset.model_dir);
