@@ -327,7 +327,7 @@ TEST(TESSERACTOCR, TaggingTest) {
     runImageDetection("data/tags-keyword.png", ocr, results, custom_properties);
     assertInImage("data/tags-keyword.png", "Passenger Passport", results, "TEXT");
     assertInImage("data/tags-keyword.png", "identity document; travel", results, "TAGS");
-    assertInImage("data/tags-keyword.png", "passenger; passport", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-keyword.png", "Passenger; Passport", results, "TRIGGER_WORDS");
     assertInImage("data/tags-keyword.png", "0-8; 10-17", results, "TRIGGER_WORDS_OFFSET");
     results.clear();
 
@@ -337,21 +337,23 @@ TEST(TESSERACTOCR, TaggingTest) {
     // Keyword tagging picks up vehicle.
     // Three tags should be detected in total.
     runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties);
-    assertInImage("data/tags-keywordregex.png", "financial; personal; vehicle", results, "TAGS");
-    assertInImage("data/tags-keywordregex.png", "01/01/20; financ; text; vehicle", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-keywordregex.png", "case-insensitive-tag; case-sensitive-tag; financial; personal; vehicle",
+                  results, "TAGS");
+    assertInImage("data/tags-keywordregex.png", "01/01/20; Financ; Text; Vehicle", results, "TRIGGER_WORDS");
     assertInImage("data/tags-keywordregex.png", "20-27; 37-42; 10-13, 15-18; 29-35", results, "TRIGGER_WORDS_OFFSET");
     results.clear();
 
     // With full regex search disabled, number of reported triggers and offsets will decrease.
     runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties_disabled);
-    assertInImage("data/tags-keywordregex.png", "financial; personal; vehicle", results, "TAGS");
-    assertInImage("data/tags-keywordregex.png", "01/01/20; financ; vehicle", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-keywordregex.png", "case-insensitive-tag; case-sensitive-tag; financial; personal; vehicle",
+                  results, "TAGS");
+    assertInImage("data/tags-keywordregex.png", "01/01/20; Financ; Vehicle", results, "TRIGGER_WORDS");
     assertInImage("data/tags-keywordregex.png", "20-27; 37-42; 29-35", results, "TRIGGER_WORDS_OFFSET");
     results.clear();
 
     // Test multiple regex tagging.
     runImageDetection("data/tags-regex.png", ocr, results, custom_properties);
-    assertInImage("data/tags-regex.png", "financial; personal", results, "TAGS");
+    assertInImage("data/tags-regex.png", "case-insensitive-tag; financial; personal", results, "TAGS");
     assertInImage("data/tags-regex.png", "122-123-1234; financ", results, "TRIGGER_WORDS");
     assertInImage("data/tags-regex.png", "17-28; 0-5", results, "TRIGGER_WORDS_OFFSET");
     results.clear();
@@ -359,7 +361,8 @@ TEST(TESSERACTOCR, TaggingTest) {
 
     // Test multiple regex tagging w/ delimiter tag.
     runImageDetection("data/tags-regex-delimiter.png", ocr, results, custom_properties);
-    assertInImage("data/tags-regex-delimiter.png", "delimiter-test; financial; personal", results, "TAGS");
+    assertInImage("data/tags-regex-delimiter.png", "case-insensitive-tag; delimiter-test; financial; personal",
+                  results, "TAGS");
     assertInImage("data/tags-regex-delimiter.png", "122-123-1234; a[[;] ]b; financ", results, "TRIGGER_WORDS");
     assertInImage("data/tags-regex-delimiter.png", "22-33; 15-20; 0-5", results, "TRIGGER_WORDS_OFFSET");
     ASSERT_TRUE(ocr.Close());
@@ -714,7 +717,7 @@ TEST(TESSERACTOCR, DocumentTest) {
     assertInImage("data/test.pdf", "text", results, "TRIGGER_WORDS", 0);
     assertInImage("data/test.pdf", "This is a test", results, "TEXT", 0);
     assertInImage("data/test.pdf", "vehicle", results, "TAGS", 1);
-    assertInImage("data/test.pdf", "vehicle", results, "TRIGGER_WORDS", 1);
+    assertInImage("data/test.pdf", "Vehicle", results, "TRIGGER_WORDS", 1);
     assertInImage("data/test.pdf", "Vehicle", results, "TEXT", 1);
 
     ASSERT_TRUE(ocr.Close());

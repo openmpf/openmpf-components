@@ -161,11 +161,11 @@ namespace MPF {
             void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
                                 std::map<std::wstring, std::vector<std::wstring>> &json_kvs_regex);
 
-            bool comp_regex(const MPFImageJob &job, const std::wstring &detection, const std::wstring &regstr,
-                            std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
+            bool comp_regex(const MPFImageJob &job, const std::wstring &detection, const std::wstring &original,
+                            const std::wstring &regstr, std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
                             const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset, MPFDetectionError &job_status);
 
-            void process_regex_match(const boost::wsmatch &match, const std::wstring &detection,
+            void process_regex_match(const boost::wsmatch &match, const std::wstring &detection, const std::wstring &original,
                                      std::map<std::wstring, std::vector<std::string>> &trigger_words_offset);
 
             void sharpen(cv::Mat &image, double weight);

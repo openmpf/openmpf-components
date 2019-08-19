@@ -91,6 +91,12 @@
 		],
 		"delimiter-test": [
 			"a[[]; []]b"
+		],
+		"case-sensitive-tag": [
+			"[[:case_sensitive:]]Financ"
+		],
+		"case-insensitive-tag": [
+			"Financ"
 		]
 	}
 }
