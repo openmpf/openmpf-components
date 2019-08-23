@@ -87,12 +87,12 @@ def quad_to_iloc(quads, scores):
     return ilocs
 
 def quad_to_rbox(quads):
-    """ Convert QUAD geometry to OpenMPF ImageLocation format
+    """ Convert QUAD geometry to RBOX geometry
     QUAD format:
         [[tl_x, tl_y],
          [tr_x, tr_y],
          [br_x, br_y],
-         [bl_x, bl_y]]]
+         [bl_x, bl_y]]
      RBOX format:
          [x, y, dt, dr, db, dl, rotation (rad)]
     """

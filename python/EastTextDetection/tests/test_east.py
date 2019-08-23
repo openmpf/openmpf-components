@@ -245,9 +245,13 @@ class TestEast(unittest.TestCase):
         )
         detections = list(comp.get_detections_from_image(job))
         high_padding_area = sum(d.width * d.height for d in detections)
+        high_padding = len(detections)
 
-        # Check that no padding results in less merging
+        # Check that higher final padding results in larger total detection area
         self.assertGreater(high_padding_area, low_padding_area)
+
+        # Check that final padding doesn't affect total number of detections
+        self.assertEqual(high_padding, low_padding)
 
     def test_max_side_length(self):
         comp = EastComponent()
