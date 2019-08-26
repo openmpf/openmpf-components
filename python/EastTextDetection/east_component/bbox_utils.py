@@ -48,7 +48,7 @@ def rbox_to_quad(rboxes):
         [[tl_x, tl_y],
          [tr_x, tr_y],
          [br_x, br_y],
-         [bl_x, bl_y]]]
+         [bl_x, bl_y]]
     """
     # Get cosine and sine of the box angles
     cs = np.hstack((np.cos(rboxes[:,[6]]), np.sin(rboxes[:,[6]])))
@@ -71,7 +71,7 @@ def quad_to_iloc(quads, scores):
         [[tl_x, tl_y],
          [tr_x, tr_y],
          [br_x, br_y],
-         [bl_x, bl_y]]]
+         [bl_x, bl_y]]
      OpenMPF ImageLocation format:
          [tl_x, tl_y, w, h, rotation (deg), score]
     """
@@ -135,7 +135,7 @@ def iloc_to_quad(ilocs):
         [[tl_x, tl_y],
          [tr_x, tr_y],
          [br_x, br_y],
-         [bl_x, bl_y]]]
+         [bl_x, bl_y]]
     """
     # Get cosine and sine of the box angles
     rotation = np.radians(ilocs[:,[4]])
