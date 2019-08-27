@@ -40,28 +40,28 @@ contour_intersect_area = np.vectorize(
     signature='(4,2),(4,2)->()'
 )
 
-def rbox_to_quad(geoms):
+def rbox_to_quad(rboxes):
     """ Convert RBOX geometry to bounding box corner coordinates
     RBOX format:
-        [x, y, dt, dr, db, dl, rotation]
+        [x, y, dt, dr, db, dl, rotation (rad)]
     QUAD format:
         [[tl_x, tl_y],
          [tr_x, tr_y],
          [br_x, br_y],
-         [bl_x, bl_y]]]
+         [bl_x, bl_y]]
     """
     # Get cosine and sine of the box angles
-    cs = np.hstack((np.cos(geoms[:,[6]]), np.sin(geoms[:,[6]])))
+    cs = np.hstack((np.cos(rboxes[:,[6]]), np.sin(rboxes[:,[6]])))
 
-    quads = np.empty((geoms.shape[0],4,2),dtype=np.float32)
+    quads = np.empty((rboxes.shape[0],4,2),dtype=np.float32)
 
     # Translate to the left and right edges
-    quads[:,[0,3],:] = (geoms[:,[0,1]] + geoms[:,[5]] * cs * [-1, +1])[:,None,:]
-    quads[:,[1,2],:] = (geoms[:,[0,1]] + geoms[:,[3]] * cs * [+1, -1])[:,None,:]
+    quads[:,[0,3],:] = (rboxes[:,[0,1]] + rboxes[:,[5]]*cs*[-1, +1])[:,None,:]
+    quads[:,[1,2],:] = (rboxes[:,[0,1]] + rboxes[:,[3]]*cs*[+1, -1])[:,None,:]
 
     # Translate to the top and bottom edges
-    quads[:,(0,1),:] -= (cs * geoms[:,[2]])[:,None,::-1]
-    quads[:,(2,3),:] += (cs * geoms[:,[4]])[:,None,::-1]
+    quads[:,[0,1],:] -= (cs * rboxes[:,[2]])[:,None,::-1]
+    quads[:,[2,3],:] += (cs * rboxes[:,[4]])[:,None,::-1]
 
     return quads
 
@@ -71,9 +71,9 @@ def quad_to_iloc(quads, scores):
         [[tl_x, tl_y],
          [tr_x, tr_y],
          [br_x, br_y],
-         [bl_x, bl_y]]]
+         [bl_x, bl_y]]
      OpenMPF ImageLocation format:
-         [tl_x, tl_y, w, h, rotation, score]
+         [tl_x, tl_y, w, h, rotation (deg), score]
     """
     w_vec = quads[:,1] - quads[:,0]
     h_vec = quads[:,3] - quads[:,0]
@@ -86,15 +86,56 @@ def quad_to_iloc(quads, scores):
     ilocs[:,5] = scores
     return ilocs
 
-def iloc_to_quad(ilocs):
-    """ Convert RBOX geometry to bounding box corner coordinates
-    OpenMPF ImageLocation format:
-        [tl_x, tl_y, w, h, rotation, score]
+def quad_to_rbox(quads):
+    """ Convert QUAD geometry to RBOX geometry
     QUAD format:
         [[tl_x, tl_y],
          [tr_x, tr_y],
          [br_x, br_y],
-         [bl_x, bl_y]]]
+         [bl_x, bl_y]]
+     RBOX format:
+         [x, y, dt, dr, db, dl, rotation (rad)]
+    """
+    w_vec = quads[:,1] - quads[:,0]
+    h_vec = quads[:,3] - quads[:,0]
+
+    rboxes = np.empty((quads.shape[0],7), dtype=np.float32)
+    rboxes[:,[0,1]] = quads[:,0]
+    rboxes[:,[2,5]] = 0
+    rboxes[:,3] = np.sqrt(np.sum(w_vec*w_vec, -1))
+    rboxes[:,4] = np.sqrt(np.sum(h_vec*h_vec, -1))
+    rboxes[:,6] = np.arctan2(-w_vec[:,1], w_vec[:,0])
+    return rboxes
+
+def rbox_to_iloc(rboxes, scores):
+    """ Convert RBOX geometry to OpenMPF ImageLocation format
+     RBOX format:
+         [x, y, dt, dr, db, dl, rotation (rad)]
+     OpenMPF ImageLocation format:
+         [tl_x, tl_y, w, h, rotation (deg), score]
+    """
+    c = np.cos(rboxes[:,6])
+    s = np.sin(rboxes[:,6])
+
+    ilocs = np.empty((rboxes.shape[0],6), dtype=np.float32)
+
+    ilocs[:,0] = rboxes[:,0] - rboxes[:,5] * c - rboxes[:,2] * s
+    ilocs[:,1] = rboxes[:,1] + rboxes[:,5] * s - rboxes[:,2] * c
+    ilocs[:,2] = rboxes[:,3] + rboxes[:,5]
+    ilocs[:,3] = rboxes[:,2] + rboxes[:,4]
+    ilocs[:,4] = np.degrees(rboxes[:,6]) % 360
+    ilocs[:,5] = scores
+    return ilocs
+
+def iloc_to_quad(ilocs):
+    """ Convert RBOX geometry to bounding box corner coordinates
+    OpenMPF ImageLocation format:
+        [tl_x, tl_y, w, h, rotation (deg), score]
+    QUAD format:
+        [[tl_x, tl_y],
+         [tr_x, tr_y],
+         [br_x, br_y],
+         [bl_x, bl_y]]
     """
     # Get cosine and sine of the box angles
     rotation = np.radians(ilocs[:,[4]])
@@ -113,10 +154,16 @@ def iloc_to_quad(ilocs):
 
     return quads
 
-def nms(quads, scores, min_nms_overlap):
+def nms(rboxes, scores, temp_padding, final_padding, min_nms_overlap):
     """ Perform Non-Maximum Suppression (NMS) on the given QUAD-formatted
         bounding boxes.
     """
+    # Add temporary padding
+    padded_rboxes = rboxes.copy()
+    padded_rboxes[:,2:6] += temp_padding * (rboxes[:,[2]] + rboxes[:,[4]])
+
+    # Perform NMS
+    quads = rbox_to_quad(padded_rboxes)
     areas = contour_area(quads)
     order = np.argsort(scores)[::-1]
     keep = []
@@ -129,7 +176,14 @@ def nms(quads, scores, min_nms_overlap):
         iou = inter / union
         inds = np.flatnonzero(iou < min_nms_overlap)
         order = order[inds+1]
-    return keep
+
+    # Filter the suppressed detections
+    rboxes = rboxes[keep]
+    scores = scores[keep]
+
+    # Add final padding, convert to Image Loc
+    rboxes[:,2:6] += final_padding * (rboxes[:,[2]] + rboxes[:,[4]])
+    return rbox_to_iloc(rboxes, scores)
 
 def merge(quads, rotation):
     """ Merge a group of QUAD-formatted bounding boxes, enclosing them in a
@@ -176,6 +230,59 @@ class MergedRegions(object):
         self.areas = contour_area(self.quads)
         self.weights = scores
         self.scores = scores
+        self.constituents = [[i] for i in range(len(scores))]
+
+    def perform_merge(self, constituent_index_lists):
+        post_merge_quads = []
+        post_merge_rotations = []
+        post_merge_heights = []
+        post_merge_weights = []
+        post_merge_scores = []
+        post_merge_constituents = []
+        for indices in constituent_index_lists:
+            if len(indices) == 1:
+                i = indices[0]
+                post_merge_quads.append(self.quads[i])
+                post_merge_rotations.append(self.rotations[i])
+                post_merge_heights.append(self.heights[i])
+                post_merge_weights.append(self.weights[i])
+                post_merge_scores.append(self.scores[i])
+                post_merge_constituents.append(self.constituents[i])
+                continue
+
+            # The score for a merged region is the maximum constituent score
+            score = self.scores[indices].max()
+
+            # The weight for a merged region is the sum of constituent weights
+            weights = self.weights[indices]
+            scale = weights.sum()
+
+            # The rotation and text height for a merged region is a weighted
+            #  average of the constituent boxes' rotations and text heights
+            rotation = np.sum(self.rotations[indices] * weights) / scale
+            height = np.sum(self.heights[indices] * weights) / scale
+
+            # Merge the constituent boxes at the weighted average rotation
+            quad = merge(self.quads[indices], rotation)
+
+            # Merge the constituent index lists
+            constituents = [j for i in indices for j in self.constituents[i]]
+
+            post_merge_quads.append(quad)
+            post_merge_rotations.append(rotation)
+            post_merge_heights.append(height)
+            post_merge_weights.append(scale)
+            post_merge_scores.append(score)
+            post_merge_constituents.append(constituents)
+
+        # Update members
+        self.quads = np.stack(post_merge_quads)
+        self.rotations = np.array(post_merge_rotations)
+        self.heights = np.array(post_merge_heights)
+        self.areas = contour_area(self.quads.astype(np.float32))
+        self.weights = np.array(post_merge_weights)
+        self.scores = np.array(post_merge_scores)
+        self.constituents = post_merge_constituents
 
 def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
     """ Complete one merge pass. This takes one box at a time (largest area
@@ -184,107 +291,59 @@ def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
         The largest remaining box is then taken, and the process is repeated
         until the original list is empty.
     """
-    # Sort by bounding box area
+    # Sort by bounding box area (descending)
     order = np.argsort(regions.areas)[::-1]
-    quads = regions.quads[order]
-    rotations = regions.rotations[order]
-    heights = regions.heights[order]
-    weights = regions.weights[order]
-    scores = regions.scores[order]
-    areas = regions.areas[order]
 
-    merged_quads = []
-    merged_rotations = []
-    merged_heights = []
-    merged_weights = []
-    merged_scores = []
     merged_any = False
-    while len(quads) > 0:
+    constituent_index_lists = []
+    while len(order) > 0:
+        head = order[0]
+        order = order[1:]
+        constituent_indices = [head]
+
+        # If only one region remains, append and break
+        if len(order) == 0:
+            constituent_index_lists.append(constituent_indices)
+            break
+
+        # Filter out boxes without sufficient overlap. Based on intersection
+        #  over smaller area (IoSA), not intersection over union (IoU). Because #  we select in order of area, the head region is always larger.
         inter = contour_intersect_area(
-            quads[0].astype(np.float32),
-            quads[1:].astype(np.float32)
+            regions.quads[head].astype(np.float32),
+            regions.quads[order].astype(np.float32)
         )
-        # Divide by smaller area, not the union
-        to_merge = (inter / areas[1:]) >= min_merge_overlap
+        overlaps = (inter / regions.areas[order]) >= min_merge_overlap
 
         # Filter out boxes whose text height does not match
-        h_dist = 2 * np.abs(heights[0]-heights[1:]) / (heights[0]+heights[1:])
-        height_matches = h_dist <= max_height_delta
-        to_merge = np.logical_and(to_merge, height_matches)
+        diff = np.abs(regions.heights[head] - regions.heights[order])
+        rel_diff = 2 * diff / (regions.heights[head] + regions.heights[order])
+        height_matches = rel_diff <= max_height_delta
 
         # Filter out boxes whose rotation does not match
         rotation_matches = close_under_modulus(
-            rotations[0],
-            rotations[1:],
+            regions.rotations[head],
+            regions.rotations[order],
             np.radians(max_rot_delta),
             180
         )
-        to_merge = np.logical_and(to_merge, rotation_matches)
-
-        # If no boxes can be merged with this one, pop it off and continue
-        if not np.any(to_merge):
-            merged_quads.append(quads[0])
-            merged_rotations.append(rotations[0])
-            merged_heights.append(heights[0])
-            merged_weights.append(weights[0])
-            merged_scores.append(scores[0])
-            quads = quads[1:]
-            rotations = rotations[1:]
-            heights = heights[1:]
-            weights = weights[1:]
-            scores = scores[1:]
-            areas = areas[1:]
-            continue
 
         # Merge the eligible boxes in the tail with the head box
-        to_merge = np.hstack((True, to_merge))
+        to_merge = np.all((overlaps, height_matches, rotation_matches), axis=0)
+        if np.any(to_merge):
+            constituent_indices.extend(order[to_merge])
+            order = order[np.logical_not(to_merge)]
+            merged_any = True
 
-        # The rotation and text height for a merged region is a weighted
-        #  average of the constituent boxes' rotations and text heights
-        merging_weights = weights[to_merge]
-        scale = 1.0 / merging_weights.sum()
-        merged_rotation = np.sum(rotations[to_merge] * merging_weights) * scale
-        merged_height = np.sum(heights[to_merge] * merging_weights) * scale
-
-        # The weight for a merged region is the sum of constituent weights
-        merged_weight = merging_weights.sum()
-
-        # The score for a merged region is the maximum score of constituents
-        merged_score = scores[to_merge].max()
-
-        # Merge the boxes at the weighted average rotation
-        merged_quad = merge(quads[to_merge], merged_rotation)
-
-        # Save the merged box
-        merged_quads.append(merged_quad)
-        merged_rotations.append(merged_rotation)
-        merged_heights.append(merged_height)
-        merged_weights.append(merged_weight)
-        merged_scores.append(merged_score)
-
-        # Continue to merge together all the boxes that were not just merged
-        unmerged = np.logical_not(to_merge)
-        quads = quads[unmerged]
-        rotations = rotations[unmerged]
-        heights = heights[unmerged]
-        weights = weights[unmerged]
-        areas = areas[unmerged]
-        scores = scores[unmerged]
-
-        merged_any = True
+        constituent_index_lists.append(constituent_indices)
 
     # Update the regions structure in place
-    regions.quads = np.stack(merged_quads)
-    regions.rotations = np.array(merged_rotations)
-    regions.heights = np.array(merged_heights)
-    regions.weights = np.array(merged_weights)
-    regions.scores = np.array(merged_scores)
-    regions.areas = contour_area(regions.quads.astype(np.float32))
+    if merged_any:
+        regions.perform_merge(constituent_index_lists)
 
     return merged_any
 
-def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
-                  max_rot_delta):
+def merge_regions(rboxes, scores, temp_padding, final_padding,
+                  min_merge_overlap, max_height_delta, max_rot_delta):
     """ An approximate locality-aware variant of non-maximum suppression, which
         merges together overlapping boxes rather than suppressing them.
 
@@ -337,37 +396,39 @@ def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
            containing many constituent boxes. However, the reported confidence
            of a merged region is the maximum of its constituent scores.
     """
-    regions = MergedRegions(rboxes, scores)
+
+
+    # Add temporary padding
+    padded_rboxes = rboxes.copy()
+    padded_rboxes[:,2:6] += temp_padding * (rboxes[:,[2]] + rboxes[:,[4]])
+    regions = MergedRegions(padded_rboxes, scores)
 
     # Do the initial locality-aware pass
-    quads = regions.quads
-    rotations = regions.rotations
-    heights = regions.heights
-    weights = regions.weights
-    scores = regions.scores
-    areas = regions.areas
 
+    # Filter out boxes without sufficient overlap. Based on intersection
+    #  over smaller area (IoSA), not intersection over union (IoU).
     inter = contour_intersect_area(
-        quads[:-1].astype(np.float32),
-        quads[1:].astype(np.float32)
+        regions.quads[:-1].astype(np.float32),
+        regions.quads[1:].astype(np.float32)
     )
-    # Divide by smaller area, not the union
-    to_merge = inter / np.minimum(areas[:-1], areas[1:]) >= min_merge_overlap
+    smaller_area = np.minimum(regions.areas[:-1], regions.areas[1:])
+    overlaps = (inter / smaller_area) >= min_merge_overlap
 
     # Filter out boxes whose text height does not match
-    h_dist = 2 * np.abs(heights[:-1]-heights[1:]) / (heights[:-1]+heights[1:])
-    height_matches = h_dist <= max_height_delta
-    to_merge = np.logical_and(to_merge, height_matches)
+    diff = np.abs(regions.heights[:-1] - regions.heights[1:])
+    rel_diff = 2 * diff / (regions.heights[:-1] + regions.heights[1:])
+    height_matches = rel_diff <= max_height_delta
 
     # Filter out boxes whose rotation does not match
     rotation_matches = close_under_modulus(
-        rotations[:-1],
-        rotations[1:],
+        regions.rotations[:-1],
+        regions.rotations[1:],
         np.radians(max_rot_delta),
         180
     )
-    to_merge = np.logical_and(to_merge, rotation_matches)
 
+    # Merge the runs of eligible boxes
+    to_merge = np.all((overlaps, height_matches, rotation_matches), axis=0)
     if np.any(to_merge):
         # Here, to_merge is the boolean map indicating whether the box at each
         #  index can be merged with the one directly after it.
@@ -378,51 +439,23 @@ def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
         #  aware NMS, boxes are merged successively, and the merging is done
         #  by averaging box corner coordinates. Here, we merge by taking a
         #  large box which encloses runs of overlapping constituents
-        diffs = np.diff(np.hstack((False, to_merge, False)).astype(np.int8))
+        diffs = np.diff(np.hstack((False, to_merge)).astype(np.int8))
         run_starts = np.flatnonzero(diffs > 0)
         run_ends = np.flatnonzero(diffs < 0)
 
-        merged_quads = []
-        merged_rotations = []
-        merged_heights = []
-        merged_weights = []
-        merged_scores = []
-        for i0,i1 in zip(run_starts, run_ends):
-            # The rotation and text height for a merged region is a weighted
-            #  average of the constituent boxes' rotations and text heights
-            merging_weights = weights[i0:i1]
-            scale = 1.0 / merging_weights.sum()
-            merged_rotation = np.sum(rotations[i0:i1] * merging_weights) * scale
-            merged_height = np.sum(heights[i0:i1] * merging_weights) * scale
+        # The first in a run of False cells is merged with the preceeding run
+        to_merge[run_ends] = True
 
-            # The weight for a merged region is the sum of constituent weights
-            merged_weight = merging_weights.sum()
-
-            # The score for a merged region is the maximum score of constituents
-            merged_score = scores[i0:i1].max()
-
-            # Merge the boxes at the weighted average rotation
-            merged_quad = merge(quads[i0:i1], merged_rotation)
-
-            # Save the merged box
-            merged_quads.append(merged_quad)
-            merged_rotations.append(merged_rotation)
-            merged_heights.append(merged_height)
-            merged_weights.append(merged_weight)
-            merged_scores.append(merged_score)
-
-        # The first in a run of False cells was merged with the previous run
-        to_merge[1:] += to_merge[:-1]
+        constituent_index_lists = [
+            list(range(a, b + 1))
+            for a, b in zip(run_starts, run_ends)
+        ]
 
         # Update the structure to include the merged runs as well as the
         #  original boxes left unmerged
-        unmerged = np.logical_not(to_merge)
-        regions.quads = np.vstack((quads[unmerged], np.stack(merged_quads)))
-        regions.rotations = np.hstack((rotations[unmerged], merged_rotations))
-        regions.heights = np.hstack((heights[unmerged], merged_heights))
-        regions.weights = np.hstack((weights[unmerged], merged_weights))
-        regions.areas = contour_area(regions.quads.astype(np.float32))
-        regions.scores = np.hstack((scores[unmerged], merged_scores))
+        unmerged = np.flatnonzero(np.logical_not(to_merge))
+        constituent_index_lists.extend([[i] for i in unmerged])
+        regions.perform_merge(constituent_index_lists)
 
     # Continue until all eligible boxes have been merged
     while True:
@@ -436,4 +469,12 @@ def merge_regions(rboxes, scores, min_merge_overlap, max_height_delta,
         if not merged_any:
             break
 
-    return regions.quads, regions.scores
+    # Merge the original unpadded boxes
+    constituent_index_lists = regions.constituents
+    regions = MergedRegions(rboxes, scores)
+    regions.perform_merge(constituent_index_lists)
+
+    # Convert to RBOX geometries, apply final padding, convert to Image Locs
+    rboxes = quad_to_rbox(regions.quads)
+    rboxes[:,2:6] += (final_padding * regions.heights)[:,None]
+    return rbox_to_iloc(rboxes, regions.scores)

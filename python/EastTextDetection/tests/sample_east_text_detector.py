@@ -73,7 +73,8 @@ if __name__ == '__main__':
     parser.add_argument('--merge_regions', action='store_true')
     parser.add_argument('--suppress_vertical', action='store_true')
     parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--padding', type=float, default=0.1)
+    parser.add_argument('--temporary_padding', type=float, default=0.1)
+    parser.add_argument('--final_padding', type=float, default=0.0)
     parser.add_argument(
         '--out_dir',
         nargs='?',
@@ -105,7 +106,8 @@ if __name__ == '__main__':
         MERGE_REGIONS=str(args.merge_regions),
         SUPPRESS_VERTICAL=str(args.suppress_vertical),
         BATCH_SIZE=str(args.batch_size),
-        PADDING=str(args.padding)
+        TEMPORARY_PADDING=str(args.temporary_padding),
+        FINAL_PADDING=str(args.final_padding)
     )
 
     comp = EastComponent()
