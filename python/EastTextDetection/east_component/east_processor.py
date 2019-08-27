@@ -116,7 +116,7 @@ class EastProcessor(object):
 
         self._rotate_on = rotate_on
 
-    def _process_blob(self, blob, min_confidence, suppress_vertical, padding):
+    def _process_blob(self, blob, min_confidence, suppress_vertical):
         # Run blob through model to get geometry and scores
         self._model.setInput(blob)
         data = np.concatenate(self._model.forward(_layer_names), axis=1)
@@ -192,9 +192,6 @@ class EastProcessor(object):
         # Rescale origin coordinates to frame dimensions
         origin_coords *= self._feat2frame_scale
 
-        # Add padding
-        aabb += padding * (aabb[:,[0]] + aabb[:,[2]])
-
         rboxes = np.hstack((
             origin_coords,
             aabb,
@@ -203,15 +200,19 @@ class EastProcessor(object):
 
         return batch_idx, rboxes, scores, structure_score
 
-    def process_image(self, image, padding, merge_on, suppress_vertical,
-                      min_confidence, min_merge_overlap, min_nms_overlap,
-                      max_height_delta, max_rot_delta, min_structured_score,
-                      **kwargs):
+    def process_image(self, image, temp_padding, final_padding, merge_on,
+                      suppress_vertical, min_confidence, min_merge_overlap,
+                      min_nms_overlap, max_height_delta, max_rot_delta,
+                      min_structured_score, **kwargs):
         """ Process a single image using the given arguments
         :param image: The image to be processed. Takes the following shape:
                 (frame_height, frame_width, num_channels)
-        :param padding: Padding to symmetrically add to bounding boxes. Each
-                side is extended by 0.5 * padding * box_height.
+        :param temp_padding: Temporary padding to symmetrically add to bounding
+                boxes during non-maximum suppression or merging. Each side is
+                extended by 0.5 * padding * box_height.
+        :param final_padding: Padding to symmetrically add to output bounding
+                boxes after non-maximum suppression or merging. Each side is
+                extended by 0.5 * padding * box_height.
         :param merge_on: Whether to merge regions according to the provided
                 thresholds.
         :param suppress_vertical: Whether to suppress vertical detections.
@@ -241,8 +242,7 @@ class EastProcessor(object):
                 crop=False
             ),
             min_confidence=min_confidence,
-            suppress_vertical=suppress_vertical,
-            padding=padding
+            suppress_vertical=suppress_vertical
         )
 
         text_type = 'UNSTRUCTURED'
@@ -253,22 +253,23 @@ class EastProcessor(object):
             return []
 
         if merge_on:
-            quads, scores = merge_regions(
+            ilocs = merge_regions(
                 rboxes=rboxes,
                 scores=scores,
+                temp_padding=temp_padding,
+                final_padding=final_padding,
                 min_merge_overlap=min_merge_overlap,
                 max_height_delta=max_height_delta,
                 max_rot_delta=max_rot_delta
             )
         else:
-            quads = rbox_to_quad(rboxes)
-            keep = nms(
-                quads=quads,
+            ilocs = nms(
+                rboxes=rboxes,
                 scores=scores,
+                temp_padding=temp_padding,
+                final_padding=final_padding,
                 min_nms_overlap=min_nms_overlap
             )
-            quads = quads[keep]
-            scores = scores[keep]
 
         return [
             mpf.ImageLocation(
@@ -282,18 +283,22 @@ class EastProcessor(object):
                     TEXT_TYPE=text_type
                 )
             )
-            for x, y, w, h, r, s in quad_to_iloc(quads, scores)
+            for x, y, w, h, r, s in ilocs
         ]
 
-    def process_frames(self, frames, padding, merge_on, suppress_vertical,
-                       min_confidence, min_merge_overlap, min_nms_overlap,
-                       max_height_delta, max_rot_delta, min_structured_score,
-                       **kwargs):
+    def process_frames(self, frames, temp_padding, final_padding, merge_on,
+                       suppress_vertical, min_confidence, min_merge_overlap,
+                       min_nms_overlap, max_height_delta, max_rot_delta,
+                       min_structured_score, **kwargs):
         """ Process a volume of images using the given arguments
         :param frames: The images to be processed. Takes the following shape:
                 (batch_size, frame_height, frame_width, num_channels)
-        :param padding: Padding to symmetrically add to bounding boxes. Each
-                side is extended by 0.5 * padding * box_height.
+        :param temp_padding: Temporary padding to symmetrically add to bounding
+                boxes during non-maximum suppression or merging. Each side is
+                extended by 0.5 * padding * box_height.
+        :param final_padding: Padding to symmetrically add to output bounding
+                boxes after non-maximum suppression or merging. Each side is
+                extended by 0.5 * padding * box_height.
         :param merge_on: Whether to merge regions according to the provided
                 thresholds.
         :param suppress_vertical: Whether to suppress vertical detections.
@@ -327,8 +332,7 @@ class EastProcessor(object):
                 crop=False
             ),
             min_confidence=min_confidence,
-            suppress_vertical=suppress_vertical,
-            padding=padding
+            suppress_vertical=suppress_vertical
         )
 
         text_type = 'UNSTRUCTURED'
@@ -346,22 +350,23 @@ class EastProcessor(object):
             j0, j1 = split_points[i], split_points[i+1]
             if j1 > j0:
                 if merge_on:
-                    quads, merged_scores = merge_regions(
+                    ilocs = merge_regions(
                         rboxes=rboxes[j0:j1],
                         scores=scores[j0:j1],
+                        temp_padding=temp_padding,
+                        final_padding=final_padding,
                         min_merge_overlap=min_merge_overlap,
                         max_height_delta=max_height_delta,
                         max_rot_delta=max_rot_delta
                     )
                 else:
-                    quads = rbox_to_quad(rboxes)
-                    keep = nms(
-                        quads=quads,
-                        scores=scores,
+                    ilocs = nms(
+                        rboxes=rboxes[j0:j1],
+                        scores=scores[j0:j1],
+                        temp_padding=temp_padding,
+                        final_padding=final_padding,
                         min_nms_overlap=min_nms_overlap
                     )
-                    quads = quads[keep]
-                    merged_scores = scores[keep]
 
                 image_locs.append([
                     mpf.ImageLocation(
@@ -375,7 +380,7 @@ class EastProcessor(object):
                             TEXT_TYPE=text_type
                         )
                     )
-                    for x, y, w, h, r, s in quad_to_iloc(quads, merged_scores)
+                    for x, y, w, h, r, s in ilocs
                 ])
             else:
                 image_locs.append([])
