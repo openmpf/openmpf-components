@@ -50,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
@@ -143,7 +144,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         if (pageOutput.size() >= 1) {
             // Load language identifier.
             OptimaizeLangDetector identifier = new OptimaizeLangDetector();
-            Map<String, List<String>> stringTags;
             Map<String, List<String>>  regexTags;
 
             try {
@@ -157,10 +157,8 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             // Parse Tag File.
             try{
                 JsonNode jsonRoot = objectMapper.readTree(new File(tagFile));
-                JsonNode stringNode = jsonRoot.get("TAGS_BY_KEYWORD");
                 JsonNode regexNode = jsonRoot.get("TAGS_BY_REGEX");
 
-                stringTags = objectReader.readValue(stringNode);
                 regexTags = objectReader.readValue(regexNode);
 
             } catch (FileNotFoundException e) {
@@ -182,40 +180,89 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                 Map<String, String> genericDetectionProperties = new HashMap<String, String>();
                 List<String> tagsList = new ArrayList<String>();
+                Map<String, List<String>> triggerWordsMap = new HashMap<String, List<String>>();
 
                 // Split out non-alphanumeric characters.
-                String pageText = pageOutput.get(i).toString().toLowerCase();
-                String[] values = pageText.split("\\W+");
+                String pageText = pageOutput.get(i).toString();
+                String pageTextLower = pageText.toLowerCase();
+                char[] pageTextChar = pageText.toCharArray();
 
-                Set<String> hashSet = new HashSet<String>(Arrays.asList(values));
 
                 try {
-                    for (Map.Entry<String, List<String>> entry : stringTags.entrySet()) {
-                        String key = entry.getKey();
-                        List<String> tagList = entry.getValue();
-                        for (String x: tagList) {
-                            if (hashSet.contains(x)) {
-                                tagsList.add(key);
-                                break;
-                            }
-                        }
-                    }
 
                     for (Map.Entry<String, List<String>> entry : regexTags.entrySet()) {
                         String key = entry.getKey();
                         List<String> tagList = entry.getValue();
-                        for (String x: tagList) {
-                            boolean containsRegex = Pattern.compile(x).matcher(pageText).find();
-                            if (containsRegex && !tagsList.contains(key)) {
-                                tagsList.add(key);
-                                break;
+                        boolean key_found = false;
+                        for (String regex: tagList) {
+                            boolean case_sensitive = false;
+                            //TODO: Use default case sensitive tagging instead.
+                            if (regex.contains("[[:case_sensitive:]]")) {
+                                regex = regex.replaceAll("[[:case_sensitive:]]", "");
+                                case_sensitive = true;
+                            } else {
+                                regex = regex.toLowerCase();
                             }
+
+                            Matcher m;
+                            if (case_sensitive) {
+                                m = Pattern.compile(regex).matcher(pageText);
+                            } else {
+                                m = Pattern.compile(regex).matcher(pageTextLower);
+                            }
+
+                            while (m.find()) {
+                                key_found = true;
+                                List<String> trigger_word_offsets;
+
+                                int start = m.start(), end = m.end();
+
+                                if (MapUtils.getBooleanValue(properties, "TRIM_TRIGGER_WORDS", true)) {
+                                    for (int c = start; c < end; c++) {
+                                        if (!Character.isWhitespace(pageTextChar[c])) {
+                                            break;
+                                        } else {
+                                            start++;
+                                        }
+                                    }
+                                    for (int c = end; c > start; c--) {
+                                        if (!Character.isWhitespace(pageTextChar[c - 1])) {
+                                            break;
+                                        } else {
+                                            end--;
+                                        }
+                                    }
+                                }
+
+                                String trigger_word = pageText.substring(start, end).replaceAll(";", "[;]");
+                                String offset = String.format("%d-%d", start, end);
+
+                                if (triggerWordsMap.containsKey(trigger_word)){
+                                    trigger_word_offsets = triggerWordsMap.get(trigger_word);
+                                } else {
+                                    trigger_word_offsets = new ArrayList<String>();
+                                    triggerWordsMap.put(trigger_word, trigger_word_offsets);
+                                }
+                                trigger_word_offsets.add(offset);
+                            }
+                        }
+                        if (key_found) {
+                            tagsList.add(key);
                         }
                     }
 
+                    String tagsListResult = String.join("; ", tagsList);
+                    Set<String> triggerWordsSet = triggerWordsMap.keySet();
+                    String triggerWordsResult = String.join("; ", triggerWordsSet);
+                    
+                    ArrayList<String> offsetsList = new ArrayList();
+                    for (String key: triggerWordsSet) {
+                        offsetsList.add(String.join(", ",triggerWordsMap.get(key)));
+                    }
 
-                    String tagsListResult = String.join(", ", tagsList);
+                    String triggerOffsetsResult = String.join("; ", offsetsList);
                     String textDetect = pageOutput.get(i).toString();
+
                     // By default, trim out detected text unless requested by user.
                     if (MapUtils.getBooleanValue(properties, "TRIM_TEXT", true)) {
                         textDetect = textDetect.trim();
@@ -231,6 +278,8 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                         genericDetectionProperties.put("TEXT", "");
                         genericDetectionProperties.put("TEXT_LANGUAGE",  "Unknown");
                         genericDetectionProperties.put("TAGS",  "");
+                        genericDetectionProperties.put("TRIGGER_WORDS", "");
+                        genericDetectionProperties.put("TRIGGER_WORDS_OFFSET", "");
                     }
 
                     // Process text languages.
@@ -255,8 +304,12 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                     if (tagsListResult.length() > 0) {
                         genericDetectionProperties.put("TAGS", tagsListResult);
+                        genericDetectionProperties.put("TRIGGER_WORDS", triggerWordsResult);
+                        genericDetectionProperties.put("TRIGGER_WORDS_OFFSET", triggerOffsetsResult);
                     } else {
                         genericDetectionProperties.put("TAGS", "");
+                        genericDetectionProperties.put("TRIGGER_WORDS", "");
+                        genericDetectionProperties.put("TRIGGER_WORDS_OFFSET", "");
                     }
                 } catch (Exception e) {
                     String errorMsg = String.format("Failed to process text detections.");

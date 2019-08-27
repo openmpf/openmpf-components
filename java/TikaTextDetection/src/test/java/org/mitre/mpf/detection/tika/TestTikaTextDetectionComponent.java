@@ -80,7 +80,7 @@ public class TestTikaTextDetectionComponent {
 
         try {
             List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-            assertEquals("Number of expected tracks does not match.", 9 ,tracks.size());
+            assertEquals("Number of expected tracks does not match.", 10 ,tracks.size());
             // Test each output type.
 
             //Test single keyword tag extraction and text extraction
@@ -88,6 +88,8 @@ public class TestTikaTextDetectionComponent {
             assertEquals("Expected language does not match.", "English", testTrack.getDetectionProperties().get("TEXT_LANGUAGE"));
             assertEquals("Expected text does not match.", "Testing Text Detection\nSlide 1", testTrack.getDetectionProperties().get("TEXT"));
             assertEquals("Expected keyword tag not found.", "personal", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected trigger words not found.", "Text", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
+            assertEquals("Expected trigger word offsets not found.", "8-12", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
             //Test language extraction
             testTrack = tracks.get(1);
@@ -96,39 +98,60 @@ public class TestTikaTextDetectionComponent {
             //Test keyword and regex tag extraction. (Two tags should be detected by two filters)
             //Keyword and regex filters should produce different tags.
             testTrack = tracks.get(2);
-            assertEquals("Expected regex/keyword tags not found.", "identity document, personal", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected regex/keyword tags not found.", "personal; identity document", testTrack.getDetectionProperties().get("TAGS"));
 
+            assertEquals("Expected trigger words not found.", "000-000-0000; citizen", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
+            assertEquals("Expected trigger word offsets not found.", "25-37; 17-24", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
             //Test single regex tag extraction.
             testTrack = tracks.get(3);
             assertEquals("Expected regex tag not found.", "vehicle", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected trigger words not found.", "auto", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
+            assertEquals("Expected trigger word offsets not found.", "3-7", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
             //Test no detections.
             testTrack = tracks.get(4);
             assertEquals("Text should be empty", "", testTrack.getDetectionProperties().get("TEXT"));
             assertEquals("Language should be empty", "Unknown", testTrack.getDetectionProperties().get("TEXT_LANGUAGE"));
             assertEquals("Tags should be empty", "" , testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Trigger words should be empty.", "", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
+            assertEquals("Trigger word offsets should be empty.", "", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
             //Test multiple keyword tags
             testTrack = tracks.get(5);
-            assertEquals("Expected keyword tags not found.", "identity document, travel", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected keyword tags not found.", "identity document; travel", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected trigger words not found.", "passport; Passenger", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
+            assertEquals("Expected trigger word offsets not found.", "10-18; 0-9", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
 
             //Test multiple regex tags
             testTrack = tracks.get(6);
-            assertEquals("Expected regex tags not found.", "personal, financial", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected regex tags not found.", "financial; personal", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected trigger words not found.", "00-000-0000; Financ", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
+            assertEquals("Expected trigger word offsets not found.", "15-26; 0-6", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
             //Test text, keyword/regex tags.
             //Keyword and regex each pick up one different cateogry
             //followed by 1 combined category for 3 detections in total.
             testTrack = tracks.get(7);
-            assertEquals("Expected tags not found.", "vehicle, personal, financial", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected tags not found.", "vehicle; financial; personal", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected trigger words not found.", "Bus; Financ; ATM; 102-123-1231", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
+            assertEquals("Expected trigger word offsets not found.", "0-3; 8-14; 4-7; 21-33", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
             //Test text, keyword/regex tags.
             //Both keyword and regex pick up the same category so only one tag should be output.
             testTrack = tracks.get(8);
+            assertEquals("Expected tag not found.", "delimiter-test", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected trigger words not found.", "a[[][;] []]b", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
+            assertEquals("Expected trigger word offsets not found.", "11-21", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
+
+            //Test text, keyword/regex tags.
+            //Both keyword and regex pick up the same category so only one tag should be output.
+            testTrack = tracks.get(9);
             assertThat(testTrack.getDetectionProperties().get("TEXT"), containsString("End slide test text"));
             assertEquals("Expected tag not found.", "personal", testTrack.getDetectionProperties().get("TAGS"));
+            assertEquals("Expected trigger words not found.", "01/01/2011; text", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
+            assertEquals("Expected trigger word offsets not found.", "24-34; 19-23", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
 
             // For human testing.
@@ -140,6 +163,8 @@ public class TestTikaTextDetectionComponent {
                     System.out.println(String.format("  Text = %s", track.getDetectionProperties().get("TEXT")));
                     System.out.println(String.format("  Language = %s", track.getDetectionProperties().get("TEXT_LANGUAGE")));
                     System.out.println(String.format("  Text Tags = %s", track.getDetectionProperties().get("TAGS")));
+                    System.out.println(String.format("  Text Trigger Words = %s", track.getDetectionProperties().get("TRIGGER_WORDS")));
+                    System.out.println(String.format("  Text Trigger Words Offset = %s", track.getDetectionProperties().get("TRIGGER_WORDS_OFFSET")));
                     assertEquals("Confidence does not match.", -1.0f, track.getConfidence(),0.1f);
                 }
             }

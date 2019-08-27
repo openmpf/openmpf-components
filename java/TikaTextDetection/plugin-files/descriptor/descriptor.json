@@ -44,6 +44,12 @@
           "defaultValue": "true"
         },
         {
+          "name": "TRIM_TRIGGER_WORDS",
+          "description": "Specifies whether or not to trim out trailing whitespace in extracted trigger words.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
           "name": "LIST_ALL_PAGES",
           "description": "Specifies whether or not to store each page as a track, even if no text is extracted.",
           "type": "BOOLEAN",
