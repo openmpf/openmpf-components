@@ -180,7 +180,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                 Map<String, String> genericDetectionProperties = new HashMap<String, String>();
                 List<String> tagsList = new ArrayList<String>();
-                Map<String, List<String>> triggerWordsMap = new HashMap<String, List<String>>();
+                Map<String, Set<String>> triggerWordsMap = new LinkedHashMap<String, Set<String>>();
 
                 // Split out non-alphanumeric characters.
                 String pageText = pageOutput.get(i).toString();
@@ -193,27 +193,27 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                     for (Map.Entry<String, List<String>> entry : regexTags.entrySet()) {
                         String key = entry.getKey();
                         List<String> tagList = entry.getValue();
-                        boolean key_found = false;
+                        boolean keyFound = false;
                         for (String regex: tagList) {
-                            boolean case_sensitive = false;
+                            boolean caseSensitive = false;
                             //TODO: Use default case sensitive tagging instead.
                             if (regex.contains("[[:case_sensitive:]]")) {
-                                regex = regex.replaceAll("[[:case_sensitive:]]", "");
-                                case_sensitive = true;
+                                regex = regex.replaceAll("\\[\\[:case_sensitive:\\]\\]", "");
+                                caseSensitive = true;
                             } else {
                                 regex = regex.toLowerCase();
                             }
 
                             Matcher m;
-                            if (case_sensitive) {
+                            if (caseSensitive) {
                                 m = Pattern.compile(regex).matcher(pageText);
                             } else {
                                 m = Pattern.compile(regex).matcher(pageTextLower);
                             }
 
                             while (m.find()) {
-                                key_found = true;
-                                List<String> trigger_word_offsets;
+                                keyFound = true;
+                                Set<String> triggerWordOffsets;
 
                                 int start = m.start(), end = m.end();
 
@@ -234,19 +234,19 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                                     }
                                 }
 
-                                String trigger_word = pageText.substring(start, end).replaceAll(";", "[;]");
+                                String triggerWord = pageText.substring(start, end).replaceAll(";", "[;]");
                                 String offset = String.format("%d-%d", start, end);
 
-                                if (triggerWordsMap.containsKey(trigger_word)){
-                                    trigger_word_offsets = triggerWordsMap.get(trigger_word);
+                                if (triggerWordsMap.containsKey(triggerWord)){
+                                    triggerWordOffsets = triggerWordsMap.get(triggerWord);
                                 } else {
-                                    trigger_word_offsets = new ArrayList<String>();
-                                    triggerWordsMap.put(trigger_word, trigger_word_offsets);
+                                    triggerWordOffsets = new TreeSet<String>();
+                                    triggerWordsMap.put(triggerWord, triggerWordOffsets);
                                 }
-                                trigger_word_offsets.add(offset);
+                                triggerWordOffsets.add(offset);
                             }
                         }
-                        if (key_found) {
+                        if (keyFound) {
                             tagsList.add(key);
                         }
                     }

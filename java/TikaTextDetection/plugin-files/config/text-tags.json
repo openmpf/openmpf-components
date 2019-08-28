@@ -85,6 +85,12 @@
     ],
     "delimiter-test": [
       "a\\[\\[\\]\\; \\[\\]\\]b"
+    ],
+    "case-sensitive-tag": [
+      "[[:case_sensitive:]]Text"
+    ],
+    "case-insensitive-tag": [
+      "Text"
     ]
   }
 }

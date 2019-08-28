@@ -29,6 +29,19 @@ regex operators](https://docs.oracle.com/javase/8/docs/api/java/util/regex/Patte
 Of note, the `\W` non-word operator and `(\\b)` word-break operator may prove
 useful.
 
+To enable case-sensitive regex tag search, add the `[[:case_sensitive:]]` flag to
+each regex tag that requires case sensitivity. For example:
+
+* "[[:case_sensitive:]]Financial"
+
+Will search for words containing `Financial` with the first letter capitalized.
+On the other hand:
+
+* "Financial"
+
+Will search for `financial`, `Financial`, 'FINANCIAL`, and any other variation
+of `financial` in terms of capitalization.
+
 Phrases containing words separated by **zero** or more whitespace and/or
 punctuation characters can be represented using `\W*`. For example, the
 `Hello(\\W*)World` regex pattern will match:
