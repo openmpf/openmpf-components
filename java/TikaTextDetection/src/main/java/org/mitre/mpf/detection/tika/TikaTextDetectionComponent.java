@@ -187,7 +187,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                 String pageTextLower = pageText.toLowerCase();
                 char[] pageTextChar = pageText.toCharArray();
 
-
                 try {
 
                     for (Map.Entry<String, List<String>> entry : regexTags.entrySet()) {
@@ -195,26 +194,18 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                         List<String> tagList = entry.getValue();
                         boolean keyFound = false;
                         for (String regex: tagList) {
-                            boolean caseSensitive = false;
-                            //TODO: Use default case sensitive tagging instead.
+                            Matcher m;
                             if (regex.contains("[[:case_sensitive:]]")) {
                                 regex = regex.replaceAll("\\[\\[:case_sensitive:\\]\\]", "");
-                                caseSensitive = true;
-                            } else {
-                                regex = regex.toLowerCase();
-                            }
-
-                            Matcher m;
-                            if (caseSensitive) {
                                 m = Pattern.compile(regex).matcher(pageText);
                             } else {
+                                regex = regex.toLowerCase();
                                 m = Pattern.compile(regex).matcher(pageTextLower);
                             }
 
                             while (m.find()) {
                                 keyFound = true;
                                 Set<String> triggerWordOffsets;
-
                                 int start = m.start(), end = m.end();
 
                                 if (MapUtils.getBooleanValue(properties, "TRIM_TRIGGER_WORDS", true)) {
