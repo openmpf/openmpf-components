@@ -26,6 +26,12 @@
       ],
       "properties": [
         {
+          "name": "CONFIDENCE_THRESHOLD",
+          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded. Confidence value represents the average OCR confidence reported by Tesseract for a given TESSERACT_LANGUAGE setting. When PSM 0 (OSD only) is run, this value is set to default value of -1, as no OCR confidence score is available.",
+          "type": "DOUBLE",
+          "propertiesKey": "detection.confidence.threshold"
+        },
+        {
           "name": "MODELS_DIR_PATH",
           "description": "Path to models directory",
           "type": "STRING",
