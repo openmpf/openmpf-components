@@ -57,7 +57,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
     private static final Logger LOG = LoggerFactory.getLogger(TikaTextDetectionComponent.class);
     private static final Map<String, String> langMap;
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final ObjectReader objectReader = objectMapper.readerFor(new TypeReference<Map<String, List<String>>>(){});
+    private static final ObjectReader objectReader = objectMapper.readerFor(new TypeReference<Map<String, List<JsonNode>>>(){});
 
     static {
          langMap = Collections.unmodifiableMap(initLangMap());
@@ -144,14 +144,14 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         if (pageOutput.size() >= 1) {
             // Load language identifier.
             OptimaizeLangDetector identifier = new OptimaizeLangDetector();
-            Map<String, List<String>>  regexTags;
+            Map<String, List<JsonNode>>  regexTags;
 
             try {
                 identifier.loadModels();
             } catch (IOException e) {
                 String errorMsg = "Failed to load language models.";
                 LOG.error(errorMsg, e);
-                throw new MPFComponentDetectionError(MPFDetectionError.MPF_OTHER_DETECTION_ERROR_TYPE, errorMsg);
+                throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg, e);
             }
 
             // Parse Tag File.
@@ -189,44 +189,57 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                 try {
 
-                    for (Map.Entry<String, List<String>> entry : regexTags.entrySet()) {
+                    for (Map.Entry<String, List<JsonNode>> entry : regexTags.entrySet()) {
                         String key = entry.getKey();
-                        List<String> tagList = entry.getValue();
+                        List<JsonNode> tagList = entry.getValue();
                         boolean keyFound = false;
-                        for (String regex: tagList) {
-                            Matcher m;
-                            if (regex.contains("[[:case_sensitive:]]")) {
-                                regex = regex.replaceAll("\\[\\[:case_sensitive:\\]\\]", "");
-                                m = Pattern.compile(regex).matcher(pageText);
+                        for (JsonNode regexEntry: tagList) {
+                            String regex = "";
+                            boolean caseSensitive = false;
+                            if (regexEntry.isTextual()) {
+                                regex = regexEntry.textValue();
                             } else {
-                                regex = regex.toLowerCase();
-                                m = Pattern.compile(regex).matcher(pageTextLower);
+                                JsonNode pattern = regexEntry.get("pattern");
+                                JsonNode caseSens = regexEntry.get("caseSensitive");
+                                if (pattern != null && pattern.isTextual()) {
+                                    regex = pattern.textValue();
+                                }
+                                if (caseSens != null && caseSens.isBoolean()) {
+                                    caseSensitive = caseSens.asBoolean();
+                                }
                             }
+                            Matcher m;
+                            Pattern p;
+                            if (caseSensitive) {
+                                p = Pattern.compile(regex);
+                            } else {
+                                p = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+                            }
+                            m = p.matcher(pageText);
 
                             while (m.find()) {
                                 keyFound = true;
                                 Set<String> triggerWordOffsets;
                                 int start = m.start(), end = m.end();
 
-                                if (MapUtils.getBooleanValue(properties, "TRIM_TRIGGER_WORDS", true)) {
-                                    for (int c = start; c < end; c++) {
-                                        if (!Character.isWhitespace(pageTextChar[c])) {
-                                            break;
-                                        } else {
-                                            start++;
-                                        }
+                                // Trim trigger words of whitespace.
+                                for (int c = start; c < end; c++) {
+                                    if (!Character.isWhitespace(pageTextChar[c])) {
+                                        break;
+                                    } else {
+                                        start++;
                                     }
-                                    for (int c = end; c > start; c--) {
-                                        if (!Character.isWhitespace(pageTextChar[c - 1])) {
-                                            break;
-                                        } else {
-                                            end--;
-                                        }
+                                }
+                                for (int c = end; c > start; c--) {
+                                    if (!Character.isWhitespace(pageTextChar[c - 1])) {
+                                        break;
+                                    } else {
+                                        end--;
                                     }
                                 }
 
                                 String triggerWord = pageText.substring(start, end).replaceAll(";", "[;]");
-                                String offset = String.format("%d-%d", start, end);
+                                String offset = String.format("%d-%d", start, end - 1);
 
                                 if (triggerWordsMap.containsKey(triggerWord)){
                                     triggerWordOffsets = triggerWordsMap.get(triggerWord);
@@ -235,6 +248,12 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                                     triggerWordsMap.put(triggerWord, triggerWordOffsets);
                                 }
                                 triggerWordOffsets.add(offset);
+                                if (!MapUtils.getBooleanValue(properties, "FULL_REGEX_SEARCH", true)) {
+                                    break;
+                                }
+                            }
+                            if (!MapUtils.getBooleanValue(properties, "FULL_REGEX_SEARCH", true) && keyFound) {
+                                break;
                             }
                         }
                         if (keyFound) {
@@ -254,10 +273,9 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                     String triggerOffsetsResult = String.join("; ", offsetsList);
                     String textDetect = pageOutput.get(i).toString();
 
-                    // By default, trim out detected text unless requested by user.
-                    if (MapUtils.getBooleanValue(properties, "TRIM_TEXT", true)) {
-                        textDetect = textDetect.trim();
-                    }
+                    // By default, trim out detected text.
+                    textDetect = textDetect.trim();
+
 
                     if (textDetect.length() > 0) {
                         genericDetectionProperties.put("TEXT", textDetect);
