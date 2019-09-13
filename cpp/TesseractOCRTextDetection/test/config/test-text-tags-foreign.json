@@ -1,102 +1,102 @@
 {
 	"TAGS_BY_REGEX": {
 		"vehicle": [
-			"auto",
-			"(\b)bike(\b)",
-			"(\b)bus(\b)",
-			"(\b)car(\b)",
-			"(\b)motor vehicle(\b)",
-			"(\b)motorcycle(\b)",
-			"(\b)suv(\b)",
-			"(\b)truck(\b)",
-			"(\b)trolley(\b)",
-			"(\b)tram(\b)",
-			"(\b)van(\b)",
-			"(\b)vehicle(\b)",
-			"(\b)vin(\b)"
+			{"pattern": "auto"},
+			{"pattern": "(\\b)bike(\\b)"},
+			{"pattern": "(\\b)bus(\\b)"},
+			{"pattern": "(\\b)car(\\b)"},
+			{"pattern": "(\\b)motor vehicle(\\b)"},
+			{"pattern": "(\\b)motorcycle(\\b)"},
+			{"pattern": "(\\b)suv(\\b)"},
+			{"pattern": "(\\b)truck(\\b)"},
+			{"pattern": "(\\b)trolley(\\b)"},
+			{"pattern": "(\\b)tram(\\b)"},
+			{"pattern": "(\\b)van(\\b)"},
+			{"pattern": "(\\b)vehicle(\\b)"},
+			{"pattern": "(\\b)vin(\\b)"}
 		],
 		"financial": [
 			"financ",
 			"bank",
-			"(\b)ATM(\b)",
-			"(\b)balance(\b)",
-			"(\b)bill(\b)",
-			"(\b)cash(\b)",
-			"(\b)credit(\b)",
-			"(\b)debit(\b)",
-			"(\b)deposit(\b)",
-			"(\b)dollar(\b)",
-			"(\b)dollars(\b)",
-			"(\b)loan(\b)",
-			"(\b)money(\b)",
-			"(\b)mortgage(\b)",
-			"(\b)payment(\b)",
-			"(\b)purchase(\b)",
-			"(\b)salary(\b)",
-			"(\b)savings(\b)",
-			"(\b)transaction(\b)"
+			{"pattern": "(\\b)ATM(\\b)"},
+			{"pattern": "(\\b)balance(\\b)"},
+			{"pattern": "(\\b)bill(\\b)"},
+			{"pattern": "(\\b)cash(\\b)"},
+			{"pattern": "(\\b)credit(\\b)"},
+			{"pattern": "(\\b)debit(\\b)"},
+			{"pattern": "(\\b)deposit(\\b)"},
+			{"pattern": "(\\b)dollar(\\b)"},
+			{"pattern": "(\\b)dollars(\\b)"},
+			{"pattern": "(\\b)loan(\\b)"},
+			{"pattern": "(\\b)money(\\b)"},
+			{"pattern": "(\\b)mortgage(\\b)"},
+			{"pattern": "(\\b)payment(\\b)"},
+			{"pattern": "(\\b)purchase(\\b)"},
+			{"pattern": "(\\b)salary(\\b)"},
+			{"pattern": "(\\b)savings(\\b)"},
+			{"pattern": "(\\b)transaction(\\b)"}
 		],
 		"personal": [
-			"birth",
-			"\\d{1,3}(—|-)\\d{1,3}(—|-)\\d{2,4}",
-			"\\d{1,3}/\\d{1,3}/\\d{2,4}",
-			"(\b)3G(\b)",
-			"(\b)4G(\b)",
-			"(\b)cellular(\b)",
-			"(\b)email(\b)",
-			"(\b)fax(\b)",
-			"(\b)password(\b)",
-			"(\b)text(\b)",
-			"(\b)telephone(\b)",
-			"(\b)username(\b)"
+			{"pattern": "birth"},
+			{"pattern": "\\d{1,3}(—|-)\\d{1,3}(—|-)\\d{2,4}"},
+			{"pattern": "\\d{1,3}/\\d{1,3}/\\d{2,4}"},
+			{"pattern": "(\\b)3G(\\b)"},
+			{"pattern": "(\\b)4G(\\b)"},
+			{"pattern": "(\\b)cellular(\\b)"},
+			{"pattern": "(\\b)email(\\b)"},
+			{"pattern": "(\\b)fax(\\b)"},
+			{"pattern": "(\\b)password(\\b)"},
+			{"pattern": "(\\b)text(\\b)"},
+			{"pattern": "(\\b)telephone(\\b)"},
+			{"pattern": "(\\b)username(\\b)"}
 		],
 		"weapon": [
-			"(\b)firearm(\b)",
-			"(\b)grenade(\b)",
-			"(\b)gun(\b)",
-			"(\b)knife(\b)",
-			"(\b)rifle(\b)",
-			"(\b)sword(\b)"
+			{"pattern": "(\\b)firearm(\\b)"},
+			{"pattern": "(\\b)grenade(\\b)"},
+			{"pattern": "(\\b)gun(\\b)"},
+			{"pattern": "(\\b)knife(\\b)"},
+			{"pattern": "(\\b)rifle(\\b)"},
+			{"pattern": "(\\b)sword(\\b)"}
 		],
 		"identity document": [
-			"(\b)passport(\b)",
-			"(\b)citizen(\b)",
-			"(\b)license(\b)",
-			"(\b)country(\b)",
-			"(\b)DOB(\b)",
-			"(\b)identity(\b)",
-			"(\b)surname(\b)",
-			"(\b)name(\b)",
-			"(\b)address(\b)",
-			"(\b)nationality(\b)"
+			{"pattern": "(\\b)passport(\\b)"},
+			{"pattern": "(\\b)citizen(\\b)"},
+			{"pattern": "(\\b)license(\\b)"},
+			{"pattern": "(\\b)country(\\b)"},
+			{"pattern": "(\\b)DOB(\\b)"},
+			{"pattern": "(\\b)identity(\\b)"},
+			{"pattern": "(\\b)surname(\\b)"},
+			{"pattern": "(\\b)name(\\b)"},
+			{"pattern": "(\\b)address(\\b)"},
+			{"pattern": "(\\b)nationality(\\b)"}
 		],
 		"travel": [
-			"(\b)airline(\b)",
-			"(\b)airport(\b)",
-			"(\b)booking(\b)",
-			"(\b)hotel(\b)",
-			"(\b)itinerary(\b)",
-			"(\b)motel(\b)",
-			"(\b)passenger(\b)",
-			"(\b)reservation(\b)",
-			"(\b)roundtrip(\b)",
-			"(\b)travel(\b)",
-			"(\b)trip(\b)"
+			{"pattern": "(\\b)airline(\\b)"},
+			{"pattern": "(\\b)airport(\\b)"},
+			{"pattern": "(\\b)booking(\\b)"},
+			{"pattern": "(\\b)hotel(\\b)"},
+			{"pattern": "(\\b)itinerary(\\b)"},
+			{"pattern": "(\\b)motel(\\b)"},
+			{"pattern": "(\\b)passenger(\\b)"},
+			{"pattern": "(\\b)reservation(\\b)"},
+			{"pattern": "(\\b)roundtrip(\\b)"},
+			{"pattern": "(\\b)travel(\\b)"},
+			{"pattern": "(\\b)trip(\\b)"}
 		],
 		"foreign-text": [
-			"свободни"
+			{"pattern": "свободни"}
 		],
 		"key-phrase": [
-			"(\b)spirit(\\W+)of(\\W+)brotherhood(\b)"
+			{"pattern": "(\\b)spirit(\\W+)of(\\W+)brotherhood(\\b)"}
 		],
 		"delimiter-test": [
-			"a[[]; []]b"
+			{"pattern": "a\\[; \\]b"}
 		],
 		"case-sensitive-tag": [
-			"[[:case_sensitive:]]Financ"
+			{"pattern": "Financ", "caseSensitive": true}
 		],
 		"case-insensitive-tag": [
-			"Financ"
+			{"pattern": "Financ", "caseSensitive": false}
 		]
 	}
 }

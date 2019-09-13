@@ -892,7 +892,6 @@ std::wstring JSONValue::StringifyImpl(size_t const indentDepth) const
  * @param std::wstring str The string that needs to have the characters escaped
  *
  * @return std::wstring Returns the JSON string
- * Custom modification: do not escape characters for processing.
  */
 std::wstring JSONValue::StringifyString(const std::wstring &str)
 {
@@ -928,7 +927,7 @@ std::wstring JSONValue::StringifyString(const std::wstring &str)
 		{
 			str_out += L"\\t";
 		}
-		/*else if (chr < L' ' || chr > 126)
+		else if (chr < L' ' || chr > 126)
 		{
 			str_out += L"\\u";
 			for (int i = 0; i < 4; i++)
@@ -940,7 +939,7 @@ std::wstring JSONValue::StringifyString(const std::wstring &str)
 					str_out += (wchar_t)('A' + (value - 10));
 				chr <<= 4;
 			}
-		}*/
+		}
 		else
 		{
 			str_out += chr;
