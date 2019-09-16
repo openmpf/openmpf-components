@@ -33,7 +33,7 @@ set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
 message("Package in ${PACKAGE_DIR}")
 
 unset(OpenCV_CONFIG_PATH CACHE)
-find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.1
+find_package(OpenCV 3.3.1 EXACT REQUIRED PATHS /opt/opencv-3.3.1
     COMPONENTS opencv_highgui opencv_objdetect opencv_features2d opencv_ml opencv_flann opencv_video)
 
 
