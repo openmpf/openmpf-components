@@ -78,7 +78,7 @@ set(DARKNET_LIB_SRC_FILES
     src/yolo_layer.c
     src/iseg_layer.c)
 
-find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.0 COMPONENTS opencv_core opencv_highgui)
+find_package(OpenCV 3.3 EXACT REQUIRED PATHS /opt/opencv-3.3.1 COMPONENTS opencv_core opencv_highgui)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
