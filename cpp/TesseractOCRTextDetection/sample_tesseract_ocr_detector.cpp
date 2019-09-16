@@ -111,6 +111,7 @@ int main(int argc, char *argv[]) {
             for (int i = 0; i < tracks.size(); i++) {
                 if (tracks[i].detection_properties.count("OSD_PRIMARY_SCRIPT") > 0) {
                     std::cout << "OSD result: " << "\n";
+                    std::cout << "OSD fallback occurred: " << tracks[i].detection_properties.at("OSD_FALLBACK_OCCURRED") << "\n";
                     std::cout << "Detected script: " << tracks[i].detection_properties.at("OSD_PRIMARY_SCRIPT") << "\n";
                     std::cout << "Script confidence: "
                               << tracks[i].detection_properties.at("OSD_PRIMARY_SCRIPT_CONFIDENCE") << "\n";
@@ -170,6 +171,7 @@ int main(int argc, char *argv[]) {
             for (int i = 0; i < locations.size(); i++) {
                 if (locations[i].detection_properties.count("OSD_PRIMARY_SCRIPT") > 0) {
                     std::cout << "OSD result: " << "\n";
+                    std::cout << "OSD fallback occurred: " << locations[i].detection_properties.at("OSD_FALLBACK_OCCURRED") << "\n";
                     std::cout << "Detected script: " << locations[i].detection_properties.at("OSD_PRIMARY_SCRIPT")
                               << "\n";
                     std::cout << "Script confidence: "

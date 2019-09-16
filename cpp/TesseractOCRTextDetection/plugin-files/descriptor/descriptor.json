@@ -134,6 +134,12 @@
           "defaultValue": "true"
         },
         {
+          "name": "ENABLE_OSD_FALLBACK",
+          "description": "When enabled, runs a second pass through OSD when the initial pass fails to produce a result or the best OSD score falls below the minimum specified threshold. OSD is then run on multiple copies of input text image to get an improved prediction score. The results are then kept depending on the minimum OSD threshold.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
           "name": "COMBINE_OSD_SCRIPTS",
           "description": "When enabled, perform OCR on the combination of detected scripts. When disabled, perform OCR on each detected script independently.",
           "type": "BOOLEAN",
@@ -304,12 +310,6 @@
         {
           "name": "FULL_REGEX_SEARCH",
           "description": "Toggles REGEX search to include all matching trigger words associated with the regex patterns for each tag. When disabled, only the first instance of the first matching trigger word for each tag category is included.",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
-        },
-        {
-          "name": "TWO_PASS_OSD",
-          "description": "When enabled, runs a second pass through OSD when the initial pass fails to produce a result or the best OSD score falls below the minimum specified threshold. OSD is then run on multiple copies of input text image to get an improved prediction score. The results are then kept depending on the minimum OSD threshold.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         }
