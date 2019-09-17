@@ -42,6 +42,10 @@ if (${GTEST_FOUND})
 
     add_test(NAME TesseractOCRTextDetectionTest COMMAND TesseractOCRTextDetectionTest)
 
+    file(COPY ../plugin-files/config DESTINATION .)
+    execute_process(COMMAND ln -s ../plugin/TesseractOCRTextDetection/tessdata tessdata
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
     # Install test images and videos.
     file(COPY data/ DESTINATION data)
     file(COPY config/ DESTINATION config)

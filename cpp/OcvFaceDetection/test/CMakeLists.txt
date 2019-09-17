@@ -44,7 +44,9 @@ if (${GTEST_FOUND})
 
 
     # Install config file
+    file(COPY ../plugin-files/config DESTINATION .)
     file(COPY test_ocv_face_config.ini DESTINATION config)
+    file(COPY ../plugin-files/data DESTINATION .)
 
 
     # Install test images and videos

@@ -26,30 +26,64 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python-executor:${BUILD_TAG}
 
-# Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN pip install --no-cache-dir 'opencv-python>=3.3'
+FROM ${BUILD_REGISTRY}openmpf_cpp-component-build:${BUILD_TAG} as build_component
+
+
+RUN yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
+    && yum --enablerepo=remi install -y ImageMagick6 ImageMagick6-c++ \
+         ImageMagick6-c++-devel ImageMagick6-devel ImageMagick6-libs \
+         libgif libjpeg libpng libtiff zlib \
+    && yum clean all \
+    && rm -rf /var/cache/yum/*
+
+
+RUN mkdir -p /tmp/leptonica \
+    && cd /tmp/leptonica \
+    && curl -SL 'https://github.com/DanBloomberg/leptonica/archive/1.75.0.tar.gz' \
+        | tar --extract --gzip \
+    && mkdir -p leptonica-1.75.0/build \
+    && cd leptonica-1.75.0/build \
+    && cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local .. \
+    && make install -j $(nproc) \
+    && rm -rf /tmp/leptonica
+
+
+RUN mkdir -p /tmp/tesseract \
+    && cd /tmp/tesseract \
+    && curl -SL 'https://github.com/tesseract-ocr/tesseract/archive/4.0.0.tar.gz' \
+        | tar --extract --gzip \
+    && mkdir -p tesseract-4.0.0/build \
+    && cd tesseract-4.0.0/build \
+    && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local .. \
+    && make install -j $(nproc) \
+    && rm -rf /tmp/tesseract
+
 
 COPY . .
 
-RUN install-component.sh
+RUN build-component.sh
 
-ENV COMPONENT_LOG_NAME east-text-detection.log
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./TesseractOCRTextDetectionTest; fi
 
 
-################################################################################
-# Labels                                                                       #
-################################################################################
+
+FROM ${BUILD_REGISTRY}openmpf_cpp-executor:${BUILD_TAG} as install_component
+
+ENV COMPONENT_LOG_NAME tesseract-ocr-text-detection.log
+
+COPY --from=build_component $BUILD_DIR/plugin/TesseractOCRTextDetection $INSTALL_DIR
+
+COPY --from=build_component $BUILD_DIR/libmpfTesseractOCRTextDetection.so \
+                            $INSTALL_DIR/lib
 
 ARG BUILD_DATE
 ARG BUILD_SHAS
 ARG BUILD_TAG
-
-# Set labels
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF EAST Text Detection" \
+      org.label-schema.name="OpenMPF Tesseract OCR Text Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-ref=$BUILD_SHAS \

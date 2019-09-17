@@ -26,33 +26,37 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python-executor:${BUILD_TAG}
-
-# Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN pip install --no-cache-dir 'opencv-python>=3.3'
+FROM ${BUILD_REGISTRY}openmpf_cpp-component-build:${BUILD_TAG} as build_component
 
 COPY . .
 
-RUN install-component.sh
+RUN build-component.sh
 
-ENV COMPONENT_LOG_NAME east-text-detection.log
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvFaceDetectionTest; fi
 
 
-################################################################################
-# Labels                                                                       #
-################################################################################
+
+FROM ${BUILD_REGISTRY}openmpf_cpp-executor:${BUILD_TAG} as install_component
+
+ENV COMPONENT_LOG_NAME ocv-face-detection.log
+
+COPY --from=build_component $BUILD_DIR/plugin/OcvFaceDetection $INSTALL_DIR
+
+COPY --from=build_component $BUILD_DIR/libmpfOcvFaceDetection.so \
+                            $INSTALL_DIR/lib
+
 
 ARG BUILD_DATE
 ARG BUILD_SHAS
 ARG BUILD_TAG
-
-# Set labels
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF EAST Text Detection" \
+      org.label-schema.name="OpenMPF OpenCV Face Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-ref=$BUILD_SHAS \
       org.label-schema.vcs-url="https://github.com/openmpf" \
       org.label-schema.vendor="MITRE" \
       org.label-schema.version=$BUILD_TAG
+

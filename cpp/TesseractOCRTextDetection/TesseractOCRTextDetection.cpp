@@ -68,18 +68,9 @@ bool TesseractOCRTextDetection::Init() {
     // https://github.com/tesseract-ocr/tesseract/commit/3292484f67af8bdda23aa5e510918d0115785291
     setlocale(LC_ALL, "C");
 
-    // Determine where the executable is running.
-    string run_dir = GetRunDirectory();
-    if (run_dir == "") {
-        run_dir = ".";
-    }
-    string plugin_path = run_dir + "/TesseractOCRTextDetection";
-    string config_path = plugin_path + "/config";
-    cout << "looking for logger at " << plugin_path + "/config/Log4cxxConfig.xml" << endl;
-    log4cxx::xml::DOMConfigurator::configure(plugin_path + "/config/Log4cxxConfig.xml");
+    log4cxx::xml::DOMConfigurator::configure("config/Log4cxxConfig.xml");
     hw_logger_ = log4cxx::Logger::getLogger("TesseractOCRTextDetection");
 
-    LOG4CXX_DEBUG(hw_logger_, "Plugin path: " << plugin_path);
     LOG4CXX_INFO(hw_logger_, "Initializing TesseractOCRTextDetection");
 
     reg_table[L"\\\\d"] = L"[[:digit:]]";
@@ -103,7 +94,7 @@ bool TesseractOCRTextDetection::Init() {
 
     // Once this is done - parameters will be set and set_read_config_parameters() can be called again to revert back
     // to the params read at initialization.
-    string config_params_path = config_path + "/mpfOCR.ini";
+    string config_params_path = "config/mpfOCR.ini";
     int rc = LoadConfig(config_params_path, parameters);
     if (rc) {
         LOG4CXX_ERROR(hw_logger_, "Could not parse config file: " << config_params_path);
@@ -712,12 +703,8 @@ string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &job, c
         return directory;
     }
 
-    string run_dir = GetRunDirectory();
-    if (run_dir.empty()) {
-        run_dir = ".";
-    }
 
-    string local_plugin_directory = run_dir + "/TesseractOCRTextDetection/tessdata";
+    string local_plugin_directory = "tessdata";
     LOG4CXX_DEBUG(hw_logger_,
                   "[" + job.job_name + "] Not all models found in " + directory + ". Checking local plugin directory "
                   + local_plugin_directory + ".");
@@ -1064,13 +1051,6 @@ set<wstring> TesseractOCRTextDetection::search_regex(const MPFImageJob &job, con
 void TesseractOCRTextDetection::load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
                                                map<wstring, vector<wstring>> &json_kvs_regex) {
 
-    string run_dir = GetRunDirectory();
-    if (run_dir.empty()) {
-        run_dir = ".";
-    }
-    string plugin_path = run_dir + "/TesseractOCRTextDetection";
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Running from directory " + plugin_path);
-
     string jsonfile_path = DetectionComponentUtils::GetProperty<string>(job.job_properties, "TAGGING_FILE",
                                                                         "text-tags.json");
     if (jsonfile_path.find('$') != string::npos || jsonfile_path.find('/') != string::npos) {
@@ -1078,7 +1058,7 @@ void TesseractOCRTextDetection::load_tags_json(const MPFJob &job, MPFDetectionEr
         Utils::expandFileName(jsonfile_path, new_jsonfile_name);
         jsonfile_path = new_jsonfile_name;
     } else {
-        jsonfile_path = plugin_path + "/config/" + jsonfile_path;
+        jsonfile_path = "config/" + jsonfile_path;
     }
 
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to read JSON from: " + jsonfile_path);
@@ -1140,13 +1120,8 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
     if (ocr_fset.model_dir != "") {
         ocr_fset.model_dir = ocr_fset.model_dir + "/TesseractOCRTextDetection/tessdata";
     } else {
-        string run_dir = GetRunDirectory();
-        if (run_dir.empty()) {
-            run_dir = ".";
-        }
-        string plugin_path = run_dir + "/TesseractOCRTextDetection";
         // If not specified, set model dir to local plugin dir.
-        ocr_fset.model_dir = plugin_path + "/tessdata";
+        ocr_fset.model_dir = "tessdata";
     }
     Utils::expandFileName(ocr_fset.model_dir, ocr_fset.model_dir);
 }
@@ -1452,12 +1427,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
     string job_name = boost::ireplace_all_copy(job_names[0], "job", "");
     boost::trim(job_name);
 
-    string run_dir = GetRunDirectory();
-    if (run_dir.empty()) {
-        run_dir = ".";
-    }
-    string plugin_path = run_dir + "/TesseractOCRTextDetection";
-    temp_im_directory = plugin_path + "/tmp-" + job_name + "-" + random_string(20);
+    temp_im_directory = "tmp-" + job_name + "-" + random_string(20);
 
     if (boost::filesystem::exists(temp_im_directory)) {
         LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Unable to write temporary directory (already exists): " +
