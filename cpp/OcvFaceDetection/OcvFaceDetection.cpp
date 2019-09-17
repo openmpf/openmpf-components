@@ -85,14 +85,10 @@ void OcvFaceDetection::SetModes(bool display_window, bool print_debug_info) {
 }
 
 bool OcvFaceDetection::Init() {
-    string run_dir = GetRunDirectory();
-    string plugin_path = run_dir + "/OcvFaceDetection";
-    string config_path = plugin_path + "/config";
-    string logconfig_file = config_path + "/Log4cxxConfig.xml";
     //must initialize opencv face detection
 
     // Load XML configuration file using DOMConfigurator
-    log4cxx::xml::DOMConfigurator::configure(logconfig_file);
+    log4cxx::xml::DOMConfigurator::configure("config/Log4cxxConfig.xml");
     OpenFaceDetectionLogger = log4cxx::Logger::getLogger("OcvFaceDetection");
 
     /* LOG LEVELS
@@ -104,7 +100,7 @@ bool OcvFaceDetection::Init() {
          ERROR and
          FATAL */
 
-    if (!ocv_detection.Init(plugin_path)) {
+    if (!ocv_detection.Init(".")) {
         LOG4CXX_ERROR(OpenFaceDetectionLogger, "Failed to initialize OpenCV Detection");
         return false;
     }
@@ -113,7 +109,7 @@ bool OcvFaceDetection::Init() {
 
     //once this is done - parameters will be set and SetReadConfigParameters() can be called again to revert back
     //to the params read at intialization
-    string config_params_path = config_path + "/mpfOcvFaceDetection.ini";
+    string config_params_path = "config/mpfOcvFaceDetection.ini";
     int rc = LoadConfig(config_params_path, parameters);
     if (rc) {
         LOG4CXX_ERROR(OpenFaceDetectionLogger, "Failed to load the OcvFaceDetection config from: " << config_params_path);

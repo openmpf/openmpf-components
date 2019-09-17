@@ -24,38 +24,39 @@
 # limitations under the License.                                            #
 #############################################################################
 
-cmake_minimum_required(VERSION 3.6)
-project(ocv-face-detection-tests)
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-set(CMAKE_CXX_STANDARD 11)
+COPY . .
 
-find_package(GTest)
-if (${GTEST_FOUND})
+RUN build-component.sh
 
-    enable_testing()
-    find_package(Qt4 REQUIRED)
-    find_package(mpfComponentTestUtils REQUIRED)
-
-    include_directories(..)
-    add_executable(OcvFaceDetectionTest test_ocv_face_detection.cpp)
-    target_link_libraries(OcvFaceDetectionTest mpfOcvFaceDetection mpfComponentTestUtils GTest::GTest GTest::Main Qt4::QtCore)
-
-    add_test(NAME OcvFaceDetectionTest COMMAND OcvFaceDetectionTest)
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvFaceDetectionTest; fi
 
 
-    # Install config file
-    file(COPY ../plugin-files/config DESTINATION .)
-    file(COPY test_ocv_face_config.ini DESTINATION config)
-    file(COPY ../plugin-files/data DESTINATION .)
+
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
+
+ENV COMPONENT_LOG_NAME ocv-face-detection.log
+
+COPY --from=build_component $BUILD_DIR/plugin/OcvFaceDetection $INSTALL_DIR
+
+COPY --from=build_component $BUILD_DIR/libmpfOcvFaceDetection.so \
+                            $INSTALL_DIR/lib
 
 
-    # Install test images and videos
-    file(GLOB FACE_TEST_IMAGE_FILES data/test_imgs/*)
-    file(COPY ${FACE_TEST_IMAGE_FILES} DESTINATION test/test_imgs)
+ARG BUILD_DATE
+ARG BUILD_SHAS
+ARG BUILD_TAG
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.license="Apache 2.0" \
+      org.label-schema.name="OpenMPF OpenCV Face Detection" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-ref=$BUILD_SHAS \
+      org.label-schema.vcs-url="https://github.com/openmpf" \
+      org.label-schema.vendor="MITRE" \
+      org.label-schema.version=$BUILD_TAG
 
-    file(GLOB FACE_TEST_VIDEO_FILES data/test_vids/*)
-    file(COPY ${FACE_TEST_VIDEO_FILES} DESTINATION test/test_vids)
-
-    # Create directory for test output files
-    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test/test_output/)
-endif()

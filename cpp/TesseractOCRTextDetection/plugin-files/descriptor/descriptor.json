@@ -258,7 +258,7 @@
       "properties": [
         {
           "name": "TAGGING_FILE",
-          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
+          "value": "config/text-tags.json"
         }
       ]
     },
@@ -269,7 +269,7 @@
       "properties": [
         {
           "name": "TAGGING_FILE",
-          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
+          "value": "config/text-tags.json"
         },
         {
           "name": "TESSERACT_PSM",
