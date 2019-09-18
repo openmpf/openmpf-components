@@ -481,7 +481,7 @@ CaffeDetection::CaffeJobConfig::CaffeJobConfig(const Properties &props,
     }
 
     // try to import Caffe model
-    net = cv::dnn::readNetFromCaffe(settings.prototxt_file, settings.caffemodel_file);
+    net = cv::dnn::readNet(settings.prototxt_file, settings.caffemodel_file);
     if (net.empty()) {
         LOG4CXX_ERROR(logger, "Can't load network specified by the following files: ");
         LOG4CXX_ERROR(logger, "prototxt:   " << settings.prototxt_file);
