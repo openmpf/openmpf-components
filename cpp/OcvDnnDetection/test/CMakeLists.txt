@@ -25,7 +25,7 @@
 #############################################################################
 
 cmake_minimum_required(VERSION 3.6)
-project(caffe-detection-tests)
+project(ocv-dnn-detection-tests)
 
 set(CMAKE_CXX_STANDARD 11)
 
@@ -37,12 +37,12 @@ if (${GTEST_FOUND})
     find_package(mpfComponentTestUtils REQUIRED)
 
     include_directories(..)
-    add_executable(CaffeDetectionTest test_caffe_detection.cpp)
-    target_link_libraries(CaffeDetectionTest caffe mpfComponentTestUtils GTest::GTest GTest::Main)
+    add_executable(OcvDnnDetectionTest test_ocv_dnn_detection.cpp)
+    target_link_libraries(OcvDnnDetectionTest ocvdnn mpfComponentTestUtils GTest::GTest GTest::Main)
 
-    add_test(NAME CaffeDetectionTest COMMAND CaffeDetectionTest)
+    add_test(NAME OcvDnnDetectionTest COMMAND OcvDnnDetectionTest)
 
     # Install test images and videos
-    file(GLOB CAFFE_TEST_FILES data/*)
-    file(COPY ${CAFFE_TEST_FILES} DESTINATION test)
+    file(GLOB OCVDNN_TEST_FILES data/*)
+    file(COPY ${OCVDNN_TEST_FILES} DESTINATION test)
 endif()

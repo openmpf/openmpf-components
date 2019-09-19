@@ -26,7 +26,7 @@
 
 
 cmake_minimum_required(VERSION 3.6)
-project(caffe-detection)
+project(ocv-dnn-detection)
 
 set(CMAKE_CXX_STANDARD 11)
 
@@ -41,15 +41,15 @@ find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
 
-set(CAFFE_SOURCE_FILES CaffeDetection.cpp CaffeDetection.h)
+set(OCVDNN_SOURCE_FILES OcvDnnDetection.cpp OcvDnnDetection.h)
 
-add_library(caffe SHARED ${CAFFE_SOURCE_FILES})
-target_link_libraries(caffe mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS})
+add_library(ocvdnn SHARED ${OCVDNN_SOURCE_FILES})
+target_link_libraries(ocvdnn mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS})
 
-configure_mpf_component(CaffeDetection TARGETS caffe)
+configure_mpf_component(OcvDnnDetection TARGETS ocvdnn)
 
 add_subdirectory(test)
 
 # Build sample executable
-add_executable(sample_caffe_detector sample_caffe_detector.cpp)
-target_link_libraries(sample_caffe_detector caffe)
+add_executable(sample_ocv_dnn_detector sample_ocv_dnn_detector.cpp)
+target_link_libraries(sample_ocv_dnn_detector ocvdnn)

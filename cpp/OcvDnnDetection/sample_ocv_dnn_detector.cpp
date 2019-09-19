@@ -28,7 +28,7 @@
 #include <dlfcn.h>
 #include <string>
 #include <vector>
-#include "CaffeDetection.h"
+#include "OcvDnnDetection.h"
 
 using namespace MPF::COMPONENT;
 
@@ -40,11 +40,11 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    CaffeDetection caffe_component;
+    OcvDnnDetection ocv_dnn_component;
 
-    caffe_component.SetRunDirectory("plugin");
+    ocv_dnn_component.SetRunDirectory("plugin");
 
-    if (!caffe_component.Init()) {
+    if (!ocv_dnn_component.Init()) {
         std::cout << "Component initialization failed, exiting." << std::endl;
         return EXIT_FAILURE;
     }
@@ -117,11 +117,11 @@ int main(int argc, char* argv[]) {
     }
 
     Properties media_properties;
-    std::string job_name("Testing Caffe");
+    std::string job_name("Testing OcvDnn");
 
     std::vector<MPFImageLocation> detections;
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
-    caffe_component.GetDetections(job, detections);
+    ocv_dnn_component.GetDetections(job, detections);
     for (int i = 0; i < detections.size(); i++) {
         std::cout << "detection number "
                   << i
@@ -136,7 +136,6 @@ int main(int argc, char* argv[]) {
                   << detections[i].detection_properties["CLASSIFICATION CONFIDENCE LIST"]
                   << std::endl;
     }
-    caffe_component.Close();
+    ocv_dnn_component.Close();
     return EXIT_SUCCESS;
 }
-

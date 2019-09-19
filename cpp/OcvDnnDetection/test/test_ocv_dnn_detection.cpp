@@ -29,7 +29,7 @@
 
 #include <gtest/gtest.h>
 
-#include "CaffeDetection.h"
+#include "OcvDnnDetection.h"
 
 using namespace MPF::COMPONENT;
 
@@ -61,30 +61,30 @@ bool containsObject(const std::string &object_name, const std::vector<MPFImageLo
 
 
 void assertObjectDetectedInImage(const std::string &expected_object, const std::string &image_path,
-                                 CaffeDetection &caffe) {
+                                 OcvDnnDetection &ocv_dnn_component) {
     MPFImageJob job("Test", image_path, getGoogleNetProperties(), {});
 
     std::vector<MPFImageLocation> image_locations;
-    MPFDetectionError rc = caffe.GetDetections(job, image_locations);
+    MPFDetectionError rc = ocv_dnn_component.GetDetections(job, image_locations);
 
     ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
     ASSERT_FALSE(image_locations.empty());
 
     ASSERT_TRUE(containsObject(expected_object, image_locations))
-                                << "Expected Caffe to detect a \"" << expected_object << "\" in " << image_path;
+                                << "Expected GoogleNet to detect a \"" << expected_object << "\" in " << image_path;
 }
 
-TEST(CAFFE, ImageTest) {
+TEST(OCVDNN, ImageTest) {
 
-    CaffeDetection caffe;
-    caffe.SetRunDirectory("../plugin");
+    OcvDnnDetection ocv_dnn_component;
+    ocv_dnn_component.SetRunDirectory("../plugin");
 
-    ASSERT_TRUE(caffe.Init());
+    ASSERT_TRUE(ocv_dnn_component.Init());
 
-    assertObjectDetectedInImage("digital clock", "test/digital-clock.jpg", caffe);
-    assertObjectDetectedInImage("sundial", "test/sundial.jpg", caffe);
+    assertObjectDetectedInImage("digital clock", "test/digital-clock.jpg", ocv_dnn_component);
+    assertObjectDetectedInImage("sundial", "test/sundial.jpg", ocv_dnn_component);
 
-    ASSERT_TRUE(caffe.Close());
+    ASSERT_TRUE(ocv_dnn_component.Close());
 }
 
 
@@ -96,11 +96,11 @@ bool containsObject(const std::string &object_name, const std::vector<MPFVideoTr
 }
 
 
-void assertObjectDetectedInVideo(const std::string &object_name, const Properties &job_props, CaffeDetection &caffe) {
+void assertObjectDetectedInVideo(const std::string &object_name, const Properties &job_props, OcvDnnDetection &ocv_dnn_component) {
     MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 10, 15, job_props, {});
 
     std::vector<MPFVideoTrack> tracks;
-    MPFDetectionError rc = caffe.GetDetections(job, tracks);
+    MPFDetectionError rc = ocv_dnn_component.GetDetections(job, tracks);
 
     ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
     ASSERT_FALSE(tracks.empty());
@@ -108,41 +108,41 @@ void assertObjectDetectedInVideo(const std::string &object_name, const Propertie
 }
 
 
-TEST(CAFFE, VideoTest) {
-    CaffeDetection caffe;
-    caffe.SetRunDirectory("../plugin");
+TEST(OCVDNN, VideoTest) {
+    OcvDnnDetection ocv_dnn_component;
+    ocv_dnn_component.SetRunDirectory("../plugin");
 
-    ASSERT_TRUE(caffe.Init());
+    ASSERT_TRUE(ocv_dnn_component.Init());
 
     Properties job_props = getGoogleNetProperties();
     job_props["SEARCH_REGION_ENABLE_DETECTION"] = "true";
     job_props["SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION"] = "340";
-    assertObjectDetectedInVideo("digital clock", job_props, caffe);
+    assertObjectDetectedInVideo("digital clock", job_props, ocv_dnn_component);
 
     Properties job_props2 = getGoogleNetProperties();
     job_props2["SEARCH_REGION_ENABLE_DETECTION"] = "true";
     job_props2["SEARCH_REGION_TOP_LEFT_X_DETECTION"] = "340";
-    assertObjectDetectedInVideo("sundial", job_props2, caffe);
+    assertObjectDetectedInVideo("sundial", job_props2, ocv_dnn_component);
 
-    ASSERT_TRUE(caffe.Close());
+    ASSERT_TRUE(ocv_dnn_component.Close());
 }
 
 
-TEST(CAFFE, SpectralHashTest) {
-    CaffeDetection caffe;
-    caffe.SetRunDirectory("../plugin");
-    ASSERT_TRUE(caffe.Init());
+TEST(OCVDNN, SpectralHashTest) {
+    OcvDnnDetection ocv_dnn_component;
+    ocv_dnn_component.SetRunDirectory("../plugin");
+    ASSERT_TRUE(ocv_dnn_component.Init());
 
     Properties job_props = getGoogleNetProperties();
     job_props["SPECTRAL_HASH_FILE_LIST"] =
-            "../plugin/CaffeDetection/models/bvlc_googlenet_spectral_hash.json; fake_hash_file.asdf";
+            "../plugin/OcvDnnDetection/models/bvlc_googlenet_spectral_hash.json; fake_hash_file.asdf";
     job_props["ACTIVATION_LAYER_LIST"] = "prob;inception_3a/relu_1x1";
 
     MPFImageJob job("Test", "test/sundial.jpg", job_props, {});
 
 
     std::vector<MPFImageLocation> image_locations;
-    MPFDetectionError rc = caffe.GetDetections(job, image_locations);
+    MPFDetectionError rc = ocv_dnn_component.GetDetections(job, image_locations);
 
     ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
     ASSERT_EQ(image_locations.size(), 1);

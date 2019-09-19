@@ -25,8 +25,8 @@
  ******************************************************************************/
 
 
-#ifndef OPENMPF_COMPONENTS_CAFFEDETECTION_H
-#define OPENMPF_COMPONENTS_CAFFEDETECTION_H
+#ifndef OPENMPF_COMPONENTS_OCVDNNDETECTION_H
+#define OPENMPF_COMPONENTS_OCVDNNDETECTION_H
 
 #include <memory>
 
@@ -47,13 +47,13 @@ struct SpectralHashInfo {
     cv::Mat pc;
 };
 
-class CaffeDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
+class OcvDnnDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
 public:
 
     struct ModelSettings {
-        std::string prototxt_file;
-        std::string caffemodel_file;
+        std::string model_config_file;
+        std::string model_binary_file;
         std::string synset_file;
     };
 
@@ -78,7 +78,7 @@ private:
 
     MPF::COMPONENT::ModelsIniParser<ModelSettings> models_parser_;
 
-    struct CaffeJobConfig;
+    struct OcvDnnJobConfig;
 
     void getTopNClasses(cv::Mat &prob_blob, int num_classes, double threshold,
                         std::vector< std::pair<int,float> > &classes) const;
@@ -86,12 +86,12 @@ private:
 
 
     static void addActivationLayerInfo(
-            const CaffeJobConfig &config,
+            const OcvDnnJobConfig &config,
             const std::vector<std::pair<std::string, cv::Mat>> &activation_layer_mats,
             MPF::COMPONENT::Properties &detection_properties);
 
 
-    void addSpectralHashInfo(CaffeJobConfig &config,
+    void addSpectralHashInfo(OcvDnnJobConfig &config,
                              const std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_mats,
                              MPF::COMPONENT::Properties &detection_properties) const;
 
@@ -104,7 +104,7 @@ private:
 
 
     // Sets the location parameter to a MPFImageLocation if a detection is found in the input frame.
-    MPF::COMPONENT::MPFDetectionError getDetections(CaffeDetection::CaffeJobConfig &config, const cv::Mat &input_frame,
+    MPF::COMPONENT::MPFDetectionError getDetections(OcvDnnDetection::OcvDnnJobConfig &config, const cv::Mat &input_frame,
                                                     std::unique_ptr<MPF::COMPONENT::MPFImageLocation> &location) const;
 
     template <typename Tracker>
@@ -115,7 +115,7 @@ private:
 
 
     static void getNetworkOutput(
-            CaffeJobConfig &config,
+            OcvDnnJobConfig &config,
             const cv::Mat &input_frame,
             cv::Mat &output_layer,
             std::vector<std::pair<std::string, cv::Mat>> &activation_layer_info,
@@ -123,7 +123,7 @@ private:
 
 
     // struct to hold configuration options and data structures that change every job.
-    struct CaffeJobConfig {
+    struct OcvDnnJobConfig {
     public:
         MPF::COMPONENT::MPFDetectionError error;
         std::vector<std::string> class_names;
@@ -156,7 +156,7 @@ private:
         int number_of_classifications;
         double confidence_threshold;
 
-        CaffeJobConfig(const MPF::COMPONENT::Properties &props,
+        OcvDnnJobConfig(const MPF::COMPONENT::Properties &props,
                        const MPF::COMPONENT::ModelsIniParser<ModelSettings> &model_parser,
                        const log4cxx::LoggerPtr &logger);
 
@@ -183,4 +183,4 @@ private:
 };
 
 
-#endif //OPENMPF_COMPONENTS_CAFFEDETECTION_H
+#endif //OPENMPF_COMPONENTS_OCVDNNDETECTION_H

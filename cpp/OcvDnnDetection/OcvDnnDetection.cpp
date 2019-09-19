@@ -24,7 +24,7 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include "CaffeDetection.h"
+#include "OcvDnnDetection.h"
 
 #include <unistd.h>
 #include <fstream>
@@ -47,37 +47,37 @@ using namespace MPF::COMPONENT;
 
 
 //-----------------------------------------------------------------------------
-std::string CaffeDetection::GetDetectionType() {
+std::string OcvDnnDetection::GetDetectionType() {
     return "CLASS";
 }
 
 //-----------------------------------------------------------------------------
-bool CaffeDetection::Init() {
+bool OcvDnnDetection::Init() {
 
     // Determine where the executable is running
     std::string run_dir = GetRunDirectory();
     if (run_dir.empty()) {
         run_dir = ".";
     }
-    std::string plugin_path = run_dir + "/CaffeDetection";
+    std::string plugin_path = run_dir + "/OcvDnnDetection";
     std::string config_path = plugin_path + "/config";
 
     // Configure logger
 
     log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
-    logger_ = log4cxx::Logger::getLogger("CaffeDetection");
+    logger_ = log4cxx::Logger::getLogger("OcvDnnDetection");
 
     LOG4CXX_DEBUG(logger_, "Plugin path: " << plugin_path);
 
-    LOG4CXX_INFO(logger_, "Initializing Caffe");
+    LOG4CXX_INFO(logger_, "Initializing OcvDnn");
 
     // Load model info from config file
     // A model is defined by a txt file, a bin file, and a synset
 
     try {
         models_parser_.Init(plugin_path + "/models")
-                .RegisterField("model_txt", &ModelSettings::prototxt_file)
-                .RegisterField("model_bin", &ModelSettings::caffemodel_file)
+                .RegisterField("model_config", &ModelSettings::model_config_file)
+                .RegisterField("model_binary", &ModelSettings::model_binary_file)
                 .RegisterField("synset_txt", &ModelSettings::synset_file);
     }
     catch (const std::exception &ex) {
@@ -89,7 +89,7 @@ bool CaffeDetection::Init() {
 }
 
 //-----------------------------------------------------------------------------
-bool CaffeDetection::Close() {
+bool OcvDnnDetection::Close() {
     return true;
 }
 
@@ -127,7 +127,7 @@ void feedForwardTracker(MPFImageLocation &location, int frame_index, std::vector
 
 
 
-MPFDetectionError CaffeDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks) {
+MPFDetectionError OcvDnnDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks) {
     if (job.has_feed_forward_track) {
         return getDetections(job, tracks, feedForwardTracker);
     }
@@ -138,7 +138,7 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFVideoJob &job, std::vec
 
 
 template<typename Tracker>
-MPF::COMPONENT::MPFDetectionError CaffeDetection::getDetections(const MPF::COMPONENT::MPFVideoJob &job,
+MPF::COMPONENT::MPFDetectionError OcvDnnDetection::getDetections(const MPF::COMPONENT::MPFVideoJob &job,
                                                                 std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
                                                                 Tracker tracker) const {
     try {
@@ -147,7 +147,7 @@ MPF::COMPONENT::MPFDetectionError CaffeDetection::getDetections(const MPF::COMPO
             return MPF_INVALID_DATAFILE_URI;
         }
 
-        CaffeJobConfig config(job.job_properties, models_parser_, logger_);
+        OcvDnnJobConfig config(job.job_properties, models_parser_, logger_);
         if (config.error != MPF_DETECTION_SUCCESS) {
             return config.error;
         }
@@ -191,9 +191,9 @@ MPF::COMPONENT::MPFDetectionError CaffeDetection::getDetections(const MPF::COMPO
 
 
 //-----------------------------------------------------------------------------
-MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
+MPFDetectionError OcvDnnDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
     try {
-        CaffeJobConfig config(job.job_properties, models_parser_, logger_);
+        OcvDnnJobConfig config(job.job_properties, models_parser_, logger_);
         if (config.error != MPF_DETECTION_SUCCESS) {
             return config.error;
         }
@@ -232,7 +232,7 @@ MPFDetectionError CaffeDetection::GetDetections(const MPFImageJob &job, std::vec
 
 
 //-----------------------------------------------------------------------------
-void CaffeDetection::getTopNClasses(cv::Mat &prob_blob,
+void OcvDnnDetection::getTopNClasses(cv::Mat &prob_blob,
                                     int num_classes, double threshold,
                                     std::vector< std::pair<int, float> > &classes) const {
 
@@ -255,7 +255,7 @@ void CaffeDetection::getTopNClasses(cv::Mat &prob_blob,
 
 
 
-MPFDetectionError CaffeDetection::getDetections(CaffeJobConfig &config, const cv::Mat &input_frame,
+MPFDetectionError OcvDnnDetection::getDetections(OcvDnnJobConfig &config, const cv::Mat &input_frame,
                                                 std::unique_ptr<MPFImageLocation> &location) const {
 
     cv::Mat prob;
@@ -323,7 +323,7 @@ MPFDetectionError CaffeDetection::getDetections(CaffeJobConfig &config, const cv
 
 
 
-void CaffeDetection::addActivationLayerInfo(const CaffeDetection::CaffeJobConfig &config,
+void OcvDnnDetection::addActivationLayerInfo(const OcvDnnDetection::OcvDnnJobConfig &config,
                                             const std::vector<std::pair<std::string, cv::Mat>> &activation_layer_mats,
                                             MPF::COMPONENT::Properties &detection_properties) {
 
@@ -347,7 +347,7 @@ void CaffeDetection::addActivationLayerInfo(const CaffeDetection::CaffeJobConfig
 
 
 
-void CaffeDetection::addSpectralHashInfo(CaffeDetection::CaffeJobConfig &config,
+void OcvDnnDetection::addSpectralHashInfo(OcvDnnDetection::OcvDnnJobConfig &config,
                                          const std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_mats,
                                          Properties &detection_properties) const {
 
@@ -375,7 +375,7 @@ void CaffeDetection::addSpectralHashInfo(CaffeDetection::CaffeJobConfig &config,
 
 
 
-std::pair<std::string, std::string> CaffeDetection::computeSpectralHash(const cv::Mat &activations,
+std::pair<std::string, std::string> OcvDnnDetection::computeSpectralHash(const cv::Mat &activations,
                                                                         const SpectralHashInfo &hash_info) const {
     cv::Mat omega0;
     cv::Mat omegas;
@@ -411,7 +411,7 @@ std::pair<std::string, std::string> CaffeDetection::computeSpectralHash(const cv
 }
 
 
-void CaffeDetection::getNetworkOutput(CaffeDetection::CaffeJobConfig &config,
+void OcvDnnDetection::getNetworkOutput(OcvDnnDetection::OcvDnnJobConfig &config,
                                       const cv::Mat &input_frame,
                                       cv::Mat &output_layer,
                                       std::vector<std::pair<std::string, cv::Mat>> &activation_layer_info,
@@ -447,11 +447,11 @@ void CaffeDetection::getNetworkOutput(CaffeDetection::CaffeJobConfig &config,
 
 //-----------------------------------------------------------------------------
 
-MPF_COMPONENT_CREATOR(CaffeDetection);
+MPF_COMPONENT_CREATOR(OcvDnnDetection);
 MPF_COMPONENT_DELETER();
 
 
-CaffeDetection::CaffeJobConfig::CaffeJobConfig(const Properties &props,
+OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
                                                const MPF::COMPONENT::ModelsIniParser<ModelSettings> &model_parser,
                                                const log4cxx::LoggerPtr &logger) {
 
@@ -464,7 +464,7 @@ CaffeDetection::CaffeJobConfig::CaffeJobConfig(const Properties &props,
                                                                   "MODELS_DIR_PATH",
                                                                   ".");
     ModelSettings settings = model_parser.ParseIni(model_name,
-                                                   models_dir_path + "/CaffeDetection");
+                                                   models_dir_path + "/OcvDnnDetection");
 
     LOG4CXX_INFO(logger, "Get detections using model: " << model_name);
 
@@ -480,12 +480,12 @@ CaffeDetection::CaffeJobConfig::CaffeJobConfig(const Properties &props,
         return;
     }
 
-    // try to import Caffe model
-    net = cv::dnn::readNet(settings.prototxt_file, settings.caffemodel_file);
+    // try to import OcvDnn model
+    net = cv::dnn::readNet(settings.model_config_file, settings.model_binary_file);
     if (net.empty()) {
         LOG4CXX_ERROR(logger, "Can't load network specified by the following files: ");
-        LOG4CXX_ERROR(logger, "prototxt:   " << settings.prototxt_file);
-        LOG4CXX_ERROR(logger, "caffemodel: " << settings.caffemodel_file);
+        LOG4CXX_ERROR(logger, "model_config:   " << settings.model_config_file);
+        LOG4CXX_ERROR(logger, "model_binary: " << settings.model_binary_file);
         error = MPF_DETECTION_NOT_INITIALIZED;
         return;
     }
@@ -534,7 +534,7 @@ CaffeDetection::CaffeJobConfig::CaffeJobConfig(const Properties &props,
 
 
 
-MPFDetectionError CaffeDetection::CaffeJobConfig::readClassNames(std::string synset_file,
+MPFDetectionError OcvDnnDetection::OcvDnnJobConfig::readClassNames(std::string synset_file,
                                                                  std::vector<std::string> &class_names) {
     std::ifstream fp(synset_file);
     if (!fp.is_open()) {
@@ -553,7 +553,7 @@ MPFDetectionError CaffeDetection::CaffeJobConfig::readClassNames(std::string syn
 
 
 
-void CaffeDetection::CaffeJobConfig::validateLayerNames(std::string requested_activation_layers,
+void OcvDnnDetection::OcvDnnJobConfig::validateLayerNames(std::string requested_activation_layers,
                                                         const std::vector<cv::String> &net_layers,
                                                         const std::string &model_name,
                                                         const log4cxx::LoggerPtr &logger) {
@@ -585,7 +585,7 @@ void CaffeDetection::CaffeJobConfig::validateLayerNames(std::string requested_ac
 }
 
 
-bool CaffeDetection::CaffeJobConfig::parseAndValidateHashInfo(const std::string &file_name,
+bool OcvDnnDetection::OcvDnnJobConfig::parseAndValidateHashInfo(const std::string &file_name,
                                                               cv::FileStorage &sp_params,
                                                               SpectralHashInfo &hash_info,
                                                               const log4cxx::LoggerPtr &logger) {
@@ -653,7 +653,7 @@ bool CaffeDetection::CaffeJobConfig::parseAndValidateHashInfo(const std::string 
 }
 
 
-void CaffeDetection::CaffeJobConfig::getSpectralHashInfo(std::string hash_file_list,
+void OcvDnnDetection::OcvDnnJobConfig::getSpectralHashInfo(std::string hash_file_list,
                                                          const std::vector<cv::String> &net_layers,
                                                          const std::string &model_name,
                                                          const log4cxx::LoggerPtr &logger) {
