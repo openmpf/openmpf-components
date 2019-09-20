@@ -83,7 +83,7 @@ public class TestTikaTextDetectionComponent {
         // Test each output type.
 
         // Test single trigger word tag and text extraction.
-        // Same keyword should register under three tags, two case-insensitive, one case-sensitive.
+        // Same keyword should register under three tags: two case-insensitive, one case-sensitive.
         MPFGenericTrack testTrack = tracks.get(0);
         assertEquals("Expected language does not match.", "English", testTrack.getDetectionProperties().get("TEXT_LANGUAGE"));
         assertEquals("Expected text does not match.", "Testing Text Detection\nSlide 1", testTrack.getDetectionProperties().get("TEXT"));
@@ -116,28 +116,28 @@ public class TestTikaTextDetectionComponent {
         assertEquals("Trigger words should be empty.", "", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
         assertEquals("Trigger word offsets should be empty.", "", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
-        // Test multiple regex tags.
+        // Test multiple tags.
         testTrack = tracks.get(5);
         assertEquals("Expected tags not found.", "identity document; travel", testTrack.getDetectionProperties().get("TAGS"));
         assertEquals("Expected trigger words not found.", "passport; Passenger", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
         assertEquals("Expected trigger word offsets not found.", "10-17; 0-8", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
 
-        // Test multiple regex tags.
+        // Test multiple tags.
         testTrack = tracks.get(6);
         assertEquals("Expected tags not found.", "financial; personal", testTrack.getDetectionProperties().get("TAGS"));
         assertEquals("Expected trigger words not found.", "Financ; 00-000-0000", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
         assertEquals("Expected trigger word offsets not found.", "0-5; 15-25", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
-        // Test multiple regex tags.
+        // Test multiple tags.
         // Three tags should be picked up, with one tag supporting two trigger word detections
-        // resulting in 4 trigger words picked up in total.
+        // resulting in four trigger words picked up in total.
         testTrack = tracks.get(7);
         assertEquals("Expected tags not found.", "vehicle; financial; personal", testTrack.getDetectionProperties().get("TAGS"));
         assertEquals("Expected trigger words not found.", "Bus; Financ; ATM; 102-123-1231", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
         assertEquals("Expected trigger word offsets not found.", "0-2; 8-13; 4-6; 21-32", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
-        // Test delimiter and escaped backspace text tagging.
+        // Test delimiter and escaped backspace text tags.
         testTrack = tracks.get(8);
         assertEquals("Expected tag not found.", "delimiter-test; backslash", testTrack.getDetectionProperties().get("TAGS"));
         assertEquals("Expected trigger words not found.", "a[[;] ]b; \\", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
@@ -193,15 +193,16 @@ public class TestTikaTextDetectionComponent {
         assertEquals("Number of expected tracks does not match.", 11 ,tracks.size());
 
         // Test single tag detection with multiple trigger words (one trigger word also repeats).
-        // With FULL_REGEX_SEARCH disabled only one should be found.
+        // With FULL_REGEX_SEARCH disabled, only one tag and trigger word should be found.
         MPFGenericTrack testTrack = tracks.get(3);
-        assertEquals("Expected only one regex tag to be found", "vehicle", testTrack.getDetectionProperties().get("TAGS"));
+        assertEquals("Expected only one tag to be found", "vehicle", testTrack.getDetectionProperties().get("TAGS"));
         assertEquals("Expected only one trigger word.", "auto", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
         assertEquals("Incorrect trigger word offset.", "3-6", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
 
 
-        // Test text, regex tags.
-        // This time, each tag only pickes up one trigger word each for three trigger words in total.
+        // Test regex tags with FULL_REGEX_SEARCH disabled.
+        // This time, each tag only picks up one trigger word.
+        // Three trigger words should be detected in total.
         testTrack = tracks.get(7);
         assertEquals("Expected tags not found.", "vehicle; financial; personal", testTrack.getDetectionProperties().get("TAGS"));
         assertEquals("Expected trigger words not found.", "Bus; Financ; 102-123-1231", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
