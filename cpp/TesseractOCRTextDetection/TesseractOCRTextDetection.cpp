@@ -389,13 +389,13 @@ TesseractOCRTextDetection::parse_json(const MPFJob &job, const string &jsonfile_
                     // Legacy JSON processing.
                     // Legacy regex patterns in the JSON tags file are listed as follows:
                     //
-                    //"TAGS_BY_REGEX": {
+                    // "TAGS_BY_REGEX": {
                     //    "vehicle-tag-legacy-format": [
-                    //      {"pattern": "auto"},
-                    //      {"pattern": "car"}
+                    //        "auto",
+                    //        "car"
                     //    ],
                     //  ...
-                    //}
+                    // }
 
                     wstring temp = regex_array[i]->AsString();
                     json_kvs_regex[term].push_back(make_pair(temp, false));
@@ -405,8 +405,8 @@ TesseractOCRTextDetection::parse_json(const MPFJob &job, const string &jsonfile_
                     //
                     // "TAGS_BY_REGEX": {
                     //    "vehicle-tag-standard-format": [
-                    //        "auto",
-                    //        "car"
+                    //      {"pattern": "auto"},
+                    //      {"pattern": "car"}
                     //    ],
                     //  ...
                     //}
