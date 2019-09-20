@@ -104,11 +104,11 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         // Acquire tag file.
         String tagFile = MapUtils.getString(properties, "TAGGING_FILE");
         if (tagFile == null) {
-            String rundirectory = this.getRunDirectory();
-            if (rundirectory == null || rundirectory.length() < 1) {
-                rundirectory = "../plugins";
+            String runDirectory = this.getRunDirectory();
+            if (runDirectory == null || runDirectory.length() < 1) {
+                runDirectory = "../plugins";
             }
-            tagFile = rundirectory + "/TikaDetection/config/text-tags.json";
+            tagFile = runDirectory + "/TikaDetection/config/text-tags.json";
         }
         tagFile = MPFEnvironmentVariablePathExpander.expand(tagFile);
 
@@ -197,8 +197,30 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                             String regex = "";
                             boolean caseSensitive = false;
                             if (regexEntry.isTextual()) {
+                                // Legacy JSON processing.
+                                // Legacy regex patterns in the JSON tags file are listed as follows:
+                                //
+                                // "TAGS_BY_REGEX": {
+                                //    "vehicle-tag-legacy-format": [
+                                //        "auto",
+                                //        "car"
+                                //    ],
+                                //  ...
+                                // }
+
                                 regex = regexEntry.textValue();
                             } else {
+                                // Standard JSON format processing.
+                                // Standard JSON regex patterns are listed as follows:
+                                //
+                                // "TAGS_BY_REGEX": {
+                                //    "vehicle-tag-standard-format": [
+                                //      {"pattern": "auto"},
+                                //      {"pattern": "car"}
+                                //    ],
+                                //  ...
+                                // }
+
                                 JsonNode pattern = regexEntry.get("pattern");
                                 JsonNode caseSens = regexEntry.get("caseSensitive");
                                 if (pattern != null && pattern.isTextual()) {
@@ -239,7 +261,14 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                                 }
 
                                 String triggerWord = pageText.substring(start, end).replaceAll(";", "[;]");
-                                String offset = String.format("%d-%d", start, end - 1);
+                                String offset;
+                                if ( start != (end - 1)) {
+                                    // Offset for words and phrases.
+                                    offset = String.format("%d-%d", start, end - 1);
+                                } else {
+                                    // Offset for a single character.
+                                    offset = String.format("%d", start);
+                                }
 
                                 if (triggerWordsMap.containsKey(triggerWord)){
                                     triggerWordOffsets = triggerWordsMap.get(triggerWord);

@@ -82,6 +82,24 @@
 			{"pattern": "(\\b)roundtrip(\\b)"},
 			{"pattern": "(\\b)travel(\\b)"},
 			{"pattern": "(\\b)trip(\\b)"}
+		],
+		"foreign-text": [
+			{"pattern": "свободни"}
+		],
+		"key-phrase": [
+			{"pattern": "(\\b)spirit(\\W+)of(\\W+)brotherhood(\\b)"}
+		],
+		"delimiter-test": [
+			{"pattern": "a\\[; \\]b"}
+		],
+		"case-sensitive-tag": [
+			{"pattern": "Text", "caseSensitive": true}
+		],
+		"case-insensitive-tag": [
+			{"pattern": "Text", "caseSensitive": false}
+		],
+		"backslash": [
+			{ "pattern": "\\\\"}
 		]
 	}
 }
