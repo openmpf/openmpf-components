@@ -26,8 +26,8 @@ encoding are supported. Regex searches are case-insensitive.
 
 In the tagging file, users can specify regex patterns using the [Boost library
 regex operators](https://cs.brown.edu/~jwicks/boost/libs/regex/doc/syntax.html).
-Of note, the `\\W` non-word operator and `\\b` word-break operator may prove
-useful.
+Of note, the `\W` non-word operator and `\b` word-break operator may prove useful.
+Note that these must be escaped as `\\W` and `\\b` in JSON.
 
 Regex tags in the JSON tagging file can be entered as follows:
 
@@ -45,20 +45,19 @@ Regex tags in the JSON tagging file can be entered as follows:
 ```
 
 Where each `"pattern"` specifies the regex used for tagging.
-To enable case-sensitive regex tag search, set the ``"caseSensitive"` flag to true for
-each regex tag that requires case sensitivity. For example:
-
+To enable case-sensitive regex tag search, set the `"caseSensitive"` flag to true for each
+regex pattern that requires case sensitivity. For example:
 
 ```
-    {`pattern :'Financial', `caseSensitive`: true}
+    {"pattern": "Financial", "caseSensitive": true}
 ```
 
 Will search for words containing "Financial" with the first letter capitalized.
 On the other hand the following patterns:
 
 ```
-    {`pattern :'Financial', `caseSensitive`: false}
-    {`pattern :'Financial'}
+    {"pattern" :"Financial", "caseSensitive": false}
+    {"pattern" :"Financial"}
 ```
 
 Will search for "financial", "Financial", "FINANCIAL", and any other variation
@@ -101,6 +100,7 @@ But not:
 Removing the leading and trailing `\\b` will allow these phrases to be matched, excluding the extraneous leading/trailing characters.
 
 To escape and search for special regex characters use double slashes '\\' in front of each special character.
+To escape and search for a single backslash in text, users have to specify `\\\\` as the regex pattern.
 
 For example, to search for periods we use `\\.` rather than `.`, so the regex pattern becomes `(\\b)end(\\W+)of(\\W+)a(\\W+)sentence\\.`. Note that the `.` symbol is typically used in regex to match any character, which is why we use `\\.` instead.
 

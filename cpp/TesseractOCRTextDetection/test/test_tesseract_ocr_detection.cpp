@@ -315,7 +315,7 @@ TEST(TESSERACTOCR, TaggingTest) {
     std::map<std::string, std::string> custom_properties_disabled = {{"ENABLE_OSD_AUTOMATION", "false"},
                                                                      {"FULL_REGEX_SEARCH", "false"}};
 
-    // Test basic keyword and text detection.
+    // Test basic text detection.
     runImageDetection("data/text-demo.png", ocr, results, custom_properties);
     assertInImage("data/text-demo.png", "TESTING 123", results, "TEXT");
     assertNotInImage("data/text-demo.png", "Ponies", results, "TEXT");
@@ -323,7 +323,7 @@ TEST(TESSERACTOCR, TaggingTest) {
     ASSERT_TRUE(results[0].detection_properties.at("TAGS").length() == 0);
     results.clear();
 
-    // Test multiple keyword tagging.
+    // Test multiple text tagging.
     runImageDetection("data/tags-keyword.png", ocr, results, custom_properties);
     assertInImage("data/tags-keyword.png", "Passenger Passport", results, "TEXT");
     assertInImage("data/tags-keyword.png", "identity document; travel", results, "TAGS");
@@ -331,11 +331,14 @@ TEST(TESSERACTOCR, TaggingTest) {
     assertInImage("data/tags-keyword.png", "0-8; 10-17", results, "TRIGGER_WORDS_OFFSET");
     results.clear();
 
-    // Test keyword and regex tagging.
-    // Keyword and regex tag match to same category for personal.
-    // Regex tagging also picks up financial.
-    // Keyword tagging picks up vehicle.
-    // Three tags should be detected in total.
+    // Test multiple text tagging.
+    runImageDetection("data/tags-regex.png", ocr, results, custom_properties);
+    assertInImage("data/tags-regex.png", "case-insensitive-tag; financial; personal", results, "TAGS");
+    assertInImage("data/tags-regex.png", "122-123-1234; financ", results, "TRIGGER_WORDS");
+    assertInImage("data/tags-regex.png", "17-28; 0-5", results, "TRIGGER_WORDS_OFFSET");
+    results.clear();
+
+    // Test regex tagging with full search enabled.
     runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties);
     assertInImage("data/tags-keywordregex.png", "case-insensitive-tag; case-sensitive-tag; financial; personal; vehicle",
                   results, "TAGS");
@@ -351,20 +354,19 @@ TEST(TESSERACTOCR, TaggingTest) {
     assertInImage("data/tags-keywordregex.png", "20-27; 37-42; 29-35", results, "TRIGGER_WORDS_OFFSET");
     results.clear();
 
-    // Test multiple regex tagging.
-    runImageDetection("data/tags-regex.png", ocr, results, custom_properties);
-    assertInImage("data/tags-regex.png", "case-insensitive-tag; financial; personal", results, "TAGS");
-    assertInImage("data/tags-regex.png", "122-123-1234; financ", results, "TRIGGER_WORDS");
-    assertInImage("data/tags-regex.png", "17-28; 0-5", results, "TRIGGER_WORDS_OFFSET");
-    results.clear();
-
-
-    // Test multiple regex tagging w/ delimiter tag.
+    // Test multiple text tagging w/ delimiter tag.
     runImageDetection("data/tags-regex-delimiter.png", ocr, results, custom_properties);
     assertInImage("data/tags-regex-delimiter.png", "case-insensitive-tag; delimiter-test; financial; personal",
                   results, "TAGS");
     assertInImage("data/tags-regex-delimiter.png", "122-123-1234; a[[;] ]b; financ", results, "TRIGGER_WORDS");
     assertInImage("data/tags-regex-delimiter.png", "22-33; 15-20; 0-5", results, "TRIGGER_WORDS_OFFSET");
+
+    // Test escaped backslash text tagging.
+    runImageDetection("data/test-backslash.png", ocr, results, custom_properties);
+    assertInImage("data/test-backslash.png", "backslash; personal", results, "TAGS");
+    assertInImage("data/test-backslash.png", "TEXT; \\", results, "TRIGGER_WORDS");
+    assertInImage("data/test-backslash.png", "7-10; 0, 12, 15, 16, 18, 19", results, "TRIGGER_WORDS_OFFSET");
+
     ASSERT_TRUE(ocr.Close());
 }
 

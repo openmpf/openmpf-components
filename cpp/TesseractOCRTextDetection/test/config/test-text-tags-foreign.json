@@ -97,6 +97,9 @@
 		],
 		"case-insensitive-tag": [
 			{"pattern": "Financ", "caseSensitive": false}
-		]
+		],
+        "backslash": [
+            {"pattern": "\\\\"}
+        ]
 	}
 }

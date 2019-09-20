@@ -133,13 +133,9 @@ namespace MPF {
             log4cxx::LoggerPtr hw_logger_;
             QHash<QString, QString> parameters;
             OCR_filter_settings default_ocr_fset;
-            std::map<std::wstring, std::wstring> reg_table;
 
             // Map of {OCR engine, language} pairs to Tesseract API pointers
             std::map<std::pair<int, std::string>, tesseract::TessBaseAPI *> tess_api_map;
-
-            std::wstring fix_regex(std::wstring inreg);
-
 
             std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> parse_json(const MPFJob &job,
                                                                                const std::string &jsonfile_path,
@@ -170,8 +166,6 @@ namespace MPF {
                                      std::map<std::wstring, std::vector<std::string>> &trigger_words_offset);
 
             void sharpen(cv::Mat &image, double weight);
-
-            std::vector<std::wstring> get_tokens(const std::wstring &str);
 
             std::string parse_regex_code(boost::regex_constants::error_type etype);
 
