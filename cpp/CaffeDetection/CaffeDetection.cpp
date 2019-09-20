@@ -530,12 +530,6 @@ CaffeDetection::CaffeJobConfig::CaffeJobConfig(const Properties &props,
 
     number_of_classifications = GetProperty(props, "NUMBER_OF_CLASSIFICATIONS", 1);
     confidence_threshold = GetProperty(props, "CONFIDENCE_THRESHOLD", 0.0);
-    if (confidence_threshold < 0.0) {
-        LOG4CXX_ERROR(logger, "The confidence threshold requested: "
-                << confidence_threshold
-                << " is invalid. It must be greater than 0.0.");
-        error = MPF_INVALID_PROPERTY;
-    }
 }
 
 
