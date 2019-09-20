@@ -1349,7 +1349,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
             set_coordinates(corrected_X, corrected_Y, corrected_width, corrected_height, input_size, corrected_orientation);
         }
 
-        // Run initial tesseract_detections. When autorotate is set, for any languages that fall below initial pass
+        // Run initial get_tesseract_detections. When autorotate is set, for any languages that fall below initial pass
         // create a second round of extractions with a 180 degree rotation applied on top of the original setting.
         // Second rotation only triggers if ROTATE_AND_DETECT is set.
         if (!get_tesseract_detections(job, ocr_outputs, image_data, ocr_fset, job_status, tessdata_script_dir)) {
