@@ -57,6 +57,9 @@ Custom generated image for testing regex tags with ';' delimiter.
 # test.pdf
 Custom generated pdf for testing document text extraction.
 
+# test-backslash.png
+Custom generated image for testing escaped backslash tagging.
+
 # text-demo.png
 Text extracted from open source project https://github.com/tesseract-ocr/tesseract.
 
