@@ -26,11 +26,45 @@ encoding are supported. Regex searches are case-insensitive.
 
 In the tagging file, users can specify regex patterns using the [Boost library
 regex operators](https://cs.brown.edu/~jwicks/boost/libs/regex/doc/syntax.html).
-Of note, the `\W` non-word operator and `\b` word-break operator may prove
-useful.
+Of note, the `\W` non-word operator and `\b` word-break operator may prove useful.
+Note that these must be escaped as `\\W` and `\\b` in JSON.
+
+Regex tags in the JSON tagging file can be entered as follows:
+
+```
+    "TAGS_BY_REGEX": {
+        "vehicle": [
+            {"pattern": "auto"},
+            {"pattern": "(\\b)bike(\\b)"},
+            {"pattern": "(\\b)bus(\\b)", "caseSensitive": true}
+        ]
+        "next-tag-category" : [
+            ...
+        ]
+    }
+```
+
+Where each `"pattern"` specifies the regex used for tagging.
+To enable case-sensitive regex tag search, set the `"caseSensitive"` flag to true for each
+regex pattern that requires case sensitivity. For example:
+
+```
+    {"pattern": "Financial", "caseSensitive": true}
+```
+
+Will search for words containing "Financial" with the first letter capitalized.
+On the other hand the following patterns:
+
+```
+    {"pattern" :"Financial", "caseSensitive": false}
+    {"pattern" :"Financial"}
+```
+
+Will search for "financial", "Financial", "FINANCIAL", and any other variation
+of "financial" in terms of capitalization.
 
 Phrases containing words separated by **zero** or more whitespace and/or
-punctuation characters can be represented using `\W*`. For example, the
+punctuation characters can be represented using `\\W*`. For example, the
 `Hello(\\W*)World` regex pattern will match:
 
 * "Hello World"
@@ -39,7 +73,7 @@ punctuation characters can be represented using `\W*`. For example, the
 * "Hello. &$#World"
 
 Phrases containing words separated by **one** or more whitespace and/or
-punctuation characters can be represented using `\W+`.
+punctuation characters can be represented using `\\W+`.
 
 For example, the `Hello(\\W+)World` regex pattern will match:
 
@@ -51,9 +85,9 @@ But not:
 
 * "HelloWorld"
 
-Adding `\b` to the start or end of a regex pattern will reject any word
+Adding `\\b` to the start or end of a regex pattern will reject any word
 characters attached to the start or end of the pattern being searched. For
-example, `(\b)search(\\W+)this(\\W+)phrase(\b)` will match:
+example, `(\\b)search(\\W+)this(\\W+)phrase(\\b)` will match:
 
 * "search this phrase"
 * "search  this, phrase"
@@ -63,11 +97,12 @@ But not:
 * "research this phrase"
 * "search this phrasejunk"
 
-Removing the leading and trailing `\b` will allow these phrases to be matched, excluding the extraneous leading/trailing characters.
+Removing the leading and trailing `\\b` will allow these phrases to be matched, excluding the extraneous leading/trailing characters.
 
-To escape and search for special regex characters encapsulate these characters within brackets `[]`.
+To escape and search for special regex characters use double slashes `\\` in front of each special character.
+To escape and search for a single backslash in text, users have to specify `\\\\` as the regex pattern.
 
-For example, to search for periods we use `[.]` rather than `.`, so the regex pattern becomes `(\b)end(\\W+)of(\\W+)a(\\W+)sentence[.]`. Note that the `.` symbol is typically used in regex to match any character, which is why we use `[.]` instead.
+For example, to search for periods we use `\\.` rather than `.`, so the regex pattern becomes `(\\b)end(\\W+)of(\\W+)a(\\W+)sentence\\.`. Note that the `.` symbol is typically used in regex to match any character, which is why we use `\\.` instead.
 
 The OCR'ed text will be stored in the `TEXT` output property. Each detected tag will be stored in `TAGS`, separated by commas. The substring(s) that triggered each tag will be stored in `TRIGGER_WORDS`. For each trigger word the substring index range relative to the `TEXT` output will be stored in `TRIGGER_WORDS_OFFSET`. Because the same trigger word can be encountered multiple times in the `TEXT` output, the results are organized as follows:
 
