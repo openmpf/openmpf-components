@@ -24,30 +24,6 @@
         "DETECTION_SPEECH_SPHINX"
       ],
       "properties": [
-        {
-          "name": "CONFIDENCE_THRESHOLD",
-          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
-          "type": "DOUBLE",
-          "defaultValue": "-2"
-        },
-        {
-          "name": "MIN_GAP_BETWEEN_SEGMENTS",
-          "description": "In the context of videos, the minimum number of frames between segments which are not adjacent. Value must be greater than or equal to 1. Default value is defined by the OpenMPF properties file.",
-          "type": "INT",
-          "propertiesKey": "detection.segment.minimum.gap"
-        },
-        {
-          "name": "TARGET_SEGMENT_LENGTH",
-          "description": "In the context of videos, the preferred length of segments which are to be processed by this algorithm. Value is expected to be greater than 10. Default value is defined by the OpenMPF properties file.",
-          "type": "INT",
-          "propertiesKey": "detection.segment.target.length"
-        },
-        {
-          "name": "MIN_SEGMENT_LENGTH",
-          "description": "In the context of videos, the minimum length of a segment which will be processed by this algorithm. Value must be greater than 0. Default value is defined by the OpenMPF properties file.",
-          "type": "INT",
-          "propertiesKey": "detection.segment.minimum.length"
-        }
       ]
     }
   },

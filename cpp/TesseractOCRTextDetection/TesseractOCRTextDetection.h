@@ -81,6 +81,7 @@ namespace MPF {
                 bool processing_wild_text;
                 bool rotate_and_detect;
                 bool full_regex_search;
+                bool enable_osd_fallback;
                 int adaptive_thrs_pixel;
                 int psm;
                 int oem;
