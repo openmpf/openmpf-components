@@ -99,7 +99,7 @@ But not:
 
 Removing the leading and trailing `\\b` will allow these phrases to be matched, excluding the extraneous leading/trailing characters.
 
-To escape and search for special regex characters use double slashes '\\' in front of each special character.
+To escape and search for special regex characters use double slashes `\\` in front of each special character.
 To escape and search for a single backslash in text, users have to specify `\\\\` as the regex pattern.
 
 For example, to search for periods we use `\\.` rather than `.`, so the regex pattern becomes `(\\b)end(\\W+)of(\\W+)a(\\W+)sentence\\.`. Note that the `.` symbol is typically used in regex to match any character, which is why we use `\\.` instead.
