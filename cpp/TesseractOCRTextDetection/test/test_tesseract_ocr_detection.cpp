@@ -525,6 +525,44 @@ TEST(TESSERACTOCR, OSDCommonTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
+TEST(TESSERACTOCR, OSDFallbackTest) {
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+    std::map<std::string, std::string> custom_properties;
+
+    // Check that OSD fallback works to detect proper scripts.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION",              "true"},
+                         {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE",  "0.0"},
+                         {"MIN_OSD_SCRIPT_SCORE",               "0"},
+                         {"MAX_OSD_SCRIPTS",                    "2"},
+                         {"MIN_OSD_SECONDARY_SCRIPT_THRESHOLD", "0.0"}};
+    runImageDetection("data/text-insufficient.png", ocr, results, custom_properties);
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic") << "Expected Cyrillic script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_SECONDARY_SCRIPTS") == "Latin") << "Expected Latin script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_FALLBACK_OCCURRED") == "true")
+                                                   << "Expected OSD fallback had occurred.";
+    results.clear();
+
+    // When OSD fallback is disabled, no script is detected.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION",              "true"},
+                         {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE",  "0.0"},
+                         {"MIN_OSD_SCRIPT_SCORE",               "0"},
+                         {"MAX_OSD_SCRIPTS",                    "2"},
+                         {"ENABLE_OSD_FALLBACK",                "false"},
+                         {"MIN_OSD_SECONDARY_SCRIPT_THRESHOLD", "0.0"}};
+    runImageDetection("data/text-insufficient.png", ocr, results, custom_properties);
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "NULL") << "Expected no script detected.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_FALLBACK_OCCURRED") == "false")
+                                                   << "Expected no OSD fallback had occurred.";
+    results.clear();
+
+    ASSERT_TRUE(ocr.Close());
+}
+
 TEST(TESSERACTOCR, OSDMultilanguageScriptTest) {
 
     TesseractOCRTextDetection ocr;
@@ -546,6 +584,8 @@ TEST(TESSERACTOCR, OSDMultilanguageScriptTest) {
                                 << "Expected Latin as secondary script.";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Cyrillic+script/Latin")
                                 << "Expected both scripts to run together.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_FALLBACK_OCCURRED") == "false")
+                                << "Expected no OSD fallback had occurred.";
     assertInImage("data/eng-bul.png", "Всички хора се раждат ", results, "TEXT");
     assertInImage("data/eng-bul.png", "All human beings", results, "TEXT");
     results.clear();
@@ -602,6 +642,7 @@ TEST(TESSERACTOCR, OSDMultiPageTest) {
 
     custom_properties = {{"ENABLE_OSD_AUTOMATION",             "true"},
                          {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE", "0.30"},
+                         {"ENABLE_OSD_FALLBACK",               "false"},
                          {"MIN_OSD_SCRIPT_SCORE",              "40"}};
 
     // Check multiple page OSD processing.

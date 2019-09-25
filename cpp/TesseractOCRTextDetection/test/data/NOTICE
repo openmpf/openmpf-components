@@ -63,6 +63,9 @@ Custom generated image for testing escaped backslash tagging.
 # text-demo.png
 Text extracted from open source project https://github.com/tesseract-ocr/tesseract.
 
+# text-insufficient.png
+Custom generated image for testing OSD fallback on limited amounts of text.
+
 # wild-small-text.png
 Extracted text from street sign. Modified to have poor resolution.
 Image author: Dr. Avishai Teicher.
