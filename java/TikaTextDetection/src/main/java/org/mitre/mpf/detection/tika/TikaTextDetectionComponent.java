@@ -50,13 +50,14 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TikaTextDetectionComponent.class);
     private static final Map<String, String> langMap;
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final ObjectReader objectReader = objectMapper.readerFor(new TypeReference<Map<String, List<String>>>(){});
+    private static final ObjectReader objectReader = objectMapper.readerFor(new TypeReference<Map<String, List<JsonNode>>>(){});
 
     static {
          langMap = Collections.unmodifiableMap(initLangMap());
@@ -103,11 +104,11 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         // Acquire tag file.
         String tagFile = MapUtils.getString(properties, "TAGGING_FILE");
         if (tagFile == null) {
-            String rundirectory = this.getRunDirectory();
-            if (rundirectory == null || rundirectory.length() < 1) {
-                rundirectory = "../plugins";
+            String runDirectory = this.getRunDirectory();
+            if (runDirectory == null || runDirectory.length() < 1) {
+                runDirectory = "../plugins";
             }
-            tagFile = rundirectory + "/TikaDetection/config/text-tags.json";
+            tagFile = runDirectory + "/TikaDetection/config/text-tags.json";
         }
         tagFile = MPFEnvironmentVariablePathExpander.expand(tagFile);
 
@@ -143,24 +144,21 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         if (pageOutput.size() >= 1) {
             // Load language identifier.
             OptimaizeLangDetector identifier = new OptimaizeLangDetector();
-            Map<String, List<String>> stringTags;
-            Map<String, List<String>>  regexTags;
+            Map<String, List<JsonNode>>  regexTags;
 
             try {
                 identifier.loadModels();
             } catch (IOException e) {
                 String errorMsg = "Failed to load language models.";
                 LOG.error(errorMsg, e);
-                throw new MPFComponentDetectionError(MPFDetectionError.MPF_OTHER_DETECTION_ERROR_TYPE, errorMsg);
+                throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg, e);
             }
 
             // Parse Tag File.
             try{
                 JsonNode jsonRoot = objectMapper.readTree(new File(tagFile));
-                JsonNode stringNode = jsonRoot.get("TAGS_BY_KEYWORD");
                 JsonNode regexNode = jsonRoot.get("TAGS_BY_REGEX");
 
-                stringTags = objectReader.readValue(stringNode);
                 regexTags = objectReader.readValue(regexNode);
 
             } catch (FileNotFoundException e) {
@@ -182,44 +180,131 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                 Map<String, String> genericDetectionProperties = new HashMap<String, String>();
                 List<String> tagsList = new ArrayList<String>();
+                Map<String, Set<String>> triggerWordsMap = new LinkedHashMap<String, Set<String>>();
 
                 // Split out non-alphanumeric characters.
-                String pageText = pageOutput.get(i).toString().toLowerCase();
-                String[] values = pageText.split("\\W+");
-
-                Set<String> hashSet = new HashSet<String>(Arrays.asList(values));
+                String pageText = pageOutput.get(i).toString();
+                String pageTextLower = pageText.toLowerCase();
+                char[] pageTextChar = pageText.toCharArray();
 
                 try {
-                    for (Map.Entry<String, List<String>> entry : stringTags.entrySet()) {
+
+                    for (Map.Entry<String, List<JsonNode>> entry : regexTags.entrySet()) {
                         String key = entry.getKey();
-                        List<String> tagList = entry.getValue();
-                        for (String x: tagList) {
-                            if (hashSet.contains(x)) {
-                                tagsList.add(key);
+                        List<JsonNode> tagList = entry.getValue();
+                        boolean keyFound = false;
+                        for (JsonNode regexEntry: tagList) {
+                            String regex = "";
+                            boolean caseSensitive = false;
+                            if (regexEntry.isTextual()) {
+                                // Legacy JSON processing.
+                                // Legacy regex patterns in the JSON tags file are listed as follows:
+                                //
+                                // "TAGS_BY_REGEX": {
+                                //    "vehicle-tag-legacy-format": [
+                                //        "auto",
+                                //        "car"
+                                //    ],
+                                //  ...
+                                // }
+
+                                regex = regexEntry.textValue();
+                            } else {
+                                // Standard JSON format processing.
+                                // Standard JSON regex patterns are listed as follows:
+                                //
+                                // "TAGS_BY_REGEX": {
+                                //    "vehicle-tag-standard-format": [
+                                //      {"pattern": "auto"},
+                                //      {"pattern": "car"}
+                                //    ],
+                                //  ...
+                                // }
+
+                                JsonNode pattern = regexEntry.get("pattern");
+                                JsonNode caseSens = regexEntry.get("caseSensitive");
+                                if (pattern != null && pattern.isTextual()) {
+                                    regex = pattern.textValue();
+                                }
+                                if (caseSens != null && caseSens.isBoolean()) {
+                                    caseSensitive = caseSens.asBoolean();
+                                }
+                            }
+                            Matcher m;
+                            Pattern p;
+                            if (caseSensitive) {
+                                p = Pattern.compile(regex);
+                            } else {
+                                p = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+                            }
+                            m = p.matcher(pageText);
+
+                            while (m.find()) {
+                                keyFound = true;
+                                Set<String> triggerWordOffsets;
+                                int start = m.start(), end = m.end();
+
+                                // Trim trigger words of whitespace.
+                                for (int c = start; c < end; c++) {
+                                    if (!Character.isWhitespace(pageTextChar[c])) {
+                                        break;
+                                    } else {
+                                        start++;
+                                    }
+                                }
+                                for (int c = end; c > start; c--) {
+                                    if (!Character.isWhitespace(pageTextChar[c - 1])) {
+                                        break;
+                                    } else {
+                                        end--;
+                                    }
+                                }
+
+                                String triggerWord = pageText.substring(start, end).replaceAll(";", "[;]");
+                                String offset;
+                                if ( start != (end - 1)) {
+                                    // Offset for words and phrases.
+                                    offset = String.format("%d-%d", start, end - 1);
+                                } else {
+                                    // Offset for a single character.
+                                    offset = String.format("%d", start);
+                                }
+
+                                if (triggerWordsMap.containsKey(triggerWord)){
+                                    triggerWordOffsets = triggerWordsMap.get(triggerWord);
+                                } else {
+                                    triggerWordOffsets = new TreeSet<String>();
+                                    triggerWordsMap.put(triggerWord, triggerWordOffsets);
+                                }
+                                triggerWordOffsets.add(offset);
+                                if (!MapUtils.getBooleanValue(properties, "FULL_REGEX_SEARCH", true)) {
+                                    break;
+                                }
+                            }
+                            if (!MapUtils.getBooleanValue(properties, "FULL_REGEX_SEARCH", true) && keyFound) {
                                 break;
                             }
                         }
-                    }
-
-                    for (Map.Entry<String, List<String>> entry : regexTags.entrySet()) {
-                        String key = entry.getKey();
-                        List<String> tagList = entry.getValue();
-                        for (String x: tagList) {
-                            boolean containsRegex = Pattern.compile(x).matcher(pageText).find();
-                            if (containsRegex && !tagsList.contains(key)) {
-                                tagsList.add(key);
-                                break;
-                            }
+                        if (keyFound) {
+                            tagsList.add(key);
                         }
                     }
 
+                    String tagsListResult = String.join("; ", tagsList);
+                    Set<String> triggerWordsSet = triggerWordsMap.keySet();
+                    String triggerWordsResult = String.join("; ", triggerWordsSet);
+                    
+                    ArrayList<String> offsetsList = new ArrayList();
+                    for (String key: triggerWordsSet) {
+                        offsetsList.add(String.join(", ",triggerWordsMap.get(key)));
+                    }
 
-                    String tagsListResult = String.join(", ", tagsList);
+                    String triggerOffsetsResult = String.join("; ", offsetsList);
                     String textDetect = pageOutput.get(i).toString();
-                    // By default, trim out detected text unless requested by user.
-                    if (MapUtils.getBooleanValue(properties, "TRIM_TEXT", true)) {
-                        textDetect = textDetect.trim();
-                    }
+
+                    // By default, trim out detected text.
+                    textDetect = textDetect.trim();
+
 
                     if (textDetect.length() > 0) {
                         genericDetectionProperties.put("TEXT", textDetect);
@@ -231,6 +316,8 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                         genericDetectionProperties.put("TEXT", "");
                         genericDetectionProperties.put("TEXT_LANGUAGE",  "Unknown");
                         genericDetectionProperties.put("TAGS",  "");
+                        genericDetectionProperties.put("TRIGGER_WORDS", "");
+                        genericDetectionProperties.put("TRIGGER_WORDS_OFFSET", "");
                     }
 
                     // Process text languages.
@@ -255,8 +342,12 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                     if (tagsListResult.length() > 0) {
                         genericDetectionProperties.put("TAGS", tagsListResult);
+                        genericDetectionProperties.put("TRIGGER_WORDS", triggerWordsResult);
+                        genericDetectionProperties.put("TRIGGER_WORDS_OFFSET", triggerOffsetsResult);
                     } else {
                         genericDetectionProperties.put("TAGS", "");
+                        genericDetectionProperties.put("TRIGGER_WORDS", "");
+                        genericDetectionProperties.put("TRIGGER_WORDS_OFFSET", "");
                     }
                 } catch (Exception e) {
                     String errorMsg = String.format("Failed to process text detections.");

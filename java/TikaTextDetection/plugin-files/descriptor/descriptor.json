@@ -38,8 +38,8 @@
           "defaultValue": "false"
         },
         {
-          "name": "TRIM_TEXT",
-          "description": "Specifies whether or not to trim out trailing whitespace in extracted text.",
+          "name": "FULL_REGEX_SEARCH",
+          "description": "Toggles REGEX search to include all matching trigger words associated with the regex patterns for each tag. When disabled, only the first instance of the first matching trigger word for each tag category is included.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
@@ -55,6 +55,7 @@
           "type": "INT",
           "defaultValue": "20"
         }
+
       ]
     }
   },
