@@ -1,9 +1,9 @@
 {
   "componentName": "OcvDnnComponent",
-  "componentVersion": "4.0.0",
-  "middlewareVersion": "4.0.0",
+  "componentVersion": "4.1.0",
+  "middlewareVersion": "4.1.0",
   "sourceLanguage": "c++",
-  "batchLibrary": "${MPF_HOME}/plugins/OcvDnnComponent/lib/libcaffe.so",
+  "batchLibrary": "${MPF_HOME}/plugins/OcvDnnComponent/lib/libmpfOcvDnnComponent.so",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",
@@ -21,12 +21,12 @@
       "states": [
         "DETECTION",
         "DETECTION_CLASS",
-        "DETECTION_CLASS_CAFFE"
+        "DETECTION_CLASS_OCV"
       ],
       "properties": [
         {
           "name": "MODEL_NAME",
-          "description": "The model to be used with Caffe. 'googlenet' is provided by default. Other models can be provided separately.",
+          "description": "The model to be used with OpenCV. 'googlenet' is provided by default. Other models can be provided separately.",
           "type": "STRING",
           "defaultValue": "googlenet"
         },
@@ -38,13 +38,13 @@
         },
         {
           "name": "MODEL_OUTPUT_LAYER",
-          "description": "The name of the layer within the specified model for which output should be reported. The model layer names are defined in the .prototxt file associated with the model.",
+          "description": "The name of the layer within the specified model for which output should be reported. The model layer names are defined in the config file (.prototxt, .pbtxt, .cfg, etc) associated with the model.",
           "type": "STRING",
           "defaultValue": "prob"
         },
         {
           "name": "ACTIVATION_LAYER_LIST",
-          "description": "The semicolon-delimited list of names of layers within the specified model for which activation values should be reported in the output. The model activation layer names are defined in the .prototxt file associated with the model.",
+          "description": "The semicolon-delimited list of names of layers within the specified model for which activation values should be reported in the output. The model activation layer names are defined in the config file (.prototxt, .pbtxt, .cfg, etc) associated with the model.",
           "type": "STRING",
           "defaultValue": ""
         },
@@ -109,7 +109,7 @@
     {
       "name": "CAFFE GOOGLENET DETECTION ACTION",
       "description": "Performs caffe detection using the 'googlenet' model.",
-      "algorithm": "CAFFE",
+      "algorithm": "DNNCV",
       "properties": [
         {
           "name": "SUBTRACT_BLUE_VALUE",
@@ -128,7 +128,7 @@
     {
       "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) ACTION",
       "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
-      "algorithm": "CAFFE",
+      "algorithm": "DNNCV",
       "properties": [
         {
           "name": "MODEL_NAME",
@@ -140,7 +140,7 @@
         },
         {
           "name": "SPECTRAL_HASH_FILE_LIST",
-          "value": "${MPF_HOME}/plugins/CaffeDetection/models/bvlc_googlenet_spectral_hash.json"
+          "value": "${MPF_HOME}/plugins/OcvDnnComponent/models/bvlc_googlenet_spectral_hash.json"
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",
@@ -159,7 +159,7 @@
     {
       "name": "CAFFE YAHOO NSFW DETECTION ACTION",
       "description": "Performs caffe detection using the 'yahoo_nsfw' model.",
-      "algorithm": "CAFFE",
+      "algorithm": "DNNCV",
       "properties": [
         {
           "name": "MODEL_NAME",
@@ -202,7 +202,7 @@
     {
       "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION ACTION",
       "description": "Performs caffe detection using the 'vehicle_color' model.",
-      "algorithm": "CAFFE",
+      "algorithm": "DNNCV",
       "properties": [
         {
           "name": "MODEL_NAME",
@@ -237,7 +237,7 @@
     {
       "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION) ACTION",
       "description": "Performs caffe detection on regions using the 'vehicle_color' model.",
-      "algorithm": "CAFFE",
+      "algorithm": "DNNCV",
       "properties": [
         {
           "name": "MODEL_NAME",
