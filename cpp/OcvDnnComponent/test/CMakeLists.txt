@@ -24,32 +24,25 @@
 # limitations under the License.                                            #
 #############################################################################
 
-
 cmake_minimum_required(VERSION 3.6)
-project(ocv-dnn-detection)
+project(ocv-dnn-component-tests)
 
 set(CMAKE_CXX_STANDARD 11)
 
-include(../ComponentSetup.cmake)
+find_package(GTest)
+if (${GTEST_FOUND})
 
-find_package(OpenCV 3.4.7 EXACT REQUIRED PATHS /opt/opencv-3.4.7
-    COMPONENTS opencv_dnn)
+    enable_testing()
+    find_package(GTest REQUIRED)
+    find_package(mpfComponentTestUtils REQUIRED)
 
-find_package(mpfComponentInterface REQUIRED)
-find_package(mpfDetectionComponentApi REQUIRED)
-find_package(mpfComponentUtils REQUIRED)
-find_package(Qt4 REQUIRED)
+    include_directories(..)
+    add_executable(OcvDnnComponentTest test_ocv_dnn_component.cpp)
+    target_link_libraries(OcvDnnComponentTest ocvdnn mpfComponentTestUtils GTest::GTest GTest::Main)
 
+    add_test(NAME OcvDnnComponentTest COMMAND OcvDnnComponentTest)
 
-set(OCVDNN_SOURCE_FILES OcvDnnDetection.cpp OcvDnnDetection.h)
-
-add_library(ocvdnn SHARED ${OCVDNN_SOURCE_FILES})
-target_link_libraries(ocvdnn mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS})
-
-configure_mpf_component(OcvDnnDetection TARGETS ocvdnn)
-
-add_subdirectory(test)
-
-# Build sample executable
-add_executable(sample_ocv_dnn_detector sample_ocv_dnn_detector.cpp)
-target_link_libraries(sample_ocv_dnn_detector ocvdnn)
+    # Install test images and videos
+    file(GLOB OCVDNN_TEST_FILES data/*)
+    file(COPY ${OCVDNN_TEST_FILES} DESTINATION test)
+endif()

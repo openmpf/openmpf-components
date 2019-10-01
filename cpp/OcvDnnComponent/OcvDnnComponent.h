@@ -25,8 +25,8 @@
  ******************************************************************************/
 
 
-#ifndef OPENMPF_COMPONENTS_OCVDNNDETECTION_H
-#define OPENMPF_COMPONENTS_OCVDNNDETECTION_H
+#ifndef OPENMPF_COMPONENTS_OCVDNNCOMPONENT_H
+#define OPENMPF_COMPONENTS_OCVDNNCOMPONENT_H
 
 #include <memory>
 
@@ -47,7 +47,7 @@ struct SpectralHashInfo {
     cv::Mat pc;
 };
 
-class OcvDnnDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
+class OcvDnnComponent : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
 public:
 
@@ -104,7 +104,7 @@ private:
 
 
     // Sets the location parameter to a MPFImageLocation if a detection is found in the input frame.
-    MPF::COMPONENT::MPFDetectionError getDetections(OcvDnnDetection::OcvDnnJobConfig &config, const cv::Mat &input_frame,
+    MPF::COMPONENT::MPFDetectionError getDetections(OcvDnnComponent::OcvDnnJobConfig &config, const cv::Mat &input_frame,
                                                     std::unique_ptr<MPF::COMPONENT::MPFImageLocation> &location) const;
 
     template <typename Tracker>
@@ -183,4 +183,4 @@ private:
 };
 
 
-#endif //OPENMPF_COMPONENTS_OCVDNNDETECTION_H
+#endif //OPENMPF_COMPONENTS_OCVDNNCOMPONENT_H

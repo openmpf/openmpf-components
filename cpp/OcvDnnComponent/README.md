@@ -1,6 +1,6 @@
 # Overview
 
-This repository contains source code and model data for the OpenMPF Caffe classification component.
+This repository contains source code and model data for the OpenMPF OpenCV DNN classification component.
 
 # Introduction
 

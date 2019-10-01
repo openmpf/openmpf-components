@@ -1,17 +1,17 @@
 {
-  "componentName": "CaffeDetection",
+  "componentName": "OcvDnnComponent",
   "componentVersion": "4.0.0",
   "middlewareVersion": "4.0.0",
   "sourceLanguage": "c++",
-  "batchLibrary": "${MPF_HOME}/plugins/CaffeDetection/lib/libcaffe.so",
+  "batchLibrary": "${MPF_HOME}/plugins/OcvDnnComponent/lib/libcaffe.so",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",
-      "value": "${MPF_HOME}/plugins/CaffeDetection/lib:${LD_LIBRARY_PATH}"
+      "value": "${MPF_HOME}/plugins/OcvDnnComponent/lib:${LD_LIBRARY_PATH}"
     }
   ],
   "algorithm": {
-    "name": "CAFFE",
+    "name": "DNNCV",
     "description": "Returns a semantic description and a confidence score when provided with an input image.",
     "actionType": "DETECTION",
     "requiresCollection": {

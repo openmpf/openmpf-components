@@ -24,7 +24,7 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include "OcvDnnDetection.h"
+#include "OcvDnnComponent.h"
 
 #include <unistd.h>
 #include <fstream>
@@ -47,25 +47,25 @@ using namespace MPF::COMPONENT;
 
 
 //-----------------------------------------------------------------------------
-std::string OcvDnnDetection::GetDetectionType() {
+std::string OcvDnnComponent::GetDetectionType() {
     return "CLASS";
 }
 
 //-----------------------------------------------------------------------------
-bool OcvDnnDetection::Init() {
+bool OcvDnnComponent::Init() {
 
     // Determine where the executable is running
     std::string run_dir = GetRunDirectory();
     if (run_dir.empty()) {
         run_dir = ".";
     }
-    std::string plugin_path = run_dir + "/OcvDnnDetection";
+    std::string plugin_path = run_dir + "/OcvDnnComponent";
     std::string config_path = plugin_path + "/config";
 
     // Configure logger
 
     log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
-    logger_ = log4cxx::Logger::getLogger("OcvDnnDetection");
+    logger_ = log4cxx::Logger::getLogger("OcvDnnComponent");
 
     LOG4CXX_DEBUG(logger_, "Plugin path: " << plugin_path);
 
@@ -89,7 +89,7 @@ bool OcvDnnDetection::Init() {
 }
 
 //-----------------------------------------------------------------------------
-bool OcvDnnDetection::Close() {
+bool OcvDnnComponent::Close() {
     return true;
 }
 
@@ -127,7 +127,7 @@ void feedForwardTracker(MPFImageLocation &location, int frame_index, std::vector
 
 
 
-MPFDetectionError OcvDnnDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks) {
+MPFDetectionError OcvDnnComponent::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks) {
     if (job.has_feed_forward_track) {
         return getDetections(job, tracks, feedForwardTracker);
     }
@@ -138,7 +138,7 @@ MPFDetectionError OcvDnnDetection::GetDetections(const MPFVideoJob &job, std::ve
 
 
 template<typename Tracker>
-MPF::COMPONENT::MPFDetectionError OcvDnnDetection::getDetections(const MPF::COMPONENT::MPFVideoJob &job,
+MPF::COMPONENT::MPFDetectionError OcvDnnComponent::getDetections(const MPF::COMPONENT::MPFVideoJob &job,
                                                                 std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
                                                                 Tracker tracker) const {
     try {
@@ -191,7 +191,7 @@ MPF::COMPONENT::MPFDetectionError OcvDnnDetection::getDetections(const MPF::COMP
 
 
 //-----------------------------------------------------------------------------
-MPFDetectionError OcvDnnDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
+MPFDetectionError OcvDnnComponent::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
     try {
         OcvDnnJobConfig config(job.job_properties, models_parser_, logger_);
         if (config.error != MPF_DETECTION_SUCCESS) {
@@ -232,7 +232,7 @@ MPFDetectionError OcvDnnDetection::GetDetections(const MPFImageJob &job, std::ve
 
 
 //-----------------------------------------------------------------------------
-void OcvDnnDetection::getTopNClasses(cv::Mat &prob_blob,
+void OcvDnnComponent::getTopNClasses(cv::Mat &prob_blob,
                                     int num_classes, double threshold,
                                     std::vector< std::pair<int, float> > &classes) const {
 
@@ -255,7 +255,7 @@ void OcvDnnDetection::getTopNClasses(cv::Mat &prob_blob,
 
 
 
-MPFDetectionError OcvDnnDetection::getDetections(OcvDnnJobConfig &config, const cv::Mat &input_frame,
+MPFDetectionError OcvDnnComponent::getDetections(OcvDnnJobConfig &config, const cv::Mat &input_frame,
                                                 std::unique_ptr<MPFImageLocation> &location) const {
 
     cv::Mat prob;
@@ -323,7 +323,7 @@ MPFDetectionError OcvDnnDetection::getDetections(OcvDnnJobConfig &config, const 
 
 
 
-void OcvDnnDetection::addActivationLayerInfo(const OcvDnnDetection::OcvDnnJobConfig &config,
+void OcvDnnComponent::addActivationLayerInfo(const OcvDnnComponent::OcvDnnJobConfig &config,
                                             const std::vector<std::pair<std::string, cv::Mat>> &activation_layer_mats,
                                             MPF::COMPONENT::Properties &detection_properties) {
 
@@ -347,7 +347,7 @@ void OcvDnnDetection::addActivationLayerInfo(const OcvDnnDetection::OcvDnnJobCon
 
 
 
-void OcvDnnDetection::addSpectralHashInfo(OcvDnnDetection::OcvDnnJobConfig &config,
+void OcvDnnComponent::addSpectralHashInfo(OcvDnnComponent::OcvDnnJobConfig &config,
                                          const std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_mats,
                                          Properties &detection_properties) const {
 
@@ -375,7 +375,7 @@ void OcvDnnDetection::addSpectralHashInfo(OcvDnnDetection::OcvDnnJobConfig &conf
 
 
 
-std::pair<std::string, std::string> OcvDnnDetection::computeSpectralHash(const cv::Mat &activations,
+std::pair<std::string, std::string> OcvDnnComponent::computeSpectralHash(const cv::Mat &activations,
                                                                         const SpectralHashInfo &hash_info) const {
     cv::Mat omega0;
     cv::Mat omegas;
@@ -411,7 +411,7 @@ std::pair<std::string, std::string> OcvDnnDetection::computeSpectralHash(const c
 }
 
 
-void OcvDnnDetection::getNetworkOutput(OcvDnnDetection::OcvDnnJobConfig &config,
+void OcvDnnComponent::getNetworkOutput(OcvDnnComponent::OcvDnnJobConfig &config,
                                       const cv::Mat &input_frame,
                                       cv::Mat &output_layer,
                                       std::vector<std::pair<std::string, cv::Mat>> &activation_layer_info,
@@ -447,11 +447,11 @@ void OcvDnnDetection::getNetworkOutput(OcvDnnDetection::OcvDnnJobConfig &config,
 
 //-----------------------------------------------------------------------------
 
-MPF_COMPONENT_CREATOR(OcvDnnDetection);
+MPF_COMPONENT_CREATOR(OcvDnnComponent);
 MPF_COMPONENT_DELETER();
 
 
-OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
+OcvDnnComponent::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
                                                const MPF::COMPONENT::ModelsIniParser<ModelSettings> &model_parser,
                                                const log4cxx::LoggerPtr &logger) {
 
@@ -464,7 +464,7 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
                                                                   "MODELS_DIR_PATH",
                                                                   ".");
     ModelSettings settings = model_parser.ParseIni(model_name,
-                                                   models_dir_path + "/OcvDnnDetection");
+                                                   models_dir_path + "/OcvDnnComponent");
 
     LOG4CXX_INFO(logger, "Get detections using model: " << model_name);
 
@@ -534,7 +534,7 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
 
 
 
-MPFDetectionError OcvDnnDetection::OcvDnnJobConfig::readClassNames(std::string synset_file,
+MPFDetectionError OcvDnnComponent::OcvDnnJobConfig::readClassNames(std::string synset_file,
                                                                  std::vector<std::string> &class_names) {
     std::ifstream fp(synset_file);
     if (!fp.is_open()) {
@@ -553,7 +553,7 @@ MPFDetectionError OcvDnnDetection::OcvDnnJobConfig::readClassNames(std::string s
 
 
 
-void OcvDnnDetection::OcvDnnJobConfig::validateLayerNames(std::string requested_activation_layers,
+void OcvDnnComponent::OcvDnnJobConfig::validateLayerNames(std::string requested_activation_layers,
                                                         const std::vector<cv::String> &net_layers,
                                                         const std::string &model_name,
                                                         const log4cxx::LoggerPtr &logger) {
@@ -585,7 +585,7 @@ void OcvDnnDetection::OcvDnnJobConfig::validateLayerNames(std::string requested_
 }
 
 
-bool OcvDnnDetection::OcvDnnJobConfig::parseAndValidateHashInfo(const std::string &file_name,
+bool OcvDnnComponent::OcvDnnJobConfig::parseAndValidateHashInfo(const std::string &file_name,
                                                               cv::FileStorage &sp_params,
                                                               SpectralHashInfo &hash_info,
                                                               const log4cxx::LoggerPtr &logger) {
@@ -653,7 +653,7 @@ bool OcvDnnDetection::OcvDnnJobConfig::parseAndValidateHashInfo(const std::strin
 }
 
 
-void OcvDnnDetection::OcvDnnJobConfig::getSpectralHashInfo(std::string hash_file_list,
+void OcvDnnComponent::OcvDnnJobConfig::getSpectralHashInfo(std::string hash_file_list,
                                                          const std::vector<cv::String> &net_layers,
                                                          const std::string &model_name,
                                                          const log4cxx::LoggerPtr &logger) {
