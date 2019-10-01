@@ -200,13 +200,13 @@
       ]
     },
     {
-      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION ACTION",
-      "description": "Performs caffe detection using the 'vehicle_color' model.",
+      "name": "CAFFE RACHMADI VEHICLE COLOR DETECTION ACTION",
+      "description": "Performs caffe detection using the 'rachmadi' model.",
       "algorithm": "DNNCV",
       "properties": [
         {
           "name": "MODEL_NAME",
-          "value": "vehicle_color"
+          "value": "rachmadi"
         },
         {
           "name": "NUMBER_OF_CLASSIFICATIONS",
@@ -235,13 +235,13 @@
       ]
     },
     {
-      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION) ACTION",
-      "description": "Performs caffe detection on regions using the 'vehicle_color' model.",
+      "name": "CAFFE RACHMADI VEHICLE COLOR DETECTION (WITH FF REGION) ACTION",
+      "description": "Performs caffe detection on regions using the 'rachmadi' model.",
       "algorithm": "DNNCV",
       "properties": [
         {
           "name": "MODEL_NAME",
-          "value": "vehicle_color"
+          "value": "rachmadi"
         },
         {
           "name": "NUMBER_OF_CLASSIFICATIONS",
@@ -266,6 +266,80 @@
         {
           "name": "SUBTRACT_RED_VALUE",
           "value": "106.5"
+        },
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        }
+      ]
+    },
+    {
+      "name": "TENSORFLOW VEHICLE COLOR DETECTION ACTION",
+      "description": "Performs TensorFlow detection using the 'vehicle_color' model.",
+      "algorithm": "DNNCV",
+      "properties": [
+        {
+          "name": "MODEL_NAME",
+          "value": "vehicle_color"
+        },
+        {
+          "name": "NUMBER_OF_CLASSIFICATIONS",
+          "value": "11"
+        },
+        {
+          "name": "RESIZE_HEIGHT",
+          "value": "224"
+        },
+        {
+          "name": "RESIZE_WIDTH",
+          "value": "224"
+        },
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "92.81"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "88.55"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "84.77"
+        }
+      ]
+    },
+    {
+      "name": "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION) ACTION",
+      "description": "Performs TensorFlow detection on regions using the 'vehicle_color' model.",
+      "algorithm": "DNNCV",
+      "properties": [
+        {
+          "name": "MODEL_NAME",
+          "value": "vehicle_color"
+        },
+        {
+          "name": "NUMBER_OF_CLASSIFICATIONS",
+          "value": "11"
+        },
+        {
+          "name": "RESIZE_HEIGHT",
+          "value": "224"
+        },
+        {
+          "name": "RESIZE_WIDTH",
+          "value": "224"
+        },
+        {
+          "name": "SUBTRACT_BLUE_VALUE",
+          "value": "92.81"
+        },
+        {
+          "name": "SUBTRACT_GREEN_VALUE",
+          "value": "88.55"
+        },
+        {
+          "name": "SUBTRACT_RED_VALUE",
+          "value": "84.77"
         },
         {
           "name": "FEED_FORWARD_TYPE",
@@ -297,17 +371,31 @@
       ]
     },
     {
-      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION TASK",
-      "description": "Performs caffe detection using the 'vehicle_color' model.",
+      "name": "CAFFE RACHMADI VEHICLE COLOR DETECTION TASK",
+      "description": "Performs caffe detection using the 'rachmadi' model.",
       "actions": [
-        "CAFFE REZAFUAD VEHICLE COLOR DETECTION ACTION"
+        "CAFFE RACHMADI VEHICLE COLOR DETECTION ACTION"
       ]
     },
     {
-      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION) TASK",
-      "description": "Performs caffe detection on regions using the 'vehicle_color' model.",
+      "name": "CAFFE RACHMADI VEHICLE COLOR DETECTION (WITH FF REGION) TASK",
+      "description": "Performs caffe detection on regions using the 'rachmadi' model.",
       "actions": [
-        "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION) ACTION"
+        "CAFFE RACHMADI VEHICLE COLOR DETECTION (WITH FF REGION) ACTION"
+      ]
+    },
+    {
+      "name": "TENSORFLOW VEHICLE COLOR DETECTION TASK",
+      "description": "Performs TensorFlow detection using the 'vehicle_color' model.",
+      "actions": [
+        "TENSORFLOW VEHICLE COLOR DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION) TASK",
+      "description": "Performs TensorFlow detection on regions using the 'vehicle_color' model.",
+      "actions": [
+        "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION) ACTION"
       ]
     }
   ],
@@ -334,26 +422,49 @@
       ]
     },
     {
-      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION PIPELINE",
-      "description": "Performs caffe detection using the 'vehicle_color' model.",
+      "name": "CAFFE RACHMADI VEHICLE COLOR DETECTION PIPELINE",
+      "description": "Performs caffe detection using the 'rachmadi' model.",
       "tasks": [
-        "CAFFE REZAFUAD VEHICLE COLOR DETECTION TASK"
+        "CAFFE RACHMADI VEHICLE COLOR DETECTION TASK"
       ]
     },
     {
-      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION FROM TINY YOLO VEHICLE DETECTOR) PIPELINE",
-      "description": "Performs caffe detection on feed forward regions for Tiny YOLO using the 'vehicle_color' model.",
+      "name": "CAFFE RACHMADI VEHICLE COLOR DETECTION (WITH FF REGION FROM TINY YOLO VEHICLE DETECTOR) PIPELINE",
+      "description": "Performs caffe detection on feed forward regions for Tiny YOLO using the 'rachmadi' model.",
       "tasks": [
         "TINY YOLO VEHICLE DETECTION TASK",
-        "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
+        "CAFFE RACHMADI VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
       ]
     },
     {
-      "name": "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION FROM YOLO VEHICLE DETECTOR) PIPELINE",
-      "description": "Performs caffe detection on feed forward regions for YOLO using the 'vehicle_color' model.",
+      "name": "CAFFE RACHMADI VEHICLE COLOR DETECTION (WITH FF REGION FROM YOLO VEHICLE DETECTOR) PIPELINE",
+      "description": "Performs caffe detection on feed forward regions for YOLO using the 'rachmadi' model.",
       "tasks": [
         "YOLO VEHICLE DETECTION TASK",
-        "CAFFE REZAFUAD VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
+        "CAFFE RACHMADI VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "TENSORFLOW VEHICLE COLOR DETECTION PIPELINE",
+      "description": "Performs TensorFlow detection using the 'vehicle_color' model.",
+      "tasks": [
+        "TENSORFLOW VEHICLE COLOR DETECTION TASK"
+      ]
+    },
+    {
+      "name": "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION FROM TINY YOLO VEHICLE DETECTOR) PIPELINE",
+      "description": "Performs TensorFlow detection on feed forward regions for Tiny YOLO using the 'vehicle_color' model.",
+      "tasks": [
+        "TINY YOLO VEHICLE DETECTION TASK",
+        "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION FROM YOLO VEHICLE DETECTOR) PIPELINE",
+      "description": "Performs TensorFlow detection on feed forward regions for YOLO using the 'vehicle_color' model.",
+      "tasks": [
+        "YOLO VEHICLE DETECTION TASK",
+        "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
       ]
     }
   ]
