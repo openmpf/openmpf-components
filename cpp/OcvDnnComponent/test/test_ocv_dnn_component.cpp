@@ -45,22 +45,50 @@ Properties getGoogleNetProperties() {
     };
 }
 
+Properties getVehicleColorProperties() {
+    return {
+            { "MODEL_NAME", "vehicle_color" },
+            { "MODEL_OUTPUT_LAYER", "softmax_tensor" },
+            { "NUMBER_OF_CLASSIFICATIONS", "11" },
+            { "RESIZE_HEIGHT", "224" },
+            { "RESIZE_WIDTH", "224" },
+            { "SUBTRACT_BLUE_VALUE", "92.81" },
+            { "SUBTRACT_GREEN_VALUE", "88.55" },
+            { "SUBTRACT_RED_VALUE", "84.77" },
+    };
+}
+
 
 bool containsObject(const std::string &object_name, const Properties &props) {
     auto class_prop_iter = props.find("CLASSIFICATION");
     return class_prop_iter != props.end() && class_prop_iter->second == object_name;
 }
 
+bool containsObject(const std::string &object_name,
+                    const std::vector<MPFImageLocation> &locations) {
+    return std::any_of(
+        locations.begin(),
+        locations.end(),
+        [&](const MPFImageLocation &location) {
+            return containsObject(object_name, location.detection_properties);
+        }
+    );
+}
 
-bool containsObject(const std::string &object_name, const std::vector<MPFImageLocation> &locations) {
-    return std::any_of(locations.begin(), locations.end(),
-                       [&](const MPFImageLocation &location) {
-                           return containsObject(object_name, location.detection_properties);
-                       });
+bool containsObject(const std::string &object_name,
+                    const std::vector<MPFVideoTrack> &tracks) {
+    return std::any_of(
+        tracks.begin(),
+        tracks.end(),
+        [&](const MPFVideoTrack &track) {
+            return containsObject(object_name, track.detection_properties);
+        }
+    );
 }
 
 
-void assertObjectDetectedInImage(const std::string &expected_object, const std::string &image_path,
+void assertObjectDetectedInImage(const std::string &expected_object,
+                                 const std::string &image_path,
                                  OcvDnnComponent &ocv_dnn_component) {
     MPFImageJob job("Test", image_path, getGoogleNetProperties(), {});
 
@@ -71,10 +99,10 @@ void assertObjectDetectedInImage(const std::string &expected_object, const std::
     ASSERT_FALSE(image_locations.empty());
 
     ASSERT_TRUE(containsObject(expected_object, image_locations))
-                                << "Expected GoogleNet to detect a \"" << expected_object << "\" in " << image_path;
+                << "Expected GoogleNet to detect a \"" << expected_object << "\" in " << image_path;
 }
 
-TEST(OCVDNN, ImageTest) {
+TEST(OCVDNN, GoogleNetImageTest) {
 
     OcvDnnComponent ocv_dnn_component;
     ocv_dnn_component.SetRunDirectory("../plugin");
@@ -85,14 +113,6 @@ TEST(OCVDNN, ImageTest) {
     assertObjectDetectedInImage("sundial", "test/sundial.jpg", ocv_dnn_component);
 
     ASSERT_TRUE(ocv_dnn_component.Close());
-}
-
-
-bool containsObject(const std::string &object_name, const std::vector<MPFVideoTrack> &tracks) {
-    return std::any_of(tracks.begin(), tracks.end(),
-                       [&](const MPFVideoTrack &track) {
-                           return containsObject(object_name, track.detection_properties);
-                       });
 }
 
 
@@ -107,8 +127,7 @@ void assertObjectDetectedInVideo(const std::string &object_name, const Propertie
     ASSERT_TRUE(containsObject(object_name, tracks));
 }
 
-
-TEST(OCVDNN, VideoTest) {
+TEST(OCVDNN, GoogleNetVideoTest) {
     OcvDnnComponent ocv_dnn_component;
     ocv_dnn_component.SetRunDirectory("../plugin");
 
@@ -128,7 +147,7 @@ TEST(OCVDNN, VideoTest) {
 }
 
 
-TEST(OCVDNN, SpectralHashTest) {
+TEST(OCVDNN, GoogleNetSpectralHashTest) {
     OcvDnnComponent ocv_dnn_component;
     ocv_dnn_component.SetRunDirectory("../plugin");
     ASSERT_TRUE(ocv_dnn_component.Init());
@@ -164,4 +183,33 @@ TEST(OCVDNN, SpectralHashTest) {
     std::string reluActivation = location.detection_properties["INCEPTION_3A/RELU_1X1 ACTIVATION MATRIX"];
     ASSERT_NE(reluActivation.find("activation values"), std::string::npos);
     ASSERT_NE(reluActivation.find("opencv-nd-matrix"), std::string::npos);
+}
+
+
+void assertVehicleColorDetectedInImage(const std::string &expected_color,
+                                       const std::string &image_path,
+                                       OcvDnnComponent &ocv_dnn_component) {
+    MPFImageJob job("Test", image_path, getVehicleColorProperties(), {});
+
+    std::vector<MPFImageLocation> image_locations;
+    MPFDetectionError rc = ocv_dnn_component.GetDetections(job, image_locations);
+
+    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    ASSERT_FALSE(image_locations.empty());
+
+    ASSERT_TRUE(containsObject(expected_color, image_locations))
+                << "Expected Vehicle Color model to detect a " << expected_color << " vehicle in " << image_path;
+}
+
+TEST(OCVDNN, VehicleColorImageTest) {
+
+    OcvDnnComponent ocv_dnn_component;
+    ocv_dnn_component.SetRunDirectory("../plugin");
+
+    ASSERT_TRUE(ocv_dnn_component.Init());
+
+    assertVehicleColorDetectedInImage("black", "test/black-car.jpg", ocv_dnn_component);
+    assertVehicleColorDetectedInImage("red", "test/red-car.jpg", ocv_dnn_component);
+
+    ASSERT_TRUE(ocv_dnn_component.Close());
 }
