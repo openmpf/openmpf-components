@@ -381,28 +381,28 @@ std::pair<std::string, std::string> OcvDnnComponent::computeSpectralHash(const c
     cv::Mat omegas;
     std::string bitset;
 
-        omega0 = CV_PI / (hash_info.mx - hash_info.mn);
-        omegas = cv::repeat(omega0, hash_info.modes.rows, 1);
-        omegas = omegas.mul(hash_info.modes);
-        cv::Mat x = cv::repeat( ((activations * hash_info.pc) - hash_info.mn), omegas.rows, 1).mul(omegas);
-        if (hash_info.nbits != x.rows) {
-            LOG4CXX_WARN(logger_, "Number of bits in the spectral hash for layer \"" << hash_info.layer_name
-                         << "\" in model named \"" << hash_info.model_name
-                         << "\" is not equal to the input nbits value: nbits = " << hash_info.nbits
-                         << ", spectral hash size = " << x.rows);
-        }
+    omega0 = CV_PI / (hash_info.mx - hash_info.mn);
+    omegas = cv::repeat(omega0, hash_info.modes.rows, 1);
+    omegas = omegas.mul(hash_info.modes);
+    cv::Mat x = cv::repeat( ((activations * hash_info.pc) - hash_info.mn), omegas.rows, 1).mul(omegas);
+    if (hash_info.nbits != x.rows) {
+        LOG4CXX_WARN(logger_, "Number of bits in the spectral hash for layer \"" << hash_info.layer_name
+                     << "\" in model named \"" << hash_info.model_name
+                     << "\" is not equal to the input nbits value: nbits = " << hash_info.nbits
+                     << ", spectral hash size = " << x.rows);
+    }
 
-        for(int r = 0; r < x.rows; r++){
-            int bit = 1;
-            for(int c = 0; c < x.cols; c++){
-                bit *= ((cos(x.at<float>(r, c)) > 0) ? 1 : -1);
-            }
-            if(bit > 0) {
-                bitset += "1";
-            } else {
-                bitset += "0";
-            }
+    for(int r = 0; r < x.rows; r++){
+        int bit = 1;
+        for(int c = 0; c < x.cols; c++){
+            bit *= ((cos(x.at<float>(r, c)) > 0) ? 1 : -1);
         }
+        if(bit > 0) {
+            bitset += "1";
+        } else {
+            bitset += "0";
+        }
+    }
 
     std::string name(hash_info.layer_name);
     std::transform(name.begin(), name.end(), name.begin(), ::toupper);
