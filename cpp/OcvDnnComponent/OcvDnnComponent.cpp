@@ -425,7 +425,7 @@ void OcvDnnComponent::getNetworkOutput(OcvDnnComponent::OcvDnnJobConfig &config,
     // convert Mat to batch of images (BGR)
     cv::Mat input_blob = cv::dnn::blobFromImage(frame, 1.0, cv::Size(), config.subtract_colors, false); // swapRB = false
 
-    config.net.setInput(input_blob, "data");
+    config.net.setInput(input_blob, config.model_input_layer);
 
 
     std::vector<cv::Mat> net_output;
@@ -502,6 +502,7 @@ OcvDnnComponent::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
 
     const std::vector<cv::String> &net_layer_names = net.getLayerNames();
 
+    model_input_layer = GetProperty(props, "MODEL_INPUT_NAME", std::string("data"));
     model_output_layer = GetProperty(props, "MODEL_OUTPUT_LAYER", std::string("prob"));
     bool output_layer_missing = std::find(net_layer_names.begin(), net_layer_names.end(), model_output_layer)
                                     == net_layer_names.end();
