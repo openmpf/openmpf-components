@@ -208,8 +208,9 @@ TEST(OCVDNN, VehicleColorImageTest) {
 
     ASSERT_TRUE(ocv_dnn_component.Init());
 
-    assertVehicleColorDetectedInImage("black", "test/black-car.jpg", ocv_dnn_component);
+    assertVehicleColorDetectedInImage("blue", "test/blue-car.jpg", ocv_dnn_component);
     assertVehicleColorDetectedInImage("red", "test/red-car.jpg", ocv_dnn_component);
+    assertVehicleColorDetectedInImage("yellow", "test/yellow-car.jpg", ocv_dnn_component);
 
     ASSERT_TRUE(ocv_dnn_component.Close());
 }
