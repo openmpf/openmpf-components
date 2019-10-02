@@ -481,7 +481,12 @@ OcvDnnComponent::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
     }
 
     // try to import OcvDnn model
-    net = cv::dnn::readNet(settings.model_config_file, settings.model_binary_file);
+    try {
+        net = cv::dnn::readNet(settings.model_binary_file, settings.model_config_file);
+    } catch (const cv::Exception &err) {
+        LOG4CXX_WARN(logger, "Loading both binary and config file raised an exception: " << err.what());
+        net = cv::dnn::readNet(settings.model_binary_file);
+    }
     if (net.empty()) {
         LOG4CXX_ERROR(logger, "Can't load network specified by the following files: ");
         LOG4CXX_ERROR(logger, "model_config:   " << settings.model_config_file);
