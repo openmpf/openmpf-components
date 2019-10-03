@@ -58,9 +58,9 @@ namespace {
 
         return ModelsIniParser<ModelSettings>()
                 .Init(job.run_directory + "/DarknetDetection/models")
-                .RegisterField("network_config", &ModelSettings::network_config_file)
-                .RegisterField("names", &ModelSettings::names_file)
-                .RegisterField("weights", &ModelSettings::weights_file)
+                .RegisterPathField("network_config", &ModelSettings::network_config_file)
+                .RegisterPathField("names", &ModelSettings::names_file)
+                .RegisterPathField("weights", &ModelSettings::weights_file)
                 .ParseIni(model_name, models_dir_path + "/DarknetDetection");
     }
 

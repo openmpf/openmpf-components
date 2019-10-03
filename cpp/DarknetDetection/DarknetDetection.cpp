@@ -59,9 +59,9 @@ bool DarknetDetection::Init() {
 
     try {
         models_parser_.Init(plugin_path + "/models")
-                .RegisterField("network_config", &ModelSettings::network_config_file)
-                .RegisterField("names", &ModelSettings::names_file)
-                .RegisterField("weights", &ModelSettings::weights_file);
+                .RegisterPathField("network_config", &ModelSettings::network_config_file)
+                .RegisterPathField("names", &ModelSettings::names_file)
+                .RegisterPathField("weights", &ModelSettings::weights_file);
     }
     catch (const std::exception &ex) {
         LOG4CXX_ERROR(logger_, "Failed to initialize ModelsIniParser due to: " << ex.what())
