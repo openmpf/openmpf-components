@@ -26,7 +26,7 @@
 
 
 cmake_minimum_required(VERSION 3.6)
-project(ocv-dnn-component)
+project(ocv-dnn-detection)
 
 set(CMAKE_CXX_STANDARD 11)
 
@@ -41,12 +41,12 @@ find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
 
-set(OCVDNN_SOURCE_FILES OcvDnnComponent.cpp OcvDnnComponent.h)
+set(OCVDNN_SOURCE_FILES OcvDnnDetection.cpp OcvDnnDetection.h)
 
 add_library(ocvdnn SHARED ${OCVDNN_SOURCE_FILES})
 target_link_libraries(ocvdnn mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS})
 
-configure_mpf_component(OcvDnnComponent TARGETS ocvdnn)
+configure_mpf_component(OcvDnnDetection TARGETS ocvdnn)
 
 add_subdirectory(test)
 

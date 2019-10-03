@@ -1,13 +1,13 @@
 {
-  "componentName": "OcvDnnComponent",
+  "componentName": "OcvDnnDetection",
   "componentVersion": "4.1.0",
   "middlewareVersion": "4.1.0",
   "sourceLanguage": "c++",
-  "batchLibrary": "${MPF_HOME}/plugins/OcvDnnComponent/lib/libmpfOcvDnnComponent.so",
+  "batchLibrary": "${MPF_HOME}/plugins/OcvDnnDetection/lib/libmpfOcvDnnDetection.so",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",
-      "value": "${MPF_HOME}/plugins/OcvDnnComponent/lib:${LD_LIBRARY_PATH}"
+      "value": "${MPF_HOME}/plugins/OcvDnnDetection/lib:${LD_LIBRARY_PATH}"
     }
   ],
   "algorithm": {
@@ -146,7 +146,7 @@
         },
         {
           "name": "SPECTRAL_HASH_FILE_LIST",
-          "value": "${MPF_HOME}/plugins/OcvDnnComponent/models/bvlc_googlenet_spectral_hash.json"
+          "value": "${MPF_HOME}/plugins/OcvDnnDetection/models/bvlc_googlenet_spectral_hash.json"
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",

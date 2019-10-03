@@ -25,7 +25,7 @@
 #############################################################################
 
 cmake_minimum_required(VERSION 3.6)
-project(ocv-dnn-component-tests)
+project(ocv-dnn-detection-tests)
 
 set(CMAKE_CXX_STANDARD 11)
 
@@ -37,10 +37,10 @@ if (${GTEST_FOUND})
     find_package(mpfComponentTestUtils REQUIRED)
 
     include_directories(..)
-    add_executable(OcvDnnComponentTest test_ocv_dnn_component.cpp)
-    target_link_libraries(OcvDnnComponentTest ocvdnn mpfComponentTestUtils GTest::GTest GTest::Main)
+    add_executable(OcvDnnDetectionTest test_ocv_dnn_detection.cpp)
+    target_link_libraries(OcvDnnDetectionTest ocvdnn mpfComponentTestUtils GTest::GTest GTest::Main)
 
-    add_test(NAME OcvDnnComponentTest COMMAND OcvDnnComponentTest)
+    add_test(NAME OcvDnnDetectionTest COMMAND OcvDnnDetectionTest)
 
     # Install test images and videos
     file(GLOB OCVDNN_TEST_FILES data/*)

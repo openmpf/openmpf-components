@@ -28,7 +28,7 @@
 #include <dlfcn.h>
 #include <string>
 #include <vector>
-#include "OcvDnnComponent.h"
+#include "OcvDnnDetection.h"
 
 using namespace MPF::COMPONENT;
 
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    OcvDnnComponent ocv_dnn_component;
+    OcvDnnDetection ocv_dnn_component;
 
     ocv_dnn_component.SetRunDirectory("plugin");
 

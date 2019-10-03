@@ -59,7 +59,7 @@ After the OpenCV DNN classification component plugin package is built and upload
 
 The OpenCV DNN classification component supports the calculation of the spectral hash for a given input image, or every frame of an input video. The spectral hash is computed according to the method outlined in ["Spectral Hashing" (Y. Weiss, et. al.)](http://papers.nips.cc/paper/3383-spectral-hashing.pdf).
 
-The OpenCV DNN classification component requires a set of input parameters for the spectral hash computation. These are defined in a JSON-formatted input file. An example of a spectral hash parameter file is provided with the OpenCV DNN classification component source code in `plugin-files/config/bvlc_googlenet_spectral_hash.json`. The parameters in that file were derived from the GoogLeNet model training dataset (ILSVRC 2012). On a deployment machine, the correct full path name for this file is `${MPF_HOME}/plugins/OcvDnnComponent/config/bvlc_googlenet_spectral_hash.json`.
+The OpenCV DNN classification component requires a set of input parameters for the spectral hash computation. These are defined in a JSON-formatted input file. An example of a spectral hash parameter file is provided with the OpenCV DNN classification component source code in `plugin-files/config/bvlc_googlenet_spectral_hash.json`. The parameters in that file were derived from the GoogLeNet model training dataset (ILSVRC 2012). On a deployment machine, the correct full path name for this file is `${MPF_HOME}/plugins/OcvDnnDetection/config/bvlc_googlenet_spectral_hash.json`.
 
 MATLAB code to calculate the spectral hash input parameters for a different training data set can be found [here](http://www.cs.huji.ac.il/~yweiss/SpectralHashing/), and Python code can be found [here](https://github.com/wanji/sh).
 
@@ -70,4 +70,4 @@ Calculation of the spectral hash is optional. It will be done in addition to the
 
 2. Create a pipeline to calculate the spectral hash. The pipeline can be added as a default pipeline, or as a custom pipeline through the web UI. In either case, you must define a new action and set the "SPECTRAL HASH FILE LIST" property to the full path to your spectral hash parameter input file. Then create a new task using this action, and then create a new pipeline using that task, as outlined above.
 
-   - If you choose to add a default pipeline, your spectral hash JSON file will be located in `${MPF_HOME}/plugins/OcvDnnComponent/config` when the component package is registered. Use this path in the value for the "SPECTRAL HASH FILE LIST" property when creating your new action.
+   - If you choose to add a default pipeline, your spectral hash JSON file will be located in `${MPF_HOME}/plugins/OcvDnnDetection/config` when the component package is registered. Use this path in the value for the "SPECTRAL HASH FILE LIST" property when creating your new action.
