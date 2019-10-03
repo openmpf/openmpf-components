@@ -38,7 +38,7 @@ if (${GTEST_FOUND})
 
     include_directories(..)
     add_executable(OcvDnnDetectionTest test_ocv_dnn_detection.cpp)
-    target_link_libraries(OcvDnnDetectionTest ocvdnn mpfComponentTestUtils GTest::GTest GTest::Main)
+    target_link_libraries(OcvDnnDetectionTest mpfOcvDnnDetection mpfComponentTestUtils GTest::GTest GTest::Main)
 
     add_test(NAME OcvDnnDetectionTest COMMAND OcvDnnDetectionTest)
 

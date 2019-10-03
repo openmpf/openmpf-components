@@ -43,13 +43,13 @@ find_package(Qt4 REQUIRED)
 
 set(OCVDNN_SOURCE_FILES OcvDnnDetection.cpp OcvDnnDetection.h)
 
-add_library(ocvdnn SHARED ${OCVDNN_SOURCE_FILES})
-target_link_libraries(ocvdnn mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS})
+add_library(mpfOcvDnnDetection SHARED ${OCVDNN_SOURCE_FILES})
+target_link_libraries(mpfOcvDnnDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS})
 
-configure_mpf_component(OcvDnnDetection TARGETS ocvdnn)
+configure_mpf_component(OcvDnnDetection TARGETS mpfOcvDnnDetection)
 
 add_subdirectory(test)
 
 # Build sample executable
 add_executable(sample_ocv_dnn_classifier sample_ocv_dnn_classifier.cpp)
-target_link_libraries(sample_ocv_dnn_classifier ocvdnn)
+target_link_libraries(sample_ocv_dnn_classifier mpfOcvDnnDetection)

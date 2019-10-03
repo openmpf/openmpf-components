@@ -35,8 +35,7 @@ using namespace MPF::COMPONENT;
 int main(int argc, char* argv[]) {
 
     if ((argc < 2) || (argc > 5)) {
-        std::cout << "argc = " << argc << std::endl;
-        std::cout << "Usage: " << argv[0] << " <image URI> <num classifications> <confidence threshold> <ROTATE | CROP | FLIP>" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <uri> [num-classifications] [confidence-threshold] [ROTATE | CROP | FLIP]" << std::endl;
         return EXIT_SUCCESS;
     }
 
@@ -75,20 +74,21 @@ int main(int argc, char* argv[]) {
 
     MPFDetectionDataType media_type = IMAGE;
     std::string uri(argv[1]);
-    std::cout << "uri is " << uri << std::endl;
+    std::cout << "Specified:" << std::endl
+              << "  URI: " << uri << std::endl;
 
     if (argc > 2) {
         // read the number of classifications returned
         std::string num_classes(argv[2]);
         algorithm_properties["NUMBER_OF_CLASSIFICATIONS"] = num_classes;
-        std::cout << "Number of classifications = " << num_classes << std::endl;
+        std::cout << "  Number of classifications: " << num_classes << std::endl;
     }
 
     if (argc > 3) {
         // read the confidence threshold
         std::string threshold(argv[3]);
         algorithm_properties["CONFIDENCE_THRESHOLD"] = threshold;
-        std::cout << "Confidence threshold = " << threshold << std::endl;
+        std::cout << "  Confidence threshold: " << threshold << std::endl;
     }
 
     if (argc > 4) {
@@ -123,17 +123,15 @@ int main(int argc, char* argv[]) {
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
     ocv_dnn_component.GetDetections(job, detections);
     for (int i = 0; i < detections.size(); i++) {
-        std::cout << "detection number "
-                  << i
-                  << " classification is "
-                  << detections[i].detection_properties["CLASSIFICATION"]
-                  << " and confidence is "
-                  << detections[i].confidence << std::endl
-                  << " classifications list: "
-                  << detections[i].detection_properties["CLASSIFICATION LIST"]
+        std::cout << "Detection " << i << ":"
                   << std::endl
-                  << " classifications confidence list: "
-                  << detections[i].detection_properties["CLASSIFICATION CONFIDENCE LIST"]
+                  << "  Primary classification: " << detections[i].detection_properties["CLASSIFICATION"]
+                  << std::endl
+                  << "  Primary confidence: " << detections[i].confidence
+                  << std::endl
+                  << "  Classification list: " << detections[i].detection_properties["CLASSIFICATION LIST"]
+                  << std::endl
+                  << "  Confidence list: " << detections[i].detection_properties["CLASSIFICATION CONFIDENCE LIST"]
                   << std::endl;
     }
     ocv_dnn_component.Close();
