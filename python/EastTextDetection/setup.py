@@ -35,7 +35,7 @@ setuptools.setup(
     install_requires=(
         'mpf_component_api>=0.1',
         'mpf_component_util>=0.1',
-        'opencv-python>=3.3',
+        'opencv-python>=3.4.7',
     ),
     entry_points={
         'mpf.exported_component': 'component = east_component.east_component:EastComponent'
