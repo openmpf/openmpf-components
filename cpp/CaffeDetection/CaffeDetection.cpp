@@ -76,9 +76,9 @@ bool CaffeDetection::Init() {
 
     try {
         models_parser_.Init(plugin_path + "/models")
-                .RegisterField("model_txt", &ModelSettings::prototxt_file)
-                .RegisterField("model_bin", &ModelSettings::caffemodel_file)
-                .RegisterField("synset_txt", &ModelSettings::synset_file);
+                .RegisterPathField("model_txt", &ModelSettings::prototxt_file)
+                .RegisterPathField("model_bin", &ModelSettings::caffemodel_file)
+                .RegisterPathField("synset_txt", &ModelSettings::synset_file);
     }
     catch (const std::exception &ex) {
         LOG4CXX_ERROR(logger_, "Failed to initialize ModelsIniParser due to: " << ex.what())
