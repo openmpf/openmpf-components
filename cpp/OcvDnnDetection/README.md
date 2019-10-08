@@ -14,10 +14,6 @@ The OpenCV DNN classification component comes with two trained Caffe models and 
 * The Yahoo Not Suitable/Safe for Work (yahoo_nsfw) model from [https://github.com/yahoo/open_nsfw](https://github.com/yahoo/open_nsfw).
 * A model trained in-house for vehicle color estimation, vehicle_color.
 
-This component also supports a third model, which can be optionally downloaded:
-
-* Reza Fuad Rachmadi's vehicle color recognition model from [https://github.com/rezafuad/vehicle-color-recognition](https://github.com/rezafuad/vehicle-color-recognition).
-
 # Adding a new model
 
 In order to add a trained model to the OpenCV DNN classification component, the following three files should be supplied:
