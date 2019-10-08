@@ -109,8 +109,8 @@ TEST(OCVDNN, GoogleNetImageTest) {
 
     ASSERT_TRUE(ocv_dnn_component.Init());
 
-    assertObjectDetectedInImage("digital clock", "data/digital-clock.jpg", ocv_dnn_component);
-    assertObjectDetectedInImage("sundial", "data/sundial.jpg", ocv_dnn_component);
+    ASSERT_NO_FATAL_FAILURE(assertObjectDetectedInImage("digital clock", "data/digital-clock.jpg", ocv_dnn_component));
+    ASSERT_NO_FATAL_FAILURE(assertObjectDetectedInImage("sundial", "data/sundial.jpg", ocv_dnn_component));
 
     ASSERT_TRUE(ocv_dnn_component.Close());
 }
@@ -136,12 +136,12 @@ TEST(OCVDNN, GoogleNetVideoTest) {
     Properties job_props = getGoogleNetProperties();
     job_props["SEARCH_REGION_ENABLE_DETECTION"] = "true";
     job_props["SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION"] = "340";
-    assertObjectDetectedInVideo("digital clock", job_props, ocv_dnn_component);
+    ASSERT_NO_FATAL_FAILURE(assertObjectDetectedInVideo("digital clock", job_props, ocv_dnn_component));
 
     Properties job_props2 = getGoogleNetProperties();
     job_props2["SEARCH_REGION_ENABLE_DETECTION"] = "true";
     job_props2["SEARCH_REGION_TOP_LEFT_X_DETECTION"] = "340";
-    assertObjectDetectedInVideo("sundial", job_props2, ocv_dnn_component);
+    ASSERT_NO_FATAL_FAILURE(assertObjectDetectedInVideo("sundial", job_props2, ocv_dnn_component));
 
     ASSERT_TRUE(ocv_dnn_component.Close());
 }
@@ -208,9 +208,9 @@ TEST(OCVDNN, VehicleColorImageTest) {
 
     ASSERT_TRUE(ocv_dnn_component.Init());
 
-    assertVehicleColorDetectedInImage("blue", "data/blue-car.jpg", ocv_dnn_component);
-    assertVehicleColorDetectedInImage("red", "data/red-car.jpg", ocv_dnn_component);
-    assertVehicleColorDetectedInImage("yellow", "data/yellow-car.jpg", ocv_dnn_component);
+    ASSERT_NO_FATAL_FAILURE(assertVehicleColorDetectedInImage("blue", "data/blue-car.jpg", ocv_dnn_component));
+    ASSERT_NO_FATAL_FAILURE(assertVehicleColorDetectedInImage("red", "data/red-car.jpg", ocv_dnn_component));
+    ASSERT_NO_FATAL_FAILURE(assertVehicleColorDetectedInImage("yellow", "data/yellow-car.jpg", ocv_dnn_component));
 
     ASSERT_TRUE(ocv_dnn_component.Close());
 }
