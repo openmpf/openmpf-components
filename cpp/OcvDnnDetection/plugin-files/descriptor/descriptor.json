@@ -12,7 +12,7 @@
   ],
   "algorithm": {
     "name": "DNNCV",
-    "description": "Returns a semantic description and a confidence score when provided with an input image.",
+    "description": "Performs object classification using the OpenCV Deep Neural Networks module.",
     "actionType": "DETECTION",
     "requiresCollection": {
       "states": []
@@ -38,19 +38,19 @@
         },
         {
           "name": "MODEL_INPUT_NAME",
-          "description": "The label within the specified model which should be treated as input. The input name is specified in the config file (.prototxt, .pbtxt, .cfg, etc) associated with the model.",
+          "description": "The label within the specified model which should be treated as input. The input name is specified in the config file (.prototxt, .pbtxt, .cfg, etc.) associated with the model.",
           "type": "STRING",
           "defaultValue": "data"
         },
         {
           "name": "MODEL_OUTPUT_LAYER",
-          "description": "The name of the layer within the specified model for which output should be reported. The model layer names are defined in the config file (.prototxt, .pbtxt, .cfg, etc) associated with the model.",
+          "description": "The name of the layer within the specified model for which output should be reported. The model layer names are defined in the config file (.prototxt, .pbtxt, .cfg, etc.) associated with the model.",
           "type": "STRING",
           "defaultValue": "prob"
         },
         {
           "name": "ACTIVATION_LAYER_LIST",
-          "description": "The semicolon-delimited list of names of layers within the specified model for which activation values should be reported in the output. The model activation layer names are defined in the config file (.prototxt, .pbtxt, .cfg, etc) associated with the model.",
+          "description": "The semicolon-delimited list of names of layers within the specified model for which activation values should be reported in the output. The model activation layer names are defined in the config file (.prototxt, .pbtxt, .cfg, etc.) associated with the model.",
           "type": "STRING",
           "defaultValue": ""
         },

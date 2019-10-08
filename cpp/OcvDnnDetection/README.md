@@ -55,7 +55,7 @@ After the OpenCV DNN classification component plugin package is built and upload
 
 The above sections describe how to add a new model to the OpenCV DNN classification component before the component is packaged. If you have an instance of the Workflow Manager already running, and the component is already registered, here are the steps for using a new model post-deployment:
 
-1. Create the `[MODELS_DIR_PATH]/OcvDnnDetection` directory where`MODELS_DIR_PATH` is defined by property with the same name in the `descriptor.json` file. Unless set to something else, by default the value is determined by the `detection.models.dir.path` system property, which is set to `$MPF_HOME/share/models` by default. This makes the full path `$MPF_HOME/share/models/OcvDnnDetection`.
+1. Create the `[MODELS_DIR_PATH]/OcvDnnDetection` directory where`MODELS_DIR_PATH` is defined by the property with the same name in the `descriptor.json` file. Unless set to something else, by default the value is determined by the `detection.models.dir.path` system property, which is set to `$MPF_HOME/share/models` by default. This makes the full path `$MPF_HOME/share/models/OcvDnnDetection`.
 
 2. Place your updated `models.ini` file, and the files associated with your new model, in the above directory.
 
