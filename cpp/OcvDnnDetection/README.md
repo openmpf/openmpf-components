@@ -68,7 +68,7 @@ The above sections describe how to add a new model to the OpenCV DNN classificat
 In general, the OpenCV DNN classification component will check the directory in step 1 for `models.ini` and model files listed therein. The component will prioritize using those files over the ones that were installed by registering the component plugin package. This allows you to add new models and/or use updated versions of models at runtime by overriding what's provided by default.
 
 
-## Calculation of the spectral hash for a model layer
+# Calculation of the spectral hash for a model layer
 
 The OpenCV DNN classification component supports the calculation of the spectral hash for a given input image, or every frame of an input video. The spectral hash is computed according to the method outlined in ["Spectral Hashing" (Y. Weiss, et. al.)](http://papers.nips.cc/paper/3383-spectral-hashing.pdf).
 
