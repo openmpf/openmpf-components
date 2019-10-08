@@ -463,9 +463,9 @@ TEST(Darknet, TestNumberOfClassifications) {
 TEST(Darknet, TestModelsIniParser) {
     ModelsIniParser<ModelSettings> parser;
     ModelSettings settings = parser.Init("../plugin/DarknetDetection/models")
-            .RegisterField("network_config", &ModelSettings::network_config_file)
-            .RegisterField("names", &ModelSettings::names_file)
-            .RegisterField("weights", &ModelSettings::weights_file)
+            .RegisterPathField("network_config", &ModelSettings::network_config_file)
+            .RegisterPathField("names", &ModelSettings::names_file)
+            .RegisterPathField("weights", &ModelSettings::weights_file)
             .ParseIni("tiny yolo", "/opt/share/models/Darknet/");
 
     ASSERT_EQ(settings.network_config_file, "../plugin/DarknetDetection/models/yolov3-tiny.cfg");
