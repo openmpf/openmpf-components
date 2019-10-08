@@ -76,9 +76,9 @@ bool OcvDnnDetection::Init() {
 
     try {
         models_parser_.Init(plugin_path + "/models")
-                .RegisterField("model_config", &ModelSettings::model_config_file)
-                .RegisterField("model_binary", &ModelSettings::model_binary_file)
-                .RegisterField("synset_txt", &ModelSettings::synset_file);
+                .RegisterOptionalPathField("model_config", &ModelSettings::model_config_file)
+                .RegisterPathField("model_binary", &ModelSettings::model_binary_file)
+                .RegisterPathField("synset_txt", &ModelSettings::synset_file);
     }
     catch (const std::exception &ex) {
         LOG4CXX_ERROR(logger_, "Failed to initialize ModelsIniParser due to: " << ex.what())
@@ -481,12 +481,7 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
     }
 
     // try to import OcvDnn model
-    try {
-        net = cv::dnn::readNet(settings.model_binary_file, settings.model_config_file);
-    } catch (const cv::Exception &err) {
-        LOG4CXX_WARN(logger, "Loading both binary and config file raised an exception: " << err.what());
-        net = cv::dnn::readNet(settings.model_binary_file);
-    }
+    net = cv::dnn::readNet(settings.model_binary_file, settings.model_config_file);
     if (net.empty()) {
         LOG4CXX_ERROR(logger, "Can't load network specified by the following files: ");
         LOG4CXX_ERROR(logger, "model_config:   " << settings.model_config_file);
