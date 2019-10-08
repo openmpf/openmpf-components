@@ -110,15 +110,15 @@ TEST(OCVDNN, GoogleNetImageTest) {
 
     ASSERT_TRUE(ocv_dnn_component.Init());
 
-    assertObjectDetectedInImage("digital clock", "test/digital-clock.jpg", ocv_dnn_component);
-    assertObjectDetectedInImage("sundial", "test/sundial.jpg", ocv_dnn_component);
+    assertObjectDetectedInImage("digital clock", "data/digital-clock.jpg", ocv_dnn_component);
+    assertObjectDetectedInImage("sundial", "data/sundial.jpg", ocv_dnn_component);
 
     ASSERT_TRUE(ocv_dnn_component.Close());
 }
 
 
 void assertObjectDetectedInVideo(const std::string &object_name, const Properties &job_props, OcvDnnDetection &ocv_dnn_component) {
-    MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 10, 15, job_props, {});
+    MPFVideoJob job("TEST", "data/ff-region-object-motion.avi", 10, 15, job_props, {});
 
     std::vector<MPFVideoTrack> tracks;
     MPFDetectionError rc = ocv_dnn_component.GetDetections(job, tracks);
@@ -158,7 +158,7 @@ TEST(OCVDNN, GoogleNetSpectralHashTest) {
             "../plugin/OcvDnnDetection/models/bvlc_googlenet_spectral_hash.json; fake_hash_file.asdf";
     job_props["ACTIVATION_LAYER_LIST"] = "prob;inception_3a/relu_1x1";
 
-    MPFImageJob job("Test", "test/sundial.jpg", job_props, {});
+    MPFImageJob job("Test", "data/sundial.jpg", job_props, {});
 
 
     std::vector<MPFImageLocation> image_locations;
@@ -209,9 +209,9 @@ TEST(OCVDNN, VehicleColorImageTest) {
 
     ASSERT_TRUE(ocv_dnn_component.Init());
 
-    assertVehicleColorDetectedInImage("blue", "test/blue-car.jpg", ocv_dnn_component);
-    assertVehicleColorDetectedInImage("red", "test/red-car.jpg", ocv_dnn_component);
-    assertVehicleColorDetectedInImage("yellow", "test/yellow-car.jpg", ocv_dnn_component);
+    assertVehicleColorDetectedInImage("blue", "data/blue-car.jpg", ocv_dnn_component);
+    assertVehicleColorDetectedInImage("red", "data/red-car.jpg", ocv_dnn_component);
+    assertVehicleColorDetectedInImage("yellow", "data/yellow-car.jpg", ocv_dnn_component);
 
     ASSERT_TRUE(ocv_dnn_component.Close());
 }

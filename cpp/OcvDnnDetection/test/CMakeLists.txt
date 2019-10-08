@@ -44,5 +44,5 @@ if (${GTEST_FOUND})
 
     # Install test images and videos
     file(GLOB OCVDNN_TEST_FILES data/*)
-    file(COPY ${OCVDNN_TEST_FILES} DESTINATION test)
+    file(COPY ${OCVDNN_TEST_FILES} DESTINATION data)
 endif()
