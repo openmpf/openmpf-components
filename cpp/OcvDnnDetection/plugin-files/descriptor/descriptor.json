@@ -215,8 +215,12 @@
           "value": "vehicle_color"
         },
         {
-          "name": "NUMBER_OF_CLASSIFICATIONS",
-          "value": "11"
+          "name": "MODEL_OUTPUT_LAYER",
+          "value": "softmax_tensor"
+        },
+        {
+          "name": "MODEL_INPUT_NAME",
+          "value": "input_placeholder"
         },
         {
           "name": "RESIZE_HEIGHT",
@@ -250,8 +254,12 @@
           "value": "vehicle_color"
         },
         {
-          "name": "NUMBER_OF_CLASSIFICATIONS",
-          "value": "11"
+          "name": "MODEL_OUTPUT_LAYER",
+          "value": "softmax_tensor"
+        },
+        {
+          "name": "MODEL_INPUT_NAME",
+          "value": "input_placeholder"
         },
         {
           "name": "RESIZE_HEIGHT",

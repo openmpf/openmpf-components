@@ -50,7 +50,6 @@ Properties getVehicleColorProperties() {
             { "MODEL_NAME", "vehicle_color" },
             { "MODEL_OUTPUT_LAYER", "softmax_tensor" },
             { "MODEL_INPUT_NAME", "input_placeholder" },
-            { "NUMBER_OF_CLASSIFICATIONS", "11" },
             { "RESIZE_HEIGHT", "224" },
             { "RESIZE_WIDTH", "224" },
             { "SUBTRACT_BLUE_VALUE", "92.81" },
