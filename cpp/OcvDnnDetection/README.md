@@ -10,9 +10,9 @@ The OpenCV DNN classification component uses the OpenCV DNN module to import and
 
 The OpenCV DNN classification component comes with two trained Caffe models and one TensorFlow model, all of which are available when the component is registered with the Workflow Manager:
 
-* The BAIR GoogLeNet model, bvlc_googlenet, from the BAIR model zoo [(http://caffe.berkeleyvision.org/model_zoo.html)](http://caffe.berkeleyvision.org/model_zoo.html), which was trained on the ImageNet Large Scale Visual Recognition Challenge (ILSVRC) 2012 dataset.
-* The Yahoo Not Suitable/Safe for Work (yahoo_nsfw) model from [https://github.com/yahoo/open_nsfw](https://github.com/yahoo/open_nsfw).
-* A model trained in-house for vehicle color estimation, vehicle_color.
+* The BAIR GoogLeNet model, `bvlc_googlenet`, from the BAIR model zoo ([http://caffe.berkeleyvision.org/model_zoo.html](http://caffe.berkeleyvision.org/model_zoo.html)), which was trained on the ImageNet Large Scale Visual Recognition Challenge (ILSVRC) 2012 dataset.
+* The Yahoo Not Suitable/Safe for Work model, `yahoo_nsfw`, from [https://github.com/yahoo/open_nsfw](https://github.com/yahoo/open_nsfw).
+* A model trained in-house for vehicle color estimation, `vehicle_color`. This is a variant of ResNet-18 ([https://arxiv.org/abs/1512.03385](https://arxiv.org/abs/1512.03385)), with narrower layers and no activation function between blocks. Specifics of the architecture can be seen in `plugin-files/models/vehicle_color.pbtxt`.
 
 # Adding a new model
 

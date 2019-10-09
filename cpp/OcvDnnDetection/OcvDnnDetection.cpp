@@ -480,7 +480,11 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
         return;
     }
 
-    // try to import OcvDnn model
+    // Import the model
+    // For models that do not support or require a config file, ModelsIniParser
+    // will assign the empty string as default to settings.model_config_file.
+    // OpenCV DNN's readNet ignores the config file when it is passed an empty
+    // string path, so we need not check the whether the file exists.
     net = cv::dnn::readNet(settings.model_binary_file, settings.model_config_file);
     if (net.empty()) {
         LOG4CXX_ERROR(logger, "Can't load network specified by the following files: ");
