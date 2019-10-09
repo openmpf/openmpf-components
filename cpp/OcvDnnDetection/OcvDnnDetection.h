@@ -145,7 +145,7 @@ private:
         std::vector<cv::String> output_layers;
 
         std::string model_output_layer;
-        std::string model_input_layer;
+        std::string model_input_name;
 
         std::vector<std::string> requested_activation_layer_names;
         std::vector<std::string> bad_activation_layer_names;
