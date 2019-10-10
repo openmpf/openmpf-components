@@ -25,7 +25,7 @@ Integrate into your existing environment or use OpenMPF as a standalone applicat
 This repository contains source code for Open Media Processing Framework (OpenMPF) components licensed under an Apache 2.0 or compatible license.
 
 Included in this repository are the following C++ Components:
-- Caffe Object Classification
+- OpenCV DNN Object Classification
 - DLIB Face Detection
 - OpenCV LBP Face Detection
 - OpenALPR Text Detection
