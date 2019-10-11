@@ -156,7 +156,8 @@ lowest scores will not be reported.
 
 Please note that the order of the specified language matters. Languages specified first
 will have priority (ex. `eng+deu`, English language model will run first and its results will have
-priority over German language model).
+priority over German language model). When specifying multiple scripts using `,` or `+`, duplicate or redundant
+script requests are ignored.
 
 Example 1: `eng+deu` means run English, German together as one track detection.
 
@@ -165,6 +166,9 @@ as the second track.
 
 Example 3: `fra,script/Latin` means run French as the first track, and Latin script as
 the second track.
+
+Example 4: `eng,eng+bul,eng+eng` will only return two tracks, English only as first track
+followed by English+Bulgarian as the second track.
 
 By default this component contains language model files for:
 * Bulgarian (`bul`)

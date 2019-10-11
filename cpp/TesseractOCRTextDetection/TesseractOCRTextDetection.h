@@ -82,6 +82,7 @@ namespace MPF {
                 bool rotate_and_detect;
                 bool full_regex_search;
                 bool enable_osd_fallback;
+                bool enable_parallel_processing;
                 int adaptive_thrs_pixel;
                 int psm;
                 int oem;
@@ -148,6 +149,11 @@ namespace MPF {
 
             bool preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset,
                                   MPFDetectionError &job_status);
+
+            void process_tesseract_lang_model(const std::string &lang, const cv::Mat &imi, const MPFImageJob &job,
+                                              MPFDetectionError &job_status, const std::string &tessdata_script_dir,
+                                              const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                              std::string &text_result, double &confidence, bool &success);
 
             void set_default_parameters();
 
