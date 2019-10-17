@@ -78,11 +78,10 @@ COPY --from=build_component $BUILD_DIR/plugin/TesseractOCRTextDetection $INSTALL
 COPY --from=build_component $BUILD_DIR/libmpfTesseractOCRTextDetection.so \
                             $INSTALL_DIR/lib
 
-ARG BUILD_DATE
 ARG BUILD_SHAS
 ARG BUILD_TAG
-LABEL org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.license="Apache 2.0" \
+
+LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Tesseract OCR Text Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
