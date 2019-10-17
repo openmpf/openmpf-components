@@ -42,13 +42,11 @@ ENV COMPONENT_LOG_NAME east-text-detection.log
 # Labels                                                                       #
 ################################################################################
 
-ARG BUILD_DATE
 ARG BUILD_SHAS
 ARG BUILD_TAG
 
 # Set labels
-LABEL org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.license="Apache 2.0" \
+LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF EAST Text Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
