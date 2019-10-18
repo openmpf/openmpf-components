@@ -24,13 +24,12 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-package org.mitre.mpf.detection.tika;
+package org.mitre.mpf.detection.sphinx.speech;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mitre.mpf.component.api.detection.*;
-import org.mitre.mpf.detection.sphinx.speech.SphinxSpeechDetectionComponent;
 
 import java.util.HashMap;
 import java.util.List;
