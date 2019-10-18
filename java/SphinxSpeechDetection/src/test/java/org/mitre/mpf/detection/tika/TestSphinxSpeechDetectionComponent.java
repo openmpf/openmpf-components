@@ -62,11 +62,10 @@ public class TestSphinxSpeechDetectionComponent {
     }
 
     @Test
-    public void testGetDetectionsAudio() throws Exception {
+    public void testGetDetectionsAudio() {
         String uri = "./test/data/left.wav";
         MPFAudioJob audioJob = new MPFAudioJob("Job TestRun:TestAudioJob", uri, new HashMap<>(),
                 Map.of("DURATION", "5020"), 0, -1);
-
         try {
             List<MPFAudioTrack> tracks = sphinxComponent.getDetections(audioJob);
 
@@ -82,11 +81,10 @@ public class TestSphinxSpeechDetectionComponent {
     }
 
     @Test
-    public void testGetDetectionsVideo() throws Exception {
+    public void testGetDetectionsVideo() {
         String uri = "./test/data/left.avi";
         MPFVideoJob videoJob = new MPFVideoJob("Job TestRun:TestVideoJob", uri, new HashMap<>(),
                 Map.of("DURATION", "5008", "FPS", "24", "FRAME_COUNT", "122"), 0, -1);
-
         try {
             List<MPFVideoTrack> tracks = sphinxComponent.getDetections(videoJob);
 
