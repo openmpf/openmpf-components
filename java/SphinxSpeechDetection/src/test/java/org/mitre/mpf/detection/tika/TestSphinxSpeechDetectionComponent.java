@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -68,12 +67,9 @@ public class TestSphinxSpeechDetectionComponent {
                 Map.of("DURATION", "5020"), 0, -1);
         try {
             List<MPFAudioTrack> tracks = sphinxComponent.getDetections(audioJob);
-
-            assertEquals("Number of expected tracks does not match.", 1 ,tracks.size());
-
-            // Expected: "this three left on the left side of the one closest to us"
-            assertTrue("Expected output is invalid.",
-                    tracks.get(0).getDetectionProperties().get("TRANSCRIPTION").contains("left"));
+            assertEquals("Unexpected number of tracks.", 1 ,tracks.size());
+            assertEquals("Unexpected transcription.", "this three left on the left side of the one closest to us",
+                    tracks.get(0).getDetectionProperties().get("TRANSCRIPTION"));
         } catch (MPFComponentDetectionError e) {
             System.err.println(String.format("An error occurred of type ", e.getDetectionError().name()));
             fail(String.format("An error occurred of type ", e.getDetectionError().name()));
@@ -87,12 +83,9 @@ public class TestSphinxSpeechDetectionComponent {
                 Map.of("DURATION", "5008", "FPS", "24", "FRAME_COUNT", "122"), 0, -1);
         try {
             List<MPFVideoTrack> tracks = sphinxComponent.getDetections(videoJob);
-
-            assertEquals("Number of expected tracks does not match.", 1 ,tracks.size());
-
-            // Expected: "this three left on the left side of the one closest to us"
-            assertTrue("Expected output is invalid.",
-                    tracks.get(0).getDetectionProperties().get("TRANSCRIPTION").contains("left"));
+            assertEquals("Unexpected number of tracks.", 1 ,tracks.size());
+            assertEquals("Unexpected transcription.", "this three left on the left side of the one closest to us",
+                    tracks.get(0).getDetectionProperties().get("TRANSCRIPTION"));
         } catch (MPFComponentDetectionError e) {
             System.err.println(String.format("An error occurred of type ", e.getDetectionError().name()));
             fail(String.format("An error occurred of type ", e.getDetectionError().name()));
