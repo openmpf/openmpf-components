@@ -25,33 +25,45 @@
 #############################################################################
 
 
-cmake_minimum_required(VERSION 3.6)
-project(darknet-detection-tests)
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
 
-set(CMAKE_CXX_STANDARD 11)
+FROM centos:7 as download_weights
+# Download weights in separate stage so they don't need to be re-downloaded when base images change.
+RUN mkdir /weights && curl --location https://pjreddie.com/media/files/yolov3.weights > /weights/yolov3.weights
 
-find_package(GTest)
-if (${GTEST_FOUND})
 
-    enable_testing()
-    find_package(GTest REQUIRED)
-    find_package(mpfComponentTestUtils REQUIRED)
 
-    include_directories(..)
-    add_executable(DarknetDetectionTest test_darknet_detection.cpp)
-    target_link_libraries(DarknetDetectionTest mpfDarknetDetection mpfDarknetStreamingDetection mpfComponentTestUtils
-            GTest::GTest GTest::Main)
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-    add_test(NAME DarknetDetectionTest COMMAND DarknetDetectionTest)
+COPY . .
 
-    # Install test images and videos
-    file(COPY data/ DESTINATION data)
+RUN build-component.sh
 
-    execute_process(COMMAND ln -s ../plugin/DarknetDetection/models models
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+ARG RUN_TESTS=true
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./DarknetDetectionTest; fi
 
-    execute_process(COMMAND ln -s ../plugin/DarknetDetection/lib lib
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    execute_process(COMMAND ln -s ../plugin/DarknetDetection/config config
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-endif()
+
+
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
+
+COPY --from=download_weights /weights $INSTALL_DIR/models
+
+ENV COMPONENT_LOG_NAME darknet-detection.log
+
+COPY --from=build_component $BUILD_DIR/plugin/DarknetDetection $INSTALL_DIR
+
+COPY --from=build_component $BUILD_DIR/libmpfDarknetDetection.so \
+                            $INSTALL_DIR/lib
+
+
+ARG BUILD_SHAS
+ARG BUILD_TAG
+LABEL org.label-schema.license="Apache 2.0" \
+      org.label-schema.name="OpenMPF Darknet Detection" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-ref=$BUILD_SHAS \
+      org.label-schema.vcs-url="https://github.com/openmpf" \
+      org.label-schema.vendor="MITRE" \
+      org.label-schema.version=$BUILD_TAG

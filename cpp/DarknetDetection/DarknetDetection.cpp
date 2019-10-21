@@ -45,20 +45,20 @@ using namespace MPF::COMPONENT;
 
 
 bool DarknetDetection::Init() {
-    std::string run_dir = GetRunDirectory();
-    if (run_dir.empty()) {
-        run_dir = ".";
-    }
+//    std::string run_dir = GetRunDirectory();
+//    if (run_dir.empty()) {
+//        run_dir = ".";
+//    }
 
-    std::string plugin_path = run_dir + "/DarknetDetection";
-    cpu_darknet_lib_path_ = plugin_path + "/lib/libdarknet_wrapper.so";
-    gpu_darknet_lib_path_ = plugin_path + "/lib/libdarknet_wrapper_cuda.so";
+//    std::string plugin_path = run_dir + "/DarknetDetection";
+    cpu_darknet_lib_path_ = "lib/libdarknet_wrapper.so";
+    gpu_darknet_lib_path_ = "lib/libdarknet_wrapper_cuda.so";
 
-    log4cxx::xml::DOMConfigurator::configure(plugin_path + "/config/Log4cxxConfig.xml");
+    log4cxx::xml::DOMConfigurator::configure("config/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("DarknetDetection");
 
     try {
-        models_parser_.Init(plugin_path + "/models")
+        models_parser_.Init("models")
                 .RegisterPathField("network_config", &ModelSettings::network_config_file)
                 .RegisterPathField("names", &ModelSettings::names_file)
                 .RegisterPathField("weights", &ModelSettings::weights_file);

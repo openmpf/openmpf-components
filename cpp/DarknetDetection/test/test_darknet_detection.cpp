@@ -89,12 +89,12 @@ bool object_found(const std::string &expected_object_name, int frame_number, con
 }
 
 
-DarknetDetection init_component() {
-    DarknetDetection component;
-    component.SetRunDirectory("../plugin/");
-    component.Init();
-    return component;
-}
+//DarknetDetection init_component() {
+//    DarknetDetection component;
+//    component.SetRunDirectory("../plugin/");
+//    component.Init();
+//    return component;
+//}
 
 
 TEST(Darknet, ImageTest) {
@@ -105,7 +105,8 @@ TEST(Darknet, ImageTest) {
         }
         MPFImageJob job("Test", "data/dog.jpg", job_properties, {});
 
-        DarknetDetection component = init_component();
+        DarknetDetection component;
+        ASSERT_TRUE(component.Init());
 
         std::vector<MPFImageLocation> results;
         MPFDetectionError rc = component.GetDetections(job, results);
@@ -122,7 +123,9 @@ TEST(Darknet, VideoTest) {
     int end_frame = 4;
     MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, get_yolo_tiny_config(), { });
 
-    DarknetDetection component = init_component();
+    DarknetDetection component;
+    ASSERT_TRUE(component.Init());
+
     std::vector<MPFVideoTrack> results;
     MPFDetectionError rc = component.GetDetections(job, results);
     ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
@@ -193,7 +196,9 @@ TEST(Darknet, UsePreprocessorVideoTest) {
 
     MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, job_properties, { });
 
-    DarknetDetection component = init_component();
+    DarknetDetection component;
+    ASSERT_TRUE(component.Init());
+
     std::vector<MPFVideoTrack> results;
     MPFDetectionError rc = component.GetDetections(job, results);
     ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
@@ -477,7 +482,8 @@ TEST(Darknet, TestModelsIniParser) {
 
 TEST(Darknet, TestWhitelist) {
     Properties job_props = get_yolo_tiny_config();
-    DarknetDetection component = init_component();
+    DarknetDetection component;
+    ASSERT_TRUE(component.Init());
 
     {
         job_props["CLASS_WHITELIST_FILE"] = "data/test-whitelist.txt";
@@ -516,7 +522,9 @@ TEST(Darknet, TestWhitelist) {
 TEST(Darknet, TestInvalidWhitelist) {
     Properties job_props = get_yolo_tiny_config();
 
-    DarknetDetection component = init_component();
+    DarknetDetection component;
+    ASSERT_TRUE(component.Init());
+
     std::vector<MPFImageLocation> results;
 
     {
