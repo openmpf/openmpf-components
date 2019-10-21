@@ -80,6 +80,12 @@
           "defaultValue": "true"
         },
         {
+          "name": "MAX_PARALLEL_THREADS_PER_OCR_SCRIPT",
+          "description": "When set to a value greater than one, limit the number of parallel threads running per OCR call. Each thread processes a single script.",
+          "type": "INT",
+          "defaultValue": "4"
+        },
+        {
           "name": "COMBINE_OSD_SCRIPTS",
           "description": "When enabled, perform OCR on the combination of detected scripts. When disabled, perform OCR on each detected script independently.",
           "type": "BOOLEAN",

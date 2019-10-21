@@ -90,6 +90,7 @@ namespace MPF {
                 int max_text_tracks;
                 int min_height;
                 int adaptive_hist_tile_size;
+                int max_parallel_threads;
                 double adaptive_hist_clip_limit;
                 double adaptive_thrs_c;
                 double scale;
@@ -153,7 +154,7 @@ namespace MPF {
             void process_tesseract_lang_model(const std::string &lang, const cv::Mat &imi, const MPFImageJob &job,
                                               MPFDetectionError &job_status, const std::string &tessdata_script_dir,
                                               const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
-                                              std::string &text_result, double &confidence, bool &success);
+                                              std::string &text_result, double &confidence, bool &success, bool parallel);
 
             void set_default_parameters();
 

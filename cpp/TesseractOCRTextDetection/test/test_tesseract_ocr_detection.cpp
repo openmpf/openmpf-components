@@ -298,8 +298,8 @@ TEST(TESSERACTOCR, TrackFilterTest) {
     custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"},
                          {"TESSERACT_LANGUAGE",    "eng,chi_sim"}};
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
-    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "chi_sim") << "Expected Chinese track";
-    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected English track";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected English track";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "chi_sim") << "Expected Chinese track";
     ASSERT_TRUE(results.size() == 2) << "Expected two output tracks.";
 
     ASSERT_TRUE(ocr.Close());
@@ -726,20 +726,20 @@ TEST(TESSERACTOCR, LanguageTest) {
     ocr.SetRunDirectory("../plugin");
     std::vector<MPFImageLocation> results;
     ASSERT_TRUE(ocr.Init());
-    std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "bul, eng"},
+    std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "eng, bul"},
                                                             {"ENABLE_OSD_AUTOMATION", "false"}};
 
     // Test multilanguage text extraction.
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng-bul.png", ocr, results, custom_properties));
-    assertInImage("data/eng-bul.png", "foreign-text", results, "TAGS", 0);
-    assertInImage("data/eng-bul.png", "свободни", results, "TRIGGER_WORDS", 0);
-    assertInImage("data/eng-bul.png", "103-110", results, "TRIGGER_WORDS_OFFSET", 0);
-    assertInImage("data/eng-bul.png", "Всички хора се раждат свободни", results, "TEXT", 0);
+    assertInImage("data/eng-bul.png", "foreign-text", results, "TAGS", 1);
+    assertInImage("data/eng-bul.png", "свободни", results, "TRIGGER_WORDS", 1);
+    assertInImage("data/eng-bul.png", "103-110", results, "TRIGGER_WORDS_OFFSET", 1);
+    assertInImage("data/eng-bul.png", "Всички хора се раждат свободни", results, "TEXT", 1);
     // Also test mult-keyword phrase tag.
-    assertInImage("data/eng-bul.png", "key-phrase", results, "TAGS", 1);
-    assertInImage("data/eng-bul.png", "brotherhood", results, "TRIGGER_WORDS", 1);
-    assertInImage("data/eng-bul.png", "439-459", results, "TRIGGER_WORDS_OFFSET", 1);
-    assertInImage("data/eng-bul.png", "All human beings are born free", results, "TEXT", 1);
+    assertInImage("data/eng-bul.png", "key-phrase", results, "TAGS", 0 );
+    assertInImage("data/eng-bul.png", "brotherhood", results, "TRIGGER_WORDS", 0);
+    assertInImage("data/eng-bul.png", "439-459", results, "TRIGGER_WORDS_OFFSET", 0);
+    assertInImage("data/eng-bul.png", "All human beings are born free", results, "TEXT", 0);
 
     ASSERT_TRUE(ocr.Close());
 }
