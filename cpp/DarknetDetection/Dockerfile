@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+ARG BUILD_TYPE=gpu
+#ARG BUILD_TYPE=cpu
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
@@ -33,19 +35,46 @@ FROM centos:7 as download_weights
 RUN mkdir /weights && curl --location https://pjreddie.com/media/files/yolov3.weights > /weights/yolov3.weights
 
 
+####################################################
+# Setup CUDA for GPU version
+# Separate stage so CUDA doesn't need to get re-downloaded when openmpf_cpp_component_build changes
+FROM centos:7 as cuda_build_tools_setup
+RUN yum-config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64 \
+    && VERSION=9-0-9.0.176-1 \
+    && yum install -y --nogpgcheck \
+        cuda-minimal-build-$VERSION cuda-libraries-dev-$VERSION \
+    && yum clean all \
+    && rm -rf /var/cache/yum/*
 
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+
+####################################################
+# Extend openmpf_cpp_component_build with CUDA copied in so the build stage can build with CUDA support
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as gpu_build_setup
+COPY --from=cuda_build_tools_setup /usr/local/cuda-9.0 /usr/local/cuda-9.0
+RUN ln -s cuda-9.0 /usr/local/cuda \
+    && echo '/usr/local/cuda/lib64' >> /etc/ld.so.conf.d/cuda.conf \
+    && ldconfig
+
+####################################################
+# Use an unmodified openmpf_cpp_component_build when building without CUDA support.
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as cpu_build_setup
+
+
+####################################################
+# Build Component
+FROM ${BUILD_TYPE}_build_setup as build_component
 
 COPY . .
 
 RUN build-component.sh
 
-ARG RUN_TESTS=true
+ARG RUN_TESTS=false
 RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./DarknetDetectionTest; fi
 
 
-
-FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
+####################################################
+# Creates the final runtime image for the CPU version
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as cpu_final
 
 COPY --from=download_weights /weights $INSTALL_DIR/models
 
@@ -55,7 +84,6 @@ COPY --from=build_component $BUILD_DIR/plugin/DarknetDetection $INSTALL_DIR
 
 COPY --from=build_component $BUILD_DIR/libmpfDarknetDetection.so \
                             $INSTALL_DIR/lib
-
 
 ARG BUILD_SHAS
 ARG BUILD_TAG
@@ -67,3 +95,32 @@ LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.vcs-url="https://github.com/openmpf" \
       org.label-schema.vendor="MITRE" \
       org.label-schema.version=$BUILD_TAG
+
+
+
+####################################################
+# Setup CUDA runtime for GPU version
+FROM centos:7 as cuda_runtime_setup
+RUN yum-config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64 \
+    && VERSION=9-0-9.0.176-1 \
+    && yum install -y --nogpgcheck \
+        cuda-cudart-$VERSION cuda-cublas-$VERSION cuda-curand-$VERSION \
+    && yum clean all \
+    && rm -rf /var/cache/yum/*
+
+
+####################################################
+# Creates the final runtime image for the GPU version
+FROM cpu_final as gpu_final
+
+COPY --from=cuda_runtime_setup /usr/local/cuda-9.0 /usr/local/cuda-9.0
+RUN ln -s cuda-9.0 /usr/local/cuda \
+    && echo '/usr/local/cuda/lib64' >> /etc/ld.so.conf.d/cuda.conf \
+    && ldconfig
+
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+
+#####################################################
+# Specifies which image version will be the final image
+FROM ${BUILD_TYPE}_final

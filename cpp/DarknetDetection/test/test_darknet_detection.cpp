@@ -89,14 +89,6 @@ bool object_found(const std::string &expected_object_name, int frame_number, con
 }
 
 
-//DarknetDetection init_component() {
-//    DarknetDetection component;
-//    component.SetRunDirectory("../plugin/");
-//    component.Init();
-//    return component;
-//}
-
-
 TEST(Darknet, ImageTest) {
     for (bool use_preprocessor : { true, false }) {
         Properties job_properties = get_yolo_tiny_config();

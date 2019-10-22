@@ -49,7 +49,6 @@ if (${GTEST_FOUND})
 
     execute_process(COMMAND ln -s ../plugin/DarknetDetection/models models
                     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
     execute_process(COMMAND ln -s ../plugin/DarknetDetection/lib lib
                     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     execute_process(COMMAND ln -s ../plugin/DarknetDetection/config config

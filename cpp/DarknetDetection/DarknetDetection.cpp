@@ -45,12 +45,6 @@ using namespace MPF::COMPONENT;
 
 
 bool DarknetDetection::Init() {
-//    std::string run_dir = GetRunDirectory();
-//    if (run_dir.empty()) {
-//        run_dir = ".";
-//    }
-
-//    std::string plugin_path = run_dir + "/DarknetDetection";
     cpu_darknet_lib_path_ = "lib/libdarknet_wrapper.so";
     gpu_darknet_lib_path_ = "lib/libdarknet_wrapper_cuda.so";
 
