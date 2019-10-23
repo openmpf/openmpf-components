@@ -31,12 +31,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mitre.mpf.component.api.detection.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 /**
  * The test class provides the framework for developing Java components.  Test cases can be prepared for a variety
@@ -60,34 +58,24 @@ public class TestSphinxSpeechDetectionComponent {
     }
 
     @Test
-    public void testGetDetectionsAudio() {
-        String uri = "./test/data/left.wav";
-        MPFAudioJob audioJob = new MPFAudioJob("Job TestRun:TestAudioJob", uri, new HashMap<>(),
+    public void testGetDetectionsAudio() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/left.wav").getPath();
+        MPFAudioJob audioJob = new MPFAudioJob("Job TestRun:TestAudioJob", mediaPath, Map.of(),
                 Map.of("DURATION", "5020"), 0, -1);
-        try {
-            List<MPFAudioTrack> tracks = sphinxComponent.getDetections(audioJob);
-            assertEquals("Unexpected number of tracks.", 1 ,tracks.size());
-            assertEquals("Unexpected transcription.", "this three left on the left side of the one closest to us",
-                    tracks.get(0).getDetectionProperties().get("TRANSCRIPTION"));
-        } catch (MPFComponentDetectionError e) {
-            System.err.println(String.format("An error occurred of type ", e.getDetectionError().name()));
-            fail(String.format("An error occurred of type ", e.getDetectionError().name()));
-        }
+        List<MPFAudioTrack> tracks = sphinxComponent.getDetections(audioJob);
+        assertEquals("Unexpected number of tracks.", 1 ,tracks.size());
+        assertEquals("Unexpected transcription.", "this three left on the left side of the one closest to us",
+                tracks.get(0).getDetectionProperties().get("TRANSCRIPTION"));
     }
 
     @Test
-    public void testGetDetectionsVideo() {
-        String uri = "./test/data/left.avi";
-        MPFVideoJob videoJob = new MPFVideoJob("Job TestRun:TestVideoJob", uri, new HashMap<>(),
+    public void testGetDetectionsVideo() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/left.avi").getPath();
+        MPFVideoJob videoJob = new MPFVideoJob("Job TestRun:TestVideoJob", mediaPath, Map.of(),
                 Map.of("DURATION", "5008", "FPS", "24", "FRAME_COUNT", "122"), 0, -1);
-        try {
-            List<MPFVideoTrack> tracks = sphinxComponent.getDetections(videoJob);
-            assertEquals("Unexpected number of tracks.", 1 ,tracks.size());
-            assertEquals("Unexpected transcription.", "this three left on the left side of the one closest to us",
-                    tracks.get(0).getDetectionProperties().get("TRANSCRIPTION"));
-        } catch (MPFComponentDetectionError e) {
-            System.err.println(String.format("An error occurred of type ", e.getDetectionError().name()));
-            fail(String.format("An error occurred of type ", e.getDetectionError().name()));
-        }
+        List<MPFVideoTrack> tracks = sphinxComponent.getDetections(videoJob);
+        assertEquals("Unexpected number of tracks.", 1 ,tracks.size());
+        assertEquals("Unexpected transcription.", "this three left on the left side of the one closest to us",
+                tracks.get(0).getDetectionProperties().get("TRANSCRIPTION"));
     }
 }
