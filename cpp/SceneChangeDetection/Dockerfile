@@ -33,24 +33,24 @@ COPY . .
 RUN build-component.sh
 
 ARG RUN_TESTS=false
-RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvFaceDetectionTest; fi
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./SceneChangeDetectionTest; fi
 
 
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-ENV COMPONENT_LOG_NAME ocv-face-detection.log
+ENV COMPONENT_LOG_NAME scenechange-detection.log
 
-COPY --from=build_component $BUILD_DIR/plugin/OcvFaceDetection $INSTALL_DIR
+COPY --from=build_component $BUILD_DIR/plugin/SceneChangeDetection $INSTALL_DIR
 
-COPY --from=build_component $BUILD_DIR/libmpfOcvFaceDetection.so \
+COPY --from=build_component $BUILD_DIR/libmpfSceneChange.so \
                             $INSTALL_DIR/lib
 
 
 ARG BUILD_SHAS
 ARG BUILD_TAG
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF OpenCV Face Detection" \
+      org.label-schema.name="OpenMPF Scene Change Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-ref=$BUILD_SHAS \

@@ -68,20 +68,10 @@ std::string SceneChangeDetection::GetDetectionType() {
 }
 
 bool SceneChangeDetection::Init() {
-
-    // Determine where the executable is running.
-    std::string run_dir = GetRunDirectory();
-    if (run_dir.empty()) {
-        run_dir = ".";
-    }
-    std::string plugin_path = run_dir + "/SceneChangeDetection";
-    std::string config_path = plugin_path + "/config";
-
     // Configure logger.
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
+    log4cxx::xml::DOMConfigurator::configure("config/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("SceneChangeDetection");
 
-    LOG4CXX_DEBUG(logger_, "Plugin path: " << plugin_path);
     LOG4CXX_INFO(logger_, "Initializing SceneChangeDetection");
 
     // Initialize dilateKernel.
@@ -90,7 +80,7 @@ bool SceneChangeDetection::Init() {
     SetDefaultParameters();
     //Once this is done - parameters will be set and SetReadConfigParameters() can be called again to revert back
     //to the params read at initialization.
-    std::string config_params_path = config_path + "/mpfSceneChangeDetection.ini";
+    std::string config_params_path = "config/mpfSceneChangeDetection.ini";
     int rc = LoadConfig(config_params_path, parameters);
     if (rc) {
         LOG4CXX_ERROR(logger_, "Could not parse config file: " << config_params_path);
