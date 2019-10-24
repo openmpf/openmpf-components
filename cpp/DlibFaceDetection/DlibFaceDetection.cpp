@@ -87,23 +87,13 @@ void DlibFaceDetection::SetModes(bool display_window, bool print_debug_info) {
 
 bool DlibFaceDetection::Init() {
 
-    // Determine where the executable is running
-    string run_dir = GetRunDirectory();
-    if (run_dir.empty()) {
-        run_dir = ".";
-    }
-    string plugin_path = run_dir + "/DlibFaceDetection";
-    string config_path = plugin_path + "/config";
-
     // Configure logger
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
+    log4cxx::xml::DOMConfigurator::configure("config/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("DlibFaceDetection");
 
     // uncommenting this line will cause all log statements to go to the detection log
     // instead of the dlib_face_detection log
     //    if (log4cxx::Logger::getRootLogger()->getAllAppenders().size() == 0)
-
-    LOG4CXX_DEBUG(logger_, "Plugin path: " << plugin_path);
 
     LOG4CXX_INFO(logger_, "Initializing Dlib Face");
 
@@ -114,7 +104,7 @@ bool DlibFaceDetection::Init() {
     //once this is done - parameters will be set and SetReadConfigParameters() can be called again to revert back
     //to the params read at initialization
 
-    string config_params_path = config_path + "/mpfDlibFaceDetection.ini";
+    string config_params_path = "config/mpfDlibFaceDetection.ini";
     int rc = LoadConfig(config_params_path, parameters);
     if (rc) {
         LOG4CXX_ERROR(logger_, "Could not parse config file: " << config_params_path);

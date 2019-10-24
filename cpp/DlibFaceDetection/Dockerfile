@@ -24,39 +24,50 @@
 # limitations under the License.                                            #
 #############################################################################
 
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
 
-cmake_minimum_required(VERSION 3.6)
-project(dlib-face-detection-tests)
+# Download library source code so it doesn't need to be re-downloaded when base images change
+FROM centos:7 as download_library_source
 
-set(CMAKE_CXX_STANDARD 11)
+RUN yum install --assumeyes bzip2 \
+    && yum clean all \
+    && rm --recursive /var/cache/yum/*
 
-find_package(GTest)
-if (${GTEST_FOUND})
-
-    enable_testing()
-    find_package(GTest REQUIRED)
-    find_package(Qt4 REQUIRED)
-    find_package(mpfComponentTestUtils REQUIRED)
-
-    include_directories(..)
-    add_executable(DlibFaceDetectionTest test_dlib_face_detection.cpp)
-    target_link_libraries(DlibFaceDetectionTest mpfDlibFaceDetection mpfComponentTestUtils GTest::GTest GTest::Main Qt4::QtCore)
-
-    add_test(NAME DlibFaceDetectionTest COMMAND DlibFaceDetectionTest)
+RUN mkdir --parents /apps/source/dlib-sources; \
+    curl --location 'http://dlib.net/files/dlib-18.18.tar.bz2' \
+        | tar --extract --bzip2 --directory /apps/source/dlib-sources
 
 
-    # Install config file
-    file(COPY test_dlib_face_config.ini DESTINATION config)
-    file(COPY ../plugin-files/config DESTINATION .)
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+
+COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
+
+COPY . .
+
+RUN build-component.sh
+
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./DlibFaceDetectionTest; fi
 
 
-    # Install test images and videos
-    file(GLOB FACE_TEST_IMAGE_FILES data/test_imgs/*)
-    file(COPY ${FACE_TEST_IMAGE_FILES} DESTINATION test/test_imgs)
 
-    file(GLOB FACE_TEST_VIDEO_FILES data/test_vids/*)
-    file(COPY ${FACE_TEST_VIDEO_FILES} DESTINATION test/test_vids)
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-    # Create directory for test output files
-    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test/test_output/)
-endif()
+ENV COMPONENT_LOG_NAME dlib-face-detection.log
+
+COPY --from=build_component $BUILD_DIR/plugin/DlibFaceDetection $INSTALL_DIR
+
+COPY --from=build_component $BUILD_DIR/libmpfDlibFaceDetection.so \
+                            $INSTALL_DIR/lib
+
+ARG BUILD_SHAS
+ARG BUILD_TAG
+LABEL org.label-schema.license="Apache 2.0" \
+      org.label-schema.name="OpenMPF Dlib Face Detection" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-ref=$BUILD_SHAS \
+      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
+      org.label-schema.vendor="MITRE" \
+      org.label-schema.version=$BUILD_TAG
