@@ -53,29 +53,16 @@ std::string OcvDnnDetection::GetDetectionType() {
 
 //-----------------------------------------------------------------------------
 bool OcvDnnDetection::Init() {
-
-    // Determine where the executable is running
-    std::string run_dir = GetRunDirectory();
-    if (run_dir.empty()) {
-        run_dir = ".";
-    }
-    std::string plugin_path = run_dir + "/OcvDnnDetection";
-    std::string config_path = plugin_path + "/config";
-
     // Configure logger
 
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
+    log4cxx::xml::DOMConfigurator::configure("config/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("OcvDnnDetection");
-
-    LOG4CXX_DEBUG(logger_, "Plugin path: " << plugin_path);
-
     LOG4CXX_INFO(logger_, "Initializing OcvDnn");
 
     // Load model info from config file
     // A model is defined by a txt file, a bin file, and a synset
-
     try {
-        models_parser_.Init(plugin_path + "/models")
+        models_parser_.Init("models")
                 .RegisterOptionalPathField("model_config", &ModelSettings::model_config_file)
                 .RegisterPathField("model_binary", &ModelSettings::model_binary_file)
                 .RegisterPathField("synset_txt", &ModelSettings::synset_file);

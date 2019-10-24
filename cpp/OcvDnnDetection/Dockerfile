@@ -24,31 +24,36 @@
 # limitations under the License.                                            #
 #############################################################################
 
-cmake_minimum_required(VERSION 3.6)
-project(ocv-dnn-detection-tests)
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-set(CMAKE_CXX_STANDARD 11)
+COPY . .
 
-find_package(GTest)
-if (${GTEST_FOUND})
+RUN build-component.sh
 
-    enable_testing()
-    find_package(GTest REQUIRED)
-    find_package(mpfComponentTestUtils REQUIRED)
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvDnnDetectionTest; fi
 
-    include_directories(..)
-    add_executable(OcvDnnDetectionTest test_ocv_dnn_detection.cpp)
-    target_link_libraries(OcvDnnDetectionTest mpfOcvDnnDetection mpfComponentTestUtils GTest::GTest GTest::Main)
 
-    add_test(NAME OcvDnnDetectionTest COMMAND OcvDnnDetectionTest)
 
-    # Install test images and videos
-    file(GLOB OCVDNN_TEST_FILES data/*)
-    file(COPY ${OCVDNN_TEST_FILES} DESTINATION data)
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-    execute_process(COMMAND ln -s ../plugin/OcvDnnDetection/config config
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    execute_process(COMMAND ln -s ../plugin/OcvDnnDetection/models models
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+ENV COMPONENT_LOG_NAME ocv-dnn-detection.log
 
-endif()
+COPY --from=build_component $BUILD_DIR/plugin/OcvDnnDetection $INSTALL_DIR
+
+COPY --from=build_component $BUILD_DIR/libmpfOcvDnnDetection.so \
+                            $INSTALL_DIR/lib
+
+
+ARG BUILD_SHAS
+ARG BUILD_TAG
+LABEL org.label-schema.license="Apache 2.0" \
+      org.label-schema.name="OpenMPF OpenCV Deep Neural Network (DNN) classification component" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-ref=$BUILD_SHAS \
+      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
+      org.label-schema.vendor="MITRE" \
+      org.label-schema.version=$BUILD_TAG
