@@ -28,7 +28,7 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-RUN mkdir /tmp/leptonica \
+RUN mkdir /tmp/leptonica; \
     cd /tmp/leptonica; \
     curl --location 'https://github.com/DanBloomberg/leptonica/archive/1.75.0.tar.gz' \
         | tar --extract --gzip; \
