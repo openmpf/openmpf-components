@@ -65,31 +65,18 @@ LicensePlateTextDetection::~LicensePlateTextDetection() {
 
 //-----------------------------------------------------------------------------
 /* virtual */ bool LicensePlateTextDetection::Init() {
-
     //Set locale
     std::setlocale(LC_ALL, "C");
 
-    // Determine where the executable is running
-    string run_dir = GetRunDirectory();
-    if (run_dir.empty()) {
-        run_dir = ".";
-    }
-    string plugin_path = run_dir + "/OalprLicensePlateTextDetection";
-    string config_path = plugin_path + "/config";
-
     // Configure logger
-
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
+    log4cxx::xml::DOMConfigurator::configure("config/Log4cxxConfig.xml");
     td_logger_ = log4cxx::Logger::getLogger("OalprLicensePlateTextDetection");
-
-    LOG4CXX_DEBUG(td_logger_, "Plugin path: " << plugin_path);
 
     // Load the config file
     int rc;
-    rc = LoadConfig(config_path + "/mpfOALPRLicensePlateTextDetection.ini", parameters);
+    rc = LoadConfig("config/mpfOALPRLicensePlateTextDetection.ini", parameters);
     if (rc) {
-        LOG4CXX_ERROR(td_logger_, "loadConfig failed: config_path = "
-                << config_path);
+        LOG4CXX_ERROR(td_logger_, "loadConfig failed: config_path = config/mpfOALPRLicensePlateTextDetection.ini");
         return (false);
     }
 
@@ -114,7 +101,7 @@ LicensePlateTextDetection::~LicensePlateTextDetection() {
         }
     }
     string config_file_name = parameters["OPENALPR_CONFIG_FILE"].toStdString();
-    string config_file = config_path + "/" + config_file_name;
+    string config_file = "config/" + config_file_name;
     LOG4CXX_DEBUG(td_logger_, "OALPR config file: " << config_file);
 
     // Put the path to the runtime_data directory in the config file, if it
@@ -145,7 +132,7 @@ LicensePlateTextDetection::~LicensePlateTextDetection() {
                                                                     << ": " << strerror(errno));
             return false;
         }
-        std::string outpath = "runtime_dir = " + plugin_path + "/runtime_data\n";
+        std::string outpath = "runtime_dir = runtime_data\n";
         conf_file_out << outpath;
     }
     string country = parameters["OPENALPR_COUNTRY_CODE"].toStdString();
@@ -155,7 +142,7 @@ LicensePlateTextDetection::~LicensePlateTextDetection() {
     rectangle_intersection_min_ = parameters["RECTANGLE_INTERSECTION_MIN"].toFloat();
     levenshtein_score_min_ = parameters["LEVENSHTEIN_SCORE_MIN"].toFloat();
 
-    string runtimeDir = plugin_path + "/runtime_data";
+    string runtimeDir = "runtime_data";
     LOG4CXX_DEBUG(td_logger_, "config_file = " << config_file << " runtimeDir = " << runtimeDir);
     alpr_ = new Alpr(country, config_file, runtimeDir);
     alpr_->setTopN(top_n);
