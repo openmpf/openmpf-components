@@ -43,7 +43,6 @@ ENV COMPONENT_LOG_NAME east-text-detection.log
 ################################################################################
 
 ARG BUILD_SHAS
-ARG BUILD_TAG
 
 # Set labels
 LABEL org.label-schema.license="Apache 2.0" \
@@ -52,5 +51,4 @@ LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-ref=$BUILD_SHAS \
       org.label-schema.vcs-url="https://github.com/openmpf" \
-      org.label-schema.vendor="MITRE" \
-      org.label-schema.version=$BUILD_TAG
+      org.label-schema.vendor="MITRE"
