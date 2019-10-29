@@ -90,7 +90,8 @@ namespace MPF {
                 int max_text_tracks;
                 int min_height;
                 int adaptive_hist_tile_size;
-                int max_parallel_threads;
+                int max_parallel_ocr_threads;
+                int max_parallel_pdf_threads;
                 double adaptive_hist_clip_limit;
                 double adaptive_thrs_c;
                 double scale;
@@ -120,6 +121,16 @@ namespace MPF {
                 }
             };
 
+            struct PDF_thread_result {
+                std::vector<OCR_output> ocr_outputs;
+                cv::Mat image;
+                std::string lang;
+                std::string tessdata_script_dir;
+                MPFDetectionError job_status;
+                MPFGenericTrack osd_track_results;
+                bool tesseract_success;
+            };
+
             struct OSD_script {
                 int id;
                 double score;
@@ -144,14 +155,14 @@ namespace MPF {
                                                                                const std::string &jsonfile_path,
                                                                                MPFDetectionError &job_status);
 
-            bool get_tesseract_detections(const MPFImageJob &job, std::vector<OCR_output> &detections_by_lang, cv::Mat &imi,
-                                          const OCR_filter_settings &ocr_fset, MPFDetectionError &job_status,
-                                          const std::string &tessdata_script_dir);
+            void get_tesseract_detections(const std::string &job_name, std::vector<OCR_output> &detections_by_lang, cv::Mat &imi,
+                                          const OCR_filter_settings &ocr_fset, const std::string &lang, MPFDetectionError &job_status,
+                                          const std::string &tessdata_script_dir, bool &process_status, bool process_pdf = false);
 
             bool preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset,
                                   MPFDetectionError &job_status);
 
-            void process_tesseract_lang_model(const std::string &lang, const cv::Mat &imi, const MPFImageJob &job,
+            void process_tesseract_lang_model(const std::string &lang, const cv::Mat &imi, const std::string &job_name,
                                               MPFDetectionError &job_status, const std::string &tessdata_script_dir,
                                               const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                               std::string &text_result, double &confidence, bool &success, bool parallel);
@@ -194,9 +205,9 @@ namespace MPF {
                          std::string &tessdata_script_dir);
 
             std::string
-            return_valid_tessdir(const MPFImageJob &job, const std::string &lang_str, const std::string &directory);
+            return_valid_tessdir(const std::string &job_name, const std::string &lang_str, const std::string &directory);
 
-            bool check_tess_model_directory(const MPFImageJob &job, const std::string &lang_str,
+            bool check_tess_model_directory(const std::string &job_name, const std::string &lang_str,
                                             const std::string &directory);
         };
 

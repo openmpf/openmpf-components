@@ -149,6 +149,8 @@ void convert_results(std::vector<MPFImageLocation> &im_track, const std::vector<
     }
 }
 
+
+
 TEST(TESSERACTOCR, ImageProcessingTest) {
 
     // Ensure contrast and unstructured image processing settings are enabled.
@@ -417,6 +419,7 @@ TEST(TESSERACTOCR, ModeTest) {
 
     ASSERT_TRUE(ocr.Close());
 }
+
 
 TEST(TESSERACTOCR, OSDTest) {
 
@@ -744,6 +747,7 @@ TEST(TESSERACTOCR, LanguageTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
+
 TEST(TESSERACTOCR, DocumentTest) {
 
     TesseractOCRTextDetection ocr;
@@ -751,7 +755,8 @@ TEST(TESSERACTOCR, DocumentTest) {
     std::vector<MPFImageLocation> results;
     std::vector<MPFGenericTrack> results_pdf;
     ASSERT_TRUE(ocr.Init());
-    std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
+    std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"},
+                                                            {"MAX_PARALLEL_THREADS_PER_PDF_RUN", "2"}};
 
     // Test document text extraction.
     ASSERT_NO_FATAL_FAILURE(runDocumentDetection("data/test.pdf", ocr, results_pdf, custom_properties));
@@ -762,6 +767,31 @@ TEST(TESSERACTOCR, DocumentTest) {
     assertInImage("data/test.pdf", "vehicle", results, "TAGS", 1);
     assertInImage("data/test.pdf", "Vehicle", results, "TRIGGER_WORDS", 1);
     assertInImage("data/test.pdf", "Vehicle", results, "TEXT", 1);
+    assertInImage("data/test.pdf", "vehicle", results, "TAGS", 2);
+    assertInImage("data/test.pdf", "Auto", results, "TRIGGER_WORDS", 2);
+    assertInImage("data/test.pdf", "Automobile", results, "TEXT", 2);
 
+    ASSERT_TRUE(ocr.Close());
+}
+
+TEST(TESSERACTOCR, RedundantFilterTest) {
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    // Check that redundant scripts are ignored properly.
+
+
+    std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION",             "false"},
+                                                            {"TESSERACT_LANGUAGE",    "eng+eng,eng+eng,fra,fra+eng,eng+fra+fra"}};
+
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
+    ASSERT_TRUE(results.size() == 4) << "Expected four text tracks (second input should be ignored).";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected redundant English script ignored.";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "fra") << "Expected French script.";
+    ASSERT_TRUE(results[2].detection_properties.at("TEXT_LANGUAGE") == "fra+eng") << "Expected French followed by English script.";
+    ASSERT_TRUE(results[3].detection_properties.at("TEXT_LANGUAGE") == "eng+fra") << "Expected English followed by French script.";
     ASSERT_TRUE(ocr.Close());
 }

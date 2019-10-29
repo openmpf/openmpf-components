@@ -81,7 +81,13 @@
         },
         {
           "name": "MAX_PARALLEL_THREADS_PER_OCR_SCRIPT",
-          "description": "When set to a value greater than one, limit the number of parallel threads running per OCR call. Each thread processes a single script.",
+          "description": "When set to a value greater than one, limit the number of parallel threads running per OCR call. Each thread processes a single script. Is ignored during PDF processing.",
+          "type": "INT",
+          "defaultValue": "4"
+        },
+        {
+          "name": "MAX_PARALLEL_THREADS_PER_PDF_RUN",
+          "description": "When set to a value greater than one, limit the number of parallel threads running per PDF processing. Each thread processes a different page.",
           "type": "INT",
           "defaultValue": "4"
         },
