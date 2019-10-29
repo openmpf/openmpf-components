@@ -74,12 +74,6 @@
           "defaultValue": "true"
         },
         {
-          "name": "ENABLE_PARALLEL_PROCESSING",
-          "description": "When enabled, performs multiple OCR runs in parallel threads. When disabled, performs OCR on each separate script serially.",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
-        },
-        {
           "name": "MAX_PARALLEL_THREADS_PER_OCR_SCRIPT",
           "description": "When set to a value greater than one, limit the number of parallel threads running per OCR call. Each thread processes a single script. Is ignored during PDF processing.",
           "type": "INT",

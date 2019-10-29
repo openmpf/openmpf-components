@@ -300,8 +300,8 @@ TEST(TESSERACTOCR, TrackFilterTest) {
     custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"},
                          {"TESSERACT_LANGUAGE",    "eng,chi_sim"}};
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
-    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected English track";
-    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "chi_sim") << "Expected Chinese track";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "chi_sim") << "Expected Chinese track";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected English track";
     ASSERT_TRUE(results.size() == 2) << "Expected two output tracks.";
 
     ASSERT_TRUE(ocr.Close());
@@ -734,15 +734,15 @@ TEST(TESSERACTOCR, LanguageTest) {
 
     // Test multilanguage text extraction.
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng-bul.png", ocr, results, custom_properties));
-    assertInImage("data/eng-bul.png", "foreign-text", results, "TAGS", 1);
-    assertInImage("data/eng-bul.png", "свободни", results, "TRIGGER_WORDS", 1);
-    assertInImage("data/eng-bul.png", "103-110", results, "TRIGGER_WORDS_OFFSET", 1);
-    assertInImage("data/eng-bul.png", "Всички хора се раждат свободни", results, "TEXT", 1);
+    assertInImage("data/eng-bul.png", "foreign-text", results, "TAGS", 0);
+    assertInImage("data/eng-bul.png", "свободни", results, "TRIGGER_WORDS", 0);
+    assertInImage("data/eng-bul.png", "103-110", results, "TRIGGER_WORDS_OFFSET", 0);
+    assertInImage("data/eng-bul.png", "Всички хора се раждат свободни", results, "TEXT", 0);
     // Also test mult-keyword phrase tag.
-    assertInImage("data/eng-bul.png", "key-phrase", results, "TAGS", 0 );
-    assertInImage("data/eng-bul.png", "brotherhood", results, "TRIGGER_WORDS", 0);
-    assertInImage("data/eng-bul.png", "439-459", results, "TRIGGER_WORDS_OFFSET", 0);
-    assertInImage("data/eng-bul.png", "All human beings are born free", results, "TEXT", 0);
+    assertInImage("data/eng-bul.png", "key-phrase", results, "TAGS", 1);
+    assertInImage("data/eng-bul.png", "brotherhood", results, "TRIGGER_WORDS", 1);
+    assertInImage("data/eng-bul.png", "439-459", results, "TRIGGER_WORDS_OFFSET", 1);
+    assertInImage("data/eng-bul.png", "All human beings are born free", results, "TEXT", 1);
 
     ASSERT_TRUE(ocr.Close());
 }
@@ -790,8 +790,9 @@ TEST(TESSERACTOCR, RedundantFilterTest) {
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
     ASSERT_TRUE(results.size() == 4) << "Expected four text tracks (second input should be ignored).";
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected redundant English script ignored.";
-    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "fra") << "Expected French script.";
-    ASSERT_TRUE(results[2].detection_properties.at("TEXT_LANGUAGE") == "fra+eng") << "Expected French followed by English script.";
-    ASSERT_TRUE(results[3].detection_properties.at("TEXT_LANGUAGE") == "eng+fra") << "Expected English followed by French script.";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng+fra") << "Expected English followed by French script.";
+    ASSERT_TRUE(results[2].detection_properties.at("TEXT_LANGUAGE") == "fra") << "Expected French script.";
+    ASSERT_TRUE(results[3].detection_properties.at("TEXT_LANGUAGE") == "fra+eng") << "Expected French followed by English script.";
+
     ASSERT_TRUE(ocr.Close());
 }

@@ -82,7 +82,6 @@ namespace MPF {
                 bool rotate_and_detect;
                 bool full_regex_search;
                 bool enable_osd_fallback;
-                bool enable_parallel_processing;
                 int adaptive_thrs_pixel;
                 int psm;
                 int oem;
@@ -194,8 +193,8 @@ namespace MPF {
                                                 const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                                 MPFDetectionError &job_status);
 
-            bool process_text_tagging(Properties &detection_properties, const MPFImageJob &job, OCR_output &ocr_out,
-                                      MPFDetectionError &job_status,
+            bool process_text_tagging(Properties &detection_properties, const MPFImageJob &job,
+                                      const OCR_output &ocr_out, MPFDetectionError &job_status,
                                       const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                       const std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex,
                                       int page_num = -1);
