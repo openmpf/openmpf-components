@@ -286,11 +286,11 @@ void TesseractOCRTextDetection::set_read_config_parameters() {
     if (parameters.contains("ENABLE_OSD_FALLBACK")) {
         default_ocr_fset.enable_osd_fallback = parameters["ENABLE_OSD_FALLBACK"].toInt() > 0;
     }
-    if (parameters.contains("MAX_PARALLEL_THREADS_PER_OCR_SCRIPT")) {
-        default_ocr_fset.max_parallel_ocr_threads = parameters["MAX_PARALLEL_THREADS_PER_OCR_SCRIPT"].toInt();
+    if (parameters.contains("MAX_PARALLEL_SCRIPT_THREADS")) {
+        default_ocr_fset.max_parallel_ocr_threads = parameters["MAX_PARALLEL_SCRIPT_THREADS"].toInt();
     }
-    if (parameters.contains("MAX_PARALLEL_THREADS_PER_PDF_RUN")) {
-            default_ocr_fset.max_parallel_pdf_threads = parameters["MAX_PARALLEL_THREADS_PER_PDF_RUN"].toInt();
+    if (parameters.contains("MAX_PARALLEL_PAGE_THREADS")) {
+            default_ocr_fset.max_parallel_pdf_threads = parameters["MAX_PARALLEL_PAGE_THREADS"].toInt();
     }
 }
 
@@ -1289,8 +1289,8 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
     ocr_fset.rotate_and_detect_min_confidence = DetectionComponentUtils::GetProperty<double>(job.job_properties, "ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE", default_ocr_fset.rotate_and_detect_min_confidence);
     ocr_fset.full_regex_search = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"FULL_REGEX_SEARCH", default_ocr_fset.full_regex_search);
     ocr_fset.enable_osd_fallback = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"ENABLE_OSD_FALLBACK", default_ocr_fset.enable_osd_fallback);
-    ocr_fset.max_parallel_ocr_threads = DetectionComponentUtils::GetProperty<int>(job.job_properties, "MAX_PARALLEL_THREADS_PER_OCR_SCRIPT", default_ocr_fset.max_parallel_ocr_threads);
-    ocr_fset.max_parallel_pdf_threads = DetectionComponentUtils::GetProperty<int>(job.job_properties, "MAX_PARALLEL_THREADS_PER_PDF_RUN", default_ocr_fset.max_parallel_pdf_threads);
+    ocr_fset.max_parallel_ocr_threads = DetectionComponentUtils::GetProperty<int>(job.job_properties, "MAX_PARALLEL_SCRIPT_THREADS", default_ocr_fset.max_parallel_ocr_threads);
+    ocr_fset.max_parallel_pdf_threads = DetectionComponentUtils::GetProperty<int>(job.job_properties, "MAX_PARALLEL_PAGE_THREADS", default_ocr_fset.max_parallel_pdf_threads);
 
     // Tessdata setup
     ocr_fset.model_dir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODELS_DIR_PATH", default_ocr_fset.model_dir);
