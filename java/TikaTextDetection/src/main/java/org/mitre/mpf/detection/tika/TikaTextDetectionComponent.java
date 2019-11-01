@@ -104,11 +104,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         // Acquire tag file.
         String tagFile = MapUtils.getString(properties, "TAGGING_FILE");
         if (tagFile == null) {
-            String runDirectory = this.getRunDirectory();
-            if (runDirectory == null || runDirectory.length() < 1) {
-                runDirectory = "../plugins";
-            }
-            tagFile = runDirectory + "/TikaDetection/config/text-tags.json";
+            tagFile = "config/text-tags.json";
         }
         tagFile = MPFEnvironmentVariablePathExpander.expand(tagFile);
 
@@ -293,7 +289,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                     String tagsListResult = String.join("; ", tagsList);
                     Set<String> triggerWordsSet = triggerWordsMap.keySet();
                     String triggerWordsResult = String.join("; ", triggerWordsSet);
-                    
+
                     ArrayList<String> offsetsList = new ArrayList();
                     for (String key: triggerWordsSet) {
                         offsetsList.add(String.join(", ",triggerWordsMap.get(key)));

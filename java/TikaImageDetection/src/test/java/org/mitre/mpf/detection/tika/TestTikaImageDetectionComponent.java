@@ -59,7 +59,6 @@ public class TestTikaImageDetectionComponent {
     @Before
     public void setUp() {
         tikaComponent = new TikaImageDetectionComponent();
-        tikaComponent.setConfigDirectory("plugin-files/config");
         tikaComponent.init();
     }
 
