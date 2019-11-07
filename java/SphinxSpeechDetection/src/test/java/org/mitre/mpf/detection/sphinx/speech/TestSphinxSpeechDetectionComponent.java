@@ -64,8 +64,8 @@ public class TestSphinxSpeechDetectionComponent {
                 Map.of("DURATION", "5020"), 0, -1);
         List<MPFAudioTrack> tracks = sphinxComponent.getDetections(audioJob);
         assertEquals("Unexpected number of tracks.", 1 ,tracks.size());
-        assertEquals("Unexpected transcription.", "this three left on the left side of the one closest to us",
-                tracks.get(0).getDetectionProperties().get("TRANSCRIPTION"));
+        assertEquals("Unexpected transcript.", "this three left on the left side of the one closest to us",
+                tracks.get(0).getDetectionProperties().get("TRANSCRIPT"));
     }
 
     @Test
@@ -75,7 +75,7 @@ public class TestSphinxSpeechDetectionComponent {
                 Map.of("DURATION", "5008", "FPS", "24", "FRAME_COUNT", "122"), 0, -1);
         List<MPFVideoTrack> tracks = sphinxComponent.getDetections(videoJob);
         assertEquals("Unexpected number of tracks.", 1 ,tracks.size());
-        assertEquals("Unexpected transcription.", "this three left on the left side of the one closest to us",
-                tracks.get(0).getDetectionProperties().get("TRANSCRIPTION"));
+        assertEquals("Unexpected transcript.", "this three left on the left side of the one closest to us",
+                tracks.get(0).getDetectionProperties().get("TRANSCRIPT"));
     }
 }

@@ -39,7 +39,7 @@ import java.io.*;
 import java.util.*;
 
 public class SphinxSpeechDetectionProcessor {
-	
+
     private static final Logger LOG = LoggerFactory.getLogger(SphinxSpeechDetectionProcessor.class);
 
     private final Configuration sphinxConfiguration;
@@ -84,7 +84,7 @@ public class SphinxSpeechDetectionProcessor {
 
     private static MPFAudioTrack convert(SpeechResult sphinxResult, int timeOffset) {
         String hypothesis = sphinxResult.getHypothesis();
-        LOG.info("Sphinx transcription hypothesis: " + hypothesis);
+        LOG.info("Sphinx transcript hypothesis: " + hypothesis);
 
         List<WordResult> wordResults = sphinxResult.getWords();
         long sphinxResultStartTime = wordResults.isEmpty()
@@ -108,7 +108,7 @@ public class SphinxSpeechDetectionProcessor {
         int trackStopTime  = (int) sphinxResultStopTime + timeOffset;
 
         Map<String,String> properties = new HashMap<>();
-        properties.put("TRANSCRIPTION", hypothesis);
+        properties.put("TRANSCRIPT", hypothesis);
         return new MPFAudioTrack(trackStartTime, trackStopTime, -1, properties);
     }
 
