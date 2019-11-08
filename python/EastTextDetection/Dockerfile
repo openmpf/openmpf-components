@@ -35,6 +35,10 @@ COPY . .
 
 RUN install-component.sh
 
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then python tests/test_east.py; fi
+
+
 ENV COMPONENT_LOG_NAME east-text-detection.log
 
 

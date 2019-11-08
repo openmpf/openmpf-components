@@ -29,19 +29,14 @@ import sys
 import os
 from collections import Counter
 
-try:
-    # Add east_component to path.
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-    from east_component.east_component import EastComponent
-except ImportError as e:
-    print('Failed to import east_component due to:', e)
-    EastComponent = None
+# Add east_component to path.
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from east_component.east_component import EastComponent
 
 import unittest
 import mpf_component_api as mpf
 
 
-@unittest.skipUnless(EastComponent, 'EAST dependencies do not appear to be installed.')
 class TestEast(unittest.TestCase):
 
     def test_image_file(self):
