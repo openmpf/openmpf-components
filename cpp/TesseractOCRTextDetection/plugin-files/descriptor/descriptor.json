@@ -75,7 +75,7 @@
         },
         {
           "name": "MAX_PARALLEL_SCRIPT_THREADS",
-          "description": "When set to a value <= 1, OCR parallel processing is disabled. When set to a value > 1, OCR may be performed in parallel using up to the specified number of threads, where each thread is using a different script. Currently is disabled during parallel processing of PDF pages.",
+          "description": "When set to a value <= 1, OCR parallel processing is disabled. When set to a value > 1, OCR may be performed in parallel using up to the specified number of threads, where each thread is using a different script. Disabled during parallel processing of PDF pages.",
           "type": "INT",
           "defaultValue": "4"
         },
