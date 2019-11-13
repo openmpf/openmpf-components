@@ -120,20 +120,9 @@ namespace MPF {
                 }
             };
 
-            struct PDF_thread_result {
-                std::vector<OCR_output> ocr_outputs;
-                cv::Mat image;
-                std::string lang;
-                std::string tessdata_script_dir;
-                MPFDetectionError job_status;
-                MPFGenericTrack osd_track_results;
-                bool tesseract_success;
-            };
-
             struct OSD_script {
                 int id;
                 double score;
-
                 bool operator<(const OSD_script &script) const {
                     return (score < script.score);
                 }
@@ -143,34 +132,82 @@ namespace MPF {
                 }
             };
 
+            struct OCR_job_inputs {
+                const std::string *job_name;
+                const std::string *lang;
+                const std::string *tessdata_script_dir;
+                const std::string *run_dir;
+                const cv::Mat *imi;
+                const OCR_filter_settings *ocr_fset;
+                bool process_pdf;
+
+                log4cxx::LoggerPtr hw_logger_;
+                std::map<std::pair<int, std::string>, tesseract::TessBaseAPI *> *tess_api_map;
+            };
+
+            struct Page_results{
+                std::vector<OCR_output> *detections_by_lang;
+                MPFDetectionError *job_status;
+                std::set<std::string> missing_languages;
+            };
+
+            struct OCR_variables {
+                std::string text_result;
+                std::string lang;
+                MPFDetectionError job_status;
+                double confidence;
+                bool parallel_processing;
+                std::set<std::string> missing_languages;
+            };
+
+
+
+            struct PDF_thread_variables {
+                std::vector<OCR_output> ocr_outputs;
+                cv::Mat image;
+                std::string lang;
+                std::string tessdata_script_dir;
+                MPFDetectionError job_status;
+                MPFGenericTrack osd_track_results;
+
+                OCR_job_inputs ocr_input;
+                Page_results page_res;
+
+                PDF_thread_variables()
+                {
+                    ocr_input.lang = &lang;
+                    ocr_input.tessdata_script_dir = &tessdata_script_dir;
+                    ocr_input.imi = &image;
+                    page_res.job_status = &job_status;
+                    page_res.detections_by_lang = &ocr_outputs;
+                }
+            };
+
             log4cxx::LoggerPtr hw_logger_;
             QHash<QString, QString> parameters;
             OCR_filter_settings default_ocr_fset;
 
             // Map of {OCR engine, language} pairs to Tesseract API pointers
             std::map<std::pair<int, std::string>, tesseract::TessBaseAPI *> tess_api_map;
-
             std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> parse_json(const MPFJob &job,
                                                                                const std::string &jsonfile_path,
                                                                                MPFDetectionError &job_status);
 
-            void get_tesseract_detections(const std::string &job_name, std::vector<OCR_output> &detections_by_lang, cv::Mat &imi,
-                                          const OCR_filter_settings &ocr_fset, const std::string &lang, MPFDetectionError &job_status,
-                                          const std::string &tessdata_script_dir, bool &process_status, bool process_pdf = false);
 
-            bool preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset,
+            static bool get_tesseract_detections(TesseractOCRTextDetection::OCR_job_inputs *input,
+                                                 TesseractOCRTextDetection::Page_results *result);
+
+            bool preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                   MPFDetectionError &job_status);
 
-            void process_tesseract_lang_model(const std::string &lang, const cv::Mat &imi, const std::string &job_name,
-                                              MPFDetectionError &job_status, const std::string &tessdata_script_dir,
-                                              const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
-                                              std::string &text_result, double &confidence, bool &success, bool parallel);
+            static bool process_tesseract_lang_model(TesseractOCRTextDetection::OCR_job_inputs *input,
+                                                     TesseractOCRTextDetection::OCR_variables  *result);
 
             void set_default_parameters();
 
             void set_read_config_parameters();
 
-            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, const Text_type &text_type = Unknown);
+            void load_settings(const MPFJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset, const Text_type &text_type = Unknown);
 
             void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
                                 std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex);
@@ -199,15 +236,25 @@ namespace MPF {
                                       const std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex,
                                       int page_num = -1);
 
-            void get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, OCR_filter_settings &ocr_fset,
+            void get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job,
+                         TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                          Properties &detection_properties, MPFDetectionError &job_status,
                          std::string &tessdata_script_dir);
 
-            std::string
-            return_valid_tessdir(const std::string &job_name, const std::string &lang_str, const std::string &directory);
+            static std::string return_valid_tessdir(const std::string &job_name,
+                                                    const std::string &lang_str,
+                                                    const std::string &directory,
+                                                    const std::string &run_directory,
+                                                    log4cxx::LoggerPtr &logger,
+                                                    std::set<std::string> &missing_languages,
+                                                    std::set<std::string> &found_languages);
 
-            bool check_tess_model_directory(const std::string &job_name, const std::string &lang_str,
-                                            const std::string &directory);
+            static bool check_tess_model_directory(const std::string &job_name,
+                                                   const std::string &lang_str,
+                                                   const std::string &directory,
+                                                   log4cxx::LoggerPtr &logger,
+                                                   std::set<std::string> &missing_languages,
+                                                   std::set<std::string> &found_languages);
         };
 
     }

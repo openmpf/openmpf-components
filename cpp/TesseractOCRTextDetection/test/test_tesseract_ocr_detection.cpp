@@ -646,7 +646,8 @@ TEST(TESSERACTOCR, OSDMultiPageTest) {
     custom_properties = {{"ENABLE_OSD_AUTOMATION",             "true"},
                          {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE", "0.30"},
                          {"ENABLE_OSD_FALLBACK",               "false"},
-                         {"MIN_OSD_SCRIPT_SCORE",              "40"}};
+                         {"MIN_OSD_SCRIPT_SCORE",              "40"},
+                         {"MAX_PARALLEL_PAGE_THREADS", "2"}};
 
     // Check multiple page OSD processing.
     // Ensure that the default language is properly reset.
@@ -747,7 +748,6 @@ TEST(TESSERACTOCR, LanguageTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
-
 TEST(TESSERACTOCR, DocumentTest) {
 
     TesseractOCRTextDetection ocr;
@@ -756,7 +756,7 @@ TEST(TESSERACTOCR, DocumentTest) {
     std::vector<MPFGenericTrack> results_pdf;
     ASSERT_TRUE(ocr.Init());
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"},
-                                                            {"MAX_PARALLEL_THREADS_PER_PDF_RUN", "2"}};
+                                                            {"MAX_PARALLEL_PAGE_THREADS", "2"}};
 
     // Test document text extraction.
     ASSERT_NO_FATAL_FAILURE(runDocumentDetection("data/test.pdf", ocr, results_pdf, custom_properties));
@@ -785,7 +785,8 @@ TEST(TESSERACTOCR, RedundantFilterTest) {
 
 
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION",             "false"},
-                                                            {"TESSERACT_LANGUAGE",    "eng+eng,eng+eng,fra,fra+eng,eng+fra+fra"}};
+                                                            {"TESSERACT_LANGUAGE",    "eng+eng,eng+eng,fra,fra+eng,eng+fra+fra"},
+                                                            {"MAX_PARALLEL_SCRIPT_THREADS", "4"}};
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
     ASSERT_TRUE(results.size() == 4) << "Expected four text tracks (second input should be ignored).";
