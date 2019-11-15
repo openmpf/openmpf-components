@@ -85,19 +85,10 @@ COPY --from=build_component $BUILD_DIR/plugin/DarknetDetection $INSTALL_DIR
 COPY --from=build_component $BUILD_DIR/libmpfDarknetDetection.so \
                             $INSTALL_DIR/lib
 
-ARG BUILD_SHAS
-LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF Darknet Detection" \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.url="https://openmpf.github.io" \
-      org.label-schema.vcs-ref=$BUILD_SHAS \
-      org.label-schema.vcs-url="https://github.com/openmpf" \
-      org.label-schema.vendor="MITRE"
-
-
 
 ####################################################
 # Setup CUDA runtime for GPU version
+# Use a separate stage so that CUDA doesn't need to be re-installed when source code changes.
 FROM centos:7 as cuda_runtime_setup
 RUN yum-config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64 \
     && VERSION=9-0-9.0.176-1 \
@@ -122,3 +113,12 @@ ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 #####################################################
 # Specifies which image version will be the final image
 FROM ${BUILD_TYPE}_final
+
+ARG BUILD_SHAS
+LABEL org.label-schema.license="Apache 2.0" \
+      org.label-schema.name="OpenMPF Darknet Detection ($BUILD_TYPE)" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-ref=$BUILD_SHAS \
+      org.label-schema.vcs-url="https://github.com/openmpf" \
+      org.label-schema.vendor="MITRE"
