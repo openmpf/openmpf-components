@@ -261,3 +261,13 @@ TESSERACT_PSM Value| Description
 
 For more details please consult the Tesseract command line usage documentation
 (https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage).
+
+# Parallel OCR model and PDF processing:
+
+Users can set the `MAX_PARALLEL_SCRIPT_THREADS` and `MAX_PARALLEL_PAGE_THREADS` to enable and adjust
+parallel processing behavior in this component.
+
+For image processing only, `MAX_PARALLEL_SCRIPT_THREADS` limits the maximum number of active threads, with each thread running one pass of OCR on an image.
+For document processing only, `MAX_PARALLEL_PAGE_THREADS` limits the maximum number of active threads, with each thread processing OCRs serially on a single page or image from that document.
+
+When `MAX_PARALLEL_SCRIPT_THREADS` or `MAX_PARALLEL_PAGE_THREADS` is set to a value of 1 or less, parallel threading of multiple OCRs or pages is disabled respectively.
