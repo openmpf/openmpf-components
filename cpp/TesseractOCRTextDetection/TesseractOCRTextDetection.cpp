@@ -703,17 +703,18 @@ bool TesseractOCRTextDetection::process_tesseract_lang_model(TesseractOCRTextDet
         // Confirm each language model is present in tessdata or shared model directory.
         // Language models that run together must be present in the same directory.
         string tessdata_dir = "";
+        set<string> languages_found, missing_languages;
         if (*inp->tessdata_script_dir == "") {
             // Left blank when OSD is not run or scripts not found and reverted to default language.
             // Check default language models are present.
-            set<string> languages_found;
             tessdata_dir = return_valid_tessdir(*inp->job_name, var->lang, inp->ocr_fset->model_dir, *inp->run_dir,
-                                                inp->hw_logger_, var->missing_languages, languages_found);
+                                                 inp->hw_logger_, missing_languages, languages_found);
         } else {
             tessdata_dir = *inp->tessdata_script_dir;
         }
 
-        if (tessdata_dir == "") {
+        // Fail if user specified language is missing.
+        if (missing_languages.size() > 0) {
             LOG4CXX_ERROR(inp->hw_logger_, "[" + *inp->job_name + "] Tesseract language models not found. Please add the " +
                                       "associated *.traineddata files to your tessdata directory " +
                                       "($MPF_HOME/plugins/TesseractOCRTextDetection/tessdata) " +
@@ -774,7 +775,6 @@ bool TesseractOCRTextDetection::get_tesseract_detections(TesseractOCRTextDetecti
         std::future<bool>  ocr_threads[ocr_lang_inputs.size()];
         int index = 0;
         std::set<int> active_threads;
-        bool no_langs_found = true;
 
         // Initialize a new track for each language specified.
         for (const string &lang: ocr_lang_inputs) {
@@ -788,22 +788,17 @@ bool TesseractOCRTextDetection::get_tesseract_detections(TesseractOCRTextDetecti
                                             &ocr_results[index]);
             active_threads.insert(index);
             index++;
-
             while (active_threads.size() >= inp->ocr_fset->max_parallel_ocr_threads) {
                 for (const int &i: active_threads) {
                     if ( ocr_threads[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
                         if (!ocr_threads[i].get()) {
-                            // Terminate for any error except missing lang (check if others return valid results).
-                            if (ocr_results[index].job_status != MPF_COULD_NOT_OPEN_DATAFILE) {
-                                active_threads.erase(i);
-                                // Terminate early due to error.
-                                for(const int &remain: active_threads) {
-                                    ocr_threads[remain].get();
-                                }
-                                return false;
+                            // Terminate for any error.
+                            active_threads.erase(i);
+                            // Terminate remaining threads early due to error.
+                            for(const int &remain: active_threads) {
+                                ocr_threads[remain].get();
                             }
-                        } else {
-                            no_langs_found = false;
+                            return false;
                         }
                         active_threads.erase(i);
                     }
@@ -814,32 +809,18 @@ bool TesseractOCRTextDetection::get_tesseract_detections(TesseractOCRTextDetecti
         // Wait for all remaining threads to finish.
         for (const int &i: active_threads) {
             if (!ocr_threads[i].get()) {
-                // Terminate for any error except missing lang (check if others return valid results).
-                if (ocr_results[index].job_status != MPF_COULD_NOT_OPEN_DATAFILE) {
-                    active_threads.erase(i);
-                    // Terminate due to error.
-                    for(const int &remain: active_threads) {
-                        ocr_threads[remain].get();
-                    }
-                    return false;
+                // Terminate for any error.
+                active_threads.erase(i);
+                // Terminate remaining threads.
+                for(const int &remain: active_threads) {
+                    ocr_threads[remain].get();
                 }
-            } else {
-                no_langs_found = false;
+                return false;
             }
             active_threads.erase(i);
         }
 
-        // All threads had reported missing language models.
-        if (no_langs_found) {
-            *res->job_status = MPF_COULD_NOT_OPEN_DATAFILE;
-            return false;
-        }
-
         for (OCR_variables &ocr_res: ocr_results) {
-            if (ocr_res.missing_languages.size() > 0) {
-                res->missing_languages.insert(ocr_res.missing_languages.begin(), ocr_res.missing_languages.end());
-                continue;
-            }
             *res->job_status = ocr_res.job_status;
             LOG4CXX_DEBUG(inp->hw_logger_, "[" + *inp->job_name + "] Tesseract run successful.");
             wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(ocr_res.text_result);
@@ -848,7 +829,6 @@ bool TesseractOCRTextDetection::get_tesseract_detections(TesseractOCRTextDetecti
             res->detections_by_lang->push_back(output_ocr);
         }
     } else {
-        bool no_langs_found = true;
         // Serial ocr or single track processing.
         for (const string &lang: ocr_lang_inputs) {
             OCR_variables ocr_var;
@@ -864,15 +844,7 @@ bool TesseractOCRTextDetection::get_tesseract_detections(TesseractOCRTextDetecti
 
             }
             if(!process_tesseract_lang_model(inp, &ocr_var)) {
-                if (ocr_var.job_status != MPF_COULD_NOT_OPEN_DATAFILE) {
                     return false;
-                } else {
-                    res->missing_languages.insert(ocr_var.missing_languages.begin(), ocr_var.missing_languages.end());
-                    continue;
-                }
-
-            } else {
-                no_langs_found = false;
             }
 
             LOG4CXX_DEBUG(inp->hw_logger_, "[" + *inp->job_name + "] Tesseract run successful.");
@@ -880,10 +852,6 @@ bool TesseractOCRTextDetection::get_tesseract_detections(TesseractOCRTextDetecti
 
             TesseractOCRTextDetection::OCR_output output_ocr = {ocr_var.confidence, ocr_var.lang, t_detection, "", false};
             res->detections_by_lang->push_back(output_ocr);
-        }
-        if (no_langs_found) {
-            *res->job_status =  MPF_COULD_NOT_OPEN_DATAFILE;
-            return false;
         }
     }
 
@@ -917,18 +885,25 @@ string TesseractOCRTextDetection::return_valid_tessdir(const string &job_name, c
         return local_plugin_directory;
     }
 
-    // Return directory with greater number of valid scripts.
-    if (partial_first.size() > 0 || partial_second.size() > 0) {
-        if  (partial_first.size() > partial_second.size()) {
-            return directory;
-        } else {
-            return local_plugin_directory;
-        }
-    }
+
     LOG4CXX_WARN(hw_logger_, "[" + job_name + "] Some Tessdata models were not found, or are not co-located." +
                              " Please ensure that all of the following models exist in the same directory, either " +
                              directory + " or " +
                              local_plugin_directory + ": " + lang_str + " .");
+
+    // Return directory with greater number of valid scripts.
+    if (partial_first.size() > 0 || partial_second.size() > 0) {
+        if  (partial_first.size() > partial_second.size()) {
+            found_languages.insert(partial_first.begin(), partial_first.end());
+            missing_languages.insert(missing_first.begin(), missing_first.end());
+            return directory;
+        } else {
+            found_languages.insert(partial_second.begin(), partial_second.end());
+            missing_languages.insert(missing_second.begin(), missing_second.end());
+            return local_plugin_directory;
+        }
+    }
+    missing_languages.insert(missing_first.begin(), missing_first.end());
     return "";
 }
 
@@ -968,12 +943,12 @@ bool TesseractOCRTextDetection::check_tess_model_directory(const string &job_nam
 void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job,
                                         TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                         Properties &detection_properties, MPFDetectionError &job_status,
-                                        string &tessdata_script_dir) {
+                                        string &tessdata_script_dir, set<string> &missing_languages) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Running Tesseract OSD.");
 
     int oem = 3;
     pair<int, string> tess_api_key = make_pair(oem, "osd");
-    set<string> missing_languages, found_languages;
+    set<string> found_languages;
     string run_dir = GetRunDirectory();
     if (tess_api_map.find(tess_api_key) == tess_api_map.end()) {
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Loading OSD model.");
@@ -983,7 +958,6 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
                                                    found_languages);
         if (tessdata_dir == "") {
             LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] OSD model not found!");
-            detection_properties["MISSING_LANGUAGE_MODELS"] = "osd";
             job_status = MPF_COULD_NOT_OPEN_DATAFILE;
             return;
         }
@@ -1209,7 +1183,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
                                                                                   hw_logger_,
                                                                                   missing_languages,
                                                                                   found_languages);
-            if (tessdata_script_dir == "") {
+            if (missing_languages.size() > 0) {
                 LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] Script models not found in model and tessdata directories,"
                                          + " switching to default language setting: " + ocr_fset.tesseract_lang);
 
@@ -1225,8 +1199,6 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
                     // Reset script directory, run check again while processing with default languages.
                     tessdata_script_dir = "";
                 }
-
-                detection_properties["MISSING_LANGUAGE_MODELS"] = boost::algorithm::join(missing_languages, ", ");
 
             } else {
                 ocr_fset.tesseract_lang = lang_str;
@@ -1512,6 +1484,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
 
         Properties osd_detection_properties;
         string tessdata_script_dir = "";
+        set<string> missing_languages;
         int xLeftUpper = 0;
         int yLeftUpper = 0;
         int width = input_size.width;
@@ -1522,7 +1495,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
 
             OSResults os_results;
             get_OSD(os_results, image_data, job, ocr_fset, osd_detection_properties, job_status,
-                    tessdata_script_dir);
+                    tessdata_script_dir, missing_languages);
 
             // Rotate upper left coordinates based on OSD results.
             if (ocr_fset.min_orientation_confidence <= os_results.best_result.oconfidence) {
@@ -1535,11 +1508,13 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
                 LOG4CXX_INFO(hw_logger_,
                              "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) +
                              " tracks.");
+                osd_detection_properties["MISSING_LANGUAGE_MODELS"] = boost::algorithm::join(missing_languages, ", ");
                 MPFImageLocation osd_detection(xLeftUpper, yLeftUpper, width, height, -1, osd_detection_properties);
                 locations.push_back(osd_detection);
                 return job_status;
             }
         }
+        osd_detection_properties["MISSING_LANGUAGE_MODELS"] = boost::algorithm::join(missing_languages, ", ");
 
         set<string> remaining_languages;
         string first_pass_rotation, second_pass_rotation;
@@ -1582,15 +1557,6 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
         if ( !get_tesseract_detections(&ocr_job_inputs, &page_results)) {
             LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
             return job_status;
-        }
-
-        if (page_results.missing_languages.size() > 0){
-            string all_missing_lang = boost::algorithm::join(page_results.missing_languages, ", ");
-            if (osd_detection_properties.count("MISSING_LANGUAGE_MODELS") > 0) {
-                 string osd_miss_lang = osd_detection_properties["MISSING_LANGUAGE_MODELS"];
-                 all_missing_lang = osd_miss_lang  + ", " + all_missing_lang;
-            }
-            osd_detection_properties["MISSING_LANGUAGE_MODELS"] = all_missing_lang;
         }
 
         vector<TesseractOCRTextDetection::OCR_output> all_results;
@@ -1711,6 +1677,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
     boost::split(job_names, job.job_name, boost::is_any_of(":"));
     string job_name = boost::ireplace_all_copy(job_names[0], "job", "");
     boost::trim(job_name);
+    set<string> all_missing_languages;
 
     string run_dir = GetRunDirectory();
     if (run_dir.empty()) {
@@ -1757,7 +1724,7 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
     int page_num = 0;
     string default_lang = ocr_fset.tesseract_lang;
 
-    if (ocr_fset.max_parallel_ocr_threads > 1 && filelist.size() > 1 && ocr_fset.psm != 0) {
+    if (ocr_fset.max_parallel_pdf_threads > 1 && filelist.size() > 1 && ocr_fset.psm != 0) {
 
         PDF_thread_variables thread_var[filelist.size()];
         std::future<bool> pdf_threads[filelist.size()];
@@ -1785,8 +1752,10 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
                 OSResults os_results;
                 // Reset to original specified language before processing OSD.
                 ocr_fset.tesseract_lang = default_lang;
+                set<string> missing_languages;
                 get_OSD(os_results, thread_var[index].image, c_job, ocr_fset, thread_var[index].osd_track_results.detection_properties,
-                        thread_var[index].job_status, thread_var[index].tessdata_script_dir);
+                        thread_var[index].job_status, thread_var[index].tessdata_script_dir, missing_languages);
+                all_missing_languages.insert(missing_languages.begin(), missing_languages.end());
             }
 
             thread_var[index].lang = ocr_fset.tesseract_lang;
@@ -1852,8 +1821,6 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
                 MPFGenericTrack generic_track(ocr_out.confidence);
                 // Copy over OSD results into OCR tracks.
                 generic_track.detection_properties = thread_var[index].osd_track_results.detection_properties;
-
-
                 bool process_text = process_text_tagging(generic_track.detection_properties, c_job, ocr_out, thread_var[index].job_status,
                                                          ocr_fset, json_kvs_regex, index);
                 if (process_text) {
@@ -1881,8 +1848,10 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
                 OSResults os_results;
                 // Reset to original specified language before processing OSD.
                 ocr_fset.tesseract_lang = default_lang;
+                set<string> missing_languages;
                 get_OSD(os_results, image_data, c_job, ocr_fset, osd_track_results.detection_properties, job_status,
-                        tessdata_script_dir);
+                        tessdata_script_dir, missing_languages);
+                all_missing_languages.insert(missing_languages.begin(), missing_languages.end());
 
                 // When PSM is set to 0, there is no need to process any further.
                 // Proceed to next page for OSD processing.
@@ -1916,14 +1885,6 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
                 boost::filesystem::remove_all(temp_im_directory);
                 return job_status;
             }
-            if (page_results.missing_languages.size() > 0){
-                string all_missing_lang = boost::algorithm::join(page_results.missing_languages, ", ");
-                if (osd_track_results.detection_properties.count("MISSING_LANGUAGE_MODELS") > 0) {
-                     string osd_miss_lang = osd_track_results.detection_properties["MISSING_LANGUAGE_MODELS"];
-                     all_missing_lang = osd_miss_lang  + ", " + all_missing_lang;
-                }
-                osd_track_results.detection_properties["MISSING_LANGUAGE_MODELS"] = all_missing_lang;
-            }
 
             // If max_text_tracks is set, filter out to return only the top specified tracks.
             if (ocr_fset.max_text_tracks > 0) {
@@ -1946,6 +1907,9 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
         }
     }
 
+    for (auto &track: tracks) {
+        track.detection_properties["MISSING_LANGUAGE_MODELS"] = boost::algorithm::join(all_missing_languages, ", ");
+    }
     boost::filesystem::remove_all(temp_im_directory);
     LOG4CXX_INFO(hw_logger_,
                  "[" + job.job_name + "] Processing complete. Found " + to_string(tracks.size()) + " tracks.");

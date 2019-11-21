@@ -239,7 +239,7 @@ namespace MPF {
             void get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job,
                          TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                          Properties &detection_properties, MPFDetectionError &job_status,
-                         std::string &tessdata_script_dir);
+                         std::string &tessdata_script_dir, std::set<std::string> &missing_languages);
 
             static std::string return_valid_tessdir(const std::string &job_name,
                                                     const std::string &lang_str,

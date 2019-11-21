@@ -243,6 +243,61 @@ TEST(TESSERACTOCR, ModelTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
+TEST(TESSERACTOCR, MissingLanguagesTest) {
+
+    // Double check missing languages during OSD processing.
+    boost::filesystem::remove_all("data/model_dir");
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/tessdata/script");
+
+    std::string model = boost::filesystem::absolute(
+            "../plugin/TesseractOCRTextDetection/tessdata/eng.traineddata").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/tessdata/eng.traineddata");
+
+    model = boost::filesystem::absolute(
+                    "../plugin/TesseractOCRTextDetection/tessdata/osd.traineddata").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/tessdata/osd.traineddata");
+
+    model = boost::filesystem::absolute(
+                        "../plugin/TesseractOCRTextDetection/config").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/config");
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("data/model_dir");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+    std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "eng"},
+                                                            {"MODELS_DIR_PATH",       "data/model_dir"},
+                                                            {"TESSERACT_PSM", "0"}};
+
+    // OSD image processing with missing language models.
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng-bul.png", ocr, results, custom_properties));
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
+                                << "Expected Cyrillic as primary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("MISSING_LANGUAGE_MODELS") == "script/Cyrillic")
+                                << "Expected Cyrillic script to be missing.";
+    results.clear();
+
+
+    // OSD PDF processing with missing language models.
+    // MISSING_LANGUAGE_MODELS should be populated on each page, with all OSD scripts not found by the component.
+    std::vector<MPFGenericTrack> results_pdf;
+    ASSERT_NO_FATAL_FAILURE(runDocumentDetection("data/osd-tests.pdf", ocr, results_pdf, custom_properties));
+    convert_results(results, results_pdf);
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Han")
+                                << "Expected Chinese/Han detected as primary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("MISSING_LANGUAGE_MODELS") ==
+                                "script/Cyrillic, script/HanS, script/HanS_vert, script/HanT, script/HanT_vert")
+                                << "Expected Cyrillic and Han scripts to be reported as missing.";
+
+    ASSERT_TRUE(results[1].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
+                                << "Expected Cyrillic detected as primary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("MISSING_LANGUAGE_MODELS") ==
+                                "script/Cyrillic, script/HanS, script/HanS_vert, script/HanT, script/HanT_vert")
+                                << "Expected Cyrillic and Han scripts to be reported as missing.";
+    boost::filesystem::remove_all("data/model_dir");
+    ASSERT_TRUE(ocr.Close());
+}
+
 TEST(TESSERACTOCR, TwoPassOCRTest) {
 
     // Ensure that two pass OCR correctly works to process upside down text even w/out OSD support.
