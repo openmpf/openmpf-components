@@ -266,17 +266,40 @@ TEST(TESSERACTOCR, MissingLanguagesTest) {
     std::vector<MPFImageLocation> results;
     ASSERT_TRUE(ocr.Init());
     std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "eng"},
-                                                            {"MODELS_DIR_PATH",       "data/model_dir"},
-                                                            {"TESSERACT_PSM", "0"}};
+                                                            {"MODELS_DIR_PATH",       "data/model_dir"}};
 
-    // OSD image processing with missing language models.
+    // OSD image processing with all OSD language models missing.
+    // Expected default language to be used.
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng-bul.png", ocr, results, custom_properties));
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
+                                << "Expected Cyrillic as primary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("MISSING_LANGUAGE_MODELS") == "script/Cyrillic, script/Latin")
+                                << "Expected Cyrillic and Latin scripts to be missing.";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected English script.";
+    results.clear();
+
+    // Adding Latin script model.
+    model = boost::filesystem::absolute(
+                    "../plugin/TesseractOCRTextDetection/tessdata/script/Latin.traineddata").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/tessdata/script/Latin.traineddata");
+
+    // OSD image processing with some missing language models.
+    // Latin will be used in place of Cyrillic as the next best available model.
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng-bul.png", ocr, results, custom_properties));
     ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
                                 << "Expected Cyrillic as primary script.";
     ASSERT_TRUE(results[0].detection_properties.at("MISSING_LANGUAGE_MODELS") == "script/Cyrillic")
                                 << "Expected Cyrillic script to be missing.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_SECONDARY_SCRIPTS") == "Latin") << "Expected Latin script.";
+
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Latin") << "Expected Latin script.";
+
     results.clear();
 
+
+    custom_properties = {{"TESSERACT_LANGUAGE",    "eng"},
+                         {"MODELS_DIR_PATH",       "data/model_dir"},
+                         {"TESSERACT_PSM", "0"}};
 
     // OSD PDF processing with missing language models.
     // MISSING_LANGUAGE_MODELS should be populated on each page, with all OSD scripts not found by the component.
