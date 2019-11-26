@@ -24,9 +24,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-ARG BUILD_TYPE=gpu
-#ARG BUILD_TYPE=cpu
-
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 
@@ -36,33 +33,16 @@ RUN mkdir /weights && curl --location https://pjreddie.com/media/files/yolov3.we
 
 
 ####################################################
-# Setup CUDA for GPU version
-# Separate stage so CUDA doesn't need to get re-downloaded when openmpf_cpp_component_build changes
-FROM centos:7 as cuda_build_tools_setup
+# Build Component
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+
 RUN yum-config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64 \
     && VERSION=9-0-9.0.176-1 \
-    && yum install -y --nogpgcheck \
-        cuda-minimal-build-$VERSION cuda-libraries-dev-$VERSION \
+    && yum install -y --nogpgcheck cuda-minimal-build-$VERSION cuda-cublas-dev-$VERSION cuda-curand-dev-$VERSION \
     && yum clean all \
-    && rm -rf /var/cache/yum/*
-
-
-####################################################
-# Extend openmpf_cpp_component_build with CUDA copied in so the build stage can build with CUDA support
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as gpu_build_setup
-COPY --from=cuda_build_tools_setup /usr/local/cuda-9.0 /usr/local/cuda-9.0
-RUN ln -s cuda-9.0 /usr/local/cuda \
-    && echo '/usr/local/cuda/lib64' >> /etc/ld.so.conf.d/cuda.conf \
-    && ldconfig
-
-####################################################
-# Use an unmodified openmpf_cpp_component_build when building without CUDA support.
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as cpu_build_setup
-
-
-####################################################
-# Build Component
-FROM ${BUILD_TYPE}_build_setup as build_component
+    && rm -rf /var/cache/yum/* \
+    && ln -s cuda-9.0 /usr/local/cuda \
+    && echo '/usr/local/cuda/lib64' >> /etc/ld.so.conf.d/cuda.conf
 
 COPY . .
 
@@ -73,8 +53,18 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./DarknetDetecti
 
 
 ####################################################
-# Creates the final runtime image for the CPU version
-FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as cpu_final
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG}
+
+RUN yum-config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64 \
+    && yum install -y --nogpgcheck cuda-cudart-9-0-9.0.176-1 \
+    && yum clean all \
+    && rm -rf /var/cache/yum/* \
+    && ln -s cuda-9.0 /usr/local/cuda \
+    && echo '/usr/local/cuda/lib64' >> /etc/ld.so.conf.d/cuda.conf
+
+# Environment variables required by nvidia runtime.
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 
 COPY --from=download_weights /weights $INSTALL_DIR/models
 
@@ -86,39 +76,12 @@ COPY --from=build_component $BUILD_DIR/libmpfDarknetDetection.so \
                             $INSTALL_DIR/lib
 
 
-####################################################
-# Setup CUDA runtime for GPU version
-# Use a separate stage so that CUDA doesn't need to be re-installed when source code changes.
-FROM centos:7 as cuda_runtime_setup
-RUN yum-config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64 \
-    && VERSION=9-0-9.0.176-1 \
-    && yum install -y --nogpgcheck \
-        cuda-cudart-$VERSION cuda-cublas-$VERSION cuda-curand-$VERSION \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*
-
-
-####################################################
-# Creates the final runtime image for the GPU version
-FROM cpu_final as gpu_final
-
-COPY --from=cuda_runtime_setup /usr/local/cuda-9.0 /usr/local/cuda-9.0
-RUN ln -s cuda-9.0 /usr/local/cuda \
-    && echo '/usr/local/cuda/lib64' >> /etc/ld.so.conf.d/cuda.conf \
-    && ldconfig
-
-ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
-
-#####################################################
-# Specifies which image version will be the final image
-FROM ${BUILD_TYPE}_final
-
 ARG BUILD_SHAS
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF Darknet Detection ($BUILD_TYPE)" \
+      org.label-schema.name="OpenMPF Darknet Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-ref=$BUILD_SHAS \
       org.label-schema.vcs-url="https://github.com/openmpf" \
       org.label-schema.vendor="MITRE"
+
