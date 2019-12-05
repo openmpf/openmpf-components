@@ -203,8 +203,8 @@ class TestEast(unittest.TestCase):
         )
         detections = list(comp.get_detections_from_image(job))
 
-        # Check that NMS produces many more detections than merging
-        self.assertGreater(len(detections), 20)
+        # Check that NMS produces many more (>5x) detections than merging
+        self.assertGreater(len(detections), 45)
 
         # Check that most detections are small (>80% smaller than mean)
         areas = [d.width * d.height for d in detections]
@@ -220,15 +220,38 @@ class TestEast(unittest.TestCase):
             data_uri=self._get_test_file('thresholds.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                PADDING='0.0',
+                TEMPORARY_PADDING='0.0',
             ),
             media_properties={},
             feed_forward_location=None
         )
-        low_padding = len(list(comp.get_detections_from_image(job)))
+        detections = list(comp.get_detections_from_image(job))
+        low_padding_area = sum(d.width * d.height for d in detections)
+        low_padding = len(detections)
 
         # Check that no padding results in less merging
         self.assertGreater(low_padding, 9)
+
+        job = mpf.ImageJob(
+            job_name='test-low-padding',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                TEMPORARY_PADDING='0.0',
+                FINAL_PADDING='0.1'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        detections = list(comp.get_detections_from_image(job))
+        high_padding_area = sum(d.width * d.height for d in detections)
+        high_padding = len(detections)
+
+        # Check that higher final padding results in larger total detection area
+        self.assertGreater(high_padding_area, low_padding_area)
+
+        # Check that final padding doesn't affect total number of detections
+        self.assertEqual(high_padding, low_padding)
 
     def test_max_side_length(self):
         comp = EastComponent()
@@ -389,7 +412,6 @@ class TestEast(unittest.TestCase):
             feed_forward_location=None
         )
         detections = list(comp.get_detections_from_image(job))
-        vsupp_off = len(detections)
 
         # Confirm that vertical detections were not suppressed
         at_least_one_vertical = False
@@ -411,11 +433,35 @@ class TestEast(unittest.TestCase):
             feed_forward_location=None
         )
         detections = list(comp.get_detections_from_image(job))
-        vsupp_on = len(detections)
 
         # Confirm that vertical detections were suppressed
         for d in detections:
             self.assertGreater(d.width, d.height)
+
+        job = mpf.ImageJob(
+            job_name='test-vsupp-off',
+            data_uri=self._get_test_file('rotation.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                ROTATE_AND_DETECT='TRUE',
+                SUPPRESS_VERTICAL='FALSE'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        vsupp_off = len(list(comp.get_detections_from_image(job)))
+
+        job = mpf.ImageJob(
+            job_name='test-vsupp-on',
+            data_uri=self._get_test_file('rotation.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                ROTATE_AND_DETECT='TRUE'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        vsupp_on = len(list(comp.get_detections_from_image(job)))
 
         # Without vertical suppression, there are many low-quality detections
         self.assertGreater(vsupp_off, vsupp_on)
