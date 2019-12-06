@@ -141,14 +141,14 @@ namespace MPF {
                 const OCR_filter_settings *ocr_fset;
                 bool process_pdf;
 
+                std::set<std::string> ocr_lang_inputs;
                 log4cxx::LoggerPtr hw_logger_;
                 std::map<std::pair<int, std::string>, tesseract::TessBaseAPI *> *tess_api_map;
             };
 
             struct Image_results{
-                std::vector<OCR_output> *detections_by_lang;
-                MPFDetectionError *job_status;
-                std::set<std::string> missing_languages;
+                std::vector<OCR_output> detections_by_lang;
+                MPFDetectionError job_status;
             };
 
             struct OCR_results {
@@ -157,32 +157,46 @@ namespace MPF {
                 MPFDetectionError job_status;
                 double confidence;
                 bool parallel_processing;
-                std::set<std::string> missing_languages;
             };
 
+            struct PDF_page_inputs {
+                std::string run_dir;
+                std::vector<std::string> filelist;
+                const MPFGenericJob *job;
+                std::string default_lang;
+                OCR_filter_settings ocr_fset;
+                log4cxx::LoggerPtr hw_logger_;
+                std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> json_kvs_regex;
+            };
 
+            struct PDF_page_results {
+                std::set<std::string> all_missing_languages;
+                MPFDetectionError job_status;
+                std::vector<MPFGenericTrack> *tracks;
+            };
 
             struct PDF_thread_variables {
-                std::vector<OCR_output> ocr_outputs;
                 cv::Mat image;
                 std::string lang;
                 std::string tessdata_script_dir;
-                MPFDetectionError job_status;
                 MPFGenericTrack osd_track_results;
 
                 OCR_job_inputs ocr_input;
-                Image_results page_res;
+                Image_results page_thread_res;
 
                 PDF_thread_variables()
                 {
                     ocr_input.lang = &lang;
                     ocr_input.tessdata_script_dir = &tessdata_script_dir;
                     ocr_input.imi = &image;
-                    page_res.job_status = &job_status;
-                    page_res.detections_by_lang = &ocr_outputs;
                 }
             };
 
+            bool process_parallel_pdf_pages(TesseractOCRTextDetection::PDF_page_inputs &page_inputs,
+                                            TesseractOCRTextDetection::PDF_page_results &page_results);
+
+            bool process_serial_pdf_pages(TesseractOCRTextDetection::PDF_page_inputs &page_inputs,
+                                            TesseractOCRTextDetection::PDF_page_results &page_results);
             log4cxx::LoggerPtr hw_logger_;
             QHash<QString, QString> parameters;
             OCR_filter_settings default_ocr_fset;
@@ -194,14 +208,18 @@ namespace MPF {
                                                                                MPFDetectionError &job_status);
 
 
-            static bool get_tesseract_detections(TesseractOCRTextDetection::OCR_job_inputs *input,
-                                                 TesseractOCRTextDetection::Image_results *result);
+            static bool get_tesseract_detections(TesseractOCRTextDetection::OCR_job_inputs &input,
+                                                 TesseractOCRTextDetection::Image_results &result);
+            static bool process_parallel_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
+                                                    TesseractOCRTextDetection::Image_results &results);
+            static bool process_serial_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
+                                                  TesseractOCRTextDetection::Image_results &results);
 
             bool preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                   MPFDetectionError &job_status);
 
-            static bool process_tesseract_lang_model(TesseractOCRTextDetection::OCR_job_inputs *input,
-                                                     TesseractOCRTextDetection::OCR_results  *result);
+            static bool process_tesseract_lang_model(TesseractOCRTextDetection::OCR_job_inputs &input,
+                                                     TesseractOCRTextDetection::OCR_results  &result);
 
             void set_default_parameters();
 
