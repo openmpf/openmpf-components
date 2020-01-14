@@ -49,7 +49,7 @@ COPY --from=build_component $BUILD_DIR/libmpfOcvDnnDetection.so \
 
 ARG BUILD_SHAS
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF OpenCV Deep Neural Network (DNN) classification component" \
+      org.label-schema.name="OpenMPF OpenCV Deep Neural Network (DNN) Classification" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-ref=$BUILD_SHAS \
