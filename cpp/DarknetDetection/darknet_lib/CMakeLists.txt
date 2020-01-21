@@ -118,10 +118,8 @@ if (DARKNET_BUILD_CUDA)
     # capability only. For the darknet component, we have not seen a performance
     # benefit to creating to ELF code in addition to PTX code. However, for other
     # components, this may not be the case.
-    set(GPU_ARCH_BUILD_FLAGS "-gencode arch=compute_30,code=compute_30")
-
-    message(STATUS "GPU_ARCH_BUILD_FLAGS = ${GPU_ARCH_BUILD_FLAGS}")
-    set(CUDA_NVCC_FLAGS -DGPU -DOPENCV --compiler-options -fPIC ${GPU_ARCH_BUILD_FLAGS})
+    set(CUDA_NVCC_FLAGS --compiler-options -fPIC -gencode arch=compute_30,code=compute_30)
+    message(STATUS "CUDA_NVCC_FLAGS = ${CUDA_NVCC_FLAGS}")
 
     include_directories(include)
 
