@@ -52,11 +52,10 @@ FROM ${BUILD_REGISTRY}openmpf_java_executor:${BUILD_TAG} as install_component
 COPY --from=build_component /home/mpf/component_src/target/plugin-packages/TikaTextDetection/TikaTextDetection \
                             $INSTALL_DIR
 
-ARG BUILD_SHAS
+
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Tika Text Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
-      org.label-schema.vcs-ref=$BUILD_SHAS \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
