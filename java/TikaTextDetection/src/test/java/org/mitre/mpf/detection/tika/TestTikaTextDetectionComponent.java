@@ -29,17 +29,16 @@ package org.mitre.mpf.detection.tika;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mitre.mpf.component.api.detection.*;
+import org.mitre.mpf.component.api.detection.MPFComponentDetectionError;
+import org.mitre.mpf.component.api.detection.MPFGenericJob;
+import org.mitre.mpf.component.api.detection.MPFGenericTrack;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.*;
 
 /**
  * The test class provides the framework for developing Java components.  Test cases can be prepared for a variety
@@ -63,19 +62,18 @@ public class TestTikaTextDetectionComponent {
         tikaComponent.close();
     }
 
-
     @Test
-    public void testGetDetectionsGeneric() throws Exception {
-        String uri = "./test/data/Testing TIKA DETECTION.pptx";
-        String text_tag_json ="./test/config/test-text-tags-foreign.json";
-        Map<String, String> jobProperties = new HashMap<String, String>();
-        Map<String, String> mediaProperties = new HashMap<String, String>();
-        String textTags = "text-tags.json";
-        jobProperties.put("TAGGING_FILE", text_tag_json);
+    public void testGetDetectionsGeneric() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.pptx").getPath();
+        String textTagJsonPath = this.getClass().getResource("/config/test-text-tags-foreign.json").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("TAGGING_FILE", textTagJsonPath);
         jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
         jobProperties.put("LIST_ALL_PAGES", "true");
 
-        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", uri, jobProperties, mediaProperties);
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
         boolean debug = false;
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
@@ -177,17 +175,17 @@ public class TestTikaTextDetectionComponent {
     }
 
     @Test
-    public void testGetDetectionsShortRegexSearch() throws Exception {
-        String uri = "./test/data/Testing TIKA DETECTION.pptx";
-        String text_tag_json = "./test/config/test-text-tags-foreign.json";
-        Map<String, String> jobProperties = new HashMap<String, String>();
-        Map<String, String> mediaProperties = new HashMap<String, String>();
-        String textTags = "text-tags.json";
-        jobProperties.put("TAGGING_FILE", text_tag_json);
+    public void testGetDetectionsShortRegexSearch() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.pptx").getPath();
+        String textTagJsonPath = this.getClass().getResource("/config/test-text-tags-foreign.json").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("TAGGING_FILE", textTagJsonPath);
         jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
         jobProperties.put("LIST_ALL_PAGES", "true");
         jobProperties.put("FULL_REGEX_SEARCH", "false");
-        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", uri, jobProperties, mediaProperties);
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
         assertEquals("Number of expected tracks does not match.", 11 ,tracks.size());
@@ -207,6 +205,5 @@ public class TestTikaTextDetectionComponent {
         assertEquals("Expected tags not found.", "vehicle; financial; personal", testTrack.getDetectionProperties().get("TAGS"));
         assertEquals("Expected trigger words not found.", "Bus; Financ; 102-123-1231", testTrack.getDetectionProperties().get("TRIGGER_WORDS"));
         assertEquals("Expected trigger word offsets not found.", "0-2; 8-13; 21-32", testTrack.getDetectionProperties().get("TRIGGER_WORDS_OFFSET"));
-
     }
 }
