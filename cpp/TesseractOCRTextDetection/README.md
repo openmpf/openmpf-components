@@ -156,7 +156,8 @@ lowest scores will not be reported.
 
 Please note that the order of the specified language matters. Languages specified first
 will have priority (ex. `eng+deu`, English language model will run first and its results will have
-priority over German language model).
+priority over German language model). When specifying multiple scripts using `,` or `+`, duplicate or redundant
+script requests are ignored.
 
 Example 1: `eng+deu` means run English, German together as one track detection.
 
@@ -165,6 +166,9 @@ as the second track.
 
 Example 3: `fra,script/Latin` means run French as the first track, and Latin script as
 the second track.
+
+Example 4: `eng,eng+bul,eng+eng` will only return two tracks, English only as first track
+followed by English+Bulgarian as the second track.
 
 By default this component contains language model files for:
 * Bulgarian (`bul`)
@@ -181,6 +185,9 @@ As well as the script model file for:
 
 Note the OSD language file (`osd.traindata`) is for extraction of script orientation rather than language.
 Users may download additional language/script models from https://github.com/tesseract-ocr/tessdata and place them in the component's `tessdata` directory or `[MODELS_DIR_PATH]/TesseractOCRTextDetection/tessdata`.
+During processing, if the OSD model detects a certain language but the corresponding language model is missing from the component's `tessdata` directory, then that language will be reported in the `MISSING_LANGUAGE_MODELS` output parameter.
+When all OSD-detected language models are missing in the `tessdata` directory, the component will default to running the `TESSERACT_LANGUAGE` model instead.
+Please note that the job will fail instead if any models specified in `TESSERACT_LANGUAGE` are missing.
 
 # OSD Automation
 
@@ -254,3 +261,13 @@ TESSERACT_PSM Value| Description
 
 For more details please consult the Tesseract command line usage documentation
 (https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage).
+
+# Parallel OCR model and PDF processing:
+
+Users can set the `MAX_PARALLEL_SCRIPT_THREADS` and `MAX_PARALLEL_PAGE_THREADS` to enable and adjust
+parallel processing behavior in this component.
+
+For image processing only, `MAX_PARALLEL_SCRIPT_THREADS` limits the maximum number of active threads, with each thread running one pass of OCR on an image.
+For document processing only, `MAX_PARALLEL_PAGE_THREADS` limits the maximum number of active threads, with each thread processing OCRs serially on a single page or image from that document.
+
+When `MAX_PARALLEL_SCRIPT_THREADS` or `MAX_PARALLEL_PAGE_THREADS` is set to a value of 1 or less, parallel threading of multiple OCRs or pages is disabled respectively.
