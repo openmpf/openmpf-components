@@ -180,7 +180,7 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
 
     results.clear();
     custom_properties = {{"MIN_HEIGHT", "60"}};
-    assertEmptyImageDetection("data/blurry.png", ocr, results,  custom_properties);
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blurry.png", ocr, results,  custom_properties));
 
     results.clear();
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/gradient.png", ocr, results,  custom_properties));
@@ -338,13 +338,13 @@ TEST(TESSERACTOCR, MissingLanguagesTest) {
                          {"MODELS_DIR_PATH",       "data/model_dir"},
                          {"ENABLE_OSD_AUTOMATION", "false"}};
 
-    assertEmptyImageDetection("data/eng-bul.png", ocr, results,
-                              custom_properties, false, MPF_COULD_NOT_OPEN_DATAFILE);
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/eng-bul.png", ocr, results,
+                                                      custom_properties, false, MPF_COULD_NOT_OPEN_DATAFILE));
     results.clear();
     results_pdf.clear();
 
-    assertEmptyDocumentDetection("data/osd-tests.pdf", ocr, results_pdf,
-                                 custom_properties, MPF_COULD_NOT_OPEN_DATAFILE);
+    ASSERT_NO_FATAL_FAILURE(assertEmptyDocumentDetection("data/osd-tests.pdf", ocr, results_pdf,
+                                                         custom_properties, MPF_COULD_NOT_OPEN_DATAFILE));
     results.clear();
     results_pdf.clear();
 
@@ -355,13 +355,13 @@ TEST(TESSERACTOCR, MissingLanguagesTest) {
                          {"MAX_PARALLEL_PAGE_THREADS", "0"},
                          {"MAX_PARALLEL_SCRIPT_THREADS", "0"}};
 
-    assertEmptyImageDetection("data/eng-bul.png", ocr, results,
-                              custom_properties, false, MPF_COULD_NOT_OPEN_DATAFILE);
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/eng-bul.png", ocr, results,
+                                                      custom_properties, false, MPF_COULD_NOT_OPEN_DATAFILE));
     results.clear();
     results_pdf.clear();
 
-    assertEmptyDocumentDetection("data/osd-tests.pdf", ocr, results_pdf,
-                                 custom_properties, MPF_COULD_NOT_OPEN_DATAFILE);
+    ASSERT_NO_FATAL_FAILURE(assertEmptyDocumentDetection("data/osd-tests.pdf", ocr, results_pdf,
+                                                         custom_properties, MPF_COULD_NOT_OPEN_DATAFILE));
     results.clear();
     results_pdf.clear();
 
@@ -507,7 +507,7 @@ TEST(TESSERACTOCR, BlankTest) {
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
 
     // Check no text detected for blank image.
-    assertEmptyImageDetection("data/blank.png", ocr, results, custom_properties);
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank.png", ocr, results, custom_properties));
 
     ASSERT_TRUE(ocr.Close());
 }
@@ -720,7 +720,7 @@ TEST(TESSERACTOCR, OSDMultilanguageScriptTest) {
     results.clear();
 
     // Check multi-language script detection under parallel processing conditions.
-    // Modified script behavior so that individual scripts are run separately.
+    // Individual scripts are run separately.
     custom_properties = {{"ENABLE_OSD_AUTOMATION", "true"},
                          {"MAX_OSD_SCRIPTS",       "3"},
                          {"COMBINE_OSD_SCRIPTS",   "false"},
@@ -746,7 +746,7 @@ TEST(TESSERACTOCR, OSDMultilanguageScriptTest) {
     assertInImage("data/eng-bul.png", "All human beings", results, "TEXT", 1);
 
     // Check multi-language script detection under serial processing conditions.
-    // Modified script behavior so that individual scripts are run separately.
+    // Individual scripts are run separately.
     custom_properties = {{"ENABLE_OSD_AUTOMATION", "true"},
                          {"MAX_OSD_SCRIPTS",       "3"},
                          {"COMBINE_OSD_SCRIPTS",   "false"},

@@ -140,6 +140,7 @@ namespace MPF {
                 const cv::Mat *imi;
                 const OCR_filter_settings *ocr_fset;
                 bool process_pdf;
+                bool parallel_processing;
 
                 std::set<std::string> ocr_lang_inputs;
                 log4cxx::LoggerPtr hw_logger_;
@@ -156,7 +157,6 @@ namespace MPF {
                 std::string lang;
                 MPFDetectionError job_status;
                 double confidence;
-                bool parallel_processing;
             };
 
             struct PDF_page_inputs {
@@ -267,6 +267,7 @@ namespace MPF {
                                                     const std::string &directory,
                                                     const std::string &run_directory,
                                                     log4cxx::LoggerPtr &logger,
+                                                    const bool &secondary_pass,
                                                     std::set<std::string> &missing_languages,
                                                     std::set<std::string> &found_languages);
 
@@ -274,8 +275,14 @@ namespace MPF {
                                                    const std::string &lang_str,
                                                    const std::string &directory,
                                                    log4cxx::LoggerPtr &logger,
+                                                   const bool &secondary_pass,
                                                    std::set<std::string> &missing_languages,
                                                    std::set<std::string> &found_languages);
+
+            bool check_default_languages(const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                         const std::string &job_name,
+                                         const std::string &run_dir,
+                                         MPFDetectionError &job_status);
         };
 
     }
