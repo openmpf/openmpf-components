@@ -893,7 +893,7 @@ string TesseractOCRTextDetection::return_valid_tessdir(const string &job_name, c
     LOG4CXX_WARN(hw_logger_, "[" + job_name + "] Tessdata models were not found, or are not co-located." +
                              " Please ensure that the following models exist in the same directory, either " +
                              directory + " or " +
-                             local_plugin_directory + ": " + lang_str + " .");
+                             local_plugin_directory + ": " + lang_str + ".");
 
     // Return directory with greater number of valid scripts.
     if (partial_first.size() > 0 || partial_second.size() > 0) {
@@ -1217,7 +1217,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
 
         found_languages.clear();
         if (lang_str.empty() || lang_str == "script/NULL") {
-            LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OSD did not detect any valid scripts,"
+            LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OSD could not find all required script models,"
                                      + " reverting to default language setting: " + ocr_fset.tesseract_lang);
             tessdata_script_dir = "";
         } else {
@@ -1507,13 +1507,15 @@ bool TesseractOCRTextDetection::check_default_languages(const OCR_filter_setting
 
     for (const string &lang: lang_list) {
         return_valid_tessdir(job_name, lang, ocr_fset.model_dir, run_dir, hw_logger_, false, missing_languages, languages_found);
-        // Fail if user specified language is missing.
-        if (missing_languages.size() > 0) {
-            LOG4CXX_ERROR(hw_logger_, "[" + job_name + "] User-specified Tesseract language models not found.");
-            job_status = MPF_COULD_NOT_OPEN_DATAFILE;
-            return false;
-        }
     }
+
+    // Fail if user specified language is missing.
+    if (missing_languages.size() > 0) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job_name + "] User-specified Tesseract language models not found.");
+        job_status = MPF_COULD_NOT_OPEN_DATAFILE;
+        return false;
+    }
+
     return true;
 }
 
