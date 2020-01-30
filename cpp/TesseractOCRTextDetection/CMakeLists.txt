@@ -71,3 +71,8 @@ add_subdirectory(test)
 # Build executable
 add_executable(sample_tesseract_ocr_detector sample_tesseract_ocr_detector.cpp)
 target_link_libraries(sample_tesseract_ocr_detector mpfTesseractOCRTextDetection)
+
+# Make plugin files available to sample binary
+execute_process(
+    COMMAND sh -c "ln --symbolic --force plugin/TesseractOCRTextDetection/* ."
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

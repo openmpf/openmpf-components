@@ -57,3 +57,8 @@ add_subdirectory(test)
 
 add_executable(sample_dlib_face_detector sample_dlib_face_detector.cpp)
 target_link_libraries(sample_dlib_face_detector mpfDlibFaceDetection)
+
+# Make plugin files available to sample binary
+execute_process(
+    COMMAND sh -c "ln --symbolic --force plugin/DlibFaceDetection/* ."
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

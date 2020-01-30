@@ -45,6 +45,6 @@ if (${GTEST_FOUND})
     # Install test images and videos.
     file(COPY data/ DESTINATION data)
 
-    execute_process(COMMAND ln -s ../plugin/SceneChangeDetection/config config
+    execute_process(COMMAND sh -c "ln --symbolic --force ../plugin/SceneChangeDetection/* ."
                     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()

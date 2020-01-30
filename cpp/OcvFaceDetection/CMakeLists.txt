@@ -57,3 +57,7 @@ add_subdirectory(test)
 add_executable(sample_ocv_face_detector sample_ocv_face_detector.cpp)
 target_link_libraries(sample_ocv_face_detector mpfOcvFaceDetection)
 
+# Make plugin files available to sample binary
+execute_process(
+    COMMAND sh -c "ln --symbolic --force plugin/OcvFaceDetection/* ."
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

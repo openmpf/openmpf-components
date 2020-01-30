@@ -53,3 +53,8 @@ add_subdirectory(test)
 # Build sample executable
 add_executable(sample_ocv_dnn_classifier sample_ocv_dnn_classifier.cpp)
 target_link_libraries(sample_ocv_dnn_classifier mpfOcvDnnDetection)
+
+# Make plugin files available to sample binary
+execute_process(
+    COMMAND sh -c "ln --symbolic --force plugin/OcvDnnDetection/* ."
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

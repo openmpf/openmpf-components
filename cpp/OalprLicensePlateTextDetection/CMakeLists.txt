@@ -69,6 +69,10 @@ file(COPY /usr/local/share/openalpr/runtime_data
 
 add_subdirectory(test)
 
-
 add_executable(sample_oalpr_text_detector sample_oalpr_text_detector.cpp)
 target_link_libraries(sample_oalpr_text_detector mpfOALPRLicensePlateTextDetection)
+
+# Make plugin files available to sample binary
+execute_process(
+    COMMAND sh -c "ln --symbolic --force plugin/OalprLicensePlateTextDetection/* ."
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

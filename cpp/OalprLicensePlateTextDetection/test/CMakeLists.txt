@@ -56,6 +56,6 @@ if (${GTEST_FOUND})
 
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test/test_output/)
 
-    execute_process(COMMAND ln -s ../plugin/OalprLicensePlateTextDetection/runtime_data runtime_data
+    execute_process(COMMAND ln --symbolic --force ../plugin/OalprLicensePlateTextDetection/runtime_data
                     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()

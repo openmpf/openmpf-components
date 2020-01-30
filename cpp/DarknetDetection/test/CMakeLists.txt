@@ -47,10 +47,7 @@ if (${GTEST_FOUND})
     # Install test images and videos
     file(COPY data/ DESTINATION data)
 
-    execute_process(COMMAND ln -s ../plugin/DarknetDetection/models models
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    execute_process(COMMAND ln -s ../plugin/DarknetDetection/lib lib
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    execute_process(COMMAND ln -s ../plugin/DarknetDetection/config config
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    execute_process(
+        COMMAND sh -c "ln --symbolic --force ../plugin/DarknetDetection/* ."
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()

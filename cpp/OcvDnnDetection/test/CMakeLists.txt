@@ -46,9 +46,8 @@ if (${GTEST_FOUND})
     file(GLOB OCVDNN_TEST_FILES data/*)
     file(COPY ${OCVDNN_TEST_FILES} DESTINATION data)
 
-    execute_process(COMMAND ln -s ../plugin/OcvDnnDetection/config config
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    execute_process(COMMAND ln -s ../plugin/OcvDnnDetection/models models
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    execute_process(
+        COMMAND sh -c "ln --symbolic --force ../plugin/OcvDnnDetection/* ."
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 endif()

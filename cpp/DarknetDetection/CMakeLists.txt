@@ -83,7 +83,12 @@ if (DARKNET_BUILD_CUDA)
     add_dependencies(mpfDarknetDetection darknet_wrapper_cuda)
 endif()
 
+add_subdirectory(test)
+
 add_executable(sample_darknet_detector sample_darknet_detector.cpp)
 target_link_libraries(sample_darknet_detector mpfDarknetDetection)
 
-add_subdirectory(test)
+# Make plugin files available to sample binary
+execute_process(
+    COMMAND sh -c "ln --symbolic --force plugin/DarknetDetection/* ."
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

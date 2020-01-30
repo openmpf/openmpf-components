@@ -47,8 +47,14 @@ target_link_libraries(mpfSceneChange mpfComponentInterface mpfDetectionComponent
 
 configure_mpf_component(SceneChangeDetection TARGETS mpfSceneChange)
 
+add_subdirectory(test)
+
 # Build sample executable.
 add_executable(sample_scene_change_detector sample_scene_change_detector.cpp)
 target_link_libraries(sample_scene_change_detector mpfSceneChange)
 
-add_subdirectory(test)
+# Make plugin files available to sample binary
+execute_process(
+    COMMAND sh -c "ln --symbolic --force plugin/SceneChangeDetection/* ."
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
