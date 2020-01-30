@@ -41,7 +41,7 @@
           "name": "TAGGING_FILE",
           "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
           "type": "STRING",
-          "defaultValue": "text-tags.json"
+          "defaultValue": "config/text-tags.json"
         },
         {
           "name": "TESSERACT_LANGUAGE",
@@ -284,7 +284,7 @@
       "properties": [
         {
           "name": "TAGGING_FILE",
-          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
+          "value": "config/text-tags.json"
         },
         {
           "name": "FEED_FORWARD_TYPE",

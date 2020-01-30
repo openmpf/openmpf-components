@@ -26,6 +26,8 @@
 
 #include <map>
 #include <iostream>
+#include <memory>
+#include <unistd.h>
 #include <boost/regex.hpp>
 #include <boost/locale.hpp>
 #include <boost/algorithm/string.hpp>
@@ -676,9 +678,10 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
             }
 
             if (tessdata_dir == "") {
+                std::unique_ptr<char, decltype(&std::free)> cwd(get_current_dir_name(), std::free);
                 LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Tesseract language models not found. Please add the " +
                                           "associated *.traineddata files to your tessdata directory " +
-                                          "($MPF_HOME/plugins/TesseractOCRTextDetection/tessdata) " +
+                                          "(" + cwd.get() + "/tessdata) " +
                                           "or shared models directory " +
                                           "($MPF_HOME/share/models/TesseractOCRTextDetection/tessdata).");
                 job_status = MPF_COULD_NOT_OPEN_DATAFILE;
