@@ -731,7 +731,8 @@ string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &job, c
     }
 
 
-    string local_plugin_directory = "tessdata";
+    std::unique_ptr<char, decltype(&std::free)> cwd(get_current_dir_name(), std::free);
+    string local_plugin_directory = std::string(cwd.get()) + "/tessdata";
     LOG4CXX_DEBUG(hw_logger_,
                   "[" + job.job_name + "] Not all models found in " + directory + ". Checking local plugin directory "
                   + local_plugin_directory + ".");

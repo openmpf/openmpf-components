@@ -115,9 +115,10 @@ Note that all `TRIGGER_WORD` results are trimmed of leading and trailing whitesp
 
 # Tessdata Models
 
-Language models supported by Tesseract are stored by default in
-`$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata` directory and script
-models are stored in `tessdata/script`. Users can set a new tessdata directory
+Language models supported by Tesseract are stored by default in either
+`$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata` for non-Docker 
+deployments or in `$MPF_HOME/plugins/plugin/tessdata` for Docker deployments. 
+Script models are stored in `tessdata/script`. Users can set a new tessdata directory
 by modifying the `MODELS_DIR_PATH` job property. Once set, the component will look
 for tessdata files in `[MODELS_DIR_PATH]/TesseractOCRTextDetection/tessdata`.
 
