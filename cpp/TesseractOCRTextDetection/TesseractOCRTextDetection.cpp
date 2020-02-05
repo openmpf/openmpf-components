@@ -772,6 +772,7 @@ bool TesseractOCRTextDetection::process_parallel_image_runs(TesseractOCRTextDete
         active_threads.insert(index);
         index++;
         while (active_threads.size() >= inputs.ocr_fset->max_parallel_ocr_threads) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
             for (const int &i: active_threads) {
                 if ( ocr_threads[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
                     if (!ocr_threads[i].get()) {
@@ -1803,6 +1804,7 @@ bool TesseractOCRTextDetection::process_parallel_pdf_pages(TesseractOCRTextDetec
         active_threads.insert(index);
         index ++;
         while (active_threads.size() >= page_inputs.ocr_fset.max_parallel_pdf_threads) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
             for (const int &i: active_threads) {
                 if (pdf_threads[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
                     if (!pdf_threads[i].get()) {
