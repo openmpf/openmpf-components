@@ -66,7 +66,7 @@ RUN yum-config-manager --add-repo http://developer.download.nvidia.com/compute/c
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 
-COPY --from=download_weights /weights $INSTALL_DIR/models
+COPY --from=download_weights /weights $PLUGINS_DIR/DarknetDetection/models
 
 ENV COMPONENT_LOG_NAME darknet-detection.log
 
