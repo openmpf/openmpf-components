@@ -891,18 +891,17 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
 }
 
 // Tag results and store into track detection properties.
-bool TesseractOCRTextDetection::process_text_tagging(Properties &detection_properties, const MPFImageJob &job,
+bool TesseractOCRTextDetection::process_ocr_text(Properties &detection_properties, const MPFImageJob &job,
                                                      TesseractOCRTextDetection::OCR_output &ocr_out,
                                                      MPFDetectionError &job_status,
                                                      const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
-                                                     const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex,
                                                      int page_num) {
 
     string ocr_lang = ocr_out.language;
     wstring full_text = ocr_out.text;
     full_text = clean_whitespace(full_text);
 
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing tags for Tesseract OCR output: ");
+    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing text for Tesseract OCR output: ");
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Tesseract OCR output was: " +
                               boost::locale::conv::utf_to_utf<char>(full_text));
 
@@ -981,7 +980,6 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
         load_settings(job, ocr_fset, text_type);
 
         MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
-        map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
 
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to run tesseract");
         vector<TesseractOCRTextDetection::OCR_output> ocr_outputs;
@@ -1133,9 +1131,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
                 }
 
             }
-            bool process_text = process_text_tagging(image_location.detection_properties, job, final_out, job_status,
-                                                     ocr_fset,
-                                                     json_kvs_regex);
+            bool process_text = process_ocr_text(image_location.detection_properties, job, final_out, job_status, ocr_fset);
             if (process_text) {
                 locations.push_back(image_location);
             }
@@ -1161,7 +1157,6 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
     load_settings(job, ocr_fset);
 
     MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
-    map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
 
     string temp_im_directory;
     vector<string> job_names;
@@ -1263,8 +1258,8 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
             // Copy over OSD results into OCR tracks.
             generic_track.detection_properties = osd_track_results.detection_properties;
 
-            bool process_text = process_text_tagging(generic_track.detection_properties, c_job, ocr_out, job_status,
-                                                     ocr_fset, json_kvs_regex, page_num);
+            bool process_text = process_ocr_text(generic_track.detection_properties, c_job, ocr_out, job_status,
+                                                     ocr_fset, page_num);
             if (process_text) {
                 tracks.push_back(generic_track);
             }

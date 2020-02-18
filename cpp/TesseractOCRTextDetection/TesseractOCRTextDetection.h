@@ -152,10 +152,9 @@ namespace MPF {
 
             void sharpen(cv::Mat &image, double weight);
 
-            bool process_text_tagging(Properties &detection_properties, const MPFImageJob &job, OCR_output &ocr_out,
+            bool process_ocr_text(Properties &detection_properties, const MPFImageJob &job, OCR_output &ocr_out,
                                       MPFDetectionError &job_status,
                                       const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
-                                      const std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex,
                                       int page_num = -1);
 
             void get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job, OCR_filter_settings &ocr_fset,

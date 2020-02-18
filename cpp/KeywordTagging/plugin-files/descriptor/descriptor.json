@@ -1,0 +1,43 @@
+{
+  "componentName": "KeywordTagging",
+  "componentVersion": "4.1.0",
+  "middlewareVersion": "4.1.0",
+  "sourceLibrary": "c++",
+  "batchLibrary": "${MPF_HOME}/plugins/KeywordTaggingComponent/lib/libmpfKeywordTaggingComponent.so",
+  "environmentVariables": [
+    {
+      "name": "LD_LIBRARY_PATH",
+      "value": "${MPF_HOME}/plugins/KeywordTaggingComponent/lib:${LD_LIBRARY_PATH}",
+      "sep": ":"
+    }
+  ],
+  "algorithm": {
+    "name": "KEYWORDTAGGING",
+    "description": "Performs keyword tagging on text.",
+    "detectionType": "TEXT",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_KEYWORD"
+      ],
+      "properties": [
+        {
+          "name": "FULL_REGEX_SEARCH",
+          "description": "Toggles REGEX search to include all matching trigger words associated with the regex patterns for each tag. When disabled, only the first instance of the first matching trigger word for each tag category is included.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "TAGGING_FILE",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
+          "type": "STRING",
+          "defaultValue": "text-tags.json"
+        }
+      ]
+    }
+  }
+}
