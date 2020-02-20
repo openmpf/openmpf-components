@@ -69,6 +69,11 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./TesseractOCRTe
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
+RUN yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
+    && yum --enablerepo=remi install -y ImageMagick6 \
+    && yum clean all \
+    && rm -rf /var/cache/yum/*
+
 ENV COMPONENT_LOG_NAME tesseract-ocr-text-detection.log
 
 COPY --from=build_component $BUILD_DIR/plugin/TesseractOCRTextDetection $PLUGINS_DIR/TesseractOCRTextDetection
