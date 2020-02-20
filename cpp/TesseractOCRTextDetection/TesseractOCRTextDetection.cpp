@@ -1107,7 +1107,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         vector<TesseractOCRTextDetection::OSD_script> script_list, backup_scripts, secondary_scripts;
 
         // If primary script is not NULL, check if secondary scripts are also valid.
-        if (detection_properties["PRIMARY_SCRIPT"] != "NULL") {
+        if (detection_properties["OSD_PRIMARY_SCRIPT"] != "NULL") {
             // Max number of scripts in ICU + "NULL" + Japanese and Korean + Fraktur
             const int kMaxNumberOfScripts = 116 + 1 + 2 + 1;
             double score_cutoff = best_score * ocr_fset.min_secondary_script_thrs;
