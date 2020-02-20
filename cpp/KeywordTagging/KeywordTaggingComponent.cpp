@@ -245,7 +245,7 @@ string KeywordTagger::parse_regex_code(boost::regex_constants::error_type etype)
     }
 }
 
-bool KeywordTagger::comp_regex(const MPFGenericJob &job, const wstring &full_text,
+bool KeywordTagger::comp_regex(const MPFJob &job, const wstring &full_text,
                                            const wstring &regstr, map<wstring, vector<string>> &trigger_words_offset,
                                            bool full_regex,
                                            bool case_sensitive, MPFDetectionError &job_status) {
@@ -287,7 +287,7 @@ bool KeywordTagger::comp_regex(const MPFGenericJob &job, const wstring &full_tex
     return found;
 }
 
-set<wstring> KeywordTagger::search_regex(const MPFGenericJob &job, const wstring &full_text,
+set<wstring> KeywordTagger::search_regex(const MPFJob &job, const wstring &full_text,
                                     const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex,
                                     map<wstring, vector<string>>  &trigger_words_offset,
                                     bool full_regex, MPFDetectionError &job_status) {
@@ -412,8 +412,6 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFGenericJob &job,
     MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
     map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
 
-
-
     load_tags_json(job, job_status, json_kvs_regex);
 
     MPFGenericTrack text_tags;
@@ -428,7 +426,6 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFGenericJob &job,
     bool process_text = process_text_tagging(text_tags.detection_properties, job, file_contents, job_status,
                                              json_kvs_regex);
 
-
     if (process_text) {
         tags.push_back(text_tags);
     }
@@ -438,12 +435,41 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFGenericJob &job,
     return job_status;
 }
 
+MPFDetectionError KeywordTagger::GetDetections(const MPFImageJob &job,
+                                               vector<MPFImageLocation> &tags) {
+    MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
+    map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
+
+    load_tags_json(job, job_status, json_kvs_regex);
+
+    MPFImageLocation text_tags;
+
+    wstring text;
+
+    if (job.has_feed_forward_location) {
+        string temp = job.feed_forward_location.detection_properties.at("TEXT");
+        text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
+    } else {
+        return MPF_MISSING_PROPERTY;
+    }
+
+    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
+                                             json_kvs_regex);
+
+    if (process_text) {
+        tags.push_back(text_tags);
+    }
+
+
+    return job_status;
+}
+
 bool KeywordTagger::Supports(MPFDetectionDataType data_type) {
     return true;
 }
 
 
-bool KeywordTagger::process_text_tagging(Properties &detection_properties, const MPFGenericJob &job,
+bool KeywordTagger::process_text_tagging(Properties &detection_properties, const MPFJob &job,
                                          wstring text,
                                          MPFDetectionError &job_status,
                                          const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex) {
@@ -495,10 +521,10 @@ bool KeywordTagger::process_text_tagging(Properties &detection_properties, const
     //    detection_properties["PAGE_NUM"] = to_string(page_num + 1);
     //}
 
-    //wcout << "text:" << text << "\n";
-    //wcout << "tags:" << tag_string << "\n";
-    //wcout << "trigger: " << tag_trigger << "\n";
-    //cout << "offset: " << tag_offset << "\n";
+    cout << "text: \n" << detection_properties["TEXT"] << "\n";
+    cout << "tags: " << detection_properties["TAGS"] << "\n";
+    cout << "trigger: " << detection_properties["TRIGGER_WORDS"] << "\n";
+    cout << "offset: " << tag_offset << "\n";
     return true;
 }
 
