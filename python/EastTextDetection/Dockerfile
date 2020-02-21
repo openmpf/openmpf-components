@@ -26,7 +26,7 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
+FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} as build_component
 
 # Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
 RUN pip install --no-cache-dir 'opencv-python>=3.4.7'
@@ -37,6 +37,14 @@ RUN install-component.sh
 
 ARG RUN_TESTS=false
 RUN if [ "${RUN_TESTS,,}" == true ]; then python tests/test_east.py; fi
+
+
+
+FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
+
+COPY --from=build_component $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+
+COPY --from=build_component $PLUGINS_DIR/EastTextDetection $PLUGINS_DIR/EastTextDetection
 
 
 ENV COMPONENT_LOG_NAME east-text-detection.log
