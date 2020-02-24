@@ -521,8 +521,8 @@ bool KeywordTagger::process_text_tagging(Properties &detection_properties, const
     //    detection_properties["PAGE_NUM"] = to_string(page_num + 1);
     //}
 
-    cout << "text: \n" << detection_properties["TEXT"] << "\n";
-    cout << "tags: " << detection_properties["TAGS"] << "\n";
+    //cout << "text: \n" << detection_properties["TEXT"] << "\n";
+    //cout << "tags: " << detection_properties["TAGS"] << "\n";
     cout << "trigger: " << detection_properties["TRIGGER_WORDS"] << "\n";
     cout << "offset: " << tag_offset << "\n";
     return true;

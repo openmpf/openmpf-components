@@ -9,6 +9,7 @@ if (${GTEST_FOUND})
     find_package(GTest REQUIRED)
     find_package(mpfComponentTestUtils REQUIRED)
 
+
     include_directories(..)
     add_executable(KeywordTaggingTest test_keyword_tagging.cpp)
     target_link_libraries(KeywordTaggingTest mpfKeywordTagging mpfComponentTestUtils GTest::GTest GTest::Main)

@@ -1134,6 +1134,8 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
             bool process_text = process_ocr_text(image_location.detection_properties, job, final_out, job_status, ocr_fset);
             if (process_text) {
                 locations.push_back(image_location);
+                job.has_feed_forward_location = true;
+                job.feed_forward_location = image_location;
             }
         }
 

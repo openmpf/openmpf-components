@@ -17,7 +17,10 @@
     "detectionType": "TEXT",
     "actionType": "DETECTION",
     "requiresCollection": {
-      "states": []
+      "states": [
+        "DETECTION_TEXT",
+        "DETECTION_SPEECH"
+      ]
     },
     "providesCollection": {
       "states": [
@@ -39,5 +42,38 @@
         }
       ]
     }
-  }
+  },
+  "action": [
+    {
+      "name": "KEYWORD TAGGING WITH FEED FORWARD",
+      "description": "Executes the keyword tagger after TesseractOCR text detection",
+      "algorithm": "KEYWORDTAGGING",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "KEYWORD TAGGING OCR FEED FORWARD TASK",
+      "description": "Performs keyword tagging on text extracted from Tesseract",
+      "actions": [
+        "KEYWORD TAGGING WITH FEED FORWARD"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "KEYWORD TAGGING OCR FEED FORWARD PIPELINE",
+      "description": "Performs keyword tagging on text extracted from Tesseract",
+      "tasks": [
+        "TESSERACT OCR TEXT DETECTION TASK",
+        "KEYWORD TAGGING WITH FEED FORWARD"
+      ]
+    }
+  ]
+
 }
