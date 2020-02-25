@@ -73,6 +73,9 @@ void print_detection_properties(Properties properties, float confidence) {
                       << "    Secondary script scores: " << properties.at("OSD_SECONDARY_SCRIPT_SCORES") << std::endl;
         }
     }
+    if (properties.count("MISSING_LANGUAGE_MODELS") > 0){
+        std::cout << "Missing language models: " << properties.at("MISSING_LANGUAGE_MODELS") << std::endl;
+    }
     if (properties.count("TEXT") > 0) {
         std::cout << "OCR result:" << std::endl
                   << "    Text: \"" << properties.at("TEXT") << "\"" << std::endl

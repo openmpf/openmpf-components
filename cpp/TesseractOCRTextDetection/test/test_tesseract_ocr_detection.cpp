@@ -283,7 +283,7 @@ TEST(TESSERACTOCR, TrackFilterTest) {
     ASSERT_TRUE(ocr.Init());
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"},
                                                             {"ROTATE_AND_DETECT",     "true"},
-                                                            {"TESSERACT_LANGUAGE",    "eng,chi_sim"},
+                                                            {"TESSERACT_LANGUAGE",    "eng, chi_sim"},
                                                             {"MAX_TEXT_TRACKS",       "1"}};
 
     // Check that the top text track is properly returned after filtering.
@@ -296,8 +296,8 @@ TEST(TESSERACTOCR, TrackFilterTest) {
     custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"},
                          {"TESSERACT_LANGUAGE",    "eng,chi_sim"}};
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
-    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected English track";
-    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "chi_sim") << "Expected Chinese track";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "chi_sim") << "Expected Chinese track";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected English track";
     ASSERT_TRUE(results.size() == 2) << "Expected two output tracks.";
 
     ASSERT_TRUE(ocr.Close());

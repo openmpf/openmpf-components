@@ -74,11 +74,24 @@
           "defaultValue": "true"
         },
         {
+          "name": "MAX_PARALLEL_SCRIPT_THREADS",
+          "description": "When set to a value <= 1, OCR parallel processing is disabled. When set to a value > 1, OCR may be performed in parallel using up to the specified number of threads, where each thread is using a different script. Disabled during parallel processing of PDF pages.",
+          "type": "INT",
+          "defaultValue": "4"
+        },
+        {
+          "name": "MAX_PARALLEL_PAGE_THREADS",
+          "description": "When set to a value <= 1, PDF parallel page processing is disabled. When set to a value > 1, processing of pages may be performed in parallel using up to the specified number of threads, where each thread is processing OCR runs for a different page.",
+          "type": "INT",
+          "defaultValue": "4"
+        },
+        {
           "name": "COMBINE_OSD_SCRIPTS",
           "description": "When enabled, perform OCR on the combination of detected scripts. When disabled, perform OCR on each detected script independently.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
+
         {
           "name": "MIN_OSD_TEXT_ORIENTATION_CONFIDENCE",
           "description": "Specifies the minimum confidence value (>= 0) required to use the detected text orientation when OSD automation is enabled. Top rotation confidence is calculated based on comparison of top-detected rotation score against secondary (lower confidence) rotation scores.",
