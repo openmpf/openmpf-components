@@ -26,37 +26,29 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} as build_component
-
-# Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN pip install --no-cache-dir 'opencv-python>=3.4.7'
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
 COPY . .
 
-RUN install-component.sh
+RUN build-component.sh
 
 ARG RUN_TESTS=false
-RUN if [ "${RUN_TESTS,,}" == true ]; then python tests/test_east.py; fi
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvDnnDetectionTest; fi
 
 
 
-FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-COPY --from=build_component $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+ENV COMPONENT_LOG_NAME ocv-dnn-detection.log
 
-COPY --from=build_component $PLUGINS_DIR/EastTextDetection $PLUGINS_DIR/EastTextDetection
+COPY --from=build_component $BUILD_DIR/plugin/OcvDnnDetection $PLUGINS_DIR/OcvDnnDetection
+
+COPY --from=build_component $BUILD_DIR/libmpfOcvDnnDetection.so \
+                            $PLUGINS_DIR/OcvDnnDetection/lib/
 
 
-ENV COMPONENT_LOG_NAME east-text-detection.log
-
-
-################################################################################
-# Labels                                                                       #
-################################################################################
-
-# Set labels
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF EAST Text Detection" \
+      org.label-schema.name="OpenMPF OpenCV Deep Neural Network (DNN) Classification" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \

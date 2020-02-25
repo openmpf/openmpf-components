@@ -30,7 +30,7 @@
 
     <id>tikaTextDetection</id>
     <formats>
-        <format>tar.gz</format>
+        <format>${mpf.assembly.format}</format>
     </formats>
     <fileSets>
         <fileSet>

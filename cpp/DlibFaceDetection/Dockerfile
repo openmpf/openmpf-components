@@ -26,37 +26,44 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} as build_component
 
-# Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN pip install --no-cache-dir 'opencv-python>=3.4.7'
+# Download library source code so it doesn't need to be re-downloaded when base images change
+FROM centos:7 as download_library_source
+
+RUN yum install --assumeyes bzip2 \
+    && yum clean all \
+    && rm --recursive /var/cache/yum/*
+
+RUN mkdir --parents /apps/source/dlib-sources; \
+    curl --location 'http://dlib.net/files/dlib-18.18.tar.bz2' \
+        | tar --extract --bzip2 --directory /apps/source/dlib-sources
+
+
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+
+COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
 
 COPY . .
 
-RUN install-component.sh
+RUN build-component.sh
 
 ARG RUN_TESTS=false
-RUN if [ "${RUN_TESTS,,}" == true ]; then python tests/test_east.py; fi
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./DlibFaceDetectionTest; fi
 
 
 
-FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-COPY --from=build_component $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+ENV COMPONENT_LOG_NAME dlib-face-detection.log
 
-COPY --from=build_component $PLUGINS_DIR/EastTextDetection $PLUGINS_DIR/EastTextDetection
+COPY --from=build_component $BUILD_DIR/plugin/DlibFaceDetection $PLUGINS_DIR/DlibFaceDetection
+
+COPY --from=build_component $BUILD_DIR/libmpfDlibFaceDetection.so \
+                            $PLUGINS_DIR/DlibFaceDetection/lib/
 
 
-ENV COMPONENT_LOG_NAME east-text-detection.log
-
-
-################################################################################
-# Labels                                                                       #
-################################################################################
-
-# Set labels
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF EAST Text Detection" \
+      org.label-schema.name="OpenMPF Dlib Face Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \

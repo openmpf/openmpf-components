@@ -26,38 +26,60 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} as build_component
 
-# Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN pip install --no-cache-dir 'opencv-python>=3.4.7'
+FROM centos:7 as download_weights
+# Download weights in separate stage so they don't need to be re-downloaded when base images change.
+RUN mkdir /weights && curl --location https://pjreddie.com/media/files/yolov3.weights > /weights/yolov3.weights
+
+
+####################################################
+# Build Component
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+
+RUN yum-config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64 \
+    && VERSION=9-0-9.0.176-1 \
+    && yum install -y --nogpgcheck cuda-minimal-build-$VERSION cuda-cublas-dev-$VERSION cuda-curand-dev-$VERSION \
+    && yum clean all \
+    && rm -rf /var/cache/yum/* \
+    && ln -s cuda-9.0 /usr/local/cuda \
+    && echo '/usr/local/cuda/lib64' >> /etc/ld.so.conf.d/cuda.conf
 
 COPY . .
 
-RUN install-component.sh
+RUN build-component.sh
 
 ARG RUN_TESTS=false
-RUN if [ "${RUN_TESTS,,}" == true ]; then python tests/test_east.py; fi
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./DarknetDetectionTest; fi
 
 
+####################################################
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG}
 
-FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
+RUN yum-config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64 \
+    && yum install -y --nogpgcheck cuda-cudart-9-0-9.0.176-1 \
+    && yum clean all \
+    && rm -rf /var/cache/yum/* \
+    && ln -s cuda-9.0 /usr/local/cuda \
+    && echo '/usr/local/cuda/lib64' >> /etc/ld.so.conf.d/cuda.conf
 
-COPY --from=build_component $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+# Environment variables required by nvidia runtime.
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 
-COPY --from=build_component $PLUGINS_DIR/EastTextDetection $PLUGINS_DIR/EastTextDetection
+COPY --from=download_weights /weights $PLUGINS_DIR/DarknetDetection/models
+
+ENV COMPONENT_LOG_NAME darknet-detection.log
+
+COPY --from=build_component $BUILD_DIR/plugin/DarknetDetection $PLUGINS_DIR/DarknetDetection
+
+COPY --from=build_component $BUILD_DIR/libmpfDarknetDetection.so \
+                            $PLUGINS_DIR/DarknetDetection/lib/
 
 
-ENV COMPONENT_LOG_NAME east-text-detection.log
-
-
-################################################################################
-# Labels                                                                       #
-################################################################################
-
-# Set labels
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF EAST Text Detection" \
+      org.label-schema.name="OpenMPF Darknet Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
+

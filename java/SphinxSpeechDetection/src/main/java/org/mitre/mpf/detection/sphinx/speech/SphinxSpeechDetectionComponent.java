@@ -45,7 +45,7 @@ import java.util.Map;
 import static org.apache.commons.io.FileUtils.deleteQuietly;
 
 public class SphinxSpeechDetectionComponent extends MPFAudioAndVideoDetectionComponentAdapter {
-	
+
     private static final Logger LOG = LoggerFactory.getLogger(SphinxSpeechDetectionComponent.class);
     private final MPFAudioDetectionMediaHandler mediaHandler;
     private final SphinxSpeechDetectionProcessor speechProcessor;
@@ -123,7 +123,7 @@ public class SphinxSpeechDetectionComponent extends MPFAudioAndVideoDetectionCom
                         "Failed to rip the audio from '%s' (startTime = %s, stopTime = %s) to '%s' due to an Exception.",
                         source, newStartTime, newStopTime, target);
                 LOG.error(errorMsg, e);
-                throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, errorMsg);
+                throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, errorMsg, e);
             }
 
             // detect and transcribe any spoken English in the audio
@@ -161,7 +161,7 @@ public class SphinxSpeechDetectionComponent extends MPFAudioAndVideoDetectionCom
 
         LOG.debug("target = {}, startTime = {}, stopTime = {}, tracks size = {}",
                 target, newStartTime, newStopTime, tracks.size());
-        
+
         return tracks;
     }
 }
