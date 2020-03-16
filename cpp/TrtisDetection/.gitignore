@@ -1,0 +1,6 @@
+build*
+hnswlib*
+*.zip
+old_files_delete
+!/.gitignore
+
