@@ -159,6 +159,105 @@ namespace {
         return result;
     }
 
+    template <typename T>
+    void FreeAndClear(T*& ptr_ref) {
+        if (ptr_ref != nullptr) {
+            free(ptr_ref);
+            ptr_ref = nullptr;
+        }
+    }
+
+    void DestroyLayer(layer& layer) {
+        FreeAndClear(layer.mask);
+        FreeAndClear(layer.counts);
+
+        if (layer.sums != nullptr) {
+            // The 90 magic number is taken from make_iseg_layer() in iseg_layer.c
+            for (int i = 0; i < 90; i++) {
+                FreeAndClear(layer.sums[i]);
+            }
+            FreeAndClear(layer.sums);
+        }
+
+        FreeAndClear(layer.combine_cpu);
+        FreeAndClear(layer.combine_delta_cpu);
+        FreeAndClear(layer.loss);
+        FreeAndClear(layer.bias_m);
+        FreeAndClear(layer.bias_v);
+        FreeAndClear(layer.scale_m);
+        FreeAndClear(layer.scale_v);
+
+        // TODO: handle layer.prev_state_cpu
+
+        FreeAndClear(layer.temp_cpu);
+        FreeAndClear(layer.temp2_cpu);
+        FreeAndClear(layer.temp3_cpu);
+        FreeAndClear(layer.dh_cpu);
+        FreeAndClear(layer.hh_cpu);
+        FreeAndClear(layer.prev_cell_cpu);
+        FreeAndClear(layer.cell_cpu);
+        FreeAndClear(layer.f_cpu);
+        FreeAndClear(layer.i_cpu);
+        FreeAndClear(layer.g_cpu);
+        FreeAndClear(layer.o_cpu);
+        FreeAndClear(layer.c_cpu);
+        FreeAndClear(layer.dc_cpu);
+
+        // TODO: handle layer.input_layer
+        // TODO: handle layer.self_layer
+        // TODO: handle layer.output_layer
+        // TODO: handle layer.reset_layer
+        // TODO: handle layer.update_layer
+        // TODO: handle layer.state_layer
+        // TODO: handle layer.input_gate_layer
+        // TODO: handle layer.state_gate_layer
+        // TODO: handle layer.input_save_layer
+        // TODO: handle layer.state_save_layer
+        // TODO: handle layer.input_state_layer
+        // TODO: handle layer.state_state_layer
+        // TODO: handle layer.input_z_layer
+        // TODO: handle layer.state_z_layer
+        // TODO: handle layer.input_r_layer
+        // TODO: handle layer.state_r_layer
+        // TODO: handle layer.input_h_layer
+        // TODO: handle layer.state_h_layer
+        // TODO: handle layer.wz
+        // TODO: handle layer.uz
+        // TODO: handle layer.wr
+        // TODO: handle layer.ur
+        // TODO: handle layer.wh
+        // TODO: handle layer.uh
+        // TODO: handle layer.uo
+        // TODO: handle layer.wo
+        // TODO: handle layer.uf
+        // TODO: handle layer.wf
+        // TODO: handle layer.ui
+        // TODO: handle layer.wi
+        // TODO: handle layer.ug
+        // TODO: handle layer.wg
+        // TODO: handle layer.softmax_tree
+    }
+
+    void DestroyNetwork(network* net) {
+        // The Darknet library code's free_network function doesn't properly free all network and layer fields.
+        FreeAndClear(net->seen);
+        FreeAndClear(net->t);
+        FreeAndClear(net->scales);
+        FreeAndClear(net->steps);
+
+        // TODO: handle net->hierarchy
+        // TODO: handle net->delta
+
+        FreeAndClear(net->workspace);
+        FreeAndClear(net->cost);
+
+        for (int i = 0; i < net->n; i++) {
+            DestroyLayer(net->layers[i]);
+        }
+
+        free_network(net);
+    }
+
 
     DarknetHelpers::network_ptr_t LoadNetwork(const std::string &log_prefix, const ModelSettings &model_settings,
                                               log4cxx::LoggerPtr &logger) {
@@ -170,7 +269,7 @@ namespace {
                 << model_settings.weights_file << "\"...");
 
         DarknetHelpers::network_ptr_t network(load_network(cfg_file.get(), weights_file.get(), 0),
-                                              free_network);
+                                              DestroyNetwork);
         LOG4CXX_DEBUG(logger, log_prefix << "Successfully loaded network.")
         return network;
     }
