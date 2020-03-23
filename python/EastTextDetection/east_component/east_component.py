@@ -23,14 +23,13 @@
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
-from __future__ import division, print_function
 
 import numpy as np
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-from east_processor import EastProcessor
+from .east_processor import EastProcessor
 
 logger = mpf.configure_logging('east-text-detection.log', __name__ == '__main__')
 
