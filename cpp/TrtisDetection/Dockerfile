@@ -26,43 +26,42 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-############################################################################
-## Building Container
-############################################################################
-
-FROM openmpf_build as openmpf-dev
-
-RUN yum -y install vim mlocate
+RUN yum -y install vim mlocate git openssl-devel wget \
+&& mkdir -p /home/mpf/component_build/plugin/TrtisDetection/models/ip_irv2_coco/1 \
+&& wget --load-cookies /tmp/cookies.txt \
+"https://docs.google.com/uc?export=download&confirm=$(\
+wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate \
+'https://docs.google.com/uc?export=download&id=1EVYe2RHs7g2A8E2KLjVUXp-TV_ndjdtn' -O- \
+| sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1EVYe2RHs7g2A8E2KLjVUXp-TV_ndjdtn" \
+-O /home/mpf/component_build/plugin/TrtisDetection/models/ip_irv2_coco/1/model.graphdef \
+&& rm -rf /tmp/cookies.txt
 
 # Install cares, protobuf, zlib, gRPC
-# COPY fsroot/ /
-WORKDIR /root
-
-RUN git config --global --unset http.proxy
+WORKDIR /tmp
 
 RUN git clone -b v1.20.0 https://github.com/grpc/grpc  && cd grpc && git submodule update --init --recursive \
-&& mkdir -p /root/grpc/third_party/protobuf/cmake/build \
-&& cd /root/grpc/third_party/protobuf/cmake/build \
+&& mkdir -p /tmp/grpc/third_party/protobuf/cmake/build \
+&& cd /tmp/grpc/third_party/protobuf/cmake/build \
 && cmake3 -DCMAKE_POSITION_INDEPENDENT_CODE=ON -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release .. \
 && make -j`nproc` \
 && make install \
-&& cd /root/ \
-&& rm -rf /root/grpc/third_party/protobuf \
-&& mkdir -p /root/grpc/third_party/cares/cares/cmake/build \
-&& cd /root/grpc/third_party/cares/cares/cmake/build \
+&& cd /tmp/ \
+&& rm -rf /tmp/grpc/third_party/protobuf \
+&& mkdir -p /tmp/grpc/third_party/cares/cares/cmake/build \
+&& cd /tmp/grpc/third_party/cares/cares/cmake/build \
 && cmake3 -DCMAKE_BUILD_TYPE=Release ../.. \
 && make -j`nproc` \
-&& make install \
-&& cd /root/ \
-&& rm -rf /root/grpc/third_party/cares/cares \
-# zlib already installed
-&& rm -rf /root/grpc/third_party/zlib \
-# protobuf already installed
-&& rm -rf /root/grpc/third_party/protobuf \
+&& make install
+
+RUN cd /tmp/ \
+&& rm -rf /tmp/grpc/third_party/cares/cares \
+&& rm -rf /tmp/grpc/third_party/zlib \
+&& rm -rf /tmp/grpc/third_party/protobuf \
 # build and install gRPC
-&& mkdir -p /root/grpc/cmake/build \
-&& cd /root/grpc/cmake/build \
+&& mkdir -p /tmp/grpc/cmake/build \
+&& cd /tmp/grpc/cmake/build \
 && cmake3 -DgRPC_INSTALL=ON \
           -DgRPC_BUILD_TESTS=OFF \
           -DgRPC_PROTOBUF_PROVIDER=package \
@@ -72,12 +71,12 @@ RUN git clone -b v1.20.0 https://github.com/grpc/grpc  && cd grpc && git submodu
           -DCMAKE_BUILD_TYPE=Release ../.. \
 && make -j`nproc` \
 && make install \
-&& cd /root/ \
-&& rm -rf /root/grpc \
+&& cd /tmp/ \
+&& rm -rf /tmp/grpc \
 && ldconfig
 
 # Install curl.
-RUN cd /root/ \
+RUN cd /tmp/ \
 && git clone -b curl-7_67_0 https://github.com/curl/curl.git \
 && cd curl \
 && mkdir build && cd build && cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local .. && make install && \
@@ -85,23 +84,23 @@ ldconfig
 
 
 # Install TensorRT-Inference-Server client libs.
-RUN cd /root/ \
+RUN cd /tmp/ \
 && git clone -b v1.7.0 https://github.com/NVIDIA/tensorrt-inference-server.git tensorrt-inference-server 2> /dev/null || (cd tensorrt-inference-server; git pull)
 
 # Fix lower case protobuf package name.
-RUN sed -i 's/find_package(Protobuf CONFIG REQUIRED)/find_package(protobuf CONFIG REQUIRED)/g' /root/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt \
-&& sed -i 's/add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/#add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/g' /root/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
+RUN sed -i 's/find_package(Protobuf CONFIG REQUIRED)/find_package(protobuf CONFIG REQUIRED)/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt \
+&& sed -i 's/add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/#add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
 
 # Set version number.
-RUN sed -i 's/project (trtis-clients)/project(trtis-clients VERSION "0.0.0")/g' /root/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
-# RUN echo "$(cat /root/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt)"
+RUN sed -i 's/project (trtis-clients)/project(trtis-clients VERSION "0.0.0")/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
+# RUN echo "$(cat /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt)"
 
 
-RUN mkdir -p /root/tensorrt-inference-server/build/trtis-clients/build && cd /root/tensorrt-inference-server/build/trtis-clients/build \
+RUN mkdir -p /tmp/tensorrt-inference-server/build/trtis-clients/build && cd /tmp/tensorrt-inference-server/build/trtis-clients/build \
 && cmake3 -DCMAKE_INSTALL_PREFIX=/root/trtis .. \
 && make -j`nproc` \
 && make install \
-&& cp /root/tensorrt-inference-server/src/core/constants.h /root/trtis/include/constants.h \
+&& cp /tmp/tensorrt-inference-server/src/core/constants.h /root/trtis/include/constants.h \
 && chmod 644 /root/trtis/include/constants.h \
 && echo '/root/trtis/lib/' > /etc/ld.so.conf.d/trtis.conf \
 && echo '/usr/local/lib'   > /etc/ld.so.conf.d/locallib.conf \
@@ -113,44 +112,26 @@ RUN mkdir -p /root/tensorrt-inference-server/build/trtis-clients/build && cd /ro
 && echo 'add_library(request SHARED IMPORTED) # or STATIC instead of SHARED'                  > /root/trtis/cmake/request-config.cmake \
 && echo 'set_target_properties(request PROPERTIES'                                           >> /root/trtis/cmake/request-config.cmake \
 && echo '                              IMPORTED_LOCATION "/root/trtis/lib/librequest.so"'    >> /root/trtis/cmake/request-config.cmake \
-&& echo '                              INTERFACE_INCLUDE_DIRECTORIES "/root/trtis/include")' >> /root/trtis/cmake/request-config.cmake \
-&& cd /root
-
-# && rm -fr /root/tensorrt-inference-server
+&& echo '                              INTERFACE_INCLUDE_DIRECTORIES "/root/trtis/include")' >> /root/trtis/cmake/request-config.cmake
 
 ENV request_DIR=/root/trtis
 
-RUN cd /root/ \
-&& git clone -b develop https://github.com/openmpf/openmpf-cpp-component-sdk.git 2> /dev/null || (cd openmpf-cpp-component-sdk; git pull) \
-&& mkdir -p /root/openmpf-cpp-component-sdk/build \
-&& cd /root/openmpf-cpp-component-sdk/build \
-&& cmake3 .. \
-&& make -j`nproc` \
-&& make install \
-&& export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/mpf-sdk-install/lib
-RUN updatedb
+WORKDIR /home/mpf/component_src
 
-RUN cd /root/ \
-&& git clone -b develop https://github.com/openmpf/openmpf-components.git 2> /dev/null \
-&& mkdir openmpf-components/cpp/TrtisDetection
+COPY . .
 
-COPY . /root/openmpf-components/cpp/TrtisDetection
-RUN cd /root/openmpf-components/cpp/TrtisDetection && mkdir build && cd build && cmake3 .. && make install
-
-############################################################################
-## Building Test Container
-############################################################################
+RUN build-component.sh
 
 FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as test_server
 
 ADD ./plugin-files/models /models/
 
-COPY --from=openmpf-dev /usr/lib64/ /MPF_lib64/
-COPY --from=openmpf-dev /usr/local/lib /MPF_lib/
-COPY --from=openmpf-dev /apps/install/opencv3.4.7/lib64/ /apps/install/opencv3.4.7/lib64/
-COPY --from=openmpf-dev /root/openmpf-components/cpp/TrtisDetection/build /Testing_MPF_FILES/
-COPY --from=openmpf-dev /root/tensorrt-inference-server/build/trtis-clients/build/src/clients/c++/library/librequest.so /usr/local/lib/
-COPY --from=openmpf-dev /root/mpf-sdk-install/lib /usr/local/lib
+COPY --from=build_component /usr/lib64/ /MPF_lib64/
+COPY --from=build_component /usr/local/lib /MPF_lib/
+COPY --from=build_component /opt/opencv-3.4.7/lib64 /apps/install/opencv3.4.7/lib64/
+COPY --from=build_component /home/mpf/component_build /Testing_MPF_FILES/
+COPY --from=build_component /home/mpf/component_build/plugin/TrtisDetection/lib/librequest.so /usr/local/lib/
+COPY --from=build_component /home/mpf/mpf-sdk-install/lib /usr/local/lib
 
 RUN  cd /opt/tensorrtserver/ && ./nvidia_entrypoint.sh && cd /Testing_MPF_FILES/test/ && trtserver --model-store=/models \
 & export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/Testing_MPF_FILES/plugin/TrtisDetection/lib/ && cp /Testing_MPF_FILES/*.so /usr/local/lib/ \
@@ -158,12 +139,12 @@ RUN  cd /opt/tensorrtserver/ && ./nvidia_entrypoint.sh && cd /Testing_MPF_FILES/
 && cp /MPF_lib64/libssl3.so /usr/local/lib \
 && cp /MPF_lib64/libnspr4.so /usr/local/lib \
 && cp /MPF_lib64/libnss3.so /usr/local/lib \
+&& cp -a /MPF_lib64/libgtest* /usr/local/lib \
 && ldconfig \
 && cp /Testing_MPF_FILES/*.so /opt/tensorrtserver/ \
 && cd /Testing_MPF_FILES/test/ && ldconfig && sleep 30 && ./TrtisDetectionTest > /MPF_test_status.txt
 
-
-FROM openmpf-dev
+FROM  build_component
 COPY --from=test_server  /MPF_test_status.txt  /MPF_test_status.txt
 RUN echo "$(cat /MPF_test_status.txt)" && rm /MPF_test_status.txt
 

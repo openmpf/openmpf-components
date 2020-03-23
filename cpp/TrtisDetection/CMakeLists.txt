@@ -28,11 +28,13 @@
 cmake_minimum_required(VERSION 3.6)
 project(caffe-detection)
 
-set(CMAKE_CXX_STANDARD 11)
-
+ADD_DEFINITIONS("-std=c++11")
 add_definitions(-Wfatal-errors)
 
 include(../ComponentSetup.cmake)
+
+set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
+message("Package in ${PACKAGE_DIR}")
 
 find_package(OpenCV 3.4.7 EXACT REQUIRED PATHS /opt/opencv-3.4.7
     COMPONENTS opencv_core)
