@@ -1452,7 +1452,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
             // Rotate upper left coordinates based on OSD results.
             if (ocr_fset.min_orientation_confidence <= os_results.best_result.oconfidence) {
                 orientation_result = os_results.best_result.orientation_id;
-                set_coordinates(xLeftUpper, yLeftUpper, width, height, input_size, os_results.best_result.orientation_id);
+                    set_coordinates(xLeftUpper, yLeftUpper, width, height, input_size, os_results.best_result.orientation_id);
             }
 
             // When PSM is set to 0, there is no need to process any further.
