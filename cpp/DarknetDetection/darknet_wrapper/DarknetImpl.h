@@ -47,7 +47,7 @@
 
 
 namespace DarknetHelpers {
-    using network_ptr_t = std::unique_ptr<network, decltype(&free_network)>;
+    using network_ptr_t = std::unique_ptr<network, void(*)(network*)>;
 
     struct DarknetImageHolder;
 }
