@@ -26,7 +26,7 @@
 
 
 cmake_minimum_required(VERSION 3.6)
-project(caffe-detection)
+project(trtis-detection)
 
 ADD_DEFINITIONS("-std=c++11")
 add_definitions(-Wfatal-errors)
@@ -49,14 +49,13 @@ find_package(CURL REQUIRED)
 include_directories(${PROTOBUF_INCLUDE_DIR} ${CURL_INCLUDE_DIR})
 set(TRTIS_DETECTION_SOURCE_FILES TrtisDetection.cpp TrtisDetection.hpp)
 
-add_library(trtisDetection SHARED ${TRTIS_DETECTION_SOURCE_FILES})
-target_link_libraries(trtisDetection request mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES})
+add_library(mpfTrtisDetection SHARED ${TRTIS_DETECTION_SOURCE_FILES})
+target_link_libraries(mpfTrtisDetection request mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES})
 
-configure_mpf_component(TrtisDetection TARGETS trtisDetection)
+configure_mpf_component(TrtisDetection TARGETS mpfTrtisDetection)
 
-enable_testing()
 add_subdirectory(test)
 
 # Build sample executable
 add_executable(sample_trtis_detector sample_trtis_detector.cpp)
-target_link_libraries(sample_trtis_detector trtisDetection)
+target_link_libraries(sample_trtis_detector mpfTrtisDetection)

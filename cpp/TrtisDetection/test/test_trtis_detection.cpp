@@ -105,7 +105,7 @@ TEST(TRTIS, GetInferenceContextTest) {
     ASSERT_TRUE(trtisDet.Close());
 }
 
-/*
+
 //------------------------------------------------------------------------------
  TEST(TRTIS, ImageTest) {
 
@@ -174,7 +174,7 @@ void assertObjectDetectedInVideo(const string     &object_name,
     ASSERT_TRUE(containsObject(object_name, tracks));
 }
 //------------------------------------------------------------------------------
-
+/*
 TEST(TRTIS, VideoTest) {
     TrtisDetection trtisDet;
     trtisDet.SetRunDirectory("../plugin");

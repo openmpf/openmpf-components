@@ -936,11 +936,8 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFImageJob   &job,
       return MPF_INVALID_DATAFILE_URI;
     }
 
-    cout << "DEBUGGING TESTING: Image beginning to load.";
     MPFImageReader image_reader(job);
     cv::Mat img = image_reader.GetImage();
-
-    cout << "DEBUGGING TESTING: Image properly loaded.";
 
     if(img.empty()){
       LOG4CXX_ERROR(_log, "Could not read image file: " << job.data_uri);

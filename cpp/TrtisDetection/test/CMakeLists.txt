@@ -38,7 +38,7 @@ if (${GTEST_FOUND})
 
     include_directories(..)
     add_executable(TrtisDetectionTest test_trtis_detection.cpp)
-    target_link_libraries(TrtisDetectionTest trtisDetection mpfComponentTestUtils GTest::GTest GTest::Main pthread)
+    target_link_libraries(TrtisDetectionTest mpfTrtisDetection mpfComponentTestUtils GTest::GTest GTest::Main pthread)
 
     add_test(NAME TrtisDetectionTest COMMAND TrtisDetectionTest)
 

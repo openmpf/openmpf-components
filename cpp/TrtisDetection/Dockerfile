@@ -148,4 +148,20 @@ FROM  build_component
 COPY --from=test_server  /MPF_test_status.txt  /MPF_test_status.txt
 RUN echo "$(cat /MPF_test_status.txt)" && rm /MPF_test_status.txt
 
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
+ENV COMPONENT_LOG_NAME trtis-detection.log
+
+COPY --from=build_component $BUILD_DIR/plugin/TrtisDetection \
+                            $PLUGINS_DIR/TrtisDetection
+
+COPY --from=build_component $BUILD_DIR/libmpfTrtisDetection.so \
+                            $PLUGINS_DIR/TrtisDetection/lib/
+
+
+LABEL org.label-schema.license="Apache 2.0" \
+      org.label-schema.name="OpenMPF TRTIS Client Detection" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
+      org.label-schema.vendor="MITRE"
