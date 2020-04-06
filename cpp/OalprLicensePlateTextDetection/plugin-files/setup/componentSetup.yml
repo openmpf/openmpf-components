@@ -36,7 +36,7 @@
 # Set the TESSDATA_PREFIX value
 - name: "{{ component_tld }} | Set the TESSDATA_PREFIX variable"
   set_fact:
-    tessdata_prefix: "{{ mpf_home }}/plugins/{{ component_tld }}/runtime_data/ocr"
+    tessdata_prefix: "{{ lookup('env','MPF_HOME') }}/plugins/{{ component_tld }}/runtime_data/ocr"
 
 # Check for existence of TESSDATA_PREFIX
 - name: "{{ component_tld }} | Check for TESSDATA_PREFIX path"
@@ -48,7 +48,7 @@
 # Update TESSDATA_PREFIX in mpfOALPRLicensePlateTextDetection.ini if the path exists
 - name: "{{ component_tld }} | Update TESSDATA_PREFIX value in configuration file"
   lineinfile: >
-    dest="{{ mpf_home }}/plugins/{{ component_tld }}/config/mpfOALPRLicensePlateTextDetection.ini"
+    dest="{{ lookup('env','MPF_HOME') }}/plugins/{{ component_tld }}/config/mpfOALPRLicensePlateTextDetection.ini"
     regexp="^TESSDATA_PREFIX"
     line="TESSDATA_PREFIX: {{ tessdata_prefix }}"
     backrefs=yes
