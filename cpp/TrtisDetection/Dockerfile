@@ -122,12 +122,14 @@ COPY . .
 
 RUN build-component.sh
 
-FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as test_server
+FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_test_server
 
 ADD ./plugin-files/models /models/
 
-COPY --from=build_component /usr/lib64/ /MPF_lib64/
-COPY --from=build_component /usr/local/lib /MPF_lib/
+COPY --from=build_component /usr/lib64/libssl3.so /usr/local/lib
+COPY --from=build_component /usr/lib64/libnspr4.so /usr/local/lib
+COPY --from=build_component /usr/lib64/libnss3.so /usr/local/lib
+COPY --from=build_component /usr/lib64/libgtest*.so.0.0.0  /usr/local/lib/
 COPY --from=build_component /opt/opencv-3.4.7/lib64 /apps/install/opencv3.4.7/lib64/
 COPY --from=build_component /home/mpf/component_build /Testing_MPF_FILES/
 COPY --from=build_component /home/mpf/component_build/plugin/TrtisDetection/lib/librequest.so /usr/local/lib/
@@ -136,10 +138,11 @@ COPY --from=build_component /home/mpf/mpf-sdk-install/lib /usr/local/lib
 RUN  cd /opt/tensorrtserver/ && ./nvidia_entrypoint.sh && cd /Testing_MPF_FILES/test/ && trtserver --model-store=/models \
 & export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/Testing_MPF_FILES/plugin/TrtisDetection/lib/ && cp /Testing_MPF_FILES/*.so /usr/local/lib/ \
 && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/apps/install/opencv3.4.7/lib64/ \
-&& cp /MPF_lib64/libssl3.so /usr/local/lib \
-&& cp /MPF_lib64/libnspr4.so /usr/local/lib \
-&& cp /MPF_lib64/libnss3.so /usr/local/lib \
-&& cp -a /MPF_lib64/libgtest* /usr/local/lib \
+&& cp -a /Testing_MPF_FILES/*.so* /usr/local/lib \
+&& ln -s /usr/local/lib/libgtest.so.0.0.0 libgtest.so \
+&& ln -s /usr/local/lib/libgtest.so.0.0.0 libgtest.so.0 \
+&& ln -s /usr/local/lib/libgtest_main.so.0.0.0 libgtest_main.so \
+&& ln -s /usr/local/lib/libgtest_main.so.0.0.0 libgtest_main.so.0 \
 && ldconfig \
 && cp /Testing_MPF_FILES/*.so /opt/tensorrtserver/ \
 && cd /Testing_MPF_FILES/test/ && ldconfig && sleep 30 && ./TrtisDetectionTest > /MPF_test_status.txt
