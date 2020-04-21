@@ -77,7 +77,7 @@ class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
 
 
 class JobRunner(object):
-    """ Class process a single job and hold state it's configuration info. """
+    """ Class process a single job and hold its configuration info. """
 
     def __init__(self, job_properties):
         self._acs_url = self.get_acs_url(job_properties)
@@ -142,7 +142,7 @@ class JobRunner(object):
 class OcrResultsProcessor(object):
     """
     Class to convert results from Azure Cognitive Services in to the format used by MPF.
-    This involves extracting information from the JSON and converting the bounding boxes in to the format for MPF.
+    This involves extracting information from the JSON and converting the bounding boxes in to the format used by MPF.
     """
 
     # Simplified Chinese, Traditional Chinese, and Japanese do not put spaces between words.
@@ -194,7 +194,6 @@ class OcrResultsProcessor(object):
 
     def get_merged_results(self):
         regions = iter(self._results_json['regions'])
-
         try:
             region = next(regions)
             bounding_box = mpf_util.Rect(*(int(x) for x in region['boundingBox'].split(',')))
@@ -226,7 +225,7 @@ class OcrResultsProcessor(object):
 
 
     def _correct_region_bounding_box(self, x, y, width, height):
-        """Convert ACS representation of bounding box to MPFs bounding box and rotation."""
+        """Convert ACS representation of bounding box to MPF's bounding box and rotation."""
 
         # Map coordinates from resized frame back to the original frame
         x *= self._resize_scale_factor

@@ -24,7 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function, absolute_import
+from __future__ import division, print_function
 
 import BaseHTTPServer
 import os
@@ -45,7 +45,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../acs_ocr_component'))
 import acs_ocr_component
 from acs_ocr_component import AcsOcrComponent, FrameEncoder
 
-actual_image_text = '''Human Rights. Bulgarian and English.
+human_rights_image_text = '''Human Rights. Bulgarian and English.
 UNIVERSAL DECLARATION OF HUMAN RIGHTS
 Article 1
 All human beings are born free and equal in dignity and
@@ -81,7 +81,7 @@ class TestAcs(unittest.TestCase):
 
         self.assertEquals(1, len(detections))
         detection = detections[0]
-        self.assertEquals(actual_image_text, detection.detection_properties['TEXT'])
+        self.assertEquals(human_rights_image_text, detection.detection_properties['TEXT'])
         self.assertEquals(expected_detection_rect,
                           mpf_util.Rect.from_image_location(detection))
         self.assertAlmostEqual(expected_rotation, float(detection.detection_properties['ROTATION']))
@@ -141,8 +141,8 @@ class TestAcs(unittest.TestCase):
             detection = track.frame_locations[track.start_frame]
 
             self.assertFalse(track.start_frame in detections_indexed_by_frame)
-            self.assertEquals(actual_image_text, track.detection_properties['TEXT'])
-            self.assertEquals(actual_image_text, detection.detection_properties['TEXT'])
+            self.assertEquals(human_rights_image_text, track.detection_properties['TEXT'])
+            self.assertEquals(human_rights_image_text, detection.detection_properties['TEXT'])
             detections_indexed_by_frame[track.start_frame] = detection
 
 
