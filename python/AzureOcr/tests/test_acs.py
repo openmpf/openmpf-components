@@ -41,9 +41,10 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../acs_ocr_component'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../acs_ocr_component'))
 import acs_ocr_component
 from acs_ocr_component import AcsOcrComponent, FrameEncoder
+
 
 human_rights_image_text = '''Human Rights. Bulgarian and English.
 UNIVERSAL DECLARATION OF HUMAN RIGHTS
@@ -436,7 +437,8 @@ of Darkness'''
 
 
 def get_test_properties():
-    return dict(ACS_URL='http://localhost:10669/vision/v1.0/ocr', ACS_SUBSCRIPTION_KEY='test_key')
+    return dict(ACS_URL=os.getenv('ACS_URL', 'http://localhost:10669/vision/v1.0/ocr'),
+                ACS_SUBSCRIPTION_KEY=os.getenv('ACS_SUBSCRIPTION_KEY', 'test_key'))
 
 
 def get_test_file(filename):

@@ -37,6 +37,10 @@ RUN /home/mpf/scripts/install-component.sh
 
 ENV COMPONENT_LOG_NAME acs-ocr-component.log
 
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then \
+        LD_LIBRARY_PATH="$MPF_HOME/lib" "$COMPONENT_VIRTUALENV/bin/python" /home/mpf/component_src/tests/test_acs.py; \
+    fi
 
 
 ARG BUILD_DATE
