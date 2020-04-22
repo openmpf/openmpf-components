@@ -21,13 +21,13 @@
       "properties": [
         {
           "name": "ACS_URL",
-          "description": "Azure Cognitive Services URL. e.g. https://eastus.api.cognitive.microsoft.com/vision/v1.0/ocr . Note that the component was only tested against v1.0, v2.0, and v2.1 of the API.",
+          "description": "Azure Cognitive Services URL. e.g. https://eastus.api.cognitive.microsoft.com/vision/v1.0/ocr . Can also be provided by an environment variable with the same name. If both are provided, the job property is used.  Note that the component was only tested against v1.0, v2.0, and v2.1 of the API.",
           "type": "STRING",
           "defaultValue": ""
         },
         {
           "name": "ACS_SUBSCRIPTION_KEY",
-          "description": "Azure Cognitive Services subscription key",
+          "description": "Azure Cognitive Services subscription key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
           "type": "STRING",
           "defaultValue": ""
         },

@@ -28,6 +28,7 @@ from __future__ import division, print_function
 
 import json
 import math
+import os
 import urllib
 import urllib2
 import urlparse
@@ -81,7 +82,7 @@ class JobRunner(object):
 
     def __init__(self, job_properties):
         self._acs_url = self.get_acs_url(job_properties)
-        subscription_key = get_required_property('ACS_SUBSCRIPTION_KEY', job_properties)
+        subscription_key = self._get_acs_property_or_env_value('ACS_SUBSCRIPTION_KEY', job_properties)
         self._acs_headers = {'Ocp-Apim-Subscription-Key': subscription_key,
                              'Content-Type': 'application/octet-stream'}
 
@@ -121,10 +122,10 @@ class JobRunner(object):
             raise mpf.DetectionException('Request failed with HTTP status {} and message: {}'.format(e.code, e.read()),
                                          mpf.DetectionError.DETECTION_FAILED)
 
-    @staticmethod
-    def get_acs_url(job_properties):
+    @classmethod
+    def get_acs_url(cls, job_properties):
         """ Adds query string parameters to the ACS URL if needed. """
-        url = get_required_property('ACS_URL', job_properties)
+        url = cls._get_acs_property_or_env_value('ACS_URL', job_properties)
         language = job_properties.get('LANGUAGE')
         detect_orientation = job_properties.get('DETECT_ORIENTATION', 'true')
 
@@ -136,6 +137,21 @@ class JobRunner(object):
         query_string = urllib.urlencode(query_dict, doseq=True)
 
         return urlparse.urlunparse(url_parts._replace(query=query_string))
+
+    @staticmethod
+    def _get_acs_property_or_env_value(property_name, job_properties):
+        property_value = job_properties.get(property_name)
+        if property_value:
+            return property_value
+
+        env_value = os.getenv(property_name)
+        if env_value:
+            return env_value
+
+        raise mpf.DetectionException(
+            'The "{}" property must be provided as a job property or environment variable.'.format(property_name),
+            mpf.DetectionError.MISSING_PROPERTY)
+
 
 
 
@@ -390,14 +406,6 @@ def scale_size(size, scale_factor):
     """Multiplies the width and height of the given size by scale_factor.
         Useful for changing a size while maintaining the aspect ratio."""
     return mpf_util.Size(int(size.width * scale_factor), int(size.height * scale_factor))
-
-
-def get_required_property(property_name, job_properties):
-    property_value = job_properties.get(property_name)
-    if not property_value:
-        raise mpf.DetectionException('The "{}" job property must be provided.'.format(property_name),
-                                     mpf.DetectionError.MISSING_PROPERTY)
-    return property_value
 
 
 def normalize_angle(angle):
