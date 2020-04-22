@@ -80,12 +80,13 @@ class TestAcs(unittest.TestCase):
         job = mpf.ImageJob('Test', img_path, get_test_properties(), {}, None)
         detections = list(AcsOcrComponent().get_detections_from_image(job))
 
-        self.assertEquals(1, len(detections))
+        self.assertEqual(1, len(detections))
         detection = detections[0]
-        self.assertEquals(human_rights_image_text, detection.detection_properties['TEXT'])
-        self.assertEquals(expected_detection_rect,
-                          mpf_util.Rect.from_image_location(detection))
+        self.assertEqual(human_rights_image_text, detection.detection_properties['TEXT'])
+        self.assertEqual(expected_detection_rect,
+                         mpf_util.Rect.from_image_location(detection))
         self.assertAlmostEqual(expected_rotation, float(detection.detection_properties['ROTATION']))
+        self.assertEqual('en', detection.detection_properties['TEXT_LANGUAGE'])
 
 
     def test_image_file(self):
@@ -133,50 +134,54 @@ class TestAcs(unittest.TestCase):
                            None)
         tracks = list(AcsOcrComponent().get_detections_from_video(job))
 
-        self.assertEquals(8, len(tracks))
+        self.assertEqual(8, len(tracks))
 
         detections_indexed_by_frame = {}
 
         for track in tracks:
-            self.assertEquals(1, len(track.frame_locations))
+            self.assertEqual(1, len(track.frame_locations))
             detection = track.frame_locations[track.start_frame]
-
             self.assertFalse(track.start_frame in detections_indexed_by_frame)
-            self.assertEquals(human_rights_image_text, track.detection_properties['TEXT'])
-            self.assertEquals(human_rights_image_text, detection.detection_properties['TEXT'])
+
+            self.assertEqual(human_rights_image_text, track.detection_properties['TEXT'])
+            self.assertEqual(human_rights_image_text, detection.detection_properties['TEXT'])
+
+            self.assertEqual('en', detection.detection_properties['TEXT_LANGUAGE'])
+            self.assertEqual('en', track.detection_properties['TEXT_LANGUAGE'])
+
             detections_indexed_by_frame[track.start_frame] = detection
 
 
-        self.assertEquals(mpf_util.Rect(113, 57, 990, 429),
-                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[0]))
+        self.assertEqual(mpf_util.Rect(113, 57, 990, 429),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[0]))
         self.assertAlmostEqual(0, float(detections_indexed_by_frame[0].detection_properties['ROTATION']))
 
-        self.assertEquals(mpf_util.Rect(69, 189, 993, 435),
-                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[1]))
+        self.assertEqual(mpf_util.Rect(69, 189, 993, 435),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[1]))
         self.assertAlmostEqual(14.6, float(detections_indexed_by_frame[1].detection_properties['ROTATION']))
 
-        self.assertEquals(mpf_util.Rect(57, 1080, 990, 429),
-                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[2]))
+        self.assertEqual(mpf_util.Rect(57, 1080, 990, 429),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[2]))
         self.assertAlmostEqual(90, float(detections_indexed_by_frame[2].detection_properties['ROTATION']))
 
-        self.assertEquals(mpf_util.Rect(140, 1119, 992, 434),
-                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[3]))
+        self.assertEqual(mpf_util.Rect(140, 1119, 992, 434),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[3]))
         self.assertAlmostEqual(99.7, float(detections_indexed_by_frame[3].detection_properties['ROTATION']))
 
-        self.assertEquals(mpf_util.Rect(1080, 585, 990, 429),
-                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[4]))
+        self.assertEqual(mpf_util.Rect(1080, 585, 990, 429),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[4]))
         self.assertAlmostEqual(180, float(detections_indexed_by_frame[4].detection_properties['ROTATION']))
 
-        self.assertEquals(mpf_util.Rect(1136, 417, 990, 431),
-                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[5]))
+        self.assertEqual(mpf_util.Rect(1136, 417, 990, 431),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[5]))
         self.assertAlmostEqual(200, float(detections_indexed_by_frame[5].detection_properties['ROTATION']))
 
-        self.assertEquals(mpf_util.Rect(585, 113, 990, 429),
-                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[6]))
+        self.assertEqual(mpf_util.Rect(585, 113, 990, 429),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[6]))
         self.assertAlmostEqual(270, float(detections_indexed_by_frame[6].detection_properties['ROTATION']))
 
-        self.assertEquals(mpf_util.Rect(409, 132, 990, 431),
-                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[7]))
+        self.assertEqual(mpf_util.Rect(409, 132, 990, 431),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[7]))
         self.assertAlmostEqual(290.1, float(detections_indexed_by_frame[7].detection_properties['ROTATION']))
 
 
@@ -258,6 +263,7 @@ it was the age of foolishness,'''
 
         self.assertEqual(expected_text1, detection1.detection_properties['TEXT'])
         self.assertEqual(mpf_util.Rect(50, 55, 219, 85), mpf_util.Rect.from_image_location(detection1))
+        self.assertEqual('en', detection1.detection_properties['TEXT_LANGUAGE'])
 
         expected_text2 = '''\
 it was the epoch of belief,
@@ -268,6 +274,7 @@ of Darkness'''
 
         self.assertEqual(expected_text2, detection2.detection_properties['TEXT'])
         self.assertEqual(mpf_util.Rect(827, 204, 455, 323), mpf_util.Rect.from_image_location(detection2))
+        self.assertEqual('en', detection2.detection_properties['TEXT_LANGUAGE'])
 
 
 
@@ -294,6 +301,7 @@ of Darkness'''
 
         self.assertEqual(expected_text, detection.detection_properties['TEXT'])
         self.assertEqual(mpf_util.Rect(50, 55, 1232, 472), mpf_util.Rect.from_image_location(detection))
+        self.assertEqual('en', detection.detection_properties['TEXT_LANGUAGE'])
 
 
 
@@ -315,6 +323,7 @@ it was the age of foolishness,'''
         self.assertEqual(expected_text1, detection1.detection_properties['TEXT'])
         self.assertEqual(mpf_util.Rect(57, 164, 220, 86), mpf_util.Rect.from_image_location(detection1))
         self.assertAlmostEqual(9.5, float(detection1.detection_properties['ROTATION']))
+        self.assertEqual('en', detection1.detection_properties['TEXT_LANGUAGE'])
 
         expected_text2 = '''\
 it was the epoch ofbelief,
@@ -326,6 +335,7 @@ of Darkness'''
         self.assertEqual(expected_text2, detection2.detection_properties['TEXT'])
         self.assertEqual(mpf_util.Rect(848, 174, 458, 323), mpf_util.Rect.from_image_location(detection2))
         self.assertAlmostEqual(9.5, float(detection2.detection_properties['ROTATION']))
+        self.assertEqual('en', detection2.detection_properties['TEXT_LANGUAGE'])
 
 
     def test_multiple_regions_with_rotation_and_merging(self):
@@ -353,6 +363,7 @@ of Darkness'''
         self.assertEqual(expected_text, detection.detection_properties['TEXT'])
         self.assertAlmostEqual(9.5, float(detection.detection_properties['ROTATION']))
         self.assertEqual(mpf_util.Rect(57, 164, 1236, 464), mpf_util.Rect.from_image_location(detection))
+        self.assertEqual('en', detection.detection_properties['TEXT_LANGUAGE'])
 
 
     def test_chinese_text(self):
@@ -367,6 +378,7 @@ of Darkness'''
             expected_text = f.read().strip()
 
         self.assertEqual(expected_text, detection.detection_properties['TEXT'])
+        self.assertEqual('zh-Hans', detection.detection_properties['TEXT_LANGUAGE'])
 
 
     def test_no_results_img(self):
@@ -408,7 +420,7 @@ of Darkness'''
         properties = dict(ACS_URL=acs_url, LANGUAGE='en')
 
         url = acs_ocr_component.JobRunner.get_acs_url(properties)
-        if url[len(acs_url) + 1] == 'd':
+        if '?d' in url:
             self.assertEqual('http://localhost:10669/vision/v1.0/ocr?detectOrientation=true&language=en', url)
         else:
             self.assertEqual('http://localhost:10669/vision/v1.0/ocr?language=en&detectOrientation=true', url)
@@ -419,7 +431,7 @@ of Darkness'''
         properties = dict(ACS_URL=acs_url, LANGUAGE='en', DETECT_ORIENTATION='true')
 
         url = acs_ocr_component.JobRunner.get_acs_url(properties)
-        if url[len(acs_url) + 1] == 'd':
+        if '?d' in url:
             self.assertEqual('http://localhost:10669/vision/v1.0/ocr?detectOrientation=true&language=en', url)
         else:
             self.assertEqual('http://localhost:10669/vision/v1.0/ocr?language=en&detectOrientation=true', url)
@@ -428,7 +440,7 @@ of Darkness'''
         properties = dict(ACS_URL=acs_url, LANGUAGE='en', DETECT_ORIENTATION='false')
 
         url = acs_ocr_component.JobRunner.get_acs_url(properties)
-        if url[len(acs_url) + 1] == 'd':
+        if '?d' in url:
             self.assertEqual('http://localhost:10669/vision/v1.0/ocr?detectOrientation=false&language=en', url)
         else:
             self.assertEqual('http://localhost:10669/vision/v1.0/ocr?language=en&detectOrientation=false', url)

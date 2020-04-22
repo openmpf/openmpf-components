@@ -278,8 +278,8 @@ class FrameEncoder(object):
     # These constraints are from Azure Cognitive Services
     # (https://westus.dev.cognitive.microsoft.com/docs/services/56f91f2d778daf23d8ec6739/operations/56f91f2e778daf14a499e1fc)
     MAX_PIXELS = 10000000
-    MAX_DIMENSION_LENGTH = 4200
-    MAX_FILE_SIZE = 4 * 1024 * 1024
+    MAX_DIMENSION_LENGTH = 4200  # pixels
+    MAX_FILE_SIZE = 4 * 1024 * 1024  # bytes
 
     def __init__(self):
         self._encode = self._default_encode
