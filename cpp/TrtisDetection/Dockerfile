@@ -158,7 +158,7 @@ then cd /opt/tensorrtserver/ && ./nvidia_entrypoint.sh \
        && break ;\
        sleep 5 ;\
     done \
-&& ./TrtisDetectionTest > /MPF_test_status.txt \
+&& ./TrtisDetectionTest \
 ; fi
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
