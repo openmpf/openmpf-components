@@ -98,7 +98,7 @@ T get(const Properties &p, const string &k, const T def){
 }
 
 /** ****************************************************************************
-* Parse trtis setting out of MPFJob
+* Parse TRTIS setting out of MPFJob
 ***************************************************************************** */
 TrtisJobConfig::TrtisJobConfig(const MPFJob &job){
   const Properties jpr = job.job_properties;
@@ -134,7 +134,13 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
     userBBox_x      = get<int64_t>(jpr, "USER_FEATURE_X_LEFT_UPPER",0);
     userBBox_y      = get<int64_t>(jpr, "USER_FEATURE_Y_LEFT_UPPER",0);
     userBBox_width  = get<int64_t>(jpr, "USER_FEATURE_WIDTH" ,image_width);
+    if (userBBox_width <= 0) {
+        userBBox_width = image_width;
+    }
     userBBox_height = get<int64_t>(jpr, "USER_FEATURE_HEIGHT",image_height);
+    if (userBBox_height <= 0) {
+        userBBox_height = image_height;
+    }
     userBBox.push_back(userBBox_y);
     userBBox.push_back(userBBox_x);
     userBBox.push_back(userBBox_y + userBBox_height - 1);
@@ -309,7 +315,7 @@ void TrtisDetection::_ip_irv2_coco_prepImageData(
   if(cfg.clientScaleEnabled){
     imgDat = _cvRGBBytes(_cvResize(img,scaleFactor,1024,600), shape);           LOG4CXX_TRACE(_log, "using client side image scaling");
   }else{
-    imgDat = _cvRGBBytes(img, shape);                                           LOG4CXX_TRACE(_log, "using trtis model's image scaling");
+    imgDat = _cvRGBBytes(img, shape);                                           LOG4CXX_TRACE(_log, "using TRTIS model's image scaling");
   }
 
   // Initialize the inputs with the data.
@@ -335,7 +341,7 @@ void TrtisDetection::_ip_irv2_coco_prepImageData(
 * Get or create inference context for a model.  The context(s) are cached in
 * a local static container so they don't need recreated on every use.
 *
-* \param cfg    job configuration settings containing trtis server info
+* \param cfg    job configuration settings containing TRTIS server info
 *
 * \returns vector of pointers to unique inferencing context pointer
 *          to use for inferencing requests
@@ -360,18 +366,18 @@ vector<uPtrInferCtx*> TrtisDetection::_niGetInferContexts(
       nic::InferGrpcContext::Create(ctx, cfg.trtis_server,
                                          cfg.model_name,
                                          cfg.model_version),
-      "unable to create trtis inference context");
+      "unable to create TRTIS inference context");
 
     // Configure context for 'batch_size'=1  and return all outputs
     uPtrInferCtxOpt options;
     NI_CHECK_OK(nic::InferContext::Options::Create(&options),
-                "failed initializing trtis inference options");
+                "failed initializing TRTIS inference options");
     options->SetBatchSize(1);
     for (const auto& output : (*ctx)->Outputs()) {
       options->AddRawResult(output);
     }
     NI_CHECK_OK((*ctx)->SetRunOptions(*options),
-                "failed initializing trtis batch size and outputs");
+                "failed initializing TRTIS batch size and outputs");
     _infCtxs[key].push_back(ctx);
   }
   return _infCtxs[key];
@@ -497,7 +503,7 @@ bool TrtisDetection::Init() {
 
     try {
       // Read class labels for model(s)
-      _readClassNames("ip_irv2_coco", models_path + "/ip_irv2_coco.labels", 90);
+      _readClassNames("ip_irv2_coco", models_path + "/ip_irv2_coco/ip_irv2_coco.labels", 90);
     }catch(const exception &ex){
         LOG4CXX_ERROR(_log, "Init failed: " << ex.what())
         return false;
@@ -513,10 +519,10 @@ bool TrtisDetection::Init() {
 * with appropriate properties for the model inferenced.
 *
 * \param         cfg       configuration for MPFImage of VideJob job
-* \param         res       inference results from trtis
+* \param         res       inference results from TRTIS
 * \param[in,out] locations vector of locations for found detections
 *
-* \note ip_irv2_coco model: (only one implimented so far)
+* \note ip_irv2_coco model: (only one implemented so far)
 *       This model supports COCO classifications and provides custom features
 *       suitable for similarity searching using cos/inner-product distance.
 *       The user can dictate a bounding box to specify an custom object location
@@ -524,7 +530,7 @@ bool TrtisDetection::Init() {
 *       detection bounding boxes that did not readily classify to a COCO class
 *       can also be returned. Finally a global image/frame feature is provided
 *       that consists of a size weighted average of the detection features.
-*       This can be useful in similarity searches or possibly scene segmantation
+*       This can be useful in similarity searches or possibly scene segmentation.
 *
 ***************************************************************************** */
 void TrtisDetection::_ip_irv2_coco_getDetections(
@@ -604,7 +610,7 @@ void TrtisDetection::_ip_irv2_coco_getDetections(
   if(cfg.recognitionEnroll){
     // _recognitionFrameworkEnroll(job,locations);
     // * needs to be implemented
-    THROW_TRTISEXCEPTION("Recognition Framework Enroll Interface not implimented");
+    THROW_TRTISEXCEPTION("Recognition Framework Enroll Interface not implemented");
   }
 
 }
@@ -827,7 +833,7 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
       size_t initialCtxPoolSize = ctxPool.size();
       int frameIdx = 0;
       int nextRxFrameIdx = 0;
-      do{                                                                       LOG4CXX_TRACE(_log,"requesting inference from trtis server for frame[" <<  frameIdx << "]" );
+      do{                                                                       LOG4CXX_TRACE(_log,"requesting inference from TRTIS server for frame[" <<  frameIdx << "]" );
         uPtrInferCtx* ctx;
         { unique_lock<mutex> lk(poolMtx);
           if(ctxPool.size() < 1){                                               LOG4CXX_TRACE(_log,"wait for an infer context to become available");

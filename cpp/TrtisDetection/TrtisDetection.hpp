@@ -34,7 +34,6 @@
 // Nvidia TensorRT Inference Server (trtis) client lib includes
 // (see https://github.com/NVIDIA/tensorrt-inference-server)
 
-// #include <google/protobuf/map.h>
 #include "request_grpc.h"
 #include "request_http.h"
 #include "model_config.pb.h"
@@ -64,7 +63,7 @@ namespace MPF{
   typedef unique_ptr<InferCtxOpt>      uPtrInferCtxOpt;       ///< inference options pointer
   typedef unique_ptr<InferCtxRes>      uPtrInferCtxRes;       ///< inference results pointer
   typedef shared_ptr<InferCtxInp>      sPtrInferCtxInp;       ///< inference input context pointer
-  typedef shared_ptr<InferCtxReq>      sPtrInferCtxReq;       ///< inference request contex pointer
+  typedef shared_ptr<InferCtxReq>      sPtrInferCtxReq;       ///< inference request context pointer
   typedef map<string,uPtrInferCtxRes>  StrUPtrInferCtxResMap; ///< map of inference outputs keyed by output name
 
   class TrtisJobConfig{
@@ -81,10 +80,10 @@ namespace MPF{
   class TrtisIpIrv2CocoJobConfig : public TrtisJobConfig{
     public:
 
-      bool   clientScaleEnabled;          ///< performe image scaling client side
+      bool   clientScaleEnabled;          ///< perform image scaling client side
       bool   frameFeatEnabled;            ///< process frame average feature
       bool   classFeatEnabled;            ///< process recognized coco objects
-      bool   extraFeatEnabled;            ///< process extra  ubclassified object
+      bool   extraFeatEnabled;            ///< process extra  unclassified object
       bool   userFeatEnabled;             ///< process user feature per BBox
       size_t image_width;                 ///< width of image or frame
       size_t image_height;                ///< height of image or frame
@@ -96,12 +95,12 @@ namespace MPF{
       size_t userBBox_height;             ///< user bounding box height
       LngVec userBBox;                    ///< user bounding box as [y1,x1,x2,x2]
       FltVec userBBoxNorm;                ///< user bounding box normalized with image dimensions
-      bool   recognitionEnroll;           ///< enroll features in recognition framerwork
+      bool   recognitionEnroll;           ///< enroll features in recognition framework
 
       float  confThreshold;               ///< object detection confidence threshold
       float  extraConfThreshold;          ///< extra detections confidence threshold
       float  maxFeatureGap;               ///< max distance of object track members in feature space
-      size_t maxFrameGap;                 ///< max distance of object track memebers in frame space
+      size_t maxFrameGap;                 ///< max distance of object track members in frame space
       float  maxSpaceGap;                 ///< max center to center spacial distance of object track members normalized with image diagonal
       float  maxSpaceGapPxSq;             ///< squared center to center distance in pixels
 

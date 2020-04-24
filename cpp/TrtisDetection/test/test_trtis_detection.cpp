@@ -121,37 +121,6 @@ TEST(TRTIS, GetInferenceContextTest) {
  }
 
 //------------------------------------------------------------------------------
-//  TEST(TRTIS, PerfClientData) {
-//
-//     TrtisDetection trtisDet;
-//     trtisDet.SetRunDirectory("../plugin");
-//
-//     ASSERT_TRUE(trtisDet.Init());
-//
-//     MPFImageJob job("Test", "test/digital-clock.jpg", getProperties_ip_irv2_coco(), {});
-//
-//     MPFImageReader image_reader(job);
-//     cv::Mat img = image_reader.GetImage();
-//     TrtisIpIrv2CocoJobConfig cfg(job, img.cols, img.rows);
-//     cfg.maxInferConcurrency = 1;
-//     uPtrInferCtx* ctx  = trtisDet._niGetInferContexts(cfg)[0];
-//
-//     LngVec shape;
-//     BytVec imgDat;
-//     trtisDet._ip_irv2_coco_prepImageData(cfg, img, ctx, shape, imgDat);
-//
-//     ofstream myfile;
-//     myfile.open("image_input", ios::out | ios::binary);
-//     myfile.write((char*)&imgDat[0],imgDat.size());
-//     myfile.close();
-//
-//     FltVec bbox = {0.0f,0.0f,1.0f,1.0f};
-//     myfile.open("bbox_input",ios::out | ios::binary);
-//     myfile.write((char*)&bbox[0], sizeof(bbox));
-//     myfile.close();
-//
-// }
-//------------------------------------------------------------------------------
 bool containsObject(const string           &object_name,
                     const MPFVideoTrackVec &tracks) {
     return any_of(tracks.begin(), tracks.end(),
@@ -164,7 +133,7 @@ bool containsObject(const string           &object_name,
 void assertObjectDetectedInVideo(const string     &object_name,
                                  const Properties &job_props,
                                  TrtisDetection   &trtisDet) {
-    MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 10, 15, job_props, {});
+    MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 11, 12, job_props, {});
 
     MPFVideoTrackVec tracks;
     MPFDetectionError rc = trtisDet.GetDetections(job, tracks);
@@ -173,8 +142,8 @@ void assertObjectDetectedInVideo(const string     &object_name,
     ASSERT_FALSE(tracks.empty());
     ASSERT_TRUE(containsObject(object_name, tracks));
 }
+
 //------------------------------------------------------------------------------
-/*
 TEST(TRTIS, VideoTest) {
     TrtisDetection trtisDet;
     trtisDet.SetRunDirectory("../plugin");
@@ -187,24 +156,3 @@ TEST(TRTIS, VideoTest) {
 
     ASSERT_TRUE(trtisDet.Close());
 }
-//------------------------------------------------------------------------------
-TEST(TRTIS, VideoTest2) {
-    TrtisDetection trtisDet;
-    trtisDet.SetRunDirectory("../plugin");
-
-    ASSERT_TRUE(trtisDet.Init());
-
-    Properties job_props = getProperties_ip_irv2_coco();
-    job_props["USER_FEATURE_ENABLE"] = "true";
-    job_props["MAX_INFER_CONCURRENCY"] = "16";
-    job_props["CONTEXT_WAIT_TIMEOUT_SEC"] = "60";
-    MPFVideoJob job("TEST", "test/big_buck_bunny.mp4", 1, 1440, job_props, {});
-
-    MPFVideoTrackVec tracks;
-    ASSERT_EQ(trtisDet.GetDetections(job, tracks), MPF_DETECTION_SUCCESS);
-
-    ASSERT_FALSE(tracks.empty());
-
-    ASSERT_TRUE(trtisDet.Close());
-}
-*/

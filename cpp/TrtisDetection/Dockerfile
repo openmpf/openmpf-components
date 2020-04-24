@@ -85,7 +85,7 @@ ldconfig
 
 # Install TensorRT-Inference-Server client libs.
 RUN cd /tmp/ \
-&& git clone -b v1.7.0 https://github.com/NVIDIA/tensorrt-inference-server.git tensorrt-inference-server 2> /dev/null || (cd tensorrt-inference-server; git pull)
+&& git clone -b v1.7.0 https://github.com/NVIDIA/tensorrt-inference-server.git tensorrt-inference-server 2> /dev/null || (cd tensorrt-inference-server && git pull)
 
 # Fix lower case protobuf package name.
 RUN sed -i 's/find_package(Protobuf CONFIG REQUIRED)/find_package(protobuf CONFIG REQUIRED)/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt \
@@ -93,7 +93,6 @@ RUN sed -i 's/find_package(Protobuf CONFIG REQUIRED)/find_package(protobuf CONFI
 
 # Set version number.
 RUN sed -i 's/project (trtis-clients)/project(trtis-clients VERSION "0.0.0")/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
-# RUN echo "$(cat /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt)"
 
 
 RUN mkdir -p /tmp/tensorrt-inference-server/build/trtis-clients/build && cd /tmp/tensorrt-inference-server/build/trtis-clients/build \
@@ -135,21 +134,32 @@ COPY --from=build_component /home/mpf/component_build /Testing_MPF_FILES/
 COPY --from=build_component /home/mpf/component_build/plugin/TrtisDetection/lib/librequest.so /usr/local/lib/
 COPY --from=build_component /home/mpf/mpf-sdk-install/lib /usr/local/lib
 
-RUN  cd /opt/tensorrtserver/ && ./nvidia_entrypoint.sh && cd /Testing_MPF_FILES/test/ && trtserver --model-store=/models \
-& export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/Testing_MPF_FILES/plugin/TrtisDetection/lib/ && cp /Testing_MPF_FILES/*.so /usr/local/lib/ \
-&& export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/apps/install/opencv3.4.7/lib64/ \
+ARG RUN_TESTS=false
+
+RUN if [ "${RUN_TESTS,,}" == true ]; \
+then cd /opt/tensorrtserver/ && ./nvidia_entrypoint.sh \
 && cp -a /Testing_MPF_FILES/*.so* /usr/local/lib \
 && ln -s /usr/local/lib/libgtest.so.0.0.0 libgtest.so \
 && ln -s /usr/local/lib/libgtest.so.0.0.0 libgtest.so.0 \
 && ln -s /usr/local/lib/libgtest_main.so.0.0.0 libgtest_main.so \
 && ln -s /usr/local/lib/libgtest_main.so.0.0.0 libgtest_main.so.0 \
-&& ldconfig \
 && cp /Testing_MPF_FILES/*.so /opt/tensorrtserver/ \
-&& cd /Testing_MPF_FILES/test/ && ldconfig && sleep 30 && ./TrtisDetectionTest > /MPF_test_status.txt
-
-FROM  build_component
-COPY --from=test_server  /MPF_test_status.txt  /MPF_test_status.txt
-RUN echo "$(cat /MPF_test_status.txt)" && rm /MPF_test_status.txt
+&& ldconfig \
+&& trtserver --model-store=/models 2> /Testing_MPF_FILES/server_logs.txt \
+# Running test code alongside active server process.
+& echo "Starting server and loading model files."\
+&& cd /Testing_MPF_FILES/test/ \
+&& LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/Testing_MPF_FILES/plugin/TrtisDetection/lib/:/apps/install/opencv3.4.7/lib64/ \
+# Wait for server to finish loading coco model files.
+&& while : ;do \
+       [[ -f "/Testing_MPF_FILES/server_logs.txt" ]] \
+       && grep -q "Successfully loaded servable version" "/Testing_MPF_FILES/server_logs.txt" \
+       && echo "Server ready for testing. Beginning detection tests." \
+       && break ;\
+       sleep 5 ;\
+    done \
+&& ./TrtisDetectionTest > /MPF_test_status.txt \
+; fi
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
@@ -161,6 +171,9 @@ COPY --from=build_component $BUILD_DIR/plugin/TrtisDetection \
 COPY --from=build_component $BUILD_DIR/libmpfTrtisDetection.so \
                             $PLUGINS_DIR/TrtisDetection/lib/
 
+
+
+RUN cp $PLUGINS_DIR/TrtisDetection/lib/librequest.so /usr/local/lib/ && ldconfig
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF TRTIS Client Detection" \

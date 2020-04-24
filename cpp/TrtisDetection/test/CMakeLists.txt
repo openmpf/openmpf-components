@@ -43,6 +43,5 @@ if (${GTEST_FOUND})
     add_test(NAME TrtisDetectionTest COMMAND TrtisDetectionTest)
 
     # Install test images and videos
-    file(GLOB TRTIS_TEST_FILES data/*)
-    file(COPY ${TRTIS_TEST_FILES} DESTINATION test)
+    file(COPY data/ DESTINATION test)
 endif()

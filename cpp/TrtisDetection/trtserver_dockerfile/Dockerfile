@@ -24,10 +24,21 @@
 # limitations under the License.                                            #
 #############################################################################
 
-COPYING
-LICENSE
-NOTICE
-README.md
-Dockerfile
-trtserver_dockerfile
-.dockerignore
+FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_test_server
+
+ADD ./models /models/
+
+RUN wget --load-cookies /tmp/cookies.txt \
+"https://docs.google.com/uc?export=download&confirm=$(\
+wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate \
+'https://docs.google.com/uc?export=download&id=1EVYe2RHs7g2A8E2KLjVUXp-TV_ndjdtn' -O- \
+| sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1EVYe2RHs7g2A8E2KLjVUXp-TV_ndjdtn" \
+-O /models/ip_irv2_coco/1/model.graphdef \
+&& rm -rf /tmp/cookies.txt
+
+LABEL org.label-schema.license="Apache 2.0" \
+      org.label-schema.name="OpenMPF TRTIS Server." \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
+      org.label-schema.vendor="MITRE"
