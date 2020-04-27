@@ -48,6 +48,12 @@
           "description": "Whether to detect the text orientation in the image. When true the OCR service tries to detect the image orientation and correct it before further processing (e.g. if it's upside-down).",
           "type": "BOOLEAN",
           "defaultValue": "true"
+        },
+        {
+          "name": "TAGGING_FILE",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Azure OCR. Will default to the plugin's acs_ocr_component directory unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
+          "type": "STRING",
+          "defaultValue": "text-tags.json"
         }
       ]
     }

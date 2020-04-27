@@ -43,7 +43,7 @@ import mpf_component_util as mpf_util
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../acs_ocr_component'))
 import acs_ocr_component
-from acs_ocr_component import AcsOcrComponent, FrameEncoder
+from acs_ocr_component import AcsOcrComponent, FrameEncoder, TextTagger
 
 
 human_rights_image_text = '''Human Rights. Bulgarian and English.
@@ -87,6 +87,21 @@ class TestAcs(unittest.TestCase):
                          mpf_util.Rect.from_image_location(detection))
         self.assertAlmostEqual(expected_rotation, float(detection.detection_properties['ROTATION']))
         self.assertEqual('en', detection.detection_properties['TEXT_LANGUAGE'])
+
+        self.assert_does_not_contain_tag(detection, 'TAG_1', 'Should not match partial key word.')
+        self.assert_contains_tag(detection, 'TAG_2', 'Regex with only literals should match partial words')
+        self.assert_contains_tag(detection, 'TAG_3', 'Should be able to handle \\d metacharacter')
+        self.assert_contains_tag(detection, 'TAG_4', 'Should be able to handle ? metacharacter')
+        self.assert_contains_tag(detection, 'TAG_5', 'Should be able to handle \\b metacharacter')
+        self.assert_does_not_contain_tag(detection, 'TAG_6', '\\b should not match partial words')
+
+
+    def assert_contains_tag(self, detection, tag, msg=None):
+        self.assertIn(tag, detection.detection_properties['TAGS'], msg)
+
+    def assert_does_not_contain_tag(self, detection, tag, msg=None):
+        self.assertNotIn(tag, detection.detection_properties['TAGS'], msg)
+
 
 
     def test_image_file(self):
@@ -380,6 +395,17 @@ of Darkness'''
         self.assertEqual(expected_text, detection.detection_properties['TEXT'])
         self.assertEqual('zh-Hans', detection.detection_properties['TEXT_LANGUAGE'])
 
+        chinese_seven = '\xe4\xb8\x83'
+        self.assert_contains_tag(detection, 'TAG_' + chinese_seven, 'Should be able to handle foreign characters.')
+
+        chinese_eight = '\xe5\x85\xab'
+        self.assert_contains_tag(detection, 'TAG_' + chinese_eight,
+                                 'Should be able to handle regex with foreign characters.')
+
+        self.assertEqual(2, len(detection.detection_properties['TAGS'].split(',')))
+
+
+
 
     def test_no_results_img(self):
         self.set_results_path(get_test_file('no-results/black-results.json'))
@@ -446,16 +472,47 @@ of Darkness'''
             self.assertEqual('http://localhost:10669/vision/v1.0/ocr?language=en&detectOrientation=false', url)
 
 
+    def test_loading_tags_from_within_package(self):
+        tagger = TextTagger(dict(TAGGING_FILE='text-tags.json'))
+        self.assertTrue(tagger.tagging_enabled)
+        tags = tagger.find_tags('bike')
+        self.assertEqual('vehicle', tags)
+
+    def test_loading_tags_from_path(self):
+        tagger = TextTagger(dict(TAGGING_FILE=get_test_file('test-text-tags.json')))
+        self.assertTrue(tagger.tagging_enabled)
+        tags = tagger.find_tags('human')
+        self.assertEqual('TAG_4', tags)
+
+    def test_disable_tagging(self):
+        tagger = TextTagger(dict())
+        self.assertFalse(tagger.tagging_enabled)
+        tags = tagger.find_tags('human')
+        self.assertEqual('', tags)
+
+
+    def test_missing_tag_file(self):
+        with self.assertRaises(mpf.DetectionException) as cm:
+            TextTagger(dict(TAGGING_FILE='asdf.json'))
+        self.assertEqual(mpf.DetectionError.COULD_NOT_READ_DATAFILE, cm.exception.error_code)
+
+
+    def test_invalid_tag_file(self):
+        with self.assertRaises(mpf.DetectionException) as cm:
+            TextTagger(dict(TAGGING_FILE=get_test_file('NOTICE')))
+        self.assertEqual(mpf.DetectionError.COULD_NOT_READ_DATAFILE, cm.exception.error_code)
+
+
 
 
 def get_test_properties():
     return dict(ACS_URL=os.getenv('ACS_URL', 'http://localhost:10669/vision/v1.0/ocr'),
-                ACS_SUBSCRIPTION_KEY=os.getenv('ACS_SUBSCRIPTION_KEY', 'test_key'))
+                ACS_SUBSCRIPTION_KEY=os.getenv('ACS_SUBSCRIPTION_KEY', 'test_key'),
+                TAGGING_FILE=get_test_file('test-text-tags.json'))
 
 
 def get_test_file(filename):
     return os.path.join(os.path.dirname(__file__), 'data', filename)
-
 
 
 class MockRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):

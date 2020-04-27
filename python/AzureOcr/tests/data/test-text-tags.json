@@ -1,0 +1,35 @@
+{
+    "TAGS_BY_KEYWORD": {
+        "TAG_1": [
+            "RIGHT",
+            "asdf",
+            "qwerty"
+        ],
+        "TAG_七": [
+            "那是智慧的时代",
+            "TAG_7"
+        ]
+    },
+    "TAGS_BY_REGEX": {
+        "TAG_2": [
+            "jkgysl",
+            "ights"
+        ],
+        "TAG_3": [
+            "Article \\d"
+        ],
+        "TAG_4": [
+            "h?man"
+        ],
+        "TAG_5": [
+            "\\bbrotherhood\\b"
+        ],
+        "TAG_6": [
+            "\\bhood\\b"
+        ],
+        "TAG_八": [
+            "那?智",
+            "TAG_8"
+        ]
+    }
+}

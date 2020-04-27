@@ -29,6 +29,7 @@ from __future__ import division, print_function
 import json
 import math
 import os
+import re
 import urllib
 import urllib2
 import urlparse
@@ -76,7 +77,6 @@ class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             raise
 
 
-
 class JobRunner(object):
     """ Class process a single job and hold its configuration info. """
 
@@ -93,6 +93,8 @@ class JobRunner(object):
         else:
             self._results_post_processor = OcrResultsProcessor.unmerged_results
 
+        self._text_tagger = TextTagger(job_properties)
+
 
     def get_indexed_detections(self, frames):
         """
@@ -108,7 +110,8 @@ class JobRunner(object):
             initial_frame_size = mpf_util.Size.from_frame(frame)
 
             # Convert the results from the ACS JSON to mpf.ImageLocations
-            detections = self._results_post_processor(ocr_results_json, initial_frame_size, resized_frame_dimensions)
+            detections = self._results_post_processor(ocr_results_json, initial_frame_size, resized_frame_dimensions,
+                                                      self._text_tagger)
             for detection in detections:
                 yield idx, detection
 
@@ -165,18 +168,18 @@ class OcrResultsProcessor(object):
     NO_SPACE_LANGUAGES = frozenset(('zh-Hans', 'zh-Hant', 'ja'))
 
     @classmethod
-    def merged_results(cls, ocr_results_json, initial_frame_size, resized_frame_size):
+    def merged_results(cls, ocr_results_json, initial_frame_size, resized_frame_size, text_tagger):
         if ocr_results_json['regions']:
-            return cls(ocr_results_json, initial_frame_size, resized_frame_size).get_merged_results()
+            return cls(ocr_results_json, initial_frame_size, resized_frame_size, text_tagger).get_merged_results()
         return ()
 
     @classmethod
-    def unmerged_results(cls, ocr_results_json, initial_frame_size, resized_frame_size):
+    def unmerged_results(cls, ocr_results_json, initial_frame_size, resized_frame_size, text_tagger):
         if ocr_results_json['regions']:
-            return cls(ocr_results_json, initial_frame_size, resized_frame_size).get_unmerged_results()
+            return cls(ocr_results_json, initial_frame_size, resized_frame_size, text_tagger).get_unmerged_results()
         return ()
 
-    def __init__(self, ocr_results_json, initial_frame_size, resized_frame_size):
+    def __init__(self, ocr_results_json, initial_frame_size, resized_frame_size, text_tagger):
         self._results_json = ocr_results_json
         self._text_angle_degrees = math.degrees(float(ocr_results_json.get('textAngle', '0')))
 
@@ -185,6 +188,8 @@ class OcrResultsProcessor(object):
 
         self._initial_frame_size = initial_frame_size
         self._resize_scale_factor = initial_frame_size.width / resized_frame_size.width
+
+        self._text_tagger = text_tagger
 
         # ACS describes rotation using an "orientation" field and a "textAngle" field.
         # Each orientation uses a slightly different coordinate system so each case needs to be handled separately.
@@ -221,33 +226,43 @@ class OcrResultsProcessor(object):
             bounding_box = bounding_box.union([int(x) for x in region['boundingBox'].split(',')])
             text_builder.append(self._get_region_text(region))
 
-        corrected_box, corrected_angle = self._correct_region_bounding_box(*bounding_box)
         text = '\n\n'.join(text_builder)
-        detection_properties = mpf.Properties(TEXT=text, TEXT_LANGUAGE=self._language, ROTATION=str(corrected_angle))
-        return (mpf.ImageLocation(corrected_box.x, corrected_box.y, corrected_box.width, corrected_box.height,
-                                  -1, detection_properties),)
+        return (self._create_image_location(text, bounding_box),)
 
 
     def get_unmerged_results(self):
         regions = self._results_json['regions']
         for region in regions:
             text = self._get_region_text(region)
-            bounding_box, angle \
-                = self._correct_region_bounding_box(*(int(x) for x in region['boundingBox'].split(',')))
-
-            detection_properties = mpf.Properties(TEXT=text, TEXT_LANGUAGE=self._language, ROTATION=str(angle))
-            yield mpf.ImageLocation(bounding_box.x, bounding_box.y, bounding_box.width, bounding_box.height,
-                                    -1, detection_properties)
+            bounding_box = mpf_util.Rect(*(int(x) for x in region['boundingBox'].split(',')))
+            yield self._create_image_location(text, bounding_box)
 
 
-    def _correct_region_bounding_box(self, x, y, width, height):
-        """Convert ACS representation of bounding box to MPF's bounding box and rotation."""
+    def _create_image_location(self, text, bounding_box):
+        corrected_bounding_box, angle = self._correct_region_bounding_box(bounding_box)
 
+        detection_properties = mpf.Properties(TEXT=text.encode('utf-8'), TEXT_LANGUAGE=self._language,
+                                              ROTATION=str(normalize_angle(angle)))
+        if self._text_tagger.tagging_enabled:
+            detection_properties['TAGS'] = self._text_tagger.find_tags(text).encode('utf-8')
+
+        return mpf.ImageLocation(corrected_bounding_box.x, corrected_bounding_box.y,
+                                 corrected_bounding_box.width, corrected_bounding_box.height,
+                                 -1, detection_properties)
+
+
+    def _correct_region_bounding_box(self, bounding_box):
+        """
+        Convert ACS representation of bounding box to MPF's bounding box and rotation.
+
+        :param bounding_box: ACS formatted bounding box
+        :return: A tuple containing the MPF representation of bounding box and the box's rotation angle in degrees.
+        """
         # Map coordinates from resized frame back to the original frame
-        x *= self._resize_scale_factor
-        y *= self._resize_scale_factor
-        width *= self._resize_scale_factor
-        height *= self._resize_scale_factor
+        x = bounding_box.x * self._resize_scale_factor
+        y = bounding_box.y * self._resize_scale_factor
+        width = bounding_box.width * self._resize_scale_factor
+        height = bounding_box.height * self._resize_scale_factor
 
         # Map ACS orientation info to MPF rotation info
         corrected_top_left, corrected_angle = self._orientation_correction(x, y)
@@ -273,8 +288,7 @@ class OcrResultsProcessor(object):
         """The ACS results are divided in to regions. The regions are divided in to lines.
            The lines are divided in to individual words."""
         lines = region['lines']
-        text = '\n'.join(self._get_line_text(line) for line in lines)
-        return text.encode('utf-8')
+        return '\n'.join(self._get_line_text(line) for line in lines)
 
 
     def _get_line_text(self, line):
@@ -285,6 +299,94 @@ class OcrResultsProcessor(object):
     def _rotate_point(self, point):
         """"Rotate point around center of frame"""
         return np.matmul(self._rotation_mat, (point[0], point[1], 1))
+
+
+
+class TextTagger(object):
+
+    def __init__(self, job_properties):
+        tags_json_file = self._get_tags_json_path(job_properties)
+        if tags_json_file:
+            self._tags_to_compiled_regexes = self._load_tag_dict(tags_json_file)
+        else:
+            self._tags_to_compiled_regexes = {}
+
+        self.tagging_enabled = len(self._tags_to_compiled_regexes) > 0
+
+
+    def find_tags(self, content):
+        """
+        Searches the given content for text matching the loaded tags.
+
+        :param content: The text to search for matches.
+        :return: A unicode string containing a comma-separated list of matching tags.
+        """
+        matching_tags = (tag for tag, rxs in self._tags_to_compiled_regexes.iteritems()
+                         if self._any_regex_matches(content, rxs))
+        return ', '.join(matching_tags)
+
+
+    @staticmethod
+    def _any_regex_matches(content, regexes):
+        return any(r.search(content) for r in regexes)
+
+
+    @staticmethod
+    def _get_tags_json_path(job_properties):
+        tagging_file = job_properties.get('TAGGING_FILE')
+        if not tagging_file:
+            return None
+
+        expanded_tagging_file = os.path.expandvars(tagging_file)
+
+        absolute_path = os.path.abspath(expanded_tagging_file)
+        if os.path.exists(absolute_path):
+            return absolute_path
+
+        internal_path = os.path.abspath(os.path.join(os.path.dirname(__file__), expanded_tagging_file))
+        if os.path.exists(internal_path):
+            return internal_path
+
+        if absolute_path == internal_path:
+            error_msg = 'Tagging file not found. Expected it to exist at "{}".'.format(absolute_path)
+        else:
+            error_msg = 'Tagging file not found. Expected it to exist at either "{}" or "{}".'.format(
+                absolute_path, internal_path)
+
+        raise mpf.DetectionException(error_msg, mpf.DetectionError.COULD_NOT_READ_DATAFILE)
+
+
+    @staticmethod
+    def _load_tag_dict(tags_json_file):
+        """
+        Loads text tags from a JSON file.
+
+        :param tags_json_file: Path to file containing the text tags JSON.
+        :return: A dictionary where the key the tag and the value is a list of compiled regexes.
+        :rtype: dict[unicode, list[re.RegexObject]]
+        """
+        with open(tags_json_file) as f:
+            try:
+                tags_json = json.load(f)
+            except ValueError as e:
+                raise mpf.DetectionException(
+                    'Failed to load text tags JSON from \"{}\" due to: {}'.format(tags_json_file, e),
+                    mpf.DetectionError.COULD_NOT_READ_DATAFILE)
+
+        tags_to_compiled_regexes = dict()
+        regex_compile_flags = re.MULTILINE | re.IGNORECASE | re.UNICODE | re.DOTALL
+
+        tags_by_regex = tags_json.get('TAGS_BY_REGEX', {})
+        for tag, regexes in tags_by_regex.iteritems():
+            tags_to_compiled_regexes[tag] = [re.compile(r, regex_compile_flags) for r in regexes]
+
+        tags_by_keyword = tags_json.get('TAGS_BY_KEYWORD', {})
+        for tag, keywords in tags_by_keyword.iteritems():
+            keyword_regexes = (r'\b' + re.escape(w) + r'\b' for w in keywords)
+            compiled_regexes = (re.compile(r, regex_compile_flags) for r in keyword_regexes)
+            tags_to_compiled_regexes.setdefault(tag, []).extend(compiled_regexes)
+
+        return tags_to_compiled_regexes
 
 
 
@@ -303,6 +405,7 @@ class FrameEncoder(object):
     def resize_and_encode(self, frame):
         """
         Encodes the given frame as a PNG. Resizes the frame if it is outside ACS's constraints.
+
         :param frame: A numpy.ndarray containing a frame
         :return: A tuple of (encoded_frame, frame_size)
         """
@@ -348,6 +451,7 @@ class FrameEncoder(object):
     def _resize_for_file_size(cls, frame, corrected_frame_size, previous_encode_length):
         """
         Handles the case when the encoded frame contains more bytes than ACS allows.
+
         :param frame: A numpy.ndarray containing a frame
         :param corrected_frame_size: The frame dimensions from the previous encode attempt.
         :param previous_encode_length: The number of bytes from the previous encode attempt.
@@ -377,6 +481,7 @@ class FrameEncoder(object):
         """
         Handles the case when the frame has more pixels than ACS allows. ACS limits both the number of pixels per
         dimension and the total number of pixels.
+
         :param frame: A numpy.ndarray containing a frame
         :return: A new frame size that maintains the original aspect ratio and is within the ACS limits.
         """
