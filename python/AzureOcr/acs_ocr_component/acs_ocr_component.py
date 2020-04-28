@@ -51,13 +51,15 @@ class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         try:
             logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
 
+            num_detections = 0
             image = image_reader.get_image()
             detections = JobRunner(image_job.job_properties).get_indexed_detections((image,))
             for idx, detection in detections:
                 # We don't need to anything with the index for a image jobs.
                 yield detection
+                num_detections += 1
 
-            logger.info('[%s] Job complete.', image_job.job_name)
+            logger.info('[%s] Processing complete found %s detections.', image_job.job_name, num_detections)
         except Exception:
             logger.exception('[%s] Failed to complete job due to the following exception:', image_job.job_name)
             raise
@@ -66,12 +68,15 @@ class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     def get_detections_from_video_capture(self, video_job, video_capture):
         try:
             logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
+
+            num_tracks = 0
             detections = JobRunner(video_job.job_properties).get_indexed_detections(video_capture)
             for idx, detection in detections:
                 # Convert each mpf.ImageLocation in to an mpf.VideoTrack with a single detection.
                 yield mpf.VideoTrack(idx, idx, -1, {idx: detection}, detection.detection_properties)
+                num_tracks += 1
 
-            logger.info('[%s] Job complete.', video_job.job_name)
+            logger.info('[%s] Processing complete. Found %s tracks', video_job.job_name, num_tracks)
         except Exception:
             logger.exception('[%s] Failed to complete job due to the following exception:', video_job.job_name)
             raise
