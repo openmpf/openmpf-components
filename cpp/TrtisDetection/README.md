@@ -1,52 +1,55 @@
-Trtisdetection status:
+# Overview
 
-* Docker containers for client and server are now working.
-* Need to test out TrtisDetection component, sample binary.
-* Component is close to 1 GB in size (model files are large, might not want to include that in the official repo).
-* Double check code contains no sensitive words or phrases before uploading to public repo.
+This repository contains source code for the OpenMPF TensorRT Inference Server
+(TRTIS) detection component.
 
+As a docker only component, users must build and launch both the `trtis-detection` and `trtis-detection-server` services
+from `docker-compose.components.yml` as part of the `openmpf-docker` [deployment](https://github.com/openmpf/openmpf-docker/tree/develop). These two services
+will build and host the MPF TRTIS client and the NVIDIA TRTIS server from their respective Dockerfile images:
+`TrtisDetection/Dockerfile` and `TrtisDetection/trtserver_dockerfile/Dockerfile`.
 
-Most of the current work has been testing and building the dockerfile in docker\_for\_dev.
+Users can refer to the
+[docker-compose.components.yml](https://github.com/openmpf/openmpf-docker/blob/develop/docker-compose.components.yml)
+file to launch custom deployments with this component.
+Custom TRTIS server model directory locations can also be specified through the `docker-compose.components.yml` file under the `trtis-detection-server` service.
 
-Progress and notes so far:
+The TRTIS detection component currently supports a modified version of the [Faster R-CNN model](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md)
+(`faster_rcnn_inception_resnet_v2_atrous_coco_2018_01_28`)
+which is trained on the Common Objects in Context (COCO) dataset. Labels corresponding to each COCO class can be found
+in `TrtisDetection/plugin-files/models/ip_irv2_coco/ip_irv2_coco.labels`.
 
-1. The dockerfile in docker\_for\_dev builds off of the baseline OpenMPF image (openmpf_build).
-   * As a result, I started with the OpenMPF Build Image first, and followed instructions for building the workflow manager as well.
-   * For some reason, I kept running into python-component-api test issues when testing the MPF docker workflow manager. They
-   were also encountered in my OpenMPF builds in my development environment.
-   * There were likely some dependencies that were missing or a possible version mismatch (errors stated a python dependency was missing, or some function calls were invalid).
-   * Ffmpeg was one of the python libraries that seemed to have a version mismatch or related issue.
+Currently, the component supports both image and video jobs.
 
-   This issue was resolved by skipping the related python tests and following the remaining build steps.
-   It does not seem related to the trtisdetection branch so I moved on to the next step once the images were built.
+Users can control inference and model behavior through the following job parameters:
 
-2. Next, I proceeded to setup the client and trtserver containers. I started with the dockerfile in docker\_for\_dev, which builds the openmpf-dev image and container.
-   I ran into more build issues and proceeded to update the dockerfile.
+* `MAX_INFER_CONCURRENCY`   : Specifies the maximum number of inference requests that will be sent to the server concurrently for video frame inferencing.
+* `CONTEXT_WAIT_TIMEOUT_SEC`: Specifies maximum number of seconds to wait for an inference context when using concurrent inferencing.
 
-3. Updates for openmpf-dev dockerfile:
-   * The original version of this dockerfile I received downloads and installs the latest available git source code releases for each of the dependencies (TensorRT-Inference-Server, grpc). They were not set to specific branches or version numbers.
-   * I've modified the instructions to build from a specific release for each of the dependencies to avoid future dependency conflicts. They are still the latest available releases for the moment.
-   * Also added in steps for manual build and installation of curl (version: 7_67_0) as cmake failed to properly locate and setup the yum installed curl-devel packages.
-     Previous attempts to point cmake3 to the libcurl lib/bin locations still failed, even though find_package() for curl worked. Might have been an incompatible version of curl.
-   * Resolved additional version complaints from cmake3 for the TensorRT client cmakelist. Swapped line "project (trtis-clients)" with "project(trtis-clients VERSION "0.0.0")".
-   * Resolved OpenCV3.3.0 vs OpenCV3.4.7 dependency conflict by swapping to "develop" branch for the openmpf-cpp-component-sdk repo.
+* `USER_FEATURE_X_LEFT_UPPER` and `USER_FEATURE_Y_LEFT_UPPER` allow users to define the upper left coordinates for a custom bounding box of the image or video frame during inference. `USER_FEATURE_WIDTH` and `USER_FEATURE_HEIGHT` allow users to control the width and height of the custom bounding box.
 
-   Andy also left some fixes for locating protobuf ("#Fix lower case protobuf package name.") and fixing src header references. I've kept those fixes in this dockerfile as well.
-   After these changes were made the openmpf-dev image was successfully built.
+For enabling generation of similarity features:
 
-4. Running docker-compose on client and trtserver containers:
-   * I didn't run into significant issues here.
-   * After I updated the docker-compose.yml files (changed volume locations in client), I was able to launch both client and server containers without any problems.
-   * Note: I did have to comment out "#runtime: nvidia" for both docker-compose.yml files as they were not recognized (likely due to a different version of docker-compose).
+* `USER_FEATURE_ENABLE` : Toggles generation of similarity feature detections for a user-specified bounding box.
 
+* `CLASS_FEATURE_ENABLE`: Toggles generation of similarity features for any COCO-class objects detected.
 
-Remaining steps (todo):
+* `FRAME_FEATURE_ENABLE`: Toggles generation of a size-weighted average of all other features found in an image or frame.
 
-   * Update local environment dependencies to build test scripts and trtisdetection component. (Likely will reuse some of the steps from the client docker container).
-   * Run test scripts & other models on available data.
-   * Double check code for sensitive information.
-   * Remove large files (there appears to be some model files included, such as ip\_irv2\_coco). Not sure of all of these should be uploaded.
-   * Submit component PR to public OpenMPF git repository.
+* `EXTRA_FEATURE_ENABLE`: Toggles generation of similarity features for candidate object regions that could not be classified as COCO objects.
+* `EXTRA_CONFIDENCE_THRESHOLD`: Specifies threshold for object region detections that could not be classified as COCO objects. Please note that confidence scores for these extra detections is generally extremely low.
+
+For object tracking in video frames, the following settings control how objects are assessed and organized within the MPF video tracks.
+Each condition must be met for an object to be considered to be part of the same MPF video track:
+
+* `TRACK_MAX_FEATURE_GAP`: Specifies the maximum gap in the similarity feature space, based on the cosine or inner product distance.
+
+* `TRACK_MAX_FRAME_GAP`: Specifies the maximum gap in video frames.
+
+* `TRACK_MAX_SPACE_GAP`: Specifies the maximum gap in normalized pixel space.
+
+Currently video tracking uses basic search space calculations to match preexisting tracks to the closest candidate object detections being considered within the current video frame. If a match occurs, an MPFImageLocation is appended to the matching track.
+When a newly detected object fails to match to a preexisting track, a new track is created for that object.
+
 
 
 

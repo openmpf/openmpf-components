@@ -724,7 +724,7 @@ void TrtisDetection::_addToTrack(MPFImageLocation &location,
 * \param  frameIdx    frame index of location
 * \param[in,out]      tracks collection to which location will be added
 *
-* \note  Frame and center bounds define a search space of track stop locactions
+* \note  Frame and center bounds define a search space of track stop locations
 *        from which the one with the smallest feature distance is selected.
 *        If no candidates exist, a new track is created.
 *        This is just one simplistic tracker, there are a lot of
@@ -902,7 +902,7 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
                         ,[&]{return ctxPool.size() == initialCtxPoolSize;})){
                            THROW_TRTISEXCEPTION("Waited longer than " +
                              to_string(timeout.count()) +
-                             " sec for context pool to return to intial size.");
+                             " sec for context pool to return to initial size.");
         }
       }                                                                         LOG4CXX_DEBUG(_log,"all frames complete");
 
