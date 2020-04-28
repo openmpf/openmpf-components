@@ -24,36 +24,21 @@
 # limitations under the License.                                            #
 #############################################################################
 
-ARG BUILD_REGISTRY
-ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
 
-# Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN "$COMPONENT_VIRTUALENV/bin/pip" install --no-cache-dir 'opencv-python>=3.3'
+import setuptools
 
-COPY . /home/mpf/component_src/
-
-RUN /home/mpf/scripts/install-component.sh
-
-ENV COMPONENT_LOG_NAME acs-ocr-component.log
-
-ARG RUN_TESTS=false
-RUN if [ "${RUN_TESTS,,}" == true ]; then \
-        LD_LIBRARY_PATH="$MPF_HOME/lib" "$COMPONENT_VIRTUALENV/bin/python" /home/mpf/component_src/tests/test_acs.py; \
-    fi
-
-
-ARG BUILD_DATE
-ARG BUILD_SHAS
-ARG BUILD_TAG
-
-# Set labels
-LABEL org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF Azure OCR" \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.url="https://openmpf.github.io" \
-      org.label-schema.vcs-ref=$BUILD_SHAS \
-      org.label-schema.vcs-url="https://github.com/openmpf" \
-      org.label-schema.vendor="MITRE" \
-      org.label-schema.version=$BUILD_TAG
+setuptools.setup(
+    name='AzureOcrTextDetection',
+    version='4.1.0',
+    packages=setuptools.find_packages(exclude=('*test*',)),
+    package_data={'': ['text-tags.json']},
+    install_requires=(
+        'mpf_component_api>=0.1',
+        'mpf_component_util>=0.1',
+        'opencv-python>=3.3',
+        'numpy>=1.11'
+    ),
+    entry_points={
+        'mpf.exported_component': 'component = acs_ocr_component.acs_ocr_component:AcsOcrComponent'
+    }
+)

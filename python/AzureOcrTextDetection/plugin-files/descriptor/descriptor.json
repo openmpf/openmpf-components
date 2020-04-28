@@ -1,9 +1,9 @@
 {
-  "componentName": "AzureOcr",
+  "componentName": "AzureOcrTextDetection",
   "componentVersion": "4.1.0",
   "middlewareVersion": "4.1.0",
   "sourceLanguage": "python",
-  "batchLibrary": "AzureOcr",
+  "batchLibrary": "AzureOcrTextDetection",
   "environmentVariables": [],
   "algorithm": {
     "name": "AZUREOCR",

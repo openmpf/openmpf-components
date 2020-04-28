@@ -41,7 +41,7 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 
-logger = mpf.configure_logging('acs-ocr-component.log', __name__ == '__main__')
+logger = mpf.configure_logging('acs-ocr-text-detection.log', __name__ == '__main__')
 
 
 class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
