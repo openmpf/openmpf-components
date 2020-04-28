@@ -59,7 +59,7 @@ class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
                 yield detection
                 num_detections += 1
 
-            logger.info('[%s] Processing complete found %s detections.', image_job.job_name, num_detections)
+            logger.info('[%s] Processing complete. Found %s detections.', image_job.job_name, num_detections)
         except Exception:
             logger.exception('[%s] Failed to complete job due to the following exception:', image_job.job_name)
             raise
@@ -76,7 +76,7 @@ class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
                 yield mpf.VideoTrack(idx, idx, -1, {idx: detection}, detection.detection_properties)
                 num_tracks += 1
 
-            logger.info('[%s] Processing complete. Found %s tracks', video_job.job_name, num_tracks)
+            logger.info('[%s] Processing complete. Found %s tracks.', video_job.job_name, num_tracks)
         except Exception:
             logger.exception('[%s] Failed to complete job due to the following exception:', video_job.job_name)
             raise
