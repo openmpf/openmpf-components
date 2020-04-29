@@ -208,10 +208,15 @@ class TestAcs(unittest.TestCase):
         self.assertEqual(expected_width, new_size.width)
         self.assertEqual(expected_height, new_size.height)
 
-        self.assertAlmostEqual(initial_width / initial_height, new_size.width / new_size.height, places=3)
+        self.assertEqual(initial_width // initial_height, new_size.width // new_size.height)
         self.assertTrue((new_size.width * new_size.height) <= FrameEncoder.MAX_PIXELS)
+
+        self.assertTrue(new_size.width >= FrameEncoder.MIN_DIMENSION_LENGTH)
+        self.assertTrue(new_size.height >= FrameEncoder.MIN_DIMENSION_LENGTH)
+
         self.assertTrue(new_size.width <= FrameEncoder.MAX_DIMENSION_LENGTH)
         self.assertTrue(new_size.height <= FrameEncoder.MAX_DIMENSION_LENGTH)
+
         self.assertTrue(len(encoded_frame) <= FrameEncoder.MAX_FILE_SIZE)
 
 
@@ -225,16 +230,26 @@ class TestAcs(unittest.TestCase):
         self.assert_new_size(4229, 75082, 236, 4200)
         self.assert_new_size(750, 13324, 236, 4200)
 
+        self.assert_new_size(1000, 49, 1020, 50)
+
+
+    def test_invalid_frame_size(self):
+        frame = np.zeros((FrameEncoder.MIN_DIMENSION_LENGTH - 1, FrameEncoder.MAX_DIMENSION_LENGTH + 1, 3),
+                         dtype=np.uint8)
+        with self.assertRaises(mpf.DetectionException) as cm:
+            FrameEncoder().resize_and_encode(frame)
+        self.assertEqual(mpf.DetectionError.BAD_FRAME_SIZE, cm.exception.error_code)
+
 
     def test_resize_due_to_compression(self):
-        img = cv2.imread(get_test_file('down-sampling/noise.png'))
+        img = cv2.imread(get_test_file('downsampling/noise.png'))
 
         original_size = mpf_util.Size.from_frame(img)
         encoded_frame, new_size = FrameEncoder().resize_and_encode(img)
         self.assertNotEqual(original_size, new_size)
 
         self.assertTrue(len(encoded_frame) <= FrameEncoder.MAX_FILE_SIZE)
-        self.assertAlmostEqual(original_size.width / original_size.height, new_size.width / new_size.height, places=3)
+        self.assertEqual(original_size.width // original_size.height, new_size.width // new_size.height)
         self.assertTrue((new_size.width * new_size.height) <= FrameEncoder.MAX_PIXELS)
         self.assertTrue(new_size.width <= FrameEncoder.MAX_DIMENSION_LENGTH)
         self.assertTrue(new_size.height <= FrameEncoder.MAX_DIMENSION_LENGTH)
@@ -242,24 +257,37 @@ class TestAcs(unittest.TestCase):
 
 
 
-    def test_mapping_coordinates_after_down_sampling(self):
-        self.run_image_test('down-sampling/eng-with-noise.png', 'down-sampling/eng-with-noise-results.json',
+    def test_mapping_coordinates_after_downsampling(self):
+        self.run_image_test('downsampling/eng-with-noise.png', 'downsampling/eng-with-noise-results.json',
                             mpf_util.Rect(112, 57, 990, 430), 0)
 
-    def test_rotation_with_down_sampling(self):
-        self.run_image_test('down-sampling/eng-with-noise-30deg.png',
-                            'down-sampling/eng-with-noise-30deg-results.json',
+    def test_rotation_with_downsampling(self):
+        self.run_image_test('downsampling/eng-with-noise-30deg.png',
+                            'downsampling/eng-with-noise-30deg-results.json',
                             mpf_util.Rect(42, 340, 990, 428), 30)
 
-    def test_left_orientation_with_down_sampling(self):
-        self.run_image_test('down-sampling/eng-with-noise-90deg.png',
-                            'down-sampling/eng-with-noise-90deg-results.json',
+    def test_left_orientation_with_downsampling(self):
+        self.run_image_test('downsampling/eng-with-noise-90deg.png',
+                            'downsampling/eng-with-noise-90deg-results.json',
                             mpf_util.Rect(55, 1686, 989, 430), 90)
 
-    def test_left_orientation_with_angle_and_down_sampling(self):
-        self.run_image_test('down-sampling/eng-with-noise-100deg.png',
-                            'down-sampling/eng-with-noise-100deg-results.json',
+    def test_left_orientation_with_angle_and_downsampling(self):
+        self.run_image_test('downsampling/eng-with-noise-100deg.png',
+                            'downsampling/eng-with-noise-100deg-results.json',
                             mpf_util.Rect(316, 1629, 990, 430), 100)
+
+
+    def test_upsampling(self):
+        self.set_results_path(get_test_file('upsampling/tiny-image-results.json'))
+        job = mpf.ImageJob('Test', get_test_file('upsampling/tiny-image.png'), get_test_properties(), {}, None)
+        detections = list(AcsOcrComponent().get_detections_from_image(job))
+
+        self.assertEqual(1, len(detections))
+        detection = detections[0]
+        self.assertEqual('It was the best of times, it was the worst of times', detection.detection_properties['TEXT'])
+        self.assertEqual('en', detection.detection_properties['TEXT_LANGUAGE'])
+        self.assertEqual(mpf_util.Rect(29, 7, 586, 24), mpf_util.Rect.from_image_location(detection))
+        self.assertAlmostEqual(0, float(detection.detection_properties['ROTATION']))
 
 
     def test_multiple_regions(self):
@@ -553,6 +581,16 @@ class MockRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):
         size = mpf_util.Size.from_frame(frame)
         if size.width * size.height > FrameEncoder.MAX_PIXELS:
             msg = 'Image contained too many pixels.'
+            self.send_error(400, msg)
+            raise Exception(msg)
+
+        if size.width < FrameEncoder.MIN_DIMENSION_LENGTH:
+            msg = 'Image was not wide enough.'
+            self.send_error(400, msg)
+            raise Exception(msg)
+
+        if size.height < FrameEncoder.MIN_DIMENSION_LENGTH:
+            msg = 'Image was not tall enough.'
             self.send_error(400, msg)
             raise Exception(msg)
 

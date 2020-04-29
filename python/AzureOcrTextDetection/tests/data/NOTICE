@@ -12,15 +12,17 @@ Custom generated image, contains orientation/img/eng.png rotated to various angl
 Custom generated video, frames are orientation/img/eng.png rotated to various angles.
 
 
-# down-sampling/noise.png
+# downsampling/noise.png
 Custom generated image, contains random pixels.
 
-# down-sampling/eng-with-noise.png
+# downsampling/eng-with-noise.png
 Custom generated image, contains orientation/img/eng.png surrounded with random pixels.
 
-# down-sampling/eng-with-noise-*deg.png
-Custom generated image, contains down-sampling/eng-with-noise.png rotated to various angles.
+# downsampling/eng-with-noise-*deg.png
+Custom generated image, contains downsampling/eng-with-noise.png rotated to various angles.
 
+# upsampling/tiny-image.png
+Custom generated image, contains beginning of "A Tale of Two Cities" by Charles Dickens (Public Domain).
 
 # multiple-regions/region-test.png
 Custom generated image, contains beginning of "A Tale of Two Cities" by Charles Dickens (Public Domain).

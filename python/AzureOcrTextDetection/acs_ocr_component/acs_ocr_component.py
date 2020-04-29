@@ -196,7 +196,9 @@ class OcrResultsProcessor(object):
 
         self._text_tagger = text_tagger
 
-        # ACS describes rotation using an "orientation" field and a "textAngle" field.
+        # ACS describes rotation using an "orientation" field and a "textAngle" field. The "orientation" value
+        # (up, down, left, or right) refers to the direction that the top of the recognized text is facing, after the
+        # image has been rotated around its center according to the detected text angle ("textAngle" property).
         # Each orientation uses a slightly different coordinate system so each case needs to be handled separately.
         # ACS only reports a single "orientation" field for the entire frame, so we can pre-select the
         # orientation correction method here.
@@ -401,6 +403,7 @@ class FrameEncoder(object):
     # These constraints are from Azure Cognitive Services
     # (https://westus.dev.cognitive.microsoft.com/docs/services/56f91f2d778daf23d8ec6739/operations/56f91f2e778daf14a499e1fc)
     MAX_PIXELS = 10000000
+    MIN_DIMENSION_LENGTH = 50  # pixels
     MAX_DIMENSION_LENGTH = 4200  # pixels
     MAX_FILE_SIZE = 4 * 1024 * 1024  # bytes
 
@@ -493,12 +496,29 @@ class FrameEncoder(object):
         original_frame_size = mpf_util.Size.from_frame(frame)
         new_frame_size = original_frame_size
 
-        max_dimension = max(original_frame_size.width, original_frame_size.height)
+        min_dimension = min(new_frame_size.width, new_frame_size.height)
+        max_dimension = max(new_frame_size.width, new_frame_size.height)
+
+        if min_dimension < cls.MIN_DIMENSION_LENGTH and max_dimension > cls.MAX_DIMENSION_LENGTH:
+            raise mpf.DetectionException(
+                'Unable to resize frame with size of {}x{} to an acceptable size because one dimension is under the '
+                'minimum number of pixels per dimension ({}) and the other is over the maximum ({}).'.format(
+                    original_frame_size.width, original_frame_size.height, cls.MIN_DIMENSION_LENGTH,
+                    cls.MAX_DIMENSION_LENGTH),
+                mpf.DetectionError.BAD_FRAME_SIZE)
+
+        if min_dimension < cls.MIN_DIMENSION_LENGTH:
+            new_frame_size = scale_size(new_frame_size, cls.MIN_DIMENSION_LENGTH / min_dimension)
+            logger.warn(
+                'Upsampling frame because Azure Cognitive Services requires both dimensions to be at least %s pixels, '
+                'but the frame was %sx%s.',
+                cls.MIN_DIMENSION_LENGTH, original_frame_size.width, original_frame_size.height)
+
         if max_dimension > cls.MAX_DIMENSION_LENGTH:
             new_frame_size = scale_size(new_frame_size, cls.MAX_DIMENSION_LENGTH / max_dimension)
             logger.warn(
-                'Downsampling frame because Azure Cognitive Services requires both dimensions to be at most %s, '
-                'but the frame was %sx%s',
+                'Downsampling frame because Azure Cognitive Services requires both dimensions to be at most %s pixels, '
+                'but the frame was %sx%s.',
                 cls.MAX_DIMENSION_LENGTH, original_frame_size.width, original_frame_size.height)
 
         new_pixel_count = new_frame_size.width * new_frame_size.height
@@ -506,7 +526,7 @@ class FrameEncoder(object):
             new_frame_size = scale_size(new_frame_size, math.sqrt(cls.MAX_PIXELS / new_pixel_count))
             logger.warn(
                 'Downsampling frame because Azure Cognitive Services requires the frame to contain at most %s pixels, '
-                'but the frame contained %s pixels',
+                'but the frame contained %s pixels.',
                 cls.MAX_PIXELS, original_frame_size.width * original_frame_size.height)
 
         return new_frame_size

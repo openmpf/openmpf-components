@@ -1,0 +1,65 @@
+{
+    "language": "en",
+    "textAngle": 0.0,
+    "orientation": "Up",
+    "regions": [
+        {
+            "boundingBox": "30,8,598,25",
+            "lines": [
+                {
+                    "boundingBox": "30,8,598,25",
+                    "words": [
+                        {
+                            "boundingBox": "30,8,14,21",
+                            "text": "It"
+                        },
+                        {
+                            "boundingBox": "52,13,48,16",
+                            "text": "was"
+                        },
+                        {
+                            "boundingBox": "109,8,38,21",
+                            "text": "the"
+                        },
+                        {
+                            "boundingBox": "158,8,51,21",
+                            "text": "best"
+                        },
+                        {
+                            "boundingBox": "218,8,24,21",
+                            "text": "of"
+                        },
+                        {
+                            "boundingBox": "248,8,72,25",
+                            "text": "times,"
+                        },
+                        {
+                            "boundingBox": "332,8,13,21",
+                            "text": "it"
+                        },
+                        {
+                            "boundingBox": "353,13,48,16",
+                            "text": "was"
+                        },
+                        {
+                            "boundingBox": "410,8,38,21",
+                            "text": "the"
+                        },
+                        {
+                            "boundingBox": "457,8,66,21",
+                            "text": "worst"
+                        },
+                        {
+                            "boundingBox": "532,8,24,21",
+                            "text": "of"
+                        },
+                        {
+                            "boundingBox": "562,8,66,21",
+                            "text": "times"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
