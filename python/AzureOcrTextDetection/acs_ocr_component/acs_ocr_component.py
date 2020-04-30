@@ -509,6 +509,15 @@ class FrameEncoder(object):
 
         if min_dimension < cls.MIN_DIMENSION_LENGTH:
             new_frame_size = scale_size(new_frame_size, cls.MIN_DIMENSION_LENGTH / min_dimension)
+            if max(new_frame_size.width, new_frame_size.height) > cls.MAX_DIMENSION_LENGTH:
+                raise mpf.DetectionException(
+                    'Unable to resize frame with size of {}x{} to an acceptable size because one dimension was '
+                    'below the minimum number of pixels per dimension ({}) and upsampling the frame will result in '
+                    'the other dimension being over the maximum ({}).'.format(
+                        original_frame_size.width, original_frame_size.height, cls.MIN_DIMENSION_LENGTH,
+                        cls.MAX_DIMENSION_LENGTH),
+                    mpf.DetectionError.BAD_FRAME_SIZE)
+
             logger.warn(
                 'Upsampling frame because Azure Cognitive Services requires both dimensions to be at least %s pixels, '
                 'but the frame was %sx%s.',
@@ -516,6 +525,14 @@ class FrameEncoder(object):
 
         if max_dimension > cls.MAX_DIMENSION_LENGTH:
             new_frame_size = scale_size(new_frame_size, cls.MAX_DIMENSION_LENGTH / max_dimension)
+            if min(new_frame_size.width, new_frame_size.height) < cls.MIN_DIMENSION_LENGTH:
+                raise mpf.DetectionException(
+                    'Unable to resize frame with size of {}x{} to an acceptable size because one dimension was '
+                    'above the maximum number of pixels per dimension ({}) and downsampling the frame will result in '
+                    'the other dimension being under the minimum ({}).'.format(
+                        original_frame_size.width, original_frame_size.height, cls.MAX_DIMENSION_LENGTH,
+                        cls.MIN_DIMENSION_LENGTH),
+                    mpf.DetectionError.BAD_FRAME_SIZE)
             logger.warn(
                 'Downsampling frame because Azure Cognitive Services requires both dimensions to be at most %s pixels, '
                 'but the frame was %sx%s.',

@@ -234,8 +234,21 @@ class TestAcs(unittest.TestCase):
 
 
     def test_invalid_frame_size(self):
-        frame = np.zeros((FrameEncoder.MIN_DIMENSION_LENGTH - 1, FrameEncoder.MAX_DIMENSION_LENGTH + 1, 3),
-                         dtype=np.uint8)
+        frame = np.zeros((FrameEncoder.MIN_DIMENSION_LENGTH - 1, FrameEncoder.MAX_DIMENSION_LENGTH + 1, 3), np.uint8)
+        with self.assertRaises(mpf.DetectionException) as cm:
+            FrameEncoder().resize_and_encode(frame)
+        self.assertEqual(mpf.DetectionError.BAD_FRAME_SIZE, cm.exception.error_code)
+
+
+    def test_invalid_frame_size_too_big_after_resize(self):
+        frame = np.zeros((10, 4200, 3), np.uint8)
+        with self.assertRaises(mpf.DetectionException) as cm:
+            FrameEncoder().resize_and_encode(frame)
+        self.assertEqual(mpf.DetectionError.BAD_FRAME_SIZE, cm.exception.error_code)
+
+
+    def test_invalid_frame_size_too_small_after_resize(self):
+        frame = np.zeros((50, 4400, 3), np.uint8)
         with self.assertRaises(mpf.DetectionException) as cm:
             FrameEncoder().resize_and_encode(frame)
         self.assertEqual(mpf.DetectionError.BAD_FRAME_SIZE, cm.exception.error_code)
