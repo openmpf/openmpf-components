@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -24,4 +26,42 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division, print_function
+
+import sys
+
+import mpf_component_api as mpf
+
 from acs_ocr_component import AcsOcrComponent
+
+def main():
+    if len(sys.argv) != 4:
+        sys.exit('Error: Invalid number of arguments. \nUsage: {} <acs_url> <acs_subscription_key> <img_path>'
+                 .format(sys.argv[0]))
+    _, acs_url, acs_subscription_key, img_path = sys.argv
+
+    job = mpf.ImageJob('Sample Job', img_path, dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key), {},
+                       None)
+
+    detections = list(AcsOcrComponent().get_detections_from_image(job))
+
+    print('Found', len(detections), 'detections.')
+    if len(detections) == 0:
+        return
+
+    print()
+    print('=' * 80)
+    print()
+    for idx, detection in enumerate(detections):
+        print('Detection', idx + 1, 'Text:')
+        print(detection.detection_properties['TEXT'])
+        print('-' * 80)
+        print('Detection', idx + 1, 'details:')
+        print(detection)
+        print()
+        print('=' * 80)
+        print()
+
+
+if __name__ == '__main__':
+    main()

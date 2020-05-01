@@ -26,7 +26,6 @@ For example, instead of `"\\bhello world\\b"`, you will likely want to use
 `"\\bhello\\s+world\\b"`. 
 
 
-
 # Required Job Properties
 In order for the component to process any jobs, the job properties listed below
 must be provided. Neither has a default value. Both can also get the value
@@ -40,3 +39,9 @@ the job property will be used.
 - `ACS_SUBSCRIPTION_KEY`: A string containing your Azure Cognitive Services
   subscription key. To get one you will need to create an 
   Azure Cognitive Services account.
+
+
+# Sample Program
+`sample_acs_ocr_text_detector.py` can be used to quickly test with the Azure
+endpoint. It only supports images, but the component itself supports both
+images and videos.
