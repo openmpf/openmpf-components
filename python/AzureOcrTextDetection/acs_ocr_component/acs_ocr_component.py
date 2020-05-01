@@ -26,6 +26,7 @@
 
 from __future__ import division, print_function
 
+import collections
 import json
 import math
 import os
@@ -363,8 +364,8 @@ class TextTagger(object):
         raise mpf.DetectionException(error_msg, mpf.DetectionError.COULD_NOT_READ_DATAFILE)
 
 
-    @staticmethod
-    def _load_tag_dict(tags_json_file):
+    @classmethod
+    def _load_tag_dict(cls, tags_json_file):
         """
         Loads text tags from a JSON file.
 
@@ -380,21 +381,40 @@ class TextTagger(object):
                     'Failed to load text tags JSON from \"{}\" due to: {}'.format(tags_json_file, e),
                     mpf.DetectionError.COULD_NOT_READ_DATAFILE)
 
-        tags_to_compiled_regexes = dict()
-        regex_compile_flags = re.MULTILINE | re.IGNORECASE | re.UNICODE | re.DOTALL
+        tags_to_compiled_regexes = collections.defaultdict(list)
+        regex_flags = re.MULTILINE | re.IGNORECASE | re.UNICODE | re.DOTALL
 
         tags_by_regex = tags_json.get('TAGS_BY_REGEX', {})
         for tag, regexes in tags_by_regex.iteritems():
-            tags_to_compiled_regexes[tag] = [re.compile(r, regex_compile_flags) for r in regexes]
+            tags_to_compiled_regexes[tag] = [re.compile(r, regex_flags) for r in regexes]
 
         tags_by_keyword = tags_json.get('TAGS_BY_KEYWORD', {})
         for tag, keywords in tags_by_keyword.iteritems():
-            keyword_regexes = (r'\b' + re.escape(w) + r'\b' for w in keywords)
-            compiled_regexes = (re.compile(r, regex_compile_flags) for r in keyword_regexes)
-            tags_to_compiled_regexes.setdefault(tag, []).extend(compiled_regexes)
+            compiled_regexes = (cls._convert_keyword_to_regex(w, regex_flags) for w in keywords)
+            tags_to_compiled_regexes[tag].extend(compiled_regexes)
 
         return tags_to_compiled_regexes
 
+
+    _SLASH_THEN_WHITE_SPACE_REGEX = re.compile(r'\\\s', re.UNICODE)
+
+    @classmethod
+    def _convert_keyword_to_regex(cls, word, regex_flags):
+        # Converts 'hello world' to r'\bhello\s+world\b'.
+
+        # re.escape doesn't just escape regex metacharacters, it escapes all non-printable and non-ASCII text.
+        # This causes space characters to also be escaped which makes it harder to replace them with '\s+'
+        escaped = re.escape(word)
+        # word = 'hello world'
+        # escaped = 'hello\ world'
+
+        with_generic_white_space = cls._SLASH_THEN_WHITE_SPACE_REGEX.sub(r'\s+', escaped)
+        # with_generic_white_space = 'hello\s+world'
+
+        with_word_boundaries = r'\b' + with_generic_white_space + r'\b'
+        # with_word_boundaries = '\bhello\s+world\b'
+
+        return re.compile(with_word_boundaries, regex_flags)
 
 
 class FrameEncoder(object):

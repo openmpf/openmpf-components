@@ -94,6 +94,7 @@ class TestAcs(unittest.TestCase):
         self.assert_contains_tag(detection, 'TAG_4', 'Should be able to handle ? metacharacter')
         self.assert_contains_tag(detection, 'TAG_5', 'Should be able to handle \\b metacharacter')
         self.assert_does_not_contain_tag(detection, 'TAG_6', '\\b should not match partial words')
+        self.assert_contains_tag(detection, 'TAG_9', 'Key words should be tolerant of newlines.')
 
 
     def assert_contains_tag(self, detection, tag, msg=None):
