@@ -30,7 +30,7 @@ contain words separated by whitespace. For more complex pattern matching,
 use regex tags instead. Both forms of tagging are case-insensitive. 
 
 By default, the json tagging file is located in the acs_ocr_component folder 
-as text-tags.json, however users can provide an alternate full path to a 
+as `text-tags.json`, however users can provide an alternate full path to a 
 tagging file of their choice. English and foreign text tags following 
 UTF-8 encoding are supported.
 
