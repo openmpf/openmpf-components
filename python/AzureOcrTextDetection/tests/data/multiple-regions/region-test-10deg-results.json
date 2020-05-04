@@ -1,0 +1,238 @@
+{
+    "language": "en",
+    "textAngle": 0.16580627893946195,
+    "orientation": "Up",
+    "regions": [
+        {
+            "boundingBox": "94,49,220,86",
+            "lines": [
+                {
+                    "boundingBox": "94,49,182,16",
+                    "words": [
+                        {
+                            "boundingBox": "94,51,11,13",
+                            "text": "It"
+                        },
+                        {
+                            "boundingBox": "109,54,30,10",
+                            "text": "was"
+                        },
+                        {
+                            "boundingBox": "144,50,25,14",
+                            "text": "the"
+                        },
+                        {
+                            "boundingBox": "174,49,32,14",
+                            "text": "best"
+                        },
+                        {
+                            "boundingBox": "210,49,16,14",
+                            "text": "of"
+                        },
+                        {
+                            "boundingBox": "230,49,46,16",
+                            "text": "times,"
+                        }
+                    ]
+                },
+                {
+                    "boundingBox": "94,72,192,16",
+                    "words": [
+                        {
+                            "boundingBox": "94,73,9,14",
+                            "text": "it"
+                        },
+                        {
+                            "boundingBox": "107,77,31,10",
+                            "text": "was"
+                        },
+                        {
+                            "boundingBox": "142,73,25,14",
+                            "text": "the"
+                        },
+                        {
+                            "boundingBox": "171,74,45,12",
+                            "text": "worst"
+                        },
+                        {
+                            "boundingBox": "220,72,16,14",
+                            "text": "of"
+                        },
+                        {
+                            "boundingBox": "240,72,46,16",
+                            "text": "times,"
+                        }
+                    ]
+                },
+                {
+                    "boundingBox": "94,95,193,17",
+                    "words": [
+                        {
+                            "boundingBox": "94,96,9,14",
+                            "text": "it"
+                        },
+                        {
+                            "boundingBox": "107,100,31,10",
+                            "text": "was"
+                        },
+                        {
+                            "boundingBox": "142,96,25,14",
+                            "text": "the"
+                        },
+                        {
+                            "boundingBox": "172,99,26,13",
+                            "text": "age"
+                        },
+                        {
+                            "boundingBox": "203,95,15,14",
+                            "text": "of"
+                        },
+                        {
+                            "boundingBox": "222,95,65,16",
+                            "text": "wisdom,"
+                        }
+                    ]
+                },
+                {
+                    "boundingBox": "94,118,220,17",
+                    "words": [
+                        {
+                            "boundingBox": "94,119,10,14",
+                            "text": "it"
+                        },
+                        {
+                            "boundingBox": "108,123,30,10",
+                            "text": "was"
+                        },
+                        {
+                            "boundingBox": "142,119,25,14",
+                            "text": "the"
+                        },
+                        {
+                            "boundingBox": "172,122,26,13",
+                            "text": "age"
+                        },
+                        {
+                            "boundingBox": "203,118,16,14",
+                            "text": "of"
+                        },
+                        {
+                            "boundingBox": "223,118,91,16",
+                            "text": "foolishness,"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "boundingBox": "872,190,458,323",
+            "lines": [
+                {
+                    "boundingBox": "872,190,247,24",
+                    "words": [
+                        {
+                            "boundingBox": "872,192,12,18",
+                            "text": "it"
+                        },
+                        {
+                            "boundingBox": "890,198,37,12",
+                            "text": "was"
+                        },
+                        {
+                            "boundingBox": "933,192,30,18",
+                            "text": "the"
+                        },
+                        {
+                            "boundingBox": "970,191,58,23",
+                            "text": "epoch"
+                        },
+                        {
+                            "boundingBox": "1034,190,85,22",
+                            "text": "ofbelief,"
+                        }
+                    ]
+                },
+                {
+                    "boundingBox": "872,217,296,24",
+                    "words": [
+                        {
+                            "boundingBox": "872,219,13,18",
+                            "text": "it"
+                        },
+                        {
+                            "boundingBox": "890,225,38,12",
+                            "text": "was"
+                        },
+                        {
+                            "boundingBox": "933,219,31,18",
+                            "text": "the"
+                        },
+                        {
+                            "boundingBox": "970,218,58,23",
+                            "text": "epoch"
+                        },
+                        {
+                            "boundingBox": "1034,218,23,18",
+                            "text": "of"
+                        },
+                        {
+                            "boundingBox": "1060,217,108,23",
+                            "text": "incredulity,"
+                        }
+                    ]
+                },
+                {
+                    "boundingBox": "1167,426,163,15",
+                    "words": [
+                        {
+                            "boundingBox": "1167,427,10,14",
+                            "text": "It"
+                        },
+                        {
+                            "boundingBox": "1183,430,37,11",
+                            "text": "was"
+                        },
+                        {
+                            "boundingBox": "1227,426,28,15",
+                            "text": "the"
+                        },
+                        {
+                            "boundingBox": "1263,429,67,12",
+                            "text": "season"
+                        }
+                    ]
+                },
+                {
+                    "boundingBox": "1184,474,146,15",
+                    "words": [
+                        {
+                            "boundingBox": "1184,478,36,11",
+                            "text": "was"
+                        },
+                        {
+                            "boundingBox": "1228,474,27,15",
+                            "text": "the"
+                        },
+                        {
+                            "boundingBox": "1263,477,67,12",
+                            "text": "season"
+                        }
+                    ]
+                },
+                {
+                    "boundingBox": "1167,498,109,15",
+                    "words": [
+                        {
+                            "boundingBox": "1167,498,18,15",
+                            "text": "of"
+                        },
+                        {
+                            "boundingBox": "1192,498,84,15",
+                            "text": "Darkness"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

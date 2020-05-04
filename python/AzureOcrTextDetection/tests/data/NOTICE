@@ -1,0 +1,44 @@
+
+# orientation/img/eng.png
+Custom generated image, contains English text from the Universal
+Declaration of Human Rights. http://www.un.org/en/universal-declaration-human-rights/
+
+
+# orientation/img/eng-*deg.png
+Custom generated image, contains orientation/img/eng.png rotated to various angles.
+
+
+# orientation/video/test-vid.avi
+Custom generated video, frames are orientation/img/eng.png rotated to various angles.
+
+
+# downsampling/noise.png
+Custom generated image, contains random pixels.
+
+# downsampling/eng-with-noise.png
+Custom generated image, contains orientation/img/eng.png surrounded with random pixels.
+
+# downsampling/eng-with-noise-*deg.png
+Custom generated image, contains downsampling/eng-with-noise.png rotated to various angles.
+
+# upsampling/tiny-image.png
+Custom generated image, contains beginning of "A Tale of Two Cities" by Charles Dickens (Public Domain).
+
+# multiple-regions/region-test.png
+Custom generated image, contains beginning of "A Tale of Two Cities" by Charles Dickens (Public Domain).
+
+# multiple-regions/region-test-10deg.png
+Custom generated image, multiple-regions/region-test.png rotated 10 degrees.
+
+
+# foreign/chinese-two-cities.png
+Custom generated image, Google translate of
+"It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness."
+which is the beginning of "A Tale of Two Cities" by Charles Dickens (Public Domain).
+
+
+# no-results/black.png
+Custom generated image, just black pixels.
+
+# no-results/black.avi
+Custom generated video, three frames of just black pixels.
