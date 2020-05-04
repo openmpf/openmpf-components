@@ -1,0 +1,158 @@
+{
+    "language": "zh-Hans",
+    "textAngle": 0.0,
+    "orientation": "Up",
+    "regions": [
+        {
+            "boundingBox": "26,19,613,58",
+            "lines": [
+                {
+                    "boundingBox": "26,19,613,25",
+                    "words": [
+                        {
+                            "boundingBox": "26,21,22,22",
+                            "text": "那"
+                        },
+                        {
+                            "boundingBox": "50,21,21,23",
+                            "text": "是"
+                        },
+                        {
+                            "boundingBox": "73,21,23,22",
+                            "text": "最"
+                        },
+                        {
+                            "boundingBox": "98,19,22,24",
+                            "text": "美"
+                        },
+                        {
+                            "boundingBox": "121,21,23,22",
+                            "text": "好"
+                        },
+                        {
+                            "boundingBox": "146,21,21,22",
+                            "text": "的"
+                        },
+                        {
+                            "boundingBox": "171,20,22,23",
+                            "text": "时"
+                        },
+                        {
+                            "boundingBox": "194,20,22,24",
+                            "text": "光"
+                        },
+                        {
+                            "boundingBox": "228,37,3,6",
+                            "text": "，"
+                        },
+                        {
+                            "boundingBox": "242,21,22,22",
+                            "text": "那"
+                        },
+                        {
+                            "boundingBox": "266,21,21,23",
+                            "text": "是"
+                        },
+                        {
+                            "boundingBox": "289,21,23,22",
+                            "text": "最"
+                        },
+                        {
+                            "boundingBox": "313,20,23,23",
+                            "text": "糟"
+                        },
+                        {
+                            "boundingBox": "337,21,24,22",
+                            "text": "糕"
+                        },
+                        {
+                            "boundingBox": "362,21,21,22",
+                            "text": "的"
+                        },
+                        {
+                            "boundingBox": "387,20,22,23",
+                            "text": "时"
+                        },
+                        {
+                            "boundingBox": "410,20,22,24",
+                            "text": "光"
+                        },
+                        {
+                            "boundingBox": "444,37,3,6",
+                            "text": "，"
+                        },
+                        {
+                            "boundingBox": "458,21,22,22",
+                            "text": "那"
+                        },
+                        {
+                            "boundingBox": "482,21,21,23",
+                            "text": "是"
+                        },
+                        {
+                            "boundingBox": "506,21,22,22",
+                            "text": "智"
+                        },
+                        {
+                            "boundingBox": "529,20,23,23",
+                            "text": "慧"
+                        },
+                        {
+                            "boundingBox": "554,21,21,22",
+                            "text": "的"
+                        },
+                        {
+                            "boundingBox": "579,20,22,23",
+                            "text": "时"
+                        },
+                        {
+                            "boundingBox": "601,21,23,22",
+                            "text": "代"
+                        },
+                        {
+                            "boundingBox": "636,37,3,6",
+                            "text": "，"
+                        }
+                    ]
+                },
+                {
+                    "boundingBox": "26,53,175,24",
+                    "words": [
+                        {
+                            "boundingBox": "26,54,22,22",
+                            "text": "那"
+                        },
+                        {
+                            "boundingBox": "50,54,21,23",
+                            "text": "是"
+                        },
+                        {
+                            "boundingBox": "73,54,23,22",
+                            "text": "愚"
+                        },
+                        {
+                            "boundingBox": "98,53,22,23",
+                            "text": "昧"
+                        },
+                        {
+                            "boundingBox": "122,54,21,22",
+                            "text": "的"
+                        },
+                        {
+                            "boundingBox": "147,53,22,23",
+                            "text": "时"
+                        },
+                        {
+                            "boundingBox": "169,54,23,22",
+                            "text": "代"
+                        },
+                        {
+                            "boundingBox": "195,70,6,6",
+                            "text": "。"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
