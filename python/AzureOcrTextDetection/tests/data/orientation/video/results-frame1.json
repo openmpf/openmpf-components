@@ -1,0 +1,215 @@
+{
+    "regions": [
+        {
+            "boundingBox": "189,70,993,435", 
+            "lines": [
+                {
+                    "boundingBox": "189,70,656,41", 
+                    "words": [
+                        {
+                            "boundingBox": "189,77,124,29", 
+                            "text": "Human"
+                        }, 
+                        {
+                            "boundingBox": "328,73,116,38", 
+                            "text": "Rights."
+                        }, 
+                        {
+                            "boundingBox": "459,72,163,38", 
+                            "text": "Bulgarian"
+                        }, 
+                        {
+                            "boundingBox": "636,71,63,32", 
+                            "text": "and"
+                        }, 
+                        {
+                            "boundingBox": "714,70,131,39", 
+                            "text": "English."
+                        }
+                    ]
+                }, 
+                {
+                    "boundingBox": "198,200,817,35", 
+                    "words": [
+                        {
+                            "boundingBox": "198,204,198,31", 
+                            "text": "UNIVERSAL"
+                        }, 
+                        {
+                            "boundingBox": "409,202,248,31", 
+                            "text": "DECLARATION"
+                        }, 
+                        {
+                            "boundingBox": "671,202,46,29", 
+                            "text": "OF"
+                        }, 
+                        {
+                            "boundingBox": "731,201,141,30", 
+                            "text": "HUMAN"
+                        }, 
+                        {
+                            "boundingBox": "887,200,128,30", 
+                            "text": "RIGHTS"
+                        }
+                    ]
+                }, 
+                {
+                    "boundingBox": "236,257,146,31", 
+                    "words": [
+                        {
+                            "boundingBox": "236,257,114,31", 
+                            "text": "Article"
+                        }, 
+                        {
+                            "boundingBox": "365,258,17,30", 
+                            "text": "1"
+                        }
+                    ]
+                }, 
+                {
+                    "boundingBox": "196,305,986,43", 
+                    "words": [
+                        {
+                            "boundingBox": "196,311,43,32", 
+                            "text": "All"
+                        }, 
+                        {
+                            "boundingBox": "253,311,121,31", 
+                            "text": "human"
+                        }, 
+                        {
+                            "boundingBox": "388,310,113,38", 
+                            "text": "beings"
+                        }, 
+                        {
+                            "boundingBox": "513,319,56,22", 
+                            "text": "are"
+                        }, 
+                        {
+                            "boundingBox": "582,309,80,31", 
+                            "text": "born"
+                        }, 
+                        {
+                            "boundingBox": "674,308,71,31", 
+                            "text": "free"
+                        }, 
+                        {
+                            "boundingBox": "757,307,64,32", 
+                            "text": "and"
+                        }, 
+                        {
+                            "boundingBox": "835,307,95,38", 
+                            "text": "equal"
+                        }, 
+                        {
+                            "boundingBox": "944,308,29,29", 
+                            "text": "in"
+                        }, 
+                        {
+                            "boundingBox": "987,306,119,38", 
+                            "text": "dignity"
+                        }, 
+                        {
+                            "boundingBox": "1119,305,63,31", 
+                            "text": "and"
+                        }
+                    ]
+                }, 
+                {
+                    "boundingBox": "199,360,953,43", 
+                    "words": [
+                        {
+                            "boundingBox": "199,365,107,38", 
+                            "text": "rights."
+                        }, 
+                        {
+                            "boundingBox": "318,365,86,38", 
+                            "text": "They"
+                        }, 
+                        {
+                            "boundingBox": "416,374,55,21", 
+                            "text": "are"
+                        }, 
+                        {
+                            "boundingBox": "484,362,163,33", 
+                            "text": "endowed"
+                        }, 
+                        {
+                            "boundingBox": "660,362,76,31", 
+                            "text": "with"
+                        }, 
+                        {
+                            "boundingBox": "751,371,116,22", 
+                            "text": "reason"
+                        }, 
+                        {
+                            "boundingBox": "881,360,63,32", 
+                            "text": "and"
+                        }, 
+                        {
+                            "boundingBox": "958,361,194,30", 
+                            "text": "conscience"
+                        }
+                    ]
+                }, 
+                {
+                    "boundingBox": "198,414,866,39", 
+                    "words": [
+                        {
+                            "boundingBox": "198,419,63,32", 
+                            "text": "and"
+                        }, 
+                        {
+                            "boundingBox": "275,418,115,32", 
+                            "text": "should"
+                        }, 
+                        {
+                            "boundingBox": "404,423,53,26", 
+                            "text": "act"
+                        }, 
+                        {
+                            "boundingBox": "468,417,144,32", 
+                            "text": "towards"
+                        }, 
+                        {
+                            "boundingBox": "624,426,65,22", 
+                            "text": "one"
+                        }, 
+                        {
+                            "boundingBox": "702,415,141,32", 
+                            "text": "another"
+                        }, 
+                        {
+                            "boundingBox": "855,417,29,29", 
+                            "text": "in"
+                        }, 
+                        {
+                            "boundingBox": "897,425,17,21", 
+                            "text": "a"
+                        }, 
+                        {
+                            "boundingBox": "928,416,88,37", 
+                            "text": "spirit"
+                        }, 
+                        {
+                            "boundingBox": "1028,414,36,31", 
+                            "text": "of"
+                        }
+                    ]
+                }, 
+                {
+                    "boundingBox": "200,472,234,33", 
+                    "words": [
+                        {
+                            "boundingBox": "200,472,234,33", 
+                            "text": "brotherhood."
+                        }
+                    ]
+                }
+            ]
+        }
+    ], 
+    "textAngle": 0.25481807079117275, 
+    "orientation": "Up", 
+    "language": "en"
+}
