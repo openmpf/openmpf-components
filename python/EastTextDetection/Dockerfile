@@ -47,14 +47,6 @@ COPY --from=build_component $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 COPY --from=build_component $PLUGINS_DIR/EastTextDetection $PLUGINS_DIR/EastTextDetection
 
 
-ENV COMPONENT_LOG_NAME east-text-detection.log
-
-
-################################################################################
-# Labels                                                                       #
-################################################################################
-
-# Set labels
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF EAST Text Detection" \
       org.label-schema.schema-version="1.0" \

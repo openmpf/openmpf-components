@@ -24,16 +24,15 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
 import collections
 import json
 import math
 import os
 import re
 import urllib
-import urllib2
-import urlparse
+import urllib.error
+import urllib.parse
+import urllib.request
 
 import cv2
 import numpy as np
@@ -123,13 +122,14 @@ class JobRunner(object):
 
 
     def _post_to_acs(self, encoded_frame):
-        request = urllib2.Request(self._acs_url, encoded_frame, self._acs_headers)
+        request = urllib.request.Request(self._acs_url, bytes(encoded_frame), self._acs_headers)
         try:
-            response = urllib2.urlopen(request)
+            response = urllib.request.urlopen(request)
             return json.load(response)
-        except urllib2.HTTPError as e:
-            raise mpf.DetectionException('Request failed with HTTP status {} and message: {}'.format(e.code, e.read()),
-                                         mpf.DetectionError.DETECTION_FAILED)
+        except urllib.error.HTTPError as e:
+            response_content = e.read().decode('utf-8', errors='replace')
+            raise mpf.DetectionException('Request failed with HTTP status {} and message: {}'
+                                         .format(e.code, response_content), mpf.DetectionError.DETECTION_FAILED)
 
     @classmethod
     def get_acs_url(cls, job_properties):
@@ -138,14 +138,14 @@ class JobRunner(object):
         language = job_properties.get('LANGUAGE')
         detect_orientation = job_properties.get('DETECT_ORIENTATION', 'true')
 
-        url_parts = urlparse.urlparse(url)
-        query_dict = urlparse.parse_qs(url_parts.query)
+        url_parts = urllib.parse.urlparse(url)
+        query_dict = urllib.parse.parse_qs(url_parts.query)
         query_dict['detectOrientation'] = detect_orientation
         if language:
             query_dict['language'] = language
-        query_string = urllib.urlencode(query_dict, doseq=True)
+        query_string = urllib.parse.urlencode(query_dict, doseq=True)
 
-        return urlparse.urlunparse(url_parts._replace(query=query_string))
+        return urllib.parse.urlunparse(url_parts._replace(query=query_string))
 
     @staticmethod
     def _get_acs_property_or_env_value(property_name, job_properties):
@@ -249,13 +249,13 @@ class OcrResultsProcessor(object):
     def _create_image_location(self, text, bounding_box):
         corrected_bounding_box, angle = self._correct_region_bounding_box(bounding_box)
 
-        detection_properties = mpf.Properties(TEXT=text.encode('utf-8'), TEXT_LANGUAGE=self._language,
-                                              ROTATION=str(normalize_angle(angle)))
+        detection_properties = dict(TEXT=text, TEXT_LANGUAGE=self._language,
+                                    ROTATION=str(mpf_util.normalize_angle(angle)))
         if self._text_tagger.tagging_enabled:
-            detection_properties['TAGS'] = self._text_tagger.find_tags(text).encode('utf-8')
+            detection_properties['TAGS'] = self._text_tagger.find_tags(text)
 
-        return mpf.ImageLocation(corrected_bounding_box.x, corrected_bounding_box.y,
-                                 corrected_bounding_box.width, corrected_bounding_box.height,
+        return mpf.ImageLocation(int(corrected_bounding_box.x), int(corrected_bounding_box.y),
+                                 int(corrected_bounding_box.width), int(corrected_bounding_box.height),
                                  -1, detection_properties)
 
 
@@ -275,7 +275,7 @@ class OcrResultsProcessor(object):
         # Map ACS orientation info to MPF rotation info
         corrected_top_left, corrected_angle = self._orientation_correction(x, y)
         corrected_box = mpf_util.Rect.from_corner_and_size(corrected_top_left, (width, height))
-        return corrected_box, normalize_angle(corrected_angle)
+        return corrected_box, mpf_util.normalize_angle(corrected_angle)
 
 
     def _correct_up_oriented(self, x, y):
@@ -329,7 +329,7 @@ class TextTagger(object):
         :param content: The text to search for matches.
         :return: A unicode string containing a comma-separated list of matching tags.
         """
-        matching_tags = (tag for tag, rxs in self._tags_to_compiled_regexes.iteritems()
+        matching_tags = (tag for tag, rxs in self._tags_to_compiled_regexes.items()
                          if self._any_regex_matches(content, rxs))
         return ', '.join(matching_tags)
 
@@ -385,11 +385,11 @@ class TextTagger(object):
         regex_flags = re.MULTILINE | re.IGNORECASE | re.UNICODE | re.DOTALL
 
         tags_by_regex = tags_json.get('TAGS_BY_REGEX', {})
-        for tag, regexes in tags_by_regex.iteritems():
+        for tag, regexes in tags_by_regex.items():
             tags_to_compiled_regexes[tag] = [re.compile(r, regex_flags) for r in regexes]
 
         tags_by_keyword = tags_json.get('TAGS_BY_KEYWORD', {})
-        for tag, keywords in tags_by_keyword.iteritems():
+        for tag, keywords in tags_by_keyword.items():
             compiled_regexes = (cls._convert_keyword_to_regex(w, regex_flags) for w in keywords)
             tags_to_compiled_regexes[tag].extend(compiled_regexes)
 
@@ -408,7 +408,7 @@ class TextTagger(object):
         # word = 'hello world'
         # escaped = 'hello\ world'
 
-        with_generic_white_space = cls._SLASH_THEN_WHITE_SPACE_REGEX.sub(r'\s+', escaped)
+        with_generic_white_space = cls._SLASH_THEN_WHITE_SPACE_REGEX.sub(r'\\s+', escaped)
         # with_generic_white_space = 'hello\s+world'
 
         with_word_boundaries = r'\b' + with_generic_white_space + r'\b'
@@ -494,7 +494,7 @@ class FrameEncoder(object):
 
         encoded_frame = cls._encode_max_compression(resized_frame)
         if len(encoded_frame) <= cls.MAX_FILE_SIZE:
-            logger.warn(
+            logger.warning(
                 'Downsampling frame because Azure Cognitive Services requires the encoded frame to be at most '
                 '%s bytes, but it was too big.', cls.MAX_FILE_SIZE)
             return encoded_frame, corrected_frame_size
@@ -538,7 +538,7 @@ class FrameEncoder(object):
                         cls.MAX_DIMENSION_LENGTH),
                     mpf.DetectionError.BAD_FRAME_SIZE)
 
-            logger.warn(
+            logger.warning(
                 'Upsampling frame because Azure Cognitive Services requires both dimensions to be at least %s pixels, '
                 'but the frame was %sx%s.',
                 cls.MIN_DIMENSION_LENGTH, original_frame_size.width, original_frame_size.height)
@@ -553,7 +553,7 @@ class FrameEncoder(object):
                         original_frame_size.width, original_frame_size.height, cls.MAX_DIMENSION_LENGTH,
                         cls.MIN_DIMENSION_LENGTH),
                     mpf.DetectionError.BAD_FRAME_SIZE)
-            logger.warn(
+            logger.warning(
                 'Downsampling frame because Azure Cognitive Services requires both dimensions to be at most %s pixels, '
                 'but the frame was %sx%s.',
                 cls.MAX_DIMENSION_LENGTH, original_frame_size.width, original_frame_size.height)
@@ -561,7 +561,7 @@ class FrameEncoder(object):
         new_pixel_count = new_frame_size.width * new_frame_size.height
         if new_pixel_count > cls.MAX_PIXELS:
             new_frame_size = scale_size(new_frame_size, math.sqrt(cls.MAX_PIXELS / new_pixel_count))
-            logger.warn(
+            logger.warning(
                 'Downsampling frame because Azure Cognitive Services requires the frame to contain at most %s pixels, '
                 'but the frame contained %s pixels.',
                 cls.MAX_PIXELS, original_frame_size.width * original_frame_size.height)
@@ -575,11 +575,3 @@ def scale_size(size, scale_factor):
     return mpf_util.Size(int(size.width * scale_factor), int(size.height * scale_factor))
 
 
-def normalize_angle(angle):
-    """Returns an equivalent angle that is in the range [0, 360)"""
-    if 0 <= angle < 360:
-        return angle
-    angle %= 360
-    if angle >= 0:
-        return angle
-    return 360 + angle

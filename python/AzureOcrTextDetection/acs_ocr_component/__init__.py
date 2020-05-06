@@ -24,4 +24,3 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from acs_ocr_component import AcsOcrComponent

@@ -47,15 +47,6 @@ COPY --from=build_component $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 COPY --from=build_component $PLUGINS_DIR/AzureOcrTextDetection $PLUGINS_DIR/AzureOcrTextDetection
 
 
-ENV COMPONENT_LOG_NAME acs-ocr-text-detection.log
-
-
-
-################################################################################
-# Labels                                                                       #
-################################################################################
-
-# Set labels
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Azure OCR Text Detection" \
       org.label-schema.schema-version="1.0" \
