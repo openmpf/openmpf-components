@@ -30,8 +30,8 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_componen
 
 
 RUN yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
-    && yum --enablerepo=remi install -y ImageMagick6 ImageMagick6-c++ \
-         ImageMagick6-c++-devel ImageMagick6-devel ImageMagick6-libs \
+    && yum --enablerepo=remi install -y ImageMagick ImageMagick-c++ \
+         ImageMagick-c++-devel ImageMagick-devel ImageMagick-libs \
          libgif libjpeg libpng libtiff zlib ghostscript \
     && yum clean all \
     && rm -rf /var/cache/yum/*
@@ -70,7 +70,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./TesseractOCRTe
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
 RUN yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
-    && yum --enablerepo=remi install -y ImageMagick6 \
+    && yum --enablerepo=remi install -y ImageMagick \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
