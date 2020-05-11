@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -542,6 +542,7 @@ bool TesseractOCRTextDetection::process_parallel_image_runs(TesseractOCRTextDete
         active_threads.insert(index);
         index++;
         while (active_threads.size() >= inputs.ocr_fset->max_parallel_ocr_threads) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
             for (const int &i: active_threads) {
                 if ( ocr_threads[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
                     if (!ocr_threads[i].get()) {
@@ -876,7 +877,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         vector<TesseractOCRTextDetection::OSD_script> script_list, backup_scripts, secondary_scripts;
 
         // If primary script is not NULL, check if secondary scripts are also valid.
-        if (detection_properties["PRIMARY_SCRIPT"] != "NULL") {
+        if (detection_properties["OSD_PRIMARY_SCRIPT"] != "NULL") {
             // Max number of scripts in ICU + "NULL" + Japanese and Korean + Fraktur
             const int kMaxNumberOfScripts = 116 + 1 + 2 + 1;
             double score_cutoff = best_score * ocr_fset.min_secondary_script_thrs;
@@ -1494,6 +1495,7 @@ bool TesseractOCRTextDetection::process_parallel_pdf_pages(TesseractOCRTextDetec
         active_threads.insert(index);
         index ++;
         while (active_threads.size() >= page_inputs.ocr_fset.max_parallel_pdf_threads) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
             for (const int &i: active_threads) {
                 if (pdf_threads[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
                     if (!pdf_threads[i].get()) {

@@ -113,9 +113,13 @@ if (DARKNET_BUILD_CUDA)
     find_package(CUDA REQUIRED)
     set(CUDA_VERBOSE_BUILD ON)
 
-## See the file ComponentSetup.cmake for the definition of GPU_ARCH_BUILD_FLAGS
-    message(STATUS "GPU_ARCH_BUILD_FLAGS = ${GPU_ARCH_BUILD_FLAGS}")
-    set(CUDA_NVCC_FLAGS -DGPU -DOPENCV --compiler-options -fPIC ${GPU_ARCH_BUILD_FLAGS})
+    # By default, we build Darknet for maximum portability across GPU
+    # architectures. This means that we create PTX code for the minimum compute
+    # capability only. For the darknet component, we have not seen a performance
+    # benefit to creating to ELF code in addition to PTX code. However, for other
+    # components, this may not be the case.
+    set(CUDA_NVCC_FLAGS --compiler-options -fPIC -gencode arch=compute_30,code=compute_30)
+    message(STATUS "CUDA_NVCC_FLAGS = ${CUDA_NVCC_FLAGS}")
 
     include_directories(include)
 

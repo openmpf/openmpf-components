@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2019 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2019 The MITRE Corporation                                      #
+# Copyright 2020 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -26,14 +26,26 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python-executor:${BUILD_TAG}
+FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} as build_component
 
 # Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN "$COMPONENT_VIRTUALENV/bin/pip" install --no-cache-dir 'opencv-python>=3.4.7'
+RUN pip install --no-cache-dir 'opencv-python>=3.4.7'
 
-COPY . /home/mpf/component_src/
+COPY . .
 
-RUN /home/mpf/scripts/install-component.sh
+RUN install-component.sh
+
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then python tests/test_east.py; fi
+
+
+
+FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
+
+COPY --from=build_component $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+
+COPY --from=build_component $PLUGINS_DIR/EastTextDetection $PLUGINS_DIR/EastTextDetection
+
 
 ENV COMPONENT_LOG_NAME east-text-detection.log
 
@@ -42,17 +54,10 @@ ENV COMPONENT_LOG_NAME east-text-detection.log
 # Labels                                                                       #
 ################################################################################
 
-ARG BUILD_DATE
-ARG BUILD_SHAS
-ARG BUILD_TAG
-
 # Set labels
-LABEL org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.license="Apache 2.0" \
+LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF EAST Text Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
-      org.label-schema.vcs-ref=$BUILD_SHAS \
-      org.label-schema.vcs-url="https://github.com/openmpf" \
-      org.label-schema.vendor="MITRE" \
-      org.label-schema.version=$BUILD_TAG
+      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
+      org.label-schema.vendor="MITRE"
