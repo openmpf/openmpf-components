@@ -603,51 +603,66 @@ bool TesseractOCRTextDetection::preprocess_image(const MPFImageJob &job, cv::Mat
     }
     // Image preprocessing to improve text extraction results.
 
-    // Image histogram equalization
-    if (ocr_fset.enable_adaptive_hist_equalization) {
-        cv::cvtColor(image_data, image_data, cv::COLOR_BGR2GRAY);
-        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
-        clahe->setTilesGridSize(cv::Size(ocr_fset.adaptive_hist_tile_size, ocr_fset.adaptive_hist_tile_size));
-        clahe->setClipLimit(ocr_fset.adaptive_hist_clip_limit);
-        clahe->apply(image_data, image_data);
-    } else if (ocr_fset.enable_hist_equalization) {
-        cv::cvtColor(image_data, image_data, cv::COLOR_BGR2GRAY);
-        cv::equalizeHist(image_data, image_data);
-    }
 
-    // Image thresholding.
-    if (ocr_fset.enable_otsu_thrs || ocr_fset.enable_adaptive_thrs) {
-        cv::cvtColor(image_data, image_data, cv::COLOR_BGR2GRAY);
-    }
-    if (ocr_fset.enable_adaptive_thrs) {
-        // Pixel blocksize ranges 5-51 worked for adaptive threshold.
-        cv::adaptiveThreshold(image_data, image_data, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY,
-                              ocr_fset.adaptive_thrs_pixel, ocr_fset.adaptive_thrs_c);
-    } else if (ocr_fset.enable_otsu_thrs) {
-        double thresh_val = cv::threshold(image_data, image_data, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
-    }
+    try {
+        // Image histogram equalization
+        if (ocr_fset.enable_adaptive_hist_equalization) {
+            cv::cvtColor(image_data, image_data, cv::COLOR_BGR2GRAY);
+            cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+            clahe->setTilesGridSize(cv::Size(ocr_fset.adaptive_hist_tile_size, ocr_fset.adaptive_hist_tile_size));
+            clahe->setClipLimit(ocr_fset.adaptive_hist_clip_limit);
+            clahe->apply(image_data, image_data);
+        } else if (ocr_fset.enable_hist_equalization) {
+            cv::cvtColor(image_data, image_data, cv::COLOR_BGR2GRAY);
+            cv::equalizeHist(image_data, image_data);
+        }
 
-    // Rescale and sharpen image (larger images improve detection results).
-    if (ocr_fset.scale > 0) {
-        cv::resize(image_data, image_data, cv::Size(), ocr_fset.scale, ocr_fset.scale);
-    }
+        // Image thresholding.
+        if (ocr_fset.enable_otsu_thrs || ocr_fset.enable_adaptive_thrs) {
+            cv::cvtColor(image_data, image_data, cv::COLOR_BGR2GRAY);
+        }
+        if (ocr_fset.enable_adaptive_thrs) {
+            // Pixel blocksize ranges 5-51 worked for adaptive threshold.
+            cv::adaptiveThreshold(image_data, image_data, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY,
+                                  ocr_fset.adaptive_thrs_pixel, ocr_fset.adaptive_thrs_c);
+        } else if (ocr_fset.enable_otsu_thrs) {
+            double thresh_val = cv::threshold(image_data, image_data, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+        }
 
-    if (ocr_fset.min_height > 0 && image_data.rows < ocr_fset.min_height) {
-        double ratio = (double)ocr_fset.min_height / (double)image_data.rows;
-        cv::resize(image_data, image_data, cv::Size(), ratio, ratio);
-    }
+        // Rescale and sharpen image (larger images improve detection results).
+        if (ocr_fset.scale > 0) {
+            cv::resize(image_data, image_data, cv::Size(), ocr_fset.scale, ocr_fset.scale);
+        }
 
-    if (ocr_fset.sharpen > 0) {
-        sharpen(image_data, ocr_fset.sharpen);
-    }
+        if (ocr_fset.min_height > 0 && image_data.rows < ocr_fset.min_height) {
+            double ratio = (double)ocr_fset.min_height / (double)image_data.rows;
+            cv::resize(image_data, image_data, cv::Size(), ratio, ratio);
+        }
 
-    // Image inversion.
-    if (ocr_fset.invert) {
-        double min, max;
-        cv::Mat tmp_imb(image_data.size(), image_data.type());
-        cv::minMaxLoc(image_data, &min, &max);
-        tmp_imb.setTo(cv::Scalar::all(max));
-        cv::subtract(tmp_imb, image_data, image_data);
+        if (ocr_fset.sharpen > 0) {
+            sharpen(image_data, ocr_fset.sharpen);
+        }
+
+        // Image inversion.
+        if (ocr_fset.invert) {
+            double min, max;
+            cv::Mat tmp_imb(image_data.size(), image_data.type());
+            cv::minMaxLoc(image_data, &min, &max);
+            tmp_imb.setTo(cv::Scalar::all(max));
+            cv::subtract(tmp_imb, image_data, image_data);
+        }
+    } catch (const std::exception& ex) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during image preprocessing: " + ex.what());
+        job_status = MPF_COULD_NOT_READ_DATAFILE;
+        return false;
+    } catch (const std::string& ex) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during image preprocessing: " + ex);
+        job_status = MPF_COULD_NOT_READ_DATAFILE;
+        return false;
+    } catch (...) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during image preprocessing.");
+        job_status = MPF_COULD_NOT_READ_DATAFILE;
+        return false;
     }
 
     return true;
@@ -707,23 +722,37 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
 
             tess_api_map[tess_api_key] = tess_api;
         }
-
         tesseract::TessBaseAPI *tess_api = tess_api_map[tess_api_key];
-        tess_api->SetPageSegMode((tesseract::PageSegMode) ocr_fset.psm);
-        tess_api->SetImage(imi.data, imi.cols, imi.rows, imi.channels(), static_cast<int>(imi.step));
-        unique_ptr<char[]> text{tess_api->GetUTF8Text()};
-        double confidence = tess_api->MeanTextConf();
+        try {
 
+            tess_api->SetPageSegMode((tesseract::PageSegMode) ocr_fset.psm);
+            tess_api->SetImage(imi.data, imi.cols, imi.rows, imi.channels(), static_cast<int>(imi.step));
+            unique_ptr<char[]> text{tess_api->GetUTF8Text()};
+            double confidence = tess_api->MeanTextConf();
+            string result = text.get();
+
+            wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(result);
+            TesseractOCRTextDetection::OCR_output output_ocr = {confidence, lang, t_detection, "", false};
+            detections_by_lang.push_back(output_ocr);
+        } catch (const std::exception& ex) {
+            LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OCR processing: " + ex.what());
+            job_status = MPF_COULD_NOT_READ_DATAFILE;
+            tess_api->Clear();
+            return false;
+        } catch (const std::string& ex) {
+            LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OCR processing: " + ex);
+            job_status = MPF_COULD_NOT_READ_DATAFILE;
+            tess_api->Clear();
+            return false;
+        } catch (...) {
+            LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OCR processing.");
+            job_status = MPF_COULD_NOT_READ_DATAFILE;
+            tess_api->Clear();
+            return false;
+        }
         // Free up recognition results and any stored image data.
         tess_api->Clear();
-
-        string result = text.get();
-
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Tesseract run successful.");
-        wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(result);
-
-        TesseractOCRTextDetection::OCR_output output_ocr = {confidence, lang, t_detection, "", false};
-        detections_by_lang.push_back(output_ocr);
     }
     return true;
 }
@@ -816,12 +845,27 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
 
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] OSD model ready.");
     }
-
     tesseract::TessBaseAPI *tess_api = tess_api_map[tess_api_key];
-    tess_api->SetPageSegMode(tesseract::PSM_AUTO_OSD);
-    tess_api->SetImage(imi.data, imi.cols, imi.rows, imi.channels(), static_cast<int>(imi.step));
-    tess_api->DetectOS(&results);
-
+    try {
+        tess_api->SetPageSegMode(tesseract::PSM_AUTO_OSD);
+        tess_api->SetImage(imi.data, imi.cols, imi.rows, imi.channels(), static_cast<int>(imi.step));
+        tess_api->DetectOS(&results);
+    } catch (const std::exception& ex) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OSD processing: " + ex.what());
+        job_status = MPF_COULD_NOT_READ_DATAFILE;
+        tess_api->Clear();
+        return;
+    } catch (const std::string& ex) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OSD processing: " + ex);
+        job_status = MPF_COULD_NOT_READ_DATAFILE;
+        tess_api->Clear();
+        return;
+    } catch (...) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OSD processing.");
+        job_status = MPF_COULD_NOT_READ_DATAFILE;
+        tess_api->Clear();
+        return;
+    }
     // Free up recognition results and any stored image data.
     tess_api->Clear();
 
