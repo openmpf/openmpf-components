@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -32,16 +32,18 @@
 #define BOOST_NO_CXX11_SCOPED_ENUMS
 
 #include <boost/filesystem.hpp>
+#include <log4cxx/xml/domconfigurator.h>
 
 #undef BOOST_NO_CXX11_SCOPED_ENUMS
 
 #include "TesseractOCRTextDetection.h"
 
 using namespace MPF::COMPONENT;
+using log4cxx::Logger;
+using log4cxx::xml::DOMConfigurator;
 
 
 void setAlgorithmProperties(Properties &algorithm_properties, const std::map<std::string, std::string> &custom) {
-    algorithm_properties["TAGGING_FILE"] = "config/test-text-tags-foreign.json";
     algorithm_properties["STRUCTURED_TEXT_SHARPEN"] = "-1.0";
     algorithm_properties["TESSERACT_LANGUAGE"] = "eng";
     algorithm_properties["THRS_FILTER"] = "false";
@@ -99,12 +101,22 @@ void runDocumentDetection(const std::string &image_path, TesseractOCRTextDetecti
 void assertEmptyDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
                           std::vector<MPFImageLocation> &image_locations,
                           const std::map<std::string, std::string> &custom = {},
-                          bool wild_mode = false) {
+                          bool wild_mode = false, MPFDetectionError error = MPF_DETECTION_SUCCESS) {
     MPFImageJob job = createImageJob(image_path, custom, wild_mode);
     MPFDetectionError rc = ocr.GetDetections(job, image_locations);
 
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    ASSERT_EQ(rc, error);
     ASSERT_TRUE(image_locations.empty());
+}
+
+void assertEmptyDocumentDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
+                                  std::vector<MPFGenericTrack> &generic_tracks,
+                                  const std::map<std::string, std::string> &custom = {},
+                                  MPFDetectionError error = MPF_DETECTION_SUCCESS) {
+    MPFGenericJob job = createPDFJob(image_path, custom);
+    MPFDetectionError rc = ocr.GetDetections(job, generic_tracks);
+    ASSERT_EQ(rc, error);
+    ASSERT_TRUE(generic_tracks.empty());
 }
 
 bool containsProp(const std::string &exp_text, const std::vector<MPFImageLocation> &locations,
@@ -127,6 +139,26 @@ bool containsProp(const std::string &exp_text, const std::vector<MPFImageLocatio
     return false;
 }
 
+bool assertSameText(const std::string &expected, const std::string &actual, log4cxx::LoggerPtr hw_logger_) {
+    int length = std::min(expected.length(), actual.length());
+
+    for (int i = 0; i < length; i++) {
+        if (expected[i] != actual[i]) {
+            LOG4CXX_DEBUG(hw_logger_, "Expeced and detected text are not the same. First differed at index " << i);
+            std::cout << i << "\n";
+            return false;
+        }
+    }
+    if (expected.length() != actual.length()) {
+        LOG4CXX_DEBUG(hw_logger_, "Expeced and detected text are not the same. First differed at index " << length);
+        std::cout << length << "\n";
+        return false;
+    }
+
+
+    return true;
+}
+
 void assertInImage(const std::string &image_path, const std::string &expected_value,
                    const std::vector<MPFImageLocation> &locations, const std::string &prop, int index = -1) {
     ASSERT_TRUE(containsProp(expected_value, locations, prop, index))
@@ -147,7 +179,7 @@ void convert_results(std::vector<MPFImageLocation> &im_track, const std::vector<
         im_track.push_back(image_location);
     }
 }
-
+/*
 TEST(TESSERACTOCR, ImageProcessingTest) {
 
     // Ensure contrast and unstructured image processing settings are enabled.
@@ -162,6 +194,7 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/limited-contrast.png", ocr, results,  custom_properties));
     assertNotInImage("data/limited-contrast.png", "Contrast Text", results, "TEXT");
 
+
     results.clear();
     custom_properties = {{"MIN_HEIGHT", "-1"}};
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/wild-small-text.png", ocr, results,  custom_properties));
@@ -169,7 +202,7 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
 
     results.clear();
     custom_properties = {{"MIN_HEIGHT", "60"}};
-    assertEmptyDetection("data/blurry.png", ocr, results,  custom_properties);
+    ASSERT_NO_FATAL_FAILURE(assertEmptyDetection("data/blurry.png", ocr, results,  custom_properties));
 
     results.clear();
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/gradient.png", ocr, results,  custom_properties));
@@ -239,6 +272,124 @@ TEST(TESSERACTOCR, ModelTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
+TEST(TESSERACTOCR, MissingLanguagesTest) {
+
+    // Double check missing languages during OSD processing.
+    boost::filesystem::remove_all("data/model_dir");
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/tessdata/script");
+
+
+
+    std::string model = boost::filesystem::absolute(
+            "../plugin/TesseractOCRTextDetection/tessdata/eng.traineddata").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/tessdata/eng.traineddata");
+
+    model = boost::filesystem::absolute(
+            "../plugin/TesseractOCRTextDetection/tessdata/osd.traineddata").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/tessdata/osd.traineddata");
+
+    model = boost::filesystem::absolute(
+            "../plugin/TesseractOCRTextDetection/config").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/config");
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("data/model_dir");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+
+    std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "eng"},
+                                                            {"MODELS_DIR_PATH",       "data/model_dir"}};
+
+    // OSD image processing with all OSD language models missing.
+    // Expected default language to be used.
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng-bul.png", ocr, results, custom_properties));
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
+                                << "Expected Cyrillic as primary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("MISSING_LANGUAGE_MODELS") == "script/Cyrillic, script/Latin")
+                                << "Expected Cyrillic and Latin scripts to be missing.";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected English script.";
+    results.clear();
+
+    // Adding Latin script model.
+    model = boost::filesystem::absolute(
+            "../plugin/TesseractOCRTextDetection/tessdata/script/Latin.traineddata").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/tessdata/script/Latin.traineddata");
+
+    // OSD image processing with some missing language models.
+    // Latin will be used in place of Cyrillic as the next best available model.
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng-bul.png", ocr, results, custom_properties));
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
+                                << "Expected Cyrillic as primary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("MISSING_LANGUAGE_MODELS") == "script/Cyrillic")
+                                << "Expected Cyrillic script to be missing.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_SECONDARY_SCRIPTS") == "Latin") << "Expected Latin script.";
+
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Latin") << "Expected Latin script.";
+
+    results.clear();
+
+
+    custom_properties = {{"TESSERACT_LANGUAGE",    "eng"},
+                         {"MODELS_DIR_PATH",       "data/model_dir"},
+                         {"TESSERACT_PSM", "0"}};
+
+    // OSD PDF processing with missing language models.
+    // MISSING_LANGUAGE_MODELS should be populated on each page, with all OSD scripts not found by the component.
+    std::vector<MPFGenericTrack> results_pdf;
+    ASSERT_NO_FATAL_FAILURE(runDocumentDetection("data/osd-tests.pdf", ocr, results_pdf, custom_properties));
+    convert_results(results, results_pdf);
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Han")
+                                << "Expected Chinese/Han detected as primary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("MISSING_LANGUAGE_MODELS") ==
+                "script/Cyrillic, script/HanS, script/HanS_vert, script/HanT, script/HanT_vert")
+                                << "Expected Cyrillic and Han scripts to be reported as missing.";
+
+    ASSERT_TRUE(results[1].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
+                                << "Expected Cyrillic detected as primary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("MISSING_LANGUAGE_MODELS") ==
+                "script/Cyrillic, script/HanS, script/HanS_vert, script/HanT, script/HanT_vert")
+                                << "Expected Cyrillic and Han scripts to be reported as missing.";
+
+    results.clear();
+    results_pdf.clear();
+
+    // Double check proper error handling with missing languages (parallel processing).
+    custom_properties = {{"TESSERACT_LANGUAGE",    "does_not_exist,testing"},
+                         {"MODELS_DIR_PATH",       "data/model_dir"},
+                         {"ENABLE_OSD_AUTOMATION", "false"}};
+
+    ASSERT_NO_FATAL_FAILURE(assertEmptyDetection("data/eng-bul.png", ocr, results,
+                                                      custom_properties, false, MPF_COULD_NOT_OPEN_DATAFILE));
+    results.clear();
+    results_pdf.clear();
+
+    ASSERT_NO_FATAL_FAILURE(assertEmptyDocumentDetection("data/osd-tests.pdf", ocr, results_pdf,
+                                                         custom_properties, MPF_COULD_NOT_OPEN_DATAFILE));
+    results.clear();
+    results_pdf.clear();
+
+    // Double check proper error handling with missing languages (serial processing).
+    custom_properties = {{"TESSERACT_LANGUAGE",    "does_not_exist,testing"},
+                         {"MODELS_DIR_PATH",       "data/model_dir"},
+                         {"ENABLE_OSD_AUTOMATION", "false"},
+                         {"MAX_PARALLEL_PAGE_THREADS", "0"},
+                         {"MAX_PARALLEL_SCRIPT_THREADS", "0"}};
+
+    ASSERT_NO_FATAL_FAILURE(assertEmptyDetection("data/eng-bul.png", ocr, results,
+                                                      custom_properties, false, MPF_COULD_NOT_OPEN_DATAFILE));
+    results.clear();
+    results_pdf.clear();
+
+    ASSERT_NO_FATAL_FAILURE(assertEmptyDocumentDetection("data/osd-tests.pdf", ocr, results_pdf,
+                                                         custom_properties, MPF_COULD_NOT_OPEN_DATAFILE));
+    results.clear();
+    results_pdf.clear();
+
+    boost::filesystem::remove_all("data/model_dir");
+    ASSERT_TRUE(ocr.Close());
+}
+
 TEST(TESSERACTOCR, TwoPassOCRTest) {
 
     // Ensure that two pass OCR correctly works to process upside down text even w/out OSD support.
@@ -273,8 +424,6 @@ TEST(TESSERACTOCR, TwoPassOCRTest) {
 
 }
 
-
-
 TEST(TESSERACTOCR, TrackFilterTest) {
 
     TesseractOCRTextDetection ocr;
@@ -302,6 +451,83 @@ TEST(TESSERACTOCR, TrackFilterTest) {
 
     ASSERT_TRUE(ocr.Close());
 }
+*/
+
+TEST(TESSERACTOCR, OCRTest) {
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    std::string run_dir = ocr.GetRunDirectory();
+    if (run_dir.empty()) {
+        run_dir = ".";
+    }
+    std::string plugin_path = run_dir + "/TesseractOCRTextDetection";
+
+    log4cxx::xml::DOMConfigurator::configure(plugin_path + "/config/Log4cxxConfig.xml");
+    log4cxx::LoggerPtr hw_logger_ = log4cxx::Logger::getLogger("TesseractOCRTextDetection");
+
+    std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
+    std::map<std::string, std::string> custom_properties_disabled = {{"ENABLE_OSD_AUTOMATION", "false"},
+                                                                     {"FULL_REGEX_SEARCH", "false"}};
+
+    // Test basic text detection.
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/text-demo.png", ocr, results, custom_properties));
+    assertInImage("data/text-demo.png", "TESTING 123", results, "TEXT");
+    assertNotInImage("data/text-demo.png", "Ponies", results, "TEXT");
+    std::string expected = "TESTING 123:\n"
+                           "This package contains an OCR engine -\n"
+                           "libtesseract and a command line\n"
+                           "program - tesseract.\n"
+                           "The lead developer is Ray Smith. The\n"
+                           "maintainer is Zdenko Podobny. For a\n"
+                           "list of contributors see AUTHORS and\n"
+                           "GitHub's log of contributors.";
+    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    results.clear();
+
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-keyword.png", ocr, results, custom_properties));
+    assertInImage("data/tags-keyword.png", "Passenger Passport", results, "TEXT");
+    expected = "Passenger Passport";
+    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    results.clear();
+
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-regex.png", ocr, results, custom_properties));
+
+    expected = "financial code : 122-123-1234";
+    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    results.clear();
+
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties));
+    expected = "End Slide Text Text\n"
+               "01/01/20\n"
+               "Vehicle Finance-Panel";
+    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    results.clear();
+
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties_disabled));
+    expected = "End Slide Text Text\n"
+               "01/01/20\n"
+               "Vehicle Finance-Panel";
+    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    results.clear();
+
+
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-regex-delimiter.png", ocr, results, custom_properties));
+    expected = "financial code a[; ]b 122-123-1234";
+    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    results.clear();
+
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/test-backslash.png", ocr, results, custom_properties));
+    expected = "\\ SOME TEXT \\ a\\\\ \\\\b";
+    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    results.clear();
+
+    ASSERT_TRUE(ocr.Close());
+}
+
 
 TEST(TESSERACTOCR, BlankTest) {
 
@@ -312,7 +538,7 @@ TEST(TESSERACTOCR, BlankTest) {
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
 
     // Check no text detected for blank image.
-    assertEmptyDetection("data/blank.png", ocr, results, custom_properties);
+    ASSERT_NO_FATAL_FAILURE(assertEmptyDetection("data/blank.png", ocr, results, custom_properties));
 
     ASSERT_TRUE(ocr.Close());
 }
@@ -523,8 +749,8 @@ TEST(TESSERACTOCR, OSDMultilanguageScriptTest) {
     assertInImage("data/eng-bul.png", "All human beings", results, "TEXT");
     results.clear();
 
-    // Check multi-language script detection.
-    // Modified script behavior so that individual scripts are run separately.
+    // Check multi-language script detection under parallel processing conditions.
+    // Individual scripts are run separately.
     custom_properties = {{"ENABLE_OSD_AUTOMATION", "true"},
                          {"MAX_OSD_SCRIPTS",       "3"},
                          {"COMBINE_OSD_SCRIPTS",   "false"},
@@ -549,8 +775,36 @@ TEST(TESSERACTOCR, OSDMultilanguageScriptTest) {
     assertInImage("data/eng-bul.png", "Всички хора се раждат ", results, "TEXT", 0);
     assertInImage("data/eng-bul.png", "All human beings", results, "TEXT", 1);
 
+    // Check multi-language script detection under serial processing conditions.
+    // Individual scripts are run separately.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION", "true"},
+                         {"MAX_OSD_SCRIPTS",       "3"},
+                         {"COMBINE_OSD_SCRIPTS",   "false"},
+                         {"MIN_OSD_SCRIPT_SCORE",  "45.0"},
+                         {"MAX_PARALLEL_SCRIPT_THREADS", "0"}};
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng-bul.png", ocr, results, custom_properties));
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
+                                << "Expected Cyrillic as primary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_SECONDARY_SCRIPTS") == "Latin")
+                                << "Expected Latin as secondary script.";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Cyrillic")
+                                << "Expected both scripts to run separately.";
+
+    ASSERT_TRUE(results[1].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[1].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic")
+                                << "Expected Cyrillic as primary script.";
+    ASSERT_TRUE(results[1].detection_properties.at("OSD_SECONDARY_SCRIPTS") == "Latin")
+                                << "Expected Latin as secondary script.";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "script/Latin")
+                                << "Expected both scripts to run separately.";
+
+    assertInImage("data/eng-bul.png", "Всички хора се раждат ", results, "TEXT", 0);
+    assertInImage("data/eng-bul.png", "All human beings", results, "TEXT", 1);
+
     ASSERT_TRUE(ocr.Close());
 }
+
 
 TEST(TESSERACTOCR, OSDMultiPageTest) {
 
@@ -576,7 +830,8 @@ TEST(TESSERACTOCR, OSDMultiPageTest) {
     custom_properties = {{"ENABLE_OSD_AUTOMATION",             "true"},
                          {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE", "0.30"},
                          {"ENABLE_OSD_FALLBACK",               "false"},
-                         {"MIN_OSD_SCRIPT_SCORE",              "40"}};
+                         {"MIN_OSD_SCRIPT_SCORE",              "40"},
+                         {"MAX_PARALLEL_PAGE_THREADS", "2"}};
 
     // Check multiple page OSD processing.
     // Ensure that the default language is properly reset.
@@ -592,6 +847,31 @@ TEST(TESSERACTOCR, OSDMultiPageTest) {
                                 << "Expected NULL script due to insufficient text.";
     ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng")
                                 << "Expected default language (eng) for second track.";
+
+    results_pdf.clear();
+    results.clear();
+
+    custom_properties = {{"ENABLE_OSD_AUTOMATION",             "true"},
+                         {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE", "0.30"},
+                         {"ENABLE_OSD_FALLBACK",               "false"},
+                         {"MIN_OSD_SCRIPT_SCORE",              "40"},
+                         {"MAX_PARALLEL_PAGE_THREADS", "0"}};
+
+    // Verify proper processing behavior under serial conditions.
+    ASSERT_NO_FATAL_FAILURE(runDocumentDetection("data/osd-check-defaults.pdf", ocr, results_pdf, custom_properties));
+    convert_results(results, results_pdf);
+    ASSERT_TRUE(results.size() == 2) << "Expected two text tracks (middle page is blank and should be ignored).";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Cyrillic") << "Expected Cyrillic script.";
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Cyrillic")
+                                << "Expected Cyrillic script.";
+    ASSERT_TRUE(results[1].detection_properties.at("OSD_PRIMARY_SCRIPT") == "NULL")
+                                << "Expected NULL script due to insufficient text.";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng")
+                                << "Expected default language (eng) for second track.";
+
+    results_pdf.clear();
+    results.clear();
 
     ASSERT_TRUE(ocr.Close());
 }
@@ -633,6 +913,7 @@ TEST(TESSERACTOCR, OSDSecondaryScriptThresholdTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
+
 TEST(TESSERACTOCR, OSDHanOrientationTest) {
 
     TesseractOCRTextDetection ocr;
@@ -652,5 +933,69 @@ TEST(TESSERACTOCR, OSDHanOrientationTest) {
 
     ASSERT_TRUE(ocr.Close());
 }
+
+TEST(TESSERACTOCR, LanguageTest) {
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+    std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "eng, bul"},
+                                                            {"ENABLE_OSD_AUTOMATION", "false"}};
+
+    // Test multilanguage text extraction.
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng-bul.png", ocr, results, custom_properties));
+    assertInImage("data/eng-bul.png", "Всички хора се раждат свободни", results, "TEXT", 0);
+
+    assertInImage("data/eng-bul.png", "All human beings are born free", results, "TEXT", 1);
+
+    ASSERT_TRUE(ocr.Close());
+}
+
+
+TEST(TESSERACTOCR, DocumentTest) {
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    std::vector<MPFGenericTrack> results_pdf;
+    ASSERT_TRUE(ocr.Init());
+    std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"},
+                                                            {"MAX_PARALLEL_PAGE_THREADS", "2"}};
+
+    // Test document text extraction.
+    ASSERT_NO_FATAL_FAILURE(runDocumentDetection("data/test.pdf", ocr, results_pdf, custom_properties));
+    convert_results(results, results_pdf);
+   assertInImage("data/test.pdf", "This is a test", results, "TEXT", 0);
+    assertInImage("data/test.pdf", "Vehicle", results, "TEXT", 1);
+    assertInImage("data/test.pdf", "Automobile", results, "TEXT", 2);
+
+    ASSERT_TRUE(ocr.Close());
+}
+
+TEST(TESSERACTOCR, RedundantFilterTest) {
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    // Check that redundant scripts are ignored properly.
+
+
+    std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION",             "false"},
+                                                            {"TESSERACT_LANGUAGE",    "eng+eng,eng+eng,fra,fra+eng,eng+fra+fra"},
+                                                            {"MAX_PARALLEL_SCRIPT_THREADS", "4"}};
+
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
+    ASSERT_TRUE(results.size() == 4) << "Expected four text tracks (second input should be ignored).";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected redundant English script ignored.";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng+fra") << "Expected English followed by French script.";
+    ASSERT_TRUE(results[2].detection_properties.at("TEXT_LANGUAGE") == "fra") << "Expected French script.";
+    ASSERT_TRUE(results[3].detection_properties.at("TEXT_LANGUAGE") == "fra+eng") << "Expected French followed by English script.";
+
+    ASSERT_TRUE(ocr.Close());
+}
+
 
 

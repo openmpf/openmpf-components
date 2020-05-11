@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -29,13 +29,14 @@
 
 #include <set>
 #include "adapters/MPFGenericDetectionComponentAdapter.h"
+#include <MPFDetectionComponent.h>
 #include <boost/regex.hpp>
 #include <log4cxx/logger.h>
 
 using namespace MPF;
 using namespace COMPONENT;
 
-class KeywordTagger : public MPFGenericDetectionComponentAdapter {
+class KeywordTagger : public MPFDetectionComponent {
 public:
     bool Init() override;
 
@@ -46,6 +47,12 @@ public:
 
     MPFDetectionError GetDetections(const MPFImageJob &job,
             std::vector<MPFImageLocation> &tags) override;
+
+    MPFDetectionError GetDetections(const MPFAudioJob &job,
+            std::vector<MPFAudioTrack> &tags) override;
+
+    MPFDetectionError GetDetections(const MPFVideoJob &job,
+            std::vector<MPFVideoTrack> &tags) override;
 
     bool Supports(MPFDetectionDataType data_type) override;
 

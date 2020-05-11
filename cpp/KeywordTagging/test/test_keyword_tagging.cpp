@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -26,7 +26,6 @@
 
 #include <gtest/gtest.h>
 #include "KeywordTaggingComponent.h"
-#include "../TesseractOCRTextDetection/TesseractOCRTextDetection.h"
 
 using namespace MPF::COMPONENT;
 
@@ -34,76 +33,20 @@ using namespace MPF::COMPONENT;
 void setAlgorithmProperties(Properties &algorithm_properties, const std::map<std::string, std::string> &custom) {
 
     algorithm_properties["TAGGING_FILE"] = "config/test-text-tags-foreign.json";
-    algorithm_properties["STRUCTURED_TEXT_SHARPEN"] = "-1.0";
 
     for (auto const &x : custom) {
         algorithm_properties[x.first] = x.second;
     }
 }
 
-MPFImageJob createImageJob(const std::string &uri, const std::map<std::string, std::string> &custom = {}) {
-    Properties algorithm_properties;
-    Properties media_properties;
-
-    std::string job_name("Tagger_feed_forawrd_test");
-    setAlgorithmProperties(algorithm_properties, custom);
-
-    MPFImageLocation text_tags;
-    text_tags.detection_properties["TEXT"] = "Testing 123:\n"
-                                             "\n"
-                                             "This package contains an OCR engine -\n"
-                                             "libtesseract and a command line\n"
-                                             "program - tesseract.\n"
-                                             "\n"
-                                             "The lead developer is Ray Smith. The\n"
-                                             "maintainer is Zdenko Podobny. For a\n"
-                                             "lsit of contributors see AUTHORS and\n"
-                                             "GitHub's log of contributors.";
-
-    MPFImageJob job(job_name, uri, text_tags, algorithm_properties, media_properties);
-    return job;
-
-}
-
-MPFImageJob createImageJobTesseract(const std::string &uri, const std::map<std::string, std::string> &custom = {},
-                           bool wild_mode = false) {
-
-    Properties algorithm_properties;
-    Properties media_properties;
-
-    std::string job_name("OCR_feedforward_test");
-
-    setAlgorithmProperties(algorithm_properties, custom);
-    if (wild_mode) {
-        MPFImageLocation image_location(0, 0, 1, 1, -1);
-        image_location.detection_properties["TEXT_TYPE"] = "UNSTRUCTURED";
-        MPFImageJob job(job_name, uri, image_location, algorithm_properties, media_properties);
-        return job;
-    }
-
-    MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
-    return job;
-}
-
-
-
-MPFGenericJob createGenericJob(const std::string &uri, const std::map<std::string, std::string> &custom = {},
-                           bool wild_mode = false) {
+MPFGenericJob createGenericJob(const std::string &uri, const std::map<std::string, std::string> &custom = {}) {
 
     Properties algorithm_properties;
     Properties media_properties;
     std::string job_name("Tagger_test");
     setAlgorithmProperties(algorithm_properties, custom);
 
-    if (wild_mode) {
-        MPFGenericTrack text_tags;
-        text_tags.detection_properties["TEXT_TYPE"] = "UNSTRUCTURED";
-        MPFGenericJob job(job_name, uri, text_tags, algorithm_properties, media_properties);
-        return job;
-    }
-
     MPFGenericJob job(job_name, uri, algorithm_properties, media_properties);
-
     return job;
 }
 
@@ -111,10 +54,12 @@ bool containsProp(const std::string &exp_text, const std::vector<MPFGenericTrack
                   const std::string &property, int index = -1) {
     if (index != -1) {
         if (tracks[index].detection_properties.count(property) == 0) {
-            return false;
+            return true;
         }
 
         std::string text = tracks[index].detection_properties.at(property);
+
+
         return text.find(exp_text) != std::string::npos;
     }
 
@@ -125,32 +70,11 @@ bool containsProp(const std::string &exp_text, const std::vector<MPFGenericTrack
 
         std::string text = tracks[i].detection_properties.at(property);
 
+
         if (text.find(exp_text) != std::string::npos)
             return true;
     }
-    return false;
-}
 
-bool containsPropFeedForward(const std::string &exp_text, const std::vector<MPFImageLocation> &locations,
-                  const std::string &property, int index = -1) {
-    if (index != -1) {
-        if (locations[index].detection_properties.count(property) == 0) {
-            return false;
-        }
-
-        std::string text = locations[index].detection_properties.at(property);
-        return text.find(exp_text) != std::string::npos;
-    }
-
-    for (int i = 0; i < locations.size(); i++) {
-        if (locations[i].detection_properties.count(property) == 0) {
-            continue;
-        }
-
-        std::string text = locations[i].detection_properties.at(property);
-        if (text.find(exp_text) != std::string::npos)
-            return true;
-    }
     return false;
 }
 
@@ -171,52 +95,11 @@ void assertNotInText(const std::string &file_path, const std::string &expected_t
                                 << file_path;
 }
 
-void assertInTextFeedForward(const std::string &file_path, const std::string &expected_text,
-                  const std::vector<MPFImageLocation> &location, const std::string &prop, int index = -1) {
-    ASSERT_TRUE(containsPropFeedForward(expected_text, location, prop, index))
-                                << "Expected tagger to NOT detect "<< prop << " \""  << expected_text << "\" in "
-                                << file_path;
-}
-
-void assertNotInTextFeedForward(const std::string &file_path, const std::string &expected_text,
-                                const std::vector<MPFImageLocation> &location, const std::string &prop, int index = -1) {
-    ASSERT_FALSE(containsPropFeedForward(expected_text, location, prop, index))
-                                << "Expected tagger to NOT detect "<< prop << " \""  << expected_text << "\" in "
-                                << file_path;
-}
-
-void runImageDetection(const std::string &image_path, TesseractOCRTextDetection &ocr, KeywordTagger &tagger,
-                       std::vector<MPFImageLocation> &image_locations,
-                       const std::map<std::string, std::string> &custom = {},
-                       bool wild_mode = false) {
-    MPFImageJob job = createImageJobTesseract(image_path, custom, wild_mode);
-    MPFDetectionError rc = ocr.GetDetections(job, image_locations);
-
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
-    ASSERT_FALSE(image_locations.empty());
-
-    rc = tagger.GetDetections(job, image_locations);
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
-    ASSERT_FALSE(image_locations.empty());
-}
-
-void runKeywordTaggingFeedForward(const std::string &image, KeywordTagger &tagger,
-        std::vector<MPFImageLocation> &text_tags,
-        const std::map<std::string, std::string> &custom = {}) {
-
-    MPFImageJob job = createImageJob(image, custom);
-    MPFDetectionError rc = tagger.GetDetections(job, text_tags);
-
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
-    ASSERT_FALSE(text_tags.empty());
-
-}
 
 void runKeywordTagging(const std::string &uri_path, KeywordTagger &tagger,
                        std::vector<MPFGenericTrack> &text_tags,
-                       const std::map<std::string, std::string> &custom = {},
-                       bool wild_mode = false) {
-    MPFGenericJob job = createGenericJob(uri_path, custom, wild_mode);
+                       const std::map<std::string, std::string> &custom = {}) {
+    MPFGenericJob job = createGenericJob(uri_path, custom);
     MPFDetectionError rc = tagger.GetDetections(job, text_tags);
 
     ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
@@ -311,7 +194,6 @@ TEST(KEYWORDTAGGING, FullSearch) {
     ASSERT_TRUE(tagger.Close());
 }
 
-/*
 TEST(KEYWORDTAGGING, LanguageTest) {
     KeywordTagger tagger;
     std::vector<MPFGenericTrack> results;
@@ -328,51 +210,8 @@ TEST(KEYWORDTAGGING, LanguageTest) {
     assertInText("data/eng-bul.txt", "106-113", results, "TRIGGER_WORDS_OFFSET", 0);
     assertInText("data/eng-bul.txt", "Всички хора се раждат свободни", results, "TEXT", 0);
 
-    // Also test mult-keyword phrase tag.
-    assertInText("data/eng-bul.txt", "key-phrase", results, "TAGS", 1);
-    assertInText("data/eng-bul.txt", "brotherhood", results, "TRIGGER_WORDS", 1);
-    //assertInText("data/eng-bul.txt", "428-448", results, "TRIGGER_WORDS_OFFSET", 1);
-    assertInText("data/eng-bul.txt", "All human beings are born free", results, "TEXT", 1);
 
     ASSERT_TRUE(tagger.Close());
 
-} */
-
-
-TEST(KEYWORDTAGGING, FeedForwardTest) {
-    KeywordTagger tagger;
-    std::vector<MPFImageLocation> results;
-    std::map<std::string, std::string> custom_properties_disabled = {{"FULL_REGEX_SEARCH", "false"}};
-    std::map<std::string, std::string> custom_properties = {{}};
-
-    tagger.SetRunDirectory("../plugin");
-
-    ASSERT_TRUE(tagger.Init());
-
-    // Test basic tagging
-    ASSERT_NO_FATAL_FAILURE(runKeywordTaggingFeedForward("data/text-demo.txt", tagger, results, custom_properties));
-    assertNotInTextFeedForward("data/text-demo.txt", "personal", results, "TAGS");
-    ASSERT_TRUE(results[0].detection_properties.at("TAGS").length() == 0);
-    results.clear();
 }
 
-/*TEST(KEYWORDTAGGING, FeedforwardTesseractTest) {
-    TesseractOCRTextDetection ocr;
-    ocr.SetRunDirectory("../plugin");
-    std::vector<MPFImageLocation> results;
-    ASSERT_TRUE(ocr.Init());
-    std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
-
-    KeywordTagger tagger;
-    tagger.SetRunDirectory("../plugin");
-    ASSERT_TRUE(tagger.Init());
-
-    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/text-demo.png", ocr, tagger, results, custom_properties));
-
-    assertInTextFeedForward("data/test-backslash.txt", "backslash; personal", results, "TAGS");
-    assertInTextFeedForward("data/test-backslash.txt", "TEXT; \\", results, "TRIGGER_WORDS");
-    assertInTextFeedForward("data/test-backslash.txt", "7-10; 0, 12, 15, 16, 18, 19", results, "TRIGGER_WORDS_OFFSET");
-
-    ASSERT_TRUE(tagger.Close());
-
-}*/

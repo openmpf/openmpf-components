@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2019 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2019 The MITRE Corporation                                      #
+# Copyright 2020 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -45,14 +45,14 @@ set(KEYWORD_TAGGING_SOURCES KeywordTaggingComponent.cpp KeywordTaggingComponent.
 
 
 # Build library
-add_library(mpfKeywordTagging SHARED ${KEYWORD_TAGGING_SOURCES})
+add_library(mpfKeywordTaggingComponent SHARED ${KEYWORD_TAGGING_SOURCES})
 
 
-target_link_libraries(mpfKeywordTagging mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${Boost_LIBRARIES} ${LOG4CXX_LIBRARIES})
-configure_mpf_component(KeywordTaggingComponent TARGETS  mpfKeywordTagging EXTRA_LIB_PATHS "${extra_lib_dirs}")
+target_link_libraries(mpfKeywordTaggingComponent mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${Boost_LIBRARIES} ${LOG4CXX_LIBRARIES})
+configure_mpf_component(KeywordTaggingComponent TARGETS  mpfKeywordTaggingComponent EXTRA_LIB_PATHS "${extra_lib_dirs}")
 
 add_subdirectory(test)
 
 # Build executable
 add_executable(sample_keyword_tagger sample_keyword_tagger.cpp)
-target_link_libraries(sample_keyword_tagger mpfKeywordTagging)
+target_link_libraries(sample_keyword_tagger mpfKeywordTaggingComponent)

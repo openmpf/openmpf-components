@@ -1,8 +1,8 @@
 {
-  "componentName": "KeywordTagging",
+  "componentName": "KeywordTaggingComponent",
   "componentVersion": "4.1.0",
   "middlewareVersion": "4.1.0",
-  "sourceLibrary": "c++",
+  "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/KeywordTaggingComponent/lib/libmpfKeywordTaggingComponent.so",
   "environmentVariables": [
     {
@@ -43,10 +43,10 @@
       ]
     }
   },
-  "action": [
+  "actions": [
     {
       "name": "KEYWORD TAGGING WITH FEED FORWARD",
-      "description": "Executes the keyword tagger after TesseractOCR text detection",
+      "description": "Executes the keyword tagger on text extracted by previous component",
       "algorithm": "KEYWORDTAGGING",
       "properties": [
         {
@@ -58,22 +58,11 @@
   ],
   "tasks": [
     {
-      "name": "KEYWORD TAGGING OCR FEED FORWARD TASK",
-      "description": "Performs keyword tagging on text extracted from Tesseract",
+      "name": "KEYWORD TAGGING TASK",
+      "description": "Performs keyword tagging on text",
       "actions": [
         "KEYWORD TAGGING WITH FEED FORWARD"
       ]
     }
-  ],
-  "pipelines": [
-    {
-      "name": "KEYWORD TAGGING OCR FEED FORWARD PIPELINE",
-      "description": "Performs keyword tagging on text extracted from Tesseract",
-      "tasks": [
-        "TESSERACT OCR TEXT DETECTION TASK",
-        "KEYWORD TAGGING WITH FEED FORWARD"
-      ]
-    }
   ]
-
 }

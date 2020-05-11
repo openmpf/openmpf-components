@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -44,13 +44,17 @@ int main(int argc, char *argv[]) {
     MPFDetectionError rc = MPF_DETECTION_SUCCESS;
 
     algorithm_properties["TAGGING_FILE"] = "text-tags.json";
+    MPFGenericTrack text_tags;
+    text_tags.detection_properties["TEXT"] = "Passenger Passport";
+    text_tags.detection_properties["EXTRA"] = "extra property";
+
 
     KeywordTagger tagger;
 
     tagger.SetRunDirectory("./plugin");
     tagger.Init();
 
-    MPFGenericJob job(job_name, uri, algorithm_properties, media_properties);
+    MPFGenericJob job(job_name, uri, text_tags, algorithm_properties, media_properties);
 
     std::vector<MPFGenericTrack> tracks;
 
@@ -60,6 +64,8 @@ int main(int argc, char *argv[]) {
 
         for(int i = 0; i < tracks.size(); i++) {
             std::cout << "tags: " << tracks[i].detection_properties.at("TAGS") << std::endl;
+            std::cout << "extra property: " << tracks[i].detection_properties.at("EXTRA") << std::endl;
+            std::cout << "text: " << tracks[i].detection_properties.at("TEXT") << std::endl;
         }
     }
 

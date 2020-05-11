@@ -38,12 +38,6 @@
           "propertiesKey": "detection.models.dir.path"
         },
         {
-          "name": "TAGGING_FILE",
-          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
-          "type": "STRING",
-          "defaultValue": "text-tags.json"
-        },
-        {
           "name": "TESSERACT_LANGUAGE",
           "description": "The language or script OCR will be done in. Use '+' to run multiple languages together in one track and ',' to run them as separate tracks. Example: 'eng+deu+fra' = run English, German, French together as one track detection, 'eng, fra+deu'= run English as the first track and French + German as the second track, and 'fra, script/Latin'= run French as the first track, and Latin script as the second track. Language model files for Bulgarian (bul), Chinese - Simplified (chi_sim), German (deu), English (eng), French (fra), Pashto (pus), Russian (rus), and Spanish (spa) are stored in `$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata`. Script model file for Latin(script/Latin) stored in `$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata/script`. Note the osd language file (osd.traindata) is for extraction of script orientation rather than language. Users may download and load in additional language and script models from https://github.com/tesseract-ocr/tessdata.",
           "type": "STRING",
@@ -253,12 +247,6 @@
           "description": "Specifies minimum text confidence required to skip second OCR pass with 180 degree rotation. Negative values will result in ROTATE_AND_DETECT performing two pass OCR regardless of text confidence from the initial pass.",
           "type": "DOUBLE",
           "defaultValue": "95.0"
-        },
-        {
-          "name": "FULL_REGEX_SEARCH",
-          "description": "Toggles REGEX search to include all matching trigger words associated with the regex patterns for each tag. When disabled, only the first instance of the first matching trigger word for each tag category is included.",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
         }
       ]
     }
@@ -268,22 +256,13 @@
       "name": "TESSERACT OCR TEXT DETECTION ACTION",
       "description": "Performs Tesseract OCR.",
       "algorithm": "TESSERACTOCR",
-      "properties": [
-        {
-          "name": "TAGGING_FILE",
-          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
-        }
-      ]
+      "properties": []
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT",
       "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "algorithm": "TESSERACTOCR",
       "properties": [
-        {
-          "name": "TAGGING_FILE",
-          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
-        },
         {
           "name": "TESSERACT_PSM",
           "value": "11"
@@ -295,10 +274,6 @@
       "description": "Performs Tesseract OCR on feed-forward regions.",
       "algorithm": "TESSERACTOCR",
       "properties": [
-        {
-          "name": "TAGGING_FILE",
-          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
-        },
         {
           "name": "FEED_FORWARD_TYPE",
           "value": "REGION"
@@ -366,6 +341,14 @@
       "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "tasks": [
         "TESSERACT OCR TEXT DETECTION TASK SPARSE TEXT"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION WITH KEYWORD TAGGING PIPELINE",
+      "description": "Performs Tesseract OCR with keyword tagging.",
+      "tasks" : [
+        "TESSERACT OCR TEXT DETECTION TASK",
+        "KEYWORD TAGGING TASK"
       ]
     }
   ]
