@@ -129,7 +129,7 @@ TEST(OcvSsdFaceDetection, Init) {
 /** ***************************************************************************
 *   Test frame preprocessing 
 **************************************************************************** */
-TEST(OcvSsdFaceDetection, PreProcess) {
+TEST(OcvSsdFaceDetection, DISABLED_PreProcess) {
   string         current_working_dir = GetCurrentWorkingDirectory();
   QHash<QString, QString> parameters = GetTestParameters();
 
