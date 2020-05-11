@@ -1,0 +1,32 @@
+{
+    "name": "OcvSsdFaceDetection",
+  
+    // The order of the files is important since later files override previous ones
+    "dockerComposeFile": ["./docker-compose.yml"],
+  
+    "service": "OcvSsdFaceDetection",
+    "workspaceFolder": "/home/mpf/openmpf-components/cpp/OcvSsdFaceDetection",
+	"shutdownAction": "stopCompose",
+	"extensions": [
+		"ms-vscode.cpptools",
+		"ms-vscode.cmake-tools",
+		"sleistner.vscode-fileutils",
+		"bierner.markdown-preview-github-styles",
+		"ryanmcalister.unotes",
+		"redhat.vscode-yaml",
+		"matepek.vscode-catch2-test-adapter"
+	],
+	"settings":{
+    "gtest-adapter.debugConfig": "Debug",
+    "cmake.ctestPath": "/usr/bin/ctest3",
+    "files.exclude": {
+      "**/.git": true,
+      "**/.svn": true,
+      "**/.hg": true,
+      "**/CVS": true,
+      "**/.DS_Store": true,
+      "${workspaceRoot}/build": true,
+      "${workspaceRoot}/.devcontainer/fsroot": true
+    }
+	}
+}

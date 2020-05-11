@@ -1,0 +1,22 @@
+This software makes use of a data model derived from third party software:
+
+--------------------------------------------------------------------------
+
+# shape_predictor_5_face_landmarks.dat
+origianlly created by DLIB author downloaded from DLIB https://github.com/davisking/dlib-models/blob/master/shape_predictor_5_face_landmarks.dat.bz2
+Creative Commons Zero v1.0 Universal License http://creativecommons.org/publicdomain/zero/1.0/
+
+# opencv_face_detector_uint8.pb and opencv_face_detector.pbtxt
+Single shot multi box face detector for 300x300 images 
+derived from res10_300x300_ssd_iter_140000_fp16.caffemodel by quantization and conversion to tensorflow 
+downloaded form https://github.com/opencv/opencv_3rdparty/raw/8033c2bc31b3256f0d461c919ecc01c2428ca03b/opencv_face_detector_uint8.pb
+and https://github.com/opencv/opencv_extra/tree/master/testdata/dnn/opencv_face_detector.pbtxt
+The training data used to create this model is not specified, the procedure use is detailed here
+https://github.com/opencv/opencv/blob/master/samples/dnn/face_detector/how_to_train_face_detector.txt
+
+# nn4.small2.v1.t7
+OpenFace feature generator
+downloaded from https://storage.cmusatyalab.org/openface-models/nn4.small2.v1.t7
+Apache License 2.0 http://www.apache.org/licenses/LICENSE-2.0
+
+

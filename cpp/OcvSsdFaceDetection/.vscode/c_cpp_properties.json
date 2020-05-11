@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "intelliSenseMode": "gcc-x64",
+            "configurationProvider": "vector-of-bool.cmake-tools",
+            "includePath": [
+                "${workspaceFolder}",
+                "/usr/include/**",
+                "/opt/opencv-3.4.7/include/**",
+                "/home/mpf/mpf-sdk-install/include/**"
+            ],
+            "browse": {
+              "path": ["${workspaceFolder}"
+                       ],
+              "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}
