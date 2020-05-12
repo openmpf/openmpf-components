@@ -5,14 +5,15 @@ the OpenCV Single Shot Detector.
 
    
 
-## Trained Models and Algorithms used
+## Trained Models
 
 The OpenCV SSD face detection component comes with three trained models:
 <br>
 * A discretized tensorflow version of OpenCV's Single Shot Detector (SSD) for faces, [opencv_face_detector_uint8.pbtxt](https://github.com/opencv/opencv_extra/tree/master/testdata/dnn/opencv_face_detector.pbtxt) and [opencv_face_detector_uint8.pb](https://github.com/opencv/opencv_3rdparty/raw/8033c2bc31b3256f0d461c919ecc01c2428ca03b/opencv_face_detector_uint8.pb). This model was discretized from an existing caffee model, [opencv_face_detector.caffemodel](https://github.com/opencv/opencv_3rdparty/raw/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel). More details about how this model was trained can be found [here](https://github.com/opencv/opencv/blob/3.4.3/samples/dnn/face_detector/how_to_train_face_detector.txt). Details of the SSD model architecture are presented in "SSD: Single Shot MultiBox Detector", 2016 [Liu et al.](https://arxiv.org/abs/1512.02325)
 * A 5 landmark detector model for faces, [shape_predictor_5_face_landmarks.dat](http://dlib.net/files/shape_predictor_5_face_landmarks.dat.bz2) from DLIB and trained by its author on 7198 faces, see [here](https://github.com/davisking/dlib-models/blob/master/README.md#shape_predictor_5_face_landmarksdatbz2). This model is used to align faces prior to feature generation. It is an implementation of the Ensemble of Regression Trees (ERT) presented in "One Millisecond Face Alignment with an Ensemble of Regression Trees" 2014 by [Kazemi and Sullivan](https://www.cv-foundation.org/openaccess/content_cvpr_2014/html/Kazemi_One_Millisecond_Face_2014_CVPR_paper.html).
 * A face feature generator [Torch](http://torch.ch/) model, [nn4.small2.v1.t7](https://storage.cmusatyalab.org/openface-models/nn4.small2.v1.t7) from [OpenFace](https://cmusatyalab.github.io/openface/). This model was tranied with publicly-available face recognition datasets based on names: FaceScrub and CASIA-WebFace and generates a 128 dimensional embedding for faces. It is used in the tracking portion of the MPF component. More details about OpenFace can be found in "Openface: A general-purpose face recognition library with mobile applications" 2016 [Amos, Ludwiczuk and Satyanarayanan](http://elijah.cs.cmu.edu/DOCS/CMU-CS-16-118.pdf)
-<br>
+
+## Algorithms used
 Both [OpenCV](https://opencv.org) and [DLIB](http://dlib.net) algorithms are used in MPF. This component specifically uses:
 <br>
 * A Minimum Output Sum of Squared Error (MOSSE) tracker implemented in OpenCV's tracking API based on "Visual object tracking using adaptive correlation filters" 2010 [Bolme et al.](https://ieeexplore.ieee.org/document/5539960)
