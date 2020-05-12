@@ -21,7 +21,7 @@ Both [OpenCV](https://opencv.org) and [DLIB](http://dlib.net) algorithms are use
 
 ## Tracking implementation
 Detected faces in videos are aggregated into tracks as frames are processed. This is done using multiple stages and linear assignment cost solver:  While processing each frame, tracks that have not had any detections of some number of frames are terminated, then detections are assigned to the remaing tracks using Intersection Over Union (IoU) as a cost, any unassigned detections are attempted to be assigned to tracks using the cos distance with the OpenFace features. Any tracks that did not receive a detection are then continued using a correlation tracker prediction.<br>
-Since detection and feature computation are computationally expensive operations, they can be perforemd only every so many frames and the faster correlation tracker will have to fill in the gaps.  The processing speed gained byt doing this comes at the cost of potentially missed detections and more track fragmantation.
+Since detection and feature computation are computationally expensive operations, they can be perforemd only every so many frames and the faster correlation tracker will have to fill in the gaps.  The processing speed gained by doing this comes at the cost of potentially missed detections and more track fragmantation.
 
 - - -
 
