@@ -270,6 +270,62 @@ TEST(TESSERACTOCR, ModelTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
+TEST(TESSERACTOCR, RescaleTest){
+
+    // Ensure proper rescaling of images within Tesseract limits.
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    std::map<std::string,std::string> custom_properties = {};
+
+    MPFImageJob job = createImageJob("data/blank_exceed_tesseract_limit.png", custom_properties, false);
+    MPFDetectionError rc = ocr.GetDetections(job, results);
+    ASSERT_TRUE(rc == MPF_BAD_FRAME_SIZE) << "Expected image to be discarded due to invalid dimensions";
+    results.clear();
+
+    MPFImageJob job2 = createImageJob("data/blank_tesseract_limit.png", custom_properties, false);
+    rc = ocr.GetDetections(job2, results);
+    ASSERT_TRUE(rc == MPF_BAD_FRAME_SIZE) << "Expected image to be discarded due to extremely narrow height.";
+    results.clear();
+
+    // If narrow height is not checked allow image to process.
+    custom_properties = {{"INVALID_MIN_IMAGE_SIZE", "-1"}};
+    assertEmptyDetection("data/blank_tesseract_limit.png", ocr, results,  custom_properties);
+    results.clear();
+
+    // Image should be rescaled to fit.
+    assertEmptyDetection("data/blank_tesseract_rescalable.png", ocr, results,  custom_properties);
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "100000000"}};
+    assertEmptyDetection("data/blank_within_tesseract_limit.png", ocr, results,  custom_properties);
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "0.00000001"}};
+    assertEmptyDetection("data/blank_within_tesseract_limit.png", ocr, results,  custom_properties);
+    results.clear();
+
+    // Sanity check that rescaling is called outside of OSD processing when OSD is disabled.
+    // Image should be rescaled to fit.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
+    assertEmptyDetection("data/blank_tesseract_rescalable.png", ocr, results,  custom_properties);
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "100000000"}, {"ENABLE_OSD_AUTOMATION", "false"}};
+    assertEmptyDetection("data/blank_within_tesseract_limit.png", ocr, results,  custom_properties);
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "0.00000001"}, {"ENABLE_OSD_AUTOMATION", "false"}};
+    assertEmptyDetection("data/blank_within_tesseract_limit.png", ocr, results,  custom_properties);
+    results.clear();
+}
+
 TEST(TESSERACTOCR, TwoPassOCRTest) {
 
     // Ensure that two pass OCR correctly works to process upside down text even w/out OSD support.

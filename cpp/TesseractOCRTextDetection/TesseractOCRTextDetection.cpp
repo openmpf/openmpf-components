@@ -168,6 +168,7 @@ void TesseractOCRTextDetection::set_default_parameters() {
 
     default_ocr_fset.enable_hist_equalization = false;
     default_ocr_fset.enable_adaptive_hist_equalization = false;
+    default_ocr_fset.invalid_min_image_size = 4;
     default_ocr_fset.min_height = -1;
     default_ocr_fset.adaptive_hist_tile_size = 5;
     default_ocr_fset.adaptive_hist_clip_limit = 2.0;
@@ -231,6 +232,9 @@ void TesseractOCRTextDetection::set_read_config_parameters() {
     }
     if (parameters.contains("MIN_HEIGHT")) {
         default_ocr_fset.min_height = parameters["MIN_HEIGHT"].toInt();
+    }
+    if (parameters.contains("INVALID_MIN_IMAGE_SIZE")) {
+        default_ocr_fset.invalid_min_image_size = parameters["INVALID_MIN_IMAGE_SIZE"].toInt();
     }
     if (parameters.contains("ADAPTIVE_HIST_TILE_SIZE")){
         default_ocr_fset.adaptive_hist_tile_size = parameters["ADAPTIVE_HIST_TILE_SIZE"].toInt();
@@ -629,20 +633,6 @@ bool TesseractOCRTextDetection::preprocess_image(const MPFImageJob &job, cv::Mat
             double thresh_val = cv::threshold(image_data, image_data, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
         }
 
-        // Rescale and sharpen image (larger images improve detection results).
-        if (ocr_fset.scale > 0) {
-            cv::resize(image_data, image_data, cv::Size(), ocr_fset.scale, ocr_fset.scale);
-        }
-
-        if (ocr_fset.min_height > 0 && image_data.rows < ocr_fset.min_height) {
-            double ratio = (double)ocr_fset.min_height / (double)image_data.rows;
-            cv::resize(image_data, image_data, cv::Size(), ratio, ratio);
-        }
-
-        if (ocr_fset.sharpen > 0) {
-            sharpen(image_data, ocr_fset.sharpen);
-        }
-
         // Image inversion.
         if (ocr_fset.invert) {
             double min, max;
@@ -653,15 +643,140 @@ bool TesseractOCRTextDetection::preprocess_image(const MPFImageJob &job, cv::Mat
         }
     } catch (const std::exception& ex) {
         LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during image preprocessing: " + ex.what());
-        job_status = MPF_COULD_NOT_READ_DATAFILE;
+        job_status = MPF_OTHER_DETECTION_ERROR_TYPE;
         return false;
     } catch (const std::string& ex) {
         LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during image preprocessing: " + ex);
-        job_status = MPF_COULD_NOT_READ_DATAFILE;
+        job_status = MPF_OTHER_DETECTION_ERROR_TYPE;
         return false;
     } catch (...) {
         LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during image preprocessing.");
-        job_status = MPF_COULD_NOT_READ_DATAFILE;
+        job_status = MPF_OTHER_DETECTION_ERROR_TYPE;
+        return false;
+    }
+
+    return true;
+}
+
+/*
+ * Rescales image before running OSD and OCR.
+ */
+bool TesseractOCRTextDetection::rescale_image(const MPFImageJob &job, cv::Mat &image_data,
+                                              const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                              MPFDetectionError &job_status) {
+    int im_width  = image_data.size().width;
+    int im_height = image_data.size().height;
+
+    double default_rescale = ocr_fset.scale;
+
+    // Maximum acceptable image dimensions under Tesseract.
+    int max_size = 0x7fff;
+
+    if (im_height < ocr_fset.invalid_min_image_size) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Invalid image height, image too short: " + to_string(im_height));
+        job_status = MPF_BAD_FRAME_SIZE;
+        return false;
+    }
+
+    if (im_width < ocr_fset.invalid_min_image_size) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Invalid image width, image too narrow: " + to_string(im_width));
+        job_status = MPF_BAD_FRAME_SIZE;
+        return false;
+    }
+
+    int min_dim = im_width;
+    int max_dim = im_height;
+
+    if (im_width > im_height) {
+        min_dim = im_height;
+        max_dim = im_width;
+    }
+
+    // Update scaling if min_height check recommends upsampling.
+    if (im_height < ocr_fset.min_height) {
+        double ratio = (double)ocr_fset.min_height / (double)im_height;
+        if (ratio > default_rescale) {
+            default_rescale = ratio;
+            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Attempting to increase image scaling to meet desired minimum image height.");
+        }
+    }
+
+
+    // When maximum dimension exceeds limit.
+    if (max_dim > max_size) {
+        double mandatory_rescale = (double)max_size/(double)max_dim;
+        if ((min_dim * mandatory_rescale) < ocr_fset.invalid_min_image_size) {
+
+            string error_msg =  "[" + job.job_name + "] Unable to rescale image as one image dimension ({"
+                                + to_string(max_dim) + "}) exceeds maximum tesseract limits while the other dimension ({"
+                                + to_string(min_dim) + "}) would fall below minimum limits if rescaled.";
+            LOG4CXX_ERROR(hw_logger_, error_msg);
+            job_status = MPF_BAD_FRAME_SIZE;
+            return false;
+        }
+
+        // Check if user asked for down-sampling (scale < 1.0) but warn if image cannot be downscaled any further.
+        if (default_rescale > 0 && default_rescale < 1) {
+            if (default_rescale < mandatory_rescale) {
+                if (default_rescale * min_dim < ocr_fset.invalid_min_image_size) {
+                    string error_msg =  "[" + job.job_name + "] Unable to fully downscale image as one image dimension ("
+                                        + to_string(min_dim) +") would fall below minimum limits.";
+                    LOG4CXX_WARN(hw_logger_, error_msg);
+                } else {
+                    // Allow user requested downsampling when it shrinks the image more than the required minimum
+                    // and also meets image limits.
+                    mandatory_rescale = default_rescale;
+                }
+            }
+        }
+
+        // Warn user that down-sampling is occuring to meet tesseract requirements.
+        string error_msg =  "[" + job.job_name + "] Warning, downsampling (" + to_string(im_width) + ", "
+                            + to_string(im_height) + ") sized image to meet Tesseract image length limits of "
+                            + to_string(max_size) + " pixels.";
+        LOG4CXX_WARN(hw_logger_, error_msg);
+
+
+        default_rescale = mandatory_rescale;
+    } else if (min_dim * default_rescale < ocr_fset.invalid_min_image_size) {
+        // Although users are unlikely to request image downsampling, notify if downsampling would exceed minimum image limits.
+        // If this occurs, do not downsample image.
+        string error_msg =  "[" + job.job_name + "] Warning, downsampling (" + to_string(im_width) + ", "
+                             + to_string(im_height) + ") sized image by requested scaling factor would put image"
+                             + " dimensions below minimum limits of " + to_string(ocr_fset.invalid_min_image_size)
+                             + " pixels. Disabling rescaling.";
+        LOG4CXX_WARN(hw_logger_, error_msg);
+        default_rescale = -1;
+    } else if (max_dim * default_rescale > max_size) {
+        // Users will most likely to request image upsampling.
+        // If image size reaches tesseract limits, cap image upsampling to maximum allowed dimensions.
+        string error_msg = "[" + job.job_name + "] Warning, upsampling (" + to_string(im_width) + ", "
+                            + to_string(im_height) + ") sized image by recommended scaling factor would put image"
+                            + " dimensions above Tesseract limits of " + to_string(max_size)
+                            + " pixels. Capping upsampling to meet Tesseract limits.";
+        LOG4CXX_WARN(hw_logger_, error_msg);
+        default_rescale = (double)max_size / (double)max_dim;
+    }
+
+    try {
+        // Rescale and sharpen image (larger images improve detection results).
+        if (default_rescale > 0) {
+            cv::resize(image_data, image_data, cv::Size(),  default_rescale,  default_rescale);
+        }
+        if (ocr_fset.sharpen > 0) {
+            sharpen(image_data, ocr_fset.sharpen);
+        }
+    } catch (const std::exception& ex) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during image rescaling: " + ex.what());
+        job_status = MPF_OTHER_DETECTION_ERROR_TYPE;
+        return false;
+    } catch (const std::string& ex) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during image rescaling: " + ex);
+        job_status = MPF_OTHER_DETECTION_ERROR_TYPE;
+        return false;
+    } catch (...) {
+        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during image rescaling.");
+        job_status = MPF_OTHER_DETECTION_ERROR_TYPE;
         return false;
     }
 
@@ -738,11 +853,17 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
             LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OCR processing: " + ex.what());
             job_status = MPF_COULD_NOT_READ_DATAFILE;
             tess_api->Clear();
+            if (boost::algorithm::contains(ex.what(), "Image too large")) {
+                job_status = MPF_BAD_FRAME_SIZE;
+            }
             return false;
         } catch (const std::string& ex) {
             LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OCR processing: " + ex);
             job_status = MPF_COULD_NOT_READ_DATAFILE;
             tess_api->Clear();
+            if (boost::algorithm::contains(ex, "Image too large")) {
+                job_status = MPF_BAD_FRAME_SIZE;
+            }
             return false;
         } catch (...) {
             LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OCR processing.");
@@ -821,6 +942,14 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     int oem = 3;
     pair<int, string> tess_api_key = make_pair(oem, "osd");
 
+    // Preserve a copy for images that may swap width and height. Rescaling will be performed based on new dimensions.
+    cv::Mat imi_copy = imi.clone();
+
+    // Rescale original image and process through OSD.
+    if (!rescale_image(job, imi, ocr_fset, job_status)) {
+        return;
+    }
+
     if (tess_api_map.find(tess_api_key) == tess_api_map.end()) {
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Loading OSD model.");
 
@@ -854,11 +983,17 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OSD processing: " + ex.what());
         job_status = MPF_COULD_NOT_READ_DATAFILE;
         tess_api->Clear();
+        if (boost::algorithm::contains(ex.what(), "Image too large")) {
+            job_status = MPF_BAD_FRAME_SIZE;
+        }
         return;
     } catch (const std::string& ex) {
         LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OSD processing: " + ex);
         job_status = MPF_COULD_NOT_READ_DATAFILE;
         tess_api->Clear();
+        if (boost::algorithm::contains(ex, "Image too large")) {
+            job_status = MPF_BAD_FRAME_SIZE;
+        }
         return;
     } catch (...) {
         LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error during OSD processing.");
@@ -883,10 +1018,14 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             case 1:
                 // Text is rotated 270 degrees counterclockwise.
                 // Image will need to be rotated 90 degrees counterclockwise to fix this.
-                cv::rotate(imi, imi, cv::ROTATE_90_COUNTERCLOCKWISE);
-
+                // Reapply rescaling as rotation has changed image dimensions.
+                cv::rotate(imi_copy, imi, cv::ROTATE_90_COUNTERCLOCKWISE);
+                if (!rescale_image(job, imi, ocr_fset, job_status)) {
+                    return;
+                }
                 // Report current orientation of image (uncorrected, counterclockwise).
                 rotation = 270;
+
                 break;
             case 2:
                 // 180 degree rotation.
@@ -896,7 +1035,11 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             case 3:
                 // Text is rotated 90 degrees counterclockwise.
                 // Image will need to be rotated 270 degrees counterclockwise to fix this.
-                cv::rotate(imi, imi, cv::ROTATE_90_CLOCKWISE);
+                // Reapply rescaling as rotation has changed image dimensions.
+                cv::rotate(imi_copy, imi, cv::ROTATE_90_CLOCKWISE);
+                if (!rescale_image(job, imi, ocr_fset, job_status)) {
+                    return;
+                }
 
                 // Report current orientation of image (uncorrected, counterclockwise).
                 rotation = 90;
@@ -1309,6 +1452,7 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
 
     ocr_fset.invert = DetectionComponentUtils::GetProperty<bool>(job.job_properties,"INVERT", default_ocr_fset.invert);
     ocr_fset.min_height = DetectionComponentUtils::GetProperty<int>(job.job_properties, "MIN_HEIGHT", default_ocr_fset.min_height);
+    ocr_fset.invalid_min_image_size = DetectionComponentUtils::GetProperty<int>(job.job_properties, "INVALID_MIN_IMAGE_SIZE", default_ocr_fset.invalid_min_image_size);
     ocr_fset.adaptive_hist_tile_size = DetectionComponentUtils::GetProperty<int>(job.job_properties, "ADAPTIVE_HIST_TILE_SIZE", default_ocr_fset.adaptive_hist_tile_size);
     ocr_fset.adaptive_hist_clip_limit = DetectionComponentUtils::GetProperty<int>(job.job_properties, "ADAPTIVE_HIST_CLIP_LIMIT", default_ocr_fset.adaptive_hist_clip_limit);
     ocr_fset.adaptive_thrs_c = DetectionComponentUtils::GetProperty<double>(job.job_properties,"ADAPTIVE_THRS_CONSTANT", default_ocr_fset.adaptive_thrs_c);
@@ -1493,6 +1637,11 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
             get_OSD(os_results, image_data, job, ocr_fset, osd_detection_properties, job_status,
                     tessdata_script_dir);
 
+            // If OSD failed because of a frame error or preprocessing error, stop the job and return the error status.
+            if (job_status == MPF_BAD_FRAME_SIZE || job_status == MPF_OTHER_DETECTION_ERROR_TYPE) {
+                return job_status;
+            }
+
             // Rotate upper left coordinates based on OSD results.
             if (ocr_fset.min_orientation_confidence <= os_results.best_result.oconfidence) {
                 orientation_result = os_results.best_result.orientation_id;
@@ -1506,6 +1655,11 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
                              " tracks.");
                 MPFImageLocation osd_detection(xLeftUpper, yLeftUpper, width, height, -1, osd_detection_properties);
                 locations.push_back(osd_detection);
+                return job_status;
+            }
+        } else {
+            // If OSD is not run, the image won't be rescaled yet.
+            if (!rescale_image(job, image_data, ocr_fset, job_status)) {
                 return job_status;
             }
         }
@@ -1721,7 +1875,11 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
             ocr_fset.tesseract_lang = default_lang;
             get_OSD(os_results, image_data, c_job, ocr_fset, osd_track_results.detection_properties, job_status,
                     tessdata_script_dir);
-
+            // If OSD failed because of a frame error or preprocessing error, stop the job and return the error status.
+            if (job_status == MPF_BAD_FRAME_SIZE || job_status == MPF_OTHER_DETECTION_ERROR_TYPE) {
+                boost::filesystem::remove_all(temp_im_directory);
+                return job_status;
+            }
             // When PSM is set to 0, there is no need to process any further.
             // Proceed to next page for OSD processing.
             if (ocr_fset.psm == 0) {
@@ -1729,6 +1887,11 @@ MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &
                 tracks.push_back(osd_track_results);
                 page_num++;
                 continue;
+            }
+        } else {
+            // If OSD is not run, the image won't be rescaled yet.
+            if (!rescale_image(c_job, image_data, ocr_fset, job_status)) {
+             return job_status;
             }
         }
 
