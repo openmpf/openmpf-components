@@ -334,23 +334,17 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
           if(trackPtrs.size() >= 0 ){  // not all tracks were dropped  
                                                                                LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
             // intersection over union tracking and assignment
-            //cv::Mat_<int> am = _calcAssignemntMatrix<&DetectionLocation::iouDist>(trackPtrs,detections,cfg.maxIOUDist);     
-            //_assignDetections2Tracks(trackPtrs, detections, am);               LOG4CXX_TRACE(_log,"IOU assignment complete"); 
             vector<long> av = _calcAssignemntVector<&DetectionLocation::iouDist>(trackPtrs,detections,cfg.maxIOUDist);
             _assignDetections2Tracks(trackPtrs, detections, av);               LOG4CXX_TRACE(_log,"IOU assignment complete"); 
 
             // feature-based tracking tracking and assignment
             if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");  
-              //am = _calcAssignemntMatrix<&DetectionLocation::featureDist>(trackPtrs,detections,cfg.maxFeatureDist);
-              //_assignDetections2Tracks(trackPtrs, detections, am);             LOG4CXX_TRACE(_log,"Feature assignment complete");
               av = _calcAssignemntVector<&DetectionLocation::featureDist>(trackPtrs,detections,cfg.maxIOUDist);
               _assignDetections2Tracks(trackPtrs, detections, av);             LOG4CXX_TRACE(_log,"Feature assignment complete");
             }
 
             // center-to-center distance tracking and assignemnt
             if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks"); 
-              //am = _calcAssignemntMatrix<&DetectionLocation::center2CenterDist>(trackPtrs,detections,cfg.maxCenterDist);
-              //_assignDetections2Tracks(trackPtrs, detections, am);             LOG4CXX_TRACE(_log,"Center2Center assignment complete");
               av = _calcAssignemntVector<&DetectionLocation::center2CenterDist>(trackPtrs,detections,cfg.maxCenterDist);
               _assignDetections2Tracks(trackPtrs, detections, av);             LOG4CXX_TRACE(_log,"Center2Center assignment complete");
             }
@@ -406,7 +400,6 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
 
 /* **************************************************************************
 *  Perform histogram equalization 
-*  
 *************************************************************************** */ 
 void OcvSsdFaceDetection::_equalizeHistogram(JobConfig &cfg){
   cv::Mat3b hsvFrame;
@@ -424,7 +417,6 @@ void OcvSsdFaceDetection::_equalizeHistogram(JobConfig &cfg){
 
 /* **************************************************************************
 *  Perform image normalization 
-*  https://stackoverflow.com/questions/11456565/opencv-mean-sd-filter
 *************************************************************************** */ 
 void OcvSsdFaceDetection::_normalizeFrame(JobConfig &cfg){
   cv::Mat fltImg;
