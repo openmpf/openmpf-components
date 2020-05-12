@@ -76,7 +76,7 @@ RUN mkdir -p /tmp/dlib; \
 
 RUN ln -s /usr/bin/cmake3 /usr/bin/cmake;  
 
-LABEL org.label-schema.license="Apache 2.0" \
+LABEL org.label-schema.license="Mixed" \
       org.label-schema.name="OpenMPF OpenCV SSD Face Detection Dev" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
