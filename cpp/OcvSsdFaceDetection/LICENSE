@@ -18,3 +18,12 @@
  is used in a deployment or embedded within another project, it is requested
  that you send an email to opensource@mitre.org in order to let us know where
  this software is being used.
+
+ When this software is packaged and/or distributed with the pretrained model:
+
+ opencv_face_detector_uint8.pb
+ [https://github.com/opencv/opencv_3rdparty/raw/8033c2bc31b3256f0d461c919ecc01c2428ca03b/opencv_face_detector_uint8.pb],
+ 
+ the resulting product inherits the license and usage restrictions of that model,
+ which are not explicitly stated by the original author. Please contact the author 
+ before using this component for commercial purposes.
