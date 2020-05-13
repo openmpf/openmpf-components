@@ -99,7 +99,7 @@ namespace DarknetHelpers {
                 for (int col = 0; col < width; col++) {
                     for (int channel = 0; channel < channels; channel++) {
                         tmp_image.data[channel * width * height + row * width + col]
-                                = cv_image.data[row * step + col * channels + channel] / 255.0f;
+                                = static_cast<float>(cv_image.data[row * step + col * channels + channel]) / 255.0f;
                     }
                 }
             }
@@ -127,16 +127,16 @@ namespace {
             set_batch_network(&net, 1);
             network_predict(&net, image_holder.darknet_image.data);
             detections = get_network_boxes(&net, image_holder.original_size.width, image_holder.original_size.height,
-                                           confidence_threshold, 0.5, nullptr, 0, &num_detections);
+                                           confidence_threshold, hier_thresh, nullptr, 0, &num_detections);
             layer output_layer = net.layers[net.n - 1];
             do_nms_sort(detections, num_detections, output_layer.classes, nms);
         }
 
-        detection* begin() {
+        detection* begin() const {
             return detections;
         }
 
-        detection* end() {
+        detection* end() const {
             return detections + num_detections;
         }
 
@@ -161,9 +161,35 @@ namespace {
 
     template <typename T>
     void FreeAndClear(T*& ptr_ref) {
-        if (ptr_ref != nullptr) {
-            free(ptr_ref);
-            ptr_ref = nullptr;
+        free(ptr_ref);
+        ptr_ref = nullptr;
+    }
+
+    void DestroyTree(tree*& tree_ptr_ref) {
+        if (tree_ptr_ref == nullptr) {
+            return;
+        }
+        FreeAndClear(tree_ptr_ref->leaf);
+        FreeAndClear(tree_ptr_ref->parent);
+        FreeAndClear(tree_ptr_ref->child);
+        FreeAndClear(tree_ptr_ref->group);
+
+        for (int i = 0; i < tree_ptr_ref->n; i++) {
+            FreeAndClear(tree_ptr_ref->name[i]);
+        }
+        FreeAndClear(tree_ptr_ref->name);
+        FreeAndClear(tree_ptr_ref->group_size);
+        FreeAndClear(tree_ptr_ref->group_offset);
+
+        FreeAndClear(tree_ptr_ref);
+    }
+
+    void DestroyLayer(layer& layer);
+
+    void DestroyNestedLayer(layer*& layer_ptr_ref) {
+        if (layer_ptr_ref != nullptr) {
+            DestroyLayer(*layer_ptr_ref);
+            FreeAndClear(layer_ptr_ref);
         }
     }
 
@@ -186,9 +212,7 @@ namespace {
         FreeAndClear(layer.bias_v);
         FreeAndClear(layer.scale_m);
         FreeAndClear(layer.scale_v);
-
-        // TODO: handle layer.prev_state_cpu
-
+        FreeAndClear(layer.prev_state_cpu);
         FreeAndClear(layer.temp_cpu);
         FreeAndClear(layer.temp2_cpu);
         FreeAndClear(layer.temp3_cpu);
@@ -202,40 +226,39 @@ namespace {
         FreeAndClear(layer.o_cpu);
         FreeAndClear(layer.c_cpu);
         FreeAndClear(layer.dc_cpu);
-
-        // TODO: handle layer.input_layer
-        // TODO: handle layer.self_layer
-        // TODO: handle layer.output_layer
-        // TODO: handle layer.reset_layer
-        // TODO: handle layer.update_layer
-        // TODO: handle layer.state_layer
-        // TODO: handle layer.input_gate_layer
-        // TODO: handle layer.state_gate_layer
-        // TODO: handle layer.input_save_layer
-        // TODO: handle layer.state_save_layer
-        // TODO: handle layer.input_state_layer
-        // TODO: handle layer.state_state_layer
-        // TODO: handle layer.input_z_layer
-        // TODO: handle layer.state_z_layer
-        // TODO: handle layer.input_r_layer
-        // TODO: handle layer.state_r_layer
-        // TODO: handle layer.input_h_layer
-        // TODO: handle layer.state_h_layer
-        // TODO: handle layer.wz
-        // TODO: handle layer.uz
-        // TODO: handle layer.wr
-        // TODO: handle layer.ur
-        // TODO: handle layer.wh
-        // TODO: handle layer.uh
-        // TODO: handle layer.uo
-        // TODO: handle layer.wo
-        // TODO: handle layer.uf
-        // TODO: handle layer.wf
-        // TODO: handle layer.ui
-        // TODO: handle layer.wi
-        // TODO: handle layer.ug
-        // TODO: handle layer.wg
-        // TODO: handle layer.softmax_tree
+        DestroyNestedLayer(layer.input_layer);
+        DestroyNestedLayer(layer.self_layer);
+        DestroyNestedLayer(layer.output_layer);
+        DestroyNestedLayer(layer.reset_layer);
+        DestroyNestedLayer(layer.update_layer);
+        DestroyNestedLayer(layer.state_layer);
+        DestroyNestedLayer(layer.input_gate_layer);
+        DestroyNestedLayer(layer.state_gate_layer);
+        DestroyNestedLayer(layer.input_save_layer);
+        DestroyNestedLayer(layer.state_save_layer);
+        DestroyNestedLayer(layer.input_state_layer);
+        DestroyNestedLayer(layer.state_state_layer);
+        DestroyNestedLayer(layer.input_z_layer);
+        DestroyNestedLayer(layer.state_z_layer);
+        DestroyNestedLayer(layer.input_r_layer);
+        DestroyNestedLayer(layer.state_r_layer);
+        DestroyNestedLayer(layer.input_h_layer);
+        DestroyNestedLayer(layer.state_h_layer);
+        DestroyNestedLayer(layer.wz);
+        DestroyNestedLayer(layer.uz);
+        DestroyNestedLayer(layer.wr);
+        DestroyNestedLayer(layer.ur);
+        DestroyNestedLayer(layer.wh);
+        DestroyNestedLayer(layer.uh);
+        DestroyNestedLayer(layer.uo);
+        DestroyNestedLayer(layer.wo);
+        DestroyNestedLayer(layer.uf);
+        DestroyNestedLayer(layer.wf);
+        DestroyNestedLayer(layer.ui);
+        DestroyNestedLayer(layer.wi);
+        DestroyNestedLayer(layer.ug);
+        DestroyNestedLayer(layer.wg);
+        DestroyTree(layer.softmax_tree);
     }
 
     void DestroyNetwork(network* net) {
@@ -244,10 +267,7 @@ namespace {
         FreeAndClear(net->t);
         FreeAndClear(net->scales);
         FreeAndClear(net->steps);
-
-        // TODO: handle net->hierarchy
-        // TODO: handle net->delta
-
+        FreeAndClear(net->delta);
         FreeAndClear(net->workspace);
         FreeAndClear(net->cost);
 
