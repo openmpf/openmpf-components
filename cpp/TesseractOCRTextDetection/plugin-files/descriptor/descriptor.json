@@ -185,7 +185,7 @@
           "name": "INVALID_MIN_IMAGE_SIZE",
           "description": "If set to a positive value, rejects any image whose pixel height or width falls below this minimum threshold.",
           "type": "INT",
-          "defaultValue": "4"
+          "defaultValue": "3"
         },
         {
           "name": "INVERT",
