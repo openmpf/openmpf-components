@@ -908,6 +908,14 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     // Preserve a copy for images that may swap width and height. Rescaling will be performed based on new dimensions.
     cv::Mat imi_copy = imi.clone();
 
+    // Default values for empty OSD result.
+    // If OSD failed to detect any scripts, automatically set confidence scores to -1 (not enough text).
+    detection_properties["OSD_PRIMARY_SCRIPT"] = "NULL";
+    detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = "-1";
+    detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = "-1";
+    detection_properties["OSD_PRIMARY_SCRIPT_SCORE"]  = "-1";
+    detection_properties["ROTATION"] = "0";
+
     // Rescale original image and process through OSD.
     if (!rescale_image(job, imi, ocr_fset, job_status)) {
         return;
@@ -944,13 +952,6 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     if (!tess_api->DetectOS(&results)) {
         LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OSD processing returned no outputs.");
         tess_api->Clear();
-
-        //If OSD failed to detect any scripts, automatically set confidence scores to -1 (not enough text).
-        detection_properties["OSD_PRIMARY_SCRIPT"] == "NULL";
-        detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = "-1";
-        detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = "-1";
-        detection_properties["OSD_PRIMARY_SCRIPT_SCORE"]  = "-1";
-        detection_properties["ROTATION"] = "0";
         return;
     }
     // Free up recognition results and any stored image data.
@@ -1004,16 +1005,11 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     // Store OSD results.
     detection_properties["OSD_PRIMARY_SCRIPT"] = results.unicharset->get_script_from_script_id(
             results.best_result.script_id);
-    detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = to_string(results.best_result.sconfidence);
-    detection_properties["OSD_PRIMARY_SCRIPT_SCORE"] = to_string(best_score);
-    detection_properties["ROTATION"] = to_string(rotation);
-    detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = to_string(results.best_result.oconfidence);
-
-    if (detection_properties["OSD_PRIMARY_SCRIPT"] == "NULL") {
-        //If OSD failed to detect any scripts, automatically set confidence scores to -1 (not enough text).
-        detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = "-1";
-        detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = "-1";
-        detection_properties["OSD_PRIMARY_SCRIPT_SCORE"]  = "-1";
+    if (detection_properties["OSD_PRIMARY_SCRIPT"] != "NULL") {
+        detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = to_string(results.best_result.sconfidence);
+        detection_properties["OSD_PRIMARY_SCRIPT_SCORE"] = to_string(best_score);
+        detection_properties["ROTATION"] = to_string(rotation);
+        detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = to_string(results.best_result.oconfidence);
     }
 
     int max_scripts = ocr_fset.max_scripts;
