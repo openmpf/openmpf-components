@@ -177,9 +177,15 @@
         },
         {
           "name": "MIN_HEIGHT",
-          "description": "If set to a positive value, rescales all images to specified pixel height if smaller than provided limit. Preserves image aspect ratio.",
+          "description": "If set to a positive value, rescales all images to specified pixel height if smaller than provided limit, up to Tesseract's maximum image dimensions. Preserves image aspect ratio.",
           "type": "INT",
           "defaultValue": "60"
+        },
+        {
+          "name": "INVALID_MIN_IMAGE_SIZE",
+          "description": "If set to a positive value, rejects any image whose pixel height or width falls below this minimum threshold.",
+          "type": "INT",
+          "defaultValue": "3"
         },
         {
           "name": "INVERT",
@@ -243,7 +249,7 @@
         },
         {
           "name": "STRUCTURED_TEXT_SCALE",
-          "description": "Image rescaling factor for default images. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 1.6. Set to a negative value to disable rescaling.",
+          "description": "Image rescaling factor for default images, rescales up to Tesseract's maximum image dimensions. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 1.6. Set to a negative value to disable rescaling.",
           "type": "DOUBLE",
           "defaultValue": "1.6"
         },
@@ -285,7 +291,7 @@
         },
         {
           "name": "UNSTRUCTURED_TEXT_SCALE",
-          "description": "Image rescaling factor for wild images with text. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.6. Set to a negative value to disable rescaling.",
+          "description": "Image rescaling factor for wild images with text, rescales up to Tesseract's maximum image dimensions. 1.0 = original image size, any value greater than 1.0 increases input size. Default optimal rescaling set to 2.6. Set to a negative value to disable rescaling.",
           "type": "DOUBLE",
           "defaultValue": "2.6"
         },

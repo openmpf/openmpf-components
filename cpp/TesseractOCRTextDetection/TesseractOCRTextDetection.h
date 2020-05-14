@@ -86,6 +86,7 @@ namespace MPF {
                 int max_scripts;
                 int max_text_tracks;
                 int min_height;
+                int invalid_min_image_size;
                 int adaptive_hist_tile_size;
                 double adaptive_hist_clip_limit;
                 double adaptive_thrs_c;
@@ -149,6 +150,9 @@ namespace MPF {
 
             bool preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset,
                                   MPFDetectionError &job_status);
+
+            bool rescale_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset,
+                               MPFDetectionError &job_status);
 
             void set_default_parameters();
 
