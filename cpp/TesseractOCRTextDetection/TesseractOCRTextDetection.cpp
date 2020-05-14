@@ -819,13 +819,17 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
         tess_api->SetPageSegMode((tesseract::PageSegMode) ocr_fset.psm);
         tess_api->SetImage(imi.data, imi.cols, imi.rows, imi.channels(), static_cast<int>(imi.step));
         unique_ptr<char[]> text{tess_api->GetUTF8Text()};
-        if (!text) {
+        string result;
+        if (text) {
+            result = text.get();
+        } else {
             LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OCR processing unsuccessful, no outputs.");
         }
         // If no outputs, initialize and return empty placeholder.
         // Otherwise, convert to wstring formatting.
+
+        // Confidence set to 0 if no results are available.
         double confidence = tess_api->MeanTextConf();
-        string result = text.get();
         wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(result);
         TesseractOCRTextDetection::OCR_output output_ocr = {confidence, lang, t_detection, "", false};
         detections_by_lang.push_back(output_ocr);
@@ -940,6 +944,13 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     if (!tess_api->DetectOS(&results)) {
         LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OSD processing returned no outputs.");
         tess_api->Clear();
+
+        //If OSD failed to detect any scripts, automatically set confidence scores to -1 (not enough text).
+        detection_properties["OSD_PRIMARY_SCRIPT"] == "NULL";
+        detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = "-1";
+        detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = "-1";
+        detection_properties["OSD_PRIMARY_SCRIPT_SCORE"]  = "-1";
+        detection_properties["ROTATION"] = "0";
         return;
     }
     // Free up recognition results and any stored image data.
