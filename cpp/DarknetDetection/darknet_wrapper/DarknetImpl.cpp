@@ -165,6 +165,14 @@ namespace {
         ptr_ref = nullptr;
     }
 
+    template <typename T>
+    void CudaFreeAndClear(T*& ptr_ref) {
+#ifdef GPU
+        cuda_free(ptr_ref);
+        ptr_ref = nullptr;
+#endif
+    }
+
     void DestroyTree(tree*& tree_ptr_ref) {
         if (tree_ptr_ref == nullptr) {
             return;
@@ -259,6 +267,25 @@ namespace {
         DestroyNestedLayer(layer.ug);
         DestroyNestedLayer(layer.wg);
         DestroyTree(layer.softmax_tree);
+
+#ifdef GPU
+        CudaFreeAndClear(layer.temp_gpu);
+        CudaFreeAndClear(layer.temp2_gpu);
+        CudaFreeAndClear(layer.temp3_gpu);
+        CudaFreeAndClear(layer.dh_gpu);
+        CudaFreeAndClear(layer.prev_cell_gpu);
+        CudaFreeAndClear(layer.cell_gpu);
+        CudaFreeAndClear(layer.f_gpu);
+        CudaFreeAndClear(layer.i_gpu);
+        CudaFreeAndClear(layer.g_gpu);
+        CudaFreeAndClear(layer.o_gpu);
+        CudaFreeAndClear(layer.c_gpu);
+        CudaFreeAndClear(layer.dc_gpu);
+        CudaFreeAndClear(layer.bias_m_gpu);
+        CudaFreeAndClear(layer.scale_m_gpu);
+        CudaFreeAndClear(layer.bias_v_gpu);
+        CudaFreeAndClear(layer.scale_v_gpu);
+#endif
     }
 
     void DestroyNetwork(network* net) {
@@ -267,8 +294,11 @@ namespace {
         FreeAndClear(net->t);
         FreeAndClear(net->scales);
         FreeAndClear(net->steps);
-        FreeAndClear(net->delta);
+#ifdef GPU
+        CudaFreeAndClear(net->workspace);
+#else
         FreeAndClear(net->workspace);
+#endif
         FreeAndClear(net->cost);
 
         for (int i = 0; i < net->n; i++) {
