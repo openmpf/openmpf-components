@@ -1,6 +1,22 @@
 # blank.png
 Custom generated image, contains no text.
 
+# blank_exceed_tesseract_limit.png
+Custom generated image, contains no text.
+Image dimensions are intentionally set to exceed both minimum and maximum image dimension limits.
+
+# blank_tesseract_limit.png
+Custom generated image, contains no text.
+Image dimensions barely meet Tesseract limits, cannot be downscaled.
+
+# blank_tesseract_rescalable.png
+Custom generated image, contains no text.
+Image dimensions do not meet Tesseract limits, but can be rescaled down.
+
+# blank_within_tesseract_limit.png
+Custom generated image, contains no text.
+Image dimensions can be downscaled or upscaled slightly.
+
 # blurry.png
 Custom generated image with blurred text.
 
