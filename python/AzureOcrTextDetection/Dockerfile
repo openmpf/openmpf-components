@@ -29,7 +29,7 @@ ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} as build_component
 
 # Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN pip install --no-cache-dir 'opencv-python>=3.4.7'
+RUN pip3 install --no-cache-dir 'opencv-python>=3.4.7'
 
 COPY . .
 
