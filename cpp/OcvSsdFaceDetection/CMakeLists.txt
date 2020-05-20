@@ -29,8 +29,10 @@ cmake_minimum_required(VERSION 3.6)
 project(ocv-ssd-face-detection)
 
 set(CMAKE_CXX_STANDARD 11)
-#set(CMAKE_BUILD_TYPE RelWithDebInfo)
-set(CMAKE_BUILD_TYPE Debug)
+
+set(CMAKE_BUILD_TYPE RelWithDebInfo)    # build release version with debug symbols
+#set(CMAKE_BUILD_TYPE Debug)            # build debug version
+
 add_definitions(-Wfatal-errors)
 include(../ComponentSetup.cmake)
 
