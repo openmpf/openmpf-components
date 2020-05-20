@@ -42,7 +42,7 @@ namespace MPF{
 
 
   /** ****************************************************************************
-  *   get MPF properies of various types
+  *   get MPF properties of various types
   ***************************************************************************** */
   template<typename T>
   T get(const Properties &p, const string &k, const T def){
@@ -56,14 +56,14 @@ namespace MPF{
   template<typename T>
   T getEnv(const Properties &p, const string &k, const T def){
     auto iter = p.find(k);
-    if (iter == p.end()) {                       
+    if (iter == p.end()){
       const char* env_p = getenv(k.c_str());
-      if(env_p != NULL){                          
+      if(env_p != NULL){
         map<string,string> envp;
         envp.insert(pair<string,string>(k,string(env_p)));
         return DetectionComponentUtils::GetProperty<T>(envp,k,def);
-      }else{                                      
-        return def;                            
+      }else{
+        return def;
       }
     }
     return DetectionComponentUtils::GetProperty<T>(p,k,def);
@@ -83,8 +83,8 @@ namespace MPF{
   *************************************************************************** */
   class JobConfig{
     public:
-      static log4cxx::LoggerPtr _log;  ///< shared log opbject
-      size_t minDetectionSize;         ///< minimum boounding box dimension
+      static log4cxx::LoggerPtr _log;  ///< shared log object
+      size_t minDetectionSize;         ///< minimum bounding box dimension
       float  confThresh;               ///< detection confidence threshold
       long   detFrameInterval;         ///< number of frames between looking for new detection (tracking only)    
 

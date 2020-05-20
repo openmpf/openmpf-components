@@ -46,7 +46,7 @@ namespace MPF{
   class OcvSsdFaceDetection : public MPFImageAndVideoDetectionComponentAdapter {
 
     public:
-      bool Init() override;      
+      bool Init()  override;
       bool Close() override;
       string GetDetectionType(){return "FACE";};
       MPFDetectionError GetDetections(const MPFVideoJob &job, MPFVideoTrackVec    &tracks)    override;
@@ -58,7 +58,7 @@ namespace MPF{
       cv::Ptr<cv::CLAHE>             _equalizerPtr;     ///< adaptive histogram equalizer
 
       template<DetectionLocationCostFunc COST_FUNC>
-      vector<long> _calcAssignemntVector(const TrackPtrList            &tracks,
+      vector<long> _calcAssignmentVector(const TrackPtrList            &tracks,
                                          const DetectionLocationPtrVec &detections,
                                          const float                    maxCost); ///< determine costs of assigning detections to tracks
     

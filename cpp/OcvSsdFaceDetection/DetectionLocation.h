@@ -61,7 +61,7 @@ namespace MPF{
       const cv::Point2f       center;                 ///< bounding box center normalized to image dimensions
       const size_t            frameIdx;               ///< frame index frame where detection is located (for videos)
 
-      static bool Init(log4cxx::LoggerPtr log, const string plugin_path);    ///< setup class shared memebers
+      static bool Init(log4cxx::LoggerPtr log, const string plugin_path);    ///< setup class shared members
       static DetectionLocationPtrVec createDetections(const JobConfig &cfg); ///< created detection objects from image frame
       unique_ptr<DetectionLocation> ocvTrackerPredict(const JobConfig &cfg); ///< predict a new detection from an exiting one using a tracker
 
@@ -79,7 +79,7 @@ namespace MPF{
 
     private:
 
-      static log4cxx::LoggerPtr                _log;                ///< shared log opbject
+      static log4cxx::LoggerPtr                _log;                ///< shared log object
       static cv::dnn::Net                      _ssdNet;             ///< single shot DNN face detector network
       static cv::dnn::Net                      _openFaceNet   ;     ///< feature generator
       static unique_ptr<dlib::shape_predictor> _shapePredFuncPtr;   ///< landmark detector
@@ -102,8 +102,7 @@ namespace MPF{
   inline 
   ostream& operator<< (ostream& out, const DetectionLocation& d) {
     out  << "[" << (MPFImageLocation)d 
-              // << " L:" << d.landmarks << " F["    
-                << d.getFeature().size() << "] T["
+                << " F[" << d.getFeature().size() << "] T["
                 << d.getThumbnail().rows << "," << d.getThumbnail().cols << "]";
     return out;
   }

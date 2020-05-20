@@ -71,7 +71,7 @@ JobConfig::JobConfig():
   frameIdx(-1),
   lastError(MPF_DETECTION_SUCCESS),
   _imreaderPtr(unique_ptr<MPFImageReader>()),
-  _videocapPtr(unique_ptr<MPFVideoCapture>()){}                    
+  _videocapPtr(unique_ptr<MPFVideoCapture>()){}
 
 /* **************************************************************************
 *  Constructor that parses parameters from MPFImageJob and load image 
@@ -80,7 +80,7 @@ JobConfig::JobConfig(const MPFImageJob &job):
   JobConfig() {
                                                                                LOG4CXX_DEBUG(_log, "[" << job.job_name << "Data URI = " << job.data_uri);
   _parse(job);
-  
+
   if(job.data_uri.empty()) {                                                   LOG4CXX_ERROR(_log, "[" << job.job_name << "Invalid image url");
     lastError = MPF_INVALID_DATAFILE_URI;
   }else{
@@ -95,7 +95,7 @@ JobConfig::JobConfig(const MPFImageJob &job):
 
 /* **************************************************************************
 *  Constructor that parses parameters from MPFVideoJob and initializes 
-*  video caputure / reader
+*  video capture / reader
 *************************************************************************** */ 
 JobConfig::JobConfig(const MPFVideoJob &job):
   JobConfig() {
@@ -111,8 +111,8 @@ JobConfig::JobConfig(const MPFVideoJob &job):
     }
     // pre-compute diagonal normalization factor for distance normalizations
     cv::Size fs = _videocapPtr->GetFrameSize();
-    float diag  = sqrt(fs.width*fs.width + fs.height*fs.height); 
-    widthOdiag  = fs.width  / diag; 
+    float diag  = sqrt(fs.width*fs.width + fs.height*fs.height);
+    widthOdiag  = fs.width  / diag;
     heightOdiag = fs.height / diag;
   }
 }

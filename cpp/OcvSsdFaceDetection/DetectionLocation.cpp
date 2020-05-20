@@ -87,7 +87,7 @@ void DetectionLocation::drawLandmarks(cv::Mat &img,
 
 /** **************************************************************************
 * Compute 1 - Intersection Over Union metric for two detections comprised of 
-* 1 - the ratio of the area of the intersection of the detection rectangels
+* 1 - the ratio of the area of the intersection of the detection rectangles
 * divided by the area of the union of the detection rectangles. 
 * 
 * \param   d second detection 
@@ -95,12 +95,12 @@ void DetectionLocation::drawLandmarks(cv::Mat &img,
 *
 *************************************************************************** */
 float DetectionLocation::iouDist(const DetectionLocation &d) const {
-	int ulx = max(x_left_upper         , d.x_left_upper           );
-	int uly = max(y_left_upper         , d.y_left_upper           );
-	int lrx = min(x_left_upper + width , d.x_left_upper + d.width );
-	int lry = min(y_left_upper + height, d.y_left_upper + d.height);
+  int ulx = max(x_left_upper         , d.x_left_upper           );
+  int uly = max(y_left_upper         , d.y_left_upper           );
+  int lrx = min(x_left_upper + width , d.x_left_upper + d.width );
+  int lry = min(y_left_upper + height, d.y_left_upper + d.height);
 
-	float inter_area = max(0, lrx - ulx) * max(0, lry - uly);	                   
+  float inter_area = max(0, lrx - ulx) * max(0, lry - uly);	                   
   float union_area = width * height + d.width * d.height - inter_area;         
   float dist = 1.0f - inter_area / union_area;                                 LOG4CXX_TRACE(_log,"iou dist = " << dist);
   return dist;
@@ -110,7 +110,7 @@ float DetectionLocation::iouDist(const DetectionLocation &d) const {
 * Compute the temporal distance in frame counts between two detections
 *
 * \param   d second detection 
-* \returns   absolute difference in frame indecies
+* \returns   absolute difference in frame indices
 *
 *************************************************************************** */
 float DetectionLocation::frameDist(const DetectionLocation &d) const {
@@ -122,7 +122,7 @@ float DetectionLocation::frameDist(const DetectionLocation &d) const {
 }
 
 /** **************************************************************************
-* Compute euclidian center to distance center distance from normalized centers
+* Compute euclidean center to distance center distance from normalized centers
 *
 * \param   d second detection 
 * \returns   normalized center to center distance [0 ... Sqrt(2)]
@@ -194,7 +194,7 @@ const cv::Mat& DetectionLocation::getThumbnail() const {
     const int  THUMBNAIL_SIZE_Y = 96;
     const cv::Size THUMB_SIZE(THUMBNAIL_SIZE_X,THUMBNAIL_SIZE_Y);
  
-    // Landmark indecies for OpenFace nn4.v2, nn4.small1.v1, nn4.small2.v1
+    // Landmark indices for OpenFace nn4.v2, nn4.small1.v1, nn4.small2.v1
     const size_t lmIdx[] = {2,0,4};       // if using 5 pt landmarks
     const cv::Mat dst =  (cv::Mat_<float>(3,2)
                           << 0.1941570 * THUMBNAIL_SIZE_X, 0.16926692 * THUMBNAIL_SIZE_Y,
@@ -223,7 +223,7 @@ const cv::Mat& DetectionLocation::getThumbnail() const {
 }
 
 /** **************************************************************************
-* Lazy accessor method to get/compute feature fector based on thumbnail 
+* Lazy accessor method to get/compute feature vector based on thumbnail 
 *
 * \returns unit magnitude feature vector
 * 
@@ -240,7 +240,7 @@ const cv::Mat& DetectionLocation::getFeature() const {
       const cv::Size blobSize(96, 96);
       const cv::Scalar meanVal(0.0, 0.0, 0.0);  // BGR mean pixel color 
       cv::Mat inputBlob = cv::dnn::blobFromImage(getThumbnail(), // BGR image
-                                                inScaleFactor,   // no pixel value scaline (e.g. 1.0/255.0)
+                                                inScaleFactor,   // no pixel value scaling (e.g. 1.0/255.0)
                                                 blobSize,        // expected network input size: 90x90
                                                 meanVal,         // mean BGR pixel value
                                                 true,            // swap RB channels
@@ -259,9 +259,9 @@ const cv::Mat& DetectionLocation::getFeature() const {
 /** ****************************************************************************
 * Detect objects using SSD DNN opencv face detector network   
 * 
-* \param  cfg job configuration setting including iamge frame
+* \param  cfg job configuration setting including image frame
 * 
-* \returns found face detections that meet size requirments.
+* \returns found face detections that meet size requirements.
 *
 * \note each detection hang on to a reference to the bgrFrame which
 *       should be released once no longer needed (i.e. features care computed)
@@ -274,8 +274,8 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
   const cv::Size blobSize(300, 300);
   const cv::Scalar meanVal(104.0, 117.0, 124.0);  // BGR mean pixel color       
 
-  cv::Mat inputBlob = cv::dnn::blobFromImage(cfg.bgrFrame,  // BGR image
-                                            inScaleFactor, // no pixel value scaline (e.g. 1.0/255.0)
+  cv::Mat inputBlob = cv::dnn::blobFromImage(cfg.bgrFrame, // BGR image
+                                            inScaleFactor, // no pixel value scaling (e.g. 1.0/255.0)
                                             blobSize,      // expected network input size: 300x300
                                             meanVal,       // mean BGR pixel value
                                             true,          // swap RB channels
@@ -314,7 +314,7 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
 * \param log         logger object for logging
 * \param plugin_path plugin directory so configs and models can be loaded
 *
-* \return true if eveything was properly initialized, flase otherwise
+* \return true if everything was properly initialized, false otherwise
 *************************************************************************** */
 bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
 
@@ -362,8 +362,7 @@ bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
 unique_ptr<DetectionLocation> DetectionLocation::ocvTrackerPredict(const JobConfig &cfg){
 
   if(_trackerPtr.empty()){   // initialize a new tracker if we don't have one already
-    //_trackerPtr = cv::TrackerKCF::create(); 
-    _trackerPtr = cv::TrackerMOSSE::create();                                
+    _trackerPtr = cv::TrackerMOSSE::create();  // could try different trackers here. e.g. cv::TrackerKCF::create();
     _trackerPtr->init(_bgrFrame,cv::Rect2d(x_left_upper,y_left_upper,width,height));  LOG4CXX_TRACE(_log,"tracker created for " << (MPFImageLocation)*this);
     _trackerStartFrameIdx = cfg.frameIdx;
   }
@@ -382,7 +381,7 @@ unique_ptr<DetectionLocation> DetectionLocation::ocvTrackerPredict(const JobConf
       detPtr->_trackerPtr = _trackerPtr;
       detPtr->_trackerStartFrameIdx = _trackerStartFrameIdx;
       _trackerPtr.release();
-      detPtr->_feature = getFeature();  // clone feature of prior detection                
+      detPtr->_feature = getFeature();  // clone feature of prior detection
     }else{
                                                                                         LOG4CXX_TRACE(_log,"could not track " << (MPFImageLocation)*this << " to new location");
     }
