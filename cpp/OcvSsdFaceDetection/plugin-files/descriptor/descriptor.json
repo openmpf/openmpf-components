@@ -41,16 +41,16 @@
           "description": "Number of frames to skip running the detector and rely on just tracking",
           "type": "INT",
           "defaultValue": "0"
-        },        
+        },
         {
           "name": "TRACKING_MAX_IOU_DIST",
-          "description": "Maximum intersection over union distance (1.0 - iou) =[0..1] between detections below which detection will be conidered part of same track",
+          "description": "Maximum intersection over union distance (1.0 - iou) =[0..1] between detections below which detection will be considered part of same track",
           "type": "FLOAT",
           "defaultValue": "0.5"
         },
         {
           "name": "TRACKING_MAX_FEATURE_DIST",
-          "description": "Maximum distance in feature space (1.0 - cos similarity) = [0..1] between detections below which detection will be conidered part of same track",
+          "description": "Maximum distance in feature space (1.0 - cos similarity) = [0..1] between detections below which detection will be considered part of same track",
           "type": "FLOAT",
           "defaultValue": "0.25"
         },
@@ -162,4 +162,3 @@
     }
   ]
 }
-

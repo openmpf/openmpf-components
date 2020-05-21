@@ -49,7 +49,7 @@ if (${GTEST_FOUND})
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
       test_ocv_ssd_face_config.ini)
 
-    # allow for 'make check' 
+    # allow for 'make check'
     add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --verbose)
 
     # Install config file

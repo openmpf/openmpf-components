@@ -28,7 +28,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <chrono> 
+#include <chrono>
 
 #include <gtest/gtest.h>
 #include <MPFDetectionComponent.h>
@@ -96,7 +96,7 @@ static string GetCurrentWorkingDirectory() {
 }
 
 /** ***************************************************************************
-*   Test initializing component 
+*   Test initializing component
 **************************************************************************** */
 TEST(OcvSsdFaceDetection, Init) {
 
@@ -127,7 +127,7 @@ TEST(OcvSsdFaceDetection, Init) {
 }
 
 /** ***************************************************************************
-*   Test frame preprocessing 
+*   Test frame preprocessing
 **************************************************************************** */
 TEST(OcvSsdFaceDetection, DISABLED_PreProcess) {
   string         current_working_dir = GetCurrentWorkingDirectory();
@@ -173,7 +173,7 @@ TEST(OcvSsdFaceDetection, DISABLED_PreProcess) {
 
 
 /** ***************************************************************************
-* This test checks the confidence of faces detected by the OpenCV low-level 
+* This test checks the confidence of faces detected by the OpenCV low-level
 * detection facility, which is used by the OpenCV face detection component.
 **************************************************************************** */
 TEST(OcvSsdFaceDetection, VerifyQuality) {
@@ -246,7 +246,7 @@ TEST(OcvSsdFaceDetection, TestOnKnownImage) {
 
     GOUT("Input Known Detections:\t"  << known_detections_file);
     GOUT("Output Found Detections:\t" << output_detections_file);
-    GOUT("Input Image:\t"             << known_image_file); 
+    GOUT("Input Image:\t"             << known_image_file);
     GOUT("Output Image:\t"            << output_image_file);
     GOUT("comparison threshold:\t"    << comparison_score_threshold);
 
@@ -347,16 +347,15 @@ TEST(OcvSsdFaceDetection, Thumbnails) {
       GOUT("self feature dist: " << detections.front()->featureDist(*detections.front()));
       ASSERT_TRUE(detections.front()->featureDist(*detections.front()) < 1e-6);
       GOUT("cross feature dist: " << detections.front()->featureDist(*detections.back()));
-      
+
       if(tracks.size() == 0){
         for(auto &det:detections){
           tracks.push_back(unique_ptr<Track>(new Track()));
           tracks.back()->push_back(move(det));
         }
       }else{
-        //cv::Mat_<int> ass = ssd->_calcAssignemntMatrix<&DetectionLocation::iouDist>(tracks,detections,cfg.maxIOUDist);
         //ssd->_assignDetections2Tracks(tracks,detections, ass);
-        vector<long> av = ssd->_calcAssignemntVector<&DetectionLocation::iouDist>(tracks,detections,cfg.maxIOUDist);
+        vector<long> av = ssd->_calcAssignmentVector<&DetectionLocation::iouDist>(tracks,detections,cfg.maxIOUDist);
         ssd->_assignDetections2Tracks(tracks,detections, av);
       }
     }
@@ -369,7 +368,7 @@ TEST(OcvSsdFaceDetection, Thumbnails) {
         stringstream ss;
         ss << test_output_dir << "t" << t << "_i"<< i << ".png";
         string out_file = ss.str();
-        GOUT("Writing tumbnail: " << out_file);
+        GOUT("Writing thumbnail: " << out_file);
         cv::imwrite(out_file,(*track)[i]->getThumbnail());
       }
       t++;
@@ -415,17 +414,17 @@ TEST(OcvSsdFaceDetection, TestOnKnownVideo) {
     ASSERT_TRUE(NULL != ocv_ssd_face_detection);
     ocv_ssd_face_detection->SetRunDirectory(current_working_dir + "/../plugin");
     ASSERT_TRUE(ocv_ssd_face_detection->Init());
-    
+
     // 	Load the known tracks into memory.
     GOUT("\tLoading the known tracks into memory: " << inTrackFile);
     vector<MPFVideoTrack> known_tracks;
     ASSERT_TRUE(ReadDetectionsFromFile::ReadVideoTracks(inTrackFile, known_tracks));
 
-    // create output kown video to view ground truth
-    // GOUT("\tWriting ground truth video and test tracks to files.");
-    // VideoGeneration video_generation_gt;
-    // video_generation_gt.WriteTrackOutputVideo(inVideoFile, known_tracks, (test_output_dir + "/ground_truth.avi"));
-    // WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/ground_truth.txt"), known_tracks);
+    // create output known video to view ground truth
+    GOUT("\tWriting ground truth video and test tracks to files.");
+    VideoGeneration video_generation_gt;
+    video_generation_gt.WriteTrackOutputVideo(inVideoFile, known_tracks, (test_output_dir + "/ground_truth.avi"));
+    WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/ground_truth.txt"), known_tracks);
 
     // 	Evaluate the known video file to generate the test tracks.
     GOUT("\tRunning the tracker on the video: " << inVideoFile);
@@ -453,14 +452,14 @@ TEST(OcvSsdFaceDetection, TestOnKnownVideo) {
 
 
 
-    // don't forgetx
+    // don't forget
     GOUT("\tClosing down detection.");
     EXPECT_TRUE(ocv_ssd_face_detection->Close());
     delete ocv_ssd_face_detection;
 }
 
 /** **************************************************************************
-*   
+*
 **************************************************************************** */
 int main(int argc, char **argv){
   ::testing::InitGoogleTest(&argc, argv);

@@ -86,7 +86,7 @@ namespace MPF{
       static log4cxx::LoggerPtr _log;  ///< shared log object
       size_t minDetectionSize;         ///< minimum bounding box dimension
       float  confThresh;               ///< detection confidence threshold
-      long   detFrameInterval;         ///< number of frames between looking for new detection (tracking only)    
+      long   detFrameInterval;         ///< number of frames between looking for new detection (tracking only)
 
       float  maxFeatureDist;           ///< maximum feature distance to maintain track continuity
       float  maxCenterDist;            ///< maximum spatial distance normalized by diagonal to maintain track continuity
@@ -98,7 +98,7 @@ namespace MPF{
       size_t  frameIdx;                ///< index of current frame
       cv::Mat bgrFrame;                ///< current BGR image frame
 
-      MPFDetectionError   lastError;   ///< last MPF error that should be returned    
+      MPFDetectionError   lastError;   ///< last MPF error that should be returned
 
       JobConfig();
       JobConfig(const MPFImageJob &job);
@@ -117,7 +117,7 @@ namespace MPF{
 
 
   };
-  
+
   ostream& operator<< (ostream& out, const JobConfig& cfg);  ///< Dump JobConfig to a stream
 
  }

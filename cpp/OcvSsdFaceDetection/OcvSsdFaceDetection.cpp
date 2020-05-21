@@ -41,7 +41,7 @@
 #include <dlib/matrix.h>
 #include <dlib/optimization/max_cost_assignment.h>
 
-// MPF-SDK header files 
+// MPF-SDK header files
 #include "Utils.h"
 #include "MPFSimpleConfigLoader.h"
 #include "detectionComponentUtils.h"
@@ -54,10 +54,10 @@ log4cxx::LoggerPtr JobConfig::_log = log4cxx::Logger::getRootLogger();
 
 /** ****************************************************************************
  *  print out opencv matrix on a single line
- * 
+ *
  * \param   m matrix to serialize to single line string
  * \returns single line string representation of matrix
- * 
+ *
 ***************************************************************************** */
 string format(cv::Mat m){
   stringstream ss;
@@ -69,10 +69,10 @@ string format(cv::Mat m){
 
 /** ****************************************************************************
  *  print out dlib matrix on a single line
- * 
+ *
  * \param   m matrix to serialize to single line string
  * \returns single line string representation of matrix
- * 
+ *
 ***************************************************************************** */
 template<typename T>
 string format(dlib::matrix<T> m){
@@ -112,7 +112,7 @@ bool OcvSsdFaceDetection::Init() {
         return false;
     }                                                                          LOG4CXX_TRACE(_log,"read config file:" << config_params_path);
     for(auto p = params.begin(); p != params.end(); p++){
-      const string key = p.key().toStdString();                                   
+      const string key = p.key().toStdString();
       const string val = p.value().toStdString();                              LOG4CXX_TRACE(_log,"Config    Vars:" << key << "=" << val);
       const char* env_val = getenv(key.c_str());                               LOG4CXX_TRACE(_log,"Verifying ENVs:" << key << "=" << env_val);
       if(env_val == NULL){
@@ -127,7 +127,7 @@ bool OcvSsdFaceDetection::Init() {
     _equalizerPtr = cv::createCLAHE(40.0,cv::Size(8,8));
 
     return DetectionLocation::Init(_log, plugin_path);
-    
+
 }
 
 /** ****************************************************************************
@@ -142,10 +142,10 @@ bool OcvSsdFaceDetection::Close() {
 /** ****************************************************************************
 *   Compute cost vector and solve it to give detection to track assignment matrix
 *
-* \param COST_FUNC     cost function to use 
+* \param COST_FUNC     cost function to use
 * \param TrackPtrList  list of existing tracks to consider for assignment
 * \param detections    vector of detections that need assigned to tracks
-* \param maxCost       maximum assignment cost, if exceeded the particular 
+* \param maxCost       maximum assignment cost, if exceeded the particular
 *                      detection to track assignment will be removed from result
 * \returns assignment vector am[track,detection] with dim (# tracks x # detections)
 *          if am[x,y]==0 then detection[y] should be assigned to track[x]
@@ -168,7 +168,7 @@ vector<long> OcvSsdFaceDetection::_calcAssignmentVector(const TrackPtrList      
   for(auto &track:tracks){
     for(size_t c=0; c<detections.size(); c++){
       if(track->back()->frameIdx < detections[c]->frameIdx){
-        float cost = CALL_MEMBER_FUNC(*(track->back()),COST_FUNC)(*detections[c]); 
+        float cost = CALL_MEMBER_FUNC(*(track->back()),COST_FUNC)(*detections[c]);
         costs(r,c) = ((cost <= maxCost) ? (INT_MAX - static_cast<int>(1000.0f * cost)) : 0);
       }
     }
@@ -179,7 +179,7 @@ vector<long> OcvSsdFaceDetection::_calcAssignmentVector(const TrackPtrList      
   av = dlib::max_cost_assignment(costs);                                       LOG4CXX_TRACE(_log, "solved assignment vec["<< av.size() << "] = "  << av);
 
   // drop dummy tracks used to pad cost matrix
-  av.resize(tracks.size()); 
+  av.resize(tracks.size());
 
   // knock out assignments that are too costly (i.e. new track needed)
   for(long t=0; t<av.size(); t++){
@@ -196,7 +196,7 @@ vector<long> OcvSsdFaceDetection::_calcAssignmentVector(const TrackPtrList      
 *
 * \param [in,out] tracks           list of tracks
 * \param [in,out] detections       vector of detections
-* \param          assignmentVector (v[track] <=> detection[v[track]]) with with -1 in 
+* \param          assignmentVector (v[track] <=> detection[v[track]]) with with -1 in
 *                                   skip assignment
 *
 * \note detections that are assigned are be removed from the detections vector
@@ -275,7 +275,7 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFImageJob   &job,
 MPFVideoTrack OcvSsdFaceDetection::_convert_track(Track &track){
 
   MPFVideoTrack mpf_track;
-  
+
   mpf_track.start_frame = track.front()->frameIdx;
   mpf_track.stop_frame  = track.back()->frameIdx;
 
@@ -291,7 +291,7 @@ MPFVideoTrack OcvSsdFaceDetection::_convert_track(Track &track){
     mpf_track.frame_locations.insert(mpf_track.frame_locations.end(),{det->frameIdx,*det});
     det.reset();
   }
-  mpf_track.confidence /= static_cast<float>(track.size()); 
+  mpf_track.confidence /= static_cast<float>(track.size());
 
   return mpf_track;
 }
@@ -317,7 +317,7 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
 
     size_t detectTrigger = 0;
     while(cfg.nextFrame()) {                                                   LOG4CXX_TRACE(_log, ".");
-                                                                               LOG4CXX_TRACE(_log, "processing frame " << cfg.frameIdx); 
+                                                                               LOG4CXX_TRACE(_log, "processing frame " << cfg.frameIdx);
       // remove any tracks too far in the past
       trackPtrs.remove_if([&](unique_ptr<Track>& tPtr){
         if(cfg.frameIdx - tPtr->back()->frameIdx > cfg.maxFrameGap){           LOG4CXX_TRACE(_log,"dropping old track: " << *tPtr);
@@ -329,22 +329,22 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
 
       if(detectTrigger == 0){                                                  LOG4CXX_TRACE(_log,"checking for new detections");
         DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfg); // look for new detections
-      
+
         if(detections.size() > 0){   // found some detections in current frame
-          if(trackPtrs.size() >= 0 ){  // not all tracks were dropped  
+          if(trackPtrs.size() >= 0 ){  // not all tracks were dropped
                                                                                LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
             // intersection over union tracking and assignment
             vector<long> av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detections,cfg.maxIOUDist);
             _assignDetections2Tracks(trackPtrs, detections, av);               LOG4CXX_TRACE(_log,"IOU assignment complete");
 
             // feature-based tracking tracking and assignment
-            if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");  
+            if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
               av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detections,cfg.maxIOUDist);
               _assignDetections2Tracks(trackPtrs, detections, av);             LOG4CXX_TRACE(_log,"Feature assignment complete");
             }
 
             // center-to-center distance tracking and assignment
-            if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks"); 
+            if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
               av = _calcAssignmentVector<&DetectionLocation::center2CenterDist>(trackPtrs,detections,cfg.maxCenterDist);
               _assignDetections2Tracks(trackPtrs, detections, av);             LOG4CXX_TRACE(_log,"Center2Center assignment complete");
             }
@@ -392,14 +392,14 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
   }catch(const exception& ex){                                                 LOG4CXX_FATAL(_log, "[" << job.job_name << "] exception: " << ex.what());
     return Utils::HandleDetectionException(job, _log);
   }catch (...) {                                                               LOG4CXX_FATAL(_log, "[" << job.job_name << "] unknown error");
-    return Utils::HandleDetectionException(job, _log);                         
+    return Utils::HandleDetectionException(job, _log);
   }
                                                                                LOG4CXX_DEBUG(_log,"[" << job.job_name << "] complete.");
   return MPF_DETECTION_SUCCESS;
 }
 
 /* **************************************************************************
-*  Perform histogram equalization 
+*  Perform histogram equalization
 *************************************************************************** */
 void OcvSsdFaceDetection::_equalizeHistogram(JobConfig &cfg){
   cv::Mat3b hsvFrame;
@@ -415,7 +415,7 @@ void OcvSsdFaceDetection::_equalizeHistogram(JobConfig &cfg){
 
 
 /* **************************************************************************
-*  Perform image normalization 
+*  Perform image normalization
 *************************************************************************** */
 void OcvSsdFaceDetection::_normalizeFrame(JobConfig &cfg){
   cv::Mat fltImg;
@@ -427,7 +427,7 @@ void OcvSsdFaceDetection::_normalizeFrame(JobConfig &cfg){
   cv::sqrt(mu_sq - mu.mul(mu), sigma);
 
   fltImg = (fltImg - mu) / sigma;
-  
+
   cv::normalize(fltImg, cfg.bgrFrame, 255,0, cv::NORM_MINMAX, CV_8U);
 
 }

@@ -43,7 +43,7 @@ void JobConfig::_parse(const MPFJob &job){
 
 /* **************************************************************************
 *   Dump config to a stream
-*************************************************************************** */ 
+*************************************************************************** */
 ostream& operator<< (ostream& out, const JobConfig& cfg) {
   out << "{"
       << "\"minDetectionSize\": " << cfg.minDetectionSize << ","
@@ -59,7 +59,7 @@ ostream& operator<< (ostream& out, const JobConfig& cfg) {
 
 /* **************************************************************************
 *  Default constructor with default values
-*************************************************************************** */ 
+*************************************************************************** */
 JobConfig::JobConfig():
   minDetectionSize(46),
   confThresh(0.5),
@@ -74,8 +74,8 @@ JobConfig::JobConfig():
   _videocapPtr(unique_ptr<MPFVideoCapture>()){}
 
 /* **************************************************************************
-*  Constructor that parses parameters from MPFImageJob and load image 
-*************************************************************************** */ 
+*  Constructor that parses parameters from MPFImageJob and load image
+*************************************************************************** */
 JobConfig::JobConfig(const MPFImageJob &job):
   JobConfig() {
                                                                                LOG4CXX_DEBUG(_log, "[" << job.job_name << "Data URI = " << job.data_uri);
@@ -94,9 +94,9 @@ JobConfig::JobConfig(const MPFImageJob &job):
 }
 
 /* **************************************************************************
-*  Constructor that parses parameters from MPFVideoJob and initializes 
+*  Constructor that parses parameters from MPFVideoJob and initializes
 *  video capture / reader
-*************************************************************************** */ 
+*************************************************************************** */
 JobConfig::JobConfig(const MPFVideoJob &job):
   JobConfig() {
 
@@ -120,7 +120,7 @@ JobConfig::JobConfig(const MPFVideoJob &job):
 /* **************************************************************************
 *  Read next frame of video into current bgrFrame member variable and advance
 *  frame index counter.
-*************************************************************************** */ 
+*************************************************************************** */
 bool JobConfig::nextFrame(){
   frameIdx++;
   return _videocapPtr->Read(bgrFrame);
@@ -128,7 +128,7 @@ bool JobConfig::nextFrame(){
 
 /* **************************************************************************
 * Destructor to release image / video readers
-*************************************************************************** */ 
+*************************************************************************** */
 JobConfig::~JobConfig(){
   if(_imreaderPtr){
     _imreaderPtr.reset();

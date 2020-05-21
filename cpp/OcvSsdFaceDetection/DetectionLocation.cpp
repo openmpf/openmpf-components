@@ -29,7 +29,7 @@
 #include "DetectionLocation.h"
 
 using namespace MPF::COMPONENT;
- 
+
 // Shared static members (might need mutex locks and condition variable if multithreading... )
 log4cxx::LoggerPtr                DetectionLocation::_log;
 cv::dnn::Net                      DetectionLocation::_ssdNet;                     ///< single shot DNN face detector network
@@ -78,7 +78,7 @@ void DetectionLocation::drawLandmarks(cv::Mat &img,
     drawPolyline(img, landmarks, 42, 47, true,  drawColor);    // Right Eye
     drawPolyline(img, landmarks, 48, 59, true,  drawColor);    // Outer lip
     drawPolyline(img, landmarks, 60, 67, true,  drawColor);    // Inner lip
-  }else { 
+  }else {
     for(size_t i = 0; i < landmarks.size(); i++){
       cv::circle(img,landmarks[i],3, drawColor, cv::FILLED);
     }
@@ -86,11 +86,11 @@ void DetectionLocation::drawLandmarks(cv::Mat &img,
 }
 
 /** **************************************************************************
-* Compute 1 - Intersection Over Union metric for two detections comprised of 
+* Compute 1 - Intersection Over Union metric for two detections comprised of
 * 1 - the ratio of the area of the intersection of the detection rectangles
-* divided by the area of the union of the detection rectangles. 
-* 
-* \param   d second detection 
+* divided by the area of the union of the detection rectangles.
+*
+* \param   d second detection
 * \returns 1- intersection over union [0.0 ... 1.0]
 *
 *************************************************************************** */
@@ -100,8 +100,8 @@ float DetectionLocation::iouDist(const DetectionLocation &d) const {
   int lrx = min(x_left_upper + width , d.x_left_upper + d.width );
   int lry = min(y_left_upper + height, d.y_left_upper + d.height);
 
-  float inter_area = max(0, lrx - ulx) * max(0, lry - uly);	                   
-  float union_area = width * height + d.width * d.height - inter_area;         
+  float inter_area = max(0, lrx - ulx) * max(0, lry - uly);
+  float union_area = width * height + d.width * d.height - inter_area;
   float dist = 1.0f - inter_area / union_area;                                 LOG4CXX_TRACE(_log,"iou dist = " << dist);
   return dist;
 }
@@ -109,7 +109,7 @@ float DetectionLocation::iouDist(const DetectionLocation &d) const {
 /** **************************************************************************
 * Compute the temporal distance in frame counts between two detections
 *
-* \param   d second detection 
+* \param   d second detection
 * \returns   absolute difference in frame indices
 *
 *************************************************************************** */
@@ -124,7 +124,7 @@ float DetectionLocation::frameDist(const DetectionLocation &d) const {
 /** **************************************************************************
 * Compute euclidean center to distance center distance from normalized centers
 *
-* \param   d second detection 
+* \param   d second detection
 * \returns   normalized center to center distance [0 ... Sqrt(2)]
 *
 *************************************************************************** */
@@ -139,7 +139,7 @@ float  DetectionLocation::center2CenterDist(const DetectionLocation &d) const {
 /** **************************************************************************
 * Compute feature distance (similarity) between two detection feature vectors
 *
-* \param   d second detection 
+* \param   d second detection
 * \returns cos distance [0 ... 1.0]
 *
 * \note Feature vectors are expected to be of unit magnitude
@@ -155,8 +155,8 @@ float DetectionLocation::featureDist(const DetectionLocation &d) const {
 * 5-Landmark detector returns outside and inside eye corners and bottom of nose
 * 68-Landmark detector returns "standard" facial landmarks (see data/landmarks.png)
 *
-* \returns landmarks 
-* 
+* \returns landmarks
+*
 *************************************************************************** */
 const cvPoint2fVec& DetectionLocation::getLandmarks() const {
   if(_landmarks.empty()){
@@ -167,22 +167,22 @@ const cvPoint2fVec& DetectionLocation::getLandmarks() const {
                                                             y_left_upper,              // top
                                                             x_left_upper + width-1,    // right
                                                             y_left_upper + height-1)); // bottom
-                                                        
+
       for(size_t i=0; i<shape.num_parts(); i++){
-        dlib::point pt = shape.part(i);                                                          
-        _landmarks.push_back(cv::Point2f(pt.x(),pt.y()));   
+        dlib::point pt = shape.part(i);
+        _landmarks.push_back(cv::Point2f(pt.x(),pt.y()));
       }
     }catch(...){
-      exception_ptr eptr = current_exception();                                                              
+      exception_ptr eptr = current_exception();
       LOG4CXX_FATAL(_log, "failed to determine landmarks");
-      rethrow_exception(eptr);      
+      rethrow_exception(eptr);
     }
   }
   return _landmarks;
 }
 
 /** **************************************************************************
-* Lazy accessor method to get/copy-create 92x92 thumbnail image for 
+* Lazy accessor method to get/copy-create 92x92 thumbnail image for
 * feature generation
 *
 * \returns thumbnail image of detection
@@ -193,7 +193,7 @@ const cv::Mat& DetectionLocation::getThumbnail() const {
     const int  THUMBNAIL_SIZE_X = 96;
     const int  THUMBNAIL_SIZE_Y = 96;
     const cv::Size THUMB_SIZE(THUMBNAIL_SIZE_X,THUMBNAIL_SIZE_Y);
- 
+
     // Landmark indices for OpenFace nn4.v2, nn4.small1.v1, nn4.small2.v1
     const size_t lmIdx[] = {2,0,4};       // if using 5 pt landmarks
     const cv::Mat dst =  (cv::Mat_<float>(3,2)
@@ -204,16 +204,16 @@ const cv::Mat& DetectionLocation::getThumbnail() const {
     cv::Mat src = cv::Mat_<float>(3,2);
     for(size_t r=0; r<3; r++){
       float* rowPtr = src.ptr<float>(r);
-      rowPtr[0] = getLandmarks()[lmIdx[r]].x; 
-      rowPtr[1] = getLandmarks()[lmIdx[r]].y;      
+      rowPtr[0] = getLandmarks()[lmIdx[r]].x;
+      rowPtr[1] = getLandmarks()[lmIdx[r]].y;
     }
     cv::Mat xfrm = cv::getAffineTransform(src,dst);
     try{
       _thumbnail = cv::Mat(THUMB_SIZE,_bgrFrame.type());
       cv::warpAffine(_bgrFrame,_thumbnail,cv::getAffineTransform(src,dst),
                     THUMB_SIZE,cv::INTER_CUBIC,cv::BORDER_REPLICATE);
-    }catch (...) { 
-      exception_ptr eptr = current_exception();                                                              
+    }catch (...) {
+      exception_ptr eptr = current_exception();
       LOG4CXX_FATAL(_log, "failed to generate thumbnail");
       rethrow_exception(eptr);
     }
@@ -223,10 +223,10 @@ const cv::Mat& DetectionLocation::getThumbnail() const {
 }
 
 /** **************************************************************************
-* Lazy accessor method to get/compute feature vector based on thumbnail 
+* Lazy accessor method to get/compute feature vector based on thumbnail
 *
 * \returns unit magnitude feature vector
-* 
+*
 *************************************************************************** */
 const cv::Mat& DetectionLocation::getFeature() const {
   if(_feature.empty()){
@@ -238,7 +238,7 @@ const cv::Mat& DetectionLocation::getFeature() const {
        || (   0.8 < aspect_ratio && aspect_ratio < 1.2)){
       const double inScaleFactor = 1.0 / 255.0;
       const cv::Size blobSize(96, 96);
-      const cv::Scalar meanVal(0.0, 0.0, 0.0);  // BGR mean pixel color 
+      const cv::Scalar meanVal(0.0, 0.0, 0.0);  // BGR mean pixel color
       cv::Mat inputBlob = cv::dnn::blobFromImage(getThumbnail(), // BGR image
                                                 inScaleFactor,   // no pixel value scaling (e.g. 1.0/255.0)
                                                 blobSize,        // expected network input size: 90x90
@@ -249,7 +249,7 @@ const cv::Mat& DetectionLocation::getFeature() const {
       _feature = _openFaceNet.forward().clone();             // need to clone as mem gets reused
 
     }else{                                                   // can't trust feature of detections on the edge
-                                                             LOG4CXX_TRACE(_log,"'Zero-feature' for detection at frame edge with poor aspect ratio = " << aspect_ratio);                 
+                                                             LOG4CXX_TRACE(_log,"'Zero-feature' for detection at frame edge with poor aspect ratio = " << aspect_ratio);
       _feature = cv::Mat::zeros(1, 128, CV_32F);             // zero feature will wipe out any dot products...
     }
   }
@@ -257,10 +257,10 @@ const cv::Mat& DetectionLocation::getFeature() const {
 }
 
 /** ****************************************************************************
-* Detect objects using SSD DNN opencv face detector network   
-* 
+* Detect objects using SSD DNN opencv face detector network
+*
 * \param  cfg job configuration setting including image frame
-* 
+*
 * \returns found face detections that meet size requirements.
 *
 * \note each detection hang on to a reference to the bgrFrame which
@@ -272,7 +272,7 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
 
   const double inScaleFactor = 1.0;
   const cv::Size blobSize(300, 300);
-  const cv::Scalar meanVal(104.0, 117.0, 124.0);  // BGR mean pixel color       
+  const cv::Scalar meanVal(104.0, 117.0, 124.0);  // BGR mean pixel color
 
   cv::Mat inputBlob = cv::dnn::blobFromImage(cfg.bgrFrame, // BGR image
                                             inScaleFactor, // no pixel value scaling (e.g. 1.0/255.0)
@@ -302,13 +302,13 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
           new DetectionLocation(x1, y1, width, height, conf, (ul + lr) / 2.0,
                                 cfg.frameIdx, cfg.bgrFrame)));                 LOG4CXX_TRACE(_log,"detection:" << *detections.back());
       }
-    }                                                                               
+    }
   }
   return detections;
 }
 
 /** **************************************************************************
-* Setup class shared static configurations and initialize / load shared 
+* Setup class shared static configurations and initialize / load shared
 * detectors and feature generator objects.
 *
 * \param log         logger object for logging
@@ -323,7 +323,7 @@ bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
   // Load SSD Tensor Flow Network
   string  tf_model_path = plugin_path + "/data/opencv_face_detector_uint8.pb";
   string tf_config_path = plugin_path + "/data/opencv_face_detector.pbtxt";
-  
+
   string  sp_model_path = plugin_path + "/data/shape_predictor_5_face_landmarks.dat";
   string  tr_model_path = plugin_path + "/data/nn4.small2.v1.t7";
 
@@ -344,7 +344,7 @@ bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
     return false;
   }catch(...){                                                               LOG4CXX_FATAL(_log, err_msg << " Unknown failure occurred. Possible memory corruption");
     return false;
-  } 
+  }
 
   return true;
 }
@@ -368,7 +368,7 @@ unique_ptr<DetectionLocation> DetectionLocation::ocvTrackerPredict(const JobConf
   }
 
   cv::Rect2d p;
-  unique_ptr<DetectionLocation> detPtr; 
+  unique_ptr<DetectionLocation> detPtr;
   if(cfg.frameIdx - _trackerStartFrameIdx <= cfg.maxFrameGap){
     if(_trackerPtr->update(cfg.bgrFrame,p)){
       detPtr = unique_ptr<DetectionLocation>(new DetectionLocation(
@@ -377,7 +377,7 @@ unique_ptr<DetectionLocation> DetectionLocation::ocvTrackerPredict(const JobConf
                     (p.y + p.height/2.0f)/static_cast<float>(cfg.bgrFrame.rows)),
         cfg.frameIdx,
         cfg.bgrFrame));                                                                  LOG4CXX_TRACE(_log,"tracking " << (MPFImageLocation)*this << "to  " << (MPFImageLocation)*detPtr);
-      
+
       detPtr->_trackerPtr = _trackerPtr;
       detPtr->_trackerStartFrameIdx = _trackerStartFrameIdx;
       _trackerPtr.release();
@@ -386,7 +386,7 @@ unique_ptr<DetectionLocation> DetectionLocation::ocvTrackerPredict(const JobConf
                                                                                         LOG4CXX_TRACE(_log,"could not track " << (MPFImageLocation)*this << " to new location");
     }
   }else{
-                                                                                        LOG4CXX_TRACE(_log,"extrapolation tracking stopped" << (MPFImageLocation)*this << " frame gap = " << cfg.frameIdx - _trackerStartFrameIdx << " > " <<  cfg.maxFrameGap); 
+                                                                                        LOG4CXX_TRACE(_log,"extrapolation tracking stopped" << (MPFImageLocation)*this << " frame gap = " << cfg.frameIdx - _trackerStartFrameIdx << " > " <<  cfg.maxFrameGap);
   }
   return detPtr;
 }

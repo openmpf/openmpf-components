@@ -230,4 +230,3 @@ namespace MPF { namespace COMPONENT { namespace DetectionComparisonA {
         return total_score;
     }
 }}}
- 

@@ -36,7 +36,7 @@
 #include <dlib/image_processing.h>
 #include <dlib/opencv.h>
 
-#include "types.h" 
+#include "types.h"
 #include "JobConfig.h"
 
 #define CALL_MEMBER_FUNC(object,ptrToMember)  ((object).*(ptrToMember))
@@ -55,7 +55,7 @@ namespace MPF{
 
   class DetectionLocation: public MPFImageLocation{ // extend MPFImageLocation
 
-    public: 
+    public:
       using MPFImageLocation::MPFImageLocation;  // C++11 inherit all constructors for MPFImageLocation
 
       const cv::Point2f       center;                 ///< bounding box center normalized to image dimensions
@@ -65,17 +65,17 @@ namespace MPF{
       static DetectionLocationPtrVec createDetections(const JobConfig &cfg); ///< created detection objects from image frame
       unique_ptr<DetectionLocation> ocvTrackerPredict(const JobConfig &cfg); ///< predict a new detection from an exiting one using a tracker
 
-      const cvPoint2fVec&  getLandmarks() const;                             ///< get landmark points for detection   
+      const cvPoint2fVec&  getLandmarks() const;                             ///< get landmark points for detection
       const cv::Mat&       getThumbnail() const;                             ///< get thumbnail image for detection
-      const cv::Mat&       getFeature()   const;                             ///< get DNN features for detection 
+      const cv::Mat&       getFeature()   const;                             ///< get DNN features for detection
 
       float           iouDist(const DetectionLocation &d) const;             ///< 1 - compute intersection over union
       float         frameDist(const DetectionLocation &d) const;             ///< compute temporal frame gap
       float center2CenterDist(const DetectionLocation &d) const;             ///< compute normalized center to center distance
       float       featureDist(const DetectionLocation &d) const;             ///< compute deep feature similarity distance
-      
+
       void drawLandmarks(cv::Mat &img, const cv::Scalar drawColor) const;    ///< draw landmark point on image
-      void releaseBGRFrame(){_bgrFrame.release();};                          ///< release reference to image frame 
+      void releaseBGRFrame(){_bgrFrame.release();};                          ///< release reference to image frame
 
     private:
 
@@ -89,19 +89,19 @@ namespace MPF{
       mutable cv::Mat         _thumbnail;                 ///< 96x96 image comprising an aligned thumbnail
       mutable cv::Mat         _feature;                   ///< DNN feature for matching-up detections
       cv::Ptr<cv::Tracker> _trackerPtr;                   ///< openCV tracker to help bridge gaps when detector fails
-      size_t               _trackerStartFrameIdx;                   
+      size_t               _trackerStartFrameIdx;
 
       DetectionLocation(int x,int y,int width,int height,float conf,
                         cv::Point2f center, size_t frameIdx,
                         cv::Mat bgrFrame);                ///< private constructor for createDetections()
   };
- 
+
   /** **************************************************************************
   *   Dump MPFLocation to a stream
   *************************************************************************** */
-  inline 
+  inline
   ostream& operator<< (ostream& out, const DetectionLocation& d) {
-    out  << "[" << (MPFImageLocation)d 
+    out  << "[" << (MPFImageLocation)d
                 << " F[" << d.getFeature().size() << "] T["
                 << d.getThumbnail().rows << "," << d.getThumbnail().cols << "]";
     return out;
@@ -110,10 +110,10 @@ namespace MPF{
   /** **************************************************************************
   *   Dump MPF::COMPONENT::Track to a stream
   *************************************************************************** */
-  inline 
+  inline
   ostream& operator<< (ostream& out, const Track& t) {
     out << "<f"   << t.front()->frameIdx << (MPFImageLocation)(*t.front())
-        << "...f" << t.back()->frameIdx  << (MPFImageLocation)(*t.back()) 
+        << "...f" << t.back()->frameIdx  << (MPFImageLocation)(*t.back())
         << ">("<<t.size()<<")";
     return out;
   }

@@ -39,7 +39,7 @@ using namespace MPF;
 using namespace COMPONENT;
 
 //-----------------------------------------------------------------------------
-// Process and image 
+// Process and image
 //-----------------------------------------------------------------------------
 int processImage(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
 

@@ -61,7 +61,7 @@ namespace MPF{
       vector<long> _calcAssignmentVector(const TrackPtrList            &tracks,
                                          const DetectionLocationPtrVec &detections,
                                          const float                    maxCost); ///< determine costs of assigning detections to tracks
-    
+
       void _assignDetections2Tracks(TrackPtrList            &tracks,
                                     DetectionLocationPtrVec &detections,
                                     const vector<long>      &assignmentVector); ///< assign detections to tracks
