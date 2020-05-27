@@ -421,10 +421,10 @@ TEST(OcvSsdFaceDetection, TestOnKnownVideo) {
     ASSERT_TRUE(ReadDetectionsFromFile::ReadVideoTracks(inTrackFile, known_tracks));
 
     // create output known video to view ground truth
-    GOUT("\tWriting ground truth video and test tracks to files.");
-    VideoGeneration video_generation_gt;
-    video_generation_gt.WriteTrackOutputVideo(inVideoFile, known_tracks, (test_output_dir + "/ground_truth.avi"));
-    WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/ground_truth.txt"), known_tracks);
+    // GOUT("\tWriting ground truth video and test tracks to files.");
+    // VideoGeneration video_generation_gt;
+    // video_generation_gt.WriteTrackOutputVideo(inVideoFile, known_tracks, (test_output_dir + "/ground_truth.avi"));
+    // WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/ground_truth.txt"), known_tracks);
 
     // 	Evaluate the known video file to generate the test tracks.
     GOUT("\tRunning the tracker on the video: " << inVideoFile);
