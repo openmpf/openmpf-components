@@ -58,11 +58,9 @@ namespace MPF {
 
             bool Close() override;
 
-            MPFDetectionError GetDetections(const MPFImageJob &job,
-                                            std::vector<MPFImageLocation> &locations) override;
+            std::vector<MPFImageLocation> GetDetections(const MPFImageJob &job) override;
 
-            MPFDetectionError GetDetections(const MPFGenericJob &job,
-                                            std::vector<MPFGenericTrack> &tracks) override;
+            std::vector<MPFGenericTrack> GetDetections(const MPFGenericJob &job) override;
 
             std::string GetDetectionType() override;
 

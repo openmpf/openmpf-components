@@ -306,12 +306,11 @@ bool SceneChangeDetection::frameUnderThreshold(const cv::Mat &image, double thre
 /*
  * Performs up to four different scene change detection protocols.
  */
-MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &locations) {
+std::vector<MPFVideoTrack> SceneChangeDetection::GetDetections(const MPFVideoJob &job) {
     try {
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "Job feed_forward_is: " << job.has_feed_forward_track);
         if (job.has_feed_forward_track)
         {
-
             LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "STARTING FEEDFORWARD GETDETECTIONS" );
         }
         else
@@ -321,28 +320,12 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
 
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "Data URI = " << job.data_uri);
 
-        if (job.data_uri.empty()) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] " << "Invalid video file: " + job.data_uri);
-            keyframes.clear();
-            return MPF_INVALID_DATAFILE_URI;
-        }
-
-
-
         MPFVideoCapture cap(job);
-        bool success = false;
-        if (!cap.IsOpened()) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] " << "Could not open video file: " + job.data_uri);
-            keyframes.clear();
-            return MPF_COULD_NOT_OPEN_DATAFILE;
-        }
 
         int frame_count = cap.GetFrameCount();
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "frame count = " << frame_count);
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "begin frame = " << job.start_frame);
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "end frame = " << job.stop_frame);
-
-        std::vector<MPFVideoTrack> tracks;
 
         Mat lastFrameEdgeFinal, frameGray, lastFrameHSV, lastFrame;
         MatND lastHist;
@@ -353,10 +336,8 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         if (init_frames.empty()) {
             frame_index = 1;
             bool success = cap.Read(lastFrame);
-            if(!success){
-                LOG4CXX_ERROR(logger_, "[" << job.job_name << "] " << "Error reading frame number " + std::to_string(job.start_frame) + ".");
-                keyframes.clear();
-                return MPF_COULD_NOT_READ_DATAFILE;
+            if (!success){
+                return { };
             }
         }
         else {
@@ -424,6 +405,7 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
         }
 
         keyframes[frame_index] = lastFrameNum;
+        std::vector<MPFVideoTrack> tracks;
         for(auto const& kv : keyframes)
         {
             auto start_frame = kv.second;
@@ -447,16 +429,16 @@ MPFDetectionError SceneChangeDetection::GetDetections(const MPFVideoJob &job, st
             }
 
             cap.ReverseTransform(track);
-            locations.push_back(track);
+            tracks.push_back(track);
         }
 
         keyframes.clear();
-        LOG4CXX_INFO(logger_, "[" + job.job_name + "] Processing complete. Found " + std::to_string(locations.size()) + " tracks.");
-        return MPF_DETECTION_SUCCESS;
+        LOG4CXX_INFO(logger_, "[" + job.job_name + "] Processing complete. Found " + std::to_string(tracks.size()) + " tracks.");
+        return tracks;
     }
     catch (...) {
         keyframes.clear();
-        return Utils::HandleDetectionException(job, logger_);
+        Utils::LogAndReThrowException(job, logger_);
     }
 }
 

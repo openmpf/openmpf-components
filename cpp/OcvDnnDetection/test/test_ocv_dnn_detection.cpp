@@ -92,12 +92,9 @@ void assertObjectDetectedInImage(const std::string &expected_object,
                                  OcvDnnDetection &ocv_dnn_component) {
     MPFImageJob job("Test", image_path, getGoogleNetProperties(), {});
 
-    std::vector<MPFImageLocation> image_locations;
-    MPFDetectionError rc = ocv_dnn_component.GetDetections(job, image_locations);
+    std::vector<MPFImageLocation> image_locations = ocv_dnn_component.GetDetections(job);
 
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
     ASSERT_FALSE(image_locations.empty());
-
     ASSERT_TRUE(containsObject(expected_object, image_locations))
                 << "Expected GoogleNet to detect a \"" << expected_object << "\" in " << image_path;
 }
@@ -119,10 +116,8 @@ TEST(OCVDNN, GoogleNetImageTest) {
 void assertObjectDetectedInVideo(const std::string &object_name, const Properties &job_props, OcvDnnDetection &ocv_dnn_component) {
     MPFVideoJob job("TEST", "data/ff-region-object-motion.avi", 10, 15, job_props, {});
 
-    std::vector<MPFVideoTrack> tracks;
-    MPFDetectionError rc = ocv_dnn_component.GetDetections(job, tracks);
+    std::vector<MPFVideoTrack> tracks = ocv_dnn_component.GetDetections(job);
 
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
     ASSERT_FALSE(tracks.empty());
     ASSERT_TRUE(containsObject(object_name, tracks));
 }
@@ -160,10 +155,8 @@ TEST(OCVDNN, GoogleNetSpectralHashTest) {
     MPFImageJob job("Test", "data/sundial.jpg", job_props, {});
 
 
-    std::vector<MPFImageLocation> image_locations;
-    MPFDetectionError rc = ocv_dnn_component.GetDetections(job, image_locations);
+    std::vector<MPFImageLocation> image_locations = ocv_dnn_component.GetDetections(job);
 
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
     ASSERT_EQ(image_locations.size(), 1);
 
     MPFImageLocation &location = image_locations.front();
@@ -191,10 +184,8 @@ void assertVehicleColorDetectedInImage(const std::string &expected_color,
                                        OcvDnnDetection &ocv_dnn_component) {
     MPFImageJob job("Test", image_path, getVehicleColorProperties(), {});
 
-    std::vector<MPFImageLocation> image_locations;
-    MPFDetectionError rc = ocv_dnn_component.GetDetections(job, image_locations);
+    std::vector<MPFImageLocation> image_locations = ocv_dnn_component.GetDetections(job);
 
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
     ASSERT_FALSE(image_locations.empty());
 
     ASSERT_TRUE(containsObject(expected_color, image_locations))

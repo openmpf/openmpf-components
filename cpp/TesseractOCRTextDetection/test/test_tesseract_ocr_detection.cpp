@@ -81,9 +81,7 @@ void runImageDetection(const std::string &image_path, TesseractOCRTextDetection 
                        const std::map<std::string, std::string> &custom = {},
                        bool wild_mode = false) {
     MPFImageJob job = createImageJob(image_path, custom, wild_mode);
-    MPFDetectionError rc = ocr.GetDetections(job, image_locations);
-
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    image_locations = ocr.GetDetections(job);
     ASSERT_FALSE(image_locations.empty());
 }
 
@@ -91,8 +89,7 @@ void runDocumentDetection(const std::string &image_path, TesseractOCRTextDetecti
                           std::vector<MPFGenericTrack> &generic_tracks,
                           const std::map<std::string, std::string> &custom = {}) {
     MPFGenericJob job = createPDFJob(image_path, custom);
-    MPFDetectionError rc = ocr.GetDetections(job, generic_tracks);
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    generic_tracks = ocr.GetDetections(job);
     ASSERT_FALSE(generic_tracks.empty());
 }
 
@@ -101,8 +98,18 @@ void assertEmptyImageDetection(const std::string &image_path, TesseractOCRTextDe
                           const std::map<std::string, std::string> &custom = {},
                           bool wild_mode = false, MPFDetectionError error = MPF_DETECTION_SUCCESS) {
     MPFImageJob job = createImageJob(image_path, custom, wild_mode);
-    MPFDetectionError rc = ocr.GetDetections(job, image_locations);
-    ASSERT_EQ(rc, error);
+    try {
+        image_locations = ocr.GetDetections(job);
+        if (error != MPF_DETECTION_SUCCESS) {
+            FAIL() << "Expected error type: " << error;
+        }
+    }
+    catch (const MPFDetectionException &ex) {
+        ASSERT_EQ(error, ex.error_code);
+    }
+    catch (...) {
+        ASSERT_EQ(error, MPF_OTHER_DETECTION_ERROR_TYPE);
+    }
     ASSERT_TRUE(image_locations.empty());
 }
 
@@ -111,8 +118,19 @@ void assertEmptyDocumentDetection(const std::string &image_path, TesseractOCRTex
                           const std::map<std::string, std::string> &custom = {},
                           MPFDetectionError error = MPF_DETECTION_SUCCESS) {
     MPFGenericJob job = createPDFJob(image_path, custom);
-    MPFDetectionError rc = ocr.GetDetections(job, generic_tracks);
-    ASSERT_EQ(rc, error);
+    try {
+        generic_tracks = ocr.GetDetections(job);
+        if (error != MPF_DETECTION_SUCCESS) {
+            FAIL() << "Expected error type: " << error;
+        }
+    }
+    catch (const MPFDetectionException &ex) {
+        ASSERT_EQ(error, ex.error_code);
+    }
+    catch (...) {
+        ASSERT_EQ(error, MPF_OTHER_DETECTION_ERROR_TYPE);
+    }
+
     ASSERT_TRUE(generic_tracks.empty());
 }
 

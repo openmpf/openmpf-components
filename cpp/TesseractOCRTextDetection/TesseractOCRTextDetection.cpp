@@ -1664,8 +1664,7 @@ bool TesseractOCRTextDetection::check_default_languages(const OCR_filter_setting
 }
 
 
-MPFDetectionError
-TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImageLocation> &locations) {
+vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImageJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
     try{
         TesseractOCRTextDetection::OCR_filter_settings ocr_fset;
@@ -1698,11 +1697,11 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
         string run_dir = GetRunDirectory();
 
         if (!check_default_languages(ocr_fset, job.job_name, run_dir, job_status)) {
-            return job_status;
+            throw MPFDetectionException(job_status);
         }
 
         if (!preprocess_image(job, image_data, ocr_fset, job_status)) {
-            return job_status;
+            throw MPFDetectionException(job_status);
         }
 
         Properties osd_detection_properties;
@@ -1713,6 +1712,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
         int width = input_size.width;
         int height = input_size.height;
         int orientation_result = 0;
+        vector<MPFImageLocation> locations;
 
         if (ocr_fset.psm == 0 || ocr_fset.enable_osd) {
 
@@ -1722,7 +1722,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
 
             // If OSD failed because of a frame error or preprocessing error, stop the job and return the error status.
             if (job_status == MPF_BAD_FRAME_SIZE || job_status == MPF_OTHER_DETECTION_ERROR_TYPE) {
-                return job_status;
+                throw MPFDetectionException(job_status);
             }
 
             // Rotate upper left coordinates based on OSD results.
@@ -1739,12 +1739,12 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
                 osd_detection_properties["MISSING_LANGUAGE_MODELS"] = boost::algorithm::join(missing_languages, ", ");
                 MPFImageLocation osd_detection(xLeftUpper, yLeftUpper, width, height, -1, osd_detection_properties);
                 locations.push_back(osd_detection);
-                return job_status;
+                return locations;
             }
         } else {
             // If OSD is not run, the image won't be rescaled yet.
             if (!rescale_image(job, image_data, ocr_fset, job_status)) {
-                return job_status;
+                throw MPFDetectionException(job_status);
             }
         }
         osd_detection_properties["MISSING_LANGUAGE_MODELS"] = boost::algorithm::join(missing_languages, ", ");
@@ -1788,8 +1788,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
 
         if ( !get_tesseract_detections(ocr_job_inputs, image_results)) {
             LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
-
-            return image_results.job_status;
+            throw MPFDetectionException(image_results.job_status);
         }
 
         ocr_outputs = image_results.detections_by_lang;
@@ -1814,9 +1813,9 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
                     image_results.detections_by_lang.clear();
                     image_results.job_status = job_status;
 
-                    if ( !get_tesseract_detections(ocr_job_inputs, image_results)) {
-                            LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
-                            return image_results.job_status;
+                    if (!get_tesseract_detections(ocr_job_inputs, image_results)) {
+                        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
+                        throw MPFDetectionException(image_results.job_status);
                     }
                     ocr_outputs_rotated = image_results.detections_by_lang;
                     job_status = image_results.job_status;
@@ -1845,7 +1844,7 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
 
             if ( !get_tesseract_detections(ocr_job_inputs, image_results)) {
                 LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Could not run tesseract!");
-                return image_results.job_status;
+                throw MPFDetectionException(image_results.job_status);
             }
             ocr_outputs_rotated = image_results.detections_by_lang;
             job_status = image_results.job_status;
@@ -1896,10 +1895,10 @@ TesseractOCRTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImage
 
         LOG4CXX_INFO(hw_logger_,
                      "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) + " tracks.");
-        return job_status;
+        return locations;
     }
     catch (...) {
-        return Utils::HandleDetectionException(job, hw_logger_);
+        Utils::LogAndReThrowException(job, hw_logger_);
     }
 }
 
@@ -1921,8 +1920,19 @@ bool TesseractOCRTextDetection::process_parallel_pdf_pages(TesseractOCRTextDetec
         try {
             MPFImageReader image_reader(c_job);
             thread_var[index].image = image_reader.GetImage();
-        } catch (...) {
-            page_results.job_status = Utils::HandleDetectionException(c_job, hw_logger_);
+        }
+        catch (const MPFDetectionException &ex) {
+            LOG4CXX_ERROR(hw_logger_, "Error: " <<  ex.what());
+            page_results.job_status = ex.error_code;
+            return false;
+        }
+        catch (const std::exception &ex) {
+            LOG4CXX_ERROR(hw_logger_, "Error: " <<  ex.what());
+            page_results.job_status = MPF_OTHER_DETECTION_ERROR_TYPE;
+            return false;
+        }
+        catch (...) {
+            page_results.job_status = MPF_OTHER_DETECTION_ERROR_TYPE;
             return false;
         }
         if (!preprocess_image(c_job, thread_var[index].image, page_inputs.ocr_fset,  thread_var[index].page_thread_res.job_status)) {
@@ -2038,8 +2048,19 @@ bool TesseractOCRTextDetection::process_serial_pdf_pages(TesseractOCRTextDetecti
         try {
             MPFImageReader image_reader(c_job);
             image_data = image_reader.GetImage();
-        } catch (...) {
-            page_results.job_status = Utils::HandleDetectionException(c_job, hw_logger_);
+        }
+        catch (const MPFDetectionException &ex) {
+            LOG4CXX_ERROR(hw_logger_, "Error: " <<  ex.what());
+            page_results.job_status = ex.error_code;
+            return false;
+        }
+        catch (const std::exception &ex) {
+            LOG4CXX_ERROR(hw_logger_, "Error: " <<  ex.what());
+            page_results.job_status = MPF_OTHER_DETECTION_ERROR_TYPE;
+            return false;
+        }
+        catch (...) {
+            page_results.job_status = MPF_OTHER_DETECTION_ERROR_TYPE;
             return false;
         }
         if (!preprocess_image(c_job, image_data, page_inputs.ocr_fset, page_results.job_status)) {
@@ -2124,95 +2145,106 @@ bool TesseractOCRTextDetection::process_serial_pdf_pages(TesseractOCRTextDetecti
     return true;
 }
 
-MPFDetectionError TesseractOCRTextDetection::GetDetections(const MPFGenericJob &job, vector<MPFGenericTrack> &tracks) {
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
-
-    TesseractOCRTextDetection::PDF_page_inputs page_inputs;
-    TesseractOCRTextDetection::PDF_page_results page_results;
-
-    page_results.tracks = &tracks;
-    page_inputs.job = &job;
-
-    load_settings(job, page_inputs.ocr_fset);
-
-    page_results.job_status = MPF_DETECTION_SUCCESS;
-    load_tags_json(job, page_results.job_status, page_inputs.json_kvs_regex);
-
-    string temp_im_directory;
-    vector<string> job_names;
-    boost::split(job_names, job.job_name, boost::is_any_of(":"));
-    string job_name = boost::ireplace_all_copy(job_names[0], "job", "");
-    boost::trim(job_name);
-
-    page_inputs.run_dir = GetRunDirectory();
-    if (page_inputs.run_dir.empty()) {
-        page_inputs.run_dir = ".";
-    }
-
-    if (!check_default_languages(page_inputs.ocr_fset, job.job_name, page_inputs.run_dir, page_results.job_status)) {
-        return page_results.job_status;
-    }
-
-    string plugin_path = page_inputs.run_dir + "/TesseractOCRTextDetection";
-    temp_im_directory = plugin_path + "/tmp-" + job_name + "-" + random_string(20);
-
-    if (boost::filesystem::exists(temp_im_directory)) {
-        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Unable to write temporary directory (already exists): " +
-                                  temp_im_directory);
-        return MPF_FILE_WRITE_ERROR;
-    }
-
-    // Attempts to process generic document.
-    // If read successfully, convert to images and store in a temporary directory.
+vector<MPFGenericTrack> TesseractOCRTextDetection::GetDetections(const MPFGenericJob &job) {
     try {
-        boost::filesystem::create_directory(temp_im_directory);
-        Magick::ReadOptions options;
-        options.density(Magick::Geometry(300, 300));
-        options.depth(8);
-        list<Magick::Image> images;
-        readImages(&images, job.data_uri, options);
-        size_t i;
-        list<Magick::Image>::iterator image;
-        for (image = images.begin(), i = 0; image != images.end(); image++, i++) {
-            image->matte(false);
-            image->backgroundColor(Magick::Color("WHITE"));
-            string tiff_file = temp_im_directory + "/results_extracted" + to_string(i) + ".tiff";
-            image->write(tiff_file);
-            page_inputs.filelist.push_back(tiff_file);
+        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
+
+        TesseractOCRTextDetection::PDF_page_inputs page_inputs;
+        TesseractOCRTextDetection::PDF_page_results page_results;
+
+        std::vector<MPFGenericTrack> tracks;
+        page_results.tracks = &tracks;
+        page_inputs.job = &job;
+
+        load_settings(job, page_inputs.ocr_fset);
+
+        page_results.job_status = MPF_DETECTION_SUCCESS;
+        load_tags_json(job, page_results.job_status, page_inputs.json_kvs_regex);
+
+        string temp_im_directory;
+        vector<string> job_names;
+        boost::split(job_names, job.job_name, boost::is_any_of(":"));
+        string job_name = boost::ireplace_all_copy(job_names[0], "job", "");
+        boost::trim(job_name);
+
+        page_inputs.run_dir = GetRunDirectory();
+        if (page_inputs.run_dir.empty()) {
+            page_inputs.run_dir = ".";
         }
 
-    } catch (Magick::Exception &error) {
-        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error processing file " + job.data_uri + " .");
-        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error: " + error.what());
+        if (!check_default_languages(page_inputs.ocr_fset,
+                                     job.job_name,
+                                     page_inputs.run_dir,
+                                     page_results.job_status)) {
+            throw MPFDetectionException(page_results.job_status);
+        }
+
+        string plugin_path = page_inputs.run_dir + "/TesseractOCRTextDetection";
+        temp_im_directory = plugin_path + "/tmp-" + job_name + "-" + random_string(20);
+
         if (boost::filesystem::exists(temp_im_directory)) {
-            boost::filesystem::remove_all(temp_im_directory);
+            throw MPFDetectionException(
+                    MPF_FILE_WRITE_ERROR,
+                    "Unable to write temporary directory (already exists): " + temp_im_directory);
         }
-        return MPF_UNSUPPORTED_DATA_TYPE;
-    }
 
-    page_inputs.default_lang = page_inputs.ocr_fset.tesseract_lang;
+        // Attempts to process generic document.
+        // If read successfully, convert to images and store in a temporary directory.
+        try {
+            boost::filesystem::create_directory(temp_im_directory);
+            Magick::ReadOptions options;
+            options.density(Magick::Geometry(300, 300));
+            options.depth(8);
+            list<Magick::Image> images;
+            readImages(&images, job.data_uri, options);
+            size_t i;
+            list<Magick::Image>::iterator image;
+            for (image = images.begin(), i = 0; image != images.end(); image++, i++) {
+                image->matte(false);
+                image->backgroundColor(Magick::Color("WHITE"));
+                string tiff_file = temp_im_directory + "/results_extracted" + to_string(i) + ".tiff";
+                image->write(tiff_file);
+                page_inputs.filelist.push_back(tiff_file);
+            }
 
-    if (page_inputs.ocr_fset.max_parallel_pdf_threads > 1 && page_inputs.filelist.size() > 1 && page_inputs.ocr_fset.psm != 0) {
-        // Process PDF pages in parallel.
-        if (!process_parallel_pdf_pages(page_inputs, page_results)) {
-            boost::filesystem::remove_all(temp_im_directory);
-            return page_results.job_status;
+        } catch (Magick::Exception &error) {
+            LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error processing file " + job.data_uri + " .");
+            if (boost::filesystem::exists(temp_im_directory)) {
+                boost::filesystem::remove_all(temp_im_directory);
+            }
+            throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE, std::string("Error: ") + error.what());
         }
-    } else {
-        // Process PDF pages in serial order.
-        if (!process_serial_pdf_pages(page_inputs, page_results)) {
-            boost::filesystem::remove_all(temp_im_directory);
-            return page_results.job_status;
-        }
-    }
 
-    for (auto &track: tracks) {
-        track.detection_properties["MISSING_LANGUAGE_MODELS"] = boost::algorithm::join(page_results.all_missing_languages, ", ");
+        page_inputs.default_lang = page_inputs.ocr_fset.tesseract_lang;
+
+        if (page_inputs.ocr_fset.max_parallel_pdf_threads > 1 && page_inputs.filelist.size() > 1 &&
+            page_inputs.ocr_fset.psm != 0) {
+            // Process PDF pages in parallel.
+            if (!process_parallel_pdf_pages(page_inputs, page_results)) {
+                boost::filesystem::remove_all(temp_im_directory);
+                throw MPFDetectionException(page_results.job_status);
+            }
+        }
+        else {
+            // Process PDF pages in serial order.
+            if (!process_serial_pdf_pages(page_inputs, page_results)) {
+                boost::filesystem::remove_all(temp_im_directory);
+                throw MPFDetectionException(page_results.job_status);
+            }
+        }
+
+        for (auto &track: tracks) {
+            track.detection_properties["MISSING_LANGUAGE_MODELS"] = boost::algorithm::join(page_results.all_missing_languages,
+                                                                                           ", ");
+        }
+        boost::filesystem::remove_all(temp_im_directory);
+        LOG4CXX_INFO(hw_logger_,
+                     "[" + job.job_name + "] Processing complete. Found " + to_string(tracks.size()) + " tracks.");
+        return tracks;
     }
-    boost::filesystem::remove_all(temp_im_directory);
-    LOG4CXX_INFO(hw_logger_,
-                 "[" + job.job_name + "] Processing complete. Found " + to_string(tracks.size()) + " tracks.");
-    return page_results.job_status;
+    catch (...) {
+        Utils::LogAndReThrowException(job, hw_logger_);
+    }
 }
 
 MPF_COMPONENT_CREATOR(TesseractOCRTextDetection);

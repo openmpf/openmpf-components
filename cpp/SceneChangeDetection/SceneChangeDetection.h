@@ -52,9 +52,8 @@ public:
 
     bool Close();
 
-    MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFVideoJob &job,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &locations);
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPF::COMPONENT::MPFVideoJob &job);
+
     std::string GetDetectionType();
 
 

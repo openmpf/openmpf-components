@@ -107,9 +107,7 @@ TEST(Darknet, ImageTest) {
 
         DarknetDetection component = init_component();
 
-        std::vector<MPFImageLocation> results;
-        MPFDetectionError rc = component.GetDetections(job, results);
-        ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+        std::vector<MPFImageLocation> results = component.GetDetections(job);
 
         ASSERT_TRUE(object_found("dog", results));
         ASSERT_TRUE(object_found("car", results));
@@ -123,9 +121,7 @@ TEST(Darknet, VideoTest) {
     MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, get_yolo_tiny_config(), { });
 
     DarknetDetection component = init_component();
-    std::vector<MPFVideoTrack> results;
-    MPFDetectionError rc = component.GetDetections(job, results);
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    std::vector<MPFVideoTrack> results = component.GetDetections(job);
 
     for (int i = 0; i <= end_frame; i++) {
         ASSERT_TRUE(object_found("person", i, results));
@@ -194,9 +190,7 @@ TEST(Darknet, UsePreprocessorVideoTest) {
     MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, job_properties, { });
 
     DarknetDetection component = init_component();
-    std::vector<MPFVideoTrack> results;
-    MPFDetectionError rc = component.GetDetections(job, results);
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    std::vector<MPFVideoTrack> results = component.GetDetections(job);
 
     ASSERT_EQ(results.size(), 2);
 
@@ -483,9 +477,7 @@ TEST(Darknet, TestWhitelist) {
         job_props["CLASS_WHITELIST_FILE"] = "data/test-whitelist.txt";
         MPFImageJob job("Test", "data/dog.jpg", job_props, {});
 
-        std::vector<MPFImageLocation> results;
-        MPFDetectionError rc = component.GetDetections(job, results);
-        ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+        std::vector<MPFImageLocation> results = component.GetDetections(job);
 
         ASSERT_TRUE(object_found("dog", results));
         ASSERT_TRUE(object_found("bicycle", results));
@@ -500,9 +492,7 @@ TEST(Darknet, TestWhitelist) {
 
         MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, job_props, {});
 
-        std::vector<MPFVideoTrack> results;
-        MPFDetectionError rc = component.GetDetections(job, results);
-        ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+        std::vector<MPFVideoTrack> results = component.GetDetections(job);
 
         for (int i = 0; i <= end_frame; i++) {
             ASSERT_TRUE(object_found("person", i, results));
@@ -519,23 +509,33 @@ TEST(Darknet, TestInvalidWhitelist) {
     DarknetDetection component = init_component();
     std::vector<MPFImageLocation> results;
 
-    {
+    try {
         job_props["CLASS_WHITELIST_FILE"] = "data/NOTICE";
         MPFImageJob job("Test", "data/dog.jpg", job_props, {});
-        MPFDetectionError rc = component.GetDetections(job, results);
-        ASSERT_EQ(rc, MPF_COULD_NOT_READ_DATAFILE);
+        component.GetDetections(job);
+        FAIL() << "Expected MPFDetectionException to be thrown.";
     }
-    {
+    catch (const MPFDetectionException &ex) {
+        ASSERT_EQ(ex.error_code, MPF_COULD_NOT_READ_DATAFILE);
+    }
+
+    try {
         job_props["CLASS_WHITELIST_FILE"] = "FAKE_PATH";
         MPFImageJob job("Test", "data/dog.jpg", job_props, {});
-        MPFDetectionError rc = component.GetDetections(job, results);
-        ASSERT_EQ(rc, MPF_COULD_NOT_OPEN_DATAFILE);
+        component.GetDetections(job);
+        FAIL() << "Expected MPFDetectionException to be thrown.";
     }
-    {
+    catch (const MPFDetectionException &ex) {
+        ASSERT_EQ(ex.error_code, MPF_COULD_NOT_OPEN_DATAFILE);
+    }
+
+    try {
         job_props["CLASS_WHITELIST_FILE"] = "$THIS_ENV_VAR_SHOULD_NOT_EXIST/FAKE_PATH";
         MPFImageJob job("Test", "data/dog.jpg", job_props, {});
-        MPFDetectionError rc = component.GetDetections(job, results);
-        ASSERT_EQ(rc, MPF_INVALID_PROPERTY);
+        component.GetDetections(job);
+    }
+    catch (const MPFDetectionException &ex) {
+        ASSERT_EQ(ex.error_code, MPF_INVALID_PROPERTY);
     }
 }
 

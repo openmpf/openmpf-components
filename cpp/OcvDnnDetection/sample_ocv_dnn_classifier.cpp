@@ -119,9 +119,8 @@ int main(int argc, char* argv[]) {
     Properties media_properties;
     std::string job_name("Testing OcvDnn");
 
-    std::vector<MPFImageLocation> detections;
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
-    ocv_dnn_component.GetDetections(job, detections);
+    std::vector<MPFImageLocation> detections = ocv_dnn_component.GetDetections(job);
     for (int i = 0; i < detections.size(); i++) {
         std::cout << "Detection " << i << ":"
                   << std::endl
