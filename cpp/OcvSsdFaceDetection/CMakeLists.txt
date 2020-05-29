@@ -36,8 +36,6 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)    # build release version with debug symbo
 add_definitions(-Wfatal-errors)
 include(../ComponentSetup.cmake)
 
-find_package(dlib REQUIRED)
-
 find_package(OpenCV 3.4.7 EXACT
     REQUIRED PATHS /opt/opencv-3.4.7
     COMPONENTS
@@ -47,6 +45,7 @@ find_package(OpenCV 3.4.7 EXACT
                opencv_tracking
                )
 
+find_package(dlib REQUIRED)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
