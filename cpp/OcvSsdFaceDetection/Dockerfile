@@ -41,10 +41,10 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
 ENV COMPONENT_LOG_NAME ocv-ssd-face-detection.log
 
-COPY --from=build_component $BUILD_DIR/plugin/OcvSSDFaceDetection $PLUGINS_DIR/OcvSSDFaceDetection
+COPY --from=build_component $BUILD_DIR/plugin/OcvSsdFaceDetection $PLUGINS_DIR/OcvSsdFaceDetection
 
-COPY --from=build_component $BUILD_DIR/libmpfOcvSSDFaceDetection.so \
-                            $PLUGINS_DIR/OcvSSDFaceDetection/lib/
+COPY --from=build_component $BUILD_DIR/libmpfOcvSsdFaceDetection.so \
+                            $PLUGINS_DIR/OcvSsdFaceDetection/lib/
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF OpenCV SSD Face Detection" \
