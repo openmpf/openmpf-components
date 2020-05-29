@@ -26,8 +26,22 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
+
+# Download library source code so it doesn't need to be re-downloaded when base images change
+FROM centos:7 as download_library_source
+
+RUN yum install --assumeyes bzip2 \
+    && yum clean all \
+    && rm --recursive /var/cache/yum/*
+
+RUN mkdir --parents /apps/source/dlib-sources; \
+    curl --location 'http://dlib.net/files/dlib-18.18.tar.bz2' \
+    | tar --extract --bzip2 --directory /apps/source/dlib-sources
+
+
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
+COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
 COPY . .
 
 RUN build-component.sh
