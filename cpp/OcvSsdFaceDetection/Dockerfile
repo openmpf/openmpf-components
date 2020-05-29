@@ -26,8 +26,22 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
+
+# Download library source code so it doesn't need to be re-downloaded when base images change
+FROM centos:7 as download_library_source
+
+RUN yum install --assumeyes bzip2 \
+    && yum clean all \
+    && rm --recursive /var/cache/yum/*
+
+RUN mkdir --parents /apps/source/dlib-sources; \
+    curl --location 'http://dlib.net/files/dlib-18.18.tar.bz2' \
+    | tar --extract --bzip2 --directory /apps/source/dlib-sources
+
+
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
+COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
 COPY . .
 
 RUN build-component.sh
@@ -41,10 +55,10 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
 ENV COMPONENT_LOG_NAME ocv-ssd-face-detection.log
 
-COPY --from=build_component $BUILD_DIR/plugin/OcvSSDFaceDetection $PLUGINS_DIR/OcvSSDFaceDetection
+COPY --from=build_component $BUILD_DIR/plugin/OcvSsdFaceDetection $PLUGINS_DIR/OcvSsdFaceDetection
 
-COPY --from=build_component $BUILD_DIR/libmpfOcvSSDFaceDetection.so \
-                            $PLUGINS_DIR/OcvSSDFaceDetection/lib/
+COPY --from=build_component $BUILD_DIR/libmpfOcvSsdFaceDetection.so \
+                            $PLUGINS_DIR/OcvSsdFaceDetection/lib/
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF OpenCV SSD Face Detection" \
