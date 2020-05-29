@@ -36,15 +36,7 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)    # build release version with debug symbo
 add_definitions(-Wfatal-errors)
 include(../ComponentSetup.cmake)
 
-# Specify dlib source directory here.
-# Otherwise, disable the following three lines if using find_package(dlib) instead.
-set(DLIB_DIR /apps/source/dlib-sources/dlib-18.18/dlib)
-include(${DLIB_DIR}/cmake)
-set_property(TARGET dlib PROPERTY POSITION_INDEPENDENT_CODE ON)
-
-# Uncomment if not specifying dlib source directory.
-# Warning: may not work with dlib release installation.
-# find_package(dlib REQUIRED)
+find_package(dlib REQUIRED)
 
 find_package(OpenCV 3.4.7 EXACT
     REQUIRED PATHS /opt/opencv-3.4.7
@@ -78,7 +70,7 @@ target_link_libraries(mpfOcvSsdFaceDetection
                       mpfDetectionComponentApi
                       mpfComponentUtils
                       ${OpenCV_LIBS}
-                      dlib)
+                      dlib::dlib)
 
 configure_mpf_component(OcvSsdFaceDetection TARGETS mpfOcvSsdFaceDetection)
 

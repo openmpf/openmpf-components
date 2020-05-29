@@ -35,7 +35,7 @@ RUN yum install --assumeyes bzip2 \
     && rm --recursive /var/cache/yum/*
 
 RUN mkdir --parents /apps/source/dlib-sources; \
-    curl --location 'http://dlib.net/files/dlib-18.18.tar.bz2' \
+    curl --location 'http://dlib.net/files/dlib-19.19.tar.bz2' \
     | tar --extract --bzip2 --directory /apps/source/dlib-sources
 
 
@@ -43,6 +43,9 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_componen
 
 COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
 COPY . .
+
+RUN cd /apps/source/dlib-sources/dlib-19.19/dlib && mkdir build && cd build && cmake3 -DBUILD_SHARED_LIBS:BOOL="1" .. \
+    && cmake3 --build . --config Release && make --jobs "$(nproc)" install && ldconfig
 
 RUN build-component.sh
 
