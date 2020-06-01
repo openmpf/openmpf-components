@@ -32,7 +32,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 include(../ComponentSetup.cmake)
 
-find_package(OpenCV 3.4.7 EXACT REQUIRED PATHS /opt/opencv-3.4.7
+find_package(OpenCV $ENV{OPENCV_VERSION} EXACT REQUIRED PATHS /opt/opencv-$ENV{OPENCV_VERSION}
     COMPONENTS opencv_highgui opencv_objdetect opencv_features2d opencv_ml opencv_flann opencv_video)
 
 find_package(mpfComponentInterface REQUIRED)
