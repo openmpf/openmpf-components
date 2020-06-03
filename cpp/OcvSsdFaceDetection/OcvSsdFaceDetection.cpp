@@ -355,7 +355,6 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
           for(auto &det:detections){                                           // make any unassigned detections into new tracks
               trackPtrs.push_back(unique_ptr<Track>(new Track()));             // create a new empty track
               det->getFeature();                                               // start of tracks always get feature calculated
-              det->releaseBGRFrame();                                          // once features are calculated, won't need frame data any more.
               trackPtrs.back()->push_back(move(det));                          LOG4CXX_TRACE(_log,"created new track " << *(trackPtrs.back()));
           }
         }
