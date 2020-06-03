@@ -1,0 +1,104 @@
+{
+  "componentName": "AzureSpeechDetection",
+  "componentVersion": "4.1.0",
+  "middlewareVersion": "4.1.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "AzureSpeechDetection",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "AZURESPEECH",
+    "description": "Uses Azure Cognitive Services to perform speech-to-text.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_SPEECH",
+        "DETECTION_SPEECH_AZURE"
+      ],
+      "properties": [
+        {
+          "name": "ACS_URL",
+          "description": "URL for the Azure Cognitive Services Endpoint. e.g. https://virginia.cris.azure.us/api/speechtotext/v2.0/transcriptions. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.  Note that the component was only tested against v2.0 of the API.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_ACCOUNT_NAME",
+          "description": "Azure Cognitive Services account name. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_SUBSCRIPTION_KEY",
+          "description": "Azure Cognitive Services subscription key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_SPEECH_KEY",
+          "description": "Azure Cognitive Services Speech key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_CONTAINER_NAME",
+          "description": "The container name to use for hosting file blobs. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_ENDPOINT_SUFFIX",
+          "description": "The endpoint suffix. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "LANGUAGE",
+          "description": "When provided, this disables automatic language detection. The BCP-47 language code of the text to be detected in the image. This value is case-sensitive.",
+          "type": "STRING",
+          "defaultValue": "en-US"
+        },
+        {
+          "name": "CLEANUP",
+          "description": "Whether to delete recording blobs and transcripts after processing.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "AZURE SPEECH DETECTION ACTION",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in English.",
+      "algorithm": "AZURESPEECH",
+      "properties": [
+        {
+          "name": "LANGUAGE",
+          "value": "en-US"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "AZURE SPEECH DETECTION TASK",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in English.",
+      "actions": [
+        "AZURE SPEECH DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "AZURE SPEECH DETECTION PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in English.",
+      "tasks": [
+        "AZURE SPEECH DETECTION TASK"
+      ]
+    }
+  ]
+}
