@@ -123,9 +123,6 @@ class AcsSpeechDetectionProcessor(object):
                 WORD_CONFIDENCES=word_confidences,
                 WORD_SEGMENTS=word_segments,
                 DECODED_LANGUAGE=lang,
-                # DECODED_LANGUAGE_CONFIDENCE=decoded_lang_conf,
-                # SPEAKER_LANGUAGES=speaker_lang_labels,
-                # SPEAKER_LANGUAGE_CONFIDENCES=speaker_lang_confs,
             )
             track = mpf.AudioTrack(
                 start_time=utterance_start,

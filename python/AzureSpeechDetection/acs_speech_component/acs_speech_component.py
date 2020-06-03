@@ -26,19 +26,8 @@
 
 from __future__ import division, print_function
 
-import collections
-import json
-import math
 import os
-import re
 import logging
-import warnings
-# import urllib
-# import urllib2
-# import urlparse
-
-import cv2
-import numpy as np
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -58,8 +47,7 @@ class MPFJobNameLoggerAdapter(logging.LoggerAdapter):
 logger = MPFJobNameLoggerAdapter(
     mpf.configure_logging(
         'acs-speech-component.log',
-        # __name__ == '__main__'
-        True
+        __name__ == '__main__'
     ),
     extra={}
 )

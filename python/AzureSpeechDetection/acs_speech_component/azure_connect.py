@@ -107,10 +107,8 @@ class AzureConnection(object):
             description=filename,
             locale=language,
             properties=dict(
-                # PunctuationMode='DictatedAndAutomatic',
                 AddWordLevelTimestamps='True',
                 AddDiarization='True',
-                # TranscriptionResultsContainerUrl="<results container>"
             )
         )
 
@@ -207,7 +205,7 @@ class AzureConnection(object):
             headers=self.acs_headers,
             method='GET'
         )
-        response = request.urlopen(req)#, cafile='/etc/pki/ca-trust/source/anchors/mitre_ba_root.pem')
+        response = request.urlopen(req)
         transcriptions = json.load(response)
         return transcriptions
 
