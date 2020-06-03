@@ -210,6 +210,7 @@ void OcvSsdFaceDetection::_assignDetections2Tracks(TrackPtrList             &tra
   for(auto &track:tracks){
     if(assignmentVector[t] != -1){                                              LOG4CXX_TRACE(_log,"assigning det: " << "f" << detections[assignmentVector[t]]->frameIdx << " " <<  ((MPFImageLocation)*(detections[assignmentVector[t]])) << "to track " << *track);
       track->back()->releaseBGRFrame();                                        // no longer need previous frame data.
+      track->back()->releaseTracker();                                         // release tracker since we have a detection
       track->push_back(move(detections[assignmentVector[t]]));
     }
     t++;

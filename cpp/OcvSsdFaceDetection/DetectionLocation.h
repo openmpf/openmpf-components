@@ -75,7 +75,8 @@ namespace MPF{
       float       featureDist(const DetectionLocation &d) const;             ///< compute deep feature similarity distance
 
       void drawLandmarks(cv::Mat &img, const cv::Scalar drawColor) const;    ///< draw landmark point on image
-      void releaseBGRFrame(){_bgrFrame.release();};                          ///< release reference to image frame
+      void releaseBGRFrame(){_bgrFrame.release();}                           ///< release reference to image frame
+      void releaseTracker(){_trackerPtr.release();}                          ///< release reference to tracker
 
     private:
 
