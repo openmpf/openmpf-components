@@ -52,6 +52,7 @@ logger = MPFJobNameLoggerAdapter(
     extra={}
 )
 
+logging.getLogger('azure').setLevel('WARN')
 
 class AcsSpeechComponent(object):
     detection_type = 'SPEECH'
