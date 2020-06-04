@@ -85,17 +85,20 @@ class AcsSpeechDetectionProcessor(object):
                 filename=os.path.split(target_file)[-1],
                 language=lang,
             )
-        finally:
+        except:
             if cleanup:
                 self.logger.debug('Marking file blob for deletion')
                 self.acs.container_client.delete_blob(recordings_id)
+            raise
 
         try:
-            self.logger.debug("Waiting for job to complete")
+            self.logger.debug("Retrieving transcription")
             transcription_result = self.acs.get_batch_transcription(output_loc)
             self.logger.debug('Speech-to-text processing complete')
         finally:
             if cleanup:
+                self.logger.debug('Marking file blob for deletion')
+                self.acs.container_client.delete_blob(recordings_id)
                 self.logger.debug('Deleting transcript')
                 self.acs.delete_transcription(output_loc)
 

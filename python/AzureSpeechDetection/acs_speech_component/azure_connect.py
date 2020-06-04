@@ -31,6 +31,7 @@ from urllib import request, parse
 from urllib.error import HTTPError
 from datetime import datetime, timedelta
 from azure.storage.blob import BlobServiceClient, ResourceTypes, AccountSasPermissions, generate_account_sas
+import mpf_component_api as mpf
 
 class AzureConnection(object):
     def __init__(self, logger):
@@ -138,13 +139,12 @@ class AzureConnection(object):
 
 
     def get_batch_transcription(self, location):
-        self.logger.info("Retrieving batch transcription...")
         req = request.Request(
             url=location,
             headers=self.acs_headers,
             method='GET'
         )
-        result = None
+        self.logger.info("Polling for transcription success")
         while True:
             try:
                 response = request.urlopen(req)
