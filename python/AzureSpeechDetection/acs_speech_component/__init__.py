@@ -23,4 +23,4 @@
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
-# from acs_speech_component import AcsSpeechComponent
+from .acs_speech_component import AcsSpeechComponent

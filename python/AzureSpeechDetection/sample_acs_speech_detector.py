@@ -36,7 +36,7 @@ from datetime import timedelta
 
 import mpf_component_api as mpf
 
-from acs_speech_component.acs_speech_component import AcsSpeechComponent
+from acs_speech_component import AcsSpeechComponent
 
 def guess_type(filename):
     if filename.endswith('.mkv'):
