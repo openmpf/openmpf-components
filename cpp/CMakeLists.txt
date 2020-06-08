@@ -31,7 +31,6 @@ project(openmpf-components)
 set(CMAKE_CXX_STANDARD 11)
 
 add_subdirectory(OcvFaceDetection)
-add_subdirectory(OcvSsdFaceDetection)
 add_subdirectory(DlibFaceDetection)
 add_subdirectory(OalprLicensePlateTextDetection)
 add_subdirectory(OcvDnnDetection)
