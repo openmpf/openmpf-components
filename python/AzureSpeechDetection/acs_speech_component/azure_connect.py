@@ -32,6 +32,7 @@ from urllib.error import HTTPError
 from datetime import datetime, timedelta
 from azure.storage.blob import BlobServiceClient, ResourceTypes, AccountSasPermissions, generate_account_sas
 import mpf_component_api as mpf
+import mpf_component_util as mpf_util
 
 class AzureConnection(object):
     def __init__(self, logger):
@@ -75,8 +76,10 @@ class AzureConnection(object):
         filename = os.path.split(filepath)[-1]
         try:
             blob_client = self.container_client.get_blob_client(filename)
-            with open(filepath, "rb") as fin:
-                result = blob_client.upload_blob(fin)
+            # with open(filepath, "rb") as fin:
+                # result = blob_client.upload_blob(fin)
+            audio_bytes = mpf_util.transcode_to_wav(filepath)
+            result = blob_client.upload_blob(audio_bytes)
         except Exception as e:
             if 'blob already exists' in str(e):
                 self.logger.info(f"Blob exists for file {filename}")
@@ -118,6 +121,7 @@ class AzureConnection(object):
             url=self.url,
             data=data,
             headers=self.acs_headers,
+            method='POST'
         )
         try:
             response = request.urlopen(req)
@@ -133,7 +137,7 @@ class AzureConnection(object):
             )
         except Exception as e:
             raise mpf.DetectionException(
-                'Failed to post job. Error message: {:s}'.format(e),
+                'Failed to post job. Error message: {:s}'.format(str(e)),
                 mpf.DetectionError.DETECTION_FAILED
             )
 
