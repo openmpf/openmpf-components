@@ -142,7 +142,7 @@ class AzureConnection(object):
             )
 
 
-    def get_batch_transcription(self, location):
+    def poll_for_result(self, location):
         req = request.Request(
             url=location,
             headers=self.acs_headers,
@@ -167,10 +167,12 @@ class AzureConnection(object):
                 self.logger.debug("Transcription succeeded")
                 break
             elif status == "Failed":
-                raise mpf.DetectionException(
-                    f"Transcription failed: {result['status_message']}",
-                    mpf.DetectionError.DETECTION_FAILED
-                )
+                self.logger.debug("Transcription failed")
+                break
+                # raise mpf.DetectionException(
+                #     f"Transcription failed: {result['statusMessage']}",
+                #     mpf.DetectionError.DETECTION_FAILED
+                # )
             else:
                 retry_after = int(response.info()['Retry-After'])
                 self.logger.debug(
@@ -181,11 +183,14 @@ class AzureConnection(object):
                 )
                 time.sleep(retry_after)
 
+        return result
+
+    def get_transcription(self, result):
         results_uri = result['resultsUrls']['channel_0']
         try:
             self.logger.debug("Retrieving transcription result")
             response = request.urlopen(results_uri)
-            return json.load(response)['AudioFileResults'][0]['SegmentResults']
+            return json.load(response)
         except HTTPError as e:
             error_str = e.read().decode('utf-8', errors='replace')
             raise mpf.DetectionException(
@@ -201,6 +206,10 @@ class AzureConnection(object):
             method='DELETE'
         )
         request.urlopen(req)
+
+    def delete_blob(self, recordings_id):
+        self.logger.info("Deleting blob...")
+        self.container_client.delete_blob(recordings_id)
 
     def get_transcriptions(self):
         self.logger.info("Retrieving all transcriptions...")

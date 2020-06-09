@@ -36,6 +36,7 @@ class AcsSpeechDetectionProcessor(object):
         self.logger = logger
         self.acs = AzureConnection(logger)
 
+
     def _update_acs(self, acs_url, acs_account_name, acs_subscription_key,
                     acs_speech_key, acs_container_name, acs_endpoint_suffix):
         if (self.acs.url != acs_url or
@@ -82,29 +83,38 @@ class AcsSpeechDetectionProcessor(object):
             self.logger.debug('Submitting speech-to-text job to ACS')
             output_loc = self.acs.submit_batch_transcription(
                 recordings_url=recordings_url,
-                filename=os.path.split(target_file)[-1],
+                filename=recordings_id,
                 language=lang,
             )
         except:
             if cleanup:
                 self.logger.debug('Marking file blob for deletion')
-                self.acs.container_client.delete_blob(recordings_id)
+                self.acs.delete_blob(recordings_id)
             raise
 
         try:
             self.logger.debug("Retrieving transcription")
-            transcription_result = self.acs.get_batch_transcription(output_loc)
+            result = self.acs.poll_for_result(output_loc)
+
+            if result['status'] == "Failed":
+                raise mpf.DetectionException(
+                    f"Transcription failed: {result['statusMessage']}",
+                    mpf.DetectionError.DETECTION_FAILED
+                )
+
+            transcription = self.acs.get_transcription(result)
             self.logger.debug('Speech-to-text processing complete')
         finally:
             if cleanup:
                 self.logger.debug('Marking file blob for deletion')
-                self.acs.container_client.delete_blob(recordings_id)
+                self.acs.delete_blob(recordings_id)
                 self.logger.debug('Deleting transcript')
                 self.acs.delete_transcription(output_loc)
 
+        self.logger.debug('Completed process audio')
         self.logger.debug('Creating AudioTracks')
         audio_tracks = []
-        for utt in transcription_result:
+        for utt in transcription['AudioFileResults'][0]['SegmentResults']:
             speaker_id = utt['SpeakerId']
             utterance_confidence = utt['NBest'][0]['Confidence']
             utterance_start = utt['Offset'] / 10000.0
@@ -135,5 +145,5 @@ class AcsSpeechDetectionProcessor(object):
             )
             audio_tracks.append(track)
 
-        self.logger.debug('Completed process audio')
+        self.logger.debug('Completed processing transcription results')
         return audio_tracks
