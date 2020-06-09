@@ -441,10 +441,6 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
 
     class_names = readClassNames(settings.synset_file);
 
-    if (class_names.empty()) {
-        throw MPFDetectionException(MPF_DETECTION_FAILED, "No network class labels found.");
-    }
-
     // Import the model
     // For models that do not support or require a config file, ModelsIniParser
     // will assign the empty string as default to settings.model_config_file.

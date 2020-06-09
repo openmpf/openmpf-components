@@ -108,7 +108,7 @@ void assertEmptyImageDetection(const std::string &image_path, TesseractOCRTextDe
         ASSERT_EQ(error, ex.error_code);
     }
     catch (...) {
-        ASSERT_EQ(error, MPF_OTHER_DETECTION_ERROR_TYPE);
+        FAIL() << "Caught exception but expected error type: " << error;
     }
     ASSERT_TRUE(image_locations.empty());
 }
@@ -128,7 +128,7 @@ void assertEmptyDocumentDetection(const std::string &image_path, TesseractOCRTex
         ASSERT_EQ(error, ex.error_code);
     }
     catch (...) {
-        ASSERT_EQ(error, MPF_OTHER_DETECTION_ERROR_TYPE);
+        FAIL() << "Caught exception but expected error type: " << error;
     }
 
     ASSERT_TRUE(generic_tracks.empty());

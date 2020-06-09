@@ -533,6 +533,7 @@ TEST(Darknet, TestInvalidWhitelist) {
         job_props["CLASS_WHITELIST_FILE"] = "$THIS_ENV_VAR_SHOULD_NOT_EXIST/FAKE_PATH";
         MPFImageJob job("Test", "data/dog.jpg", job_props, {});
         component.GetDetections(job);
+        FAIL() << "Expected MPFDetectionException to be thrown.";
     }
     catch (const MPFDetectionException &ex) {
         ASSERT_EQ(ex.error_code, MPF_INVALID_PROPERTY);
