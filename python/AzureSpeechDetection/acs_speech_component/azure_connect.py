@@ -76,8 +76,6 @@ class AzureConnection(object):
         filename = os.path.split(filepath)[-1]
         try:
             blob_client = self.container_client.get_blob_client(filename)
-            # with open(filepath, "rb") as fin:
-                # result = blob_client.upload_blob(fin)
             audio_bytes = mpf_util.transcode_to_wav(filepath)
             result = blob_client.upload_blob(audio_bytes)
         except Exception as e:
@@ -169,10 +167,6 @@ class AzureConnection(object):
             elif status == "Failed":
                 self.logger.debug("Transcription failed")
                 break
-                # raise mpf.DetectionException(
-                #     f"Transcription failed: {result['statusMessage']}",
-                #     mpf.DetectionError.DETECTION_FAILED
-                # )
             else:
                 retry_after = int(response.info()['Retry-After'])
                 self.logger.debug(
