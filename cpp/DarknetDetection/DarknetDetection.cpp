@@ -75,22 +75,19 @@ bool DarknetDetection::Init() {
 
 
 
-MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks) {
+std::vector<MPFVideoTrack> DarknetDetection::GetDetections(const MPFVideoJob &job) {
     try {
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
 
         if (DetectionComponentUtils::GetProperty(job.job_properties, "FRAME_QUEUE_CAPACITY", 4) <= 0) {
             LOG4CXX_ERROR(logger_, "[" << job.job_name
                     << "] : Detection failed: frame queue capacity property must be greater than 0");
-            return MPF_INVALID_PROPERTY;
+            throw MPFDetectionException(MPF_INVALID_PROPERTY,
+                    "Detection failed: frame queue capacity property must be greater than 0.");
         }
 
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Attempting to open video from \"" << job.data_uri << "\"...")
         MPFVideoCapture video_cap(job);
-        if (!video_cap.IsOpened()) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not open video file: " << job.data_uri);
-            return MPF_COULD_NOT_OPEN_DATAFILE;
-        }
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Successfully opened video file.")
 
         DarknetAsyncDl detector = GetDarknetImpl(job);
@@ -103,7 +100,7 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
         }
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Read " << frame_number << " frames from video.")
 
-        tracks = GetTracks(job, detector->GetResults());
+        std::vector<MPFVideoTrack> tracks = GetTracks(job, detector->GetResults());
 
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Successfully combined detections in to "
                 << tracks.size() << " tracks.");
@@ -116,10 +113,10 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFVideoJob &job, std::v
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
 
-        return MPF_DETECTION_SUCCESS;
+        return tracks;
     }
     catch (...) {
-        return Utils::HandleDetectionException(job, logger_);
+        Utils::LogAndReThrowException(job, logger_);
     }
 }
 
@@ -143,20 +140,18 @@ std::vector<MPFVideoTrack> DarknetDetection::GetTracks(const MPFJob &job, std::v
 
 
 
-MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
+std::vector<MPFImageLocation> DarknetDetection::GetDetections(const MPFImageJob &job) {
     try {
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
         MPFImageReader image_reader(job);
 
-        if (image_reader.GetImage().empty()) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not open image file: " << job.data_uri);
-            return MPF_COULD_NOT_OPEN_DATAFILE;
-        }
 
         DarknetDl detector = GetDarknetImpl(job);
         std::vector<DarknetResult> results = detector->Detect(0, image_reader.GetImage());
+
+        std::vector<MPFImageLocation> locations;
         if (DetectionComponentUtils::GetProperty(job.job_properties, "USE_PREPROCESSOR", false)) {
-            ConvertResultsUsingPreprocessor(results, locations);
+            locations = ConvertResultsUsingPreprocessor(results);
         }
         else {
             int number_of_classifications
@@ -174,10 +169,10 @@ MPFDetectionError DarknetDetection::GetDetections(const MPFImageJob &job, std::v
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << locations.size() << " detections.");
 
-        return MPF_DETECTION_SUCCESS;
+        return locations;
     }
     catch (...) {
-        return Utils::HandleDetectionException(job, logger_);
+        Utils::LogAndReThrowException(job, logger_);
     }
 }
 
@@ -237,8 +232,8 @@ ModelSettings DarknetDetection::GetModelSettings(const MPF::COMPONENT::Propertie
 }
 
 
-void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
-                                                       std::vector<MPFImageLocation> &locations) {
+std::vector<MPFImageLocation> DarknetDetection::ConvertResultsUsingPreprocessor(
+        std::vector<DarknetResult> &darknet_results) {
 
     std::unordered_map<std::string, MPFImageLocation> type_to_image_loc;
 
@@ -258,10 +253,11 @@ void DarknetDetection::ConvertResultsUsingPreprocessor(std::vector<DarknetResult
             }
         }
     }
-
+    std::vector<MPFImageLocation> locations;
     for (auto &image_loc_pair : type_to_image_loc) {
         locations.push_back(std::move(image_loc_pair.second));
     }
+    return locations;
 }
 
 

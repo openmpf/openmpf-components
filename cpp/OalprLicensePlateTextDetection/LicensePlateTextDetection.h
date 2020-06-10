@@ -82,9 +82,7 @@ public:
      * @param job   Info about current job
      * @param locations     A vector of type struct MPFImageLocation that holds detected text data upon return
      */
-    MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFImageJob &job,
-            std::vector<MPF::COMPONENT::MPFImageLocation> &locations) override;
+    std::vector<MPF::COMPONENT::MPFImageLocation> GetDetections(const MPF::COMPONENT::MPFImageJob &job) override;
 
     /**
      * The GetDetections method returns license plate text detected in
@@ -92,17 +90,14 @@ public:
      * @param job   Info about current job
      * @param tracks    A vector of type struct MPFVideoTrack that holds track data based on text and location upon return
      */
-    MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFVideoJob &job,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks) override;
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPF::COMPONENT::MPFVideoJob &job) override;
 
     std::string GetDetectionType();
 
 private:
-    MPF::COMPONENT::MPFDetectionError GetDetectionsFromVideoCapture(
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetectionsFromVideoCapture(
             const MPF::COMPONENT::MPFVideoJob &job,
-            MPF::COMPONENT::MPFVideoCapture &video_capture,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks);
+            MPF::COMPONENT::MPFVideoCapture &video_capture);
 /**
      * The CompareKeys method determines whether a detected text string
      * has been detected previously in the given image or video, for
