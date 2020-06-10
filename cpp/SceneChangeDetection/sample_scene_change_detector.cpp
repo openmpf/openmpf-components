@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
     catch (const std::exception &ex) {
-        std::cout << "Error: " << ex.what() << std::endl;
+        std::cerr << "Error: " << ex.what() << std::endl;
         return EXIT_FAILURE;
     }
 }
