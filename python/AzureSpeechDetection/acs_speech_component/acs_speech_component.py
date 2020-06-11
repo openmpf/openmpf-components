@@ -110,6 +110,7 @@ class AcsSpeechComponent(object):
                 job_properties
             ),
             lang=job_properties.get("LANGUAGE", 'en-US'),
+            diarize=(job_properties.get("DIARIZE", 'TRUE').lower() == 'true'),
             cleanup=(job_properties.get("CLEANUP", 'TRUE').lower() == 'true')
         )
 

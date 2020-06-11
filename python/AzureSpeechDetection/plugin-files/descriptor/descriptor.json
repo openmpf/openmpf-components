@@ -62,6 +62,12 @@
           "defaultValue": "en-US"
         },
         {
+          "name": "DIARIZE",
+          "description": "Whether to split audio into speaker turns. Supports two-speaker conversation.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
           "name": "CLEANUP",
           "description": "Whether to delete recording blobs and transcripts after processing.",
           "type": "BOOLEAN",

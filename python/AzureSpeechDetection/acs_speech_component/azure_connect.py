@@ -101,7 +101,8 @@ class AzureConnection(object):
             sas_url=self.sas_url
         )
 
-    def submit_batch_transcription(self, recordings_url, filename, language):
+    def submit_batch_transcription(self, recordings_url, filename, diarize,
+                                   language):
         self.logger.info("Submitting batch transcription...")
         data = dict(
             recordingsUrl=recordings_url,
@@ -110,7 +111,7 @@ class AzureConnection(object):
             locale=language,
             properties=dict(
                 AddWordLevelTimestamps='True',
-                AddDiarization='True',
+                AddDiarization=str(diarize),
             )
         )
 

@@ -60,7 +60,8 @@ class AcsSpeechDetectionProcessor(object):
 
     def process_audio(self, target_file, start_time, stop_time, acs_url,
                       acs_account_name, acs_subscription_key, acs_speech_key,
-                      acs_container_name, acs_endpoint_suffix, lang, cleanup):
+                      acs_container_name, acs_endpoint_suffix, lang, diarize,
+                      cleanup):
         self._update_acs(
             acs_url=acs_url,
             acs_account_name=acs_account_name,
@@ -84,6 +85,7 @@ class AcsSpeechDetectionProcessor(object):
             output_loc = self.acs.submit_batch_transcription(
                 recordings_url=recordings_url,
                 filename=recordings_id,
+                diarize=diarize,
                 language=lang,
             )
         except:
@@ -115,7 +117,7 @@ class AcsSpeechDetectionProcessor(object):
         self.logger.debug('Creating AudioTracks')
         audio_tracks = []
         for utt in transcription['AudioFileResults'][0]['SegmentResults']:
-            speaker_id = utt['SpeakerId']
+            speaker_id = utt['SpeakerId'] if diarize else '0'
             utterance_confidence = utt['NBest'][0]['Confidence']
             utterance_start = utt['Offset'] / 10000.0
             utterance_stop = (utt['Offset'] + utt['Duration']) / 10000.0
