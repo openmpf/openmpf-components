@@ -28,6 +28,7 @@ from __future__ import division, print_function
 
 import os
 import logging
+from math import floor, ceil
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -131,6 +132,19 @@ class AcsSpeechComponent(object):
             )
             raise
 
+        # If we suspect this is a subjob, overwrite SPEAKER_ID with 0 to
+        #  avoid confusion
+        overwrite_ids = False
+        if audio_job.feed_forward_track is not None:
+            overwrite_ids = True
+        elif stop_time is None:
+            pass
+        elif start_time > 0:
+            overwrite_ids = True
+        elif 'DURATION' in audio_job.media_properties:
+            if stop_time < float(audio_job.media_properties['DURATION']):
+                overwrite_ids = True
+
         try:
             audio_tracks = self.processor.process_audio(
                 target_file=audio_job.data_uri,
@@ -145,6 +159,15 @@ class AcsSpeechComponent(object):
                 "Exception raised while processing audio: " + str(e)
             )
             raise
+
+        for track in audio_tracks:
+            track.detection_properties['LONG_SPEAKER_ID'] = "{}-{}-{}".format(
+                audio_job.start_time,
+                audio_job.stop_time if audio_job.stop_time > 0 else 'EOF',
+                track.detection_properties['SPEAKER_ID']
+            )
+            if overwrite_ids:
+                track.detection_properties['SPEAKER_ID'] = '0'
 
         logger.info('Processing complete. Found %d tracks.' % len(audio_tracks))
         return audio_tracks
@@ -178,6 +201,19 @@ class AcsSpeechComponent(object):
         stop_time = stop_frame / fpms
         if stop_time < 0:
             stop_time = None
+
+        # If we suspect this is a subjob, overwrite SPEAKER_ID with 0 to
+        #  avoid confusion
+        overwrite_ids = False
+        if video_job.feed_forward_track is not None:
+            overwrite_ids = True
+        elif stop_frame is None:
+            pass
+        elif start_frame > 0:
+            overwrite_ids = True
+        elif 'FRAME_COUNT' in video_job.media_properties:
+            if stop_frame < int(video_job.media_properties['FRAME_COUNT']) - 1:
+                overwrite_ids = True
 
         try:
             audio_tracks = self.processor.process_audio(
