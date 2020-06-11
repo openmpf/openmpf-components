@@ -72,6 +72,18 @@ class AzureConnection(object):
             'Content-Type': 'application/json',
         }
 
+    def get_blob_client(self, recording_id):
+        return self.container_client.get_blob_client(recording_id)
+
+    def generate_account_sas(self):
+        return generate_account_sas(
+            self.bsc.account_name,
+            account_key=self.bsc.credential.account_key,
+            resource_types=ResourceTypes(object=True),
+            permission=AccountSasPermissions(read=True),
+            expiry=self.expiry
+        )
+
     def upload_file_to_blob(self, filepath, recording_id,
                             start_time=0, stop_time=None):
         try:
@@ -91,13 +103,7 @@ class AzureConnection(object):
 
         if datetime.utcnow() + timedelta(minutes=5) > self.expiry:
             self.expiry = datetime.utcnow() + timedelta(hours=1)
-            self.sas_url = generate_account_sas(
-                self.bsc.account_name,
-                account_key=self.bsc.credential.account_key,
-                resource_types=ResourceTypes(object=True),
-                permission=AccountSasPermissions(read=True),
-                expiry=self.expiry
-            )
+            self.sas_url = self.generate_account_sas()
         return '{url:s}{container:s}/{recording_id:s}?{sas_url:s}'.format(
             url=self.bsc.url,
             container=self.container_name,
