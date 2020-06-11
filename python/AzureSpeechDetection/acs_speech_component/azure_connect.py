@@ -76,7 +76,11 @@ class AzureConnection(object):
                             start_time=0, stop_time=None):
         try:
             blob_client = self.get_blob_client(recording_id)
-            audio_bytes = mpf_util.transcode_to_wav(filepath)
+            audio_bytes = mpf_util.transcode_to_wav(
+                filepath,
+                start_time,
+                stop_time
+            )
             blob_client.upload_blob(audio_bytes)
         except Exception as e:
             if 'blob already exists' in str(e):

@@ -120,6 +120,8 @@ class AcsSpeechComponent(object):
 
         start_time = audio_job.start_time
         stop_time = audio_job.stop_time
+        if stop_time < 0:
+            stop_time = None
         try:
             parsed_properties = self._parse_properties(audio_job.job_properties)
         except Exception as e:
@@ -174,6 +176,8 @@ class AcsSpeechComponent(object):
         fpms = float(video_job.media_properties['FPS']) / 1000.0
         start_time = start_frame / fpms
         stop_time = stop_frame / fpms
+        if stop_time < 0:
+            stop_time = None
 
         try:
             audio_tracks = self.processor.process_audio(
