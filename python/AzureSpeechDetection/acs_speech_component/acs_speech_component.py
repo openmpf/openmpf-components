@@ -134,6 +134,7 @@ class AcsSpeechComponent(object):
                 target_file=audio_job.data_uri,
                 start_time=start_time,
                 stop_time=stop_time,
+                job_name=audio_job.job_name,
                 **parsed_properties
             )
         except Exception as e:
@@ -179,6 +180,7 @@ class AcsSpeechComponent(object):
                 target_file=video_job.data_uri,
                 start_time=start_time,
                 stop_time=stop_time,
+                job_name=video_job.job_name,
                 **parsed_properties
             )
         except Exception as e:

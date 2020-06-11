@@ -58,10 +58,10 @@ class AcsSpeechDetectionProcessor(object):
             self.logger.debug('ACS arguments unchanged')
 
 
-    def process_audio(self, target_file, start_time, stop_time, acs_url,
-                      acs_account_name, acs_subscription_key, acs_speech_key,
-                      acs_container_name, acs_endpoint_suffix, lang, diarize,
-                      cleanup):
+    def process_audio(self, target_file, start_time, stop_time, job_name,
+                      acs_url, acs_account_name, acs_subscription_key,
+                      acs_speech_key, acs_container_name, acs_endpoint_suffix,
+                      lang, diarize, cleanup):
         self._update_acs(
             acs_url=acs_url,
             acs_account_name=acs_account_name,
@@ -73,7 +73,13 @@ class AcsSpeechDetectionProcessor(object):
 
         try:
             self.logger.debug('Uploading file to blob')
-            recordings_id, recordings_url = self.acs.upload_file_to_blob(target_file)
+            recording_id = os.path.split(target_file)[-1]
+            recording_url = self.acs.upload_file_to_blob(
+                filepath=target_file,
+                recording_id=recording_id,
+                start_time=start_time,
+                stop_time=stop_time
+            )
         except Exception as e:
             raise mpf.DetectionException(
                 "Failed to upload file to blob: {:s}".format(e),
@@ -83,15 +89,15 @@ class AcsSpeechDetectionProcessor(object):
         try:
             self.logger.debug('Submitting speech-to-text job to ACS')
             output_loc = self.acs.submit_batch_transcription(
-                recordings_url=recordings_url,
-                filename=recordings_id,
+                recording_url=recording_url,
+                job_name=job_name,
                 diarize=diarize,
                 language=lang,
             )
         except:
             if cleanup:
                 self.logger.debug('Marking file blob for deletion')
-                self.acs.delete_blob(recordings_id)
+                self.acs.delete_blob(recording_id)
             raise
 
         try:
@@ -109,7 +115,7 @@ class AcsSpeechDetectionProcessor(object):
         finally:
             if cleanup:
                 self.logger.debug('Marking file blob for deletion')
-                self.acs.delete_blob(recordings_id)
+                self.acs.delete_blob(recording_id)
                 self.logger.debug('Deleting transcript')
                 self.acs.delete_transcription(output_loc)
 

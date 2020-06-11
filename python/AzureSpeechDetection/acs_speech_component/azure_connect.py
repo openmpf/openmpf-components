@@ -72,17 +72,17 @@ class AzureConnection(object):
             'Content-Type': 'application/json',
         }
 
-    def upload_file_to_blob(self, filepath):
-        filename = os.path.split(filepath)[-1]
+    def upload_file_to_blob(self, filepath, recording_id,
+                            start_time=0, stop_time=None):
         try:
-            blob_client = self.container_client.get_blob_client(filename)
+            blob_client = self.get_blob_client(recording_id)
             audio_bytes = mpf_util.transcode_to_wav(filepath)
-            result = blob_client.upload_blob(audio_bytes)
+            blob_client.upload_blob(audio_bytes)
         except Exception as e:
             if 'blob already exists' in str(e):
-                self.logger.info(f"Blob exists for file {filename}")
+                self.logger.info(f"Blob exists for file {recording_id}")
             else:
-                self.logger.error(f"Uploading file to blob failed for file {filename}")
+                self.logger.error(f"Uploading file to blob failed for file {recording_id}")
                 raise
 
         if datetime.utcnow() + timedelta(minutes=5) > self.expiry:
@@ -94,20 +94,20 @@ class AzureConnection(object):
                 permission=AccountSasPermissions(read=True),
                 expiry=self.expiry
             )
-        return filename, '{url:s}{container:s}/{filename:s}?{sas_url:s}'.format(
+        return '{url:s}{container:s}/{recording_id:s}?{sas_url:s}'.format(
             url=self.bsc.url,
             container=self.container_name,
-            filename=filename,
+            recording_id=recording_id,
             sas_url=self.sas_url
         )
 
-    def submit_batch_transcription(self, recordings_url, filename, diarize,
-                                   language):
+    def submit_batch_transcription(self, recording_url, job_name,
+                                   diarize, language):
         self.logger.info("Submitting batch transcription...")
         data = dict(
-            recordingsUrl=recordings_url,
-            name=filename,
-            description=filename,
+            recordingsUrl=recording_url,
+            name=job_name,
+            description=job_name,
             locale=language,
             properties=dict(
                 AddWordLevelTimestamps='True',
@@ -202,9 +202,9 @@ class AzureConnection(object):
         )
         request.urlopen(req)
 
-    def delete_blob(self, recordings_id):
+    def delete_blob(self, recording_id):
         self.logger.info("Deleting blob...")
-        self.container_client.delete_blob(recordings_id)
+        self.container_client.delete_blob(recording_id)
 
     def get_transcriptions(self):
         self.logger.info("Retrieving all transcriptions...")
@@ -226,13 +226,3 @@ class AzureConnection(object):
                 method='DELETE'
             )
             response = request.urlopen(req)
-
-
-    def run_transcription(self, filepath, language):
-        recordings_url = self.upload_file_to_blob(filepath)
-        location = self.submit_batch_transcription(
-            recordings_url=recordings_url,
-            filename=os.path.split(filepath)[-1],
-            language=language,
-        )
-        return self.get_batch_transcription(location)
