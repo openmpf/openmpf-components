@@ -82,6 +82,23 @@ class TestAcsSpeech(unittest.TestCase):
     def tearDown(self):
         self.mock_server.jobs = set()
 
+    @staticmethod
+    def run_patched_jobs(comp, mode, *jobs):
+        if mode == 'audio':
+            detection_func = comp.get_detections_from_audio
+        elif mode == 'video':
+            detection_func = comp.get_detections_from_video
+        else:
+            raise Exception("Mode must be 'audio' or 'video'.")
+
+        with patch.object(comp.processor.acs, 'delete_blob'),\
+                patch.object(comp.processor.acs, 'get_blob_client'),\
+                patch.object(
+                    comp.processor.acs,
+                    'generate_account_sas',
+                    return_value="[sas_url]"):
+            return list(map(detection_func, jobs))
+
     def test_audio_file(self):
         job = mpf.AudioJob(
             job_name="test_audio",
@@ -97,13 +114,7 @@ class TestAcsSpeech(unittest.TestCase):
         )
 
         comp = AcsSpeechComponent()
-        with patch.object(comp.processor.acs, 'delete_blob'),\
-                patch.object(comp.processor.acs, 'get_blob_client'),\
-                patch.object(
-                    comp.processor.acs,
-                    'generate_account_sas',
-                    return_value="[sas_url]"):
-            result = comp.get_detections_from_audio(job)
+        result, = self.run_patched_jobs(comp, 'audio', job)
 
         self.assertEqual(1, len(result))
         transcript = result[0].detection_properties['TRANSCRIPT']
@@ -127,20 +138,14 @@ class TestAcsSpeech(unittest.TestCase):
         )
 
         comp = AcsSpeechComponent()
-        with patch.object(comp.processor.acs, 'delete_blob'),\
-                patch.object(comp.processor.acs, 'get_blob_client'),\
-                patch.object(
-                    comp.processor.acs,
-                    'generate_account_sas',
-                    return_value="[sas_url]"):
-            result = comp.get_detections_from_video(job)
+        result, = self.run_patched_jobs(comp, 'video', job)
 
         self.assertEqual(1, len(result))
         transcript = result[0].detection_properties['TRANSCRIPT']
         self.assertEqual("There's 3 left on the left side the one closest to us.", transcript)
 
     def test_diarization(self):
-        job = mpf.AudioJob(
+        job_raw = mpf.AudioJob(
             job_name="test_diarization_disabled",
             data_uri=self._get_test_file('poverty.mp3'),
             start_time=770000,
@@ -153,7 +158,7 @@ class TestAcsSpeech(unittest.TestCase):
             feed_forward_track=None
         )
 
-        job_diar = mpf.AudioJob(
+        job_dia = mpf.AudioJob(
             job_name="test_diarization_enabled",
             data_uri=self._get_test_file('poverty.mp3'),
             start_time=770000,
@@ -167,59 +172,36 @@ class TestAcsSpeech(unittest.TestCase):
         )
 
         comp = AcsSpeechComponent()
-        with patch.object(comp.processor.acs, 'delete_blob'),\
-                patch.object(comp.processor.acs, 'get_blob_client'),\
-                patch.object(
-                    comp.processor.acs,
-                    'generate_account_sas',
-                    return_value="[sas_url]"):
-            results = comp.get_detections_from_audio(job)
-            results_diar = comp.get_detections_from_audio(job_diar)
+        results = self.run_patched_jobs(comp, 'audio', job_raw, job_dia)
 
-        speaker_ids = set([
-            track.detection_properties['LONG_SPEAKER_ID']
-            for track in results
-        ])
-        speaker_ids_diar = set([
-            track.detection_properties['LONG_SPEAKER_ID']
-            for track in results_diar
-        ])
-        self.assertEqual(1, len(speaker_ids))
-        self.assertEqual(2, len(speaker_ids_diar))
+        # There should be two speakers with diarization, one without
+        len_raw, len_dia = [
+            len(set([
+                track.detection_properties['LONG_SPEAKER_ID']
+                for track in result
+            ]))
+            for result in results
+        ]
+        self.assertEqual(1, len_raw)
+        self.assertEqual(2, len_dia)
 
         # A nonzero start_time indicates to the component that this is a
         #  subjob, so all SPEAKER_IDs should be equal to 0
-        speaker_ids = set([
-            track.detection_properties['SPEAKER_ID']
-            for track in results
-        ])
-        speaker_ids_diar = set([
-            track.detection_properties['SPEAKER_ID']
-            for track in results_diar
-        ])
-
-        correct = set(['0'])
-        self.assertEqual(correct, speaker_ids)
-        self.assertEqual(correct, speaker_ids_diar)
+        ids_raw, ids_dia = [
+            set([
+                track.detection_properties['SPEAKER_ID']
+                for track in result
+            ])
+            for result in results
+        ]
+        self.assertEqual(set(['0']), ids_raw)
+        self.assertEqual(set(['0']), ids_dia)
 
 
     def test_language(self):
-        job_fr = mpf.AudioJob(
-            job_name="test_language_french",
-            data_uri=self._get_test_file('french.m4a'),
-            start_time=0,
-            stop_time=-1,
-            job_properties=get_test_properties(
-                DIARIZE="TRUE",
-                LANGUAGE="fr-FR"
-            ),
-            media_properties={},
-            feed_forward_track=None
-        )
-
         job_en = mpf.AudioJob(
-            job_name="test_language_english",
-            data_uri=self._get_test_file('french.m4a'),
+            job_name="test_bilingual_english",
+            data_uri=self._get_test_file('bilingual.mp3'),
             start_time=0,
             stop_time=-1,
             job_properties=get_test_properties(
@@ -229,18 +211,37 @@ class TestAcsSpeech(unittest.TestCase):
             media_properties={},
             feed_forward_track=None
         )
+
+        job_sp = mpf.AudioJob(
+            job_name="test_bilingual_spanish",
+            data_uri=self._get_test_file('bilingual.mp3'),
+            start_time=0,
+            stop_time=-1,
+            job_properties=get_test_properties(
+                DIARIZE="TRUE",
+                LANGUAGE="sp-MX"
+            ),
+            media_properties={},
+            feed_forward_track=None
+        )
         comp = AcsSpeechComponent()
+        res_en, res_sp = self.run_patched_jobs(comp, 'audio', job_en, job_sp)
 
-        with patch.object(comp.processor.acs, 'delete_blob'),\
-                patch.object(comp.processor.acs, 'get_blob_client'),\
-                patch.object(
-                    comp.processor.acs,
-                    'generate_account_sas',
-                    return_value="[sas_url]"):
-            result_fr = comp.get_detections_from_audio(job_fr)
-            result_en = comp.get_detections_from_audio(job_en)
+        self.assertEqual(15, len(res_en))
+        self.assertEqual(22, len(res_sp))
 
-        self.assertGreater(len(result_fr), len(result_en))
+        # Audio switches from Spanish to English at about 0:58.
+        #  Speaker 1 says one sentence in English at about 0:58-1:00.
+        #  Speaker 2 begins at 1:04 and speaks only English.
+        lang_switch = 58000
+
+        bad = [r.confidence for r in res_en if r.start_time < lang_switch]
+        good = [r.confidence for r in res_en if r.start_time > lang_switch]
+        self.assertGreater(min(good), max(bad))
+
+        bad = [r.confidence for r in res_sp if r.start_time > lang_switch]
+        good = [r.confidence for r in res_sp if r.start_time < lang_switch]
+        self.assertGreater(min(good), max(bad))
 
 
     def test_missing_audio(self):
@@ -260,16 +261,8 @@ class TestAcsSpeech(unittest.TestCase):
         )
 
         comp = AcsSpeechComponent()
-        with patch.object(comp.processor.acs, 'delete_blob'),\
-                patch.object(comp.processor.acs, 'get_blob_client'),\
-                patch.object(
-                    comp.processor.acs,
-                    'generate_account_sas',
-                    return_value="[sas_url]"):
-            results = comp.get_detections_from_audio(job)
-
-        # There should be one empty detection
-        self.assertEqual(0, len(results))
+        result, = self.run_patched_jobs(comp, 'audio', job)
+        self.assertEqual(0, len(result))
 
     @staticmethod
     def _get_test_file(filename):
