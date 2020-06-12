@@ -340,7 +340,7 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
 
             // feature-based tracking tracking and assignment
             if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
-              av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detections,cfg.maxIOUDist);
+              av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detections,cfg.maxFeatureDist);
               _assignDetections2Tracks(trackPtrs, detections, av);             LOG4CXX_TRACE(_log,"Feature assignment complete");
             }
 
