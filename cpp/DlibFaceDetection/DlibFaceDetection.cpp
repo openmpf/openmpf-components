@@ -503,9 +503,8 @@ void DlibFaceDetection::UpdateTracks(const dlib::cv_image<dlib::uint8> &next_fra
     }
 }
 
-MPFDetectionError DlibFaceDetection::GetDetectionsFromVideoCapture(const MPFVideoJob &job,
-                                                                   MPFVideoCapture &video_capture,
-                                                                   vector<MPFVideoTrack> &tracks) {
+vector<MPFVideoTrack> DlibFaceDetection::GetDetectionsFromVideoCapture(
+        const MPFVideoJob &job, MPFVideoCapture &video_capture) {
 
     int total_frames = video_capture.GetFrameCount();
     LOG4CXX_INFO(logger_, "[" << job.job_name << "] Total video frames: " << total_frames);
@@ -555,6 +554,7 @@ MPFDetectionError DlibFaceDetection::GetDetectionsFromVideoCapture(const MPFVide
     }
     CloseAnyOpenTracks();
 
+    vector<MPFVideoTrack> tracks;
     //set tracks reference!
     for (unsigned int i = 0; i < saved_tracks.size(); i++) {
         tracks.push_back(saved_tracks[i].mpf_video_track);
@@ -593,11 +593,11 @@ MPFDetectionError DlibFaceDetection::GetDetectionsFromVideoCapture(const MPFVide
         }
     }
 
-    return MPF_DETECTION_SUCCESS;
+    return tracks;
 }
 
 
-MPFDetectionError DlibFaceDetection::GetDetections(const MPFVideoJob &job, vector<MPFVideoTrack> &tracks) {
+vector<MPFVideoTrack> DlibFaceDetection::GetDetections(const MPFVideoJob &job) {
     try {
         //set params to default and what was originally loaded in the .ini
         SetDefaultParameters();
@@ -608,35 +608,23 @@ MPFDetectionError DlibFaceDetection::GetDetections(const MPFVideoJob &job, vecto
         /* Use the algorithm properties map to adjust the settings, if not empty */
         GetPropertySettings(job.job_properties);
 
-
-        if (job.data_uri.empty()) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Input video file path is empty");
-            return MPF_INVALID_DATAFILE_URI;
-        }
-
         MPFVideoCapture video_capture(job, true, true);
-        if (!video_capture.IsOpened()) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not initialize capturing");
-            return MPF_COULD_NOT_OPEN_DATAFILE;
-        }
 
-        MPFDetectionError detection_result = GetDetectionsFromVideoCapture(job, video_capture, tracks);
+        vector<MPFVideoTrack> tracks = GetDetectionsFromVideoCapture(job, video_capture);
         for (auto &track : tracks) {
             video_capture.ReverseTransform(track);
         }
-        return detection_result;
+        return tracks;
     }
     catch (...) {
-        return Utils::HandleDetectionException(job, logger_);
+        Utils::LogAndReThrowException(job, logger_);
     }
 }
 
 
 
 // private - IMAGE
-MPFDetectionError DlibFaceDetection::GetDetectionsFromImageData(const MPFImageJob &job,
-                                                                Mat &image,
-                                                                vector<MPFImageLocation> &locations) {
+vector<MPFImageLocation> DlibFaceDetection::GetDetectionsFromImageData(const MPFImageJob &job, Mat &image) {
 
     /**************************/
     /* Read and Submit Image */
@@ -656,6 +644,7 @@ MPFDetectionError DlibFaceDetection::GetDetectionsFromImageData(const MPFImageJo
 
     LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Number of faces detected = " << object_detections.size());
 
+    vector<MPFImageLocation> locations;
     for(const auto &object_detection : object_detections) {
         float confidence = static_cast<float>(object_detection.detection_confidence);
 
@@ -706,7 +695,8 @@ MPFDetectionError DlibFaceDetection::GetDetectionsFromImageData(const MPFImageJo
         catch (runtime_error &ex) {
             LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Exception writing image output file: " << ex.what());
             CloseWindows();
-            return MPF_OTHER_DETECTION_ERROR_TYPE;
+            throw MPFDetectionException(MPF_OTHER_DETECTION_ERROR_TYPE,
+                    std::string("Exception writing image output file: ") + ex.what());
         }
     }
 
@@ -714,12 +704,11 @@ MPFDetectionError DlibFaceDetection::GetDetectionsFromImageData(const MPFImageJo
                               << static_cast<int>(locations.size()) << " detections.");
 
     CloseWindows();
-    return MPF_DETECTION_SUCCESS;
+    return locations;
 }
 
 
-MPFDetectionError DlibFaceDetection::GetDetections(const MPFImageJob &job, vector<MPFImageLocation> &locations) {
-
+vector<MPFImageLocation> DlibFaceDetection::GetDetections(const MPFImageJob &job) {
     try {
         //set params to default and what was originally loaded in the .ini
         SetDefaultParameters();
@@ -729,28 +718,19 @@ MPFDetectionError DlibFaceDetection::GetDetections(const MPFImageJob &job, vecto
         //algorithm_properties
         /* Use the algorithm properties map to adjust the settings, if not empty */
         GetPropertySettings(job.job_properties);
-        if (job.data_uri.empty()) {
-            return MPF_INVALID_DATAFILE_URI;
-        }
 
         MPFImageReader image_reader(job);
         cv::Mat image = image_reader.GetImage();
 
-        //need to make sure it is a valid image
-        if (image.empty()) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not open image and will not return detections");
-            return MPF_IMAGE_READ_ERROR;
-        }
-
-        MPFDetectionError detections_result = GetDetectionsFromImageData(job, image, locations);
+        vector<MPFImageLocation> locations = GetDetectionsFromImageData(job, image);
         for (auto &location : locations) {
             image_reader.ReverseTransform(location);
         }
 
-        return detections_result;
+        return locations;
     }
     catch (...) {
-        return Utils::HandleDetectionException(job, logger_);
+        Utils::LogAndReThrowException(job, logger_);
     }
 
 }

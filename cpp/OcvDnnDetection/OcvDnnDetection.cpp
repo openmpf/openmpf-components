@@ -127,47 +127,29 @@ void feedForwardTracker(MPFImageLocation &location, int frame_index, std::vector
 
 
 
-MPFDetectionError OcvDnnDetection::GetDetections(const MPFVideoJob &job, std::vector<MPFVideoTrack> &tracks) {
+std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job) {
     if (job.has_feed_forward_track) {
-        return getDetections(job, tracks, feedForwardTracker);
+        return getDetections(job, feedForwardTracker);
     }
     else {
-        return getDetections(job, tracks, defaultTracker);
+        return getDetections(job, defaultTracker);
     }
 }
 
 
 template<typename Tracker>
-MPF::COMPONENT::MPFDetectionError OcvDnnDetection::getDetections(const MPF::COMPONENT::MPFVideoJob &job,
-                                                                std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
-                                                                Tracker tracker) const {
+std::vector<MPFVideoTrack> OcvDnnDetection::getDetections(const MPFVideoJob &job, Tracker tracker) const {
     try {
-        if (job.data_uri.empty()) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Input video file path is empty");
-            return MPF_INVALID_DATAFILE_URI;
-        }
-
         OcvDnnJobConfig config(job.job_properties, models_parser_, logger_);
-        if (config.error != MPF_DETECTION_SUCCESS) {
-            return config.error;
-        }
 
         MPFVideoCapture video_cap(job);
-        if (!video_cap.IsOpened()) {
-            LOG4CXX_ERROR(logger_, "[" << job.job_name << "] Could not initialize capturing");
-            return MPF_COULD_NOT_OPEN_DATAFILE;
-        }
 
         cv::Mat frame;
         int frame_index = -1;
+        std::vector<MPFVideoTrack> tracks;
         while (video_cap.Read(frame)) {
             frame_index++;
-            std::unique_ptr<MPFImageLocation> location;
-            MPFDetectionError rc = getDetections(config, frame, location);
-
-            if (rc != MPF_DETECTION_SUCCESS) {
-                return rc;
-            }
+            std::unique_ptr<MPFImageLocation> location = getDetection(config, frame);
             if (!location) {
                 // Nothing found in current frame.
                 continue;
@@ -182,38 +164,26 @@ MPF::COMPONENT::MPFDetectionError OcvDnnDetection::getDetections(const MPF::COMP
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
 
-        return MPF_DETECTION_SUCCESS;
+        return tracks;
     }
     catch (...) {
-        return Utils::HandleDetectionException(job, logger_);
+        Utils::LogAndReThrowException(job, logger_);
     }
 }
 
 
 //-----------------------------------------------------------------------------
-MPFDetectionError OcvDnnDetection::GetDetections(const MPFImageJob &job, std::vector<MPFImageLocation> &locations) {
+std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &job) {
     try {
         OcvDnnJobConfig config(job.job_properties, models_parser_, logger_);
-        if (config.error != MPF_DETECTION_SUCCESS) {
-            return config.error;
-        }
-        LOG4CXX_DEBUG(logger_, "Data URI = " << job.data_uri);
 
-        if (job.data_uri.empty()) {
-            LOG4CXX_ERROR(logger_, "Invalid image file");
-            return MPF_INVALID_DATAFILE_URI;
-        }
+        LOG4CXX_DEBUG(logger_, "Data URI = " << job.data_uri);
 
         MPFImageReader image_reader(job);
         cv::Mat img = image_reader.GetImage();
 
-        if (img.empty()) {
-            LOG4CXX_ERROR(logger_, "Could not read image file: " << job.data_uri);
-            return MPF_IMAGE_READ_ERROR;
-        }
-
-        std::unique_ptr<MPFImageLocation> detection;
-        MPFDetectionError rc = getDetections(config, img, detection);
+        std::vector<MPFImageLocation> locations;
+        std::unique_ptr<MPFImageLocation> detection = getDetection(config, img);
         if (detection) {
             locations.push_back(std::move(*detection));
         }
@@ -221,11 +191,11 @@ MPFDetectionError OcvDnnDetection::GetDetections(const MPFImageJob &job, std::ve
         for (MPFImageLocation &location : locations) {
             image_reader.ReverseTransform(location);
         }
-        return rc;
+        return locations;
 
     }
     catch (...) {
-        return Utils::HandleDetectionException(job, logger_);
+        Utils::LogAndReThrowException(job, logger_);
     }
 
 }
@@ -255,8 +225,8 @@ void OcvDnnDetection::getTopNClasses(cv::Mat &prob_blob,
 
 
 
-MPFDetectionError OcvDnnDetection::getDetections(OcvDnnJobConfig &config, const cv::Mat &input_frame,
-                                                std::unique_ptr<MPFImageLocation> &location) const {
+std::unique_ptr<MPFImageLocation> OcvDnnDetection::getDetection(
+        OcvDnnJobConfig &config, const cv::Mat &input_frame) const {
 
     cv::Mat prob;
     std::vector<std::pair<std::string, cv::Mat>> activation_layer_mats;
@@ -269,22 +239,23 @@ MPFDetectionError OcvDnnDetection::getDetections(OcvDnnJobConfig &config, const 
     // The number of classifications requested must be greater
     // than 0 and less than the total size of the output blob.
     if ((config.number_of_classifications <= 0) || (config.number_of_classifications > prob.total())) {
-        LOG4CXX_ERROR(logger_, "Number of classifications requested: "
-                << config.number_of_classifications
-                << " is invalid. It must be greater than 0, and less than the total returned by the net output layer = "
-                << prob.total());
-        return MPF_INVALID_PROPERTY;
+        throw MPFDetectionException(
+                MPF_INVALID_PROPERTY,
+                "Number of classifications requested: " +  std::to_string(config.number_of_classifications) +
+                " is invalid. It must be greater than 0, and less than the total returned by the net output layer = "
+                + std::to_string(prob.total()));
     }
 
     std::vector<std::pair<int, float>> class_info;
     getTopNClasses(prob, config.number_of_classifications, config.confidence_threshold, class_info);
 
     if (class_info.empty() && activation_layer_mats.empty() && spectral_hash_mats.empty()) {
-        return MPF_DETECTION_SUCCESS;
+        return nullptr;
     }
 
 
-    location = std::unique_ptr<MPFImageLocation>(new MPFImageLocation(0, 0, input_frame.cols, input_frame.rows));
+    std::unique_ptr<MPFImageLocation> location(
+            new MPFImageLocation(0, 0, input_frame.cols, input_frame.rows));
 
     if (!class_info.empty()) {
         // Save the highest confidence classification as the
@@ -318,7 +289,7 @@ MPFDetectionError OcvDnnDetection::getDetections(OcvDnnJobConfig &config, const 
     addActivationLayerInfo(config, activation_layer_mats, location->detection_properties);
     addSpectralHashInfo(config, spectral_hash_mats, location->detection_properties);
 
-    return MPF_DETECTION_SUCCESS;
+    return location;
 }
 
 
@@ -468,17 +439,7 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
 
     LOG4CXX_INFO(logger, "Get detections using model: " << model_name);
 
-    error = readClassNames(settings.synset_file, class_names);
-    if (error != MPF_DETECTION_SUCCESS) {
-        LOG4CXX_ERROR(logger, "Failed to read class labels for the network");
-        return;
-    }
-
-    if (class_names.empty()) {
-        LOG4CXX_ERROR(logger, "No network class labels found");
-        error = MPF_DETECTION_FAILED;
-        return;
-    }
+    class_names = readClassNames(settings.synset_file);
 
     // Import the model
     // For models that do not support or require a config file, ModelsIniParser
@@ -487,12 +448,12 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
     // string path, so we need not check whether the file exists.
     net = cv::dnn::readNet(settings.model_binary_file, settings.model_config_file);
     if (net.empty()) {
-        LOG4CXX_ERROR(logger, "Can't load network specified by the following files: ");
-        LOG4CXX_ERROR(logger, "model_config:   " << settings.model_config_file);
-        LOG4CXX_ERROR(logger, "model_binary: " << settings.model_binary_file);
-        error = MPF_DETECTION_NOT_INITIALIZED;
-        return;
+        throw MPFDetectionException(
+                MPF_DETECTION_NOT_INITIALIZED,
+                "Can't load the network specified by the model_config (" + settings.model_binary_file
+                + ") and model_binary (" + settings.model_binary_file + ").");
     }
+
     LOG4CXX_DEBUG(logger, "Created neural network");
 
     resize_size = cv::Size(GetProperty(props, "RESIZE_WIDTH", 224), GetProperty(props, "RESIZE_HEIGHT", 224));
@@ -511,8 +472,8 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
     bool output_layer_missing = std::find(net_layer_names.begin(), net_layer_names.end(), model_output_layer)
                                     == net_layer_names.end();
     if (output_layer_missing) {
-        LOG4CXX_WARN(logger, "The requested output layer: " << model_output_layer << " does not exist");
-        error = MPF_INVALID_PROPERTY;
+        throw MPFDetectionException(MPF_INVALID_PROPERTY,
+                                "The requested output layer: " + model_output_layer + " does not exist");
     }
 
 
@@ -539,21 +500,28 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
 
 
 
-MPFDetectionError OcvDnnDetection::OcvDnnJobConfig::readClassNames(std::string synset_file,
-                                                                 std::vector<std::string> &class_names) {
+std::vector<std::string> OcvDnnDetection::OcvDnnJobConfig::readClassNames(const std::string &synset_file) {
     std::ifstream fp(synset_file);
     if (!fp.is_open()) {
-        return MPF_COULD_NOT_OPEN_DATAFILE;
+        throw MPFDetectionException(
+                MPF_COULD_NOT_OPEN_DATAFILE,
+                "Failed to open the synset file that was expected to be located at: " + synset_file);
     }
+
+    std::vector<std::string> class_names;
     std::string name;
-    while (!fp.eof())
+    while (std::getline(fp, name))
     {
-        getline(fp, name);
-        if (name.length())
+        if (name.length()) {
             class_names.push_back(name.substr(name.find(' ') + 1));
+        }
     }
     fp.close();
-    return MPF_DETECTION_SUCCESS;
+
+    if (class_names.empty()) {
+        throw MPFDetectionException(MPF_DETECTION_FAILED, "No network class labels found.");
+    }
+    return class_names;
 }
 
 

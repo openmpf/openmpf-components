@@ -43,10 +43,8 @@ MPFVideoJob createSceneJob(const std::string &uri){
 void assertScenesDetected(const int &expected, const std::string &video_path,
                                  SceneChangeDetection &scenechange) {
     MPFVideoJob job = createSceneJob(video_path);
-    std::vector<MPFVideoTrack> detections;
-    MPFDetectionError rc = scenechange.GetDetections(job, detections);
+    std::vector<MPFVideoTrack> detections = scenechange.GetDetections(job);
 
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
     ASSERT_FALSE(detections.empty());
 
     ASSERT_TRUE(detections.size() == expected)

@@ -61,13 +61,9 @@ public:
 
     bool Close() override;
 
-    MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFVideoJob &job,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks) override ;
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPF::COMPONENT::MPFVideoJob &job) override;
 
-    MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFImageJob &job,
-            std::vector<MPF::COMPONENT::MPFImageLocation> &locations) override;
+    std::vector<MPF::COMPONENT::MPFImageLocation> GetDetections(const MPF::COMPONENT::MPFImageJob &job) override;
 
     std::string GetDetectionType() override;
 
@@ -104,14 +100,12 @@ private:
 
 
     // Sets the location parameter to a MPFImageLocation if a detection is found in the input frame.
-    MPF::COMPONENT::MPFDetectionError getDetections(OcvDnnDetection::OcvDnnJobConfig &config, const cv::Mat &input_frame,
-                                                    std::unique_ptr<MPF::COMPONENT::MPFImageLocation> &location) const;
+    std::unique_ptr<MPF::COMPONENT::MPFImageLocation> getDetection(
+            OcvDnnDetection::OcvDnnJobConfig &config, const cv::Mat &input_frame) const;
 
     template <typename Tracker>
-    MPF::COMPONENT::MPFDetectionError getDetections(
-            const MPF::COMPONENT::MPFVideoJob &job,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
-            Tracker tracker) const;
+    std::vector<MPF::COMPONENT::MPFVideoTrack> getDetections(
+            const MPF::COMPONENT::MPFVideoJob &job, Tracker tracker) const;
 
 
     static void getNetworkOutput(
@@ -125,7 +119,7 @@ private:
     // struct to hold configuration options and data structures that change every job.
     struct OcvDnnJobConfig {
     public:
-        MPF::COMPONENT::MPFDetectionError error;
+//        MPF::COMPONENT::MPFDetectionError error;
         std::vector<std::string> class_names;
         cv::dnn::Net net;
 
@@ -162,8 +156,7 @@ private:
                        const log4cxx::LoggerPtr &logger);
 
     private:
-        static MPF::COMPONENT::MPFDetectionError readClassNames(std::string synset_file,
-                                                                std::vector<std::string> &class_names);
+        static std::vector<std::string> readClassNames(const std::string &synset_file);
 
         void validateLayerNames(
                 std::string requested_activation_layers,

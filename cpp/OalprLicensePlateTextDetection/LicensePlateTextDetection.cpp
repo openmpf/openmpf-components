@@ -185,25 +185,14 @@ LicensePlateTextDetection::~LicensePlateTextDetection() {
 
 //-----------------------------------------------------------------------------
 
-MPFDetectionError LicensePlateTextDetection::GetDetections(const MPFImageJob &job, vector<MPFImageLocation> &locations) {
+vector<MPFImageLocation> LicensePlateTextDetection::GetDetections(const MPFImageJob &job) {
     try {
 
         // No algorithm properties are relevant to the image case
         LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Data_uri: " << job.data_uri);
 
-        assert(!job.data_uri.empty());
-        if (job.data_uri.empty()) {
-            LOG4CXX_ERROR(td_logger_, "[" << job.job_name << "] Image file URI is empty.");
-            return MPF_INVALID_DATAFILE_URI;
-        }
-
         MPFImageReader image_reader(job);
         cv::Mat frame = image_reader.GetImage();
-
-        if (frame.empty()) {
-            LOG4CXX_ERROR(td_logger_, "[" << job.job_name << "] Failed to read image.");
-            return MPF_IMAGE_READ_ERROR;
-        }
 
         const vector<AlprPlateResult> &results = alprRecognize(frame);
 
@@ -215,6 +204,7 @@ MPFDetectionError LicensePlateTextDetection::GetDetections(const MPFImageJob &jo
         // setting the number of detections (top_n) that alpr should consider to a
         // value greater than 1 tends to improve the quality of all detections.
         LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Returning highest confidence results for detection");
+        vector<MPFImageLocation> locations;
         for (int i = 0; i < results.size(); i++) {
             MPFImageLocation detection;
             detection.x_left_upper = results[i].plate_points[0].x;
@@ -266,37 +256,32 @@ MPFDetectionError LicensePlateTextDetection::GetDetections(const MPFImageJob &jo
 
         LOG4CXX_INFO(td_logger_,
                      "[" << job.job_name << "] Processing complete. Found " << locations.size() << " detections.");
-        return MPF_DETECTION_SUCCESS;
+        return locations;
     }
     catch (...) {
-        return Utils::HandleDetectionException(job, td_logger_);
+        Utils::LogAndReThrowException(job, td_logger_);
     }
 }
 
-MPFDetectionError LicensePlateTextDetection::GetDetections(const MPFVideoJob &job, vector<MPFVideoTrack> &tracks) {
+vector<MPFVideoTrack> LicensePlateTextDetection::GetDetections(const MPFVideoJob &job) {
     try {
         MPFVideoCapture video_capture(job, true, true);
-        if (!video_capture.IsOpened()) {
-            LOG4CXX_ERROR(td_logger_, "[" << job.job_name << "] Could not initialize OpenCV video capturing.");
-            return MPF_COULD_NOT_OPEN_DATAFILE;
-        }
 
-        auto detection_result = GetDetectionsFromVideoCapture(job, video_capture, tracks);
+        vector<MPFVideoTrack> tracks = GetDetectionsFromVideoCapture(job, video_capture);
         for (auto &track : tracks) {
             video_capture.ReverseTransform(track);
         }
-        return detection_result;
+        return tracks;
     }
     catch (...) {
-        return Utils::HandleDetectionException(job, td_logger_);
+        Utils::LogAndReThrowException(job, td_logger_);
     }
 }
 
 //-----------------------------------------------------------------------------
 // Video case
-MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const MPFVideoJob &job,
-                                                                           MPFVideoCapture &video_capture,
-                                                                           vector<MPFVideoTrack> &tracks) {
+vector<MPFVideoTrack> LicensePlateTextDetection::GetDetectionsFromVideoCapture(
+        const MPFVideoJob &job, MPFVideoCapture &video_capture) {
 
     int frame_num = 0;
     int frame_count = 0;
@@ -393,8 +378,8 @@ MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const
 
         frame_num++;
     }
-
     // Return all tracks from map in output vector
+    vector<MPFVideoTrack> tracks;
     for (multimap<string, MPFVideoTrack>::iterator tracks_map_iter =
             tracks_map.begin();
          tracks_map_iter != tracks_map.end();
@@ -404,7 +389,7 @@ MPFDetectionError LicensePlateTextDetection::GetDetectionsFromVideoCapture(const
 
     LOG4CXX_INFO(td_logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
 
-    return MPF_DETECTION_SUCCESS;
+    return tracks;
 }
 
 

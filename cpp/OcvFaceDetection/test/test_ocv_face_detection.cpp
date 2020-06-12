@@ -195,9 +195,8 @@ TEST(VideoGeneration, TestOnKnownVideo) {
 
     // 	Evaluate the known video file to generate the test tracks.
     std::cout << "\tRunning the tracker on the video: " << inVideoFile << std::endl;
-    vector<MPFVideoTrack> found_tracks;
     MPFVideoJob videoJob("Testing", inVideoFile, start, stop, { }, { });
-    ASSERT_FALSE(ocv_face_detection->GetDetections(videoJob, found_tracks));
+    vector<MPFVideoTrack> found_tracks = ocv_face_detection->GetDetections(videoJob);
     EXPECT_FALSE(found_tracks.empty());
 
     // 	Compare the known and test track output.
@@ -265,9 +264,8 @@ TEST(ImageGeneration, TestOnKnownImage) {
     ASSERT_TRUE(ReadDetectionsFromFile::ReadImageLocations(known_detections_file,
                                                known_detections));
 
-    vector<MPFImageLocation> found_detections;
     MPFImageJob image_job("Testing", known_image_file, { }, { });
-    ASSERT_FALSE(ocv_face_detection->GetDetections(image_job, found_detections));
+    vector<MPFImageLocation> found_detections = ocv_face_detection->GetDetections(image_job);
     EXPECT_FALSE(found_detections.empty());
 
     float comparison_score = DetectionComparison::CompareDetectionOutput(found_detections, known_detections);
