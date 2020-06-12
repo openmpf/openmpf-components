@@ -1,0 +1,104 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"C_Cpp.default.cppStandard": "c++11",
+    "C_Cpp.default.cStandard": "c11",
+    "C_Cpp.loggingLevel": "Error",
+    "C_Cpp.includePath": [
+      "${workspaceFolder}"
+    ],
+		"cmake.cmakePath": "cmake3",
+		"files.associations": {
+      "cctype": "cpp",
+      "clocale": "cpp",
+      "cmath": "cpp",
+      "cstdarg": "cpp",
+      "cstddef": "cpp",
+      "cstdio": "cpp",
+      "cstdlib": "cpp",
+      "cstring": "cpp",
+      "ctime": "cpp",
+      "cwchar": "cpp",
+      "cwctype": "cpp",
+      "array": "cpp",
+      "strstream": "cpp",
+      "*.tcc": "cpp",
+      "bitset": "cpp",
+      "chrono": "cpp",
+      "complex": "cpp",
+      "cstdint": "cpp",
+      "deque": "cpp",
+      "list": "cpp",
+      "unordered_map": "cpp",
+      "vector": "cpp",
+      "exception": "cpp",
+      "fstream": "cpp",
+      "functional": "cpp",
+      "initializer_list": "cpp",
+      "iomanip": "cpp",
+      "iosfwd": "cpp",
+      "iostream": "cpp",
+      "istream": "cpp",
+      "limits": "cpp",
+      "new": "cpp",
+      "ostream": "cpp",
+      "numeric": "cpp",
+      "ratio": "cpp",
+      "sstream": "cpp",
+      "stdexcept": "cpp",
+      "streambuf": "cpp",
+      "cfenv": "cpp",
+      "cinttypes": "cpp",
+      "tuple": "cpp",
+      "type_traits": "cpp",
+      "utility": "cpp",
+      "typeindex": "cpp",
+      "typeinfo": "cpp",
+      "algorithm": "cpp",
+      "random": "cpp",
+      "qhash": "cpp",
+      "csignal": "cpp",
+      "atomic": "cpp",
+      "hash_map": "cpp",
+      "hash_set": "cpp",
+      "condition_variable": "cpp",
+      "forward_list": "cpp",
+      "unordered_set": "cpp",
+      "future": "cpp",
+      "mutex": "cpp",
+      "system_error": "cpp",
+      "thread": "cpp",
+      "valarray": "cpp",
+      "*.ipp": "cpp",
+      "string": "cpp"
+    },
+    "editor.tabSize": 2,
+    "editor.tokenColorCustomizations": {
+      "textMateRules": [
+        {
+          "scope": "googletest.failed",
+          "settings": {
+            "foreground": "#f00"
+          }
+        },
+        {
+          "scope": "googletest.passed",
+          "settings": {
+            "foreground": "#0f0"
+          }
+        },
+        {
+          "scope": "googletest.run",
+          "settings": {
+            "foreground": "#0f0"
+          }
+        }
+      ]
+    }
+  },
+  "gtest-adapter.debugConfig": ""
+}

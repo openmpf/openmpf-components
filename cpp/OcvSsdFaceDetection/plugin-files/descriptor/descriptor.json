@@ -1,0 +1,242 @@
+{
+  "componentName": "OcvSsdFaceDetection",
+  "componentVersion": "1.0",
+  "middlewareVersion": "4.1.0",
+  "sourceLanguage": "c++",
+  "batchLibrary": "${MPF_HOME}/plugins/OcvFaceDetection/lib/libmpfOcvSsdFaceDetection.so",
+  "environmentVariables": [
+    {
+      "name": "LD_LIBRARY_PATH",
+      "value": "${MPF_HOME}/plugins/OcvSsdFaceDetection/lib:${LD_LIBRARY_PATH}"
+    }
+  ],
+  "algorithm": {
+    "name": "OCVSSD",
+    "description": "Detects faces in images and videos using the Open Computer Vision (OCV) library.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_FACE",
+        "DETECTION_FACE_OCVSSD"
+      ],
+      "properties": [
+        {
+          "name": "DETECTION_CONFIDENCE_THRESHOLD",
+          "description": "Minimum detection confidence value [0...1] needed to keep detection and start a track.",
+          "type": "FLOAT",
+          "defaultValue": "0.5"
+        },
+        {
+          "name": "MIN_DETECTION_SIZE",
+          "description": "Minimum bounding box dimension in pixels to keep detection and start a track.",
+          "type": "INT",
+          "defaultValue": "46"
+        },
+        {
+          "name": "DETECTION_FRAME_INTERVAL",
+          "description": "Number of frames to skip running the detector and rely on just tracking",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "TRACKING_MAX_IOU_DIST",
+          "description": "Maximum intersection over union distance (1.0 - iou) =[0..1] between detections below which detection will be considered part of same track",
+          "type": "FLOAT",
+          "defaultValue": "0.5"
+        },
+        {
+          "name": "TRACKING_MAX_FEATURE_DIST",
+          "description": "Maximum distance in feature space (1.0 - cos similarity) = [0..1] between detections below which detection will be considered part of same track",
+          "type": "FLOAT",
+          "defaultValue": "0.25"
+        },
+        {
+          "name": "TRACKING_MAX_FRAME_GAP",
+          "description": "Maximum temporal distance (# of frames) between detection in a track.",
+          "type": "INT",
+          "defaultValue": "4"
+        },
+        {
+          "name": "KF_DISABLED",
+          "description": "Disables the use of motion prediction via Kalman filtering during tracking.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "KF_MEASUREMENT_NOISE_X_VAR",
+          "description": "Bounding box x-position detector noise variance in [pixel^2]",
+          "type": "FLOAT",
+          "defaultValue": "1.0"
+        },
+        {
+          "name": "KF_MEASUREMENT_NOISE_Y_VAR",
+          "description": "Bounding box y-position detector noise variance in [pixel^2]",
+          "type": "FLOAT",
+          "defaultValue": "1.0"
+        },
+        {
+          "name": "KF_MEASUREMENT_NOISE_WIDTH_VAR",
+          "description": "Bounding box width detector noise variance in [pixel^2]",
+          "type": "FLOAT",
+          "defaultValue": "10.0"
+        },
+        {
+          "name": "KF_MEASUREMENT_NOISE_HEIGHT_VAR",
+          "description": "Bounding box height detector noise variance in [pixel^2]",
+          "type": "FLOAT",
+          "defaultValue": "10.0"
+        },
+        {
+          "name": "KF_PROCESS_NOISE_X_VAR",
+          "description": "Bounding box x-position motion model noise variance in [pixel^2]",
+          "type": "FLOAT",
+          "defaultValue": "1.0"
+        },
+        {
+          "name": "KF_PROCESS_NOISE_Y_VAR",
+          "description": "Bounding box Y-position motion model noise variance in [pixel^2]",
+          "type": "FLOAT",
+          "defaultValue": "1.0"
+        },
+        {
+          "name": "KF_PROCESS_NOISE_X_VELOCITY_VAR",
+          "description": "Bounding box x-velocity motion model noise variance in [pixel^2/frame^2]",
+          "type": "FLOAT",
+          "defaultValue": "5.0"
+        },
+        {
+          "name": "KF_PROCESS_NOISE_Y_VELOCITY_VAR",
+          "description": "Bounding box y-velocity motion model noise variance in [pixel^2/frame^2]",
+          "type": "FLOAT",
+          "defaultValue": "5.0"
+        },
+        {
+          "name": "KF_PROCESS_NOISE_WIDTH_VAR",
+          "description": "Bounding box width motion model noise variance in [pixel^2]",
+          "type": "FLOAT",
+          "defaultValue": "1.0"
+        },
+        {
+          "name": "KF_PROCESS_NOISE_HEIGHT_VAR",
+          "description": "Bounding box height motion model noise variance in [pixel^2]",
+          "type": "FLOAT",
+          "defaultValue": "1.0"
+        },
+        {
+          "name": "KF_PROCESS_NOISE_WIDTH_VELOCITY_VAR",
+          "description": "Bounding box width-rate-of-change motion model noise variance in [pixel^2/frame^2]",
+          "type": "FLOAT",
+          "defaultValue": "5.0"
+        },
+        {
+          "name": "KF_PROCESS_NOISE_HEIGHT_VELOCITY_VAR",
+          "description": "Bounding box height-rate-of-change motion model noise variance in [pixel^2/frame^2]",
+          "type": "FLOAT",
+          "defaultValue": "5.0"
+        }
+
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "OCV SSD FACE DETECTION ACTION",
+      "description": "Executes the OpenCV SSD face detection algorithm using the default parameters.",
+      "algorithm": "OCVSSD",
+      "properties": []
+    },
+    {
+      "name": "OCV SSD FACE DETECTION (WITH AUTO-ORIENTATION) ACTION",
+      "description": "Executes the OpenCV SSD face detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
+      "algorithm": "FACECV",
+      "properties": [
+        {
+          "name": "AUTO_ROTATE",
+          "value": "true"
+        },
+        {
+          "name": "AUTO_FLIP",
+          "value": "true"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "OCV SSD FACE DETECTION TASK",
+      "description": "Performs OpenCV face detection.",
+      "actions": [
+        "OCV SSD FACE DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "OCV SSD FACE DETECTION (WITH AUTO-ORIENTATION) TASK",
+      "description": "Executes the OpenCV SSD face detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
+      "actions": [
+        "OCV SSD FACE DETECTION (WITH AUTO-ORIENTATION) ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "OCV SSD FACE DETECTION PIPELINE",
+      "description": "Performs OpenCV SSD face detection.",
+      "tasks": [
+        "OCV SSD FACE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV SSD FACE DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Performs OpenCV SSD face detection and marks up the results.",
+      "tasks": [
+        "OCV SSD FACE DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OCV SSD FACE DETECTION (WITH MOG MOTION PREPROCESSOR) PIPELINE",
+      "description": "Performs MOG motion preprocessing and OpenCV SSD face detection.",
+      "tasks": [
+        "MOG MOTION DETECTION PREPROCESSOR TASK",
+        "OCV SSD FACE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV SSD FACE DETECTION (WITH SUBSENSE MOTION PREPROCESSOR) PIPELINE",
+      "description": "Performs SuBSENSE motion preprocessing and OpenCV face detection.",
+      "tasks": [
+        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
+        "OCV SSD FACE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV SSD FACE DETECTION (WITH MOG MOTION PREPROCESSOR AND MARKUP) PIPELINE",
+      "description": "Performs MOG motion preprocessing, OpenCV face detection, and markup.",
+      "tasks": [
+        "MOG MOTION DETECTION PREPROCESSOR TASK",
+        "OCV SSD FACE DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OCV SSD FACE DETECTION (WITH SUBSENSE MOTION PREPROCESSOR AND MARKUP) PIPELINE",
+      "description": "Performs SuBSENSE motion preprocessing, OpenCV face detection, and markup.",
+      "tasks": [
+        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
+        "OCV SSD FACE DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OCV SSD FACE DETECTION (WITH AUTO-ORIENTATION) PIPELINE",
+      "description": "Executes the OpenCV face detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
+      "tasks": [
+        "OCV SSD FACE DETECTION (WITH AUTO-ORIENTATION) TASK"
+      ]
+    }
+  ]
+}
