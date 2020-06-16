@@ -29,12 +29,14 @@ import sys
 import os
 import json
 import unittest
-
+import shutil
 from threading import Thread
 from typing import ClassVar
-from http.server import HTTPServer as BaseHTTPServer, SimpleHTTPRequestHandler
+import BaseHTTPServer
+import urlparse
+import posixpath
 
-from unittest.mock import patch, Mock
+from mock import patch, Mock
 
 # Add pyspeech_component to path.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -49,10 +51,10 @@ base_local_path = os.path.join(local_path, 'test_data')
 base_url_path = '/api/speechtotext/v2.0/'
 
 test_port = 10669
-origin = f'http://localhost:{test_port}'
-transcription_url = f'{origin}{base_url_path}transcriptions'
-blobs_url = f'{origin}{base_url_path}recordings'
-outputs_url = f'{origin}{base_url_path}outputs'
+origin = 'http://localhost:{}'.format(test_port)
+transcription_url = '{}{}transcriptions'.format(origin, base_url_path)
+blobs_url = '{}{}recordings'.format(origin, base_url_path)
+outputs_url = '{}{}outputs'.format(origin, base_url_path)
 def get_test_properties(**extra_properties):
     return dict(
         ACS_URL=transcription_url,
@@ -65,7 +67,6 @@ def get_test_properties(**extra_properties):
     )
 
 class TestAcsSpeech(unittest.TestCase):
-    mock_server: ClassVar['MockServer']
 
     @classmethod
     def setUpClass(cls):
@@ -274,7 +275,7 @@ class TestAcsSpeech(unittest.TestCase):
         )
 
 
-class MockServer(BaseHTTPServer):
+class MockServer(BaseHTTPServer.HTTPServer, object):
     def __init__(self, base_local_path, base_url_path, server_address):
         super(MockServer, self).__init__(server_address, MockRequestHandler)
         self._base_local_path = base_local_path
@@ -283,17 +284,36 @@ class MockServer(BaseHTTPServer):
         Thread(target=self.serve_forever).start()
 
 
-class MockRequestHandler(SimpleHTTPRequestHandler):
-    server: MockServer
+class MockRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):
 
     def translate_path(self, path):
+        """Translate a /-separated PATH to the local filename syntax.
+        Components that mean special things to the local file system
+        (e.g. drive or directory names) are ignored.  (XXX They should
+        probably be diagnosed.)
+        """
         if path.startswith(self.server._base_url_path):
             path = path[len(self.server._base_url_path):]
             if path == '':
                 path = '/'
         else:
             return None
-        path = SimpleHTTPRequestHandler.translate_path(self, path)
+
+        # abandon query parameters
+        path = path.split('?',1)[0]
+        path = path.split('#',1)[0]
+        # Don't forget explicit trailing slash when normalizing. Issue17324
+        trailing_slash = path.rstrip().endswith('/')
+        path = urlparse.unquote(path)
+        path = posixpath.normpath(path)
+        words = path.split('/')
+        words = filter(None, words)
+        path = os.path.join(*words)
+        if trailing_slash:
+            path += '/'
+
+        print("PATH: ", path)
+
         relpath = os.path.relpath(path, os.getcwd())
         fullpath = os.path.join(self.server._base_local_path, relpath)
         return fullpath
@@ -336,7 +356,11 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
             return
 
         if self.path.startswith(self.server._base_url_path):
-            super(MockRequestHandler, self).do_GET()
+            self.send_response(200)
+            self.end_headers()
+            path = self.translate_path(self.path)
+            with open(path, 'r') as f:
+                shutil.copyfileobj(f, self.wfile)
 
     def do_DELETE(self):
         if not (type(self.path) is str or type(self.path) is unicode):

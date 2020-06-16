@@ -23,6 +23,9 @@
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
+
+from __future__ import division, print_function
+
 import os
 
 import mpf_component_api as mpf
@@ -106,7 +109,7 @@ class AcsSpeechDetectionProcessor(object):
 
             if result['status'] == "Failed":
                 raise mpf.DetectionException(
-                    f"Transcription failed: {result['statusMessage']}",
+                    "Transcription failed: {}".format(result['statusMessage']),
                     mpf.DetectionError.DETECTION_FAILED
                 )
 
@@ -127,7 +130,7 @@ class AcsSpeechDetectionProcessor(object):
             utterance_confidence = utt['NBest'][0]['Confidence']
             utterance_start = utt['Offset'] / 10000.0
             utterance_stop = (utt['Offset'] + utt['Duration']) / 10000.0
-            display = utt['NBest'][0]['Display']
+            display = utt['NBest'][0]['Display'].encode('utf-8')
 
             word_confidences = ', '.join([
                 str(w['Confidence'])

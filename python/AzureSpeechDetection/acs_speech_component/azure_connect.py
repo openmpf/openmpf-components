@@ -24,15 +24,28 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division, print_function
+
 import os
 import json
 import time
-from urllib import request, parse
-from urllib.error import HTTPError
+from urllib2 import Request, urlopen, HTTPError
 from datetime import datetime, timedelta
 from azure.storage.blob import BlobServiceClient, ResourceTypes, AccountSasPermissions, generate_account_sas
+from tempfile import NamedTemporaryFile
+
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
+
+class RequestWithMethod(Request):
+  def __init__(self, *args, **kwargs):
+    self._method = kwargs.pop('method', None)
+    Request.__init__(self, *args, **kwargs)
+
+  def get_method(self):
+    return self._method if self._method else super(RequestWithMethod, self).get_method()
+
 
 class AzureConnection(object):
     def __init__(self, logger):
@@ -88,17 +101,20 @@ class AzureConnection(object):
                             start_time=0, stop_time=None):
         try:
             blob_client = self.get_blob_client(recording_id)
-            audio_bytes = mpf_util.transcode_to_wav(
-                filepath,
-                start_time,
-                stop_time
-            )
-            blob_client.upload_blob(audio_bytes)
+            with NamedTemporaryFile(delete=True) as tmp:
+                mpf_util.rip_audio(
+                    filepath,
+                    tmp.name,
+                    start_time,
+                    stop_time
+                )
+                tmp.seek(0)
+                blob_client.upload_blob(tmp.read())
         except Exception as e:
             if 'blob already exists' in str(e):
-                self.logger.info(f"Blob exists for file {recording_id}")
+                self.logger.info("Blob exists for file {}".format(recording_id))
             else:
-                self.logger.error(f"Uploading file to blob failed for file {recording_id}")
+                self.logger.error("Uploading file to blob failed for file {}".format(recording_id))
                 raise
 
         if datetime.utcnow() + timedelta(minutes=5) > self.expiry:
@@ -126,15 +142,15 @@ class AzureConnection(object):
         )
 
         data = json.dumps(data).encode()
-        req = request.Request(
+        req = RequestWithMethod(
             url=self.url,
             data=data,
             headers=self.acs_headers,
             method='POST'
         )
         try:
-            response = request.urlopen(req)
-            return response.getheader('Location')
+            response = urlopen(req)
+            return response.info().getheader('Location')
         except HTTPError as e:
             response_content = e.read().decode('utf-8', errors='replace')
             raise mpf.DetectionException(
@@ -152,7 +168,7 @@ class AzureConnection(object):
 
 
     def poll_for_result(self, location):
-        req = request.Request(
+        req = RequestWithMethod(
             url=location,
             headers=self.acs_headers,
             method='GET'
@@ -160,7 +176,7 @@ class AzureConnection(object):
         self.logger.info("Polling for transcription success")
         while True:
             try:
-                response = request.urlopen(req)
+                response = urlopen(req)
             except HTTPError as e:
                 response_content = e.read().decode('utf-8', errors='replace')
                 raise mpf.DetectionException(
@@ -194,23 +210,26 @@ class AzureConnection(object):
         results_uri = result['resultsUrls']['channel_0']
         try:
             self.logger.debug("Retrieving transcription result")
-            response = request.urlopen(results_uri)
+            response = urlopen(results_uri)
             return json.load(response)
         except HTTPError as e:
             error_str = e.read().decode('utf-8', errors='replace')
             raise mpf.DetectionException(
-                f"Request failed with HTTP status {e.code} and messages: {error_str}",
+                "Request failed with HTTP status {} and messages: {}".format(
+                    e.code,
+                    error_str
+                ),
                 mpf.DetectionError.DETECTION_FAILED
             )
 
     def delete_transcription(self, location):
         self.logger.info("Deleting transcription...")
-        req = request.Request(
+        req = RequestWithMethod(
             url=location,
             headers=self.acs_headers,
             method='DELETE'
         )
-        request.urlopen(req)
+        urlopen(req)
 
     def delete_blob(self, recording_id):
         self.logger.info("Deleting blob...")
@@ -218,21 +237,21 @@ class AzureConnection(object):
 
     def get_transcriptions(self):
         self.logger.info("Retrieving all transcriptions...")
-        req = request.Request(
+        req = RequestWithMethod(
             url=self.url,
             headers=self.acs_headers,
             method='GET'
         )
-        response = request.urlopen(req)
+        response = urlopen(req)
         transcriptions = json.load(response)
         return transcriptions
 
     def delete_all_transcriptions(self):
         self.logger.info("Deleting all transcriptions...")
         for trans in self.get_transcriptions():
-            req = request.Request(
+            req = RequestWithMethod(
                 url=self.url + '/' + trans['id'],
                 headers=self.acs_headers,
                 method='DELETE'
             )
-            response = request.urlopen(req)
+            response = urlopen(req)
