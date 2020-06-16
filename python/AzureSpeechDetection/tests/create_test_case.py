@@ -31,7 +31,7 @@ import sys
 import json
 import argparse
 import mimetypes
-from urllib import request
+from urllib2 import Request, urlopen, HTTPError
 
 import mpf_component_api as mpf
 from test_acs_speech import transcription_url, blobs_url, outputs_url
@@ -173,17 +173,23 @@ if __name__ == '__main__':
         result = comp.processor.acs.poll_for_result(output_loc)
         if result['status'] == 'Succeeded':
             results_uri = result['resultsUrls']['channel_0']
-            response = request.urlopen(results_uri)
+            response = urlopen(results_uri)
             transcription = json.load(response)
     finally:
         comp.processor.acs.delete_blob(recording_id)
         comp.processor.acs.delete_transcription(output_loc)
 
 
-    result['recordingsUrl'] = f"{blobs_url}/{recording_id}?test_queries"
+    result['recordingsUrl'] = "{}/{}?test_queries".format(
+        blobs_url,
+        recording_id
+    )
     result['reportFileUrl'] = "test.report.file"
     for k in result['resultsUrls'].keys():
-        result['resultsUrls'][k] = f"{outputs_url}/{job_name}.json?test_queries"
+        result['resultsUrls'][k] = "{}/{}.json?test_queries".format(
+            outputs_url,
+            job_name
+        )
 
     path = os.path.join(
         os.path.realpath(os.path.dirname(__file__)),
