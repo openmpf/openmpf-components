@@ -1,9 +1,9 @@
 {
   "componentName" : "TikaTextDetection",
-  "componentVersion" : "4.1.0",
-  "middlewareVersion" : "4.1.0",
+  "componentVersion" : "5.0",
+  "middlewareVersion" : "5.0",
   "sourceLanguage" : "java",
-  "batchLibrary" : "mpf-tika-text-detection-component-4.1.0.jar",
+  "batchLibrary" : "mpf-tika-text-detection-component-5.0.jar",
   "environmentVariables" : [],
   "algorithm" : {
     "name": "TIKATEXT",

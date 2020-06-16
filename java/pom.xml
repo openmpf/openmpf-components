@@ -32,7 +32,7 @@
 
     <groupId>org.mitre.mpf</groupId>
     <artifactId>mpf-java-components</artifactId>
-    <version>4.1.0</version>
+    <version>5.0</version>
     <modules>
         <module>SphinxSpeechDetection</module>
         <module>TikaImageDetection</module>

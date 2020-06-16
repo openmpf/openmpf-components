@@ -29,7 +29,7 @@ import setuptools
 
 setuptools.setup(
     name='EastTextDetection',
-    version='4.1.0',
+    version='5.0',
     packages=setuptools.find_packages(exclude=('*test*',)),
     package_data={'': ['east_resnet50.pb']},
     install_requires=(

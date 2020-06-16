@@ -29,7 +29,7 @@ import setuptools
 
 setuptools.setup(
     name='AzureOcrTextDetection',
-    version='4.1.0',
+    version='5.0',
     packages=setuptools.find_packages(exclude=('*test*',)),
     package_data={'': ['text-tags.json']},
     install_requires=(
