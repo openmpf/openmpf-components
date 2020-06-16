@@ -28,7 +28,7 @@
 import setuptools
 
 setuptools.setup(
-    name='AzureOcrTextDetection',
+    name='AzureSpeechDetection',
     version='4.1.0',
     packages=setuptools.find_packages(exclude=('*test*',)),
     package_data={'': ['text-tags.json']},
@@ -36,8 +36,6 @@ setuptools.setup(
         'mpf_component_api>=0.1',
         'mpf_component_util>=0.1',
         'azure-storage-blob>=12.3'
-        # 'opencv-python>=3.3',
-        # 'numpy>=1.11'
     ),
     entry_points={
         'mpf.exported_component': 'component = acs_speech_component.acs_speech_component:AcsSpeechComponent'
