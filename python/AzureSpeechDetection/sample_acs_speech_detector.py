@@ -124,10 +124,6 @@ if __name__ == '__main__':
                 "START_FRAME and STOP_FRAME not used when processing audio"
                 " files. Use START_TIME_MILLIS and STOP_TIME_MILLIS."
             )
-        # if args.VOICED_SEGMENTS and args.DURATION is None:
-        #     parser.error(
-        #         "DURATION is required when VOICED_SEGMENTS is supplied."
-        #     )
     elif filetype == 'video':
         if args.FPS is None:
             parser.error(
@@ -138,10 +134,6 @@ if __name__ == '__main__':
                 "START_TIME_MILLIS and STOP_TIME_MILLIS not used when"
                 " processing video files. Use START_FRAME and STOP_FRAME."
             )
-        # if args.VOICED_SEGMENTS and args.FRAME_COUNT is None:
-        #     parser.error(
-        #         "FRAME_COUNT is required when VOICED_SEGMENTS is supplied."
-        #     )
 
     comp = AcsSpeechComponent()
     for uri in args.files:
@@ -199,13 +191,6 @@ if __name__ == '__main__':
             props = det.detection_properties
             speaker_id = props['SPEAKER_ID']
             transcript = props['TRANSCRIPT']
-            # gend_lab = props['GENDER']
-            # gend_conf = float(props['GENDER_CONFIDENCE'])
-            # lang_lab = props['DECODED_LANGUAGE']
-            # lang_conf = float(props['DECODED_LANGUAGE_CONFIDENCE'])
-            # lang_labs = props['SPEAKER_LANGUAGES']
-            # lang_confs = props['SPEAKER_LANGUAGE_CONFIDENCES']
-            # missing_langs = props['MISSING_LANGUAGE_MODELS']
 
             print('SPEAKER ID: %s' % speaker_id)
             print('  CONFIDENCE: {:.2f}'.format(det.confidence))
@@ -220,17 +205,4 @@ if __name__ == '__main__':
                     det.stop_frame
                 ))
 
-            # print('  GENDER:     {:<6s}  {:.2f}'.format(gend_lab, gend_conf))
-            # print('  LANGUAGE:  ', end = '')
-
-            # langs = lang_labs.split(', ')
-            # confs = map(float, lang_confs.split(', '))
-            # print('>' if langs[0] == lang_lab else ' ', end = '')
-            # print('{:<6s}  {:.2f}'.format(langs.pop(0), next(confs)))
-            # for lang, conf in zip(langs, confs):
-            #     print('             ', end = '')
-            #     print('>' if lang == lang_lab else ' ', end = '')
-            #     print('{:<6s}  {:.2f}'.format(lang, conf))
-            # if missing_langs:
-            #     print('  MISSING:    {:s}'.format(missing_langs))
             print('  TRANSCRIPT: {:s}'.format(transcript))
