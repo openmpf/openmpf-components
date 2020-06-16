@@ -26,39 +26,33 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} as build_component
+FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
 
 # Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
 RUN pip install --no-cache-dir 'azure-storage-blob>=12.3'
 
-COPY . .
+COPY . /home/mpf/component_src/
 
-RUN install-component.sh
-
-ARG RUN_TESTS=false
-RUN if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs.py; fi
-
-
-
-FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
-
-COPY --from=build_component $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
-
-COPY --from=build_component $PLUGINS_DIR/AzureSpeechDetection $PLUGINS_DIR/AzureSpeechDetection
-
+RUN /home/mpf/scripts/install-component.sh
 
 ENV COMPONENT_LOG_NAME acs-speech-detection.log
 
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then \
+        LD_LIBRARY_PATH="$MPF_HOME/lib" "$COMPONENT_VIRTUALENV/bin/python" /home/mpf/component_src/tests/test_acs_speech.py; \
+    fi
 
 
-################################################################################
-# Labels                                                                       #
-################################################################################
+ARG BUILD_DATE
+ARG BUILD_SHAS
+ARG BUILD_TAG
 
-# Set labels
-LABEL org.label-schema.license="Apache 2.0" \
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Azure Speech Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
-      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
-      org.label-schema.vendor="MITRE"
+      org.label-schema.vcs-ref=$BUILD_SHAS \
+      org.label-schema.vcs-url="https://github.com/openmpf" \
+      org.label-schema.vendor="MITRE" \
+      org.label-schema.version=$BUILD_TAG
