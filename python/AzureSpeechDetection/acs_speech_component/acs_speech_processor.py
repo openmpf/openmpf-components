@@ -112,8 +112,8 @@ class AcsSpeechDetectionProcessor(object):
             if cleanup:
                 self.logger.debug('Marking file blob for deletion')
                 self.acs.delete_blob(recording_id)
-                self.logger.debug('Deleting transcript')
-                self.acs.delete_transcription(output_loc)
+            self.logger.debug('Deleting transcript')
+            self.acs.delete_transcription(output_loc)
 
         self.logger.debug('Completed process audio')
         self.logger.debug('Creating AudioTracks')

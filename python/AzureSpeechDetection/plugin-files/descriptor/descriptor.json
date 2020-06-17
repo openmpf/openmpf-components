@@ -57,7 +57,7 @@
         },
         {
           "name": "CLEANUP",
-          "description": "Whether to delete recording blobs and transcripts after processing.",
+          "description": "Whether to delete recording blobs after processing.",
           "type": "BOOLEAN",
           "defaultValue": "TRUE"
         }
