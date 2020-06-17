@@ -40,38 +40,31 @@ class AcsSpeechDetectionProcessor(object):
         self.acs = AzureConnection(logger)
 
 
-    def _update_acs(self, acs_url, acs_account_name, acs_subscription_key,
-                    acs_speech_key, acs_container_name, acs_endpoint_suffix):
-        if (self.acs.url != acs_url or
-                self.acs.account_name != acs_account_name or
+    def _update_acs(self, acs_endpoint_url, acs_container_url,
+                    acs_subscription_key, acs_service_key):
+        if (self.acs.endpoint_url != acs_endpoint_url or
+                self.acs.container_url != acs_container_url or
                 self.acs.subscription_key != acs_subscription_key or
-                self.acs.speech_key != acs_speech_key or
-                self.acs.container_name != acs_container_name or
-                self.acs.endpoint_suffix != acs_endpoint_suffix):
+                self.acs.service_key != acs_service_key):
             self.logger.debug('Updating ACS connection')
             self.acs._update_acs(
-                url=acs_url,
-                account_name=acs_account_name,
+                endpoint_url=acs_endpoint_url,
+                container_url=acs_container_url,
                 subscription_key=acs_subscription_key,
-                speech_key=acs_speech_key,
-                container_name=acs_container_name,
-                endpoint_suffix=acs_endpoint_suffix
+                service_key=acs_service_key
             )
         else:
             self.logger.debug('ACS arguments unchanged')
 
 
     def process_audio(self, target_file, start_time, stop_time, job_name,
-                      acs_url, acs_account_name, acs_subscription_key,
-                      acs_speech_key, acs_container_name, acs_endpoint_suffix,
-                      lang, diarize, cleanup):
+                      acs_endpoint_url, acs_container_url, acs_subscription_key,
+                      acs_service_key, lang, diarize, cleanup):
         self._update_acs(
-            acs_url=acs_url,
-            acs_account_name=acs_account_name,
+            acs_endpoint_url=acs_endpoint_url,
+            acs_container_url=acs_container_url,
             acs_subscription_key=acs_subscription_key,
-            acs_speech_key=acs_speech_key,
-            acs_container_name=acs_container_name,
-            acs_endpoint_suffix=acs_endpoint_suffix
+            acs_service_key=acs_service_key
         )
 
         try:

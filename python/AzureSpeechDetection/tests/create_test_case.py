@@ -104,12 +104,10 @@ if __name__ == '__main__':
     comp = AcsSpeechComponent()
     parsed_properties = comp._parse_properties(properties)
     comp.processor._update_acs(
-        acs_url=parsed_properties['acs_url'],
-        acs_account_name=parsed_properties['acs_account_name'],
+        acs_endpoint_url=parsed_properties['acs_endpoint_url'],
+        acs_container_url=parsed_properties['acs_container_url'],
         acs_subscription_key=parsed_properties['acs_subscription_key'],
-        acs_speech_key=parsed_properties['acs_speech_key'],
-        acs_container_name=parsed_properties['acs_container_name'],
-        acs_endpoint_suffix=parsed_properties['acs_endpoint_suffix']
+        acs_service_key=parsed_properties['acs_service_key'],
     )
 
     job_name = args.job_name

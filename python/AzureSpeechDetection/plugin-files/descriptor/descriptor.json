@@ -20,14 +20,14 @@
       ],
       "properties": [
         {
-          "name": "ACS_URL",
+          "name": "ACS_ENDPOINT_URL",
           "description": "URL for the Azure Cognitive Services Endpoint. e.g. https://virginia.cris.azure.us/api/speechtotext/v2.0/transcriptions. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.  Note that the component was only tested against v2.0 of the API.",
           "type": "STRING",
           "defaultValue": ""
         },
         {
-          "name": "ACS_ACCOUNT_NAME",
-          "description": "Azure Cognitive Services account name. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "name": "ACS_CONTAINER_URL",
+          "description": "URL for the Azure Storage Blob container. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
           "type": "STRING",
           "defaultValue": ""
         },
@@ -38,20 +38,8 @@
           "defaultValue": ""
         },
         {
-          "name": "ACS_SPEECH_KEY",
-          "description": "Azure Cognitive Services Speech key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
-          "type": "STRING",
-          "defaultValue": ""
-        },
-        {
-          "name": "ACS_CONTAINER_NAME",
-          "description": "The container name to use for hosting file blobs. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
-          "type": "STRING",
-          "defaultValue": ""
-        },
-        {
-          "name": "ACS_ENDPOINT_SUFFIX",
-          "description": "The endpoint suffix. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "name": "ACS_SERVICE_KEY",
+          "description": "Azure Speech service key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
           "type": "STRING",
           "defaultValue": ""
         },

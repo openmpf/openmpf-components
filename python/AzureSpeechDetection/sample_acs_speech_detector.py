@@ -58,12 +58,10 @@ if __name__ == '__main__':
     parser.add_argument('--FPS', type=float)
     parser.add_argument('--DURATION', type=float)
 
-    parser.add_argument('--ACS_URL', type=str)
-    parser.add_argument('--ACS_ACCOUNT_NAME', type=str)
+    parser.add_argument('--ACS_ENDPOINT_URL', type=str)
+    parser.add_argument('--ACS_CONTAINER_URL', type=str)
     parser.add_argument('--ACS_SUBSCRIPTION_KEY', type=str)
-    parser.add_argument('--ACS_SPEECH_KEY', type=str)
-    parser.add_argument('--ACS_CONTAINER_NAME', type=str)
-    parser.add_argument('--ACS_ENDPOINT_SUFFIX', type=str)
+    parser.add_argument('--ACS_SERVICE_KEY', type=str)
     parser.add_argument('--LANGUAGE', type=str, default="en-US")
     parser.add_argument('--CLEANUP', action='store_true')
     parser.add_argument('--JSON_FILE', type=str, default=None)
@@ -79,20 +77,14 @@ if __name__ == '__main__':
         CLEANUP=str(args.CLEANUP)
     )
 
-    if args.ACS_URL is not None:
-        properties['ACS_URL'] = str(args.ACS_URL)
-    if args.ACS_ACCOUNT_NAME is not None:
-        properties['ACS_ACCOUNT_NAME'] = str(args.ACS_ACCOUNT_NAME)
+    if args.ACS_ENDPOINT_URL is not None:
+        properties['ACS_ENDPOINT_URL'] = str(args.ACS_ENDPOINT_URL)
+    if args.ACS_CONTAINER_URL is not None:
+        properties['ACS_CONTAINER_URL'] = str(args.ACS_CONTAINER_URL)
     if args.ACS_SUBSCRIPTION_KEY is not None:
         properties['ACS_SUBSCRIPTION_KEY'] = str(args.ACS_SUBSCRIPTION_KEY)
-    if args.ACS_SPEECH_KEY is not None:
-        properties['ACS_SPEECH_KEY'] = str(args.ACS_SPEECH_KEY)
-    if args.ACS_CONTAINER_NAME is not None:
-        properties['ACS_CONTAINER_NAME'] = str(args.ACS_CONTAINER_NAME)
-    if args.ACS_ENDPOINT_SUFFIX is not None:
-        properties['ACS_ENDPOINT_SUFFIX'] = str(args.ACS_ENDPOINT_SUFFIX)
-    if args.ACS_URL is not None:
-        properties['ACS_URL'] = str(args.ACS_URL)
+    if args.ACS_SERVICE_KEY is not None:
+        properties['ACS_SERVICE_KEY'] = str(args.ACS_SERVICE_KEY)
 
     media_properties = dict()
     if args.DURATION is not None:

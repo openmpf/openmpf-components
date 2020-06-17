@@ -31,7 +31,7 @@ import json
 import time
 from urllib2 import Request, urlopen, HTTPError
 from datetime import datetime, timedelta
-from azure.storage.blob import BlobServiceClient, ResourceTypes, AccountSasPermissions, generate_account_sas
+from azure.storage.blob import BlobServiceClient, ResourceTypes, AccountSasPermissions, generate_account_sas, ContainerClient
 from tempfile import NamedTemporaryFile
 
 import mpf_component_api as mpf
@@ -50,37 +50,24 @@ class RequestWithMethod(Request):
 class AzureConnection(object):
     def __init__(self, logger):
         self.logger = logger
-        self.url = None
-        self.account_name = None
+        self.endpoint_url = None
         self.subscription_key = None
-        self.speech_key = None
-        self.container_name = None
-        self.endpoint_suffix = None
+        self.service_key = None
 
-    def _update_acs(self, url, account_name, subscription_key, speech_key,
-                 container_name, endpoint_suffix):
-        self.url = url
-        self.account_name = account_name
+    def _update_acs(self, endpoint_url, container_url,
+                    subscription_key, service_key):
+        self.endpoint_url = endpoint_url
+        self.container_url = container_url
         self.subscription_key = subscription_key
-        self.speech_key = speech_key
-        self.container_name = container_name
-        self.endpoint_suffix = endpoint_suffix
+        self.service_key = service_key
 
-        connect_str = (
-            'DefaultEndpointsProtocol=https;'
-            'AccountName={:s};'
-            'AccountKey={:s};'
-            'EndpointSuffix={:s}'
-        ).format(
-            account_name,
-            subscription_key,
-            endpoint_suffix
+        self.container_client = ContainerClient.from_container_url(
+            container_url,
+            subscription_key
         )
-        self.bsc = BlobServiceClient.from_connection_string(connect_str)
-        self.container_client = self.bsc.get_container_client(container_name)
         self.expiry = datetime.utcnow()
         self.acs_headers = {
-            'Ocp-Apim-Subscription-Key': speech_key,
+            'Ocp-Apim-Subscription-Key': service_key,
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         }
@@ -90,8 +77,8 @@ class AzureConnection(object):
 
     def generate_account_sas(self):
         return generate_account_sas(
-            self.bsc.account_name,
-            account_key=self.bsc.credential.account_key,
+            self.container_client.account_name,
+            account_key=self.container_client.credential.account_key,
             resource_types=ResourceTypes(object=True),
             permission=AccountSasPermissions(read=True),
             expiry=self.expiry
@@ -120,9 +107,8 @@ class AzureConnection(object):
         if datetime.utcnow() + timedelta(minutes=5) > self.expiry:
             self.expiry = datetime.utcnow() + timedelta(hours=1)
             self.sas_url = self.generate_account_sas()
-        return '{url:s}{container:s}/{recording_id:s}?{sas_url:s}'.format(
-            url=self.bsc.url,
-            container=self.container_name,
+        return '{url:s}/{recording_id:s}?{sas_url:s}'.format(
+            url=self.container_client.url,
             recording_id=recording_id,
             sas_url=self.sas_url
         )
@@ -143,7 +129,7 @@ class AzureConnection(object):
 
         data = json.dumps(data).encode()
         req = RequestWithMethod(
-            url=self.url,
+            url=self.endpoint_url,
             data=data,
             headers=self.acs_headers,
             method='POST'
@@ -238,7 +224,7 @@ class AzureConnection(object):
     def get_transcriptions(self):
         self.logger.info("Retrieving all transcriptions...")
         req = RequestWithMethod(
-            url=self.url,
+            url=self.endpoint_url,
             headers=self.acs_headers,
             method='GET'
         )
@@ -250,7 +236,7 @@ class AzureConnection(object):
         self.logger.info("Deleting all transcriptions...")
         for trans in self.get_transcriptions():
             req = RequestWithMethod(
-                url=self.url + '/' + trans['id'],
+                url=self.endpoint_url + '/' + trans['id'],
                 headers=self.acs_headers,
                 method='DELETE'
             )

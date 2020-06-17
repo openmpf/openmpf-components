@@ -52,17 +52,17 @@ base_url_path = '/api/speechtotext/v2.0/'
 
 test_port = 10669
 origin = 'http://localhost:{}'.format(test_port)
-transcription_url = '{}{}transcriptions'.format(origin, base_url_path)
-blobs_url = '{}{}recordings'.format(origin, base_url_path)
-outputs_url = '{}{}outputs'.format(origin, base_url_path)
+url_prefix = origin + base_url_path
+transcription_url = url_prefix + 'transcriptions'
+blobs_url = url_prefix + 'recordings'
+outputs_url = url_prefix + 'outputs'
+container_url = 'https://account_name.blob.core.endpoint.suffix/container_name'
 def get_test_properties(**extra_properties):
     return dict(
-        ACS_URL=transcription_url,
-        ACS_ACCOUNT_NAME='acs_account_name',
+        ACS_ENDPOINT_URL=transcription_url,
+        ACS_CONTAINER_URL=container_url,
         ACS_SUBSCRIPTION_KEY='acs_subscription_key',
-        ACS_SPEECH_KEY='acs_speech_key',
-        ACS_CONTAINER_NAME='acs_container_name',
-        ACS_ENDPOINT_SUFFIX='acs.endpoint.suffix',
+        ACS_SERVICE_KEY='acs_service_key',
         **extra_properties
     )
 
