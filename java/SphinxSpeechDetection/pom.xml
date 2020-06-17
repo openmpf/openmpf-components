@@ -6,11 +6,11 @@
   ~ under contract, and is subject to the Rights in Data-General Clause       ~
   ~ 52.227-14, Alt. IV (DEC 2007).                                            ~
   ~                                                                           ~
-  ~ Copyright 2019 The MITRE Corporation. All Rights Reserved.                ~
+  ~ Copyright 2020 The MITRE Corporation. All Rights Reserved.                ~
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
 
 <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ~ Copyright 2019 The MITRE Corporation                                      ~
+  ~ Copyright 2020 The MITRE Corporation                                      ~
   ~                                                                           ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");           ~
   ~ you may not use this file except in compliance with the License.          ~
@@ -32,7 +32,7 @@
 
     <groupId>org.mitre.mpf</groupId>
     <artifactId>mpf-sphinx-speech-detection-component</artifactId>
-    <version>4.1.0</version>
+    <version>5.0</version>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
@@ -44,7 +44,7 @@
         <dependency>
             <groupId>org.mitre.mpf</groupId>
             <artifactId>mpf-java-component-api</artifactId>
-            <version>4.1.0</version>
+            <version>5.0</version>
         </dependency>
         <dependency>
             <groupId>edu.cmu.sphinx</groupId>
