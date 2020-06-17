@@ -27,19 +27,30 @@
 #ifndef OPENMPF_COMPONENTS_TESSERACTOCRTEXTDETECTION_H
 #define OPENMPF_COMPONENTS_TESSERACTOCRTEXTDETECTION_H
 
-#include "adapters/MPFImageDetectionComponentAdapter.h"
-#include <MPFImageReader.h>
-#include <MPFDetectionComponent.h>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include <opencv2/opencv.hpp>
-#include <log4cxx/logger.h>
 #include <boost/regex.hpp>
 #include <boost/locale.hpp>
 
-#include <tesseract/baseapi.h>
-#include <tesseract/osdetect.h>
+#include <log4cxx/logger.h>
+
+#include <opencv2/opencv.hpp>
+
 #include <QHash>
 #include <QString>
+
+#include <tesseract/baseapi.h>
+#include <tesseract/osdetect.h>
+
+#include <adapters/MPFImageDetectionComponentAdapter.h>
+#include <MPFImageReader.h>
+#include <MPFDetectionComponent.h>
+
 
 namespace MPF {
 
@@ -50,10 +61,6 @@ namespace MPF {
         class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
         public:
-            TesseractOCRTextDetection() = default;
-
-            ~TesseractOCRTextDetection();
-
             bool Init() override;
 
             bool Close() override;
@@ -143,7 +150,7 @@ namespace MPF {
 
                 std::set<std::string> ocr_lang_inputs;
                 log4cxx::LoggerPtr hw_logger_;
-                std::map<std::pair<int, std::string>, tesseract::TessBaseAPI *> *tess_api_map;
+                std::map<std::pair<int, std::string>, std::shared_ptr<tesseract::TessBaseAPI>> *tess_api_map;
             };
 
             struct Image_results{
@@ -201,7 +208,7 @@ namespace MPF {
             OCR_filter_settings default_ocr_fset;
 
             // Map of {OCR engine, language} pairs to Tesseract API pointers
-            std::map<std::pair<int, std::string>, tesseract::TessBaseAPI *> tess_api_map;
+            std::map<std::pair<int, std::string>, std::shared_ptr<tesseract::TessBaseAPI>> tess_api_map;
             std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> parse_json(const MPFJob &job,
                                                                                const std::string &jsonfile_path,
                                                                                MPFDetectionError &job_status);

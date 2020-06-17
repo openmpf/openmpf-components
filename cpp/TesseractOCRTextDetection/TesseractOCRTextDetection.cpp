@@ -24,8 +24,12 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include <map>
+#include "TesseractOCRTextDetection.h"
+
+#include <algorithm>
+#include <future>
 #include <iostream>
+
 #include <boost/regex.hpp>
 #include <boost/locale.hpp>
 #include <boost/algorithm/string.hpp>
@@ -33,19 +37,23 @@
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+
 #include <log4cxx/xml/domconfigurator.h>
-#include <algorithm>
-#include "TesseractOCRTextDetection.h"
-#include "detectionComponentUtils.h"
-#include <Utils.h>
-#include "JSON.h"
-#include "MPFSimpleConfigLoader.h"
+
+#include <Magick++.h>
+
+#include <opencv2/imgproc/imgproc.hpp>
+
 #include <tesseract/baseapi.h>
 #include <tesseract/osdetect.h>
-#include <unicharset.h>
-#include <Magick++.h>
-#include <future>
+#include <tesseract/unicharset.h>
+
+#include <detectionComponentUtils.h>
+#include <MPFSimpleConfigLoader.h>
+#include <Utils.h>
+
+#include "JSON.h"
+
 
 using namespace MPF;
 using namespace COMPONENT;
@@ -103,20 +111,11 @@ bool TesseractOCRTextDetection::Init() {
     return true;
 }
 
-// Ensure this is idempotent because it's called by the destructor.
+
 bool TesseractOCRTextDetection::Close() {
-    for (auto const &element : tess_api_map) {
-        tesseract::TessBaseAPI *tess_api = element.second;
-        tess_api->End();
-        delete tess_api;
-    }
-    tess_api_map.clear();
     return true;
 }
 
-TesseractOCRTextDetection::~TesseractOCRTextDetection() {
-    Close();
-}
 
 string TesseractOCRTextDetection::GetDetectionType() {
     return "TEXT";
@@ -391,7 +390,7 @@ TesseractOCRTextDetection::parse_json(const MPFJob &job, const string &jsonfile_
     buffer2 << ifs.rdbuf();
     j = buffer2.str();
     x = boost::locale::conv::utf_to_utf<wchar_t>(j);
-    JSONValue *value = JSON::Parse(x.c_str());
+    std::unique_ptr<JSONValue> value(JSON::Parse(x.c_str()));
     if (value == NULL) {
         LOG4CXX_ERROR(hw_logger_,
                       "[" + job.job_name + "] JSON is corrupted. File location: " + jsonfile_path);
@@ -795,7 +794,7 @@ bool TesseractOCRTextDetection::process_tesseract_lang_model(TesseractOCRTextDet
     // Process language specified by user or script detected by OSD processing.
     pair<int, string> tess_api_key = make_pair(inputs.ocr_fset->oem, results.lang);
     LOG4CXX_DEBUG(inputs.hw_logger_, "[" + *inputs.job_name + "] Running Tesseract with specified language: " + results.lang);
-    tesseract::TessBaseAPI *tess_api;
+    std::shared_ptr<tesseract::TessBaseAPI> tess_api;
 
     // When parallel processing is enabled, new APIs must be started up to avoid deadlocking issues rather than
     // using globally initialized APIs.
@@ -822,7 +821,7 @@ bool TesseractOCRTextDetection::process_tesseract_lang_model(TesseractOCRTextDet
             return false;
         }
 
-        tesseract::TessBaseAPI *new_tess_api = new tesseract::TessBaseAPI();
+        auto new_tess_api = std::make_shared<tesseract::TessBaseAPI>();
         int init_rc = new_tess_api->Init(tessdata_dir.c_str(), results.lang.c_str(), (tesseract::OcrEngineMode) inputs.ocr_fset->oem);
 
         if (init_rc != 0) {
@@ -851,10 +850,6 @@ bool TesseractOCRTextDetection::process_tesseract_lang_model(TesseractOCRTextDet
     // Free up recognition results and any stored image data.
     tess_api->Clear();
 
-    if (inputs.parallel_processing) {
-        // Delete API if specified.
-        tess_api->End();
-    }
     if (text) {
         results.text_result = text.get();
     } else {
@@ -883,8 +878,10 @@ bool TesseractOCRTextDetection::process_parallel_image_runs(TesseractOCRTextDete
         index++;
         while (active_threads.size() >= inputs.ocr_fset->max_parallel_ocr_threads) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
-            for (const int &i: active_threads) {
-                if ( ocr_threads[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+            for (auto active_thread_iter = active_threads.begin(); active_thread_iter != active_threads.end();
+                /* Intentionally no ++ to support erasing. */) {
+                int i = *active_thread_iter;
+                if (ocr_threads[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
                     if (!ocr_threads[i].get()) {
                         // Terminate for any error.
                         results.job_status = ocr_results[i].job_status;
@@ -895,7 +892,10 @@ bool TesseractOCRTextDetection::process_parallel_image_runs(TesseractOCRTextDete
                         }
                         return false;
                     }
-                    active_threads.erase(i);
+                    active_thread_iter = active_threads.erase(active_thread_iter);
+                }
+                else {
+                    ++active_thread_iter;
                 }
             }
         }
@@ -913,7 +913,6 @@ bool TesseractOCRTextDetection::process_parallel_image_runs(TesseractOCRTextDete
             }
             return false;
         }
-        active_threads.erase(i);
     }
 
     for (OCR_results &ocr_res: ocr_results) {
@@ -1124,7 +1123,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             return;
         }
 
-        tesseract::TessBaseAPI *tess_api = new tesseract::TessBaseAPI();
+        auto tess_api = std::make_shared<tesseract::TessBaseAPI>();
         int init_rc = tess_api->Init(tessdata_dir.c_str(), "osd", (tesseract::OcrEngineMode) oem);
 
         if (init_rc != 0) {
@@ -1141,7 +1140,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
 
     found_languages.clear();
 
-    tesseract::TessBaseAPI *tess_api = tess_api_map[tess_api_key];
+    const auto& tess_api = tess_api_map[tess_api_key];
     tess_api->SetPageSegMode(tesseract::PSM_AUTO_OSD);
     tess_api->SetImage(imi.data, imi.cols, imi.rows, imi.channels(), static_cast<int>(imi.step));
     if (!tess_api->DetectOS(&results)) {
@@ -1979,7 +1978,9 @@ bool TesseractOCRTextDetection::process_parallel_pdf_pages(TesseractOCRTextDetec
         index ++;
         while (active_threads.size() >= page_inputs.ocr_fset.max_parallel_pdf_threads) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
-            for (const int &i: active_threads) {
+            for (auto active_thread_iter = active_threads.begin(); active_thread_iter != active_threads.end();
+                 /* Intentionally no ++ to support erasing. */) {
+                int i = *active_thread_iter;
                 if (pdf_threads[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
                     if (!pdf_threads[i].get()) {
                         const int failure_index = i;
@@ -1992,8 +1993,10 @@ bool TesseractOCRTextDetection::process_parallel_pdf_pages(TesseractOCRTextDetec
                         page_results.job_status = thread_var[failure_index].page_thread_res.job_status;
                         return false;
                     }
-                    active_threads.erase(i);
-
+                    active_thread_iter = active_threads.erase(active_thread_iter);
+                }
+                else {
+                    ++active_thread_iter;
                 }
             }
         }
@@ -2010,7 +2013,6 @@ bool TesseractOCRTextDetection::process_parallel_pdf_pages(TesseractOCRTextDetec
             page_results.job_status = thread_var[failure_index].page_thread_res.job_status;
             return false;
         }
-        active_threads.erase(i);
     }
 
     for (index = 0; index < page_inputs.filelist.size(); index++ ) {
