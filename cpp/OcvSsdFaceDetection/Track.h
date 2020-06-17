@@ -49,7 +49,7 @@ namespace MPF{
         DetectionLocationPtr ocvTrackerPredict(const JobConfig &cfg);        ///< predict a new detection from an exiting one using a tracker
         void releaseTracker() {_trackerPtr.release();}                       ///< release tracker so it can be reinitialized
 
-        void kalmanPredict(const size_t frameIdx);                           ///< advance Kalman state to current frame in cfg
+        void kalmanPredict(const double frameTimeInSec);                     ///< advance Kalman state to current frame in cfg
         void kalmanCorrect();                                                ///< correct Kalman state based on last measuremet in track
         const cv::Rect2i getKalmanPredictedLocation() const;                 ///< get predicted location from current Kalman filter state
         const cv::Rect2i getKalmanCorrectedLocation() const;                 ///< get corrected location from current Kalman filter state
@@ -73,9 +73,12 @@ namespace MPF{
         cv::Ptr<cv::Tracker>    _trackerPtr;                ///< openCV tracker to help bridge gaps when detector fails
         size_t                  _trackerStartFrameIdx;      ///< frame index at which the tracker was initialized
 
-        cv::KalmanFilter _kf;           ///< kalman filter for bounding box
-        size_t _kf_frameIdx;            ///< frame corresponding to kalman filter state
-        const bool _kfDisabled;         ///< if true kalman filtering is disabled
+        cv::KalmanFilter        _kf;                        ///< kalman filter for bounding box
+        size_t                  _kf_frameIdx;               ///< frame corresponding to kalman filter state
+        const bool              _kfDisabled;                ///< if true kalman filtering is disabled
+        const cv::Rect2i        _kfROI;                     ///< limit bounding box predictions to ROI (i.e. frame canvas)
+        static cv::Mat_<float>  _kfC2ul;                    ///< center to upper left coordinate transfrom for state
+
     };
 
     /** **************************************************************************

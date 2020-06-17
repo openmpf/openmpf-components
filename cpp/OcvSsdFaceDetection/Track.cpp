@@ -30,7 +30,7 @@ using namespace MPF::COMPONENT;
 
 // Shared static members (might need mutex locks and condition variable if multithreading... )
 log4cxx::LoggerPtr Track::_log;
-
+cv::Mat_<float> Track::_kfC2ul;
 
 string format(cv::Mat m);
 
@@ -43,6 +43,7 @@ string format(cv::Mat m);
 **************************************************************************** */
 Track::Track(unique_ptr<DetectionLocation> detPtr, const JobConfig &cfg):
   _kfDisabled(cfg.kfDisabled),
+  _kfROI(0,0,cfg.bgrFrame.cols-1 ,cfg.bgrFrame.rows-1),
   _kf(KF_STATE_DIM,KF_MEAS_DIM,KF_CTRL_DIM,CV_32F)                 // kalman(state_dim,meas_dim,contr_dim)
 {
   if(! _kfDisabled){
@@ -76,20 +77,24 @@ Track::Track(unique_ptr<DetectionLocation> detPtr, const JobConfig &cfg):
 /** **************************************************************************
 * Advance Kalman filter system state to frameIdx time step
 *
-* \param frameIdx to which to advance the filter state to
+* \param frameTimeInSec time index of frame in seconds to which to advance
+*                       the filter state to
 *
 *************************************************************************** */
-void Track::kalmanPredict(const size_t frameIdx){
+void Track::kalmanPredict(const double frameTimeInSec){
 
   if(_kfDisabled) return;
 
-  float dt = frameIdx - _locationPtrs.back()->frameIdx;
+  float dt = frameTimeInSec - _locationPtrs.back()->frameTimeInSec;
   // set st in state transition matrix
   _kf.transitionMatrix.at<float>(0,2) = dt;
   _kf.transitionMatrix.at<float>(1,3) = dt;
   _kf.transitionMatrix.at<float>(4,6) = dt;
   _kf.transitionMatrix.at<float>(5,7) = dt;
-  _kf.predict();                                                               LOG4CXX_TRACE(_log,"kf predicted:" << getKalmanPredictedLocation());
+  _kf.predict();                                                               LOG4CXX_TRACE(_log,"kf predicted: [" << getKalmanPredictedLocation().x << ","
+                                                                                                                    << getKalmanPredictedLocation().y << "]-("
+                                                                                                                    << getKalmanPredictedLocation().width << ","
+                                                                                                                    << getKalmanPredictedLocation().height << ")");
 
 }
 
@@ -105,9 +110,9 @@ void Track::kalmanCorrect(){
   meas.at<float>(1,0) = _locationPtrs.back()->y_left_upper + _locationPtrs.back()->height/2.0f; // y
   meas.at<float>(2,0) = _locationPtrs.back()->width;   // width
   meas.at<float>(3,0) = _locationPtrs.back()->height;  // height
-                                                                               LOG4CXX_TRACE(_log, "kf predicted:" << format(_kf.statePre));
-                                                                               LOG4CXX_TRACE(_log, "kf meas:" << format(meas));
-  _kf.correct(meas);                                                           LOG4CXX_TRACE(_log, "kf corrected:" << format(_kf.statePost));
+                                                                               LOG4CXX_TRACE(_log, "kf predicted:" << format(_kfC2ul * _kf.statePre));
+                                                                               LOG4CXX_TRACE(_log, "kf meas     :" << format(_kfC2ul *_kf.measurementMatrix.t() * meas));
+  _kf.correct(meas);                                                           LOG4CXX_TRACE(_log, "kf corrected:" << format(_kfC2ul *_kf.statePost));
 
   cv::Rect2i cloc = getKalmanCorrectedLocation();
   _locationPtrs.back()->x_left_upper = cloc.x;
@@ -129,12 +134,13 @@ const cv::Rect2i  Track::getKalmanPredictedLocation() const{
                       _locationPtrs.back()->width,
                       _locationPtrs.back()->height);
   }else{
+
     return cv::Rect2i(static_cast<int>(_kf.statePre.at<float>(0)
-                                    - _kf.statePre.at<float>(4)/2.0f + 0.5f),
+                                     - _kf.statePre.at<float>(4)/2.0f + 0.5f),
                       static_cast<int>(_kf.statePre.at<float>(1)
-                                    - _kf.statePre.at<float>(5)/2.0f + 0.5f),
+                                     - _kf.statePre.at<float>(5)/2.0f + 0.5f),
                       static_cast<int>(_kf.statePre.at<float>(4)      + 0.5f),
-                      static_cast<int>(_kf.statePre.at<float>(5)      + 0.5f));
+                      static_cast<int>(_kf.statePre.at<float>(5)      + 0.5f)) & _kfROI;
   }
 }
 
@@ -157,7 +163,7 @@ const cv::Rect2i  Track::getKalmanCorrectedLocation() const{
                       static_cast<int>(_kf.statePost.at<float>(1)
                                      - _kf.statePost.at<float>(5)/2.0f + 0.5f),
                       static_cast<int>(_kf.statePost.at<float>(4)      + 0.5f),
-                      static_cast<int>(_kf.statePost.at<float>(5)      + 0.5f));
+                      static_cast<int>(_kf.statePost.at<float>(5)      + 0.5f)) & _kfROI;
   }
 }
 
@@ -192,6 +198,7 @@ DetectionLocationPtr Track::ocvTrackerPredict(const JobConfig &cfg){
         cv::Point2f((p.x + p.width/2.0f )/static_cast<float>(cfg.bgrFrame.cols),
                     (p.y + p.height/2.0f)/static_cast<float>(cfg.bgrFrame.rows)),
         cfg.frameIdx,
+        cfg.frameTimeInSec,
         cfg.bgrFrame));                                                                 LOG4CXX_TRACE(_log,"tracking " << (MPFImageLocation)*_locationPtrs.back() << " to " << (MPFImageLocation)*detPtr);
 
       detPtr->copyFeature(*(_locationPtrs.back()));  // clone feature of prior detection
@@ -229,6 +236,11 @@ void Track::push_back(DetectionLocationPtr d){
 bool Track::Init(log4cxx::LoggerPtr log, string plugin_path=""){
 
   _log = log;
+
+  //transformation matrix for state to go from center x,y to upper-left x,y
+  _kfC2ul = cv::Mat_<float>::eye(KF_STATE_DIM,KF_STATE_DIM);
+  _kfC2ul.at<float>(0,4) = -0.5f;
+  _kfC2ul.at<float>(1,5) = -0.5f;
 
   return true;
 }

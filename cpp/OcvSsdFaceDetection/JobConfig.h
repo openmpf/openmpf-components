@@ -101,17 +101,19 @@ namespace MPF{
       float   widthOdiag;              ///< image (width/diagonal)
       float   heightOdiag;             ///< image (height/diagonal)
       size_t  frameIdx;                ///< index of current frame
+      double  frameTimeInSec;          ///< time of current frame in milli sec
+
       cv::Mat bgrFrame;                ///< current BGR image frame
 
-
       bool  kfDisabled;                ///< if true kalman filtering is disabled
+      cv::Mat_<float> H;               ///< kalman filter measurement matrix
+      cv::Mat_<float> R;               ///< kalman filter measurement noise matrix
+      cv::Mat_<float> Q;               ///< kalman filter process noise matrix
 
+      bool fallback2CpuWhenGpuProblem; ///< fallback to cpu if there is a gpu problem
+      int  cudaDeviceId;               ///< gpu device id to use for cuda
 
-      cv::Mat_<float> H;          ///< kalman filter measurement matrix
-      cv::Mat_<float> R;          ///< kalman filter measurement noise matrix
-      cv::Mat_<float> Q;          ///< kalman filter process noise matrix
-
-      MPFDetectionError   lastError;   ///< last MPF error that should be returned
+      mutable MPFDetectionError   lastError;   ///< last MPF error that should be returned
 
       JobConfig();
       JobConfig(const MPFImageJob &job);
@@ -120,16 +122,20 @@ namespace MPF{
 
       void ReverseTransform(MPFImageLocation loc){_imreaderPtr->ReverseTransform(loc);}
       void ReverseTransform(MPFVideoTrack  track){_videocapPtr->ReverseTransform(track);}
-      const double GetCurrentTimeInMillis() const;
       bool nextFrame();
-      inline double GetCurrentTimeInMillis() const {  return _videocapPtr->GetCurrentTimeInMillis();}
 
     private:
-      mutable double              _frameTimeInMillis;  ///< time of current frame in milli sec
       unique_ptr<MPFImageReader>  _imreaderPtr;
       unique_ptr<MPFVideoCapture> _videocapPtr;
+      string                      _strR;          ///< kalman filter measurement noise matrix serialized to string
+      string                      _strQ;          ///< kalman filter process noise matrix serialized to string
 
-      void _parse(const MPFJob &job);
+      void    _parse(const MPFJob &job);
+      cv::Mat _fromString(const string data,
+                          const int    rows,
+                          const int    cols,
+                          const string dt);
+
 
 
   };

@@ -96,6 +96,7 @@ bool OcvSsdFaceDetection::Init() {
     if(LoadConfig(config_params_path, params)) {                               LOG4CXX_ERROR(_log, "Failed to load the OcvSsdFaceDetection config from: " << config_params_path);
         return false;
     }                                                                          LOG4CXX_TRACE(_log,"read config file:" << config_params_path);
+    Properties props;
     for(auto p = params.begin(); p != params.end(); p++){
       const string key = p.key().toStdString();
       const string val = p.value().toStdString();                              LOG4CXX_TRACE(_log,"Config    Vars:" << key << "=" << val);
@@ -111,8 +112,19 @@ bool OcvSsdFaceDetection::Init() {
     // initialize adaptive histogram equalizer
     _equalizerPtr = cv::createCLAHE(40.0,cv::Size(8,8));
 
-    return    DetectionLocation::Init(_log, plugin_path)
-           && Track::Init(_log, plugin_path);
+    bool detectionLocationInitalizedOK = DetectionLocation::Init(_log, plugin_path);
+
+    Properties fromEnv;
+    int cudaDeviceId   = getEnv<int> (fromEnv,"CUDA_DEVICE_ID", -1);
+    bool fallbackToCPU = getEnv<bool>(fromEnv,"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", true);
+    bool defaultCudaDeviceOK = DetectionLocation::trySetCudaDevice(cudaDeviceId) || fallbackToCPU;
+
+    bool trackInitializedOK = Track::Init(_log, plugin_path);
+
+    return    detectionLocationInitalizedOK
+           && defaultCudaDeviceOK
+           && trackInitializedOK;
+
 
 }
 
@@ -317,7 +329,7 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
 
       // advance kalman predictions
       for(auto &trackPtr:trackPtrs){
-        trackPtr->kalmanPredict(cfg.frameIdx);
+        trackPtr->kalmanPredict(cfg.frameTimeInSec);
       }
 
       if(detectTrigger == 0){                                                  LOG4CXX_TRACE(_log,"checking for new detections");
@@ -332,7 +344,7 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
 
             // feature-based tracking tracking and assignment
             if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
-              av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detections,cfg.maxIOUDist);
+              av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detections,cfg.maxFeatureDist);
               _assignDetections2Tracks(trackPtrs, detections, av);             LOG4CXX_TRACE(_log,"Feature assignment complete");
             }
 

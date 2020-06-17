@@ -67,78 +67,17 @@
           "defaultValue": "false"
         },
         {
-          "name": "KF_MEASUREMENT_NOISE_X_VAR",
-          "description": "Bounding box x-position detector noise variance in [pixel^2]",
-          "type": "FLOAT",
-          "defaultValue": "1.0"
+          "name": "KF_R",
+          "description": "Bounding box detector measurement noise covariance matrix[4,4] for Kalman filter for measurment vector [center_x, center_y, width, height]",
+          "type": "STRING",
+          "defaultValue": "[1.0,0.0,0.0,0.0, 0.0,1.0,0.0,0.0, 0.0,0.0,10.0,0.0, 0.0,0.0,0.0,10.0]"
         },
         {
-          "name": "KF_MEASUREMENT_NOISE_Y_VAR",
-          "description": "Bounding box y-position detector noise variance in [pixel^2]",
-          "type": "FLOAT",
-          "defaultValue": "1.0"
-        },
-        {
-          "name": "KF_MEASUREMENT_NOISE_WIDTH_VAR",
-          "description": "Bounding box width detector noise variance in [pixel^2]",
-          "type": "FLOAT",
-          "defaultValue": "10.0"
-        },
-        {
-          "name": "KF_MEASUREMENT_NOISE_HEIGHT_VAR",
-          "description": "Bounding box height detector noise variance in [pixel^2]",
-          "type": "FLOAT",
-          "defaultValue": "10.0"
-        },
-        {
-          "name": "KF_PROCESS_NOISE_X_VAR",
-          "description": "Bounding box x-position motion model noise variance in [pixel^2]",
-          "type": "FLOAT",
-          "defaultValue": "1.0"
-        },
-        {
-          "name": "KF_PROCESS_NOISE_Y_VAR",
-          "description": "Bounding box Y-position motion model noise variance in [pixel^2]",
-          "type": "FLOAT",
-          "defaultValue": "1.0"
-        },
-        {
-          "name": "KF_PROCESS_NOISE_X_VELOCITY_VAR",
-          "description": "Bounding box x-velocity motion model noise variance in [pixel^2/frame^2]",
-          "type": "FLOAT",
-          "defaultValue": "5.0"
-        },
-        {
-          "name": "KF_PROCESS_NOISE_Y_VELOCITY_VAR",
-          "description": "Bounding box y-velocity motion model noise variance in [pixel^2/frame^2]",
-          "type": "FLOAT",
-          "defaultValue": "5.0"
-        },
-        {
-          "name": "KF_PROCESS_NOISE_WIDTH_VAR",
-          "description": "Bounding box width motion model noise variance in [pixel^2]",
-          "type": "FLOAT",
-          "defaultValue": "1.0"
-        },
-        {
-          "name": "KF_PROCESS_NOISE_HEIGHT_VAR",
-          "description": "Bounding box height motion model noise variance in [pixel^2]",
-          "type": "FLOAT",
-          "defaultValue": "1.0"
-        },
-        {
-          "name": "KF_PROCESS_NOISE_WIDTH_VELOCITY_VAR",
-          "description": "Bounding box width-rate-of-change motion model noise variance in [pixel^2/frame^2]",
-          "type": "FLOAT",
-          "defaultValue": "5.0"
-        },
-        {
-          "name": "KF_PROCESS_NOISE_HEIGHT_VELOCITY_VAR",
-          "description": "Bounding box height-rate-of-change motion model noise variance in [pixel^2/frame^2]",
-          "type": "FLOAT",
-          "defaultValue": "5.0"
+          "name": "KF_Q",
+          "description": "Bounding box motion model noise covariance matrix[8,8] for Kalman filter for state vector [center_x, center_y, center_x_velocity, center_y_velocity, width, height, width_velocity, height_velocity]",
+          "type": "STRING",
+          "defaultValue": "[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0, 0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,  0.0,0.0,5.0,0.0,0.0,0.0,0.0,0.0, 0.0,0.0,0.0,5.0,0.0,0.0,0.0,0.0, 0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0, 0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,5.0,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,5.0]"
         }
-
       ]
     }
   },

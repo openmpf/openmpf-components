@@ -369,7 +369,8 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
           && height >= cfg.minDetectionSize){
         detections.push_back(DetectionLocationPtr(
           new DetectionLocation(x1, y1, width, height, conf, (ul + lr) / 2.0,
-                                cfg.frameIdx, cfg.bgrFrame)));                 LOG4CXX_TRACE(_log,"detection:" << *detections.back());
+                                cfg.frameIdx, cfg.frameTimeInSec,
+                                cfg.bgrFrame)));                               LOG4CXX_TRACE(_log,"detection:" << *detections.back());
       }
     }
   }
@@ -378,31 +379,55 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
 
 /** **************************************************************************
 *************************************************************************** */
-void DetectionLocation::_tryEnableGPU(){
-  int cudaDeviceCnt = cv::cuda::getCudaEnabledDeviceCount();
-  if(cudaDeviceCnt > 0){                                                       LOG4CXX_INFO(_log,"Found "<< cudaDeviceCnt <<" CUDA capable device(s)");
-    try{
-      _ssdNet.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-      _ssdNet.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);                   LOG4CXX_INFO(_log,"Enabled CUDA for SDD face finder");
-    }catch(...){
-      _ssdNet.setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);
-      _ssdNet.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
-    }
-    try{
-      _openFaceNet.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-      _openFaceNet.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);              LOG4CXX_INFO(_log,"Enabled CUDA for openFace features");
-    }catch(...){
-      _openFaceNet.setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);
-      _openFaceNet.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
-    }
-  }else{                                                                       LOG4CXX_INFO(_log,"No CUDA capable device found");
-
+void DetectionLocation::_setCudaBackend(const bool enabled){
+  if(enabled){
+    _ssdNet.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    _ssdNet.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    _openFaceNet.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    _openFaceNet.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);                LOG4CXX_TRACE(_log,"Enabled CUDA acceleration on device " << cv::cuda::getDevice());
+  }else{
+    _ssdNet.setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);
+    _ssdNet.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+    _openFaceNet.setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);
+    _openFaceNet.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);                 LOG4CXX_INFO(_log,"Disabled CUDA acceleration");
   }
 }
 
 /** **************************************************************************
+* try set CUDA to use specified GPU device
+*
+* \param cudaDeviceId device to use for hardware acceleration (-1 to disable)
+*
+* \returns true if successful false otherwise
+*************************************************************************** */
+bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
+  static int lastCudaDeviceId = -1;
+  const string err_msg = "Failed to configure CUDA for deviceID=";
+  try{
+    if(lastCudaDeviceId != cudaDeviceId){
+      if(lastCudaDeviceId >=0) cv::cuda::resetDevice();  // if we were using a cuda device prior clean up old contex / cuda resources
+      if(cudaDeviceId >=0){
+        cv::cuda::setDevice(cudaDeviceId);
+        _setCudaBackend(true);
+        lastCudaDeviceId = cudaDeviceId;
+      }else{
+        _setCudaBackend(false);
+        lastCudaDeviceId = -1;
+      }
+    }
+    return true;
+  }catch(const runtime_error& re){                                           LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Runtime error: " << re.what());
+  }catch(const exception& ex){                                               LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Exception: " << ex.what());
+  }catch(...){                                                               LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Unknown failure occurred. Possible memory corruption");
+  }
+  _setCudaBackend(false);
+  lastCudaDeviceId = -1;
+  return false;
+}
+
+/** **************************************************************************
 * Setup class shared static configurations and initialize / load shared
-* detectors and feature generator objects.
+* detectors and feature generator objects.  Set default CUDA acceleration
 *
 * \param log         logger object for logging
 * \param plugin_path plugin directory so configs and models can be loaded
@@ -420,7 +445,7 @@ bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
   string  sp_model_path = plugin_path + "/data/shape_predictor_5_face_landmarks.dat";
   string  tr_model_path = plugin_path + "/data/nn4.small2.v1.t7";
 
-  string err_msg = "Failed to load models: " + tf_config_path + ", " + tf_model_path;
+  const string err_msg = "Failed to load models: " + tf_config_path + ", " + tf_model_path;
   try{
       // load detector net
       _ssdNet = cv::dnn::readNetFromTensorflow(tf_model_path, tf_config_path);
@@ -431,7 +456,6 @@ bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
       // load feature generator
       _openFaceNet = cv::dnn::readNetFromTorch(tr_model_path);
 
-      _tryEnableGPU();
 
   }catch(const runtime_error& re){                                           LOG4CXX_FATAL(_log, err_msg << " Runtime error: " << re.what());
     return false;
@@ -451,10 +475,12 @@ bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
 * constructor
 **************************************************************************** */
 DetectionLocation::DetectionLocation(int x,int y,int width,int height,float conf,
-                                     cv::Point2f center, size_t frameIdx,
+                                     cv::Point2f center,
+                                     size_t frameIdx, double frameTimeInSec,
                                      cv::Mat bgrFrame):
         MPFImageLocation(x,y,width,height,conf),
         center(center),
-        frameIdx(frameIdx){
+        frameIdx(frameIdx),
+        frameTimeInSec(frameTimeInSec){
         _bgrFrame = bgrFrame.clone();
 }

@@ -30,6 +30,7 @@
 #include <type_traits>
 #include <memory>
 #include <list>
+#include <iomanip>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
 
 namespace MPF{
@@ -59,11 +60,25 @@ namespace MPF{
    *
   ***************************************************************************** */
   inline
-  string format(cv::Mat m){
+  string format(cv::Mat_<float> m){
     stringstream ss;
-    ss << m;
+
+    ss << "[";
+    for(int r=0; r<m.rows; r++){
+      for(int c=0; c<m.cols; c++){
+        ss << setfill('0') << setw(6) << fixed << setprecision(3) << m.at<float>(r,c);
+        if(c!=m.cols-1){
+          ss << ", ";
+        }else if(r!=m.rows-1){
+          ss << "; ";
+        }
+      }
+    }
+    ss << "]";
+    //   << m;
     string str = ss.str();
-    str.erase(remove(str.begin(),str.end(),'\n'),str.end());
+    //str.erase(remove(str.begin(),str.end(),'\n'),str.end());
+
     return str;
   }
 

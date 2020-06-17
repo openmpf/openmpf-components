@@ -29,6 +29,26 @@
 
 using namespace MPF::COMPONENT;
 
+/** **************************************************************************
+*   Parse a string into a opencv matrix
+*   e.g. [1,2,3,4, 5,6,7,8]
+*************************************************************************** */
+cv::Mat JobConfig::_fromString(const string data,const int rows,const int cols,const string dt="f"){
+  stringstream ss;
+  ss << "{\"mat\":{\"type_id\":\"opencv-matrix\""
+     << ",\"rows\":" << rows
+     << ",\"cols\":" << cols
+     << ",\"dt\":\"" << dt << '"'
+     << ",\"data\":" << data << "}}";
+  cv::FileStorage fs(ss.str(), cv::FileStorage::READ | cv::FileStorage::MEMORY | cv::FileStorage::FORMAT_JSON);
+  cv::Mat mat;
+  fs["mat"] >> mat;
+  return mat;
+}
+
+/** **************************************************************************
+*   Parse argument fromMPFJob structure to our job objects
+*************************************************************************** */
 void JobConfig::_parse(const MPFJob &job){
   const Properties jpr = job.job_properties;
   minDetectionSize = abs(getEnv<int>  (jpr,"MIN_DETECTION_SIZE",             minDetectionSize));  LOG4CXX_TRACE(_log, "MIN_DETECTION_SIZE: "             << minDetectionSize);
@@ -40,25 +60,17 @@ void JobConfig::_parse(const MPFJob &job){
   maxCenterDist    = abs(getEnv<float>(jpr,"TRACKING_MAX_CENTER_DIST",       maxCenterDist));     LOG4CXX_TRACE(_log, "TRACKING_MAX_CENTER_DIST: "  << maxCenterDist);
   maxIOUDist       = abs(getEnv<float>(jpr,"TRACKING_MAX_IOU_DIST",          maxIOUDist));        LOG4CXX_TRACE(_log, "TRACKING_MAX_IOU_DIST: "     << maxIOUDist);
 
-  kfDisabled = getEnv<bool>(jpr,"KF_DISABLED", kfDisabled);                    LOG4CXX_TRACE(_log, "KF_DISABLED: " << kfDisabled);
+  kfDisabled = getEnv<bool>(jpr,"KF_DISABLED", kfDisabled);                                       LOG4CXX_TRACE(_log, "KF_DISABLED: " << kfDisabled);
+  _strR = getEnv<string>(jpr,"KF_R",_strR);                                                       LOG4CXX_TRACE(_log, "KF_R: "      << _strR);
+  _strQ = getEnv<string>(jpr,"KF_Q",_strQ);                                                       LOG4CXX_TRACE(_log, "KF_Q: "      << _strQ);
+  R = _fromString(_strR, KF_MEAS_DIM, KF_MEAS_DIM, "f");
+  Q = _fromString(_strQ, KF_STATE_DIM, KF_STATE_DIM, "f");
 
-  R.at<float>(0,0) = abs(getEnv<float>(jpr,"KF_MEASUREMENT_NOISE_X_VAR",      R.at<float>(0,0))); LOG4CXX_TRACE(_log, "KF_MEASUREMENT_NOISE_X_VAR: "      << R.at<float>(0,0));
-  R.at<float>(1,1) = abs(getEnv<float>(jpr,"KF_MEASUREMENT_NOISE_Y_VAR",      R.at<float>(1,1))); LOG4CXX_TRACE(_log, "KF_MEASUREMENT_NOISE_Y_VAR: "      << R.at<float>(1,1));
-  R.at<float>(2,2) = abs(getEnv<float>(jpr,"KF_MEASUREMENT_NOISE_WIDTH_VAR",  R.at<float>(2,2))); LOG4CXX_TRACE(_log, "KF_MEASUREMENT_NOISE_WIDTH_VAR: "  << R.at<float>(2,2));
-  R.at<float>(3,3) = abs(getEnv<float>(jpr,"KF_MEASUREMENT_NOISE_HEIGHT_VAR", R.at<float>(3,3))); LOG4CXX_TRACE(_log, "KF_MEASUREMENT_NOISE_HEIGHT_VAR: " << R.at<float>(3,3));
-
-  Q.at<float>(0,0) = abs(getEnv<float>(jpr,"KF_PROCESS_NOISE_X_VAR",              Q.at<float>(0,0)));  LOG4CXX_TRACE(_log, "KF_PROCESS_NOISE_X_VAR: "               << Q.at<float>(0,0));
-  Q.at<float>(1,1) = abs(getEnv<float>(jpr,"KF_PROCESS_NOISE_Y_VAR",              Q.at<float>(1,1)));  LOG4CXX_TRACE(_log, "KF_PROCESS_NOISE_Y_VAR: "               << Q.at<float>(1,1));
-  Q.at<float>(2,2) = abs(getEnv<float>(jpr,"KF_PROCESS_NOISE_X_VELOCITY_VAR",     Q.at<float>(2,2)));  LOG4CXX_TRACE(_log, "KF_PROCESS_NOISE_X_VELOCITY_VAR: "      << Q.at<float>(2,2));
-  Q.at<float>(3,3) = abs(getEnv<float>(jpr,"KF_PROCESS_NOISE_Y_VELOCITY_VAR",     Q.at<float>(3,3)));  LOG4CXX_TRACE(_log, "KF_PROCESS_NOISE_Y_VELOCITY_VAR: "      << Q.at<float>(3,3));
-  Q.at<float>(4,4) = abs(getEnv<float>(jpr,"KF_PROCESS_NOISE_WIDTH_VAR",          Q.at<float>(4,4)));  LOG4CXX_TRACE(_log, "KF_PROCESS_NOISE_WIDTH_VAR: "           << Q.at<float>(4,4));
-  Q.at<float>(5,5) = abs(getEnv<float>(jpr,"KF_PROCESS_NOISE_HEIGHT_VAR",         Q.at<float>(5,5)));  LOG4CXX_TRACE(_log, "KF_PROCESS_NOISE_HEIGHT_VAR: "          << Q.at<float>(5,5));
-  Q.at<float>(6,6) = abs(getEnv<float>(jpr,"KF_PROCESS_NOISE_WIDTH_VELOCITY_VAR", Q.at<float>(6,6)));  LOG4CXX_TRACE(_log, "KF_PROCESS_NOISE_WIDTH_VELOCITY_VAR: "  << Q.at<float>(6,6));
-  Q.at<float>(7,7) = abs(getEnv<float>(jpr,"KF_PROCESS_NOISE_HEIGHT_VELOCITY_VAR",Q.at<float>(7,7)));  LOG4CXX_TRACE(_log, "KF_PROCESS_NOISE_HEIGHT_VELOCITY_VAR: " << Q.at<float>(7,7));
-
+  fallback2CpuWhenGpuProblem = getEnv<bool>(jpr,"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",fallback2CpuWhenGpuProblem);  LOG4CXX_TRACE(_log, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM: " << fallback2CpuWhenGpuProblem);
+  cudaDeviceId               = getEnv<int> (jpr,"CUDA_DEVICE_ID"                  , cudaDeviceId);               LOG4CXX_TRACE(_log, "CUDA_DEVICE_ID: " << cudaDeviceId);
 }
 
-/* **************************************************************************
+/** **************************************************************************
 *   Dump config to a stream
 *************************************************************************** */
 ostream& operator<< (ostream& out, const JobConfig& cfg) {
@@ -73,11 +85,13 @@ ostream& operator<< (ostream& out, const JobConfig& cfg) {
       <<  "\"kfDisabled\":"       << (cfg.kfDisabled ? "1":"0") << ","
       <<  "\"kfProcessCov\":"     << format(cfg.Q) << ","
       <<  "\"kfProcessCov\":"     << format(cfg.R) << ","
+      <<  "\"fallback2CpuWhenGpuProblem\":" << (cfg.fallback2CpuWhenGpuProblem ? "1" : "0") << ","
+      <<  "\"cudaDeviceId\":"     << cfg.cudaDeviceId
       << "}";
   return out;
 }
 
-/* **************************************************************************
+/** **************************************************************************
 *  Default constructor with default values
 *************************************************************************** */
 JobConfig::JobConfig():
@@ -89,16 +103,18 @@ JobConfig::JobConfig():
   maxCenterDist(0.0),
   maxIOUDist(0.5),
   kfDisabled(false),
+  cudaDeviceId(0),
+  fallback2CpuWhenGpuProblem(true),
   frameIdx(-1),
+  frameTimeInSec(-1.0),
   lastError(MPF_DETECTION_SUCCESS),
-  _frameTimeInMillis(-1.0),
   _imreaderPtr(unique_ptr<MPFImageReader>()),
   _videocapPtr(unique_ptr<MPFVideoCapture>()){
 
     // Kalman Measurement Matrix H
     //    | 1  0  0  0  0  0  0  0 |       | x |
     //    | 0  1  0  0  0  0  0  0 |       | y |
-    //    | 0  0  0  0  1  0  0  0 | * X = | w |
+    //    | 0  0  0  0  1  0  0  0 | * A = | w |
     //    | 0  0  0  0  0  1  0  0 |       | h |
     H = cv::Mat_<float>::zeros(KF_MEAS_DIM,KF_STATE_DIM);
     H.at<float>(0,0) = 1.0f;
@@ -107,38 +123,26 @@ JobConfig::JobConfig():
     H.at<float>(3,5) = 1.0f;
 
     // Kalman Motion Model Process noise covariance Matrix Q
-    //    |qx  0  0  0  0  0  0  0 |
-    //    | 0 qy  0  0  0  0  0  0 |
-    //    | 0  0 qvx 0  0  0  0  0 |
-    //    | 0  0  0 qvy 0  0  0  0 |
-    //    | 0  0  0  0 qw  0  0  0 |
-    //    | 0  0  0  0  0 qh  0  0 |
-    //    | 0  0  0  0  0  0 qvw 0 |
-    //    | 0  0  0  0  0  0  0 qvh|
-    Q = cv::Mat_<float>::zeros(KF_STATE_DIM,KF_STATE_DIM);
-    Q.at<float>(0,0) = 1.0f;  // model x position noise variance guess
-    Q.at<float>(1,1) = 1.0f;  // model y position noise variance guess
-    Q.at<float>(2,2) = 5.0f;  // model x velocity noise variance guess
-    Q.at<float>(3,3) = 5.0f;  // model y velocity noise variance guess
-    Q.at<float>(4,4) = 1.0f;  // model width noise variance guess
-    Q.at<float>(5,5) = 1.0f;  // model height noise variance guess
-    Q.at<float>(6,6) = 5.0f;  // model width velocity noise variance guess
-    Q.at<float>(7,7) = 5.0f;  // model height velocity noise variance guess
+    _strQ = "[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,"
+            " 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,"
+            " 0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0,"
+            " 0.0, 0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0,"
+            " 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,"
+            " 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,"
+            " 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 0.0,"
+            " 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0]";
+    Q = _fromString(_strQ, KF_STATE_DIM, KF_STATE_DIM, "f");
 
     // Kalman Bounding Box Measurement noise covariance Matrix R
-    //    |rx  0  0  0 |
-    //    | 0 ry  0  0 |
-    //    | 0  0 rw  0 |
-    //    | 0  0  0 rh |
-    R = cv::Mat_<float>::zeros(KF_MEAS_DIM,KF_MEAS_DIM);
-    R.at<float>(0,0) = 1.0f;  // measurement x position noise variance guess
-    R.at<float>(1,1) = 1.0f;  // measurement y position noise variance guess
-    R.at<float>(2,2) = 10.0f; // measurement width noise variance guess
-    R.at<float>(3,3) = 10.0f; // measurement height noise variance guess
+    _strR = "[1.0, 0.0,  0.0, 0.0,"
+            " 0.0, 1.0,  0.0, 0.0,"
+            " 0.0, 0.0, 10.0, 0.0,"
+            " 0.0, 0.0,  0.0, 10.0]";
+    R = _fromString(_strR, KF_MEAS_DIM, KF_MEAS_DIM, "f");
 
   }
 
-/* **************************************************************************
+/** **************************************************************************
 *  Constructor that parses parameters from MPFImageJob and load image
 *************************************************************************** */
 JobConfig::JobConfig(const MPFImageJob &job):
@@ -158,7 +162,7 @@ JobConfig::JobConfig(const MPFImageJob &job):
   }
 }
 
-/* **************************************************************************
+/** **************************************************************************
 *  Constructor that parses parameters from MPFVideoJob and initializes
 *  video capture / reader
 *************************************************************************** */
@@ -182,28 +186,17 @@ JobConfig::JobConfig(const MPFVideoJob &job):
   }
 }
 
-/* **************************************************************************
-*  Get current frame timestamp
-*************************************************************************** */
-const double JobConfig::GetCurrentTimeInMillis() const {
-  if(_frameTimeInMillis < 0.0){
-    _frameTimeInMillis = _videocapPtr->GetCurrentTimeInMillis();
-    return _frameTimeInMillis;
-  }else{
-    return _frameTimeInMillis;
-  }
-}
-
-/* **************************************************************************
+/** **************************************************************************
 *  Read next frame of video into current bgrFrame member variable and advance
 *  frame index counter.
 *************************************************************************** */
 bool JobConfig::nextFrame(){
   frameIdx++;
+  frameTimeInSec = _videocapPtr->GetCurrentTimeInMillis() * 0.001;
   return _videocapPtr->Read(bgrFrame);
 }
 
-/* **************************************************************************
+/** **************************************************************************
 * Destructor to release image / video readers
 *************************************************************************** */
 JobConfig::~JobConfig(){
