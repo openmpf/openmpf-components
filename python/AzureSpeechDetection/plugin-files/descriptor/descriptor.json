@@ -45,7 +45,7 @@
         },
         {
           "name": "LANGUAGE",
-          "description": "When provided, this disables automatic language detection. The BCP-47 language code of the text to be detected in the image. This value is case-sensitive.",
+          "description": "The language/locale to use for transcription.",
           "type": "STRING",
           "defaultValue": "en-US"
         },
