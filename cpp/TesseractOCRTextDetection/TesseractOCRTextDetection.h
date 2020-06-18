@@ -58,6 +58,8 @@ namespace MPF {
 
         enum Text_type{Unknown, Structured, Unstructured};
 
+        class TessApiWrapper;
+
         class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
         public:
@@ -150,7 +152,7 @@ namespace MPF {
 
                 std::set<std::string> ocr_lang_inputs;
                 log4cxx::LoggerPtr hw_logger_;
-                std::map<std::pair<int, std::string>, std::shared_ptr<tesseract::TessBaseAPI>> *tess_api_map;
+                std::map<std::pair<int, std::string>, TessApiWrapper> *tess_api_map;
             };
 
             struct Image_results{
@@ -198,37 +200,35 @@ namespace MPF {
                 }
             };
 
-            bool process_parallel_pdf_pages(TesseractOCRTextDetection::PDF_page_inputs &page_inputs,
-                                            TesseractOCRTextDetection::PDF_page_results &page_results);
+            void process_parallel_pdf_pages(PDF_page_inputs &page_inputs,
+                                            PDF_page_results &page_results);
 
-            bool process_serial_pdf_pages(TesseractOCRTextDetection::PDF_page_inputs &page_inputs,
-                                            TesseractOCRTextDetection::PDF_page_results &page_results);
+            void process_serial_pdf_pages(TesseractOCRTextDetection::PDF_page_inputs &page_inputs,
+                                          TesseractOCRTextDetection::PDF_page_results &page_results);
             log4cxx::LoggerPtr hw_logger_;
             QHash<QString, QString> parameters;
             OCR_filter_settings default_ocr_fset;
 
-            // Map of {OCR engine, language} pairs to Tesseract API pointers
-            std::map<std::pair<int, std::string>, std::shared_ptr<tesseract::TessBaseAPI>> tess_api_map;
+            // Map of {OCR engine, language} pairs to TessApiWrapper
+            std::map<std::pair<int, std::string>, TessApiWrapper> tess_api_map;
             std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> parse_json(const MPFJob &job,
                                                                                const std::string &jsonfile_path,
                                                                                MPFDetectionError &job_status);
 
 
-            static bool get_tesseract_detections(TesseractOCRTextDetection::OCR_job_inputs &input,
+            static void get_tesseract_detections(TesseractOCRTextDetection::OCR_job_inputs &input,
                                                  TesseractOCRTextDetection::Image_results &result);
-            static bool process_parallel_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
+            static void process_parallel_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
                                                     TesseractOCRTextDetection::Image_results &results);
-            static bool process_serial_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
+            static void process_serial_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
                                                   TesseractOCRTextDetection::Image_results &results);
 
-            bool preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
-                                  MPFDetectionError &job_status);
+            void preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset);
 
-            bool rescale_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset,
-                               MPFDetectionError &job_status);
+            void rescale_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset);
 
-            static bool process_tesseract_lang_model(TesseractOCRTextDetection::OCR_job_inputs &input,
-                                                     TesseractOCRTextDetection::OCR_results  &result);
+            static void process_tesseract_lang_model(OCR_job_inputs &input,
+                                                     OCR_results  &result);
 
             void set_default_parameters();
 
@@ -268,7 +268,7 @@ namespace MPF {
 
             void get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job,
                          TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
-                         Properties &detection_properties, MPFDetectionError &job_status,
+                         Properties &detection_properties,
                          std::string &tessdata_script_dir, std::set<std::string> &missing_languages);
 
             static std::string return_valid_tessdir(const std::string &job_name,
@@ -288,10 +288,38 @@ namespace MPF {
                                                    std::set<std::string> &missing_languages,
                                                    std::set<std::string> &found_languages);
 
-            bool check_default_languages(const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+            void check_default_languages(const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                          const std::string &job_name,
                                          const std::string &run_dir,
                                          MPFDetectionError &job_status);
+        };
+
+        // The primary reason this class exists is that tesseract::TessBaseAPI segfaults when copying or moving.
+        // It is very easy to unintentionally invoke a copy constructor (e.g. forgetting a &),
+        // so we disable copying and moving in this class.
+        class TessApiWrapper {
+        public:
+            TessApiWrapper(const std::string& data_path, const std::string& language, tesseract::OcrEngineMode oem);
+
+            TessApiWrapper(const TessApiWrapper&) = delete;
+            TessApiWrapper& operator=(const TessApiWrapper&) = delete;
+            TessApiWrapper(TessApiWrapper&&) = delete;
+            TessApiWrapper& operator=(TessApiWrapper&&) = delete;
+
+            void SetPageSegMode(tesseract::PageSegMode mode);
+
+            void SetImage(const cv::Mat& image);
+
+            std::string GetUTF8Text();
+
+            int MeanTextConf();
+
+            void Clear();
+
+            bool DetectOS(OSResults* results);
+
+        private:
+            tesseract::TessBaseAPI tess_api_;
         };
 
     }
