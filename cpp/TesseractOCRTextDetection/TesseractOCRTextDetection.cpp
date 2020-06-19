@@ -77,7 +77,7 @@ public:
         if (!created) {
             throw MPFDetectionException(
                     MPF_FILE_WRITE_ERROR,
-                    "Unable to write temporary directory (already exists): " + path);
+                    "Unable to write temporary directory (may already exist): " + path);
         }
     }
 
@@ -546,7 +546,7 @@ void TesseractOCRTextDetection::process_regex_match(const boost::wsmatch &match,
  */
 bool TesseractOCRTextDetection::comp_regex(const MPFImageJob &job, const wstring &full_text,
                                            const wstring &regstr, map<wstring, vector<string>> &trigger_words_offset,
-                                           const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                           const OCR_filter_settings &ocr_fset,
                                            bool case_sensitive, MPFDetectionError &job_status) {
 
     bool found = false;
@@ -652,9 +652,8 @@ void TesseractOCRTextDetection::preprocess_image(const MPFImageJob &job, cv::Mat
         throw MPFDetectionException(MPF_IMAGE_READ_ERROR,
                                     "Could not open transformed image and will not return detections.");
     }
-    else {
-        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Transformed image opened.");
-    }
+    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Transformed image opened.");
+
     // Image preprocessing to improve text extraction results.
 
     try {
@@ -702,7 +701,7 @@ void TesseractOCRTextDetection::preprocess_image(const MPFImageJob &job, cv::Mat
  * Rescales image before running OSD and OCR.
  */
 void TesseractOCRTextDetection::rescale_image(const MPFImageJob &job, cv::Mat &image_data,
-                                              const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset) {
+                                              const OCR_filter_settings &ocr_fset) {
     int im_width  = image_data.size().width;
     int im_height = image_data.size().height;
 
@@ -799,8 +798,8 @@ void TesseractOCRTextDetection::rescale_image(const MPFImageJob &job, cv::Mat &i
     }
 }
 
-void TesseractOCRTextDetection::process_tesseract_lang_model(TesseractOCRTextDetection::OCR_job_inputs &inputs,
-                                                             TesseractOCRTextDetection::OCR_results  &results) {
+void TesseractOCRTextDetection::process_tesseract_lang_model(OCR_job_inputs &inputs,
+                                                             OCR_results  &results) {
 
     // Process language specified by user or script detected by OSD processing.
     pair<int, string> tess_api_key = make_pair(inputs.ocr_fset->oem, results.lang);
@@ -864,8 +863,8 @@ void TesseractOCRTextDetection::process_tesseract_lang_model(TesseractOCRTextDet
     }
 }
 
-void TesseractOCRTextDetection::process_parallel_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
-                                                            TesseractOCRTextDetection::Image_results &results) {
+void TesseractOCRTextDetection::process_parallel_image_runs(OCR_job_inputs &inputs,
+                                                            Image_results &results) {
 
     OCR_results ocr_results[inputs.ocr_lang_inputs.size()];
     std::future<void> ocr_threads[inputs.ocr_lang_inputs.size()];
@@ -877,7 +876,7 @@ void TesseractOCRTextDetection::process_parallel_image_runs(TesseractOCRTextDete
         ocr_results[index].job_status = results.job_status;
         ocr_results[index].lang = lang;
         ocr_threads[index] = std::async(launch::async,
-                                        &TesseractOCRTextDetection::process_tesseract_lang_model,
+                                        &process_tesseract_lang_model,
                                         std::ref(inputs),
                                         std::ref(ocr_results[index]));
         active_threads.insert(index);
@@ -909,14 +908,14 @@ void TesseractOCRTextDetection::process_parallel_image_runs(TesseractOCRTextDete
         LOG4CXX_DEBUG(inputs.hw_logger_, "[" + *inputs.job_name + "] Tesseract run successful.");
         wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(ocr_res.text_result);
 
-        TesseractOCRTextDetection::OCR_output output_ocr = {ocr_res.confidence, ocr_res.lang, t_detection, "", false};
+        OCR_output output_ocr = {ocr_res.confidence, ocr_res.lang, t_detection, "", false};
         results.detections_by_lang.push_back(output_ocr);
     }
 }
 
 
-void TesseractOCRTextDetection::process_serial_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
-                                                          TesseractOCRTextDetection::Image_results &results) {
+void TesseractOCRTextDetection::process_serial_image_runs(OCR_job_inputs &inputs,
+                                                          Image_results &results) {
     for (const string &lang: inputs.ocr_lang_inputs) {
         OCR_results ocr_results;
 
@@ -927,7 +926,7 @@ void TesseractOCRTextDetection::process_serial_image_runs(TesseractOCRTextDetect
         LOG4CXX_DEBUG(inputs.hw_logger_, "[" + *inputs.job_name + "] Tesseract run successful.");
         wstring t_detection = boost::locale::conv::utf_to_utf<wchar_t>(ocr_results.text_result);
 
-        TesseractOCRTextDetection::OCR_output output_ocr = {ocr_results.confidence, ocr_results.lang, t_detection, "", false};
+        OCR_output output_ocr = {ocr_results.confidence, ocr_results.lang, t_detection, "", false};
         results.detections_by_lang.push_back(output_ocr);
     }
 }
@@ -1067,7 +1066,7 @@ string TesseractOCRTextDetection::process_osd_lang(const string &script_type, co
 
 
 void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job,
-                                        TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                        OCR_filter_settings &ocr_fset,
                                         Properties &detection_properties,
                                         string &tessdata_script_dir, set<string> &missing_languages) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Running Tesseract OSD.");
@@ -1225,8 +1224,8 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
 
     if (ocr_fset.min_script_confidence <= results.best_result.sconfidence && ocr_fset.min_script_score <= best_score) {
 
-        TesseractOCRTextDetection::OSD_script best_script = {best_id, best_score};
-        vector<TesseractOCRTextDetection::OSD_script> script_list, backup_scripts, secondary_scripts;
+        OSD_script best_script = {best_id, best_score};
+        vector<OSD_script> script_list, backup_scripts, secondary_scripts;
 
         // If primary script is not NULL, check if secondary scripts are also valid.
         if (detection_properties["OSD_PRIMARY_SCRIPT"] != "NULL") {
@@ -1240,7 +1239,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             for (int i = 1; i < kMaxNumberOfScripts; ++i) {
                 double score = results.scripts_na[best_ori][i];
                 if (i != best_id && score >= score_cutoff) {
-                    TesseractOCRTextDetection::OSD_script script_out;
+                    OSD_script script_out;
                     script_out.id = i;
                     script_out.score = score;
                     script_list.push_back(script_out);
@@ -1249,7 +1248,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
 
             }
             // Sort out list of acceptable scripts.
-            sort(script_list.begin(), script_list.end(), greater<TesseractOCRTextDetection::OSD_script>());
+            sort(script_list.begin(), script_list.end(), greater<OSD_script>());
         }
 
         // Limit number of accepted scripts if user set max_scripts to 2 or greater.
@@ -1270,19 +1269,19 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
 
         unique_vector script_results;
         int missing_count = 0;
-        for (const TesseractOCRTextDetection::OSD_script &script : script_list) {
+        for (const OSD_script &script : script_list) {
             string lang = process_osd_lang(results.unicharset->get_script_from_script_id(script.id), ocr_fset);
             if (lang == "") {
                 continue;
             }
 
-            tessdata_script_dir = TesseractOCRTextDetection::return_valid_tessdir(job.job_name, lang,
-                                                                                  ocr_fset.model_dir,
-                                                                                  run_dir,
-                                                                                  hw_logger_,
-                                                                                  false,
-                                                                                  missing_languages,
-                                                                                  found_languages);
+            tessdata_script_dir = return_valid_tessdir(job.job_name, lang,
+                                                       ocr_fset.model_dir,
+                                                       run_dir,
+                                                       hw_logger_,
+                                                       false,
+                                                       missing_languages,
+                                                       found_languages);
             if (tessdata_script_dir == "") {
                 missing_count += 1;
                 continue;
@@ -1293,20 +1292,20 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         }
 
         while (backup_scripts.size() > 0 && missing_count > 0) {
-            TesseractOCRTextDetection::OSD_script next_best = backup_scripts.front();
+            OSD_script next_best = backup_scripts.front();
             backup_scripts.erase(backup_scripts.begin());
 
             string lang = process_osd_lang(results.unicharset->get_script_from_script_id(next_best.id), ocr_fset);
             if (lang == "") {
                 continue;
             }
-            tessdata_script_dir = TesseractOCRTextDetection::return_valid_tessdir(job.job_name, lang,
-                                                                                  ocr_fset.model_dir,
-                                                                                  run_dir,
-                                                                                  hw_logger_,
-                                                                                  false,
-                                                                                  missing_languages,
-                                                                                  found_languages);
+            tessdata_script_dir = return_valid_tessdir(job.job_name, lang,
+                                                       ocr_fset.model_dir,
+                                                       run_dir,
+                                                       hw_logger_,
+                                                       false,
+                                                       missing_languages,
+                                                       found_languages);
             if (tessdata_script_dir == "") {
                 continue;
             } else {
@@ -1322,7 +1321,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             vector<string> scripts;
             vector<string> scores;
 
-            for (const TesseractOCRTextDetection::OSD_script &script : secondary_scripts) {
+            for (const OSD_script &script : secondary_scripts) {
                 scripts.push_back(results.unicharset->get_script_from_script_id(script.id));
                 scores.push_back(to_string(script.score));
             }
@@ -1349,13 +1348,13 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             // If scripts are not found, revert to default.
             // If scripts are found, set return_valid_tessdir so that get_tesseract_detections will skip searching for models.
             // Also, for script detection results, skip searching for NULL if that gets detected alongside other languages.
-            tessdata_script_dir = TesseractOCRTextDetection::return_valid_tessdir(job.job_name, lang_str,
-                                                                                  ocr_fset.model_dir,
-                                                                                  run_dir,
-                                                                                  hw_logger_,
-                                                                                  true,
-                                                                                  missing_languages,
-                                                                                  found_languages);
+            tessdata_script_dir = return_valid_tessdir(job.job_name, lang_str,
+                                                       ocr_fset.model_dir,
+                                                       run_dir,
+                                                       hw_logger_,
+                                                       true,
+                                                       missing_languages,
+                                                       found_languages);
             if (missing_languages.size() > 0) {
                 // If some acceptable OSD scripts were found, use them instead.
                 if (found_languages.size() > 0) {
@@ -1398,7 +1397,7 @@ bool is_only_ascii_whitespace(const wstring &str) {
 set<wstring> TesseractOCRTextDetection::search_regex(const MPFImageJob &job, const wstring &full_text,
                                                      const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex,
                                                      map<wstring, vector<string>> &trigger_words_offset,
-                                                     const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                                     const OCR_filter_settings &ocr_fset,
                                                      MPFDetectionError &job_status) {
     wstring found_tags_regex = L"";
     set<wstring> found_keys_regex;
@@ -1460,7 +1459,7 @@ void TesseractOCRTextDetection::load_tags_json(const MPFJob &job, MPFDetectionEr
 }
 
 void
-TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+TesseractOCRTextDetection::load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset,
                                          const Text_type &text_type) {
     // Load in settings specified from job_properties and default configuration.
 
@@ -1530,9 +1529,9 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
 
 // Tag results and store into track detection properties.
 bool TesseractOCRTextDetection::process_text_tagging(Properties &detection_properties, const MPFImageJob &job,
-                                                     const TesseractOCRTextDetection::OCR_output &ocr_out,
+                                                     const OCR_output &ocr_out,
                                                      MPFDetectionError &job_status,
-                                                     const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                                     const OCR_filter_settings &ocr_fset,
                                                      const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex,
                                                      int page_num) {
 
@@ -1644,7 +1643,7 @@ void TesseractOCRTextDetection::check_default_languages(const OCR_filter_setting
 vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImageJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
     try{
-        TesseractOCRTextDetection::OCR_filter_settings ocr_fset;
+        OCR_filter_settings ocr_fset;
         Text_type text_type = Unknown;
 
         if (job.has_feed_forward_location && job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
@@ -1664,7 +1663,7 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
         load_tags_json(job, job_status, json_kvs_regex);
 
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to run tesseract");
-        vector<TesseractOCRTextDetection::OCR_output> ocr_outputs;
+        vector<OCR_output> ocr_outputs;
 
         MPFImageReader image_reader(job);
         cv::Mat image_data = image_reader.GetImage();
@@ -1737,7 +1736,7 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
         // create a second round of extractions with a 180 degree rotation applied on top of the original setting.
         // Second rotation only triggers if ROTATE_AND_DETECT is set.
 
-        TesseractOCRTextDetection::OCR_job_inputs ocr_job_inputs;
+        OCR_job_inputs ocr_job_inputs;
         ocr_job_inputs.job_name = &job.job_name;
         ocr_job_inputs.lang = &ocr_fset.tesseract_lang;
         ocr_job_inputs.tessdata_script_dir = &tessdata_script_dir;
@@ -1748,16 +1747,16 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
         ocr_job_inputs.hw_logger_ = hw_logger_;
         ocr_job_inputs.tess_api_map = &tess_api_map;
 
-        TesseractOCRTextDetection::Image_results image_results;
+        Image_results image_results;
         image_results.job_status = job_status;
         get_tesseract_detections(ocr_job_inputs, image_results);
         ocr_outputs = image_results.detections_by_lang;
         job_status = image_results.job_status;
 
-        vector<TesseractOCRTextDetection::OCR_output> all_results;
+        vector<OCR_output> all_results;
 
-        for (const TesseractOCRTextDetection::OCR_output &ocr_out: ocr_outputs) {
-            TesseractOCRTextDetection::OCR_output final_out = ocr_out;
+        for (const OCR_output &ocr_out: ocr_outputs) {
+            OCR_output final_out = ocr_out;
             if (ocr_fset.rotate_and_detect) {
                 remaining_languages.erase(ocr_out.language);
                 final_out.two_pass_rotation = first_pass_rotation;
@@ -1766,7 +1765,7 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
                 // Perform second pass OCR if min threshold is disabled (negative) or first pass confidence too low.
                 if (min_ocr_conf <= 0 || ocr_out.confidence < min_ocr_conf) {
                     // Perform second pass OCR and provide best result to output.
-                    vector<TesseractOCRTextDetection::OCR_output> ocr_outputs_rotated;
+                    vector<OCR_output> ocr_outputs_rotated;
                     ocr_fset.tesseract_lang = ocr_out.language;
                     ocr_job_inputs.lang = &ocr_fset.tesseract_lang;
                     ocr_job_inputs.imi = &image_data_rotated;
@@ -1777,7 +1776,7 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
                     ocr_outputs_rotated = image_results.detections_by_lang;
                     job_status = image_results.job_status;
 
-                    TesseractOCRTextDetection::OCR_output  ocr_out_rotated = ocr_outputs_rotated.front();
+                    OCR_output  ocr_out_rotated = ocr_outputs_rotated.front();
                     if (ocr_out_rotated.confidence > ocr_out.confidence) {
                         final_out = ocr_out_rotated;
                         final_out.two_pass_rotation = second_pass_rotation;
@@ -1792,7 +1791,7 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
         // to generate an output.
         for (const string &rem_lang: remaining_languages) {
             // Perform second pass OCR and provide best result to output.
-            vector<TesseractOCRTextDetection::OCR_output> ocr_outputs_rotated;
+            vector<OCR_output> ocr_outputs_rotated;
             ocr_fset.tesseract_lang = rem_lang;
             ocr_job_inputs.lang = &ocr_fset.tesseract_lang;
             ocr_job_inputs.imi = &image_data_rotated;
@@ -1803,7 +1802,7 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
             ocr_outputs_rotated = image_results.detections_by_lang;
             job_status = image_results.job_status;
 
-            TesseractOCRTextDetection::OCR_output ocr_out_rotated = ocr_outputs_rotated.front();
+            OCR_output ocr_out_rotated = ocr_outputs_rotated.front();
             ocr_out_rotated.two_pass_rotation = second_pass_rotation;
             ocr_out_rotated.two_pass_correction = true;
             all_results.push_back(ocr_out_rotated);
@@ -1811,11 +1810,11 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
 
         // If max_text_tracks is set, filter out to return only the top specified tracks.
         if (ocr_fset.max_text_tracks > 0) {
-            sort(all_results.begin(), all_results.end(), greater<TesseractOCRTextDetection::OCR_output>());
+            sort(all_results.begin(), all_results.end(), greater<OCR_output>());
             all_results.resize(ocr_fset.max_text_tracks);
         }
 
-        for (const TesseractOCRTextDetection::OCR_output &final_out : all_results) {
+        for (const OCR_output &final_out : all_results) {
             MPFImageLocation image_location(xLeftUpper, yLeftUpper, width, height, final_out.confidence);
             // Copy over OSD detection results into OCR output.
             image_location.detection_properties = osd_detection_properties;
@@ -1899,7 +1898,7 @@ void TesseractOCRTextDetection::process_parallel_pdf_pages(PDF_page_inputs &page
         thread_var[index].ocr_input.hw_logger_ = hw_logger_;
         thread_var[index].ocr_input.tess_api_map = &tess_api_map;
         pdf_threads[index] = std::async(launch::async,
-                                        &TesseractOCRTextDetection::get_tesseract_detections,
+                                        &get_tesseract_detections,
                                         std::ref(thread_var[index].ocr_input),
                                         std::ref(thread_var[index].page_thread_res));
         active_threads.insert(index);
@@ -1934,7 +1933,7 @@ void TesseractOCRTextDetection::process_parallel_pdf_pages(PDF_page_inputs &page
         if (page_inputs.ocr_fset.max_text_tracks > 0) {
             sort(thread_var[index].page_thread_res.detections_by_lang.begin(),
                  thread_var[index].page_thread_res.detections_by_lang.end(),
-                 greater<TesseractOCRTextDetection::OCR_output>());
+                 greater<OCR_output>());
 
             thread_var[index].page_thread_res.detections_by_lang.resize(page_inputs.ocr_fset.max_text_tracks);
         }
@@ -1987,7 +1986,7 @@ void TesseractOCRTextDetection::process_serial_pdf_pages(PDF_page_inputs &page_i
          }
 
 
-        TesseractOCRTextDetection::OCR_job_inputs ocr_job_inputs;
+        OCR_job_inputs ocr_job_inputs;
         ocr_job_inputs.job_name = &c_job.job_name;
         ocr_job_inputs.lang = &page_inputs.ocr_fset.tesseract_lang;
         ocr_job_inputs.tessdata_script_dir = &tessdata_script_dir;
@@ -1998,7 +1997,7 @@ void TesseractOCRTextDetection::process_serial_pdf_pages(PDF_page_inputs &page_i
         ocr_job_inputs.hw_logger_ = hw_logger_;
         ocr_job_inputs.tess_api_map = &tess_api_map;
 
-        TesseractOCRTextDetection::Image_results image_results;
+        Image_results image_results;
         image_results.job_status = page_results.job_status;
 
         get_tesseract_detections(ocr_job_inputs, image_results);
@@ -2008,7 +2007,7 @@ void TesseractOCRTextDetection::process_serial_pdf_pages(PDF_page_inputs &page_i
         if (page_inputs.ocr_fset.max_text_tracks > 0) {
             sort(image_results.detections_by_lang.begin(),
                  image_results.detections_by_lang.end(),
-                 greater<TesseractOCRTextDetection::OCR_output>());
+                 greater<OCR_output>());
             image_results.detections_by_lang.resize(page_inputs.ocr_fset.max_text_tracks);
         }
 
@@ -2031,8 +2030,8 @@ vector<MPFGenericTrack> TesseractOCRTextDetection::GetDetections(const MPFGeneri
     try {
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
 
-        TesseractOCRTextDetection::PDF_page_inputs page_inputs;
-        TesseractOCRTextDetection::PDF_page_results page_results;
+        PDF_page_inputs page_inputs;
+        PDF_page_results page_results;
 
         std::vector<MPFGenericTrack> tracks;
         page_results.tracks = &tracks;

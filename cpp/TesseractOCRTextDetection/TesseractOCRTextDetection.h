@@ -200,11 +200,9 @@ namespace MPF {
                 }
             };
 
-            void process_parallel_pdf_pages(PDF_page_inputs &page_inputs,
-                                            PDF_page_results &page_results);
+            void process_parallel_pdf_pages(PDF_page_inputs &page_inputs, PDF_page_results &page_results);
+            void process_serial_pdf_pages(PDF_page_inputs &page_inputs, PDF_page_results &page_results);
 
-            void process_serial_pdf_pages(TesseractOCRTextDetection::PDF_page_inputs &page_inputs,
-                                          TesseractOCRTextDetection::PDF_page_results &page_results);
             log4cxx::LoggerPtr hw_logger_;
             QHash<QString, QString> parameters;
             OCR_filter_settings default_ocr_fset;
@@ -212,36 +210,32 @@ namespace MPF {
             // Map of {OCR engine, language} pairs to TessApiWrapper
             std::map<std::pair<int, std::string>, TessApiWrapper> tess_api_map;
             std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> parse_json(const MPFJob &job,
-                                                                               const std::string &jsonfile_path,
-                                                                               MPFDetectionError &job_status);
+                                                                                          const std::string &jsonfile_path,
+                                                                                          MPFDetectionError &job_status);
 
 
-            static void get_tesseract_detections(TesseractOCRTextDetection::OCR_job_inputs &input,
-                                                 TesseractOCRTextDetection::Image_results &result);
-            static void process_parallel_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
-                                                    TesseractOCRTextDetection::Image_results &results);
-            static void process_serial_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
-                                                  TesseractOCRTextDetection::Image_results &results);
+            static void get_tesseract_detections(OCR_job_inputs &input, Image_results &result);
+            
+            static void process_parallel_image_runs(OCR_job_inputs &inputs, Image_results &results);
+            static void process_serial_image_runs(OCR_job_inputs &inputs, Image_results &results);
 
             void preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset);
-
             void rescale_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset);
 
-            static void process_tesseract_lang_model(OCR_job_inputs &input,
-                                                     OCR_results  &result);
+            static void process_tesseract_lang_model(OCR_job_inputs &input, OCR_results  &result);
 
             void set_default_parameters();
 
             void set_read_config_parameters();
 
-            void load_settings(const MPFJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset, const Text_type &text_type = Unknown);
+            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, const Text_type &text_type = Unknown);
 
             void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
                                 std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex);
 
             bool comp_regex(const MPFImageJob &job, const std::wstring &full_text, const std::wstring &regstr,
                             std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
-                            const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset, bool case_sensitive,
+                            const OCR_filter_settings &ocr_fset, bool case_sensitive,
                             MPFDetectionError &job_status);
 
             void process_regex_match(const boost::wsmatch &match, const std::wstring &full_text,
@@ -254,20 +248,20 @@ namespace MPF {
             std::set<std::wstring> search_regex(const MPFImageJob &job, const std::wstring &full_text,
                                                 const std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex,
                                                 std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
-                                                const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                                const OCR_filter_settings &ocr_fset,
                                                 MPFDetectionError &job_status);
 
             bool process_text_tagging(Properties &detection_properties, const MPFImageJob &job,
                                       const OCR_output &ocr_out, MPFDetectionError &job_status,
-                                      const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                      const OCR_filter_settings &ocr_fset,
                                       const std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex,
                                       int page_num = -1);
 
             static std::string process_osd_lang(const std::string &script_type,
-                                                const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset);
+                                                const OCR_filter_settings &ocr_fset);
 
             void get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job,
-                         TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                         OCR_filter_settings &ocr_fset,
                          Properties &detection_properties,
                          std::string &tessdata_script_dir, std::set<std::string> &missing_languages);
 
@@ -288,7 +282,7 @@ namespace MPF {
                                                    std::set<std::string> &missing_languages,
                                                    std::set<std::string> &found_languages);
 
-            void check_default_languages(const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+            void check_default_languages(const OCR_filter_settings &ocr_fset,
                                          const std::string &job_name,
                                          const std::string &run_dir,
                                          MPFDetectionError &job_status);
