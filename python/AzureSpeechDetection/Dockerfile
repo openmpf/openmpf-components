@@ -31,6 +31,9 @@ FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
 # Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
 RUN "$COMPONENT_VIRTUALENV/bin/pip" install --no-cache-dir 'azure-storage-blob>=12.3'
 
+# Manually install mock (this can be removed when upgrading to Python 3)
+RUN "$COMPONENT_VIRTUALENV/bin/pip" install --no-cache-dir 'mock'
+
 COPY . /home/mpf/component_src/
 
 RUN /home/mpf/scripts/install-component.sh

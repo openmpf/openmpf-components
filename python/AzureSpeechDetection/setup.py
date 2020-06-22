@@ -35,7 +35,8 @@ setuptools.setup(
     install_requires=(
         'mpf_component_api>=0.1',
         'mpf_component_util>=0.1',
-        'azure-storage-blob>=12.3'
+        'azure-storage-blob>=12.3',
+        'mock'
     ),
     entry_points={
         'mpf.exported_component': 'component = acs_speech_component.acs_speech_component:AcsSpeechComponent'
