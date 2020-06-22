@@ -28,11 +28,17 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
 
-# Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN "$COMPONENT_VIRTUALENV/bin/pip" install --no-cache-dir 'azure-storage-blob>=12.3'
+# Manually install ffmpeg/ffprobe
+RUN mkdir -p /usr/local/bin \
+    && cd /usr/local/bin \
+    && curl -SL https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz \
+        | tar --extract --xz --strip-components=1 'ffmpeg-*-amd64-static/ffmpeg' 'ffmpeg-*-amd64-static/ffprobe' \
+    && chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
 
-# Manually install mock (this can be removed when upgrading to Python 3)
-RUN "$COMPONENT_VIRTUALENV/bin/pip" install --no-cache-dir 'mock'
+# Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
+RUN "$COMPONENT_VIRTUALENV/bin/pip" install --no-cache-dir \
+    'azure-storage-blob>=12.3' \
+    'mock'
 
 COPY . /home/mpf/component_src/
 
