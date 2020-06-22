@@ -29,7 +29,7 @@ ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
 
 # Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN pip install --no-cache-dir 'azure-storage-blob>=12.3'
+RUN "$COMPONENT_VIRTUALENV/bin/pip" install --no-cache-dir 'azure-storage-blob>=12.3'
 
 COPY . /home/mpf/component_src/
 
@@ -42,6 +42,10 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then \
         LD_LIBRARY_PATH="$MPF_HOME/lib" "$COMPONENT_VIRTUALENV/bin/python" /home/mpf/component_src/tests/test_acs_speech.py; \
     fi
 
+
+################################################################################
+# Labels                                                                       #
+################################################################################
 
 ARG BUILD_DATE
 ARG BUILD_SHAS
