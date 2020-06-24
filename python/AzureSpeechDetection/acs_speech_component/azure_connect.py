@@ -49,11 +49,17 @@ class RequestWithMethod(Request):
 class AzureConnection(object):
     def __init__(self, logger):
         self.logger = logger
-        self._url = None
+        self.url = None
+        self.subscription_key = None
+        self.blob_container_url = None
+        self.blob_service_key = None
 
     def update_acs(self, url, subscription_key, blob_container_url,
                    blob_service_key):
-        self._url = url
+        self.url = url
+        self.subscription_key = subscription_key
+        self.blob_container_url = blob_container_url
+        self.blob_service_key = blob_service_key
         self.acs_headers = {
             'Ocp-Apim-Subscription-Key': subscription_key,
             'Accept': 'application/json',
@@ -122,7 +128,7 @@ class AzureConnection(object):
 
         data = json.dumps(data).encode()
         req = RequestWithMethod(
-            url=self._url,
+            url=self.url,
             data=data,
             headers=self.acs_headers,
             method='POST'
@@ -216,7 +222,7 @@ class AzureConnection(object):
     def get_transcriptions(self):
         self.logger.info("Retrieving all transcriptions...")
         req = RequestWithMethod(
-            url=self._url,
+            url=self.url,
             headers=self.acs_headers,
             method='GET'
         )
@@ -228,7 +234,7 @@ class AzureConnection(object):
         self.logger.info("Deleting all transcriptions...")
         for trans in self.get_transcriptions():
             req = RequestWithMethod(
-                url=self._url + '/' + trans['id'],
+                url=self.url + '/' + trans['id'],
                 headers=self.acs_headers,
                 method='DELETE'
             )
