@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
     comp = AcsSpeechComponent()
     parsed_properties = comp._parse_properties(properties)
-    comp.processor._update_acs(
+    comp.processor.update_acs(
         acs_endpoint_url=parsed_properties['acs_endpoint_url'],
         acs_container_url=parsed_properties['acs_container_url'],
         acs_subscription_key=parsed_properties['acs_subscription_key'],

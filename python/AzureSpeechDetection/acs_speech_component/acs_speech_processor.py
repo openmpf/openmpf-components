@@ -40,14 +40,14 @@ class AcsSpeechDetectionProcessor(object):
         self.acs = AzureConnection(logger)
 
 
-    def _update_acs(self, acs_endpoint_url, acs_container_url,
+    def update_acs(self, acs_endpoint_url, acs_container_url,
                     acs_subscription_key, acs_service_key):
         if (self.acs.endpoint_url != acs_endpoint_url or
                 self.acs.container_url != acs_container_url or
                 self.acs.subscription_key != acs_subscription_key or
                 self.acs.service_key != acs_service_key):
             self.logger.debug('Updating ACS connection')
-            self.acs._update_acs(
+            self.acs.update_acs(
                 endpoint_url=acs_endpoint_url,
                 container_url=acs_container_url,
                 subscription_key=acs_subscription_key,
@@ -60,7 +60,7 @@ class AcsSpeechDetectionProcessor(object):
     def process_audio(self, target_file, start_time, stop_time, job_name,
                       acs_endpoint_url, acs_container_url, acs_subscription_key,
                       acs_service_key, lang, diarize, cleanup):
-        self._update_acs(
+        self.update_acs(
             acs_endpoint_url=acs_endpoint_url,
             acs_container_url=acs_container_url,
             acs_subscription_key=acs_subscription_key,

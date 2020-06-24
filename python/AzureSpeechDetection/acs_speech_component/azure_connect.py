@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2019 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2019 The MITRE Corporation                                      #
+# Copyright 2020 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -26,12 +26,11 @@
 
 from __future__ import division, print_function
 
-import os
 import json
 import time
 from urllib2 import Request, urlopen, HTTPError
 from datetime import datetime, timedelta
-from azure.storage.blob import BlobServiceClient, ResourceTypes, AccountSasPermissions, generate_account_sas, ContainerClient
+from azure.storage.blob import ResourceTypes, AccountSasPermissions, generate_account_sas, ContainerClient
 from tempfile import NamedTemporaryFile
 
 import mpf_component_api as mpf
@@ -44,7 +43,7 @@ class RequestWithMethod(Request):
     Request.__init__(self, *args, **kwargs)
 
   def get_method(self):
-    return self._method if self._method else super(RequestWithMethod, self).get_method()
+    return self._method if self._method else Request.get_method(self)
 
 
 class AzureConnection(object):
@@ -54,7 +53,7 @@ class AzureConnection(object):
         self.subscription_key = None
         self.service_key = None
 
-    def _update_acs(self, endpoint_url, container_url,
+    def update_acs(self, endpoint_url, container_url,
                     subscription_key, service_key):
         self.endpoint_url = endpoint_url
         self.container_url = container_url
@@ -96,7 +95,7 @@ class AzureConnection(object):
                     stop_time
                 )
                 tmp.seek(0)
-                blob_client.upload_blob(tmp.read())
+                blob_client.upload_blob(tmp)
         except Exception as e:
             if 'blob already exists' in str(e):
                 self.logger.info("Blob exists for file {}".format(recording_id))
@@ -164,7 +163,6 @@ class AzureConnection(object):
             try:
                 response = urlopen(req)
             except HTTPError as e:
-                response_content = e.read().decode('utf-8', errors='replace')
                 raise mpf.DetectionException(
                     "Polling failed with status {} and message: {}".format(
                         e.code,
@@ -182,7 +180,7 @@ class AzureConnection(object):
                 break
             else:
                 retry_after = int(response.info()['Retry-After'])
-                self.logger.debug(
+                self.logger.info(
                     "Status is {}. Retry in {} seconds.".format(
                         status,
                         retry_after
