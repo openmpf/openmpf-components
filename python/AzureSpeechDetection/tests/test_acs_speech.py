@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2019 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2019 The MITRE Corporation                                      #
+# Copyright 2020 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -31,19 +31,17 @@ import json
 import unittest
 import shutil
 from threading import Thread
-from typing import ClassVar
 import BaseHTTPServer
 import urlparse
 import posixpath
 
-from mock import patch, Mock
+from mock import patch
 
 # Add pyspeech_component to path.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from acs_speech_component import AcsSpeechComponent
 
 import mpf_component_api as mpf
-import mpf_component_util as mpf_util
 
 
 local_path = os.path.realpath(os.path.dirname(__file__))
