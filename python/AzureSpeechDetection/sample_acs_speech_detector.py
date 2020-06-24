@@ -50,21 +50,21 @@ if __name__ == '__main__':
             'Sample Azure Speech component on audio or video files.'
         )
     )
-    parser.add_argument('--START_TIME_MILLIS', type=int)
-    parser.add_argument('--STOP_TIME_MILLIS', type=int)
-    parser.add_argument('--START_FRAME', type=int)
-    parser.add_argument('--STOP_FRAME', type=int)
-    parser.add_argument('--FRAME_COUNT', type=int)
-    parser.add_argument('--FPS', type=float)
-    parser.add_argument('--DURATION', type=float)
+    parser.add_argument('--start-time-millis', type=int)
+    parser.add_argument('--stop-time-millis', type=int)
+    parser.add_argument('--start-frame', type=int)
+    parser.add_argument('--stop-frame', type=int)
+    parser.add_argument('--frame-count', type=int)
+    parser.add_argument('--fps', type=float)
+    parser.add_argument('--duration', type=float)
 
-    parser.add_argument('--ACS_ENDPOINT_URL', type=str)
-    parser.add_argument('--ACS_CONTAINER_URL', type=str)
-    parser.add_argument('--ACS_SUBSCRIPTION_KEY', type=str)
-    parser.add_argument('--ACS_SERVICE_KEY', type=str)
-    parser.add_argument('--LANGUAGE', type=str, default="en-US")
-    parser.add_argument('--CLEANUP', action='store_true')
-    parser.add_argument('--JSON_FILE', type=str, default=None)
+    parser.add_argument('--acs-endpoint-url', type=str)
+    parser.add_argument('--acs-container-url', type=str)
+    parser.add_argument('--acs-subscription-key', type=str)
+    parser.add_argument('--acs-service-key', type=str)
+    parser.add_argument('--language', type=str, default="en-US")
+    parser.add_argument('--no-cleanup', action='store_true')
+    parser.add_argument('--json-file', type=str, default=None)
     parser.add_argument(
         'files',
         nargs='+',
@@ -73,26 +73,26 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     properties = dict(
-        LANGUAGE=str(args.LANGUAGE),
-        CLEANUP=str(args.CLEANUP)
+        LANGUAGE=str(args.language),
+        CLEANUP=str(not args.no_cleanup)
     )
 
-    if args.ACS_ENDPOINT_URL is not None:
-        properties['ACS_ENDPOINT_URL'] = str(args.ACS_ENDPOINT_URL)
-    if args.ACS_CONTAINER_URL is not None:
-        properties['ACS_CONTAINER_URL'] = str(args.ACS_CONTAINER_URL)
-    if args.ACS_SUBSCRIPTION_KEY is not None:
-        properties['ACS_SUBSCRIPTION_KEY'] = str(args.ACS_SUBSCRIPTION_KEY)
-    if args.ACS_SERVICE_KEY is not None:
-        properties['ACS_SERVICE_KEY'] = str(args.ACS_SERVICE_KEY)
+    if args.acs_endpoint_url is not None:
+        properties['ACS_ENDPOINT_URL'] = str(args.acs_endpoint_url)
+    if args.acs_container_url is not None:
+        properties['ACS_CONTAINER_URL'] = str(args.acs_container_url)
+    if args.acs_subscription_key is not None:
+        properties['ACS_SUBSCRIPTION_KEY'] = str(args.acs_subscription_key)
+    if args.acs_service_key is not None:
+        properties['ACS_SERVICE_KEY'] = str(args.acs_service_key)
 
     media_properties = dict()
-    if args.DURATION is not None:
-        media_properties['DURATION'] = str(args.DURATION)
-    if args.FPS is not None:
-        media_properties['FPS'] = str(args.FPS)
-    if args.FRAME_COUNT is not None:
-        media_properties['FRAME_COUNT'] = str(args.FRAME_COUNT)
+    if args.duration is not None:
+        media_properties['DURATION'] = str(args.duration)
+    if args.fps is not None:
+        media_properties['FPS'] = str(args.fps)
+    if args.frame_count is not None:
+        media_properties['FRAME_COUNT'] = str(args.frame_count)
 
     if not len(args.files):
         parser.error("Must provide at least one audio or video file")
@@ -104,35 +104,39 @@ if __name__ == '__main__':
             parser.error((
                 "When processing multiple files, must either be all video or"
                 " all audio ({:s} is a {:s} file, while {:s} is a {:s} file)."
-            ).format(args.files[0], filetype, uri, y))
+            ).format(args.files[0], filetype, uri, t))
 
     if filetype == 'audio':
-        if args.FPS is not None:
+        if args.fps is not None:
             parser.error(
                 "FPS not used when processing audio files."
             )
-        if args.START_FRAME is not None or args.STOP_FRAME is not None:
+        if args.start_frame is not None or args.stop_frame is not None:
             parser.error(
                 "START_FRAME and STOP_FRAME not used when processing audio"
                 " files. Use START_TIME_MILLIS and STOP_TIME_MILLIS."
             )
     elif filetype == 'video':
-        if args.FPS is None:
+        if args.fps is None:
             parser.error(
                 "FPS must be provided when passing video files."
             )
-        if args.START_TIME_MILLIS is not None or args.STOP_TIME_MILLIS is not None:
+        if args.start_time_millis is not None or args.stop_time_millis is not None:
             parser.error(
                 "START_TIME_MILLIS and STOP_TIME_MILLIS not used when"
                 " processing video files. Use START_FRAME and STOP_FRAME."
             )
+    else:
+        parser.error(
+            "Provided file must be an audio or video file"
+        )
 
     comp = AcsSpeechComponent()
     for uri in args.files:
         print("Processing %s file: %s"%(filetype,uri))
         if filetype == 'audio':
-            start = args.START_TIME_MILLIS
-            stop = args.STOP_TIME_MILLIS
+            start = args.start_time_millis
+            stop = args.stop_time_millis
             if start is None:
                 start = 0
             if stop is None:
@@ -148,8 +152,8 @@ if __name__ == '__main__':
             ))
 
         elif filetype == 'video':
-            start = args.START_FRAME
-            stop = args.STOP_FRAME
+            start = args.start_frame
+            stop = args.stop_frame
             if start is None:
                 start = 0
             if stop is None:
@@ -164,10 +168,10 @@ if __name__ == '__main__':
                 feed_forward_track=None
             ))
 
-        if args.JSON_FILE is not None:
+        if args.json_file is not None:
             obj = []
             for det in dets:
-                d = det.detection_properties._dict
+                d = dict(det.detection_properties)
                 d['CONFIDENCE'] = det.confidence
                 if filetype == 'audio':
                     d['START_TIME'] = det.start_time
@@ -176,7 +180,7 @@ if __name__ == '__main__':
                     d['START_FRAME'] = det.start_frame
                     d['STOP_FRAME'] = det.stop_frame
                 obj.append(d)
-            with open(args.JSON_FILE, 'w') as fout:
+            with open(args.json_file, 'w') as fout:
                 json.dump(obj, fout)
 
         for det in dets:
