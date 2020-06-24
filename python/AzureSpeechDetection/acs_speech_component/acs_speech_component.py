@@ -31,7 +31,6 @@ import logging
 from math import floor, ceil
 
 import mpf_component_api as mpf
-import mpf_component_util as mpf_util
 from .acs_speech_processor import AcsSpeechDetectionProcessor
 
 
@@ -47,7 +46,7 @@ class MPFJobNameLoggerAdapter(logging.LoggerAdapter):
 
 logger = MPFJobNameLoggerAdapter(
     mpf.configure_logging(
-        'acs-speech-component.log',
+        'acs-speech-detection.log',
         __name__ == '__main__'
     ),
     extra={}

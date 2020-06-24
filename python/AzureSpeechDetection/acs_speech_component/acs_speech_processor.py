@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2019 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2019 The MITRE Corporation                                      #
+# Copyright 2020 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -29,7 +29,6 @@ from __future__ import division, print_function
 import os
 
 import mpf_component_api as mpf
-import mpf_component_util as util
 
 from .azure_connect import AzureConnection
 
@@ -68,7 +67,7 @@ class AcsSpeechDetectionProcessor(object):
         )
 
         try:
-            self.logger.debug('Uploading file to blob')
+            self.logger.info('Uploading file to blob')
             recording_id = os.path.split(target_file)[-1]
             recording_url = self.acs.upload_file_to_blob(
                 filepath=target_file,
@@ -83,7 +82,7 @@ class AcsSpeechDetectionProcessor(object):
             )
 
         try:
-            self.logger.debug('Submitting speech-to-text job to ACS')
+            self.logger.info('Submitting speech-to-text job to ACS')
             output_loc = self.acs.submit_batch_transcription(
                 recording_url=recording_url,
                 job_name=job_name,
@@ -92,12 +91,12 @@ class AcsSpeechDetectionProcessor(object):
             )
         except:
             if cleanup:
-                self.logger.debug('Marking file blob for deletion')
+                self.logger.info('Marking file blob for deletion')
                 self.acs.delete_blob(recording_id)
             raise
 
         try:
-            self.logger.debug("Retrieving transcription")
+            self.logger.info("Retrieving transcription")
             result = self.acs.poll_for_result(output_loc)
 
             if result['status'] == "Failed":
@@ -107,16 +106,16 @@ class AcsSpeechDetectionProcessor(object):
                 )
 
             transcription = self.acs.get_transcription(result)
-            self.logger.debug('Speech-to-text processing complete')
+            self.logger.info('Speech-to-text processing complete')
         finally:
             if cleanup:
-                self.logger.debug('Marking file blob for deletion')
+                self.logger.info('Marking file blob for deletion')
                 self.acs.delete_blob(recording_id)
-            self.logger.debug('Deleting transcript')
+            self.logger.info('Deleting transcript')
             self.acs.delete_transcription(output_loc)
 
-        self.logger.debug('Completed process audio')
-        self.logger.debug('Creating AudioTracks')
+        self.logger.info('Completed process audio')
+        self.logger.info('Creating AudioTracks')
         audio_tracks = []
         for utt in transcription['AudioFileResults'][0]['SegmentResults']:
             speaker_id = utt['SpeakerId'] if diarize else '0'
@@ -133,7 +132,6 @@ class AcsSpeechDetectionProcessor(object):
                 str(w['Offset'] / 10000.0) + '-' + str((w['Offset']+w['Duration']) / 10000.0)
                 for w in utt['NBest'][0]['Words']
             ])
-            words = [w['Word'] for w in utt['NBest'][0]['Words']]
             properties = dict(
                 SPEAKER_ID=speaker_id,
                 TRANSCRIPT=display,
@@ -149,5 +147,5 @@ class AcsSpeechDetectionProcessor(object):
             )
             audio_tracks.append(track)
 
-        self.logger.debug('Completed processing transcription results')
+        self.logger.info('Completed processing transcription results')
         return audio_tracks
