@@ -57,10 +57,10 @@ outputs_url = url_prefix + 'outputs'
 container_url = 'https://account_name.blob.core.endpoint.suffix/container_name'
 def get_test_properties(**extra_properties):
     return dict(
-        ACS_ENDPOINT_URL=transcription_url,
-        ACS_CONTAINER_URL=container_url,
+        ACS_URL=transcription_url,
         ACS_SUBSCRIPTION_KEY='acs_subscription_key',
-        ACS_SERVICE_KEY='acs_service_key',
+        ACS_BLOB_CONTAINER_URL=container_url,
+        ACS_BLOB_SERVICE_KEY='acs_blob_service_key',
         **extra_properties
     )
 

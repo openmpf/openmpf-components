@@ -49,27 +49,21 @@ class RequestWithMethod(Request):
 class AzureConnection(object):
     def __init__(self, logger):
         self.logger = logger
-        self.endpoint_url = None
-        self.subscription_key = None
-        self.service_key = None
+        self._url = None
 
-    def update_acs(self, endpoint_url, container_url,
-                    subscription_key, service_key):
-        self.endpoint_url = endpoint_url
-        self.container_url = container_url
-        self.subscription_key = subscription_key
-        self.service_key = service_key
-
-        self.container_client = ContainerClient.from_container_url(
-            container_url,
-            subscription_key
-        )
-        self.expiry = datetime.utcnow()
+    def update_acs(self, url, subscription_key, blob_container_url,
+                   blob_service_key):
+        self._url = url
         self.acs_headers = {
-            'Ocp-Apim-Subscription-Key': service_key,
+            'Ocp-Apim-Subscription-Key': subscription_key,
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         }
+        self.container_client = ContainerClient.from_container_url(
+            blob_container_url,
+            blob_service_key
+        )
+        self.expiry = datetime.utcnow()
 
     def get_blob_client(self, recording_id):
         return self.container_client.get_blob_client(recording_id)
@@ -128,7 +122,7 @@ class AzureConnection(object):
 
         data = json.dumps(data).encode()
         req = RequestWithMethod(
-            url=self.endpoint_url,
+            url=self._url,
             data=data,
             headers=self.acs_headers,
             method='POST'
@@ -222,7 +216,7 @@ class AzureConnection(object):
     def get_transcriptions(self):
         self.logger.info("Retrieving all transcriptions...")
         req = RequestWithMethod(
-            url=self.endpoint_url,
+            url=self._url,
             headers=self.acs_headers,
             method='GET'
         )
@@ -234,7 +228,7 @@ class AzureConnection(object):
         self.logger.info("Deleting all transcriptions...")
         for trans in self.get_transcriptions():
             req = RequestWithMethod(
-                url=self.endpoint_url + '/' + trans['id'],
+                url=self._url + '/' + trans['id'],
                 headers=self.acs_headers,
                 method='DELETE'
             )

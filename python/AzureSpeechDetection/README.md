@@ -5,17 +5,17 @@ This repository contains source code for the OpenMPF Azure Cognitive Services Sp
 # Required Job Properties
 In order for the component to process any jobs, the job properties listed below must be provided. These properties have no default value, but can be set through environment variables of the same name. If both environment variable and job property are provided, the job property will be used.
 
-- `ACS_ENDPOINT_URL`: URL for the Azure Cognitive Services Endpoint.
+- `ACS_URL`: URL for the Azure Cognitive Services Endpoint.
  e.g. `https://virginia.cris.azure.us/api/speechtotext/v2.0/transcriptions`.
  The component has only been tested against v2.0 of the API.
 
-- `ACS_CONTAINER_URL`: URL for an Azure Storage Blob container in which to store files during processing.
+ - `ACS_SUBSCRIPTION_KEY`: A string containing your subscription key for the speech service.
+
+- `ACS_BLOB_CONTAINER_URL`: URL for an Azure Storage Blob container in which to store files during processing.
  e.g. `https://myaccount.blob.core.windows.net/mycontainer`.
  See Microsoft's [documentation on Azure storage](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-container-create) for details.
 
-- `ACS_SUBSCRIPTION_KEY`: A string containing your Azure Cognitive Services subscription key. To get one you will need to create an Azure Cognitive Services account.
-
-- `ACS_SERVICE_KEY`: A string containing your subscription key for the speech service.
+- `ACS_BLOB_SERVICE_KEY`: A string containing your Azure Cognitive Services storage access key.
 
 
 # Optional Job Properties

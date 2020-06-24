@@ -86,20 +86,20 @@ class AcsSpeechComponent(object):
         """
 
         return dict(
-            acs_endpoint_url=cls._get_job_property_or_env_value(
-                'ACS_ENDPOINT_URL',
-                job_properties
-            ),
-            acs_container_url=cls._get_job_property_or_env_value(
-                'ACS_CONTAINER_URL',
+            acs_url=cls._get_job_property_or_env_value(
+                'ACS_URL',
                 job_properties
             ),
             acs_subscription_key=cls._get_job_property_or_env_value(
                 'ACS_SUBSCRIPTION_KEY',
                 job_properties
             ),
-            acs_service_key=cls._get_job_property_or_env_value(
-                'ACS_SERVICE_KEY',
+            acs_blob_container_url=cls._get_job_property_or_env_value(
+                'ACS_BLOB_CONTAINER_URL',
+                job_properties
+            ),
+            acs_blob_service_key=cls._get_job_property_or_env_value(
+                'ACS_BLOB_SERVICE_KEY',
                 job_properties
             ),
             lang=job_properties.get("LANGUAGE", 'en-US'),

@@ -58,10 +58,10 @@ if __name__ == '__main__':
     parser.add_argument('--fps', type=float)
     parser.add_argument('--duration', type=float)
 
-    parser.add_argument('--acs-endpoint-url', type=str)
-    parser.add_argument('--acs-container-url', type=str)
+    parser.add_argument('--acs-url', type=str)
     parser.add_argument('--acs-subscription-key', type=str)
-    parser.add_argument('--acs-service-key', type=str)
+    parser.add_argument('--acs-blob-container-url', type=str)
+    parser.add_argument('--acs-blob-service-key', type=str)
     parser.add_argument('--language', type=str, default="en-US")
     parser.add_argument('--no-cleanup', action='store_true')
     parser.add_argument('--json-file', type=str, default=None)
@@ -77,14 +77,14 @@ if __name__ == '__main__':
         CLEANUP=str(not args.no_cleanup)
     )
 
-    if args.acs_endpoint_url is not None:
-        properties['ACS_ENDPOINT_URL'] = str(args.acs_endpoint_url)
-    if args.acs_container_url is not None:
-        properties['ACS_CONTAINER_URL'] = str(args.acs_container_url)
+    if args.acs_url is not None:
+        properties['ACS_URL'] = str(args.acs_url)
     if args.acs_subscription_key is not None:
         properties['ACS_SUBSCRIPTION_KEY'] = str(args.acs_subscription_key)
-    if args.acs_service_key is not None:
-        properties['ACS_SERVICE_KEY'] = str(args.acs_service_key)
+    if args.acs_blob_container_url is not None:
+        properties['ACS_BLOB_CONTAINER_URL'] = str(args.acs_blob_container_url)
+    if args.acs_blob_service_key is not None:
+        properties['ACS_BLOB_SERVICE_KEY'] = str(args.acs_blob_service_key)
 
     media_properties = dict()
     if args.duration is not None:

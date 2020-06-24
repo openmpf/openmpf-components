@@ -40,31 +40,31 @@ class AcsSpeechDetectionProcessor(object):
         self.acs = AzureConnection(logger)
 
 
-    def update_acs(self, acs_endpoint_url, acs_container_url,
-                    acs_subscription_key, acs_service_key):
-        if (self.acs.endpoint_url != acs_endpoint_url or
-                self.acs.container_url != acs_container_url or
+    def update_acs(self, acs_url, acs_subscription_key,
+                   acs_blob_container_url, acs_blob_service_key):
+        if (self.acs.url != acs_url or
                 self.acs.subscription_key != acs_subscription_key or
-                self.acs.service_key != acs_service_key):
+                self.acs.blob_container_url != acs_blob_container_url or
+                self.acs.blob_service_key != acs_blob_service_key):
             self.logger.debug('Updating ACS connection')
             self.acs.update_acs(
-                endpoint_url=acs_endpoint_url,
-                container_url=acs_container_url,
+                url=acs_url,
                 subscription_key=acs_subscription_key,
-                service_key=acs_service_key
+                blob_container_url=acs_blob_container_url,
+                blob_service_key=acs_blob_service_key
             )
         else:
             self.logger.debug('ACS arguments unchanged')
 
 
     def process_audio(self, target_file, start_time, stop_time, job_name,
-                      acs_endpoint_url, acs_container_url, acs_subscription_key,
-                      acs_service_key, lang, diarize, cleanup):
+                      acs_url, acs_subscription_key, acs_blob_container_url,
+                      acs_blob_service_key, lang, diarize, cleanup):
         self.update_acs(
-            acs_endpoint_url=acs_endpoint_url,
-            acs_container_url=acs_container_url,
+            acs_url=acs_url,
             acs_subscription_key=acs_subscription_key,
-            acs_service_key=acs_service_key
+            acs_blob_container_url=acs_blob_container_url,
+            acs_blob_service_key=acs_blob_service_key
         )
 
         try:

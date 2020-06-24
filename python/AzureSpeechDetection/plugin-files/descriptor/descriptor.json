@@ -20,26 +20,26 @@
       ],
       "properties": [
         {
-          "name": "ACS_ENDPOINT_URL",
+          "name": "ACS_URL",
           "description": "URL for the Azure Cognitive Services Endpoint. e.g. https://virginia.cris.azure.us/api/speechtotext/v2.0/transcriptions. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.  Note that the component was only tested against v2.0 of the API.",
           "type": "STRING",
           "defaultValue": ""
         },
         {
-          "name": "ACS_CONTAINER_URL",
+          "name": "ACS_SUBSCRIPTION_KEY",
+          "description": "Azure Speech service key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_BLOB_CONTAINER_URL",
           "description": "URL for the Azure Storage Blob container. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
           "type": "STRING",
           "defaultValue": ""
         },
         {
-          "name": "ACS_SUBSCRIPTION_KEY",
+          "name": "ACS_BLOB_SERVICE_KEY",
           "description": "Azure Cognitive Services subscription key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
-          "type": "STRING",
-          "defaultValue": ""
-        },
-        {
-          "name": "ACS_SERVICE_KEY",
-          "description": "Azure Speech service key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
           "type": "STRING",
           "defaultValue": ""
         },
