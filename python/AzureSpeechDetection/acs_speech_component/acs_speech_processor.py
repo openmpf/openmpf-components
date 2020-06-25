@@ -121,19 +121,25 @@ class AcsSpeechDetectionProcessor(object):
         audio_tracks = []
         for utt in transcription['AudioFileResults'][0]['SegmentResults']:
             speaker_id = utt['SpeakerId'] if diarize else '0'
-            utterance_confidence = utt['NBest'][0]['Confidence']
-            utterance_start = utt['Offset'] / 10000.0
-            utterance_stop = (utt['Offset'] + utt['Duration']) / 10000.0
             display = utt['NBest'][0]['Display'].encode('utf-8')
 
+            # Confidence information. Utterance confidence does not seem
+            #  to be a simple aggregate of word confidences.
+            utterance_confidence = utt['NBest'][0]['Confidence']
             word_confidences = ', '.join([
                 str(w['Confidence'])
                 for w in utt['NBest'][0]['Words']
             ])
+
+            # Timing information. Azure works in 100-nanosecond units,
+            #  so divide by 1e4 to obtain milliseconds.
+            utterance_start = utt['Offset'] / 10000.0
+            utterance_stop = (utt['Offset'] + utt['Duration']) / 10000.0
             word_segments = ', '.join([
                 str(w['Offset'] / 10000.0) + '-' + str((w['Offset']+w['Duration']) / 10000.0)
                 for w in utt['NBest'][0]['Words']
             ])
+
             properties = dict(
                 SPEAKER_ID=speaker_id,
                 TRANSCRIPT=display,
