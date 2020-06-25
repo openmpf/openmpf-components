@@ -69,21 +69,22 @@ class AzureConnection(object):
             blob_container_url,
             blob_service_key
         )
-        self.expiry = datetime.utcnow()
 
     def get_blob_client(self, recording_id):
         return self.container_client.get_blob_client(recording_id)
 
-    def generate_account_sas(self):
+    def generate_account_sas(self, time_limit):
+        # Shared access signature (SAS) is required for the ACS Speech
+        #  service to access the container
         return generate_account_sas(
             self.container_client.account_name,
             account_key=self.container_client.credential.account_key,
             resource_types=ResourceTypes(object=True),
             permission=AccountSasPermissions(read=True),
-            expiry=self.expiry
+            expiry=(datetime.utcnow() + time_limit)
         )
 
-    def upload_file_to_blob(self, filepath, recording_id,
+    def upload_file_to_blob(self, filepath, recording_id, blob_access_time,
                             start_time=0, stop_time=None):
         try:
             blob_client = self.get_blob_client(recording_id)
@@ -103,13 +104,11 @@ class AzureConnection(object):
                 self.logger.error("Uploading file to blob failed for file {}".format(recording_id))
                 raise
 
-        if datetime.utcnow() + timedelta(minutes=5) > self.expiry:
-            self.expiry = datetime.utcnow() + timedelta(hours=1)
-            self.sas_url = self.generate_account_sas()
+        time_limit = timedelta(minutes=blob_access_time)
         return '{url:s}/{recording_id:s}?{sas_url:s}'.format(
             url=self.container_client.url,
             recording_id=recording_id,
-            sas_url=self.sas_url
+            sas_url=self.generate_account_sas(time_limit)
         )
 
     def submit_batch_transcription(self, recording_url, job_name,

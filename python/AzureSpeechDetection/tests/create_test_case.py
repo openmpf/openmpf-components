@@ -61,6 +61,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--diarize', action='store_true')
     parser.add_argument('--language', type=str, default="en-US")
+    parser.add_argument('--blob-access-time', type=int, default=120)
     parser.add_argument('--job_name', type=str, required=True)
     parser.add_argument('filepath')
     args = parser.parse_args()
@@ -68,7 +69,8 @@ if __name__ == '__main__':
     properties = dict(
         DIARIZE=str(args.diarize).upper(),
         LANGUAGE=str(args.language),
-        CLEANUP="TRUE"
+        CLEANUP="TRUE",
+        BLOB_ACCESS_TIME=str(args.blob_access_time)
     )
 
     media_properties = dict()
@@ -152,6 +154,7 @@ if __name__ == '__main__':
     recording_url = comp.processor.acs.upload_file_to_blob(
         filepath=args.filepath,
         recording_id=recording_id,
+        blob_access_time=blob_access_time,
         start_time=start_time,
         stop_time=stop_time
     )

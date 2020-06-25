@@ -58,7 +58,8 @@ class AcsSpeechDetectionProcessor(object):
 
     def process_audio(self, target_file, start_time, stop_time, job_name,
                       acs_url, acs_subscription_key, acs_blob_container_url,
-                      acs_blob_service_key, lang, diarize, cleanup):
+                      acs_blob_service_key, lang, diarize, cleanup,
+                      blob_access_time):
         self.update_acs(
             acs_url=acs_url,
             acs_subscription_key=acs_subscription_key,
@@ -72,6 +73,7 @@ class AcsSpeechDetectionProcessor(object):
             recording_url = self.acs.upload_file_to_blob(
                 filepath=target_file,
                 recording_id=recording_id,
+                blob_access_time=blob_access_time,
                 start_time=start_time,
                 stop_time=stop_time
             )

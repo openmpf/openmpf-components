@@ -60,6 +60,12 @@
           "description": "Whether to delete recording blobs after processing.",
           "type": "BOOLEAN",
           "defaultValue": "TRUE"
+        },
+        {
+          "name": "BLOB_ACCESS_TIME",
+          "description": "Timespan for which access signatures to blob storage containers will be valid, in minutes.",
+          "type": "INT",
+          "defaultValue": "120"
         }
       ]
     }

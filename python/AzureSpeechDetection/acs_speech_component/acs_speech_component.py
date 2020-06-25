@@ -103,7 +103,8 @@ class AcsSpeechComponent(object):
             ),
             lang=job_properties.get("LANGUAGE", 'en-US'),
             diarize=(job_properties.get("DIARIZE", 'TRUE').lower() == 'true'),
-            cleanup=(job_properties.get("CLEANUP", 'TRUE').lower() == 'true')
+            cleanup=(job_properties.get("CLEANUP", 'TRUE').lower() == 'true'),
+            blob_access_time=int(job_properties.get("BLOB_ACCESS_TIME", '120'))
         )
 
     def get_detections_from_audio(self, audio_job):
