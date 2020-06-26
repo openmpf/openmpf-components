@@ -75,7 +75,7 @@ using namespace MPF::COMPONENT;
 }
 
 /** ****************************************************************************
-* Conveniance << operator template for dumping vectors
+* Convenience << operator template for dumping vectors
 ***************************************************************************** */
 template<typename T>
 std::ostream& operator<< (std::ostream& out, const std::vector<T>& v) {
@@ -90,7 +90,7 @@ std::ostream& operator<< (std::ostream& out, const std::vector<T>& v) {
 }
 
 /** ****************************************************************************
-* shorthands for getting MPF properies of various types
+* shorthands for getting MPF properties of various types
 ***************************************************************************** */
 template<typename T>
 T get(const Properties &p, const string &k, const T def){
@@ -149,7 +149,7 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
        || userBBox[2] < 0 || userBBox[2] > image_y_max
        || userBBox[1] < 0 || userBBox[1] > image_x_max
        || userBBox[3] < 0 || userBBox[3] > image_x_max){
-      THROW_TRTISEXCEPTION("Bad USER_FEATURE BBOX specifiction");
+      THROW_TRTISEXCEPTION("Bad USER_FEATURE BBOX specification");
     }
     userBBoxNorm[0] = ((float)userBBox[0]) / image_y_max;
     userBBoxNorm[1] = ((float)userBBox[1]) / image_x_max;
@@ -187,14 +187,14 @@ bool TrtisDetection::Close(){
 *
 * \param model              name of inference server model (as it appear in url)
 * \param class_label_file   filename from which to read class labels
-* \param class_label_count  highest class_id/line number (as an integrety check)
+* \param class_label_count  highest class_id/line number (as an integrity check)
 ***************************************************************************** */
 void TrtisDetection::_readClassNames(string model,
                                      string class_label_file,
                                      int    class_label_count) {
   ifstream fp(class_label_file);
   if(!fp.is_open()){
-    THROW_TRTISEXCEPTION("Cound not read class label file: " + class_label_file);
+    THROW_TRTISEXCEPTION("Could not read class label file: " + class_label_file);
   }
 
   vector<string> class_labels;
@@ -221,10 +221,10 @@ void TrtisDetection::_readClassNames(string model,
 * Convert image colorspace to RGB and turn to bytes blob in prep for
 * inference server
 *
-* \param      img OpenCV image to prep for inferencing
-* \param[out] shape Shape of the scaled output data
+* \param      img OpenCV  image to prep for inferencing
+* \param[out] shape       Shape of the scaled output data
 *
-* \returns    A continuous RGB data vector ready for inference server
+* \returns  A continuous RGB data vector ready for inference server
 ***************************************************************************** */
 BytVec TrtisDetection::_cvRGBBytes(const cv::Mat &img, LngVec& shape){
   cv::Mat rgbImg;
@@ -242,7 +242,7 @@ BytVec TrtisDetection::_cvRGBBytes(const cv::Mat &img, LngVec& shape){
     rgbImg.convertTo(rgbImg, CV_8UC3);                                          LOG4CXX_TRACE(_log, "Converted Image to CV_8U precision");
   }
 
-  // return continuous chunck of image data in a byte vector
+  // return continuous chunk of image data in a byte vector
   BytVec data;
   size_t img_byte_size = rgbImg.total() * rgbImg.elemSize();
   data.resize(img_byte_size);
@@ -267,10 +267,10 @@ BytVec TrtisDetection::_cvRGBBytes(const cv::Mat &img, LngVec& shape){
 * shorter side equal target_height pixel but keep longer side below
 * target_width pixels and preserve aspect ratio.
 *
-* \param      img         OpenCV image to be resized to fit model
-* \param[out] scaleFactor scaling factor that was used to get to target dims
+* \param      img          OpenCV image to be resized to fit model
+* \param[out] scaleFactor  scaling factor that was used to get to target dims
 *
-* \returns    A scaled OpenCV image
+* \returns  A scaled OpenCV image
 ***************************************************************************** */
 cv::Mat TrtisDetection::_cvResize(const cv::Mat &img,
                                   double &scaleFactor,
@@ -297,11 +297,11 @@ cv::Mat TrtisDetection::_cvResize(const cv::Mat &img,
 /** ****************************************************************************
 * Scale image colorspace and dimensions and prep for inference server
 *
-* \param      cfg    configuration settings
-* \param      img    OpenCV image to prep for inferencing
-* \param      ctx    pointer to a unique inference context pointer
-* \param[out] shape  shape of the imgDat tensor
-* \param[out] imgDat image tensor data
+* \param      cfg     configuration settings
+* \param      img     OpenCV image to prep for inferencing
+* \param      ctx     pointer to a unique inference context pointer
+* \param[out] shape   shape of the imgDat tensor
+* \param[out] imgDat  image tensor data
 *
 * \note  shape and imgDat need to persist till inference call
 ***************************************************************************** */
@@ -341,10 +341,10 @@ void TrtisDetection::_ip_irv2_coco_prepImageData(
 * Get or create inference context for a model.  The context(s) are cached in
 * a local static container so they don't need recreated on every use.
 *
-* \param cfg    job configuration settings containing TRTIS server info
+* \param cfg  job configuration settings containing TRTIS server info
 *
-* \returns vector of pointers to unique inferencing context pointer
-*          to use for inferencing requests
+* \returns  vector of pointers to unique inferencing context pointer
+*           to use for inferencing requests
 ***************************************************************************** */
 vector<uPtrInferCtx*> TrtisDetection::_niGetInferContexts(
                                                      const TrtisJobConfig cfg)
@@ -387,7 +387,7 @@ vector<uPtrInferCtx*> TrtisDetection::_niGetInferContexts(
 /** ****************************************************************************
 * convert ni::DataType enum to string for logging
 *
-* \param    dt NVIDIA DataType enum
+* \param dt  NVIDIA DataType enum
 *
 * \returns  string descriptor of enum value
 ***************************************************************************** */
@@ -419,7 +419,7 @@ string TrtisDetection::_niType2Str(ni::DataType dt){
 * \param name       name of the inference server result tensor to convert
 * \param results    collection of tensors keyed by string names
 *
-* \returns          an openCV matrix coressponding to the tensor
+* \returns  an openCV matrix corresponding to the tensor
 ***************************************************************************** */
 cv::Mat  TrtisDetection::_niResult2CVMat(const size_t           batch_idx,
                                          const string           name,
@@ -477,7 +477,7 @@ cv::Mat  TrtisDetection::_niResult2CVMat(const size_t           batch_idx,
     return cv::Mat(ndim, iShape.data(), cvType, (void*)ptrRaw);
   }else{
     stringstream ss("Shape ");
-    ss << shape << " and data-type " << _niType2Str(niType) << "are inconsistend with buffer size " << cntRaw;
+    ss << shape << " and data-type " << _niType2Str(niType) << "are inconsistent with buffer size " << cntRaw;
     THROW_TRTISEXCEPTION(ss.str());
   }
 }
@@ -485,7 +485,7 @@ cv::Mat  TrtisDetection::_niResult2CVMat(const size_t           batch_idx,
 /** ****************************************************************************
 * Initialize the Trtis detector module by setting up paths and reading configs
 *
-* \returns   true on success
+* \returns  true on success
 ***************************************************************************** */
 bool TrtisDetection::Init() {
 
@@ -515,12 +515,12 @@ bool TrtisDetection::Init() {
 
 
 /** ****************************************************************************
-* Get detected object from an image/video frame and add it to locations vetor
+* Get detected object from an image/video frame and add it to locations vector
 * with appropriate properties for the model inferenced.
 *
-* \param         cfg       configuration for MPFImage of VideJob job
-* \param         res       inference results from TRTIS
-* \param[in,out] locations vector of locations for found detections
+* \param         cfg        configuration for MPFImage of VideoJob job
+* \param         res        inference results from TRTIS
+* \param[in,out] locations  vector of locations for found detections
 *
 * \note ip_irv2_coco model: (only one implemented so far)
 *       This model supports COCO classifications and provides custom features
@@ -665,7 +665,7 @@ void TrtisDetection::_base64EncodeStopFeatures(MPFVideoTrackVec &tracks){
 *
 * \returns  cos similarity of the two vectors (-1...1)
 *
-* \note  vectors are assumed to be normalized to magnitued of 1.0
+* \note  vectors are assumed to be normalized to magnitude of 1.0
 ***************************************************************************** */
 static float ipSimilarity(const float p1[],
                      const float p2[],
@@ -680,10 +680,10 @@ static float ipSimilarity(const float p1[],
 /** ****************************************************************************
 * Computes distance squared between centers of location bounding boxes
 *
-* \param l1    1st location to be used in distance calc.
-* \param l2    2nd location to be used in distance calc.
+* \param l1  1st location to be used in distance calc.
+* \param l2  2nd location to be used in distance calc.
 *
-* \returns  pixel euclidian distance squard between centers
+* \returns  pixel Euclidean distance squared between centers
 *
 ***************************************************************************** */
 static float centerDistSq(const MPFImageLocation &l1, const MPFImageLocation &l2){
@@ -693,12 +693,12 @@ static float centerDistSq(const MPFImageLocation &l1, const MPFImageLocation &l2
 }
 
 /** ****************************************************************************
-* Adds a location to an object track and updates the track's classification if
-*  and confidence if they exists
+* Adds a location to an object track and updates the track's classification
+*  and confidence if they exist
 *
-* \param  location    location to add to track
-* \param  frameIdx    frame index of location
-* \param[in,out]      track to which location will be appended
+* \param         location  location to add to track
+* \param         frameIdx  frame index of location
+* \param[in,out] track     track to which location will be appended
 *
 ***************************************************************************** */
 void TrtisDetection::_addToTrack(MPFImageLocation &location,
@@ -719,10 +719,10 @@ void TrtisDetection::_addToTrack(MPFImageLocation &location,
 * Determine if and to which track a detection location should be appended, or
 * if a new track should be created for it.
 *
-* \param  cfg         configuration settings for job
-* \param  loc         location to add to tracks collection
-* \param  frameIdx    frame index of location
-* \param[in,out]      tracks collection to which location will be added
+* \param         cfg       configuration settings for job
+* \param         loc       location to add to tracks collection
+* \param         frameIdx  frame index of location
+* \param[in,out] tracks    collection to which location will be added
 *
 * \note  Frame and center bounds define a search space of track stop locations
 *        from which the one with the smallest feature distance is selected.
@@ -731,7 +731,7 @@ void TrtisDetection::_addToTrack(MPFImageLocation &location,
 *        additional possibilities:
 *          - could do scene change track breaks based on FRAME feature change
 *          - could track things that don't have classifications (EXTRA features)
-*          - could select based on some combinded time-space-feature distance
+*          - could select based on some combined time-space-feature distance
 *          - could use bbox size and maybe movement ...
 *
 ***************************************************************************** */
@@ -791,8 +791,8 @@ void TrtisDetection::_ip_irv2_coco_tracker(
 /** ****************************************************************************
 * Read frames from a video, get object detections and make tracks
 *
-* \param          job     MPF Video job
-* \param[in,out]  tracks  Tracks collection to which detections will be added
+* \param         job     MPF Video job
+* \param[in,out] tracks  Tracks collection to which detections will be added
 *
 * \returns  an MPF error constant or MPF_DETECTION_SUCCESS
 *
@@ -826,7 +826,7 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
       // Assuming tracks passed in come from somewhere that used base64 encoded
       // feature vectors, if not should remove this decode step
       _base64DecodeStopFeatures(tracks);                                        LOG4CXX_TRACE(_log, "finished base64 decoding track stop_frame FEATUREs");
-      mutex poolMtx, tracksMtx, nextRxFrameMtx;                                       LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
+      mutex poolMtx, tracksMtx, nextRxFrameMtx;                                 LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
       condition_variable cv, cvf;
       auto timeout = chrono::seconds(cfg.contextWaitTimeoutSec);
       vector<uPtrInferCtx*> ctxPool = _niGetInferContexts(cfg);                 LOG4CXX_TRACE(_log,"Retrieved inferencing context pool of size " << ctxPool.size() << " for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
@@ -896,7 +896,7 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
         frameIdx++;
       } while (video_cap.Read(frame));
 
-      if(ctxPool.size() < initialCtxPoolSize){                                  LOG4CXX_TRACE(_log,"wait inference context pool size to return to inital size of " << initialCtxPoolSize );
+      if(ctxPool.size() < initialCtxPoolSize){                                  LOG4CXX_TRACE(_log,"wait inference context pool size to return to initial size of " << initialCtxPoolSize );
         unique_lock<mutex> lk(poolMtx);
         if(!cv.wait_for(lk, cfg.maxInferConcurrency * timeout
                         ,[&]{return ctxPool.size() == initialCtxPoolSize;})){
@@ -926,12 +926,12 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
 /** ****************************************************************************
 * Read an image and get object detections and features
 *
-* \param          job     MPF Image job
-* \param[in,out]  locations  locations collection to which detections will be added
+* \param         job        MPF Image job
+* \param[in,out] locations  locations collection to which detections will be added
 *
 * \returns  an MPF error constant or MPF_DETECTION_SUCCESS
 *
-* \note prior to returning the features are base64 encoded
+* \note  prior to returning the features are base64 encoded
 *
 ***************************************************************************** */
 MPFDetectionError TrtisDetection::GetDetections(const MPFImageJob   &job,

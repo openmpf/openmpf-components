@@ -95,7 +95,8 @@ RUN sed -i 's/find_package(Protobuf CONFIG REQUIRED)/find_package(protobuf CONFI
 RUN sed -i 's/project (trtis-clients)/project(trtis-clients VERSION "0.0.0")/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
 
 
-RUN mkdir -p /tmp/tensorrt-inference-server/build/trtis-clients/build && cd /tmp/tensorrt-inference-server/build/trtis-clients/build \
+RUN mkdir -p /tmp/tensorrt-inference-server/build/trtis-clients/build
+&& cd /tmp/tensorrt-inference-server/build/trtis-clients/build \
 && cmake3 -DCMAKE_INSTALL_PREFIX=/root/trtis .. \
 && make -j`nproc` \
 && make install \

@@ -41,7 +41,7 @@
 namespace MPF{
  namespace COMPONENT{
 
-  namespace       ni   = nvidia::inferenceserver;             ///< namespace alias for inferernce server
+  namespace       ni   = nvidia::inferenceserver;             ///< namespace alias for inference server
   namespace       nic  = nvidia::inferenceserver::client;
 
   using namespace std;
@@ -83,7 +83,7 @@ namespace MPF{
       bool   clientScaleEnabled;          ///< perform image scaling client side
       bool   frameFeatEnabled;            ///< process frame average feature
       bool   classFeatEnabled;            ///< process recognized coco objects
-      bool   extraFeatEnabled;            ///< process extra  unclassified object
+      bool   extraFeatEnabled;            ///< process extra unclassified object
       bool   userFeatEnabled;             ///< process user feature per BBox
       size_t image_width;                 ///< width of image or frame
       size_t image_height;                ///< height of image or frame
@@ -127,14 +127,14 @@ namespace MPF{
 
       void _readClassNames(string model,
                            string class_label_file,
-                           int    class_label_count);                           ///< read in classe labels for a model from a file
+                           int    class_label_count);                           ///< read in class labels for a model from a file
 
       vector<uPtrInferCtx*> _niGetInferContexts(const TrtisJobConfig cfg);      ///< get cached inference contexts
 
       static string  _niType2Str(ni::DataType dt);                              ///< nvidia data type to string
       cv::Mat        _niResult2CVMat(const size_t batch_idx,
                                      const string name,
-                                     StrUPtrInferCtxResMap& results);           ///< make a openCV mat header for nvidia tensor
+                                     StrUPtrInferCtxResMap& results);           ///< make an openCV mat header for nvidia tensor
 
       cv::Mat _cvResize(const cv::Mat &img,
                         double        &scaleFactor,
@@ -152,7 +152,7 @@ namespace MPF{
 
       void _ip_irv2_coco_getDetections(const TrtisIpIrv2CocoJobConfig &cfg,
                                        StrUPtrInferCtxResMap          &res,
-                                       MPFImageLocationVec       &locations);   ///< parse  inference results and get detections
+                                       MPFImageLocationVec       &locations);   ///< parse inference results and get detections
 
       void _ip_irv2_coco_tracker(const TrtisIpIrv2CocoJobConfig &cfg,
                                  MPFImageLocation               &loc,

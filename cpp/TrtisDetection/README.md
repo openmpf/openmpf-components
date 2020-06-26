@@ -3,7 +3,7 @@
 This repository contains source code for the OpenMPF TensorRT Inference Server
 (TRTIS) detection component.
 
-As a docker only component, users must build and launch both the `trtis-detection` and `trtis-detection-server` services
+As a docker-only component, users must build and launch both the `trtis-detection` and `trtis-detection-server` services
 from `docker-compose.components.yml` as part of the `openmpf-docker` [deployment](https://github.com/openmpf/openmpf-docker/tree/develop). These two services
 will build and host the MPF TRTIS client and the NVIDIA TRTIS server from their respective Dockerfile images:
 `TrtisDetection/Dockerfile` and `TrtisDetection/trtserver_dockerfile/Dockerfile`.
