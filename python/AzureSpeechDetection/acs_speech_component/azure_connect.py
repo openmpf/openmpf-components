@@ -136,7 +136,7 @@ class AzureConnection(object):
             response = urlopen(req)
             return response.info().getheader('Location')
         except HTTPError as e:
-            response_content = e.read().decode('utf-8', errors='replace')
+            response_content = e.read()
             raise mpf.DetectionException(
                 'Failed to post job. Got HTTP status {} and message: {}'.format(
                     e.code,
@@ -165,7 +165,7 @@ class AzureConnection(object):
                 raise mpf.DetectionException(
                     "Polling failed with status {} and message: {}".format(
                         e.code,
-                        e.read().decode('utf-8', errors='replace')
+                        e.read()
                     ),
                     mpf.DetectionError.DETECTION_FAILED
                 )
@@ -196,7 +196,7 @@ class AzureConnection(object):
             response = urlopen(results_uri)
             return json.load(response)
         except HTTPError as e:
-            error_str = e.read().decode('utf-8', errors='replace')
+            error_str = e.read()
             raise mpf.DetectionException(
                 "Request failed with HTTP status {} and messages: {}".format(
                     e.code,
