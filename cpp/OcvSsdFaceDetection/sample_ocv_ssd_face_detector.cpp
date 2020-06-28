@@ -41,30 +41,21 @@ using namespace COMPONENT;
 //-----------------------------------------------------------------------------
 // Process and image
 //-----------------------------------------------------------------------------
-int processImage(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
+void processImage(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
 
     MPFImageJob job("Testing", argv[1], { }, { });
-    vector<MPFImageLocation> locations;
-
-    MPFDetectionError rc = detection_engine->GetDetections(job, locations);
-
-    if (rc != MPF_DETECTION_SUCCESS) {
-        printf("Failed to get detections: rc = %i\n", rc);
-    }
-
+    vector<MPFImageLocation> locations = detection_engine->GetDetections(job);
     printf("Number of detections: %i\n", locations.size());
 
     for(auto loc:locations){
         printf("[%4i,%4i] (%3i,%3i) conf:%.2f \n", loc.x_left_upper,loc.y_left_upper,loc.width,loc.height,loc.confidence );
     }
-
-    return rc;
 }
 
 //-----------------------------------------------------------------------------
 // Process a video
 //-----------------------------------------------------------------------------
-int processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
+void processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
 
     // get detection interval if argument is present
     int detection_interval = 1;
@@ -77,13 +68,7 @@ int processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]
     algorithm_properties.insert(pair<string, string>("FRAME_INTERVAL", to_string(detection_interval)));
 
     MPFVideoJob job("Testing", argv[1], stoi(argv[2]), stoi(argv[3]), algorithm_properties, { });
-    vector<MPFVideoTrack> tracks;
-
-    MPFDetectionError rc = detection_engine->GetDetections(job, tracks);
-
-    if (rc != MPFDetectionError::MPF_DETECTION_SUCCESS) {
-        printf("Failed to get detections: rc = %i\n", rc);
-    }
+    vector<MPFVideoTrack> tracks = detection_engine->GetDetections(job);
 
     cout << "Number of video tracks = " << tracks.size() << endl;
     for (int i = 0; i < tracks.size(); i++) {
@@ -102,8 +87,6 @@ int processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]
                  << "      confidence = " << it.second.confidence << endl;
         }
     }
-
-    return rc;
 }
 
 //-----------------------------------------------------------------------------
@@ -130,16 +113,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    int rc;
     if (argc == 2) {
-        rc = processImage(detection_engine, argc, argv);
+        processImage(detection_engine, argc, argv);
     } else {
-        rc = processVideo(detection_engine, argc, argv);
+        processVideo(detection_engine, argc, argv);
     }
 
     if (!detection_engine->Close()) {
         printf("Failed to close.\n");
     }
 
-    return rc;
 }

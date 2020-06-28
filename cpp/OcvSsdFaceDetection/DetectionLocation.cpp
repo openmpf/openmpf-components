@@ -24,9 +24,12 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include <cassert>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/core/cuda.hpp>
 
 #include "DetectionLocation.h"
+#include "Track.h"
 
 using namespace MPF::COMPONENT;
 
@@ -86,67 +89,94 @@ void DetectionLocation::drawLandmarks(cv::Mat &img,
 }
 
 /** **************************************************************************
-* Compute 1 - Intersection Over Union metric for two detections comprised of
-* 1 - the ratio of the area of the intersection of the detection rectangles
-* divided by the area of the union of the detection rectangles.
+* Compute (1 - Intersection Over Union) metric between a rectangel and detection
+* comprised of 1 - the ratio of the area of the intersection of the detection
+* rectangles divided by the area of the union of the detection rectangles.
 *
-* \param   d second detection
+* \param   rect rectangle to compute iou with
 * \returns 1- intersection over union [0.0 ... 1.0]
 *
 *************************************************************************** */
-float DetectionLocation::iouDist(const DetectionLocation &d) const {
-  int ulx = max(x_left_upper         , d.x_left_upper           );
-  int uly = max(y_left_upper         , d.y_left_upper           );
-  int lrx = min(x_left_upper + width , d.x_left_upper + d.width );
-  int lry = min(y_left_upper + height, d.y_left_upper + d.height);
+float DetectionLocation::_iouDist(const cv::Rect2i &rect) const {
+  int ulx = max(x_left_upper         , rect.x           );
+  int uly = max(y_left_upper         , rect.y           );
+  int lrx = min(x_left_upper + width , rect.x + rect.width );
+  int lry = min(y_left_upper + height, rect.y + rect.height);
 
   float inter_area = max(0, lrx - ulx) * max(0, lry - uly);
-  float union_area = width * height + d.width * d.height - inter_area;
+  float union_area = width * height + rect.width * rect.height - inter_area;
   float dist = 1.0f - inter_area / union_area;                                 LOG4CXX_TRACE(_log,"iou dist = " << dist);
   return dist;
 }
 
 /** **************************************************************************
-* Compute the temporal distance in frame counts between two detections
+* Compute 1 - Intersection Over Union metric between track tail and detection
 *
-* \param   d second detection
+* \param   tr track
+* \returns 1- intersection over union [0.0 ... 1.0]
+*
+*************************************************************************** */
+float DetectionLocation::iouDist(const Track &tr) const {
+  return _iouDist(cv::Rect2i(tr.back()->x_left_upper,
+                             tr.back()->y_left_upper,
+                             tr.back()->width,
+                             tr.back()->height));
+}
+
+/** **************************************************************************
+* Compute 1 - Intersection Over Union metric between Kalman filtertrack
+* predicted location of track tail and detection
+*
+* \param   tr track
+* \returns 1- intersection over union [0.0 ... 1.0]
+*
+*************************************************************************** */
+float DetectionLocation::kfIouDist(const Track &tr) const {
+  return _iouDist(tr.kalmanPredictedBox());
+}
+
+/** **************************************************************************
+* Compute the temporal distance (frame count) between track tail and detection
+*
+* \param   tr track
 * \returns   absolute difference in frame indices
 *
 *************************************************************************** */
-float DetectionLocation::frameDist(const DetectionLocation &d) const {
-  if(frameIdx > d.frameIdx){
-    return frameIdx - d.frameIdx;
+float DetectionLocation::frameDist(const Track &tr) const {
+  if(frameIdx > tr.back()->frameIdx){
+    return frameIdx - tr.back()->frameIdx;
   }else{
-    return d.frameIdx - frameIdx;
+    return tr.back()->frameIdx - frameIdx;
   }
 }
 
 /** **************************************************************************
 * Compute euclidean center to distance center distance from normalized centers
 *
-* \param   d second detection
+* \param   tr track
 * \returns   normalized center to center distance [0 ... Sqrt(2)]
 *
 *************************************************************************** */
-float  DetectionLocation::center2CenterDist(const DetectionLocation &d) const {
-  float dx = center.x - d.center.x;
-  float dy = center.y - d.center.y;
+float  DetectionLocation::center2CenterDist(const Track &tr) const {
+  float dx = center.x - tr.back()->center.x;
+  float dy = center.y - tr.back()->center.y;
   float dist = sqrt( dx*dx + dy*dy );                                          LOG4CXX_TRACE(_log,"center-2-center dist = " << dist);
   return dist;
 }
 
 
 /** **************************************************************************
-* Compute feature distance (similarity) between two detection feature vectors
+* Compute feature distance (similarity) to track's tail detection's
+* feature vectors
 *
-* \param   d second detection
+* \param   tr track
 * \returns cos distance [0 ... 1.0]
 *
 * \note Feature vectors are expected to be of unit magnitude
 *
 *************************************************************************** */
-float DetectionLocation::featureDist(const DetectionLocation &d) const {
-  float dist = 1.0f - max(0.0f,static_cast<float>(getFeature().dot(d.getFeature())));  LOG4CXX_TRACE(_log,"feature dist = " << dist);
+float DetectionLocation::featureDist(const Track &tr) const {
+  float dist = 1.0f - max(0.0f,static_cast<float>(getFeature().dot(tr.back()->getFeature())));  LOG4CXX_TRACE(_log,"feature dist = " << dist);
   return dist;
 }
 
@@ -214,12 +244,67 @@ const cv::Mat& DetectionLocation::getThumbnail() const {
                     THUMB_SIZE,cv::INTER_CUBIC,cv::BORDER_REPLICATE);
     }catch (...) {
       exception_ptr eptr = current_exception();
-      LOG4CXX_FATAL(_log, "failed to generate thumbnail");
+      LOG4CXX_FATAL(_log, "failed to generate thumbnail for f" << frameIdx << *this);
       rethrow_exception(eptr);
     }
 
   }
   return _thumbnail;
+}
+
+
+/** **************************************************************************
+* accessor method to get image associate with detection
+*
+* \returns image associated with detection
+*
+*************************************************************************** */
+const cv::Mat& DetectionLocation::getBGRFrame() const{
+  #ifndef NDEBUG  // debug build
+    if(! _bgrFrame.empty()){
+      return _bgrFrame;
+    }else{
+      LOG4CXX_TRACE(_log,"BRG frame missing for detection: f" << this->frameIdx << *this);
+      THROW_EXCEPTION("BRG frame is not allocated");
+    }
+  #else           // release build
+    return _bgrFrame;
+  #endif
+
+}
+
+/** **************************************************************************
+* release reference to image frame
+*************************************************************************** */
+void DetectionLocation::releaseBGRFrame() {                                    LOG4CXX_TRACE(_log,"releasing bgrFrame for  f" << this->frameIdx << *this);
+  _bgrFrame.release();
+}
+
+/** **************************************************************************
+* get the location as an opencv rectange
+*************************************************************************** */
+const cv::Rect2i DetectionLocation::getRect() const {
+  return cv::Rect2i(x_left_upper,y_left_upper,width,height);
+}
+
+/** **************************************************************************
+* set the location from an opencv rectange
+*************************************************************************** */
+void DetectionLocation::setRect(const cv::Rect2i& rec){
+  x_left_upper = rec.x;
+  y_left_upper = rec.y;
+        width  = rec.width;
+        height = rec.height;
+}
+
+/** **************************************************************************
+* copy feature vector from another detection
+*
+* \param   d detection from which to copy feature vector
+*
+*************************************************************************** */
+void DetectionLocation::copyFeature(const DetectionLocation& d){
+  _feature = d.getFeature();
 }
 
 /** **************************************************************************
@@ -298,9 +383,10 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
 
       if(    width  >= cfg.minDetectionSize
           && height >= cfg.minDetectionSize){
-        detections.push_back(unique_ptr<DetectionLocation>(
+        detections.push_back(DetectionLocationPtr(
           new DetectionLocation(x1, y1, width, height, conf, (ul + lr) / 2.0,
-                                cfg.frameIdx, cfg.bgrFrame)));                 LOG4CXX_TRACE(_log,"detection:" << *detections.back());
+                                cfg.frameIdx, cfg.frameTimeInSec,
+                                cfg.bgrFrame)));                               LOG4CXX_TRACE(_log,"detection:" << *detections.back());
       }
     }
   }
@@ -308,8 +394,60 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
 }
 
 /** **************************************************************************
+*************************************************************************** */
+void DetectionLocation::_setCudaBackend(const bool enabled){
+  #ifdef HAVE_CUDA
+  if(enabled){
+    _ssdNet.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    _ssdNet.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    _openFaceNet.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    _openFaceNet.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);                LOG4CXX_TRACE(_log,"Enabled CUDA acceleration on device " << cv::cuda::getDevice());
+  }else{
+    _ssdNet.setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);
+    _ssdNet.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+    _openFaceNet.setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);
+    _openFaceNet.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);                 LOG4CXX_INFO(_log,"Disabled CUDA acceleration");
+  }
+  #endif
+}
+
+/** **************************************************************************
+* try set CUDA to use specified GPU device
+*
+* \param cudaDeviceId device to use for hardware acceleration (-1 to disable)
+*
+* \returns true if successful false otherwise
+*************************************************************************** */
+bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
+  static int lastCudaDeviceId = -1;
+  const string err_msg = "Failed to configure CUDA for deviceID=";
+  try{
+    #ifdef HAVE_CUDA
+    if(lastCudaDeviceId != cudaDeviceId){
+      if(lastCudaDeviceId >=0) cv::cuda::resetDevice();  // if we were using a cuda device prior clean up old contex / cuda resources
+      if(cudaDeviceId >=0){
+        cv::cuda::setDevice(cudaDeviceId);
+        _setCudaBackend(true);
+        lastCudaDeviceId = cudaDeviceId;
+      }else{
+        _setCudaBackend(false);
+        lastCudaDeviceId = -1;
+      }
+    }
+    return true;
+    #endif
+  }catch(const runtime_error& re){                                           LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Runtime error: " << re.what());
+  }catch(const exception& ex){                                               LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Exception: " << ex.what());
+  }catch(...){                                                               LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Unknown failure occurred. Possible memory corruption");
+  }
+  _setCudaBackend(false);
+  lastCudaDeviceId = -1;
+  return false;
+}
+
+/** **************************************************************************
 * Setup class shared static configurations and initialize / load shared
-* detectors and feature generator objects.
+* detectors and feature generator objects.  Set default CUDA acceleration
 *
 * \param log         logger object for logging
 * \param plugin_path plugin directory so configs and models can be loaded
@@ -327,7 +465,7 @@ bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
   string  sp_model_path = plugin_path + "/data/shape_predictor_5_face_landmarks.dat";
   string  tr_model_path = plugin_path + "/data/nn4.small2.v1.t7";
 
-  string err_msg = "Failed to load models: " + tf_config_path + ", " + tf_model_path;
+  const string err_msg = "Failed to load models: " + tf_config_path + ", " + tf_model_path;
   try{
       // load detector net
       _ssdNet = cv::dnn::readNetFromTensorflow(tf_model_path, tf_config_path);
@@ -350,55 +488,18 @@ bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
 }
 
 
-/** **************************************************************************
-*  Get a new DetectionLocation from an existing one based on a frame
-*
-* \param
-* \returns ptr to new location based on tracker's estimation
-*
-* \note    tracker is passed on to the new location on success
-*
-**************************************************************************** */
-unique_ptr<DetectionLocation> DetectionLocation::ocvTrackerPredict(const JobConfig &cfg){
 
-  if(_trackerPtr.empty()){   // initialize a new tracker if we don't have one already
-    _trackerPtr = cv::TrackerMOSSE::create();  // could try different trackers here. e.g. cv::TrackerKCF::create();
-    _trackerPtr->init(_bgrFrame,cv::Rect2d(x_left_upper,y_left_upper,width,height));  LOG4CXX_TRACE(_log,"tracker created for " << (MPFImageLocation)*this);
-    _trackerStartFrameIdx = cfg.frameIdx;
-  }
-
-  cv::Rect2d p;
-  unique_ptr<DetectionLocation> detPtr;
-  if(cfg.frameIdx - _trackerStartFrameIdx <= cfg.maxFrameGap){
-    if(_trackerPtr->update(cfg.bgrFrame,p)){
-      detPtr = unique_ptr<DetectionLocation>(new DetectionLocation(
-        p.x,p.y,p.width,p.height,0.0,
-        cv::Point2f((p.x + p.width/2.0f )/static_cast<float>(cfg.bgrFrame.cols),
-                    (p.y + p.height/2.0f)/static_cast<float>(cfg.bgrFrame.rows)),
-        cfg.frameIdx,
-        cfg.bgrFrame));                                                                  LOG4CXX_TRACE(_log,"tracking " << (MPFImageLocation)*this << "to  " << (MPFImageLocation)*detPtr);
-
-      detPtr->_trackerPtr = _trackerPtr;
-      detPtr->_trackerStartFrameIdx = _trackerStartFrameIdx;
-      _trackerPtr.release();
-      detPtr->_feature = getFeature();  // clone feature of prior detection
-    }else{
-                                                                                        LOG4CXX_TRACE(_log,"could not track " << (MPFImageLocation)*this << " to new location");
-    }
-  }else{
-                                                                                        LOG4CXX_TRACE(_log,"extrapolation tracking stopped" << (MPFImageLocation)*this << " frame gap = " << cfg.frameIdx - _trackerStartFrameIdx << " > " <<  cfg.maxFrameGap);
-  }
-  return detPtr;
-}
 
 /** **************************************************************************
-*   Private constructor
+* constructor
 **************************************************************************** */
 DetectionLocation::DetectionLocation(int x,int y,int width,int height,float conf,
-                                     cv::Point2f center, size_t frameIdx,
+                                     cv::Point2f center,
+                                     size_t frameIdx, double frameTimeInSec,
                                      cv::Mat bgrFrame):
         MPFImageLocation(x,y,width,height,conf),
         center(center),
-        frameIdx(frameIdx){
+        frameIdx(frameIdx),
+        frameTimeInSec(frameTimeInSec){
         _bgrFrame = bgrFrame.clone();
 }

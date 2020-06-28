@@ -28,21 +28,59 @@
 #define OCVSSDFACEDETECTION_TYPES_H
 
 #include <type_traits>
-
-#include "adapters/MPFImageAndVideoDetectionComponentAdapter.h"
+#include <memory>
+#include <list>
+#include <iomanip>
+#include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
 
 namespace MPF{
  namespace COMPONENT{
 
   using namespace std;
 
-  typedef vector<MPFVideoTrack>    MPFVideoTrackVec;     ///< vector of MPFVideoTracks
-  typedef vector<MPFImageLocation> MPFImageLocationVec;  ///< vector of MPFImageLocations
-  typedef vector<cv::Mat>          cvMatVec;             ///< vector of OpenCV matrices/images
-  typedef vector<cv::Rect>         cvRectVec;            ///< vector of OpenCV rectangles
-  typedef vector<cv::Point>        cvPointVec;           ///< vector of OpenCV points
-  typedef vector<cv::Point2f>      cvPoint2fVec;         ///< vector of OpenCV 2D float points
-  typedef vector<cvPoint2fVec>     cvPoint2fVecVec;      ///< vector of vectors of OpenCV 2D float points
+  class DetectionLocation;
+  class Track;
+
+  typedef vector<MPFVideoTrack>         MPFVideoTrackVec;         ///< vector of MPFVideoTracks
+  typedef vector<MPFImageLocation>      MPFImageLocationVec;      ///< vector of MPFImageLocations
+  typedef vector<cv::Mat>               cvMatVec;                 ///< vector of OpenCV matrices/images
+  typedef vector<cv::Rect>              cvRectVec;                ///< vector of OpenCV rectangles
+  typedef vector<cv::Point>             cvPointVec;               ///< vector of OpenCV points
+  typedef vector<cv::Point2f>           cvPoint2fVec;             ///< vector of OpenCV 2D float points
+  typedef vector<cvPoint2fVec>          cvPoint2fVecVec;          ///< vector of vectors of OpenCV 2D float points
+  typedef unique_ptr<DetectionLocation> DetectionLocationPtr;     ///< DetectionLocation pointers
+  typedef vector<DetectionLocationPtr>  DetectionLocationPtrVec;  ///< vector of DetectionLocation pointers
+  typedef list<unique_ptr<Track>>       TrackPtrList;             ///< list of track pointers
+
+  /** ****************************************************************************
+   *  print out opencv matrix on a single line
+   *
+   * \param   m matrix to serialize to single line string
+   * \returns single line string representation of matrix
+   *
+  ***************************************************************************** */
+  inline
+  string format(cv::Mat_<float> m){
+    stringstream ss;
+
+    ss << "[";
+    for(int r=0; r<m.rows; r++){
+      for(int c=0; c<m.cols; c++){
+        ss << setfill('0') << setw(6) << fixed << setprecision(3) << m.at<float>(r,c);
+        if(c!=m.cols-1){
+          ss << ", ";
+        }else if(r!=m.rows-1){
+          ss << "; ";
+        }
+      }
+    }
+    ss << "]";
+    //   << m;
+    string str = ss.str();
+    //str.erase(remove(str.begin(),str.end(),'\n'),str.end());
+
+    return str;
+  }
 
   /** **************************************************************************
   *   Dump MPFLocation to a stream

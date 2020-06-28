@@ -88,6 +88,7 @@ namespace MPF {
                 int max_scripts;
                 int max_text_tracks;
                 int min_height;
+                int invalid_min_image_size;
                 int adaptive_hist_tile_size;
                 int max_parallel_ocr_threads;
                 int max_parallel_pdf_threads;
@@ -217,6 +218,9 @@ namespace MPF {
 
             bool preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                   MPFDetectionError &job_status);
+
+            bool rescale_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset,
+                               MPFDetectionError &job_status);
 
             static bool process_tesseract_lang_model(TesseractOCRTextDetection::OCR_job_inputs &input,
                                                      TesseractOCRTextDetection::OCR_results  &result);

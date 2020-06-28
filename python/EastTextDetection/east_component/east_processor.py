@@ -23,14 +23,13 @@
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
-from __future__ import division, print_function
 
 import numpy as np
 import cv2
 import os
 
 import mpf_component_api as mpf
-from bbox_utils import *
+from .bbox_utils import *
 
 # The path to the serialized EAST model file.
 from pkg_resources import resource_filename

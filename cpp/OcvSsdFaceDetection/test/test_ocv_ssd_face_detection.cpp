@@ -96,6 +96,17 @@ static string GetCurrentWorkingDirectory() {
 }
 
 /** ***************************************************************************
+*   Test component opencv version
+**************************************************************************** */
+TEST(OcvSsdFaceDetection, OpenCVVersion) {
+  #if(CV_MAJOR_VERSION > 3)
+    GOUT("OpenCV Version: 4.x");
+  #elif(CV_MAJOR_VERSION > 2)
+    GOUT("OpenCV Version: 3.x");
+  #endif
+}
+
+/** ***************************************************************************
 *   Test initializing component
 **************************************************************************** */
 TEST(OcvSsdFaceDetection, Init) {
@@ -158,7 +169,7 @@ TEST(OcvSsdFaceDetection, DISABLED_PreProcess) {
 
   MPFVideoJob videoJob("Testing", inVideoFile, start, stop, { }, { });
   JobConfig cfg(videoJob);
-  cv::VideoWriter video(outVideoFile,CV_FOURCC('X','2','6','4'),cfg._videocapPtr->GetFrameRate(),cfg._videocapPtr->GetFrameSize());
+  cv::VideoWriter video(outVideoFile,cv::VideoWriter::fourcc('X','2','6','4'),cfg._videocapPtr->GetFrameRate(),cfg._videocapPtr->GetFrameSize());
 
   while(cfg.nextFrame()) {
     ocv_ssd_face_detection->_normalizeFrame(cfg);
@@ -197,9 +208,8 @@ TEST(OcvSsdFaceDetection, VerifyQuality) {
         test_image_path = current_working_dir + "/" + test_image_path;
     }
     // Detect detections and check conf levels
-    vector<MPFImageLocation> detections;
     MPFImageJob job1("Testing1", test_image_path, { }, { });
-    ocv_ssd_face_detection->GetDetections(job1, detections);
+    vector<MPFImageLocation> detections = ocv_ssd_face_detection->GetDetections(job1);
     ASSERT_TRUE(detections.size() == 1);
     GOUT("Detection: " << detections[0]);
     ASSERT_TRUE(detections[0].confidence > .9);
@@ -207,13 +217,13 @@ TEST(OcvSsdFaceDetection, VerifyQuality) {
 
     // Detect detections and check conf level
     MPFImageJob job2("Testing2", test_image_path, {{"MIN_DETECTION_SIZE","500"}}, { });
-    ocv_ssd_face_detection->GetDetections(job2, detections);
+    detections = ocv_ssd_face_detection->GetDetections(job2);
     ASSERT_TRUE(detections.size() == 0);
     detections.clear();
 
     // Detect detections and check conf levels
     MPFImageJob job3("Testing2", test_image_path, {{"MIN_DETECTION_SIZE","48"},{"DETECTION_CONFIDENCE_THRESHOLD","1.1"}}, { });
-    ocv_ssd_face_detection->GetDetections(job3, detections);
+    detections = ocv_ssd_face_detection->GetDetections(job3);
     ASSERT_TRUE(detections.size() == 0);
     detections.clear();
 
@@ -254,9 +264,9 @@ TEST(OcvSsdFaceDetection, TestOnKnownImage) {
     vector<MPFImageLocation> known_detections;
     ASSERT_TRUE(ReadDetectionsFromFile::ReadImageLocations(known_detections_file, known_detections));
 
-    vector<MPFImageLocation> found_detections;
+
     MPFImageJob image_job("Testing", known_image_file, { }, { });
-    ASSERT_FALSE(ocv_ssd_face_detection->GetDetections(image_job, found_detections));
+    vector<MPFImageLocation> found_detections = ocv_ssd_face_detection->GetDetections(image_job);
     EXPECT_FALSE(found_detections.empty());
 
     float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_detections, known_detections);
@@ -344,26 +354,31 @@ TEST(OcvSsdFaceDetection, Thumbnails) {
       // calculate some feature distances
       GOUT("feature-magnitude1:" << cv::norm(detections.front()->getFeature(),cv::NORM_L2));
       GOUT("feature-magnitude2:" << cv::norm(detections.back()->getFeature(),cv::NORM_L2));
-      GOUT("self feature dist: " << detections.front()->featureDist(*detections.front()));
-      ASSERT_TRUE(detections.front()->featureDist(*detections.front()) < 1e-6);
-      GOUT("cross feature dist: " << detections.front()->featureDist(*detections.back()));
+      //GOUT("self feature dist: " << detections.back()->featureDist(tr));
+      //ASSERT_TRUE(detections.front()->featureDist(*detections.front()) < 1e-6);
+      //GOUT("cross feature dist: " << detections.front()->featureDist(*detections.back()));
 
       if(tracks.size() == 0){
         for(auto &det:detections){
-          tracks.push_back(unique_ptr<Track>(new Track()));
-          tracks.back()->push_back(move(det));
+          tracks.push_back(unique_ptr<Track>(new Track(move(det),cfg)));
         }
       }else{
         //ssd->_assignDetections2Tracks(tracks,detections, ass);
         vector<long> av = ssd->_calcAssignmentVector<&DetectionLocation::iouDist>(tracks,detections,cfg.maxIOUDist);
         ssd->_assignDetections2Tracks(tracks,detections, av);
       }
+      float self_fd = tracks.back()->back()->featureDist(*tracks.back());
+      GOUT("self feature dist: " << self_fd);
+      ASSERT_TRUE(self_fd < 1e-6);
+      float cross_fd = tracks.front()->front()->featureDist(*tracks.back());
+      GOUT("cross feature dist: " << cross_fd);
+      ASSERT_TRUE(cross_fd > 1e-6);
     }
 
     // write out thumbnail image tracks
     int t=0;
     for(auto &track:tracks){
-      for(size_t i=0; i< track->size(); i++){
+      for(size_t i=0; i < track->size(); i++){
         EXPECT_FALSE((*track)[i]->getThumbnail().empty());
         stringstream ss;
         ss << test_output_dir << "t" << t << "_i"<< i << ".png";
@@ -421,17 +436,16 @@ TEST(OcvSsdFaceDetection, TestOnKnownVideo) {
     ASSERT_TRUE(ReadDetectionsFromFile::ReadVideoTracks(inTrackFile, known_tracks));
 
     // create output known video to view ground truth
-    // GOUT("\tWriting ground truth video and test tracks to files.");
-    // VideoGeneration video_generation_gt;
-    // video_generation_gt.WriteTrackOutputVideo(inVideoFile, known_tracks, (test_output_dir + "/ground_truth.avi"));
-    // WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/ground_truth.txt"), known_tracks);
+    GOUT("\tWriting ground truth video and test tracks to files.");
+    VideoGeneration video_generation_gt;
+    video_generation_gt.WriteTrackOutputVideo(inVideoFile, known_tracks, (test_output_dir + "/ground_truth.avi"));
+    WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/ground_truth.txt"), known_tracks);
 
     // 	Evaluate the known video file to generate the test tracks.
     GOUT("\tRunning the tracker on the video: " << inVideoFile);
-    vector<MPFVideoTrack> found_tracks;
     MPFVideoJob videoJob("Testing", inVideoFile, start, stop, { }, { });
     auto start_time = chrono::high_resolution_clock::now();
-    ASSERT_FALSE(ocv_ssd_face_detection->GetDetections(videoJob, found_tracks));
+    vector<MPFVideoTrack> found_tracks = ocv_ssd_face_detection->GetDetections(videoJob);
     auto end_time = chrono::high_resolution_clock::now();
     EXPECT_FALSE(found_tracks.empty());
     double time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count();

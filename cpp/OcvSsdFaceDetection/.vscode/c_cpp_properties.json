@@ -9,7 +9,7 @@
             "includePath": [
                 "${workspaceFolder}",
                 "/usr/include/**",
-                "/opt/opencv-3.4.7/include/**",
+                "/opt/opencv-${OPENCV_VERSION}/include/**",
                 "/home/mpf/mpf-sdk-install/include/**"
             ],
             "browse": {

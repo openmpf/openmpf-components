@@ -53,21 +53,6 @@ using namespace MPF::COMPONENT;
 log4cxx::LoggerPtr JobConfig::_log = log4cxx::Logger::getRootLogger();
 
 /** ****************************************************************************
- *  print out opencv matrix on a single line
- *
- * \param   m matrix to serialize to single line string
- * \returns single line string representation of matrix
- *
-***************************************************************************** */
-string format(cv::Mat m){
-  stringstream ss;
-  ss << m;
-  string str = ss.str();
-  str.erase(remove(str.begin(),str.end(),'\n'),str.end());
-  return str;
-}
-
-/** ****************************************************************************
  *  print out dlib matrix on a single line
  *
  * \param   m matrix to serialize to single line string
@@ -75,7 +60,7 @@ string format(cv::Mat m){
  *
 ***************************************************************************** */
 template<typename T>
-string format(dlib::matrix<T> m){
+string dformat(dlib::matrix<T> m){
   stringstream ss;
   ss << "{";
   for(size_t r=0;r<m.nr();r++){
@@ -111,6 +96,7 @@ bool OcvSsdFaceDetection::Init() {
     if(LoadConfig(config_params_path, params)) {                               LOG4CXX_ERROR(_log, "Failed to load the OcvSsdFaceDetection config from: " << config_params_path);
         return false;
     }                                                                          LOG4CXX_TRACE(_log,"read config file:" << config_params_path);
+    Properties props;
     for(auto p = params.begin(); p != params.end(); p++){
       const string key = p.key().toStdString();
       const string val = p.value().toStdString();                              LOG4CXX_TRACE(_log,"Config    Vars:" << key << "=" << val);
@@ -126,7 +112,21 @@ bool OcvSsdFaceDetection::Init() {
     // initialize adaptive histogram equalizer
     _equalizerPtr = cv::createCLAHE(40.0,cv::Size(8,8));
 
-    return DetectionLocation::Init(_log, plugin_path);
+    bool detectionLocationInitalizedOK = DetectionLocation::Init(_log, plugin_path);
+
+    Properties fromEnv;
+    int cudaDeviceId   = getEnv<int> (fromEnv,"CUDA_DEVICE_ID", -1);
+    bool fallbackToCPU = getEnv<bool>(fromEnv,"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", true);
+    bool defaultCudaDeviceOK = DetectionLocation::trySetCudaDevice(cudaDeviceId) || fallbackToCPU;
+
+    bool trackInitializedOK = Track::Init(_log, plugin_path);
+    bool kfTrackerInitializedOK = KFTracker::Init(_log, plugin_path);
+
+    return    detectionLocationInitalizedOK
+           && defaultCudaDeviceOK
+           && trackInitializedOK
+           && kfTrackerInitializedOK;
+
 
 }
 
@@ -168,12 +168,13 @@ vector<long> OcvSsdFaceDetection::_calcAssignmentVector(const TrackPtrList      
   for(auto &track:tracks){
     for(size_t c=0; c<detections.size(); c++){
       if(track->back()->frameIdx < detections[c]->frameIdx){
-        float cost = CALL_MEMBER_FUNC(*(track->back()),COST_FUNC)(*detections[c]);
+        //float cost = CALL_MEMBER_FUNC(*(track->back()),COST_FUNC)(*detections[c]);
+        float cost = CALL_MEMBER_FUNC(*detections[c],COST_FUNC)(*track);
         costs(r,c) = ((cost <= maxCost) ? (INT_MAX - static_cast<int>(1000.0f * cost)) : 0);
       }
     }
     r++;
-  }                                                                            LOG4CXX_TRACE(_log,"cost matrix[tr=" << costs.nr() << ",det=" << costs.nc() << "]: " << format(costs));
+  }                                                                            LOG4CXX_TRACE(_log,"cost matrix[tr=" << costs.nr() << ",det=" << costs.nc() << "]: " << dformat(costs));
 
   // solve cost matrix, track av[track] get assigned detection[av[track]]
   av = dlib::max_cost_assignment(costs);                                       LOG4CXX_TRACE(_log, "solved assignment vec["<< av.size() << "] = "  << av);
@@ -198,6 +199,7 @@ vector<long> OcvSsdFaceDetection::_calcAssignmentVector(const TrackPtrList      
 * \param [in,out] detections       vector of detections
 * \param          assignmentVector (v[track] <=> detection[v[track]]) with with -1 in
 *                                   skip assignment
+* \param [in]     kfDisabled        if true correction via kalman filter is skipped
 *
 * \note detections that are assigned are be removed from the detections vector
 *
@@ -208,10 +210,10 @@ void OcvSsdFaceDetection::_assignDetections2Tracks(TrackPtrList             &tra
 
   long t=0;
   for(auto &track:tracks){
-    if(assignmentVector[t] != -1){                                              LOG4CXX_TRACE(_log,"assigning det: " << "f" << detections[assignmentVector[t]]->frameIdx << " " <<  ((MPFImageLocation)*(detections[assignmentVector[t]])) << "to track " << *track);
-      track->back()->releaseBGRFrame();                                        // no longer need previous frame data.
-      track->back()->releaseTracker();                                         // release tracker since we have a detection
-      track->push_back(move(detections[assignmentVector[t]]));
+    if(assignmentVector[t] != -1){                                              LOG4CXX_TRACE(_log,"assigning det: " << "f" << detections[assignmentVector[t]]->frameIdx << " " <<  ((MPFImageLocation)*(detections[assignmentVector[t]])) << " to track " << *track);
+      track->releaseTracker();
+      track->push_back(move(detections.at(assignmentVector[t])));
+      track->kalmanCorrect();
     }
     t++;
   }
@@ -219,7 +221,7 @@ void OcvSsdFaceDetection::_assignDetections2Tracks(TrackPtrList             &tra
   // remove detections that were assigned to tracks
   detections.erase(remove_if(detections.begin(),
                              detections.end(),
-                             [](unique_ptr<DetectionLocation> const& d){return !d;}),
+                             [](DetectionLocationPtr const& d){return !d;}),
                    detections.end());
 
 }
@@ -228,38 +230,39 @@ void OcvSsdFaceDetection::_assignDetections2Tracks(TrackPtrList             &tra
 * Read an image and get object detections and features
 *
 * \param          job     MPF Image job
-* \param[in,out]  locations  locations collection to which detections will be added
 *
-* \returns MPF error constant or MPF_DETECTION_SUCCESS
+* \returns  locations collection to which detections have been added
 *
 ***************************************************************************** */
-MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFImageJob   &job,
-                                                     MPFImageLocationVec &locations) {
+MPFImageLocationVec OcvSsdFaceDetection::GetDetections(const MPFImageJob   &job) {
 
   try {                                                                        LOG4CXX_DEBUG(_log, "[" << job.job_name << "Data URI = " << job.data_uri);
     JobConfig cfg(job);
-    if(cfg.lastError != MPF_DETECTION_SUCCESS) return cfg.lastError;
+    if(cfg.lastError != MPF_DETECTION_SUCCESS){
+      throw MPFDetectionException(cfg.lastError,"failed to parse image job configuration parameters");
+    }
     DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfg);
                                                                                LOG4CXX_DEBUG(_log, "[" << job.job_name << "] Number of faces detected = " << detections.size());
+    MPFImageLocationVec locations;
     for(auto &det:detections){
       MPFImageLocation loc = *det;
       det.reset();                                                             // release frame object
       cfg.ReverseTransform(loc);
       locations.push_back(loc);
     }
+    return locations;
 
   }catch(const runtime_error& re){
     LOG4CXX_FATAL(_log, "[" << job.job_name << "] runtime error: " << re.what());
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException(re.what());
   }catch(const exception& ex){
     LOG4CXX_FATAL(_log, "[" << job.job_name << "] exception: " << ex.what());
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException(ex.what());
   }catch (...){
     LOG4CXX_FATAL(_log, "[" << job.job_name << "] unknown error");
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException(" Unknown error processing image job");
   }
                                                                                LOG4CXX_DEBUG(_log,"[" << job.job_name << "] complete.");
-  return MPF_DETECTION_SUCCESS;
 }
 
 /** ****************************************************************************
@@ -276,7 +279,6 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFImageJob   &job,
 MPFVideoTrack OcvSsdFaceDetection::_convert_track(Track &track){
 
   MPFVideoTrack mpf_track;
-
   mpf_track.start_frame = track.front()->frameIdx;
   mpf_track.stop_frame  = track.back()->frameIdx;
 
@@ -286,6 +288,10 @@ MPFVideoTrack OcvSsdFaceDetection::_convert_track(Track &track){
   stop_feature << track.back()->getFeature();    //  for the start and end detections.
   mpf_track.detection_properties["START_FEATURE"] = start_feature.str();
   mpf_track.detection_properties["STOP_FEATURE"]  = stop_feature.str();
+
+  #ifndef NDEBUG
+    track.kalmanDump();
+  #endif
 
   for(auto &det:track){
     mpf_track.confidence += det->confidence;
@@ -301,20 +307,20 @@ MPFVideoTrack OcvSsdFaceDetection::_convert_track(Track &track){
 * Read frames from a video, get object detections and make tracks
 *
 * \param          job     MPF Video job
-* \param[in,out]  tracks  Tracks collection to which detections will be added
 *
-* \returns   MPF_DETECTION_SUCCESS or another MPF error constant on failure
+* \returns   Tracks collection to which detections have been added
 *
 ***************************************************************************** */
-MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
-                                                     MPFVideoTrackVec  &mpf_tracks) {
+MPFVideoTrackVec OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job){
+
+  MPFVideoTrackVec  mpf_tracks;
+  TrackPtrList      trackPtrs;
 
   try{
-
-    TrackPtrList trackPtrs;
-
     JobConfig cfg(job);
-    if(cfg.lastError != MPF_DETECTION_SUCCESS) return cfg.lastError;
+    if(cfg.lastError != MPF_DETECTION_SUCCESS){
+      throw MPFDetectionException(cfg.lastError,"failed to parse video job configuration parameters");
+    }
 
     size_t detectTrigger = 0;
     while(cfg.nextFrame()) {                                                   LOG4CXX_TRACE(_log, ".");
@@ -328,14 +334,25 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
         return false;
       });
 
+      // advance kalman predictions
+      if(! cfg.kfDisabled){
+        for(auto &trackPtr:trackPtrs){
+          trackPtr->kalmanPredict(cfg.frameTimeInSec);
+        }
+      }
+
       if(detectTrigger == 0){                                                  LOG4CXX_TRACE(_log,"checking for new detections");
         DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfg); // look for new detections
 
         if(detections.size() > 0){   // found some detections in current frame
           if(trackPtrs.size() >= 0 ){  // not all tracks were dropped
-                                                                               LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+            vector<long> av;                                                   LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
             // intersection over union tracking and assignment
-            vector<long> av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detections,cfg.maxIOUDist);
+            if(! cfg.kfDisabled){
+              av = _calcAssignmentVector<&DetectionLocation::kfIouDist>(trackPtrs,detections,cfg.maxIOUDist);
+            }else{
+              av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detections,cfg.maxIOUDist);
+            }
             _assignDetections2Tracks(trackPtrs, detections, av);               LOG4CXX_TRACE(_log,"IOU assignment complete");
 
             // feature-based tracking tracking and assignment
@@ -354,20 +371,19 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
                                                                                LOG4CXX_TRACE(_log, detections.size() <<" detections left for new tracks");
           // any detection not assigned up to this point becomes a new track
           for(auto &det:detections){                                           // make any unassigned detections into new tracks
-              trackPtrs.push_back(unique_ptr<Track>(new Track()));             // create a new empty track
-              det->getFeature();                                               // start of tracks always get feature calculated
-              trackPtrs.back()->push_back(move(det));                          LOG4CXX_TRACE(_log,"created new track " << *(trackPtrs.back()));
+            det->getFeature();                                                 // start of tracks always get feature calculated
+            trackPtrs.push_back(unique_ptr<Track>(new Track(move(det),cfg)));  LOG4CXX_TRACE(_log,"created new track " << *(trackPtrs.back()));
           }
         }
       }
 
       // check any tracks that didn't get a detection and use tracker to continue them if possible
-      for(auto &trackPtr:trackPtrs){
-        if(trackPtr->back()->frameIdx < cfg.frameIdx){  // no detections for track in current frame, try tracking
-          unique_ptr<DetectionLocation> detPtr = trackPtr->back()->ocvTrackerPredict(cfg);
+      for(auto &track:trackPtrs){
+        if(track->back()->frameIdx < cfg.frameIdx){  // no detections for track in current frame, try tracking
+          DetectionLocationPtr detPtr = track->ocvTrackerPredict(cfg);
           if(detPtr){  // tracker returned something
-            trackPtr->back()->releaseBGRFrame();
-            trackPtr->push_back(move(detPtr));
+            track->push_back(move(detPtr));              // add new location as tracks's tail
+            track->kalmanCorrect();
           }
         }
       }
@@ -387,19 +403,23 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
       cfg.ReverseTransform(mpf_track);
     }
 
+    return mpf_tracks;
+
   }catch(const runtime_error& re){                                             LOG4CXX_FATAL(_log, "[" << job.job_name << "] runtime error: " << re.what());
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException(re.what());
   }catch(const exception& ex){                                                 LOG4CXX_FATAL(_log, "[" << job.job_name << "] exception: " << ex.what());
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException(ex.what());
   }catch (...) {                                                               LOG4CXX_FATAL(_log, "[" << job.job_name << "] unknown error");
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException("Unknown error processing video job");
   }
                                                                                LOG4CXX_DEBUG(_log,"[" << job.job_name << "] complete.");
-  return MPF_DETECTION_SUCCESS;
 }
 
-/* **************************************************************************
+/** **************************************************************************
 *  Perform histogram equalization
+*
+* \param cfg job structure containing image frame to be equalized
+*
 *************************************************************************** */
 void OcvSsdFaceDetection::_equalizeHistogram(JobConfig &cfg){
   cv::Mat3b hsvFrame;
@@ -414,8 +434,11 @@ void OcvSsdFaceDetection::_equalizeHistogram(JobConfig &cfg){
 }
 
 
-/* **************************************************************************
+/** **************************************************************************
 *  Perform image normalization
+*
+* \param cfg job structure containing image frame to be normalized
+*
 *************************************************************************** */
 void OcvSsdFaceDetection::_normalizeFrame(JobConfig &cfg){
   cv::Mat fltImg;

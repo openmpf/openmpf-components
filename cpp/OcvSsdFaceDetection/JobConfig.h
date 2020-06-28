@@ -78,6 +78,8 @@ namespace MPF{
   throw runtime_error(f + "[" + to_string(__LINE__)+"] " + MSG); \
   }
 
+
+
   /* **************************************************************************
   *   Configuration parameters populated with appropriate values & defaults
   *************************************************************************** */
@@ -96,9 +98,19 @@ namespace MPF{
       float   widthOdiag;              ///< image (width/diagonal)
       float   heightOdiag;             ///< image (height/diagonal)
       size_t  frameIdx;                ///< index of current frame
+      double  frameTimeInSec;          ///< time of current frame in sec
+      double  frameTimeStep;           ///< time interval between frames in sec
+
       cv::Mat bgrFrame;                ///< current BGR image frame
 
-      MPFDetectionError   lastError;   ///< last MPF error that should be returned
+      bool  kfDisabled;                ///< if true kalman filtering is disabled
+      cv::Mat_<float> RN;              ///< kalman filter measurement noise matrix
+      cv::Mat_<float> QN;              ///< kalman filter process noise variances (i.e. unknown accelerations)
+
+      bool fallback2CpuWhenGpuProblem; ///< fallback to cpu if there is a gpu problem
+      int  cudaDeviceId;               ///< gpu device id to use for cuda
+
+      mutable MPFDetectionError   lastError;   ///< last MPF error that should be returned
 
       JobConfig();
       JobConfig(const MPFImageJob &job);
@@ -112,8 +124,15 @@ namespace MPF{
     private:
       unique_ptr<MPFImageReader>  _imreaderPtr;
       unique_ptr<MPFVideoCapture> _videocapPtr;
+      string                      _strRN;          ///< kalman filter measurement noise matrix serialized to string
+      string                      _strQN;          ///< kalman filter process noise matrix serialized to string
 
-      void _parse(const MPFJob &job);
+      void    _parse(const MPFJob &job);
+      cv::Mat _fromString(const string data,
+                          const int    rows,
+                          const int    cols,
+                          const string dt);
+
 
 
   };

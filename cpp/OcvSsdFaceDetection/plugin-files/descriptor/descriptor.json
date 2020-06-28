@@ -3,7 +3,7 @@
   "componentVersion": "1.0",
   "middlewareVersion": "4.1.0",
   "sourceLanguage": "c++",
-  "batchLibrary": "${MPF_HOME}/plugins/OcvSsdFaceDetection/lib/libmpfOcvSsdFaceDetection.so",
+  "batchLibrary": "${MPF_HOME}/plugins/OcvFaceDetection/lib/libmpfOcvSsdFaceDetection.so",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",
@@ -59,8 +59,25 @@
           "description": "Maximum temporal distance (# of frames) between detection in a track.",
           "type": "INT",
           "defaultValue": "4"
+        },
+        {
+          "name": "KF_DISABLED",
+          "description": "Disables the use of motion prediction via Kalman filtering during tracking.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "KF_R",
+          "description": "Bounding box detector measurement noise covariance matrix[4,4] for Kalman filter for measurment vector [center_x, center_y, width, height]",
+          "type": "STRING",
+          "defaultValue": "[1.0,0.0,0.0,0.0, 0.0,1.0,0.0,0.0, 0.0,0.0,10.0,0.0, 0.0,0.0,0.0,10.0]"
+        },
+        {
+          "name": "KF_Q",
+          "description": "Bounding box motion model noise covariance matrix[8,8] for Kalman filter for state vector [center_x, center_y, center_x_velocity, center_y_velocity, width, height, width_velocity, height_velocity]",
+          "type": "STRING",
+          "defaultValue": "[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0, 0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,  0.0,0.0,5.0,0.0,0.0,0.0,0.0,0.0, 0.0,0.0,0.0,5.0,0.0,0.0,0.0,0.0, 0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0, 0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,5.0,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,5.0]"
         }
-
       ]
     }
   },

@@ -24,57 +24,67 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#ifndef KF_TRACKER_H
+#define KF_TRACKER_H
 
-#ifndef OPENMPF_COMPONENTS_OCVSsdFACEDETECTION_H
-#define OPENMPF_COMPONENTS_OCVSsdFACEDETECTION_H
+#include <ostream>
 
 #include <log4cxx/logger.h>
-#include <opencv2/imgproc/imgproc.hpp>
-
-#include "adapters/MPFImageAndVideoDetectionComponentAdapter.h"
+#include <opencv2/opencv.hpp>
+#include <opencv2/tracking.hpp>
 
 #include "types.h"
-#include "Track.h"
-#include "DetectionLocation.h"
-#include "JobConfig.h"
 
 namespace MPF{
- namespace COMPONENT{
+  namespace COMPONENT{
 
-  using namespace std;
+    using namespace std;
+
+    class KFTracker{
+
+      public:
+
+        static bool Init(log4cxx::LoggerPtr log, const string plugin_path);  ///< setup class shared members
+
+        static cv::Mat_<float> measurementFromBBox(const cv::Rect2i& r);
+        static cv::Rect2i      bboxFromState(const cv::Mat_<float> state);
 
 
-  class OcvSsdFaceDetection : public MPFImageAndVideoDetectionComponentAdapter {
+        const cv::Rect2i predictedBBox() const;
+        const cv::Rect2i correctedBBox() const;
 
-    public:
-      bool Init()  override;
-      bool Close() override;
-      string GetDetectionType(){return "FACE";};
-      MPFVideoTrackVec    GetDetections(const MPFVideoJob &job)    override;
-      MPFImageLocationVec GetDetections(const MPFImageJob &job) override;
+        void predict(const float t);         ///< advance Kalman state to time t and get predicted bbox
+        void correct(const cv::Rect2i &rec); ///< correct current filter state with measurement rec
 
-    private:
+        KFTracker(const float t,
+                  const float dt,
+                  const cv::Rect2i &rec0,
+                  const cv::Rect2i &roi,
+                  const cv::Mat_<float> &rn,
+                  const cv::Mat_<float> &qn);
 
-      log4cxx::LoggerPtr             _log;              ///< log object
-      cv::Ptr<cv::CLAHE>             _equalizerPtr;     ///< adaptive histogram equalizer
+        #ifndef NDEBUG
+          static size_t _objId;
+          size_t _myId;
+          void dump();
+          stringstream _state_trace;
+          friend ostream& operator<< (ostream& out, const KFTracker& kft);
+        #endif
 
-      typedef float (DetectionLocation::*DetectionLocationCostFunc)(const Track &tr) const; ///< cost member-function pointer type
+      private:
+        static log4cxx::LoggerPtr  _log;       ///< shared log object
+        cv::KalmanFilter           _kf;        ///< kalman filter for bounding box
+        float                      _t;         ///< time corresponding to kalman filter state
+        float                      _dt;        ///< time step to use for filter updates
+        const cv::Rect2i           _roi;       ///< canvas clipping limits for bboxes returned by filter
+        const cv::Mat_<float>      _qn;        ///< kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
 
-      template<DetectionLocationCostFunc COST_FUNC>
-      vector<long> _calcAssignmentVector(const TrackPtrList            &tracks,
-                                         const DetectionLocationPtrVec &detections,
-                                         const float                    maxCost); ///< determine costs of assigning detections to tracks
+        void _setTimeStep(float dt);                      ///< update model variables Q F for time step size dt
 
-      void _assignDetections2Tracks(TrackPtrList            &tracks,
-                                    DetectionLocationPtrVec &detections,
-                                    const vector<long>      &assignmentVector);  ///< assign detections to tracks
+    };
 
-      MPFVideoTrack _convert_track(Track &track);  ///< convert to MFVideoTrack and release
 
-      void _equalizeHistogram(JobConfig &cfg);     ///< perform histogram equalization on the frame
-      void _normalizeFrame(JobConfig &cfg);        ///< perform image normalization
-
-  };
- }
+  }
 }
-#endif //OPENMPF_COMPONENTS_OCVFACEDETECTION_H
+
+#endif

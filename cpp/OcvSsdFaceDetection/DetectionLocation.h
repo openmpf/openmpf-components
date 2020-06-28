@@ -31,7 +31,6 @@
 
 #include <opencv2/dnn.hpp>
 #include <opencv2/face.hpp>
-#include <opencv2/tracking.hpp>
 
 #include <dlib/image_processing.h>
 #include <dlib/opencv.h>
@@ -46,38 +45,44 @@ namespace MPF{
 
   using namespace std;
 
-  class DetectionLocation;
-
-  typedef vector<unique_ptr<DetectionLocation>> DetectionLocationPtrVec;  ///< vector of DetectionLocation pointers
-  typedef DetectionLocationPtrVec               Track;                    ///< track as vector of detection pointers
-  typedef list<unique_ptr<Track>>               TrackPtrList;             ///< list of track pointers
-  typedef float (DetectionLocation::*DetectionLocationCostFunc)(const DetectionLocation &d) const; ///< cost member-function pointer type
+  typedef float (DetectionLocation::*DetectionLocationCostFunc)(const Track &tr) const; ///< cost member-function pointer type
 
   class DetectionLocation: public MPFImageLocation{ // extend MPFImageLocation
 
     public:
       using MPFImageLocation::MPFImageLocation;  // C++11 inherit all constructors for MPFImageLocation
 
-      const cv::Point2f       center;                 ///< bounding box center normalized to image dimensions
-      const size_t            frameIdx;               ///< frame index frame where detection is located (for videos)
+      const cv::Point2f       center;            ///< bounding box center normalized to image dimensions
+      const size_t            frameIdx;          ///< frame index frame where detection is located (for videos)
+      const double            frameTimeInSec;    ///< frame time in sec where detection is located (for videos)
 
       static bool Init(log4cxx::LoggerPtr log, const string plugin_path);    ///< setup class shared members
       static DetectionLocationPtrVec createDetections(const JobConfig &cfg); ///< created detection objects from image frame
-      unique_ptr<DetectionLocation> ocvTrackerPredict(const JobConfig &cfg); ///< predict a new detection from an exiting one using a tracker
 
       const cvPoint2fVec&  getLandmarks() const;                             ///< get landmark points for detection
       const cv::Mat&       getThumbnail() const;                             ///< get thumbnail image for detection
       const cv::Mat&       getFeature()   const;                             ///< get DNN features for detection
+      const cv::Mat&       getBGRFrame()  const;                             ///< get image data associated with detection
 
-      float           iouDist(const DetectionLocation &d) const;             ///< 1 - compute intersection over union
-      float         frameDist(const DetectionLocation &d) const;             ///< compute temporal frame gap
-      float center2CenterDist(const DetectionLocation &d) const;             ///< compute normalized center to center distance
-      float       featureDist(const DetectionLocation &d) const;             ///< compute deep feature similarity distance
+      const cv::Rect2i  getRect() const;                                     ///< get location as an opencv rectange
+      void              setRect(const cv::Rect2i& rec);                      ///< set location from an opencv rectangle
+
+      void copyFeature(const DetectionLocation& d);                          ///< copy DNN feature from another detection
+
+      float           iouDist(const Track &tr) const;             ///< 1 - compute intersection over union
+      float         kfIouDist(const Track &tr) const;             ///< 1 - compute intersection over union using kalman predicted location
+      float         frameDist(const Track &tr) const;             ///< compute temporal frame gap
+      float center2CenterDist(const Track &tr) const;             ///< compute normalized center to center distance
+      float       featureDist(const Track &tr) const;             ///< compute deep feature similarity distance
 
       void drawLandmarks(cv::Mat &img, const cv::Scalar drawColor) const;    ///< draw landmark point on image
-      void releaseBGRFrame(){_bgrFrame.release();}                           ///< release reference to image frame
-      void releaseTracker(){_trackerPtr.release();}                          ///< release reference to tracker
+      void releaseBGRFrame();                                                ///< release reference to image frame
+      static bool trySetCudaDevice(const int cudaDeviceId);                  ///< try set CUDA to use specified GPU device
 
+      DetectionLocation(int x,int y,int width,int height,float conf,
+                        cv::Point2f center,
+                        size_t frameIdx, double frameTimeInMillis,
+                        cv::Mat bgrFrame);                                   ///< private constructor for createDetections()
     private:
 
       static log4cxx::LoggerPtr                _log;                ///< shared log object
@@ -85,16 +90,14 @@ namespace MPF{
       static cv::dnn::Net                      _openFaceNet   ;     ///< feature generator
       static unique_ptr<dlib::shape_predictor> _shapePredFuncPtr;   ///< landmark detector
 
-      cv::Mat  _bgrFrame;                                 ///< frame associated with detection (openCV memory managed :( )
+      float _iouDist(const cv::Rect2i &rect) const;                 ///< compute intersectino over union
+
       mutable cvPoint2fVec    _landmarks;                 ///< vector of landmarks (e.g. eyes, nose, etc.)
       mutable cv::Mat         _thumbnail;                 ///< 96x96 image comprising an aligned thumbnail
       mutable cv::Mat         _feature;                   ///< DNN feature for matching-up detections
-      cv::Ptr<cv::Tracker> _trackerPtr;                   ///< openCV tracker to help bridge gaps when detector fails
-      size_t               _trackerStartFrameIdx;
+      cv::Mat                 _bgrFrame;                  ///< frame associated with detection (openCV memory managed :( )
 
-      DetectionLocation(int x,int y,int width,int height,float conf,
-                        cv::Point2f center, size_t frameIdx,
-                        cv::Mat bgrFrame);                ///< private constructor for createDetections()
+      static void _setCudaBackend(const bool enabled);    ///< turn on or off cuda backend for inferencing
   };
 
   /** **************************************************************************
@@ -105,17 +108,6 @@ namespace MPF{
     out  << "[" << (MPFImageLocation)d
                 << " F[" << d.getFeature().size() << "] T["
                 << d.getThumbnail().rows << "," << d.getThumbnail().cols << "]";
-    return out;
-  }
-
-  /** **************************************************************************
-  *   Dump MPF::COMPONENT::Track to a stream
-  *************************************************************************** */
-  inline
-  ostream& operator<< (ostream& out, const Track& t) {
-    out << "<f"   << t.front()->frameIdx << (MPFImageLocation)(*t.front())
-        << "...f" << t.back()->frameIdx  << (MPFImageLocation)(*t.back())
-        << ">("<<t.size()<<")";
     return out;
   }
 

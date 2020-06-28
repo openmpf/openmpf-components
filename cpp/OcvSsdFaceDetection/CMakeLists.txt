@@ -30,22 +30,34 @@ project(ocv-ssd-face-detection)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(CMAKE_BUILD_TYPE RelWithDebInfo)    # build release version with debug symbols
-#set(CMAKE_BUILD_TYPE Debug)            # build debug version
+#set(CMAKE_BUILD_TYPE RelWithDebInfo)    # build release version with debug symbols
+set(CMAKE_BUILD_TYPE Debug)            # build debug version
 
 add_definitions(-Wfatal-errors)
 include(../ComponentSetup.cmake)
 
-find_package(OpenCV 3.4.7 EXACT
-    REQUIRED PATHS /opt/opencv-3.4.7
-    COMPONENTS
-               opencv_dnn
-               opencv_video
-               opencv_face
-               opencv_tracking
-               )
+# Specify dlib source directory here.
+# Otherwise, disable the following three lines if using find_package(dlib) instead.
+#set(DLIB_DIR /apps/source/dlib-sources/dlib-19.19/dlib)
+#include(${DLIB_DIR}/cmake)
+#set_property(TARGET dlib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-find_package(dlib REQUIRED)
+# Uncomment if not specifying dlib source directory.
+# Warning: may not work with dlib release installation.
+# find_package(dlib REQUIRED)
+
+find_package(OpenCV
+  REQUIRED
+  COMPONENTS
+     opencv_dnn
+     opencv_video
+     opencv_face
+     opencv_tracking
+)
+if(${OpenCV_VERSION} VERSION_LESS 3.4.7)
+  message(FATAL_ERROR "OpenCV ${OpenCV_VERSION} is below minimum 3.4.7")
+endif()
+
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
@@ -61,6 +73,8 @@ endif()
 set(OCV_SSD_FACE_DETECTION_SOURCE_FILES
         JobConfig.cpp
         DetectionLocation.cpp
+        Track.cpp
+        KFTracker.cpp
         OcvSsdFaceDetection.cpp)
 
 add_library(mpfOcvSsdFaceDetection SHARED ${OCV_SSD_FACE_DETECTION_SOURCE_FILES})
@@ -69,7 +83,7 @@ target_link_libraries(mpfOcvSsdFaceDetection
                       mpfDetectionComponentApi
                       mpfComponentUtils
                       ${OpenCV_LIBS}
-                      dlib::dlib)
+                      dlib)
 
 configure_mpf_component(OcvSsdFaceDetection TARGETS mpfOcvSsdFaceDetection)
 
