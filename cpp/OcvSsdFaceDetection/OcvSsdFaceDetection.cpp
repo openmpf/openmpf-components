@@ -120,10 +120,12 @@ bool OcvSsdFaceDetection::Init() {
     bool defaultCudaDeviceOK = DetectionLocation::trySetCudaDevice(cudaDeviceId) || fallbackToCPU;
 
     bool trackInitializedOK = Track::Init(_log, plugin_path);
+    bool kfTrackerInitializedOK = KFTracker::Init(_log, plugin_path);
 
     return    detectionLocationInitalizedOK
            && defaultCudaDeviceOK
-           && trackInitializedOK;
+           && trackInitializedOK
+           && kfTrackerInitializedOK;
 
 
 }
@@ -211,7 +213,7 @@ void OcvSsdFaceDetection::_assignDetections2Tracks(TrackPtrList             &tra
     if(assignmentVector[t] != -1){                                              LOG4CXX_TRACE(_log,"assigning det: " << "f" << detections[assignmentVector[t]]->frameIdx << " " <<  ((MPFImageLocation)*(detections[assignmentVector[t]])) << " to track " << *track);
       track->releaseTracker();
       track->push_back(move(detections.at(assignmentVector[t])));
-      track->kalmanCorrect();                                                  // apply kalman correction to detection
+      track->kalmanCorrect();
     }
     t++;
   }
@@ -286,6 +288,10 @@ MPFVideoTrack OcvSsdFaceDetection::_convert_track(Track &track){
   mpf_track.detection_properties["START_FEATURE"] = start_feature.str();
   mpf_track.detection_properties["STOP_FEATURE"]  = stop_feature.str();
 
+  #ifndef NDEBUG
+    track.kalmanDump();
+  #endif
+
   for(auto &det:track){
     mpf_track.confidence += det->confidence;
     mpf_track.frame_locations.insert(mpf_track.frame_locations.end(),{det->frameIdx,*det});
@@ -328,8 +334,10 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
       });
 
       // advance kalman predictions
-      for(auto &trackPtr:trackPtrs){
-        trackPtr->kalmanPredict(cfg.frameTimeInSec);
+      if(! cfg.kfDisabled){
+        for(auto &trackPtr:trackPtrs){
+          trackPtr->kalmanPredict(cfg.frameTimeInSec);
+        }
       }
 
       if(detectTrigger == 0){                                                  LOG4CXX_TRACE(_log,"checking for new detections");
@@ -365,12 +373,12 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
       }
 
       // check any tracks that didn't get a detection and use tracker to continue them if possible
-      for(auto &trackPtr:trackPtrs){
-        if(trackPtr->back()->frameIdx < cfg.frameIdx){  // no detections for track in current frame, try tracking
-          DetectionLocationPtr detPtr = trackPtr->ocvTrackerPredict(cfg);
+      for(auto &track:trackPtrs){
+        if(track->back()->frameIdx < cfg.frameIdx){  // no detections for track in current frame, try tracking
+          DetectionLocationPtr detPtr = track->ocvTrackerPredict(cfg);
           if(detPtr){  // tracker returned something
-            trackPtr->push_back(move(detPtr));              // add new location as tracks's tail
-            trackPtr->kalmanCorrect();                      // apply kalman correction to extrapolation
+            track->push_back(move(detPtr));              // add new location as tracks's tail
+            track->kalmanCorrect();
           }
         }
       }

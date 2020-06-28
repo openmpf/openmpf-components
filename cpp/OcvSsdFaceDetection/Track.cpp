@@ -30,7 +30,6 @@ using namespace MPF::COMPONENT;
 
 // Shared static members (might need mutex locks and condition variable if multithreading... )
 log4cxx::LoggerPtr Track::_log;
-cv::Mat_<float> Track::_kfC2ul;
 
 string format(cv::Mat m);
 
@@ -41,130 +40,17 @@ string format(cv::Mat m);
 * \param cfg    job struct to initialize kalman filter params from
 *
 **************************************************************************** */
-Track::Track(unique_ptr<DetectionLocation> detPtr, const JobConfig &cfg):
-  _kfDisabled(cfg.kfDisabled),
-  _kfROI(0,0,cfg.bgrFrame.cols-1 ,cfg.bgrFrame.rows-1),
-  _kf(KF_STATE_DIM,KF_MEAS_DIM,KF_CTRL_DIM,CV_32F)                 // kalman(state_dim,meas_dim,contr_dim)
-{
-  if(! _kfDisabled){
-    // State Transition Matrix A
-    //    | 1  0 dt  0  0  0  0  0|   | x|
-    //    | 0  1  0 dt  0  0  0  0|   | y|
-    //    | 0  0  1  0  0  0  0  0|   |vx|
-    //    | 0  0  0  1  0  0  0  0| * |vy|
-    //    | 0  0  0  0  1  0 dt  0|   | w|
-    //    | 0  0  0  0  0  1  0 dt|   | h|
-    //    | 0  0  0  0  0  0  1  0|   |vw|
-    //    | 0  0  0  0  0  0  0  1|   |vh|
-    _kf.transitionMatrix = cv::Mat_<float>::eye(KF_STATE_DIM,KF_STATE_DIM); // add dt later
-
-    _kf.measurementMatrix   = cfg.H;
-    _kf.processNoiseCov     = cfg.Q;
-    _kf.measurementNoiseCov = cfg.R;
-    _kf.errorCovPre = cv::Mat::eye(KF_STATE_DIM,KF_STATE_DIM,CV_32F);  // 1st measurements taken truth as no noise
-
-    // initialize state vector
-    _kf.statePost = cv::Mat_<float>::zeros(KF_STATE_DIM,1);
-    _kf.statePost.at<float>(0,0) = detPtr->x_left_upper + detPtr->width /2.0f; // x
-    _kf.statePost.at<float>(1,0) = detPtr->y_left_upper + detPtr->height/2.0f; // y
-    _kf.statePost.at<float>(4,0) = detPtr->width;                              // width
-    _kf.statePost.at<float>(5,0) = detPtr->height;                             // height
-                                                                               LOG4CXX_TRACE(_log,"kf initial state:" << format(_kf.statePost));
+Track::Track(unique_ptr<DetectionLocation> detPtr, const JobConfig &cfg){
+  if(! cfg.kfDisabled){
+    _kfPtr = unique_ptr<KFTracker>(
+      new KFTracker(cfg.frameTimeInSec,
+                    cfg.frameTimeStep,
+                    detPtr->getRect(),
+                    cv::Rect2i(0,0,cfg.bgrFrame.cols-1,cfg.bgrFrame.rows-1),
+                    cfg.RN,
+                    cfg.QN));
   }
   _locationPtrs.push_back(move(detPtr));
-}
-
-/** **************************************************************************
-* Advance Kalman filter system state to frameIdx time step
-*
-* \param frameTimeInSec time index of frame in seconds to which to advance
-*                       the filter state to
-*
-*************************************************************************** */
-void Track::kalmanPredict(const double frameTimeInSec){
-
-  if(_kfDisabled) return;
-
-  float dt = frameTimeInSec - _locationPtrs.back()->frameTimeInSec;
-  // set st in state transition matrix
-  _kf.transitionMatrix.at<float>(0,2) = dt;
-  _kf.transitionMatrix.at<float>(1,3) = dt;
-  _kf.transitionMatrix.at<float>(4,6) = dt;
-  _kf.transitionMatrix.at<float>(5,7) = dt;
-  _kf.predict();                                                               LOG4CXX_TRACE(_log,"kf predicted: [" << getKalmanPredictedLocation().x << ","
-                                                                                                                    << getKalmanPredictedLocation().y << "]-("
-                                                                                                                    << getKalmanPredictedLocation().width << ","
-                                                                                                                    << getKalmanPredictedLocation().height << ")");
-
-}
-
-/** **************************************************************************
-* Correct last measurement and update gains using Kalman filter
-*************************************************************************** */
-void Track::kalmanCorrect(){
-
-  if(_kfDisabled) return;
-
-  cv::Mat meas = cv::Mat_<float>(KF_MEAS_DIM,1);
-  meas.at<float>(0,0) = _locationPtrs.back()->x_left_upper + _locationPtrs.back()->width /2.0f; // x
-  meas.at<float>(1,0) = _locationPtrs.back()->y_left_upper + _locationPtrs.back()->height/2.0f; // y
-  meas.at<float>(2,0) = _locationPtrs.back()->width;   // width
-  meas.at<float>(3,0) = _locationPtrs.back()->height;  // height
-                                                                               LOG4CXX_TRACE(_log, "kf predicted:" << format(_kfC2ul * _kf.statePre));
-                                                                               LOG4CXX_TRACE(_log, "kf meas     :" << format(_kfC2ul *_kf.measurementMatrix.t() * meas));
-  _kf.correct(meas);                                                           LOG4CXX_TRACE(_log, "kf corrected:" << format(_kfC2ul *_kf.statePost));
-
-  cv::Rect2i cloc = getKalmanCorrectedLocation();
-  _locationPtrs.back()->x_left_upper = cloc.x;
-  _locationPtrs.back()->y_left_upper = cloc.y;
-  _locationPtrs.back()->width        = cloc.width;
-  _locationPtrs.back()->height       = cloc.height;                            LOG4CXX_TRACE(_log,"corrected detection: f"<<_locationPtrs.back()->frameIdx<<*_locationPtrs.back());
-}
-
-/** **************************************************************************
-* Retrieve the current predicted position rectangle from Kalman filter state
-*
-* \return rectangle corresponding to filter predicted state (without measuremnt)
-*
-*************************************************************************** */
-const cv::Rect2i  Track::getKalmanPredictedLocation() const{
-  if(_kfDisabled){
-    return cv::Rect2i(_locationPtrs.back()->x_left_upper,
-                      _locationPtrs.back()->y_left_upper,
-                      _locationPtrs.back()->width,
-                      _locationPtrs.back()->height);
-  }else{
-
-    return cv::Rect2i(static_cast<int>(_kf.statePre.at<float>(0)
-                                     - _kf.statePre.at<float>(4)/2.0f + 0.5f),
-                      static_cast<int>(_kf.statePre.at<float>(1)
-                                     - _kf.statePre.at<float>(5)/2.0f + 0.5f),
-                      static_cast<int>(_kf.statePre.at<float>(4)      + 0.5f),
-                      static_cast<int>(_kf.statePre.at<float>(5)      + 0.5f)) & _kfROI;
-  }
-}
-
-/** **************************************************************************
-* Retrieve the current corrected position rectangle from Kalman filter state
-*  corrected states are after a new position measurement has been taken
-*
-* \return rectangle corresponding to filter corrected state (post measuremnt)
-*
-*************************************************************************** */
-const cv::Rect2i  Track::getKalmanCorrectedLocation() const{
-  if(_kfDisabled){
-    return cv::Rect2i(_locationPtrs.back()->x_left_upper,
-                      _locationPtrs.back()->y_left_upper,
-                      _locationPtrs.back()->width,
-                      _locationPtrs.back()->height);
-  }else{
-    return cv::Rect2i(static_cast<int>(_kf.statePost.at<float>(0)
-                                     - _kf.statePost.at<float>(4)/2.0f + 0.5f),
-                      static_cast<int>(_kf.statePost.at<float>(1)
-                                     - _kf.statePost.at<float>(5)/2.0f + 0.5f),
-                      static_cast<int>(_kf.statePost.at<float>(4)      + 0.5f),
-                      static_cast<int>(_kf.statePost.at<float>(5)      + 0.5f)) & _kfROI;
-  }
 }
 
 /** **************************************************************************
@@ -180,13 +66,16 @@ const cv::Rect2i  Track::getKalmanCorrectedLocation() const{
 DetectionLocationPtr Track::ocvTrackerPredict(const JobConfig &cfg){
 
   if(_trackerPtr.empty()){   // initialize a new tracker if we don't have one already
-    _trackerPtr = cv::TrackerMOSSE::create();  // could try different trackers here. e.g. cv::TrackerKCF::create();
-    _trackerPtr->init(_locationPtrs.back()->getBGRFrame(),
-           cv::Rect2d(_locationPtrs.back()->x_left_upper,
-                      _locationPtrs.back()->y_left_upper,
-                      _locationPtrs.back()->width,
-                      _locationPtrs.back()->height));                                    LOG4CXX_TRACE(_log,"tracker created for " << (MPFImageLocation)*_locationPtrs.back());
-    _trackerStartFrameIdx = cfg.frameIdx;
+    cv::Rect2i bbox    = _locationPtrs.back()->getRect();
+    cv::Rect2i overlap =  bbox & cv::Rect2i(0,0,_locationPtrs.back()->getBGRFrame().cols -1,
+                                                _locationPtrs.back()->getBGRFrame().rows -1);
+     if(overlap.width > 1 && overlap.height > 1){
+       _trackerPtr = cv::TrackerMOSSE::create();                               // could try different trackers here. e.g. cv::TrackerKCF::create();
+       _trackerPtr->init(_locationPtrs.back()->getBGRFrame(), bbox);           LOG4CXX_TRACE(_log,"tracker created for " << (MPFImageLocation)*_locationPtrs.back());
+       _trackerStartFrameIdx = cfg.frameIdx;
+    }else{                                                                     LOG4CXX_TRACE(_log,"can't create tracker created for " << (MPFImageLocation)*_locationPtrs.back());
+      return nullptr;
+    }
   }
 
   cv::Rect2d p;
@@ -226,6 +115,21 @@ void Track::push_back(DetectionLocationPtr d){
 }
 
 /** **************************************************************************
+*************************************************************************** */
+void Track::kalmanPredict(float t){
+  _kfPtr->predict(t);                                                          LOG4CXX_TRACE(_log,"kf pred:" << _locationPtrs.back()->getRect() << " => " << _kfPtr->predictedBBox());
+}
+
+/** **************************************************************************
+ * apply kalman correction to tail detection
+*************************************************************************** */
+void Track::kalmanCorrect(){
+  if(_kfPtr){                                                                  LOG4CXX_TRACE(_log,"kf meas:" << _locationPtrs.back()->getRect());
+    _kfPtr->correct(_locationPtrs.back()->getRect());                          LOG4CXX_TRACE(_log,"kf corr:" << _locationPtrs.back()->getRect());
+    back()->setRect(_kfPtr->correctedBBox());
+  }
+}
+/** **************************************************************************
 * Setup class shared static configurations and initialize
 *
 * \param log         logger object for logging
@@ -234,13 +138,6 @@ void Track::push_back(DetectionLocationPtr d){
 * \return true if everything was properly initialized, false otherwise
 *************************************************************************** */
 bool Track::Init(log4cxx::LoggerPtr log, string plugin_path=""){
-
   _log = log;
-
-  //transformation matrix for state to go from center x,y to upper-left x,y
-  _kfC2ul = cv::Mat_<float>::eye(KF_STATE_DIM,KF_STATE_DIM);
-  _kfC2ul.at<float>(0,4) = -0.5f;
-  _kfC2ul.at<float>(1,5) = -0.5f;
-
   return true;
 }

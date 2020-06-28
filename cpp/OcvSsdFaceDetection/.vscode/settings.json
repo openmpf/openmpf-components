@@ -30,6 +30,7 @@
       "future": "cpp",
       "istream": "cpp",
       "tuple": "cpp",
-      "utility": "cpp"
+      "utility": "cpp",
+      "limits": "cpp"
     }
 }

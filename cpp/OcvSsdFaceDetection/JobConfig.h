@@ -78,10 +78,7 @@ namespace MPF{
   throw runtime_error(f + "[" + to_string(__LINE__)+"] " + MSG); \
   }
 
-  // Kalman Filter Constants
-  const int KF_STATE_DIM = 8; ///< dimensionality of kalman state vector       [x, y, v_x, v_y, w, h, v_w, v_h]
-  const int KF_MEAS_DIM  = 4; ///< dimensionality of kalman measurement vector [x, y, w, h]
-  const int KF_CTRL_DIM  = 0; ///< dimensionality of kalman control input      []
+
 
   /* **************************************************************************
   *   Configuration parameters populated with appropriate values & defaults
@@ -101,14 +98,14 @@ namespace MPF{
       float   widthOdiag;              ///< image (width/diagonal)
       float   heightOdiag;             ///< image (height/diagonal)
       size_t  frameIdx;                ///< index of current frame
-      double  frameTimeInSec;          ///< time of current frame in milli sec
+      double  frameTimeInSec;          ///< time of current frame in sec
+      double  frameTimeStep;           ///< time interval between frames in sec
 
       cv::Mat bgrFrame;                ///< current BGR image frame
 
       bool  kfDisabled;                ///< if true kalman filtering is disabled
-      cv::Mat_<float> H;               ///< kalman filter measurement matrix
-      cv::Mat_<float> R;               ///< kalman filter measurement noise matrix
-      cv::Mat_<float> Q;               ///< kalman filter process noise matrix
+      cv::Mat_<float> RN;              ///< kalman filter measurement noise matrix
+      cv::Mat_<float> QN;              ///< kalman filter process noise variances (i.e. unknown accelerations)
 
       bool fallback2CpuWhenGpuProblem; ///< fallback to cpu if there is a gpu problem
       int  cudaDeviceId;               ///< gpu device id to use for cuda
@@ -127,8 +124,8 @@ namespace MPF{
     private:
       unique_ptr<MPFImageReader>  _imreaderPtr;
       unique_ptr<MPFVideoCapture> _videocapPtr;
-      string                      _strR;          ///< kalman filter measurement noise matrix serialized to string
-      string                      _strQ;          ///< kalman filter process noise matrix serialized to string
+      string                      _strRN;          ///< kalman filter measurement noise matrix serialized to string
+      string                      _strQN;          ///< kalman filter process noise matrix serialized to string
 
       void    _parse(const MPFJob &job);
       cv::Mat _fromString(const string data,

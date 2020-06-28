@@ -30,8 +30,8 @@ project(ocv-ssd-face-detection)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(CMAKE_BUILD_TYPE RelWithDebInfo)    # build release version with debug symbols
-#set(CMAKE_BUILD_TYPE Debug)            # build debug version
+#set(CMAKE_BUILD_TYPE RelWithDebInfo)    # build release version with debug symbols
+set(CMAKE_BUILD_TYPE Debug)            # build debug version
 
 add_definitions(-Wfatal-errors)
 include(../ComponentSetup.cmake)
@@ -71,6 +71,7 @@ set(OCV_SSD_FACE_DETECTION_SOURCE_FILES
         JobConfig.cpp
         DetectionLocation.cpp
         Track.cpp
+        KFTracker.cpp
         OcvSsdFaceDetection.cpp)
 
 add_library(mpfOcvSsdFaceDetection SHARED ${OCV_SSD_FACE_DETECTION_SOURCE_FILES})

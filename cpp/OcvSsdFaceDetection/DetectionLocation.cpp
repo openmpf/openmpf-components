@@ -110,18 +110,6 @@ float DetectionLocation::_iouDist(const cv::Rect2i &rect) const {
 }
 
 /** **************************************************************************
-* Compute (1 - Intersection Over Union) metric between detection and the
-* predicted location of the track tail as computed by Kalman filter
-*
-* \param   tr track
-* \returns 1- intersection over union [0.0 ... 1.0]
-*
-*************************************************************************** */
-float DetectionLocation::kfIouDist(const Track &tr) const {
-  return _iouDist(tr.getKalmanPredictedLocation());
-}
-
-/** **************************************************************************
 * Compute 1 - Intersection Over Union metric between track tail and detection
 *
 * \param   tr track
@@ -275,10 +263,26 @@ const cv::Mat& DetectionLocation::getBGRFrame() const{
 
 /** **************************************************************************
 * release reference to image frame
-*
 *************************************************************************** */
 void DetectionLocation::releaseBGRFrame() {                                    LOG4CXX_TRACE(_log,"releasing bgrFrame for  f" << this->frameIdx << *this);
   _bgrFrame.release();
+}
+
+/** **************************************************************************
+* get the location as an opencv rectange
+*************************************************************************** */
+const cv::Rect2i DetectionLocation::getRect() const {
+  return cv::Rect2i(x_left_upper,y_left_upper,width,height);
+}
+
+/** **************************************************************************
+* set the location from an opencv rectange
+*************************************************************************** */
+void DetectionLocation::setRect(const cv::Rect2i& rec){
+  x_left_upper = rec.x;
+  y_left_upper = rec.y;
+        width  = rec.width;
+        height = rec.height;
 }
 
 /** **************************************************************************

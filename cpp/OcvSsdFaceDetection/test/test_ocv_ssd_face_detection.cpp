@@ -368,7 +368,7 @@ TEST(OcvSsdFaceDetection, Thumbnails) {
     // write out thumbnail image tracks
     int t=0;
     for(auto &track:tracks){
-      for(size_t i=0; i< track->size(); i++){
+      for(size_t i=0; i < track->size(); i++){
         EXPECT_FALSE((*track)[i]->getThumbnail().empty());
         stringstream ss;
         ss << test_output_dir << "t" << t << "_i"<< i << ".png";

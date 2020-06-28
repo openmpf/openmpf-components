@@ -61,11 +61,14 @@ void JobConfig::_parse(const MPFJob &job){
   maxIOUDist       = abs(getEnv<float>(jpr,"TRACKING_MAX_IOU_DIST",          maxIOUDist));        LOG4CXX_TRACE(_log, "TRACKING_MAX_IOU_DIST: "     << maxIOUDist);
 
   kfDisabled = getEnv<bool>(jpr,"KF_DISABLED", kfDisabled);                                       LOG4CXX_TRACE(_log, "KF_DISABLED: " << kfDisabled);
-  _strR = getEnv<string>(jpr,"KF_R",_strR);                                                       LOG4CXX_TRACE(_log, "KF_R: "      << _strR);
-  _strQ = getEnv<string>(jpr,"KF_Q",_strQ);                                                       LOG4CXX_TRACE(_log, "KF_Q: "      << _strQ);
-  R = _fromString(_strR, KF_MEAS_DIM, KF_MEAS_DIM, "f");
-  Q = _fromString(_strQ, KF_STATE_DIM, KF_STATE_DIM, "f");
 
+  _strRN = getEnv<string>(jpr,"KF_RN",_strRN);                                                    LOG4CXX_TRACE(_log, "KF_RN: "       << _strRN);
+  _strQN = getEnv<string>(jpr,"KF_QN",_strQN);                                                    LOG4CXX_TRACE(_log, "KF_QN: "       << _strQN);
+  RN = _fromString(_strRN, 4, 1, "f");
+  QN = _fromString(_strQN, 4, 1, "f");
+  //convert stddev to variances
+  RN = RN.mul(RN);
+  QN = QN.mul(QN);
   fallback2CpuWhenGpuProblem = getEnv<bool>(jpr,"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",fallback2CpuWhenGpuProblem);  LOG4CXX_TRACE(_log, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM: " << fallback2CpuWhenGpuProblem);
   cudaDeviceId               = getEnv<int> (jpr,"CUDA_DEVICE_ID"                  , cudaDeviceId);               LOG4CXX_TRACE(_log, "CUDA_DEVICE_ID: " << cudaDeviceId);
 }
@@ -83,8 +86,8 @@ ostream& operator<< (ostream& out, const JobConfig& cfg) {
       <<  "\"maxCenterDist\":"    << cfg.maxCenterDist    << ","
       <<  "\"maxIOUDist\":"       << cfg.maxIOUDist       << ","
       <<  "\"kfDisabled\":"       << (cfg.kfDisabled ? "1":"0") << ","
-      <<  "\"kfProcessCov\":"     << format(cfg.Q) << ","
-      <<  "\"kfProcessCov\":"     << format(cfg.R) << ","
+      <<  "\"kfProcessVar\":"     << format(cfg.QN) << ","
+      <<  "\"kfMeasurementVar\":" << format(cfg.RN) << ","
       <<  "\"fallback2CpuWhenGpuProblem\":" << (cfg.fallback2CpuWhenGpuProblem ? "1" : "0") << ","
       <<  "\"cudaDeviceId\":"     << cfg.cudaDeviceId
       << "}";
@@ -107,38 +110,18 @@ JobConfig::JobConfig():
   fallback2CpuWhenGpuProblem(true),
   frameIdx(-1),
   frameTimeInSec(-1.0),
+  frameTimeStep(-1.0),
   lastError(MPF_DETECTION_SUCCESS),
   _imreaderPtr(unique_ptr<MPFImageReader>()),
   _videocapPtr(unique_ptr<MPFVideoCapture>()){
 
-    // Kalman Measurement Matrix H
-    //    | 1  0  0  0  0  0  0  0 |       | x |
-    //    | 0  1  0  0  0  0  0  0 |       | y |
-    //    | 0  0  0  0  1  0  0  0 | * A = | w |
-    //    | 0  0  0  0  0  1  0  0 |       | h |
-    H = cv::Mat_<float>::zeros(KF_MEAS_DIM,KF_STATE_DIM);
-    H.at<float>(0,0) = 1.0f;
-    H.at<float>(1,1) = 1.0f;
-    H.at<float>(2,4) = 1.0f;
-    H.at<float>(3,5) = 1.0f;
+    // Kalman filter motion model noise / acceleration stddev for covariance matrix Q
+    _strQN = "[100.0,100.0,100.0,100.0]";
+    QN = _fromString(_strQN, 4, 1, "f");
 
-    // Kalman Motion Model Process noise covariance Matrix Q
-    _strQ = "[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,"
-            " 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,"
-            " 0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0,"
-            " 0.0, 0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0,"
-            " 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,"
-            " 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,"
-            " 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 0.0,"
-            " 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0]";
-    Q = _fromString(_strQ, KF_STATE_DIM, KF_STATE_DIM, "f");
-
-    // Kalman Bounding Box Measurement noise covariance Matrix R
-    _strR = "[1.0, 0.0,  0.0, 0.0,"
-            " 0.0, 1.0,  0.0, 0.0,"
-            " 0.0, 0.0, 10.0, 0.0,"
-            " 0.0, 0.0,  0.0, 10.0]";
-    R = _fromString(_strR, KF_MEAS_DIM, KF_MEAS_DIM, "f");
+    // Kalman Bounding Box Measurement noise sdtdev for covariance Matrix R
+    _strRN = "[6.0, 6.0, 6.0, 6.0]";
+    RN = _fromString(_strRN, 4, 1, "f");
 
   }
 
@@ -183,6 +166,8 @@ JobConfig::JobConfig(const MPFVideoJob &job):
     float diag  = sqrt(fs.width*fs.width + fs.height*fs.height);
     widthOdiag  = fs.width  / diag;
     heightOdiag = fs.height / diag;
+
+    frameTimeStep = 1.0 / _videocapPtr->GetFrameRate();
   }
 }
 

@@ -64,10 +64,12 @@ namespace MPF{
       const cv::Mat&       getFeature()   const;                             ///< get DNN features for detection
       const cv::Mat&       getBGRFrame()  const;                             ///< get image data associated with detection
 
+      const cv::Rect2i  getRect() const;                                     ///< get location as an opencv rectange
+      void              setRect(const cv::Rect2i& rec);                      ///< set location from an opencv rectangle
+
       void copyFeature(const DetectionLocation& d);                          ///< copy DNN feature from another detection
 
       float           iouDist(const Track &tr) const;             ///< 1 - compute intersection over union
-      float         kfIouDist(const Track &tr) const;             ///< 1 - compute intersection over union with kalman filter prediction
       float         frameDist(const Track &tr) const;             ///< compute temporal frame gap
       float center2CenterDist(const Track &tr) const;             ///< compute normalized center to center distance
       float       featureDist(const Track &tr) const;             ///< compute deep feature similarity distance
