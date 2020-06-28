@@ -96,6 +96,17 @@ static string GetCurrentWorkingDirectory() {
 }
 
 /** ***************************************************************************
+*   Test component opencv version
+**************************************************************************** */
+TEST(OcvSsdFaceDetection, OpenCVVersion) {
+  #if(CV_MAJOR_VERSION > 3)
+    GOUT("OpenCV Version: 4.x");
+  #elif(CV_MAJOR_VERSION > 2)
+    GOUT("OpenCV Version: 3.x");
+  #endif
+}
+
+/** ***************************************************************************
 *   Test initializing component
 **************************************************************************** */
 TEST(OcvSsdFaceDetection, Init) {
@@ -197,9 +208,8 @@ TEST(OcvSsdFaceDetection, VerifyQuality) {
         test_image_path = current_working_dir + "/" + test_image_path;
     }
     // Detect detections and check conf levels
-    vector<MPFImageLocation> detections;
     MPFImageJob job1("Testing1", test_image_path, { }, { });
-    ocv_ssd_face_detection->GetDetections(job1, detections);
+    vector<MPFImageLocation> detections = ocv_ssd_face_detection->GetDetections(job1);
     ASSERT_TRUE(detections.size() == 1);
     GOUT("Detection: " << detections[0]);
     ASSERT_TRUE(detections[0].confidence > .9);
@@ -207,13 +217,13 @@ TEST(OcvSsdFaceDetection, VerifyQuality) {
 
     // Detect detections and check conf level
     MPFImageJob job2("Testing2", test_image_path, {{"MIN_DETECTION_SIZE","500"}}, { });
-    ocv_ssd_face_detection->GetDetections(job2, detections);
+    detections = ocv_ssd_face_detection->GetDetections(job2);
     ASSERT_TRUE(detections.size() == 0);
     detections.clear();
 
     // Detect detections and check conf levels
     MPFImageJob job3("Testing2", test_image_path, {{"MIN_DETECTION_SIZE","48"},{"DETECTION_CONFIDENCE_THRESHOLD","1.1"}}, { });
-    ocv_ssd_face_detection->GetDetections(job3, detections);
+    detections = ocv_ssd_face_detection->GetDetections(job3);
     ASSERT_TRUE(detections.size() == 0);
     detections.clear();
 
@@ -254,9 +264,9 @@ TEST(OcvSsdFaceDetection, TestOnKnownImage) {
     vector<MPFImageLocation> known_detections;
     ASSERT_TRUE(ReadDetectionsFromFile::ReadImageLocations(known_detections_file, known_detections));
 
-    vector<MPFImageLocation> found_detections;
+
     MPFImageJob image_job("Testing", known_image_file, { }, { });
-    ASSERT_FALSE(ocv_ssd_face_detection->GetDetections(image_job, found_detections));
+    vector<MPFImageLocation> found_detections = ocv_ssd_face_detection->GetDetections(image_job);
     EXPECT_FALSE(found_detections.empty());
 
     float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_detections, known_detections);
@@ -433,10 +443,9 @@ TEST(OcvSsdFaceDetection, TestOnKnownVideo) {
 
     // 	Evaluate the known video file to generate the test tracks.
     GOUT("\tRunning the tracker on the video: " << inVideoFile);
-    vector<MPFVideoTrack> found_tracks;
     MPFVideoJob videoJob("Testing", inVideoFile, start, stop, { }, { });
     auto start_time = chrono::high_resolution_clock::now();
-    ASSERT_FALSE(ocv_ssd_face_detection->GetDetections(videoJob, found_tracks));
+    vector<MPFVideoTrack> found_tracks = ocv_ssd_face_detection->GetDetections(videoJob);
     auto end_time = chrono::high_resolution_clock::now();
     EXPECT_FALSE(found_tracks.empty());
     double time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count();

@@ -50,8 +50,8 @@ namespace MPF{
       bool Init()  override;
       bool Close() override;
       string GetDetectionType(){return "FACE";};
-      MPFDetectionError GetDetections(const MPFVideoJob &job, MPFVideoTrackVec    &tracks)    override;
-      MPFDetectionError GetDetections(const MPFImageJob &job, MPFImageLocationVec &locations) override;
+      MPFVideoTrackVec    GetDetections(const MPFVideoJob &job)    override;
+      MPFImageLocationVec GetDetections(const MPFImageJob &job) override;
 
     private:
 

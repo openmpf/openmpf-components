@@ -124,6 +124,18 @@ float DetectionLocation::iouDist(const Track &tr) const {
 }
 
 /** **************************************************************************
+* Compute 1 - Intersection Over Union metric between Kalman filtertrack
+* predicted location of track tail and detection
+*
+* \param   tr track
+* \returns 1- intersection over union [0.0 ... 1.0]
+*
+*************************************************************************** */
+float DetectionLocation::kfIouDist(const Track &tr) const {
+  return _iouDist(tr.kalmanPredictedBox());
+}
+
+/** **************************************************************************
 * Compute the temporal distance (frame count) between track tail and detection
 *
 * \param   tr track
@@ -384,6 +396,7 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
 /** **************************************************************************
 *************************************************************************** */
 void DetectionLocation::_setCudaBackend(const bool enabled){
+  #ifdef HAVE_CUDA
   if(enabled){
     _ssdNet.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
     _ssdNet.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
@@ -395,6 +408,7 @@ void DetectionLocation::_setCudaBackend(const bool enabled){
     _openFaceNet.setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);
     _openFaceNet.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);                 LOG4CXX_INFO(_log,"Disabled CUDA acceleration");
   }
+  #endif
 }
 
 /** **************************************************************************
@@ -408,6 +422,7 @@ bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
   static int lastCudaDeviceId = -1;
   const string err_msg = "Failed to configure CUDA for deviceID=";
   try{
+    #ifdef HAVE_CUDA
     if(lastCudaDeviceId != cudaDeviceId){
       if(lastCudaDeviceId >=0) cv::cuda::resetDevice();  // if we were using a cuda device prior clean up old contex / cuda resources
       if(cudaDeviceId >=0){
@@ -420,6 +435,7 @@ bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
       }
     }
     return true;
+    #endif
   }catch(const runtime_error& re){                                           LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Runtime error: " << re.what());
   }catch(const exception& ex){                                               LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Exception: " << ex.what());
   }catch(...){                                                               LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Unknown failure occurred. Possible memory corruption");

@@ -230,38 +230,39 @@ void OcvSsdFaceDetection::_assignDetections2Tracks(TrackPtrList             &tra
 * Read an image and get object detections and features
 *
 * \param          job     MPF Image job
-* \param[in,out]  locations  locations collection to which detections will be added
 *
-* \returns MPF error constant or MPF_DETECTION_SUCCESS
+* \returns  locations collection to which detections have been added
 *
 ***************************************************************************** */
-MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFImageJob   &job,
-                                                     MPFImageLocationVec &locations) {
+MPFImageLocationVec OcvSsdFaceDetection::GetDetections(const MPFImageJob   &job) {
 
   try {                                                                        LOG4CXX_DEBUG(_log, "[" << job.job_name << "Data URI = " << job.data_uri);
     JobConfig cfg(job);
-    if(cfg.lastError != MPF_DETECTION_SUCCESS) return cfg.lastError;
+    if(cfg.lastError != MPF_DETECTION_SUCCESS){
+      throw MPFDetectionException(cfg.lastError,"failed to parse image job configuration parameters");
+    }
     DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfg);
                                                                                LOG4CXX_DEBUG(_log, "[" << job.job_name << "] Number of faces detected = " << detections.size());
+    MPFImageLocationVec locations;
     for(auto &det:detections){
       MPFImageLocation loc = *det;
       det.reset();                                                             // release frame object
       cfg.ReverseTransform(loc);
       locations.push_back(loc);
     }
+    return locations;
 
   }catch(const runtime_error& re){
     LOG4CXX_FATAL(_log, "[" << job.job_name << "] runtime error: " << re.what());
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException(re.what());
   }catch(const exception& ex){
     LOG4CXX_FATAL(_log, "[" << job.job_name << "] exception: " << ex.what());
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException(ex.what());
   }catch (...){
     LOG4CXX_FATAL(_log, "[" << job.job_name << "] unknown error");
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException(" Unknown error processing image job");
   }
                                                                                LOG4CXX_DEBUG(_log,"[" << job.job_name << "] complete.");
-  return MPF_DETECTION_SUCCESS;
 }
 
 /** ****************************************************************************
@@ -306,20 +307,20 @@ MPFVideoTrack OcvSsdFaceDetection::_convert_track(Track &track){
 * Read frames from a video, get object detections and make tracks
 *
 * \param          job     MPF Video job
-* \param[in,out]  mpf_tracks Tracks collection to which detections will be added
 *
-* \returns   MPF_DETECTION_SUCCESS or another MPF error constant on failure
+* \returns   Tracks collection to which detections have been added
 *
 ***************************************************************************** */
-MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
-                                                     MPFVideoTrackVec  &mpf_tracks) {
+MPFVideoTrackVec OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job){
+
+  MPFVideoTrackVec  mpf_tracks;
+  TrackPtrList      trackPtrs;
 
   try{
-
-    TrackPtrList trackPtrs;
-
     JobConfig cfg(job);
-    if(cfg.lastError != MPF_DETECTION_SUCCESS) return cfg.lastError;
+    if(cfg.lastError != MPF_DETECTION_SUCCESS){
+      throw MPFDetectionException(cfg.lastError,"failed to parse video job configuration parameters");
+    }
 
     size_t detectTrigger = 0;
     while(cfg.nextFrame()) {                                                   LOG4CXX_TRACE(_log, ".");
@@ -345,9 +346,13 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
 
         if(detections.size() > 0){   // found some detections in current frame
           if(trackPtrs.size() >= 0 ){  // not all tracks were dropped
-                                                                               LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+            vector<long> av;                                                   LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
             // intersection over union tracking and assignment
-            vector<long> av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detections,cfg.maxIOUDist);
+            if(! cfg.kfDisabled){
+              av = _calcAssignmentVector<&DetectionLocation::kfIouDist>(trackPtrs,detections,cfg.maxIOUDist);
+            }else{
+              av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detections,cfg.maxIOUDist);
+            }
             _assignDetections2Tracks(trackPtrs, detections, av);               LOG4CXX_TRACE(_log,"IOU assignment complete");
 
             // feature-based tracking tracking and assignment
@@ -398,15 +403,16 @@ MPFDetectionError OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job,
       cfg.ReverseTransform(mpf_track);
     }
 
+    return mpf_tracks;
+
   }catch(const runtime_error& re){                                             LOG4CXX_FATAL(_log, "[" << job.job_name << "] runtime error: " << re.what());
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException(re.what());
   }catch(const exception& ex){                                                 LOG4CXX_FATAL(_log, "[" << job.job_name << "] exception: " << ex.what());
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException(ex.what());
   }catch (...) {                                                               LOG4CXX_FATAL(_log, "[" << job.job_name << "] unknown error");
-    return Utils::HandleDetectionException(job, _log);
+    throw MPFDetectionException("Unknown error processing video job");
   }
                                                                                LOG4CXX_DEBUG(_log,"[" << job.job_name << "] complete.");
-  return MPF_DETECTION_SUCCESS;
 }
 
 /** **************************************************************************

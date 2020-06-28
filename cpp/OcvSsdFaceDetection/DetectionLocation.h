@@ -70,6 +70,7 @@ namespace MPF{
       void copyFeature(const DetectionLocation& d);                          ///< copy DNN feature from another detection
 
       float           iouDist(const Track &tr) const;             ///< 1 - compute intersection over union
+      float         kfIouDist(const Track &tr) const;             ///< 1 - compute intersection over union using kalman predicted location
       float         frameDist(const Track &tr) const;             ///< compute temporal frame gap
       float center2CenterDist(const Track &tr) const;             ///< compute normalized center to center distance
       float       featureDist(const Track &tr) const;             ///< compute deep feature similarity distance

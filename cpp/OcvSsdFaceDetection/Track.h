@@ -60,10 +60,11 @@ namespace MPF{
         DetectionLocationPtrVec::iterator    end()             {return _locationPtrs.end();}
         void                                 push_back(DetectionLocationPtr d);
 
-        void kalmanPredict(float t);
-        void kalmanCorrect();
+        void             kalmanPredict(float t);
+        void             kalmanCorrect();
+        const cv::Rect2i kalmanPredictedBox()            const {return _kfPtr->predictedBBox();}
         #ifndef NDEBUG
-        void kalmanDump(){_kfPtr->dump();};
+        void             kalmanDump(){_kfPtr->dump();};
         #endif
 
         Track(DetectionLocationPtr detPtr, const JobConfig &cfg);

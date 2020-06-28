@@ -23,7 +23,7 @@
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
-from openmpf/openmpf_cpp_component_build:gpu
+from openmpf/openmpf_cpp_component_build:latest
 
 RUN yum install --assumeyes \
                git gdb which mlocate \
@@ -51,7 +51,7 @@ RUN mkdir -p /tmp/dlib; \
 RUN ln -s /usr/bin/cmake3 /usr/bin/cmake;
 
 LABEL org.label-schema.license="Mixed" \
-      org.label-schema.name="OpenMPF OpenCV SSD Face Detection Dev GPU" \
+      org.label-schema.name="OpenMPF OpenCV SSD Face Detection Dev" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \

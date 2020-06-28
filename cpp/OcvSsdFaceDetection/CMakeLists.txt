@@ -46,14 +46,17 @@ include(../ComponentSetup.cmake)
 # Warning: may not work with dlib release installation.
 # find_package(dlib REQUIRED)
 
-find_package(OpenCV ${OPENCV_VERSION} EXACT
-    REQUIRED PATHS /opt/opencv-${OPENCV_VERSION}
-    COMPONENTS
-               opencv_dnn
-               opencv_video
-               opencv_face
-               opencv_tracking
-               )
+find_package(OpenCV
+  REQUIRED
+  COMPONENTS
+     opencv_dnn
+     opencv_video
+     opencv_face
+     opencv_tracking
+)
+if(${OpenCV_VERSION} VERSION_LESS 3.4.7)
+  message(FATAL_ERROR "OpenCV ${OpenCV_VERSION} is below minimum 3.4.7")
+endif()
 
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
