@@ -72,19 +72,19 @@ void processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[
 
     cout << "Number of video tracks = " << tracks.size() << endl;
     for (int i = 0; i < tracks.size(); i++) {
-        cout << "\nVideo track " << i << "\n"
-             << "   start frame = " << tracks[i].start_frame << "\n"
-             << "   stop frame = " << tracks[i].stop_frame << "\n"
+        cout << "\nVideo track "            << i << "\n"
+             << "   start frame = "         << tracks[i].start_frame << "\n"
+             << "   stop frame = "          << tracks[i].stop_frame << "\n"
              << "   number of locations = " << tracks[i].frame_locations.size() << "\n"
-             << "   confidence = " << tracks[i].confidence << endl;
+             << "   confidence = "          << tracks[i].confidence << endl;
 
         for (auto it : tracks[i].frame_locations) {
             cout << "   Image location frame = " << it.first << "\n"
-                 << "      x left upper = " << it.second.x_left_upper << "\n"
-                 << "      y left upper = " << it.second.y_left_upper << "\n"
-                 << "      width = " << it.second.width << "\n"
-                 << "      height = " << it.second.height << "\n"
-                 << "      confidence = " << it.second.confidence << endl;
+                 << "      x left upper = "      << it.second.x_left_upper << "\n"
+                 << "      y left upper = "      << it.second.y_left_upper << "\n"
+                 << "      width = "             << it.second.width << "\n"
+                 << "      height = "            << it.second.height << "\n"
+                 << "      confidence = "        << it.second.confidence << endl;
         }
     }
 }

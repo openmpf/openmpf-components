@@ -69,8 +69,10 @@ void JobConfig::_parse(const MPFJob &job){
   //convert stddev to variances
   RN = RN.mul(RN);
   QN = QN.mul(QN);
-  fallback2CpuWhenGpuProblem = getEnv<bool>(jpr,"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",fallback2CpuWhenGpuProblem);  LOG4CXX_TRACE(_log, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM: " << fallback2CpuWhenGpuProblem);
-  cudaDeviceId               = getEnv<int> (jpr,"CUDA_DEVICE_ID"                  , cudaDeviceId);               LOG4CXX_TRACE(_log, "CUDA_DEVICE_ID: " << cudaDeviceId);
+  fallback2CpuWhenGpuProblem = getEnv<bool>(jpr,"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
+                                            fallback2CpuWhenGpuProblem);                          LOG4CXX_TRACE(_log, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM: " << fallback2CpuWhenGpuProblem);
+  cudaDeviceId               = getEnv<int> (jpr,"CUDA_DEVICE_ID",
+                                            cudaDeviceId);                                        LOG4CXX_TRACE(_log, "CUDA_DEVICE_ID: " << cudaDeviceId);
 }
 
 /** **************************************************************************

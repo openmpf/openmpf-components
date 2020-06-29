@@ -199,9 +199,8 @@ vector<long> OcvSsdFaceDetection::_calcAssignmentVector(const TrackPtrList      
 * \param [in,out] detections       vector of detections
 * \param          assignmentVector (v[track] <=> detection[v[track]]) with with -1 in
 *                                   skip assignment
-* \param [in]     kfDisabled        if true correction via kalman filter is skipped
 *
-* \note detections that are assigned are be removed from the detections vector
+* \note detections that are assigned are removed from detections
 *
 ***************************************************************************** */
 void OcvSsdFaceDetection::_assignDetections2Tracks(TrackPtrList             &tracks,
@@ -246,7 +245,7 @@ MPFImageLocationVec OcvSsdFaceDetection::GetDetections(const MPFImageJob   &job)
     MPFImageLocationVec locations;
     for(auto &det:detections){
       MPFImageLocation loc = *det;
-      det.reset();                                                             // release frame object
+      det.reset();                    // release frame object
       cfg.ReverseTransform(loc);
       locations.push_back(loc);
     }

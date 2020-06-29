@@ -67,17 +67,30 @@
           "defaultValue": "false"
         },
         {
-          "name": "KF_R",
-          "description": "Bounding box detector measurement noise covariance matrix[4,4] for Kalman filter for measurment vector [center_x, center_y, width, height]",
+          "name": "KF_RN",
+          "description": "Bounding box detector noise standard deviations (in pixels) [center_x_noise_stdev, center_y_noise_stddev, width_noise_stdev, height_noise_stddev] for Kalman filter R",
           "type": "STRING",
-          "defaultValue": "[1.0,0.0,0.0,0.0, 0.0,1.0,0.0,0.0, 0.0,0.0,10.0,0.0, 0.0,0.0,0.0,10.0]"
+          "defaultValue": " [ 6.0,6.0,6.0,6.0 ] "
         },
         {
-          "name": "KF_Q",
-          "description": "Bounding box motion model noise covariance matrix[8,8] for Kalman filter for state vector [center_x, center_y, center_x_velocity, center_y_velocity, width, height, width_velocity, height_velocity]",
+          "name": "KF_QN",
+          "description": "Bounding box motion model acceleration inaccuracies/noise (in pixels/sec^2) [center_x_acceleration_noise_stdev, center_y_acceleration_noise_stdev, width_acceleration_noise_stdev, height_acceleration_noise_stdev ] for Kalman filter Q",
           "type": "STRING",
-          "defaultValue": "[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0, 0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,  0.0,0.0,5.0,0.0,0.0,0.0,0.0,0.0, 0.0,0.0,0.0,5.0,0.0,0.0,0.0,0.0, 0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0, 0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,5.0,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,5.0]"
+          "defaultValue": " [10000.0, 10000.0, 1000.0, 1000.0] "
+        },
+        {
+          "name": "CUDA_DEVIC_ID",
+          "description": "CUDA device / GPU to use, -1 to only use CPU",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
+          "description": "if true will fallback to CPU only when GPU fails to initialize",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
         }
+
       ]
     }
   },

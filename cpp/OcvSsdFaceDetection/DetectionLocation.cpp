@@ -124,8 +124,8 @@ float DetectionLocation::iouDist(const Track &tr) const {
 }
 
 /** **************************************************************************
-* Compute 1 - Intersection Over Union metric between Kalman filtertrack
-* predicted location of track tail and detection
+* Compute 1 - Intersection Over Union metric between Kalman filter predicted
+* location of track tail and a detection
 *
 * \param   tr track
 * \returns 1- intersection over union [0.0 ... 1.0]

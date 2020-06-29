@@ -88,14 +88,14 @@ DetectionLocationPtr Track::ocvTrackerPredict(const JobConfig &cfg){
                     (p.y + p.height/2.0f)/static_cast<float>(cfg.bgrFrame.rows)),
         cfg.frameIdx,
         cfg.frameTimeInSec,
-        cfg.bgrFrame));                                                                 LOG4CXX_TRACE(_log,"tracking " << (MPFImageLocation)*_locationPtrs.back() << " to " << (MPFImageLocation)*detPtr);
-
-      detPtr->copyFeature(*(_locationPtrs.back()));  // clone feature of prior detection
+        cfg.bgrFrame));                                                        LOG4CXX_TRACE(_log,"tracking " << (MPFImageLocation)*_locationPtrs.back() << " to " << (MPFImageLocation)*detPtr);
+      // clone feature of prior detection
+      detPtr->copyFeature(*(_locationPtrs.back()));
     }else{
-                                                                                        LOG4CXX_TRACE(_log,"could not track " << (MPFImageLocation)*_locationPtrs.back() << " to new location");
+                                                                               LOG4CXX_TRACE(_log,"could not track " << (MPFImageLocation)*_locationPtrs.back() << " to new location");
     }
   }else{
-                                                                                        LOG4CXX_TRACE(_log,"extrapolation tracking stopped" << (MPFImageLocation)*_locationPtrs.back() << " frame gap = " << cfg.frameIdx - _trackerStartFrameIdx << " > " <<  cfg.maxFrameGap);
+                                                                               LOG4CXX_TRACE(_log,"extrapolation tracking stopped" << (MPFImageLocation)*_locationPtrs.back() << " frame gap = " << cfg.frameIdx - _trackerStartFrameIdx << " > " <<  cfg.maxFrameGap);
   }
   return detPtr;
 }
@@ -115,13 +115,17 @@ void Track::push_back(DetectionLocationPtr d){
 }
 
 /** **************************************************************************
+ * Advance Kalman filter state to predict next bbox at time t
+ *
+ * \param t time in sec to which kalamn filter state is advanced to
+ *
 *************************************************************************** */
 void Track::kalmanPredict(float t){
   _kfPtr->predict(t);                                                          LOG4CXX_TRACE(_log,"kf pred:" << _locationPtrs.back()->getRect() << " => " << _kfPtr->predictedBBox());
 }
 
 /** **************************************************************************
- * apply kalman correction to tail detection
+ * apply kalman correction to tail detection using tail's measurement
 *************************************************************************** */
 void Track::kalmanCorrect(){
   if(_kfPtr){                                                                  LOG4CXX_TRACE(_log,"kf meas:" << _locationPtrs.back()->getRect());
@@ -129,6 +133,7 @@ void Track::kalmanCorrect(){
     back()->setRect(_kfPtr->correctedBBox());
   }
 }
+
 /** **************************************************************************
 * Setup class shared static configurations and initialize
 *

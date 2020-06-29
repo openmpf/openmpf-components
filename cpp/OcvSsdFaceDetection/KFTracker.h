@@ -50,8 +50,8 @@ namespace MPF{
         static cv::Rect2i      bboxFromState(const cv::Mat_<float> state);
 
 
-        const cv::Rect2i predictedBBox() const;
-        const cv::Rect2i correctedBBox() const;
+        const cv::Rect2i predictedBBox() const {return bboxFromState(_kf.statePre)  & _roi;};
+        const cv::Rect2i correctedBBox() const {return bboxFromState(_kf.statePost) & _roi;};
 
         void predict(const float t);         ///< advance Kalman state to time t and get predicted bbox
         void correct(const cv::Rect2i &rec); ///< correct current filter state with measurement rec
@@ -79,7 +79,7 @@ namespace MPF{
         const cv::Rect2i           _roi;       ///< canvas clipping limits for bboxes returned by filter
         const cv::Mat_<float>      _qn;        ///< kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
 
-        void _setTimeStep(float dt);                      ///< update model variables Q F for time step size dt
+        void _setTimeStep(float dt);           ///< update model variables Q F for time step size dt
 
     };
 

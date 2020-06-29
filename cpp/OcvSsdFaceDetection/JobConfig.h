@@ -43,6 +43,14 @@ namespace MPF{
 
   /** ****************************************************************************
   *   get MPF properties of various types
+  *
+  * \param T   data type to cast the result to
+  * \param p   properties map to get property from
+  * \param k   string key to use to retrieve property
+  * \param def default value to return if key is not found
+  *
+  * \return  type converted value of property retrived with key or the default
+  *
   ***************************************************************************** */
   template<typename T>
   T get(const Properties &p, const string &k, const T def){
@@ -52,6 +60,14 @@ namespace MPF{
   /** ****************************************************************************
   *   get configuration from environment variables if not
   *   provided by job configuration
+  *
+  * \param T   data type to cast the result to
+  * \param p   properties map to get property from
+  * \param k   string key to use to retrieve property
+  * \param def default value to return if key is not found
+  *
+  * \return  type converted value of property retrived with key or the default
+  *
   ***************************************************************************** */
   template<typename T>
   T getEnv(const Properties &p, const string &k, const T def){
