@@ -104,7 +104,10 @@ namespace MPF{
       static log4cxx::LoggerPtr _log;  ///< shared log object
       size_t minDetectionSize;         ///< minimum bounding box dimension
       float  confThresh;               ///< detection confidence threshold
-      long   detFrameInterval;         ///< number of frames between looking for new detection (tracking only)
+
+      int    frameInterval;            ///< controls which frames MPFVideoCapture exposes for processing
+      int    trackerFrameInterval;     ///< desired interval at which to perform detections; motion prediction is used to track skipped frames
+      int    adjustedFrameInterval;    ///< adjusted tracker frame interval based on which frames MPFVideoCapture exposes for processing
 
       float  maxFeatureDist;           ///< maximum feature distance to maintain track continuity
       float  maxCenterDist;            ///< maximum spatial distance normalized by diagonal to maintain track continuity

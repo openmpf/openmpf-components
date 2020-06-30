@@ -372,7 +372,7 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
 
   for(int i = 0; i < detectionMat.rows; i++){
     float conf = detectionMat.at<float>(i, 2);
-    if(conf > cfg.confThresh){
+    if(conf >= cfg.confThresh){
       cv::Point2f ul(detectionMat.at<float>(i, 3),detectionMat.at<float>(i, 4));
       cv::Point2f lr(detectionMat.at<float>(i, 5),detectionMat.at<float>(i, 6));
       cv::Point2f wh = lr - ul;

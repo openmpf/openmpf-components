@@ -381,15 +381,14 @@ MPFVideoTrackVec OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job){
         if(track->back()->frameIdx < cfg.frameIdx){  // no detections for track in current frame, try tracking
           DetectionLocationPtr detPtr = track->ocvTrackerPredict(cfg);
           if(detPtr){  // tracker returned something
-            track->push_back(move(detPtr));              // add new location as tracks's tail
+            track->push_back(move(detPtr));              // add new location as track's tail
             track->kalmanCorrect();
           }
         }
       }
 
       detectTrigger++;
-      detectTrigger = detectTrigger % (cfg.detFrameInterval + 1);
-
+      detectTrigger = detectTrigger % cfg.adjustedFrameInterval;
     }                                                                          LOG4CXX_DEBUG(_log, "[" << job.job_name << "] Number of tracks detected = " << trackPtrs.size());
 
     // convert any remaining active tracks to MPFVideoTracks

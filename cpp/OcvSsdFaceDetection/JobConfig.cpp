@@ -51,28 +51,44 @@ cv::Mat JobConfig::_fromString(const string data,const int rows,const int cols,c
 *************************************************************************** */
 void JobConfig::_parse(const MPFJob &job){
   const Properties jpr = job.job_properties;
-  minDetectionSize = abs(getEnv<int>  (jpr,"MIN_DETECTION_SIZE",             minDetectionSize));  LOG4CXX_TRACE(_log, "MIN_DETECTION_SIZE: "             << minDetectionSize);
-  confThresh       = abs(getEnv<float>(jpr,"DETECTION_CONFIDENCE_THRESHOLD", confThresh));        LOG4CXX_TRACE(_log, "DETECTION_CONFIDENCE_THRESHOLD: " << confThresh);
-  detFrameInterval = abs(getEnv<int>  (jpr,"DETECTION_FRAME_INTERVAL",       detFrameInterval));  LOG4CXX_TRACE(_log, "DETECTION_FRAME_INTERVAL: "       << detFrameInterval);
+  minDetectionSize     = abs(getEnv<int>  (jpr,"MIN_DETECTION_SIZE",             minDetectionSize));      LOG4CXX_TRACE(_log, "MIN_DETECTION_SIZE: "             << minDetectionSize);
+  confThresh           = abs(getEnv<float>(jpr,"DETECTION_CONFIDENCE_THRESHOLD", confThresh));            LOG4CXX_TRACE(_log, "DETECTION_CONFIDENCE_THRESHOLD: " << confThresh);
 
-  maxFeatureDist   = abs(getEnv<float>(jpr,"TRACKING_MAX_FEATURE_DIST",      maxFeatureDist));    LOG4CXX_TRACE(_log, "TRACKING_MAX_FEATURE_DIST: " << maxFeatureDist);
-  maxFrameGap      = abs(getEnv<int>  (jpr,"TRACKING_MAX_FRAME_GAP",         maxFrameGap));       LOG4CXX_TRACE(_log, "TRACKING_MAX_FRAME_GAP: "    << maxFrameGap);
-  maxCenterDist    = abs(getEnv<float>(jpr,"TRACKING_MAX_CENTER_DIST",       maxCenterDist));     LOG4CXX_TRACE(_log, "TRACKING_MAX_CENTER_DIST: "  << maxCenterDist);
-  maxIOUDist       = abs(getEnv<float>(jpr,"TRACKING_MAX_IOU_DIST",          maxIOUDist));        LOG4CXX_TRACE(_log, "TRACKING_MAX_IOU_DIST: "     << maxIOUDist);
+  frameInterval        = abs(getEnv<int>  (jpr,"FRAME_INTERVAL",                 1));                     LOG4CXX_TRACE(_log, "FRAME_INTERVAL: "                 << frameInterval);
+  trackerFrameInterval = abs(getEnv<int>  (jpr,"TRACKER_FRAME_INTERVAL",         trackerFrameInterval));  LOG4CXX_TRACE(_log, "TRACKER_FRAME_INTERVAL: "         << trackerFrameInterval);
 
-  kfDisabled = getEnv<bool>(jpr,"KF_DISABLED", kfDisabled);                                       LOG4CXX_TRACE(_log, "KF_DISABLED: " << kfDisabled);
+  frameInterval = (frameInterval < 1) ? 1 : frameInterval;
+  trackerFrameInterval = (trackerFrameInterval < 1) ? 1 : trackerFrameInterval;
 
-  _strRN = getEnv<string>(jpr,"KF_RN",_strRN);                                                    LOG4CXX_TRACE(_log, "KF_RN: "       << _strRN);
-  _strQN = getEnv<string>(jpr,"KF_QN",_strQN);                                                    LOG4CXX_TRACE(_log, "KF_QN: "       << _strQN);
+  adjustedFrameInterval = 1; // perform detection on every frame we read from MPFVideoCapture
+  if (frameInterval > trackerFrameInterval) {
+      LOG4CXX_WARN(_log, "FRAME_INTERVAL of " << frameInterval << " is greater than TRACKER_FRAME_INTERVAL of "
+                                              << trackerFrameInterval << ". Using " << frameInterval << " for TRACKER_FRAME_INTERVAL.");
+  }
+  else if (frameInterval < trackerFrameInterval) {
+      adjustedFrameInterval = trackerFrameInterval/frameInterval; // perform detection on every adjustedFrameInterval-1 frames from MPFVideoCapture
+      LOG4CXX_WARN(_log, "FRAME_INTERVAL of " << frameInterval << " is less than TRACKER_FRAME_INTERVAL of "
+                                              << trackerFrameInterval << ". Using " << (adjustedFrameInterval*frameInterval) << " for TRACKER_FRAME_INTERVAL.");
+  }
+
+  maxFeatureDist       = abs(getEnv<float>(jpr,"TRACKING_MAX_FEATURE_DIST",      maxFeatureDist));        LOG4CXX_TRACE(_log, "TRACKING_MAX_FEATURE_DIST: " << maxFeatureDist);
+  maxFrameGap          = abs(getEnv<int>  (jpr,"TRACKING_MAX_FRAME_GAP",         maxFrameGap));           LOG4CXX_TRACE(_log, "TRACKING_MAX_FRAME_GAP: "    << maxFrameGap);
+  maxCenterDist        = abs(getEnv<float>(jpr,"TRACKING_MAX_CENTER_DIST",       maxCenterDist));         LOG4CXX_TRACE(_log, "TRACKING_MAX_CENTER_DIST: "  << maxCenterDist);
+  maxIOUDist           = abs(getEnv<float>(jpr,"TRACKING_MAX_IOU_DIST",          maxIOUDist));            LOG4CXX_TRACE(_log, "TRACKING_MAX_IOU_DIST: "     << maxIOUDist);
+
+  kfDisabled = getEnv<bool>(jpr,"KF_DISABLED", kfDisabled);                            LOG4CXX_TRACE(_log, "KF_DISABLED: " << kfDisabled);
+
+  _strRN = getEnv<string>(jpr,"KF_RN",_strRN);                                         LOG4CXX_TRACE(_log, "KF_RN: "       << _strRN);
+  _strQN = getEnv<string>(jpr,"KF_QN",_strQN);                                         LOG4CXX_TRACE(_log, "KF_QN: "       << _strQN);
   RN = _fromString(_strRN, 4, 1, "f");
   QN = _fromString(_strQN, 4, 1, "f");
   //convert stddev to variances
   RN = RN.mul(RN);
   QN = QN.mul(QN);
   fallback2CpuWhenGpuProblem = getEnv<bool>(jpr,"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
-                                            fallback2CpuWhenGpuProblem);                          LOG4CXX_TRACE(_log, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM: " << fallback2CpuWhenGpuProblem);
+                                            fallback2CpuWhenGpuProblem);               LOG4CXX_TRACE(_log, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM: " << fallback2CpuWhenGpuProblem);
   cudaDeviceId               = getEnv<int> (jpr,"CUDA_DEVICE_ID",
-                                            cudaDeviceId);                                        LOG4CXX_TRACE(_log, "CUDA_DEVICE_ID: " << cudaDeviceId);
+                                            cudaDeviceId);                             LOG4CXX_TRACE(_log, "CUDA_DEVICE_ID: " << cudaDeviceId);
 }
 
 /** **************************************************************************
@@ -80,18 +96,20 @@ void JobConfig::_parse(const MPFJob &job){
 *************************************************************************** */
 ostream& operator<< (ostream& out, const JobConfig& cfg) {
   out << "{"
-      << "\"minDetectionSize\": " << cfg.minDetectionSize << ","
-      << "\"confThresh\":"        << cfg.confThresh       << ","
-      << "\"detFrameInterval\":"  << cfg.detFrameInterval << ","
-      <<  "\"maxFeatureDist\":"   << cfg.maxFeatureDist   << ","
-      <<  "\"maxFrameGap\":"      << cfg.maxFrameGap      << ","
-      <<  "\"maxCenterDist\":"    << cfg.maxCenterDist    << ","
-      <<  "\"maxIOUDist\":"       << cfg.maxIOUDist       << ","
-      <<  "\"kfDisabled\":"       << (cfg.kfDisabled ? "1":"0") << ","
-      <<  "\"kfProcessVar\":"     << format(cfg.QN) << ","
-      <<  "\"kfMeasurementVar\":" << format(cfg.RN) << ","
+      <<  "\"minDetectionSize\": "     << cfg.minDetectionSize << ","
+      <<  "\"confThresh\":"            << cfg.confThresh       << ","
+      <<  "\"frameInterval\":"         << cfg.frameInterval    << ","
+      <<  "\"trackerFrameInterval\":"  << cfg.trackerFrameInterval << ","
+      <<  "\"adjustedFrameInterval\":" << cfg.adjustedFrameInterval << ","
+      <<  "\"maxFeatureDist\":"        << cfg.maxFeatureDist   << ","
+      <<  "\"maxFrameGap\":"           << cfg.maxFrameGap      << ","
+      <<  "\"maxCenterDist\":"         << cfg.maxCenterDist    << ","
+      <<  "\"maxIOUDist\":"            << cfg.maxIOUDist       << ","
+      <<  "\"kfDisabled\":"            << (cfg.kfDisabled ? "1":"0") << ","
+      <<  "\"kfProcessVar\":"          << format(cfg.QN) << ","
+      <<  "\"kfMeasurementVar\":"      << format(cfg.RN) << ","
       <<  "\"fallback2CpuWhenGpuProblem\":" << (cfg.fallback2CpuWhenGpuProblem ? "1" : "0") << ","
-      <<  "\"cudaDeviceId\":"     << cfg.cudaDeviceId
+      <<  "\"cudaDeviceId\":"          << cfg.cudaDeviceId
       << "}";
   return out;
 }
@@ -103,7 +121,7 @@ JobConfig::JobConfig():
   minDetectionSize(46),
   confThresh(0.5),
   maxFrameGap(4),
-  detFrameInterval(1),
+  trackerFrameInterval(1),
   maxFeatureDist(0.25),
   maxCenterDist(0.0),
   maxIOUDist(0.5),
