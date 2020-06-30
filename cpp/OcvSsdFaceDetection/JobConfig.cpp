@@ -55,20 +55,20 @@ void JobConfig::_parse(const MPFJob &job){
   confThresh           = abs(getEnv<float>(jpr,"DETECTION_CONFIDENCE_THRESHOLD", confThresh));            LOG4CXX_TRACE(_log, "DETECTION_CONFIDENCE_THRESHOLD: " << confThresh);
 
   frameInterval        = abs(getEnv<int>  (jpr,"FRAME_INTERVAL",                 1));                     LOG4CXX_TRACE(_log, "FRAME_INTERVAL: "                 << frameInterval);
-  trackerFrameInterval = abs(getEnv<int>  (jpr,"TRACKER_FRAME_INTERVAL",         trackerFrameInterval));  LOG4CXX_TRACE(_log, "TRACKER_FRAME_INTERVAL: "         << trackerFrameInterval);
+  detFrameInterval     = abs(getEnv<int>  (jpr,"DETECTION_FRAME_INTERVAL",       detFrameInterval));      LOG4CXX_TRACE(_log, "DETECTION_FRAME_INTERVAL: "       << detFrameInterval);
 
   frameInterval = (frameInterval < 1) ? 1 : frameInterval;
-  trackerFrameInterval = (trackerFrameInterval < 1) ? 1 : trackerFrameInterval;
+  detFrameInterval = (detFrameInterval < 1) ? 1 : detFrameInterval;
 
   adjustedFrameInterval = 1; // perform detection on every frame we read from MPFVideoCapture
-  if (frameInterval > trackerFrameInterval) {
-      LOG4CXX_WARN(_log, "FRAME_INTERVAL of " << frameInterval << " is greater than TRACKER_FRAME_INTERVAL of "
-                                              << trackerFrameInterval << ". Using " << frameInterval << " for TRACKER_FRAME_INTERVAL.");
+  if (frameInterval > detFrameInterval) {
+      LOG4CXX_WARN(_log, "FRAME_INTERVAL of " << frameInterval << " is greater than DETECTION_FRAME_INTERVAL of "
+                                              << detFrameInterval << ". Using " << frameInterval << " for DETECTION_FRAME_INTERVAL.");
   }
-  else if (frameInterval < trackerFrameInterval) {
-      adjustedFrameInterval = trackerFrameInterval/frameInterval; // perform detection on every adjustedFrameInterval-1 frames from MPFVideoCapture
-      LOG4CXX_WARN(_log, "FRAME_INTERVAL of " << frameInterval << " is less than TRACKER_FRAME_INTERVAL of "
-                                              << trackerFrameInterval << ". Using " << (adjustedFrameInterval*frameInterval) << " for TRACKER_FRAME_INTERVAL.");
+  else if (frameInterval < detFrameInterval) {
+      adjustedFrameInterval = detFrameInterval/frameInterval; // perform detection on every adjustedFrameInterval-1 frames from MPFVideoCapture
+      LOG4CXX_WARN(_log, "FRAME_INTERVAL of " << frameInterval << " is less than DETECTION_FRAME_INTERVAL of "
+                                              << detFrameInterval << ". Using " << (adjustedFrameInterval*frameInterval) << " for DETECTION_FRAME_INTERVAL.");
   }
 
   maxFeatureDist       = abs(getEnv<float>(jpr,"TRACKING_MAX_FEATURE_DIST",      maxFeatureDist));        LOG4CXX_TRACE(_log, "TRACKING_MAX_FEATURE_DIST: " << maxFeatureDist);
@@ -99,7 +99,7 @@ ostream& operator<< (ostream& out, const JobConfig& cfg) {
       <<  "\"minDetectionSize\": "     << cfg.minDetectionSize << ","
       <<  "\"confThresh\":"            << cfg.confThresh       << ","
       <<  "\"frameInterval\":"         << cfg.frameInterval    << ","
-      <<  "\"trackerFrameInterval\":"  << cfg.trackerFrameInterval << ","
+      <<  "\"detFrameInterval\":"      << cfg.detFrameInterval << ","
       <<  "\"adjustedFrameInterval\":" << cfg.adjustedFrameInterval << ","
       <<  "\"maxFeatureDist\":"        << cfg.maxFeatureDist   << ","
       <<  "\"maxFrameGap\":"           << cfg.maxFrameGap      << ","
@@ -121,7 +121,7 @@ JobConfig::JobConfig():
   minDetectionSize(46),
   confThresh(0.5),
   maxFrameGap(4),
-  trackerFrameInterval(1),
+  detFrameInterval(1),
   maxFeatureDist(0.25),
   maxCenterDist(0.0),
   maxIOUDist(0.5),

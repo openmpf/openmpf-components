@@ -106,7 +106,7 @@ namespace MPF{
       float  confThresh;               ///< detection confidence threshold
 
       int    frameInterval;            ///< controls which frames MPFVideoCapture exposes for processing
-      int    trackerFrameInterval;     ///< desired interval at which to perform detections; motion prediction is used to track skipped frames
+      int    detFrameInterval;         ///< desired interval at which to perform detections; motion prediction is used to track skipped frames
       int    adjustedFrameInterval;    ///< adjusted tracker frame interval based on which frames MPFVideoCapture exposes for processing
 
       float  maxFeatureDist;           ///< maximum feature distance to maintain track continuity
