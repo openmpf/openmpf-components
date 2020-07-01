@@ -119,7 +119,6 @@ private:
     // struct to hold configuration options and data structures that change every job.
     struct OcvDnnJobConfig {
     public:
-//        MPF::COMPONENT::MPFDetectionError error;
         std::vector<std::string> class_names;
         cv::dnn::Net net;
 

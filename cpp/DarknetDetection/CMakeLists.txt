@@ -31,7 +31,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 include(../ComponentSetup.cmake)
 
-find_package(OpenCV 3.4.7 EXACT REQUIRED PATHS /opt/opencv-3.4.7 COMPONENTS opencv_core opencv_highgui)
+find_package(OpenCV 4.3.0 EXACT REQUIRED PATHS /opt/opencv-4.3.0 COMPONENTS opencv_core opencv_highgui)
 
 
 find_package(mpfComponentInterface REQUIRED)
@@ -42,7 +42,7 @@ find_package(Qt4 REQUIRED)
 get_plugin_build_location(DarknetDetection pluginLocation)
 
 if (DEFINED ENV{MPF_DISABLE_CUDA_BUILD})
-    set(DARKNET_BUILD_CUDA OFF)
+set(DARKNET_BUILD_CUDA OFF)
     message(
     "The CUDA version of Darknet will not be built because the MPF_DISABLE_CUDA_BUILD environment variable was set.")
 else()

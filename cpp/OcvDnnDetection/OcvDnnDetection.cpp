@@ -32,6 +32,8 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/dnn.hpp>
+#include <opencv2/core/cuda.hpp>
+
 
 #include <log4cxx/logmanager.h>
 #include <log4cxx/xml/domconfigurator.h>
@@ -422,9 +424,48 @@ MPF_COMPONENT_CREATOR(OcvDnnDetection);
 MPF_COMPONENT_DELETER();
 
 
+
+bool set_cuda_device_if_requested(const Properties &props, const log4cxx::LoggerPtr &logger) {
+    int cuda_device_id = DetectionComponentUtils::GetProperty(props, "CUDA_DEVICE_ID", -1);
+    if (cuda_device_id < 0) {
+        return false;
+    }
+
+    int cuda_device_count = cv::cuda::getCudaEnabledDeviceCount();
+    if (cuda_device_count > 0 && cuda_device_id < cuda_device_count) {
+        LOG4CXX_INFO(logger, "Running job on CUDA device: " << cuda_device_id);
+        cv::cuda::setDevice(cuda_device_id);
+        return true;
+    }
+
+    std::string error_message;
+    if (cuda_device_count < 0) {
+        error_message = "Could not run job on GPU because the CUDA driver is not installed or is the wrong version.";
+    }
+    else if (cuda_device_count == 0) {
+        error_message = "Could not run job on GPU because OpenCV was compiled without CUDA support.";
+    }
+    else {
+        error_message = "Could not run job on GPU because CUDA_DEVICE_ID was set to " + std::to_string(cuda_device_id)
+                        + " but only " + std::to_string(cuda_device_count)
+                        + " CUDA devices were detected, making the maximum device id "
+                        + std::to_string(cuda_device_count - 1) + ".";
+    }
+
+    bool fallback_to_cpu = DetectionComponentUtils::GetProperty(
+            props, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", false);
+    if (fallback_to_cpu) {
+        LOG4CXX_WARN(logger, error_message << " Running job on CPU instead.");
+        return false;
+    }
+    throw MPFDetectionException(MPFDetectionError::MPF_GPU_ERROR, error_message);
+}
+
+
+
 OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
                                                const MPF::COMPONENT::ModelsIniParser<ModelSettings> &model_parser,
-                                               const log4cxx::LoggerPtr &logger) {
+                                                  const log4cxx::LoggerPtr &logger) {
 
     using namespace DetectionComponentUtils;
 
@@ -441,17 +482,25 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
 
     class_names = readClassNames(settings.synset_file);
 
+    bool cuda_enabled = set_cuda_device_if_requested(props, logger);
+
     // Import the model
     // For models that do not support or require a config file, ModelsIniParser
     // will assign the empty string as default to settings.model_config_file.
     // OpenCV DNN's readNet ignores the config file when it is passed an empty
     // string path, so we need not check whether the file exists.
+    // If using GPU version, cv::cuda::setDevice(cuda_device_id); MUST be called before cv::dnn::readNet.
     net = cv::dnn::readNet(settings.model_binary_file, settings.model_config_file);
     if (net.empty()) {
         throw MPFDetectionException(
                 MPF_DETECTION_NOT_INITIALIZED,
                 "Can't load the network specified by the model_config (" + settings.model_binary_file
                 + ") and model_binary (" + settings.model_binary_file + ").");
+    }
+
+    if (cuda_enabled) {
+        net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+        net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
     }
 
     LOG4CXX_DEBUG(logger, "Created neural network");

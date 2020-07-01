@@ -107,6 +107,18 @@
           "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0.0, 255.0].",
           "type": "FLOAT",
           "defaultValue": "0.0"
+        },
+        {
+          "name": "CUDA_DEVICE_ID",
+          "description": "ID of CUDA device (typically 0) that will be used to run Darknet. When less than 0 CUDA will be disabled.",
+          "type": "INT",
+          "propertiesKey": "detection.cuda.device.id"
+        },
+        {
+          "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
+          "description": "Indicates whether or not the CPU only version of Darknet should run if there is an issue with the GPU. Only used when CUDA_DEVICE_ID >= 0.",
+          "type": "BOOLEAN",
+          "propertiesKey": "detection.use.cpu.when.gpu.problem"
         }
       ]
     }

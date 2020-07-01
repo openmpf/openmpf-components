@@ -667,7 +667,7 @@ vector<MPFImageLocation> DlibFaceDetection::GetDetectionsFromImageData(const MPF
     if (verbosity > 0) {
         //    Draw a rectangle onto the input image for each detection
         if (imshow_on) {
-            namedWindow("original image", CV_WINDOW_AUTOSIZE);
+            namedWindow("original image", cv::WINDOW_AUTOSIZE);
             imshow("original image", image);
             waitKey(5);
         }
@@ -679,7 +679,7 @@ vector<MPFImageLocation> DlibFaceDetection::GetDetectionsFromImageData(const MPF
             cv::rectangle(image, object, CV_RGB(0, 0, 0), 2);
         }
         if (imshow_on) {
-            namedWindow("new image", CV_WINDOW_AUTOSIZE);
+            namedWindow("new image", cv::WINDOW_AUTOSIZE);
             imshow("new image", image);
             //0 waits indefinitely for input, which could cause problems when run as a component
             waitKey(5);

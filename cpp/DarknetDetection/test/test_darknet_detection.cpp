@@ -26,8 +26,8 @@
 
 
 #include <gtest/gtest.h>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv/cv.hpp>
+
+#include <opencv2/core.hpp>
 
 #include <MPFDetectionComponent.h>
 #include <MPFVideoCapture.h>
