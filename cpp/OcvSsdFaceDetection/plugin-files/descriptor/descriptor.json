@@ -38,7 +38,7 @@
         },
         {
           "name": "DETECTION_FRAME_INTERVAL",
-          "description": "Controls which frames to perform detection on. Tracking is performed on skipped frames only using motion prediction. Must be set to a value >= 0. If set to 0 or 1, an interval of 1 will be used, meaning that detection is performed on every frame. If set to N > 1, every N-1 frames will be skipped. This value is adjusted based on FRAME_INTERVAL. If FRAME_INTERVAL >= DETECTION_FRAME_INTERVAL, then FRAME_INTERVAL is used. Otherwise, floor(DETECTION_FRAME_INTERVAL / FRAME_INTERVAL) * FRAME_INTERVAL is used.",
+          "description": "Controls which frames to perform detection on. Tracking is performed on skipped frames only using motion prediction. If set to a value <= 0 then an interval of 1 will be used, meaning that detection is performed on every frame. If set to N > 1, every N-1 frames will be skipped. This value is adjusted based on FRAME_INTERVAL. If FRAME_INTERVAL >= DETECTION_FRAME_INTERVAL, then FRAME_INTERVAL is used. Otherwise, floor(DETECTION_FRAME_INTERVAL / FRAME_INTERVAL) * FRAME_INTERVAL is used.",
           "type": "INT",
           "defaultValue": "0"
         },
