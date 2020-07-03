@@ -92,6 +92,7 @@ namespace MPF {
                 int adaptive_thrs_pixel;
                 int psm;
                 int oem;
+                int max_pixels;
                 int max_scripts;
                 int max_text_tracks;
                 int min_height;
