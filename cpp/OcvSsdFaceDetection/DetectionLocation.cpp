@@ -281,14 +281,14 @@ void DetectionLocation::releaseBGRFrame() {                                    L
 }
 
 /** **************************************************************************
-* get the location as an opencv rectange
+* get the location as an opencv rectangle
 *************************************************************************** */
 const cv::Rect2i DetectionLocation::getRect() const {
   return cv::Rect2i(x_left_upper,y_left_upper,width,height);
 }
 
 /** **************************************************************************
-* set the location from an opencv rectange
+* set the location from an opencv rectangle
 *************************************************************************** */
 void DetectionLocation::setRect(const cv::Rect2i& rec){
   x_left_upper = rec.x;

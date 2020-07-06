@@ -37,7 +37,7 @@ string format(cv::Mat m);
 *  Constructor
 *
 * \param detPtr a 1st detection to add to the new track
-* \param cfg    job struct to initialize kalman filter params from
+* \param cfg    job struct to initialize Kalman filter params from
 *
 **************************************************************************** */
 Track::Track(unique_ptr<DetectionLocation> detPtr, const JobConfig &cfg){
@@ -117,7 +117,7 @@ void Track::push_back(DetectionLocationPtr d){
 /** **************************************************************************
  * Advance Kalman filter state to predict next bbox at time t
  *
- * \param t time in sec to which kalamn filter state is advanced to
+ * \param t time in sec to which Kalman filter state is advanced to
  *
 *************************************************************************** */
 void Track::kalmanPredict(float t){
@@ -125,7 +125,7 @@ void Track::kalmanPredict(float t){
 }
 
 /** **************************************************************************
- * apply kalman correction to tail detection using tail's measurement
+ * apply Kalman correction to tail detection using tail's measurement
 *************************************************************************** */
 void Track::kalmanCorrect(){
   if(_kfPtr){                                                                  LOG4CXX_TRACE(_log,"kf meas:" << _locationPtrs.back()->getRect());

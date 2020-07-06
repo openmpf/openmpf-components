@@ -73,11 +73,11 @@ namespace MPF{
 
       private:
         static log4cxx::LoggerPtr  _log;       ///< shared log object
-        cv::KalmanFilter           _kf;        ///< kalman filter for bounding box
-        float                      _t;         ///< time corresponding to kalman filter state
+        cv::KalmanFilter           _kf;        ///< Kalman filter for bounding box
+        float                      _t;         ///< time corresponding to Kalman filter state
         float                      _dt;        ///< time step to use for filter updates
         const cv::Rect2i           _roi;       ///< canvas clipping limits for bboxes returned by filter
-        const cv::Mat_<float>      _qn;        ///< kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
+        const cv::Mat_<float>      _qn;        ///< Kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
 
         void _setTimeStep(float dt);           ///< update model variables Q F for time step size dt
 

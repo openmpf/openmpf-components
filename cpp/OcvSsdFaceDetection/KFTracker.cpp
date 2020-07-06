@@ -34,12 +34,12 @@ using namespace MPF::COMPONENT;
 log4cxx::LoggerPtr KFTracker::_log;
 
 // Kalman Filter Dimensions (4x constant acceleration model)
-const int KF_STATE_DIM = 12; ///< dimensionality of kalman state vector       [x, v_x, ,a_x, y, v_y, a_y, w, v_w, a_w, h, v_h, ah]
-const int KF_MEAS_DIM  = 4;  ///< dimensionality of kalman measurement vector [x, y, w, h]
-const int KF_CTRL_DIM  = 0;  ///< dimensionality of kalman control input      []
+const int KF_STATE_DIM = 12; ///< dimensionality of Kalman state vector       [x, v_x, ,a_x, y, v_y, a_y, w, v_w, a_w, h, v_h, ah]
+const int KF_MEAS_DIM  = 4;  ///< dimensionality of Kalman measurement vector [x, y, w, h]
+const int KF_CTRL_DIM  = 0;  ///< dimensionality of Kalman control input      []
 
 /** **************************************************************************
- * Update the model state transision matrix F and the model noise covariance
+ * Update the model state transition matrix F and the model noise covariance
  * matrix Q to be suitable of a timestep of dt
  *
  * \param dt new time step in sec
@@ -167,11 +167,11 @@ void KFTracker::correct(const cv::Rect2i &rec){
 }
 
 /** **************************************************************************
- * Construct and initialize kalman filter motion tracker
+ * Construct and initialize Kalman filter motion tracker
  *
  * \param t    time corresponding to initial bounding box rec0
  * \param dt   timestep to use for the filter (sec)
- * \param rec0 inital bounding box measurement
+ * \param rec0 initial bounding box measurement
  * \param roi  clipping constraints so BBoxes don't wonder off frame
  * \param rn   4x1 column vector of variances for measurement noise, var([x,y,w,h])
  * \param qn   4x1 column vector of variances for model noise, var([ax,ay,aw,ah])
@@ -296,7 +296,7 @@ bool KFTracker::Init(log4cxx::LoggerPtr log, string plugin_path=""){
 size_t KFTracker::_objId = 0;  // class static sequence variable
 
 /** **************************************************************************
-*  Write out error statisics over time to csv file for filter tuning
+*  Write out error statistics over time to csv file for filter tuning
 *************************************************************************** */
 void KFTracker::dump(){
   stringstream filename;

@@ -49,7 +49,7 @@ namespace MPF{
   * \param k   string key to use to retrieve property
   * \param def default value to return if key is not found
   *
-  * \return  type converted value of property retrived with key or the default
+  * \return  type converted value of property retrieved with key or the default
   *
   ***************************************************************************** */
   template<typename T>
@@ -66,7 +66,7 @@ namespace MPF{
   * \param k   string key to use to retrieve property
   * \param def default value to return if key is not found
   *
-  * \return  type converted value of property retrived with key or the default
+  * \return  type converted value of property retrieved with key or the default
   *
   ***************************************************************************** */
   template<typename T>
@@ -122,9 +122,9 @@ namespace MPF{
 
       cv::Mat bgrFrame;                ///< current BGR image frame
 
-      bool  kfDisabled;                ///< if true kalman filtering is disabled
-      cv::Mat_<float> RN;              ///< kalman filter measurement noise matrix
-      cv::Mat_<float> QN;              ///< kalman filter process noise variances (i.e. unknown accelerations)
+      bool  kfDisabled;                ///< if true Kalman filtering is disabled
+      cv::Mat_<float> RN;              ///< Kalman filter measurement noise matrix
+      cv::Mat_<float> QN;              ///< Kalman filter process noise variances (i.e. unknown accelerations)
 
       bool fallback2CpuWhenGpuProblem; ///< fallback to cpu if there is a gpu problem
       int  cudaDeviceId;               ///< gpu device id to use for cuda
@@ -143,8 +143,8 @@ namespace MPF{
     private:
       unique_ptr<MPFImageReader>  _imreaderPtr;
       unique_ptr<MPFVideoCapture> _videocapPtr;
-      string                      _strRN;          ///< kalman filter measurement noise matrix serialized to string
-      string                      _strQN;          ///< kalman filter process noise matrix serialized to string
+      string                      _strRN;          ///< Kalman filter measurement noise matrix serialized to string
+      string                      _strQN;          ///< Kalman filter process noise matrix serialized to string
 
       void    _parse(const MPFJob &job);
       cv::Mat _fromString(const string data,

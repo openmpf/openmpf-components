@@ -112,20 +112,20 @@ bool OcvSsdFaceDetection::Init() {
     // initialize adaptive histogram equalizer
     _equalizerPtr = cv::createCLAHE(40.0,cv::Size(8,8));
 
-    bool detectionLocationInitalizedOK = DetectionLocation::Init(_log, plugin_path);
+    bool detectionLocationInitializedOk = DetectionLocation::Init(_log, plugin_path);
 
     Properties fromEnv;
     int cudaDeviceId   = getEnv<int> (fromEnv,"CUDA_DEVICE_ID", -1);
     bool fallbackToCPU = getEnv<bool>(fromEnv,"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", true);
     bool defaultCudaDeviceOK = DetectionLocation::trySetCudaDevice(cudaDeviceId) || fallbackToCPU;
 
-    bool trackInitializedOK = Track::Init(_log, plugin_path);
-    bool kfTrackerInitializedOK = KFTracker::Init(_log, plugin_path);
+    bool trackInitializedOk = Track::Init(_log, plugin_path);
+    bool kfTrackerInitializedOk = KFTracker::Init(_log, plugin_path);
 
-    return    detectionLocationInitalizedOK
+    return detectionLocationInitializedOk
            && defaultCudaDeviceOK
-           && trackInitializedOK
-           && kfTrackerInitializedOK;
+           && trackInitializedOk
+           && kfTrackerInitializedOk;
 
 
 }
@@ -333,7 +333,7 @@ MPFVideoTrackVec OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job){
         return false;
       });
 
-      // advance kalman predictions
+      // advance Kalman predictions
       if(! cfg.kfDisabled){
         for(auto &trackPtr:trackPtrs){
           trackPtr->kalmanPredict(cfg.frameTimeInSec);

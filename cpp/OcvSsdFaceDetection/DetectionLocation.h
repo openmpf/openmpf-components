@@ -64,13 +64,13 @@ namespace MPF{
       const cv::Mat&       getFeature()   const;                             ///< get DNN features for detection
       const cv::Mat&       getBGRFrame()  const;                             ///< get image data associated with detection
 
-      const cv::Rect2i  getRect() const;                                     ///< get location as an opencv rectange
+      const cv::Rect2i  getRect() const;                                     ///< get location as an opencv rectangle
       void              setRect(const cv::Rect2i& rec);                      ///< set location from an opencv rectangle
 
       void copyFeature(const DetectionLocation& d);                          ///< copy DNN feature from another detection
 
       float           iouDist(const Track &tr) const;             ///< 1 - compute intersection over union
-      float         kfIouDist(const Track &tr) const;             ///< 1 - compute intersection over union using kalman predicted location
+      float         kfIouDist(const Track &tr) const;             ///< 1 - compute intersection over union using Kalman predicted location
       float         frameDist(const Track &tr) const;             ///< compute temporal frame gap
       float center2CenterDist(const Track &tr) const;             ///< compute normalized center to center distance
       float       featureDist(const Track &tr) const;             ///< compute deep feature similarity distance
@@ -90,7 +90,7 @@ namespace MPF{
       static cv::dnn::Net                      _openFaceNet   ;     ///< feature generator
       static unique_ptr<dlib::shape_predictor> _shapePredFuncPtr;   ///< landmark detector
 
-      float _iouDist(const cv::Rect2i &rect) const;                 ///< compute intersectino over union
+      float _iouDist(const cv::Rect2i &rect) const;                 ///< compute intersection over union
 
       mutable cvPoint2fVec    _landmarks;                 ///< vector of landmarks (e.g. eyes, nose, etc.)
       mutable cv::Mat         _thumbnail;                 ///< 96x96 image comprising an aligned thumbnail
