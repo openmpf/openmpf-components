@@ -222,7 +222,7 @@ TEST(OcvSsdFaceDetection, VerifyQuality) {
     detections.clear();
 
     // Detect detections and check conf levels
-    MPFImageJob job3("Testing2", test_image_path, {{"MIN_DETECTION_SIZE","48"},{"DETECTION_CONFIDENCE_THRESHOLD","1.1"}}, { });
+    MPFImageJob job3("Testing2", test_image_path, {{"MIN_DETECTION_SIZE","48"},{"CONFIDENCE_THRESHOLD","1.1"}}, { });
     detections = ocv_ssd_face_detection->GetDetections(job3);
     ASSERT_TRUE(detections.size() == 0);
     detections.clear();

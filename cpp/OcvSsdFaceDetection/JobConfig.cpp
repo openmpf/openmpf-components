@@ -51,11 +51,11 @@ cv::Mat JobConfig::_fromString(const string data,const int rows,const int cols,c
 *************************************************************************** */
 void JobConfig::_parse(const MPFJob &job){
   const Properties jpr = job.job_properties;
-  minDetectionSize     = abs(getEnv<int>  (jpr,"MIN_DETECTION_SIZE",             minDetectionSize));      LOG4CXX_TRACE(_log, "MIN_DETECTION_SIZE: "             << minDetectionSize);
-  confThresh           = abs(getEnv<float>(jpr,"DETECTION_CONFIDENCE_THRESHOLD", confThresh));            LOG4CXX_TRACE(_log, "DETECTION_CONFIDENCE_THRESHOLD: " << confThresh);
+  minDetectionSize     = abs(getEnv<int>   (jpr,"MIN_DETECTION_SIZE",             minDetectionSize));      LOG4CXX_TRACE(_log, "MIN_DETECTION_SIZE: "        << minDetectionSize);
+  confThresh           = abs(getEnv<double>(jpr,"CONFIDENCE_THRESHOLD",           confThresh));            LOG4CXX_TRACE(_log, "CONFIDENCE_THRESHOLD: "      << confThresh);
 
-  frameInterval        = abs(getEnv<int>  (jpr,"FRAME_INTERVAL",                 1));                     LOG4CXX_TRACE(_log, "FRAME_INTERVAL: "                 << frameInterval);
-  detFrameInterval     = abs(getEnv<int>  (jpr,"DETECTION_FRAME_INTERVAL",       detFrameInterval));      LOG4CXX_TRACE(_log, "DETECTION_FRAME_INTERVAL: "       << detFrameInterval);
+  frameInterval        = abs(getEnv<int>   (jpr,"FRAME_INTERVAL",                 1));                     LOG4CXX_TRACE(_log, "FRAME_INTERVAL: "            << frameInterval);
+  detFrameInterval     = abs(getEnv<int>   (jpr,"DETECTION_FRAME_INTERVAL",       detFrameInterval));      LOG4CXX_TRACE(_log, "DETECTION_FRAME_INTERVAL: "  << detFrameInterval);
 
   frameInterval = (frameInterval < 1) ? 1 : frameInterval;
   detFrameInterval = (detFrameInterval < 1) ? 1 : detFrameInterval;
@@ -71,10 +71,10 @@ void JobConfig::_parse(const MPFJob &job){
                                               << detFrameInterval << ". Using " << (adjustedFrameInterval*frameInterval) << " for DETECTION_FRAME_INTERVAL.");
   }
 
-  maxFeatureDist       = abs(getEnv<float>(jpr,"TRACKING_MAX_FEATURE_DIST",      maxFeatureDist));        LOG4CXX_TRACE(_log, "TRACKING_MAX_FEATURE_DIST: " << maxFeatureDist);
-  maxFrameGap          = abs(getEnv<int>  (jpr,"TRACKING_MAX_FRAME_GAP",         maxFrameGap));           LOG4CXX_TRACE(_log, "TRACKING_MAX_FRAME_GAP: "    << maxFrameGap);
-  maxCenterDist        = abs(getEnv<float>(jpr,"TRACKING_MAX_CENTER_DIST",       maxCenterDist));         LOG4CXX_TRACE(_log, "TRACKING_MAX_CENTER_DIST: "  << maxCenterDist);
-  maxIOUDist           = abs(getEnv<float>(jpr,"TRACKING_MAX_IOU_DIST",          maxIOUDist));            LOG4CXX_TRACE(_log, "TRACKING_MAX_IOU_DIST: "     << maxIOUDist);
+  maxFeatureDist       = abs(getEnv<float> (jpr,"TRACKING_MAX_FEATURE_DIST",      maxFeatureDist));        LOG4CXX_TRACE(_log, "TRACKING_MAX_FEATURE_DIST: " << maxFeatureDist);
+  maxFrameGap          = abs(getEnv<int>   (jpr,"TRACKING_MAX_FRAME_GAP",         maxFrameGap));           LOG4CXX_TRACE(_log, "TRACKING_MAX_FRAME_GAP: "    << maxFrameGap);
+  maxCenterDist        = abs(getEnv<float> (jpr,"TRACKING_MAX_CENTER_DIST",       maxCenterDist));         LOG4CXX_TRACE(_log, "TRACKING_MAX_CENTER_DIST: "  << maxCenterDist);
+  maxIOUDist           = abs(getEnv<float> (jpr,"TRACKING_MAX_IOU_DIST",          maxIOUDist));            LOG4CXX_TRACE(_log, "TRACKING_MAX_IOU_DIST: "     << maxIOUDist);
 
   kfDisabled = getEnv<bool>(jpr,"KF_DISABLED", kfDisabled);                            LOG4CXX_TRACE(_log, "KF_DISABLED: " << kfDisabled);
 

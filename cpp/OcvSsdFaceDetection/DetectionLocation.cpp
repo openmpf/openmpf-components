@@ -89,8 +89,8 @@ void DetectionLocation::drawLandmarks(cv::Mat &img,
 }
 
 /** **************************************************************************
-* Compute (1 - Intersection Over Union) metric between a rectangel and detection
-* comprised of 1 - the ratio of the area of the intersection of the detection
+* Compute (1 - Intersection Over Union) metric between a rectangle and detection.
+* Calculated as 1 - the ratio of the area of the intersection of the detection
 * rectangles divided by the area of the union of the detection rectangles.
 *
 * \param   rect rectangle to compute iou with

@@ -25,14 +25,14 @@
       ],
       "properties": [
         {
-          "name": "DETECTION_CONFIDENCE_THRESHOLD",
+          "name": "CONFIDENCE_THRESHOLD",
           "description": "Minimum detection confidence value [0...1] needed to keep detection and start a track.",
           "type": "FLOAT",
           "defaultValue": "0.5"
         },
         {
           "name": "MIN_DETECTION_SIZE",
-          "description": "Minimum bounding box dimension in pixels to keep detection and start a track.",
+          "description": "A detection with a width or height less than this value will be discarded.",
           "type": "INT",
           "defaultValue": "46"
         },
@@ -44,13 +44,13 @@
         },
         {
           "name": "TRACKING_MAX_IOU_DIST",
-          "description": "Maximum intersection over union distance (1.0 - iou) =[0..1] between detections below which detection will be considered part of same track",
+          "description": "Maximum intersection over union distance (1.0 - iou) =[0..1] between detections below which detection will be considered part of same track.",
           "type": "FLOAT",
           "defaultValue": "0.5"
         },
         {
           "name": "TRACKING_MAX_FEATURE_DIST",
-          "description": "Maximum distance in feature space (1.0 - cos similarity) = [0..1] between detections below which detection will be considered part of same track",
+          "description": "Maximum distance in feature space (1.0 - cos similarity) = [0..1] between detections below which detection will be considered part of same track.",
           "type": "FLOAT",
           "defaultValue": "0.25"
         },
