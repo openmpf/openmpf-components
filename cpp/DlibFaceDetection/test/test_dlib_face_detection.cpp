@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -150,9 +150,8 @@ TEST(VideoGeneration, TestOnKnownVideo) {
 
     // 	Evaluate the known video file to generate the test tracks.
     cout << "\tRunning the tracker on the video: " << inVideoFile << endl;
-    std::vector<MPFVideoTrack> found_tracks;
     MPFVideoJob job("Testing", inVideoFile, start, stop, { }, { });
-    EXPECT_FALSE(dlib_face_detection->GetDetections(job, found_tracks));
+    std::vector<MPFVideoTrack> found_tracks = dlib_face_detection->GetDetections(job);
     EXPECT_FALSE(found_tracks.empty());
 
     // 	Compare the known and test track output.
@@ -217,9 +216,8 @@ TEST(ImageGeneration, TestOnKnownImage) {
     std::vector<MPFImageLocation> known_detections;
     EXPECT_TRUE(ReadDetectionsFromFile::ReadImageLocations(known_detections_file, known_detections));
 
-    std::vector<MPFImageLocation> found_detections;
     MPFImageJob job("Testing", known_image_file, { }, { });
-    EXPECT_FALSE(dlib_face_detection->GetDetections(job, found_detections));
+    std::vector<MPFImageLocation> found_detections = dlib_face_detection->GetDetections(job);
     EXPECT_FALSE(found_detections.empty());
 
     float comparison_score = DetectionComparison::CompareDetectionOutput(found_detections, known_detections);

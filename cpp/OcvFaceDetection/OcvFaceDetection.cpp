@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -426,45 +426,30 @@ void OcvFaceDetection::AdjustRectToEdges(Rect &rect, const Mat &src) {
     }
 }
 
-MPFDetectionError
-OcvFaceDetection::GetDetections(const MPFVideoJob &job, vector<MPFVideoTrack> &tracks) {
+vector<MPFVideoTrack> OcvFaceDetection::GetDetections(const MPFVideoJob &job) {
     try {
         SetDefaultParameters();
         SetReadConfigParameters();
         GetPropertySettings(job.job_properties);
 
-
-        if (job.data_uri.empty()) {
-            LOG4CXX_ERROR(OpenFaceDetectionLogger, "[" << job.job_name << "] Input video file path is empty");
-            return MPF_INVALID_DATAFILE_URI;
-        }
-
         MPFVideoCapture video_capture(job, true, true);
 
-        if( !video_capture.IsOpened() )
-        {
-            LOG4CXX_ERROR(OpenFaceDetectionLogger, "[" << job.job_name << "] Could not initialize capturing");
-            return MPF_COULD_NOT_OPEN_DATAFILE;
-        }
-
-        MPFDetectionError detections_result = GetDetectionsFromVideoCapture(job, video_capture, tracks);
+        vector<MPFVideoTrack> tracks = GetDetectionsFromVideoCapture(job, video_capture);
 
         for (auto &track : tracks) {
             video_capture.ReverseTransform(track);
         }
-        return detections_result;
+        return tracks;
     }
     catch (...) {
-        return Utils::HandleDetectionException(job, OpenFaceDetectionLogger);
+        Utils::LogAndReThrowException(job, OpenFaceDetectionLogger);
     }
 }
 
 
 
-MPFDetectionError OcvFaceDetection::GetDetectionsFromVideoCapture(
-        const MPFVideoJob &job,
-        MPFVideoCapture &video_capture,
-        vector<MPFVideoTrack> &tracks) {
+vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
+        const MPFVideoJob &job, MPFVideoCapture &video_capture) {
 
 
     long total_frames = video_capture.GetFrameCount();
@@ -977,6 +962,7 @@ MPFDetectionError OcvFaceDetection::GetDetectionsFromVideoCapture(
 
     CloseAnyOpenTracks(video_capture.GetFrameCount() - 1);
 
+    vector<MPFVideoTrack> tracks;
     //set tracks reference!
     for (unsigned int i = 0; i < saved_tracks.size(); i++) {
         tracks.push_back(saved_tracks[i].face_track);
@@ -1016,46 +1002,34 @@ MPFDetectionError OcvFaceDetection::GetDetectionsFromVideoCapture(
         }
     }
 
-    return MPF_DETECTION_SUCCESS;
+    return tracks;
 }
 
 
-MPFDetectionError OcvFaceDetection::GetDetections(
-        const MPFImageJob &job,
-        vector<MPFImageLocation> &locations) {
+vector<MPFImageLocation> OcvFaceDetection::GetDetections(const MPFImageJob &job) {
     try {
         SetDefaultParameters();
         SetReadConfigParameters();
         GetPropertySettings(job.job_properties);
 
-        if (job.data_uri.empty()) {
-            return MPF_INVALID_DATAFILE_URI;
-        }
-
         MPFImageReader imreader(job);
         cv::Mat image_data(imreader.GetImage());
 
-        if (image_data.empty()) {
-            LOG4CXX_ERROR(OpenFaceDetectionLogger, "[" << job.job_name << "] Could not open image and will not return detections");
-            return MPF_IMAGE_READ_ERROR;
-        }
-
-        MPFDetectionError detections_result = GetDetectionsFromImageData(job, image_data, locations);
+        vector<MPFImageLocation> locations = GetDetectionsFromImageData(job, image_data);
 
         for (auto &location : locations) {
             imreader.ReverseTransform(location);
         }
-        return detections_result;
+        return locations;
     }
     catch (...) {
-        return Utils::HandleDetectionException(job, OpenFaceDetectionLogger);
+        Utils::LogAndReThrowException(job, OpenFaceDetectionLogger);
     }
 }
 
-MPFDetectionError
-OcvFaceDetection::GetDetectionsFromImageData(const MPFImageJob &job,
-                                             cv::Mat &image_data,
-                                             vector<MPFImageLocation> &locations) {
+vector<MPFImageLocation> OcvFaceDetection::GetDetectionsFromImageData(
+        const MPFImageJob &job, cv::Mat &image_data) {
+
     int frame_width = 0;
     int frame_height = 0;
 
@@ -1076,6 +1050,7 @@ OcvFaceDetection::GetDetectionsFromImageData(const MPFImageJob &job,
     vector<pair<cv::Rect,int>> face_rects = ocv_detection.DetectFaces(image_gray);
     LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Number of faces detected = " << face_rects.size());
 
+    vector<MPFImageLocation> locations;
     for (unsigned int j = 0; j < face_rects.size(); j++) {
         cv::Rect face = face_rects[j].first;
 
@@ -1127,9 +1102,10 @@ OcvFaceDetection::GetDetectionsFromImageData(const MPFImageJob &job,
             imwrite(outfile_name, image_data);
         }
         catch (runtime_error &ex) {
-            LOG4CXX_ERROR(OpenFaceDetectionLogger, "[" << job.job_name << "] Exception writing image output file: " << ex.what());
             CloseWindows();
-            return MPF_OTHER_DETECTION_ERROR_TYPE;
+            throw MPFDetectionException(
+                    MPF_FILE_WRITE_ERROR,
+                    std::string("Exception writing image output file: ") + ex.what());
         }
     }
 
@@ -1139,7 +1115,7 @@ OcvFaceDetection::GetDetectionsFromImageData(const MPFImageJob &job,
     CloseWindows();
 
 
-    return MPF_DETECTION_SUCCESS;
+    return locations;
 }
 
 

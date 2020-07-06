@@ -1,7 +1,7 @@
 {
   "componentName": "TesseractOCRTextDetection",
-  "componentVersion": "5.0.0",
-  "middlewareVersion": "5.0.0",
+  "componentVersion": "5.0",
+  "middlewareVersion": "5.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib/libmpfTesseractOCRTextDetection.so",
   "environmentVariables": [
@@ -127,6 +127,12 @@
           "description": "Specifies number of reported text tracks per page based on average confidence scores. When set to 0 or below, allow any number of tracks.",
           "type": "INT",
           "defaultValue": "0"
+        },
+        {
+          "name": "MAX_PIXELS",
+          "description": "Specifies maximum pixel limit. Images that exceed this pixel limit will be rescaled to fit, if possible.  When set to 0 or below, allow images up to Teseract's internal limit of 32767 x 32767 pixels.",
+          "type": "INT",
+          "defaultValue": "10000000"
         },
         {
           "name": "MIN_HEIGHT",

@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2019 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2019 The MITRE Corporation                                      #
+# Copyright 2020 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -29,12 +29,12 @@ import setuptools
 
 setuptools.setup(
     name='EastTextDetection',
-    version='4.1.0',
+    version='5.0',
     packages=setuptools.find_packages(exclude=('*test*',)),
     package_data={'': ['east_resnet50.pb']},
     install_requires=(
-        'mpf_component_api>=0.1',
-        'mpf_component_util>=0.1',
+        'mpf_component_api>=5.0',
+        'mpf_component_util>=5.0',
         'opencv-python>=3.4.7',
     ),
     entry_points={

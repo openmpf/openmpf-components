@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -41,61 +41,57 @@ using namespace COMPONENT;
 
 // Main program to run the Dlib face detection in standalone mode.
 
-int processImage(MPFDetectionComponent *detection_engine, int argc, char* argv[]);
-int processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]);
+void processImage(MPFDetectionComponent *detection_engine, int argc, char* argv[]);
+void processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]);
 
 int main(int argc, char* argv[]) {
+    try {
+        if (argc < 2 || argc > 5) {
+            printf("Usage (IMAGE): %s <uri>\n", argv[0]);
+            printf("Usage (VIDEO): %s <uri> <start_index> <end_index> <detection_interval (optional)>\n", argv[0]);
+            return 1;
+        }
 
-    if (argc < 2 || argc > 5) {
-        printf("Usage (IMAGE): %s <uri>\n", argv[0]);
-        printf("Usage (VIDEO): %s <uri> <start_index> <end_index> <detection_interval (optional)>\n", argv[0]);
+        QCoreApplication *this_app = new QCoreApplication(argc, argv);
+        string app_dir = (this_app->applicationDirPath()).toStdString();
+        delete this_app;
+
+        DlibFaceDetection dlib_face_detection;
+        MPFDetectionComponent *detection_engine = &dlib_face_detection;
+        detection_engine->SetRunDirectory(app_dir + "/plugin");
+
+        if (!detection_engine->Init()) {
+            printf("Failed to initialize.\n");
+            return 1;
+        }
+
+        if (argc == 2) {
+            processImage(detection_engine, argc, argv);
+        }
+        else {
+            processVideo(detection_engine, argc, argv);
+        }
+
+        if (!detection_engine->Close()) {
+            printf("Failed to close.\n");
+        }
+
+        return 0;
+    }
+    catch (const std::exception &ex) {
+        std::cerr << "Error: " << ex.what() << std::endl;
         return 1;
     }
-
-    QCoreApplication *this_app = new QCoreApplication(argc, argv);
-    string app_dir = (this_app->applicationDirPath()).toStdString();
-    delete this_app;
-
-    DlibFaceDetection dlib_face_detection;
-    MPFDetectionComponent *detection_engine = &dlib_face_detection;
-    detection_engine->SetRunDirectory(app_dir + "/plugin");
-
-    if (!detection_engine->Init()) {
-        printf("Failed to initialize.\n");
-        return 1;
-    }
-
-    int rc;
-    if (argc == 2) {
-        rc = processImage(detection_engine, argc, argv);
-    } else {
-        rc = processVideo(detection_engine, argc, argv);
-    }
-
-    if (!detection_engine->Close()) {
-        printf("Failed to close.\n");
-    }
-
-    return rc;
 }
 
-int processImage(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
-
+void processImage(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
     MPFImageJob job("Testing", argv[1], { }, { });
-    vector<MPFImageLocation> locations;
-
-    MPFDetectionError rc = detection_engine->GetDetections(job, locations);
-
-    if (rc != MPF_DETECTION_SUCCESS) {
-        printf("Failed to get detections: rc = %i\n", rc);
-    }
-
+    vector<MPFImageLocation> locations = detection_engine->GetDetections(job);
     printf("Number of detections: %i\n", locations.size());
-
-    return rc;
 }
 
-int processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
+
+void processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
 
     // get detection interval if argument is present
     int detection_interval = 1;
@@ -108,13 +104,7 @@ int processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]
     algorithm_properties.insert(pair<string, string>("FRAME_INTERVAL", to_string(detection_interval)));
 
     MPFVideoJob job("Testing", argv[1], stoi(argv[2]), stoi(argv[3]), algorithm_properties, { });
-    vector<MPFVideoTrack> tracks;
-
-    MPFDetectionError rc = detection_engine->GetDetections(job, tracks);
-
-    if (rc != MPFDetectionError::MPF_DETECTION_SUCCESS) {
-        printf("Failed to get detections: rc = %i\n", rc);
-    }
+    vector<MPFVideoTrack> tracks = detection_engine->GetDetections(job);
 
     cout << "Number of video tracks = " << tracks.size() << endl;
     for (int i = 0; i < tracks.size(); i++) {
@@ -133,6 +123,4 @@ int processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[]
                       << "      confidence = " << it.second.confidence << endl;
         }
     }
-
-    return rc;
 }
