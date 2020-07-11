@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -49,13 +49,11 @@ public:
 
     bool Close() override;
 
-    MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFVideoJob &job,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks) override;
+    std::vector<MPF::COMPONENT::MPFVideoTrack>  GetDetections(
+            const MPF::COMPONENT::MPFVideoJob &job) override;
 
-    MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFImageJob &job,
-            std::vector<MPF::COMPONENT::MPFImageLocation> &locations) override;
+    std::vector<MPF::COMPONENT::MPFImageLocation> GetDetections(
+            const MPF::COMPONENT::MPFImageJob &job) override;
 
 
     std::string GetDetectionType() override;
@@ -83,8 +81,8 @@ private:
                               const std::string &creator, const std::string &deleter);
 
 
-    static void ConvertResultsUsingPreprocessor(std::vector<DarknetResult> &darknet_results,
-                                                std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
+    static std::vector<MPF::COMPONENT::MPFImageLocation> ConvertResultsUsingPreprocessor(
+            std::vector<DarknetResult> &darknet_results);
 
     ModelSettings GetModelSettings(const MPF::COMPONENT::Properties &job_properties) const;
 

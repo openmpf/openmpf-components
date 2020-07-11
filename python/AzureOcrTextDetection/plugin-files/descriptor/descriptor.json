@@ -1,0 +1,128 @@
+{
+  "componentName": "AzureOcrTextDetection",
+  "componentVersion": "5.0",
+  "middlewareVersion": "5.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "AzureOcrTextDetection",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "AZUREOCR",
+    "description": "Uses Azure Cognitive Services to perform optical character recognition.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TEXT",
+        "DETECTION_TEXT_AZURE"
+      ],
+      "properties": [
+        {
+          "name": "ACS_URL",
+          "description": "URL for the Azure Cognitive Services Endpoint. e.g. https://eastus.api.cognitive.microsoft.com/vision/v1.0/ocr . Can also be provided by an environment variable with the same name. If both are provided, the job property is used.  Note that the component was only tested against v1.0, v2.0, and v2.1 of the API.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_SUBSCRIPTION_KEY",
+          "description": "Azure Cognitive Services subscription key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "MERGE_REGIONS",
+          "description": "Whether or not to combine regions in to single detection. When true, all regions in a given frame will be combined with two newlines between regions.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "LANGUAGE",
+          "description": "When provided, this disables automatic language detection. The BCP-47 language code of the text to be detected in the image. This value is case-sensitive.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "DETECT_ORIENTATION",
+          "description": "Whether to detect the text orientation in the image. When true the OCR service tries to detect the image orientation and correct it before further processing (e.g. if it's upside-down).",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "TAGGING_FILE",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Azure OCR. Will default to the plugin's acs_ocr_component directory unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
+          "type": "STRING",
+          "defaultValue": "text-tags.json"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "AZURE OCR TEXT DETECTION ACTION",
+      "description": "Uses Azure Cognitive Services to perform optical character recognition.",
+      "algorithm": "AZUREOCR",
+      "properties": [ ]
+    },
+    {
+      "name": "AZURE OCR TEXT DETECTION (WITH REGION MERGING) ACTION",
+      "description": "Uses Azure Cognitive Services to perform optical character recognition.",
+      "algorithm": "AZUREOCR",
+      "properties": [
+        {
+          "name": "MERGE_REGIONS",
+          "value": "true"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "AZURE OCR TEXT DETECTION TASK",
+      "description": "Uses Azure Cognitive Services to perform optical character recognition.",
+      "actions": [
+        "AZURE OCR TEXT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "AZURE OCR TEXT DETECTION (WITH REGION MERGING) TASK",
+      "description": "Uses Azure Cognitive Services to perform optical character recognition.",
+      "actions": [
+        "AZURE OCR TEXT DETECTION (WITH REGION MERGING) ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "AZURE OCR TEXT DETECTION PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform optical character recognition.",
+      "tasks": [
+        "AZURE OCR TEXT DETECTION TASK"
+      ]
+    },
+    {
+      "name": "AZURE OCR TEXT DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform optical character recognition and performs markup.",
+      "tasks": [
+        "AZURE OCR TEXT DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "AZURE OCR TEXT DETECTION (WITH REGION MERGING) PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform optical character recognition.",
+      "tasks": [
+        "AZURE OCR TEXT DETECTION (WITH REGION MERGING) TASK"
+      ]
+    },
+    {
+      "name": "AZURE OCR TEXT DETECTION (WITH REGION MERGING AND MARKUP) PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform optical character recognition and performs markup.",
+      "tasks": [
+        "AZURE OCR TEXT DETECTION (WITH REGION MERGING) TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    }
+  ]
+}

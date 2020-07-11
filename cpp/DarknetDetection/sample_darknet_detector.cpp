@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -87,23 +87,23 @@ int main(int argc, char* argv[]) {
                       {"FRAME_QUEUE_CAPACITY", queue_capacity} },
                     {});
 
-    std::vector<MPFVideoTrack> tracks;
 
-    auto job_start_time = std::chrono::system_clock::now();
-    MPFDetectionError rc = detector.GetDetections(job, tracks);
-    auto job_stop_time = std::chrono::system_clock::now();
+    try {
+        auto job_start_time = std::chrono::system_clock::now();
+        std::vector<MPFVideoTrack> tracks = detector.GetDetections(job);
+        auto job_stop_time = std::chrono::system_clock::now();
 
-    if (rc != MPF_DETECTION_SUCCESS) {
-        std::cout << "Failed to get detections: rc = " << rc << std::endl;
+        std::chrono::duration<float, std::chrono::seconds::period> job_duration = job_stop_time - job_start_time;
+        std::cout << "Found " << tracks.size() << " tracks in " << job_duration.count() << " seconds." << std::endl;
+
+        print_tracks(tracks);
+
+        return 0;
+    }
+    catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
-
-    std::chrono::duration<float, std::chrono::seconds::period> job_duration = job_stop_time - job_start_time;
-    std::cout << "Found " << tracks.size() << " tracks in " << job_duration.count() << " seconds." << std::endl;
-
-    print_tracks(tracks);
-
-    return 0;
 }
 
 

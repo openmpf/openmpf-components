@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -133,15 +133,12 @@ private:
 
     std::vector<dlib::rect_detection> DetectFacesDlib(const cv::Mat &frame_gray);
 
-    MPF::COMPONENT::MPFDetectionError GetDetectionsFromVideoCapture(
-            const MPF::COMPONENT::MPFVideoJob &job,
-            MPF::COMPONENT::MPFVideoCapture &video_capture,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks);
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetectionsFromVideoCapture(
+            const MPF::COMPONENT::MPFVideoJob &job, MPF::COMPONENT::MPFVideoCapture &video_capture);
 
-    MPF::COMPONENT::MPFDetectionError GetDetectionsFromImageData(
-            const MPF::COMPONENT::MPFImageJob &job,
-            cv::Mat &image_data,
-            std::vector<MPF::COMPONENT::MPFImageLocation> &locations);
+
+    std::vector<MPF::COMPONENT::MPFImageLocation> GetDetectionsFromImageData(
+            const MPF::COMPONENT::MPFImageJob &job, cv::Mat &image_data);
 
 public:
 
@@ -152,13 +149,9 @@ public:
 
     bool Close();
 
-    MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFVideoJob &job,
-            std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks) override;
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPF::COMPONENT::MPFVideoJob &job) override;
 
-    MPF::COMPONENT::MPFDetectionError GetDetections(
-            const MPF::COMPONENT::MPFImageJob &job,
-            std::vector<MPF::COMPONENT::MPFImageLocation> &locations) override;
+    std::vector<MPF::COMPONENT::MPFImageLocation> GetDetections(const MPF::COMPONENT::MPFImageJob &job) override;
 
 
     std::string GetDetectionType();

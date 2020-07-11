@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -71,9 +71,8 @@ int main(int argc, char* argv[]) {
 
             case IMAGE:  //case 1
             {
-                std::vector<MPFImageLocation> detections;
                 MPFImageJob job("Testing", uri, algorithm_properties, { });
-                te.GetDetections(job, detections);
+                std::vector<MPFImageLocation> detections = te.GetDetections(job);
                 for (int i = 0; i < detections.size(); i++) {
                     LOG4CXX_INFO(logger, "detection number "
                             << i
@@ -95,9 +94,8 @@ int main(int argc, char* argv[]) {
                 stringStream << FRAME_INTERVAL;
                 algorithm_properties.insert(std::pair<std::string, std::string>(
                         "FRAME_INTERVAL", stringStream.str()));
-                std::vector<MPFVideoTrack> tracks;
                 MPFVideoJob job("Testing", uri, start_frame, stop_frame, algorithm_properties, { });
-                te.GetDetections(job, tracks);
+                std::vector<MPFVideoTrack> tracks = te.GetDetections(job);
                 std::sort(tracks.begin(), tracks.end(), sort_by_start_frame);
                 LOG4CXX_INFO(logger,
                              "number of tracks is " << tracks.size());

@@ -1,0 +1,110 @@
+{
+  "componentName": "AzureSpeechDetection",
+  "componentVersion": "5.0",
+  "middlewareVersion": "5.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "AzureSpeechDetection",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "AZURESPEECH",
+    "description": "Uses Azure Cognitive Services to perform speech-to-text.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_SPEECH",
+        "DETECTION_SPEECH_AZURE"
+      ],
+      "properties": [
+        {
+          "name": "TARGET_SEGMENT_LENGTH",
+          "description": "If this value is less than or equal to 0, no segmenting will be performed.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "ACS_URL",
+          "description": "URL for the Azure Cognitive Services Endpoint. e.g. https://virginia.cris.azure.us/api/speechtotext/v2.0/transcriptions. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.  Note that the component was only tested against v2.0 of the API.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_SUBSCRIPTION_KEY",
+          "description": "Azure Speech service key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_BLOB_CONTAINER_URL",
+          "description": "URL for the Azure Storage Blob container. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_BLOB_SERVICE_KEY",
+          "description": "Azure Cognitive Services subscription key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "LANGUAGE",
+          "description": "The language/locale to use for transcription.",
+          "type": "STRING",
+          "defaultValue": "en-US"
+        },
+        {
+          "name": "DIARIZE",
+          "description": "Whether to split audio into speaker turns. Supports two-speaker conversation.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "CLEANUP",
+          "description": "Whether to delete recording blobs after processing.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "BLOB_ACCESS_TIME",
+          "description": "Timespan for which access signatures to blob storage containers will be valid, in minutes.",
+          "type": "INT",
+          "defaultValue": "120"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "AZURE SPEECH DETECTION ACTION",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in English.",
+      "algorithm": "AZURESPEECH",
+      "properties": [
+        {
+          "name": "LANGUAGE",
+          "value": "en-US"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "AZURE SPEECH DETECTION TASK",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in English.",
+      "actions": [
+        "AZURE SPEECH DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "AZURE SPEECH DETECTION PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in English.",
+      "tasks": [
+        "AZURE SPEECH DETECTION TASK"
+      ]
+    }
+  ]
+}

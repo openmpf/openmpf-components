@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -81,9 +81,7 @@ void runImageDetection(const std::string &image_path, TesseractOCRTextDetection 
                        const std::map<std::string, std::string> &custom = {},
                        bool wild_mode = false) {
     MPFImageJob job = createImageJob(image_path, custom, wild_mode);
-    MPFDetectionError rc = ocr.GetDetections(job, image_locations);
-
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    image_locations = ocr.GetDetections(job);
     ASSERT_FALSE(image_locations.empty());
 }
 
@@ -91,8 +89,7 @@ void runDocumentDetection(const std::string &image_path, TesseractOCRTextDetecti
                           std::vector<MPFGenericTrack> &generic_tracks,
                           const std::map<std::string, std::string> &custom = {}) {
     MPFGenericJob job = createPDFJob(image_path, custom);
-    MPFDetectionError rc = ocr.GetDetections(job, generic_tracks);
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    generic_tracks = ocr.GetDetections(job);
     ASSERT_FALSE(generic_tracks.empty());
 }
 
@@ -101,8 +98,18 @@ void assertEmptyImageDetection(const std::string &image_path, TesseractOCRTextDe
                           const std::map<std::string, std::string> &custom = {},
                           bool wild_mode = false, MPFDetectionError error = MPF_DETECTION_SUCCESS) {
     MPFImageJob job = createImageJob(image_path, custom, wild_mode);
-    MPFDetectionError rc = ocr.GetDetections(job, image_locations);
-    ASSERT_EQ(rc, error);
+    try {
+        image_locations = ocr.GetDetections(job);
+        if (error != MPF_DETECTION_SUCCESS) {
+            FAIL() << "Expected error type: " << error;
+        }
+    }
+    catch (const MPFDetectionException &ex) {
+        ASSERT_EQ(error, ex.error_code);
+    }
+    catch (...) {
+        FAIL() << "Caught exception but expected error type: " << error;
+    }
     ASSERT_TRUE(image_locations.empty());
 }
 
@@ -111,8 +118,19 @@ void assertEmptyDocumentDetection(const std::string &image_path, TesseractOCRTex
                           const std::map<std::string, std::string> &custom = {},
                           MPFDetectionError error = MPF_DETECTION_SUCCESS) {
     MPFGenericJob job = createPDFJob(image_path, custom);
-    MPFDetectionError rc = ocr.GetDetections(job, generic_tracks);
-    ASSERT_EQ(rc, error);
+    try {
+        generic_tracks = ocr.GetDetections(job);
+        if (error != MPF_DETECTION_SUCCESS) {
+            FAIL() << "Expected error type: " << error;
+        }
+    }
+    catch (const MPFDetectionException &ex) {
+        ASSERT_EQ(error, ex.error_code);
+    }
+    catch (...) {
+        FAIL() << "Caught exception but expected error type: " << error;
+    }
+
     ASSERT_TRUE(generic_tracks.empty());
 }
 
@@ -367,6 +385,90 @@ TEST(TESSERACTOCR, MissingLanguagesTest) {
 
     boost::filesystem::remove_all("data/model_dir");
     ASSERT_TRUE(ocr.Close());
+}
+
+TEST(TESSERACTOCR, RescaleTest) {
+
+    // Ensure proper rescaling of images within Tesseract limits.
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    std::map<std::string,std::string> custom_properties = {};
+
+    // Expected image to be discarded due to invalid dimensions.
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_exceed_tesseract_limit.png", ocr, results,
+                            custom_properties, false, MPF_BAD_FRAME_SIZE));
+
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_tesseract_limit.png", ocr, results,
+                                custom_properties, false, MPF_BAD_FRAME_SIZE));
+
+    // If narrow height is not checked allow image to process.
+    custom_properties = {{"INVALID_MIN_IMAGE_SIZE", "-1"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_tesseract_limit.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Image should be rescaled to fit.
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_tesseract_rescalable.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "100000000"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_within_tesseract_limit.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "0.00000001"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_within_tesseract_limit.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Image should be rescaled to fit pixel constraints.
+    custom_properties = {{"MAX_PIXELS", "120000"}, {"STRUCTURED_TEXT_SCALE", "100000000"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Image should be rescaled to fit pixel constraints.
+    custom_properties = {{"MAX_PIXELS", "120000"}, {"STRUCTURED_TEXT_SCALE", "0.00000001"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Sanity check that rescaling is called outside of OSD processing when OSD is disabled.
+    // Image should be rescaled to fit.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_tesseract_rescalable.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "100000000"}, {"ENABLE_OSD_AUTOMATION", "false"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_within_tesseract_limit.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "0.00000001"}, {"ENABLE_OSD_AUTOMATION", "false"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_within_tesseract_limit.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Expected rescale failure due to min image size constraint.
+    custom_properties = {{"INVALID_MIN_IMAGE_SIZE", "60"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_tesseract_rescalable.png", ocr, results,
+                                custom_properties, false, MPF_BAD_FRAME_SIZE));
+    results.clear();
+
+    // Expected rescale failure due to max pixels and min image size conflict.
+    custom_properties = {{"MAX_PIXELS", "10"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_within_tesseract_limit.png", ocr, results,
+                            custom_properties, false, MPF_BAD_FRAME_SIZE));
+    results.clear();
 }
 
 TEST(TESSERACTOCR, TwoPassOCRTest) {
