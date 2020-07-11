@@ -28,6 +28,7 @@ FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_test_server
 
 # Specify custom models here.
 # ADD <Path_to_custom_models>/models /models/
+ADD ./models /models
 
 RUN mkdir -p /models/ip_irv2_coco/1/ \
 && wget --load-cookies /tmp/cookies.txt \

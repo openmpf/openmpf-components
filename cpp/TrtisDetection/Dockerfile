@@ -75,27 +75,29 @@ RUN cd /tmp/ \
 && rm -rf /tmp/grpc \
 && ldconfig
 
-# Install curl.
+# Install curl
+# Specific version needed for gRPC.
 RUN cd /tmp/ \
 && git clone -b curl-7_67_0 https://github.com/curl/curl.git \
 && cd curl \
-&& mkdir build && cd build && cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local .. && make install && \
-ldconfig
+&& mkdir build && cd build && cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -DBUILD_SHARED_LIBS=ON .. && make install \
+&& cp /usr/local/lib64/libcurl.so /usr/local/lib/libcurl.so \
+&& ldconfig
 
 
 # Install TensorRT-Inference-Server client libs.
 RUN cd /tmp/ \
-&& git clone -b v1.7.0 https://github.com/NVIDIA/tensorrt-inference-server.git tensorrt-inference-server 2> /dev/null || (cd tensorrt-inference-server && git pull)
+&& git clone -b v1.7.0 https://github.com/NVIDIA/tensorrt-inference-server.git tensorrt-inference-server
 
 # Fix lower case protobuf package name.
-RUN sed -i 's/find_package(Protobuf CONFIG REQUIRED)/find_package(protobuf CONFIG REQUIRED)/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt \
-&& sed -i 's/add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/#add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
-
+RUN sed -i 's/find_package(Protobuf CONFIG REQUIRED)/find_package(protobuf CONFIG REQUIRED)/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
+# Disable building TRTIS python client.
+RUN sed -i '/add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/d' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
 # Set version number.
 RUN sed -i 's/project (trtis-clients)/project(trtis-clients VERSION "0.0.0")/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
 
 
-RUN mkdir -p /tmp/tensorrt-inference-server/build/trtis-clients/build
+RUN mkdir -p /tmp/tensorrt-inference-server/build/trtis-clients/build \
 && cd /tmp/tensorrt-inference-server/build/trtis-clients/build \
 && cmake3 -DCMAKE_INSTALL_PREFIX=/root/trtis .. \
 && make -j`nproc` \
@@ -112,7 +114,14 @@ RUN mkdir -p /tmp/tensorrt-inference-server/build/trtis-clients/build
 && echo 'add_library(request SHARED IMPORTED) # or STATIC instead of SHARED'                  > /root/trtis/cmake/request-config.cmake \
 && echo 'set_target_properties(request PROPERTIES'                                           >> /root/trtis/cmake/request-config.cmake \
 && echo '                              IMPORTED_LOCATION "/root/trtis/lib/librequest.so"'    >> /root/trtis/cmake/request-config.cmake \
-&& echo '                              INTERFACE_INCLUDE_DIRECTORIES "/root/trtis/include")' >> /root/trtis/cmake/request-config.cmake
+&& echo '                              INTERFACE_INCLUDE_DIRECTORIES "/root/trtis/include")' >> /root/trtis/cmake/request-config.cmake \
+# Prepare libraries and model file for potential testing.
+&& mkdir -p /home/mpf/transfer/lib \
+&& cp /usr/lib64/libssl3.so  /home/mpf/transfer/lib \
+&& cp /usr/lib64/libnspr4.so /home/mpf/transfer/lib \
+&& cp /usr/lib64/libnss3.so  /home/mpf/transfer/lib \
+&& cp /usr/lib64/libgtest*.so.0.0.0  /home/mpf/transfer/lib \
+&& cp -r /home/mpf/mpf-sdk-install/lib/* /home/mpf/transfer/lib
 
 ENV request_DIR=/root/trtis
 
@@ -124,16 +133,9 @@ RUN build-component.sh
 
 FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_test_server
 
-ADD ./plugin-files/models /models/
-
-COPY --from=build_component /usr/lib64/libssl3.so /usr/local/lib
-COPY --from=build_component /usr/lib64/libnspr4.so /usr/local/lib
-COPY --from=build_component /usr/lib64/libnss3.so /usr/local/lib
-COPY --from=build_component /usr/lib64/libgtest*.so.0.0.0  /usr/local/lib/
+COPY --from=build_component /home/mpf/transfer/lib/* /usr/local/lib/
 COPY --from=build_component /opt/opencv-3.4.7/lib64 /apps/install/opencv3.4.7/lib64/
 COPY --from=build_component /home/mpf/component_build /Testing_MPF_FILES/
-COPY --from=build_component /home/mpf/component_build/plugin/TrtisDetection/lib/librequest.so /usr/local/lib/
-COPY --from=build_component /home/mpf/mpf-sdk-install/lib /usr/local/lib
 
 ARG RUN_TESTS=false
 
@@ -145,6 +147,9 @@ then cd /opt/tensorrtserver/ && ./nvidia_entrypoint.sh \
 && ln -s /usr/local/lib/libgtest_main.so.0.0.0 libgtest_main.so \
 && ln -s /usr/local/lib/libgtest_main.so.0.0.0 libgtest_main.so.0 \
 && cp /Testing_MPF_FILES/*.so /opt/tensorrtserver/ \
+&& cp /Testing_MPF_FILES/plugin/TrtisDetection/lib/librequest.so /usr/local/lib/ \
+&& cp -r /Testing_MPF_FILES/plugin/TrtisDetection/models / \
+&& rm /Testing_MPF_FILES/plugin/TrtisDetection/models/ip_irv2_coco/1/model.graphdef \
 && ldconfig \
 && trtserver --model-store=/models 2> /Testing_MPF_FILES/server_logs.txt \
 # Running test code alongside active server process.
@@ -152,12 +157,16 @@ then cd /opt/tensorrtserver/ && ./nvidia_entrypoint.sh \
 && cd /Testing_MPF_FILES/test/ \
 && LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/Testing_MPF_FILES/plugin/TrtisDetection/lib/:/apps/install/opencv3.4.7/lib64/ \
 # Wait for server to finish loading coco model files.
-&& while : ;do \
-       [[ -f "/Testing_MPF_FILES/server_logs.txt" ]] \
-       && grep -q "Successfully loaded servable version" "/Testing_MPF_FILES/server_logs.txt" \
-       && echo "Server ready for testing. Beginning detection tests." \
-       && break ;\
-       sleep 5 ;\
+&& for i in `seq 1 10`;do \
+    [[ -f "/Testing_MPF_FILES/server_logs.txt" ]] \
+    && grep -q "Successfully loaded servable version" "/Testing_MPF_FILES/server_logs.txt" \
+    && echo "Server ready for testing. Beginning detection tests." \
+    && break ;\
+    sleep 5 ;\
+    if [ $i == 10 ];\
+        then echo "Time limit reached, model load unsuccessful. Exiting tests with failure." \
+        && exit 1;\
+    fi;\
     done \
 && ./TrtisDetectionTest \
 ; fi

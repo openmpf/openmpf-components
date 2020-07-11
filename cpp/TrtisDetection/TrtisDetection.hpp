@@ -113,10 +113,8 @@ namespace MPF{
     public:
       bool Init() override;
       bool Close() override;
-      MPFDetectionError GetDetections(const MPFVideoJob &job,
-                                      MPFVideoTrackVec  &tracks) override;
-      MPFDetectionError GetDetections(const MPFImageJob   &job,
-                                      MPFImageLocationVec &locations) override;
+      std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPFVideoJob &job) override;
+      std::vector<MPFImageLocation> GetDetections(const MPFImageJob   &job) override;
       string GetDetectionType() override;
 
     private:
@@ -159,7 +157,6 @@ namespace MPF{
                                  const int                       frameIdx,
                                  MPFVideoTrackVec               &tracks);       ///< tracking using time, space and feature proximity
 
-      void _base64DecodeStopFeatures(MPFVideoTrackVec &tracks);                 ///< base64 decode "FEATURE" property of stop location
       void _base64EncodeStopFeatures(MPFVideoTrackVec &tracks);                 ///< base64 encode "FEATURE" property of stop location
 
       void _addToTrack(MPFImageLocation &location,

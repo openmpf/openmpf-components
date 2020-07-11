@@ -102,7 +102,15 @@ T get(const Properties &p, const string &k, const T def){
 ***************************************************************************** */
 TrtisJobConfig::TrtisJobConfig(const MPFJob &job){
   const Properties jpr = job.job_properties;
-  trtis_server  = get<string>(jpr,"TRTIS_SERVER" , "localhost:8001");
+
+  char const* tmp_env = getenv("TRTIS_SERVER");
+  if (tmp_env == NULL) {
+    trtis_server = "localhost:8001";
+  } else {
+    trtis_server = std::string(tmp_env);
+  }
+
+  trtis_server  = get<string>(jpr,"TRTIS_SERVER" , trtis_server);
   model_name    = get<string>(jpr,"MODEL_NAME"   , "ip_irv2_coco");
   model_version = get<int>   (jpr,"MODEL_VERSION", -1);
   maxInferConcurrency = get<size_t>(jpr,"MAX_INFER_CONCURRENCY", 5);
@@ -349,7 +357,6 @@ void TrtisDetection::_ip_irv2_coco_prepImageData(
 vector<uPtrInferCtx*> TrtisDetection::_niGetInferContexts(
                                                      const TrtisJobConfig cfg)
 {
-  //static map<string, vector<uPtrInferCtx*>> infCtxs;
   stringstream ss;
   ss << std::this_thread::get_id() << ":" << cfg.model_name << ":" << cfg.model_version;
   string key = ss.str();
@@ -615,31 +622,6 @@ void TrtisDetection::_ip_irv2_coco_getDetections(
 
 }
 
-/** ****************************************************************************
-* base64 decode the feature in the track stop location if the string looks like
-* a valid base64 encoded sting.
-*
-* \param[in,out] tracks  tracks to perform stop feature decoding on.
-*
-***************************************************************************** */
-void TrtisDetection::_base64DecodeStopFeatures(MPFVideoTrackVec &tracks){
-  // Assuming tracks passed in come from somewhere that used base64 encoding,
-  // if not should remove this decode step
-  for(MPFVideoTrack &track : tracks){
-    auto dt = track.frame_locations[track.stop_frame].detection_properties;
-    auto it = dt.find("FEATURE");
-    if(it != dt.end()){                                                         LOG4CXX_TRACE(_log, "base64 Decoding track stop_frame[" << track.stop_frame << "] FEATURE");
-      if(Base64::valid(it->second)){
-        string feature;
-        Base64::Decode(it->second, feature);
-        it->second = feature;
-    // }else{
-    //  throw an error here if we know it should have been base64 ?!
-    //  THROW_TRTISEXCEPTION("Bad base64 feature encoding");
-      }
-    }
-  }
-}
 
 /** ****************************************************************************
 * base64 encode the feature in the track stop location
@@ -772,8 +754,6 @@ void TrtisDetection::_ip_irv2_coco_tracker(
     if(bestTrackPtr != NULL){                                                   LOG4CXX_TRACE(_log, "Adding to track(&" << bestTrackPtr << ") from frame[" << frameIdx <<"]");
       int bestStopFrame = bestTrackPtr->stop_frame;
       MPFImageLocation bestStopLoc = bestTrackPtr->frame_locations[bestStopFrame];
-      // bestStopLoc.detection_properties["FEATURE"] =
-      //   Base64::Encode(bestStopLoc.detection_properties["FEATURE"]);         LOG4CXX_TRACE(_log,"Re-encoded previous FEATURE for track(& " << bestTrackPtr << ") from frame[" << frameIdx <<"]");
      if(bestStopFrame != bestTrackPtr->start_frame){
         bestStopLoc.detection_properties.erase("FEATURE");                      LOG4CXX_TRACE(_log,"Erased previous FEATURE for track(& " << bestTrackPtr << ") from frame[" << frameIdx <<"]");
      }else{ // keep start frame feature for linking ?!
@@ -792,27 +772,27 @@ void TrtisDetection::_ip_irv2_coco_tracker(
 * Read frames from a video, get object detections and make tracks
 *
 * \param         job     MPF Video job
-* \param[in,out] tracks  Tracks collection to which detections will be added
 *
-* \returns  an MPF error constant or MPF_DETECTION_SUCCESS
+* \throws an MPF error constant or TRTIS runtime error
 *
+* \returns Tracks collection to which detections will be added
 ***************************************************************************** */
-MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
-                                                MPFVideoTrackVec  &tracks){
+std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
 
  // if (job.has_feed_forward_track) { do something different ?!}
   try{
     if(job.data_uri.empty()){
       LOG4CXX_ERROR(_log, "[" << job.job_name << "] Input video file path is empty");
-      return MPF_INVALID_DATAFILE_URI;
+      throw MPF_INVALID_DATAFILE_URI;
     }
 
     MPFVideoCapture video_cap(job);
     if(!video_cap.IsOpened()){
       LOG4CXX_ERROR(_log, "[" << job.job_name << "] Could not initialize capturing");
-      return MPF_COULD_NOT_OPEN_DATAFILE;
+      throw MPF_COULD_NOT_OPEN_DATAFILE;
     }
 
+    std::vector<MPF::COMPONENT::MPFVideoTrack> tracks;
     cv::Mat frame;
     Properties jpr = job.job_properties;
     string model_name = get<string>(jpr,"MODEL_NAME",  "ip_irv2_coco");
@@ -820,12 +800,11 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
     if(model_name == "ip_irv2_coco"){
 
       // need to read a frame to get size
-      if(!video_cap.Read(frame)) return MPF_DETECTION_SUCCESS;
+      if(!video_cap.Read(frame)) return tracks;
       TrtisIpIrv2CocoJobConfig cfg(job, frame.cols,frame.rows);
 
       // Assuming tracks passed in come from somewhere that used base64 encoded
       // feature vectors, if not should remove this decode step
-      _base64DecodeStopFeatures(tracks);                                        LOG4CXX_TRACE(_log, "finished base64 decoding track stop_frame FEATUREs");
       mutex poolMtx, tracksMtx, nextRxFrameMtx;                                 LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
       condition_variable cv, cvf;
       auto timeout = chrono::seconds(cfg.contextWaitTimeoutSec);
@@ -837,7 +816,7 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
         uPtrInferCtx* ctx;
         { unique_lock<mutex> lk(poolMtx);
           if(ctxPool.size() < 1){                                               LOG4CXX_TRACE(_log,"wait for an infer context to become available");
-            if(!cv.wait_for(lk, timeout,[&]{return ctxPool.size() > 0;})){
+            if(!cv.wait_for(lk, timeout,[&ctxPool]{return ctxPool.size() > 0;})){
               THROW_TRTISEXCEPTION("Waited longer than " +
                 to_string(timeout.count()) + " sec for an inference context.");
             }
@@ -858,7 +837,7 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
               if(frameIdx != nextRxFrameIdx){                                   LOG4CXX_TRACE(_log,"out of sequence frame response, expected frame[" << nextRxFrameIdx << "] but received frame[" << frameIdx << "]");
                 if(!cvf.wait_for(lk,
                                  timeout,
-                                 [&]{return frameIdx == nextRxFrameIdx;})){
+                                 [&frameIdx, &nextRxFrameIdx]{return frameIdx == nextRxFrameIdx;})){
                   THROW_TRTISEXCEPTION("Waited longer than " +
                     to_string(timeout.count()) + " sec for response to request for frame["+to_string(nextRxFrameIdx)+"].");
                 }
@@ -899,7 +878,7 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
       if(ctxPool.size() < initialCtxPoolSize){                                  LOG4CXX_TRACE(_log,"wait inference context pool size to return to initial size of " << initialCtxPoolSize );
         unique_lock<mutex> lk(poolMtx);
         if(!cv.wait_for(lk, cfg.maxInferConcurrency * timeout
-                        ,[&]{return ctxPool.size() == initialCtxPoolSize;})){
+                        ,[&ctxPool, &initialCtxPoolSize]{return ctxPool.size() == initialCtxPoolSize;})){
                            THROW_TRTISEXCEPTION("Waited longer than " +
                              to_string(timeout.count()) +
                              " sec for context pool to return to initial size.");
@@ -914,11 +893,11 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
     for (MPFVideoTrack &track : tracks) {
       video_cap.ReverseTransform(track);
     }                                                                           LOG4CXX_DEBUG(_log, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
-    return MPF_DETECTION_SUCCESS;
+    return tracks;
 
   }catch(...){
     _infCtxs.clear();  // release inference context pool just to be safe
-    return Utils::HandleDetectionException(job, _log);
+    Utils::LogAndReThrowException(job, _log);
   }
 
 }
@@ -927,27 +906,28 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFVideoJob &job,
 * Read an image and get object detections and features
 *
 * \param         job        MPF Image job
-* \param[in,out] locations  locations collection to which detections will be added
 *
-* \returns  an MPF error constant or MPF_DETECTION_SUCCESS
+* \throws an MPF error constant or TRTIS runtime error
+*
+* \returns locations collection to which detections will be added
 *
 * \note  prior to returning the features are base64 encoded
 *
 ***************************************************************************** */
-MPFDetectionError TrtisDetection::GetDetections(const MPFImageJob   &job,
-                                                MPFImageLocationVec &locations){
+std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob   &job) {
   try{                                                                          LOG4CXX_DEBUG(_log, "Data URI = " << job.data_uri);
     if(job.data_uri.empty()){
       LOG4CXX_ERROR(_log, "Invalid image file");
-      return MPF_INVALID_DATAFILE_URI;
+      throw MPF_INVALID_DATAFILE_URI;
     }
 
+    std::vector<MPFImageLocation> locations;
     MPFImageReader image_reader(job);
     cv::Mat img = image_reader.GetImage();
 
     if(img.empty()){
       LOG4CXX_ERROR(_log, "Could not read image file: " << job.data_uri);
-      return MPF_IMAGE_READ_ERROR;
+      throw MPF_IMAGE_READ_ERROR;
     }
 
     Properties jpr = job.job_properties;
@@ -979,7 +959,7 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFImageJob   &job,
         image_reader.ReverseTransform(locations[i]);
       }                                                                         LOG4CXX_TRACE(_log,"base64 encoded new features in locations vector");
 
-      return MPF_DETECTION_SUCCESS;
+      return locations;
 
     }else{
       THROW_TRTISEXCEPTION("Unsupported model type:" + model_name);
@@ -987,7 +967,7 @@ MPFDetectionError TrtisDetection::GetDetections(const MPFImageJob   &job,
 
   }catch (...) {
     _infCtxs.clear();  // release inference context pool just to be safe
-    return Utils::HandleDetectionException(job, _log);
+    Utils::LogAndReThrowException(job, _log);
   }
 
 }

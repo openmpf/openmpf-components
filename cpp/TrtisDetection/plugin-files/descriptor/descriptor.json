@@ -127,9 +127,6 @@
       "description": "Performs TRTIS detection using the 'ip_irv2_coco' model.",
       "algorithm": "TRTIS",
       "properties": [
-        { "name": "TRTIS_SERVER",
-          "value":"trtis-detection-server:8001"
-        },
         { "name": "MODEL_NAME",
           "value": "ip_irv2_coco"
         },

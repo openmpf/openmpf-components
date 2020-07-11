@@ -31,8 +31,6 @@
 
 #include <gtest/gtest.h>
 
-#define private public
-
 #include "TrtisDetection.hpp"
 
 using namespace MPF::COMPONENT;
@@ -70,9 +68,13 @@ void assertObjectDetectedInImage(const string   &expected_object,
     MPFImageJob job("Test", image_path, getProperties_ip_irv2_coco(), {});
 
     MPFImageLocationVec image_locations;
-    MPFDetectionError rc = trtisDet.GetDetections(job, image_locations);
 
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    try {
+        image_locations = trtisDet.GetDetections(job);
+    } catch (const MPFDetectionException &ex) {
+        FAIL() << " GetDetections failed to process test image.";
+    }
+
     ASSERT_FALSE(image_locations.empty());
 
     ASSERT_TRUE(containsObject(expected_object, image_locations))
@@ -90,21 +92,6 @@ TEST(TRTIS, InitTest) {
     ASSERT_TRUE(trtisDet.Init());
     ASSERT_TRUE(trtisDet.Close());
 }
-
-
-//------------------------------------------------------------------------------
-TEST(TRTIS, GetInferenceContextTest) {
-
-    TrtisDetection trtisDet;
-    trtisDet.SetRunDirectory("../plugin");
-
-    TrtisJobConfig cfg(MPFImageJob("Test", "foo.jpg", getProperties_ip_irv2_coco(), {}));
-
-    ASSERT_TRUE(trtisDet.Init());
-    trtisDet._niGetInferContexts(cfg);
-    ASSERT_TRUE(trtisDet.Close());
-}
-
 
 //------------------------------------------------------------------------------
  TEST(TRTIS, ImageTest) {
@@ -136,9 +123,13 @@ void assertObjectDetectedInVideo(const string     &object_name,
     MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 11, 12, job_props, {});
 
     MPFVideoTrackVec tracks;
-    MPFDetectionError rc = trtisDet.GetDetections(job, tracks);
 
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    try {
+        tracks = trtisDet.GetDetections(job);
+    } catch (const MPFDetectionException &ex) {
+        FAIL() << " GetDetections failed to process test video.";
+    }
+
     ASSERT_FALSE(tracks.empty());
     ASSERT_TRUE(containsObject(object_name, tracks));
 }

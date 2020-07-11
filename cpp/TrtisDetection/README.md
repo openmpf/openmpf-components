@@ -22,10 +22,17 @@ Currently, the component supports both image and video jobs.
 
 Users can control inference and model behavior through the following job parameters:
 
+* `TRTIS_SERVER` : Specifies the DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS). `TRTIS_SERVER` can also be specified as an environment variable. The `docker-compose.components.yml` file in `openmpf-docker` has the default `TRTIS_SERVER` environment variable set to `trtis-detection-server:8001`. Please note that a user provided job property for `TRTIS_SERVER` will override the environment variable for `TRTIS_SERVER`.
+
+* `MODEL_NAME`   : Specifies the model on `TRTIS_SERVER` to be used for inferencing. Currently only the default model, `ip_irv2_coco`, is supported.
+* `MODEL_VERSION`: Specifies the version number of the inference server model, with the default value of `-1` indicating usage of the latest available version on the server.
+
 * `MAX_INFER_CONCURRENCY`   : Specifies the maximum number of inference requests that will be sent to the server concurrently for video frame inferencing.
 * `CONTEXT_WAIT_TIMEOUT_SEC`: Specifies maximum number of seconds to wait for an inference context when using concurrent inferencing.
 
 * `USER_FEATURE_X_LEFT_UPPER` and `USER_FEATURE_Y_LEFT_UPPER` allow users to define the upper left coordinates for a custom bounding box of the image or video frame during inference. `USER_FEATURE_WIDTH` and `USER_FEATURE_HEIGHT` allow users to control the width and height of the custom bounding box.
+
+* `CLIENT_PRESCALING_ENABLE`: Toggles whether to scale images and video frames to the approximate `[1024 x 600]` image size required by the 'ip_irv2_coco' model.
 
 For enabling generation of similarity features:
 
@@ -49,8 +56,4 @@ Each condition must be met for an object to be considered to be part of the same
 
 Currently video tracking uses basic search space calculations to match preexisting tracks to the closest candidate object detections being considered within the current video frame. If a match occurs, an MPFImageLocation is appended to the matching track.
 When a newly detected object fails to match to a preexisting track, a new track is created for that object.
-
-
-
-
 

@@ -64,8 +64,6 @@ int main(int argc, char* argv[]) {
     cout << "Trtis server name and port = "
          << algorithm_properties["TRTIS_SERVER"] << std::endl;
 
-    if(argc > 3){ algorithm_properties["NUMBER_OF_CLASSIFICATIONS"] = string(argv[3]); }
-    cout << "Number of classifications = " << algorithm_properties["NUMBER_OF_CLASSIFICATIONS"] << endl;
 
     if(argc > 3){ algorithm_properties["CONFIDENCE_THRESHOLD"] = string(argv[3]); }
     cout << "Confidence threshold = " << algorithm_properties["CONFIDENCE_THRESHOLD"] << endl;
@@ -75,7 +73,7 @@ int main(int argc, char* argv[]) {
 
     MPFImageLocationVec detections;
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
-    trtis_component.GetDetections(job, detections);
+    detections = trtis_component.GetDetections(job);
     for (int i = 0; i < detections.size(); i++) {
       cout << "detection number " << i
       << " classification is " << detections[i].detection_properties["CLASSIFICATION"]
