@@ -22,7 +22,7 @@ Currently, the component supports both image and video jobs.
 
 Users can control inference and model behavior through the following job parameters:
 
-* `TRTIS_SERVER` : Specifies the DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS). `TRTIS_SERVER` can also be specified as an environment variable. The `docker-compose.components.yml` file in `openmpf-docker` has the default `TRTIS_SERVER` environment variable set to `trtis-detection-server:8001`. Please note that a user provided job property for `TRTIS_SERVER` will override the environment variable for `TRTIS_SERVER`.
+* `TRTIS_SERVER` : Specifies the DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS). If set to the string value `NULL`, the component will instead use `localhost:8001` or the environment variable for `TRTIS_SERVER` instead if it is available.
 
 * `MODEL_NAME`   : Specifies the model on `TRTIS_SERVER` to be used for inferencing. Currently only the default model, `ip_irv2_coco`, is supported.
 * `MODEL_VERSION`: Specifies the version number of the inference server model, with the default value of `-1` indicating usage of the latest available version on the server.

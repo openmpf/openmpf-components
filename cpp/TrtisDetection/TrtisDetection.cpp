@@ -103,14 +103,17 @@ T get(const Properties &p, const string &k, const T def){
 TrtisJobConfig::TrtisJobConfig(const MPFJob &job){
   const Properties jpr = job.job_properties;
 
-  char const* tmp_env = getenv("TRTIS_SERVER");
+  char const* tmp_env = std::getenv("TRTIS_SERVER");
   if (tmp_env == NULL) {
     trtis_server = "localhost:8001";
   } else {
     trtis_server = std::string(tmp_env);
   }
-
-  trtis_server  = get<string>(jpr,"TRTIS_SERVER" , trtis_server);
+  string trtis_server_candidate  = get<string>(jpr,"TRTIS_SERVER" , trtis_server);
+  if (trtis_server_candidate.compare("NULL") != 0) {
+    // Allow job property if not set to string "NULL". Otherwise use default or ENV variable instead.
+    trtis_server = trtis_server_candidate;
+  }
   model_name    = get<string>(jpr,"MODEL_NAME"   , "ip_irv2_coco");
   model_version = get<int>   (jpr,"MODEL_VERSION", -1);
   maxInferConcurrency = get<size_t>(jpr,"MAX_INFER_CONCURRENCY", 5);
