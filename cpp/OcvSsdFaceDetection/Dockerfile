@@ -44,9 +44,6 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_componen
 COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
 COPY . .
 
-RUN cd /apps/source/dlib-sources/dlib-19.19/dlib && mkdir build && cd build && cmake3 -DBUILD_SHARED_LIBS:BOOL="1" .. \
-    && cmake3 --build . --config Release && make --jobs "$(nproc)" install && ldconfig
-
 RUN build-component.sh
 
 ARG RUN_TESTS=false

@@ -37,14 +37,10 @@ add_definitions(-Wfatal-errors)
 include(../ComponentSetup.cmake)
 
 # Specify dlib source directory here.
-# Otherwise, disable the following three lines if using find_package(dlib) instead.
-#set(DLIB_DIR /apps/source/dlib-sources/dlib-19.19/dlib)
-#include(${DLIB_DIR}/cmake)
-#set_property(TARGET dlib PROPERTY POSITION_INDEPENDENT_CODE ON)
-
-# Uncomment if not specifying dlib source directory.
-# Warning: may not work with dlib release installation.
-# find_package(dlib REQUIRED)
+set(USE_AVX_INSTRUCTIONS ON)
+set(DLIB_DIR /apps/source/dlib-sources/dlib-19.19/dlib)
+include(${DLIB_DIR}/cmake)
+set_property(TARGET dlib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 find_package(OpenCV
   REQUIRED
