@@ -424,7 +424,7 @@ bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
   try{
     #ifdef HAVE_CUDA
     if(lastCudaDeviceId != cudaDeviceId){
-      if(lastCudaDeviceId >=0) cv::cuda::resetDevice();  // if we were using a cuda device prior clean up old contex / cuda resources
+      if(lastCudaDeviceId >=0) cv::cuda::resetDevice();  // if we were using a cuda device prior clean up old context / cuda resources
       if(cudaDeviceId >=0){
         cv::cuda::setDevice(cudaDeviceId);
         _setCudaBackend(true);
