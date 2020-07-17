@@ -25,9 +25,9 @@
       ],
       "properties": [
         { "name": "TRTIS_SERVER",
-          "description": "The DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS) which is setup to server the requested model' inferences. If set to `NULL`, the component will instead use `localhost:8001` or the environment variable for `TRTIS_SERVER` if it is available.",
+          "description": "The DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS) which is setup to server the requested model' inferences. If the value is the empty string or this property is omitted, the component will instead use the environment variable for `TRTIS_SERVER`, if it is available, or default to `localhost:8001`.",
           "type":"STRING",
-          "defaultValue":"NULL"
+          "defaultValue": ""
         },
         { "name": "MODEL_NAME",
           "description": "The model on the inference server to be used for inferencing. 'ip_irv2_coco' is provided by default. NOTE: Currently, only 'ip_irv2_coco' is supported.",

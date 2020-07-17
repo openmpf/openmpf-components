@@ -103,17 +103,13 @@ T get(const Properties &p, const string &k, const T def){
 TrtisJobConfig::TrtisJobConfig(const MPFJob &job){
   const Properties jpr = job.job_properties;
 
+  string trtis_server_default = "localhost:8001";
   char const* tmp_env = std::getenv("TRTIS_SERVER");
-  if (tmp_env == NULL) {
-    trtis_server = "localhost:8001";
-  } else {
-    trtis_server = std::string(tmp_env);
+  if (tmp_env != NULL) {
+      trtis_server_default = std::string(tmp_env);
   }
-  string trtis_server_candidate  = get<string>(jpr,"TRTIS_SERVER" , trtis_server);
-  if (trtis_server_candidate.compare("NULL") != 0) {
-    // Allow job property if not set to string "NULL". Otherwise use default or ENV variable instead.
-    trtis_server = trtis_server_candidate;
-  }
+  trtis_server = get<string>(jpr,"TRTIS_SERVER" , trtis_server_default);
+
   model_name    = get<string>(jpr,"MODEL_NAME"   , "ip_irv2_coco");
   model_version = get<int>   (jpr,"MODEL_VERSION", -1);
   maxInferConcurrency = get<size_t>(jpr,"MAX_INFER_CONCURRENCY", 5);
@@ -806,8 +802,6 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
       if(!video_cap.Read(frame)) return tracks;
       TrtisIpIrv2CocoJobConfig cfg(job, frame.cols,frame.rows);
 
-      // Assuming tracks passed in come from somewhere that used base64 encoded
-      // feature vectors, if not should remove this decode step
       mutex poolMtx, tracksMtx, nextRxFrameMtx;                                 LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
       condition_variable cv, cvf;
       auto timeout = chrono::seconds(cfg.contextWaitTimeoutSec);
