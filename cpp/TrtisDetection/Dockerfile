@@ -136,39 +136,14 @@ FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_test_server
 COPY --from=build_component /home/mpf/transfer/lib/* /usr/local/lib/
 COPY --from=build_component /opt/opencv-3.4.7/lib64 /apps/install/opencv3.4.7/lib64/
 COPY --from=build_component /home/mpf/component_build /Testing_MPF_FILES/
+COPY --from=build_component /home/mpf/component_src/test/run_docker_tests.sh /Testing_MPF_FILES/test
 
 ARG RUN_TESTS=false
 
 RUN if [ "${RUN_TESTS,,}" == true ]; \
-then cd /opt/tensorrtserver/ && ./nvidia_entrypoint.sh \
-&& cp -a /Testing_MPF_FILES/*.so* /usr/local/lib \
-&& ln -s /usr/local/lib/libgtest.so.0.0.0 libgtest.so \
-&& ln -s /usr/local/lib/libgtest.so.0.0.0 libgtest.so.0 \
-&& ln -s /usr/local/lib/libgtest_main.so.0.0.0 libgtest_main.so \
-&& ln -s /usr/local/lib/libgtest_main.so.0.0.0 libgtest_main.so.0 \
-&& cp /Testing_MPF_FILES/*.so /opt/tensorrtserver/ \
-&& cp /Testing_MPF_FILES/plugin/TrtisDetection/lib/librequest.so /usr/local/lib/ \
-&& cp -r /Testing_MPF_FILES/plugin/TrtisDetection/models / \
-&& rm /Testing_MPF_FILES/plugin/TrtisDetection/models/ip_irv2_coco/1/model.graphdef \
-&& ldconfig \
-&& trtserver --model-store=/models 2> /Testing_MPF_FILES/server_logs.txt \
-# Running test code alongside active server process.
-& echo "Starting server and loading model files."\
-&& cd /Testing_MPF_FILES/test/ \
-&& LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/Testing_MPF_FILES/plugin/TrtisDetection/lib/:/apps/install/opencv3.4.7/lib64/ \
-# Wait for server to finish loading coco model files.
-&& for i in `seq 1 10`;do \
-    [[ -f "/Testing_MPF_FILES/server_logs.txt" ]] \
-    && grep -q "Successfully loaded servable version" "/Testing_MPF_FILES/server_logs.txt" \
-    && echo "Server ready for testing. Beginning detection tests." \
-    && break ;\
-    sleep 5 ;\
-    if [ $i == 10 ];\
-        then echo "Time limit reached, model load unsuccessful. Exiting tests with failure." \
-        && exit 1;\
-    fi;\
-    done \
-&& ./TrtisDetectionTest \
+    then cd /Testing_MPF_FILES/test/ \
+    && LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/Testing_MPF_FILES/plugin/TrtisDetection/lib/:/apps/install/opencv3.4.7/lib64/ \
+    && ./run_docker_tests.sh \
 ; fi
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
