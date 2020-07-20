@@ -53,9 +53,8 @@ RUN git clone -b v1.20.0 https://github.com/grpc/grpc  && cd grpc && git submodu
 && cd /tmp/grpc/third_party/cares/cares/cmake/build \
 && cmake3 -DCMAKE_BUILD_TYPE=Release ../.. \
 && make -j`nproc` \
-&& make install
-
-RUN cd /tmp/ \
+&& make install \
+&& cd /tmp/ \
 && rm -rf /tmp/grpc/third_party/cares/cares \
 && rm -rf /tmp/grpc/third_party/zlib \
 && rm -rf /tmp/grpc/third_party/protobuf \
@@ -87,17 +86,14 @@ RUN cd /tmp/ \
 
 # Install TensorRT-Inference-Server client libs.
 RUN cd /tmp/ \
-&& git clone -b v1.7.0 https://github.com/NVIDIA/tensorrt-inference-server.git tensorrt-inference-server
-
+&& git clone -b v1.7.0 https://github.com/NVIDIA/tensorrt-inference-server.git tensorrt-inference-server \
 # Fix lower case protobuf package name.
-RUN sed -i 's/find_package(Protobuf CONFIG REQUIRED)/find_package(protobuf CONFIG REQUIRED)/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
+&& sed -i 's/find_package(Protobuf CONFIG REQUIRED)/find_package(protobuf CONFIG REQUIRED)/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt \
 # Disable building TRTIS python client.
-RUN sed -i '/add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/d' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
+&& sed -i '/add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/d' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt \
 # Set version number.
-RUN sed -i 's/project (trtis-clients)/project(trtis-clients VERSION "0.0.0")/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt
-
-
-RUN mkdir -p /tmp/tensorrt-inference-server/build/trtis-clients/build \
+&& sed -i 's/project (trtis-clients)/project(trtis-clients VERSION "0.0.0")/g' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt \
+&& mkdir -p /tmp/tensorrt-inference-server/build/trtis-clients/build \
 && cd /tmp/tensorrt-inference-server/build/trtis-clients/build \
 && cmake3 -DCMAKE_INSTALL_PREFIX=/root/trtis .. \
 && make -j`nproc` \
