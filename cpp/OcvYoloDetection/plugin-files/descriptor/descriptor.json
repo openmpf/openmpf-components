@@ -1,0 +1,194 @@
+{
+  "componentName": "OcvYoloDetection",
+  "componentVersion": "1.0",
+  "middlewareVersion": "5.1.0",
+  "sourceLanguage": "c++",
+  "batchLibrary": "${MPF_HOME}/plugins/OcvYoloDetection/lib/libmpfOcvYoloDetection.so",
+  "environmentVariables": [
+    {
+      "name": "LD_LIBRARY_PATH",
+      "value": "${MPF_HOME}/plugins/OcvYoloDetection/lib:${LD_LIBRARY_PATH}"
+    }
+  ],
+  "algorithm": {
+    "name": "OCVYOLO",
+    "description": "Detects objects in images and videos using the Open Computer Vision (OCV) library using Yolo.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_CLASS",
+        "DETECTION_CLASS_OCVYOLO"
+      ],
+      "properties": [
+        {
+          "name": "DETECTION_CONFIDENCE_THRESHOLD",
+          "description": "Minimum detection confidence value [0...1] needed to keep detection and start a track.",
+          "type": "FLOAT",
+          "defaultValue": "0.5"
+        },
+        {
+          "name": "MIN_DETECTION_SIZE",
+          "description": "Minimum bounding box dimension in pixels to keep detection and start a track.",
+          "type": "INT",
+          "defaultValue": "46"
+        },
+        {
+          "name": "DETECTION_FRAME_INTERVAL",
+          "description": "Number of frames to skip running the detector and rely on just tracking",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "TRACKING_MAX_IOU_DIST",
+          "description": "Maximum intersection over union distance (1.0 - iou) =[0..1] between detections below which detection will be considered part of same track",
+          "type": "FLOAT",
+          "defaultValue": "0.5"
+        },
+        {
+          "name": "TRACKING_MAX_FEATURE_DIST",
+          "description": "Maximum distance in feature space (1.0 - cos similarity) = [0..1] between detections below which detection will be considered part of same track",
+          "type": "FLOAT",
+          "defaultValue": "0.25"
+        },
+        {
+          "name": "TRACKING_MAX_FRAME_GAP",
+          "description": "Maximum temporal distance (# of frames) between detection in a track.",
+          "type": "INT",
+          "defaultValue": "4"
+        },
+        {
+          "name": "KF_DISABLED",
+          "description": "Disables the use of motion prediction via Kalman filtering during tracking.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "KF_RN",
+          "description": "Bounding box detector noise standard deviations (in pixels) [center_x_noise_stdev, center_y_noise_stddev, width_noise_stdev, height_noise_stddev] for Kalman filter R",
+          "type": "STRING",
+          "defaultValue": " [ 6.0,6.0,6.0,6.0 ] "
+        },
+        {
+          "name": "KF_QN",
+          "description": "Bounding box motion model acceleration inaccuracies/noise (in pixels/sec^2) [center_x_acceleration_noise_stdev, center_y_acceleration_noise_stdev, width_acceleration_noise_stdev, height_acceleration_noise_stdev ] for Kalman filter Q",
+          "type": "STRING",
+          "defaultValue": " [10000.0, 10000.0, 1000.0, 1000.0] "
+        },
+        {
+          "name": "CUDA_DEVICE_ID",
+          "description": "CUDA device / GPU to use, -1 to only use CPU",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
+          "description": "if true will fallback to CPU only when GPU fails to initialize",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        }
+
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "OCV YOLO DETECTION ACTION",
+      "description": "Executes the OpenCV Yolo detection algorithm using the default parameters.",
+      "algorithm": "OCVYOLO",
+      "properties": []
+    },
+    {
+      "name": "OCV YOLO DETECTION (WITH AUTO-ORIENTATION) ACTION",
+      "description": "Executes the OpenCV Yolo detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
+      "algorithm": "YOLOCV",
+      "properties": [
+        {
+          "name": "AUTO_ROTATE",
+          "value": "true"
+        },
+        {
+          "name": "AUTO_FLIP",
+          "value": "true"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "OCV YOLO DETECTION TASK",
+      "description": "Performs OpenCV Yolo detection.",
+      "actions": [
+        "OCV YOLO DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "OCV YOLO DETECTION (WITH AUTO-ORIENTATION) TASK",
+      "description": "Executes the OpenCV Yolo detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
+      "actions": [
+        "OCV YOLO DETECTION (WITH AUTO-ORIENTATION) ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "OCV YOLO DETECTION PIPELINE",
+      "description": "Performs OpenCV Yolo detection.",
+      "tasks": [
+        "OCV YOLO DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV YOLO DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Performs OpenCV Yolo detection and marks up the results.",
+      "tasks": [
+        "OCV YOLO DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OCV YOLO DETECTION (WITH MOG MOTION PREPROCESSOR) PIPELINE",
+      "description": "Performs MOG motion preprocessing and OpenCV Yolo detection.",
+      "tasks": [
+        "MOG MOTION DETECTION PREPROCESSOR TASK",
+        "OCV YOLO DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV YOLO DETECTION (WITH SUBSENSE MOTION PREPROCESSOR) PIPELINE",
+      "description": "Performs SuBSENSE motion preprocessing and OpenCV face detection.",
+      "tasks": [
+        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
+        "OCV YOLO DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV YOLO DETECTION (WITH MOG MOTION PREPROCESSOR AND MARKUP) PIPELINE",
+      "description": "Performs MOG motion preprocessing, OpenCV Yolo detection, and markup.",
+      "tasks": [
+        "MOG MOTION DETECTION PREPROCESSOR TASK",
+        "OCV YOLO DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OCV YOLO DETECTION (WITH SUBSENSE MOTION PREPROCESSOR AND MARKUP) PIPELINE",
+      "description": "Performs SuBSENSE motion preprocessing, OpenCV Yolo detection, and markup.",
+      "tasks": [
+        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
+        "OCV YOLO DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OCV YOLO DETECTION (WITH AUTO-ORIENTATION) PIPELINE",
+      "description": "Executes the OpenCV Yolo detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
+      "tasks": [
+        "OCV YOLO DETECTION (WITH AUTO-ORIENTATION) TASK"
+      ]
+    }
+  ]
+}

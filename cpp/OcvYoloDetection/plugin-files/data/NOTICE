@@ -1,0 +1,11 @@
+This software makes use of a data model derived from third party software:
+
+--------------------------------------------------------------------------
+
+# yolov3.weights
+trained on COCO dataset by Joseph Redmon and obtained from https://pjreddie.com/media/files/yolov3.weights
+
+https://github.com/pjreddie/darknet/blob/master/cfg/yolov3.cfg
+https://github.com/pjreddie/darknet/blob/master/data/coco.names
+
+?! Creative Commons Zero v1.0 Universal License http://creativecommons.org/publicdomain/zero/1.0/ ?!
