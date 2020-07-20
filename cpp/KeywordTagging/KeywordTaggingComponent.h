@@ -42,17 +42,13 @@ public:
 
     bool Close() override;
 
-    MPFDetectionError GetDetections(const MPFGenericJob &job,
-            std::vector<MPFGenericTrack> &tags) override;
+    std::vector<MPFGenericTrack> GetDetections(const MPFGenericJob &job) override;
 
-    MPFDetectionError GetDetections(const MPFImageJob &job,
-            std::vector<MPFImageLocation> &tags) override;
+    std::vector<MPFImageLocation> GetDetections(const MPFImageJob &job) override;
 
-    MPFDetectionError GetDetections(const MPFAudioJob &job,
-            std::vector<MPFAudioTrack> &tags) override;
+    std::vector<MPFAudioTrack> GetDetections(const MPFAudioJob &job) override;
 
-    MPFDetectionError GetDetections(const MPFVideoJob &job,
-            std::vector<MPFVideoTrack> &tags) override;
+    std::vector<MPFVideoTrack> GetDetections(const MPFVideoJob &job) override;
 
     bool Supports(MPFDetectionDataType data_type) override;
 

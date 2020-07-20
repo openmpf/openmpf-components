@@ -100,9 +100,8 @@ void runKeywordTagging(const std::string &uri_path, KeywordTagger &tagger,
                        std::vector<MPFGenericTrack> &text_tags,
                        const std::map<std::string, std::string> &custom = {}) {
     MPFGenericJob job = createGenericJob(uri_path, custom);
-    MPFDetectionError rc = tagger.GetDetections(job, text_tags);
+    text_tags = tagger.GetDetections(job);
 
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
     ASSERT_FALSE(text_tags.empty());
 }
 
@@ -111,6 +110,8 @@ TEST(KEYWORDTAGGING, TaggingTest) {
     std::vector<MPFGenericTrack> results;
     std::map<std::string, std::string> custom_properties_disabled = {{"FULL_REGEX_SEARCH", "false"}};
     std::map<std::string, std::string> custom_properties = {{}};
+
+    std::vector<MPFImageLocation> result;
 
     tagger.SetRunDirectory("../plugin");
 

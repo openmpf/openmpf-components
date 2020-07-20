@@ -27,19 +27,30 @@
 #ifndef OPENMPF_COMPONENTS_TESSERACTOCRTEXTDETECTION_H
 #define OPENMPF_COMPONENTS_TESSERACTOCRTEXTDETECTION_H
 
-#include "adapters/MPFImageDetectionComponentAdapter.h"
-#include <MPFImageReader.h>
-#include <MPFDetectionComponent.h>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include <opencv2/opencv.hpp>
-#include <log4cxx/logger.h>
 #include <boost/regex.hpp>
 #include <boost/locale.hpp>
 
-#include <tesseract/baseapi.h>
-#include <tesseract/osdetect.h>
+#include <log4cxx/logger.h>
+
+#include <opencv2/opencv.hpp>
+
 #include <QHash>
 #include <QString>
+
+#include <tesseract/baseapi.h>
+#include <tesseract/osdetect.h>
+
+#include <adapters/MPFImageDetectionComponentAdapter.h>
+#include <MPFImageReader.h>
+#include <MPFDetectionComponent.h>
+
 
 namespace MPF {
 
@@ -47,22 +58,18 @@ namespace MPF {
 
         enum Text_type{Unknown, Structured, Unstructured};
 
+        class TessApiWrapper;
+
         class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
 
         public:
-            TesseractOCRTextDetection() = default;
-
-            ~TesseractOCRTextDetection();
-
             bool Init() override;
 
             bool Close() override;
 
-            MPFDetectionError GetDetections(const MPFImageJob &job,
-                                            std::vector<MPFImageLocation> &locations) override;
+            std::vector<MPFImageLocation> GetDetections(const MPFImageJob &job) override;
 
-            MPFDetectionError GetDetections(const MPFGenericJob &job,
-                                            std::vector<MPFGenericTrack> &tracks) override;
+            std::vector<MPFGenericTrack> GetDetections(const MPFGenericJob &job) override;
 
             std::string GetDetectionType() override;
 
@@ -84,9 +91,11 @@ namespace MPF {
                 int adaptive_thrs_pixel;
                 int psm;
                 int oem;
+                int max_pixels;
                 int max_scripts;
                 int max_text_tracks;
                 int min_height;
+                int invalid_min_image_size;
                 int adaptive_hist_tile_size;
                 int max_parallel_ocr_threads;
                 int max_parallel_pdf_threads;
@@ -143,7 +152,7 @@ namespace MPF {
 
                 std::set<std::string> ocr_lang_inputs;
                 log4cxx::LoggerPtr hw_logger_;
-                std::map<std::pair<int, std::string>, tesseract::TessBaseAPI *> *tess_api_map;
+                std::map<std::pair<int, std::string>, TessApiWrapper> *tess_api_map;
             };
 
             struct Image_results{
@@ -191,51 +200,46 @@ namespace MPF {
                 }
             };
 
-            bool process_parallel_pdf_pages(TesseractOCRTextDetection::PDF_page_inputs &page_inputs,
-                                            TesseractOCRTextDetection::PDF_page_results &page_results);
+            bool process_ocr_text(Properties &detection_properties, const MPFImageJob &job, const OCR_output &ocr_out,
+                    const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                    int page_num = -1);
 
-            bool process_serial_pdf_pages(TesseractOCRTextDetection::PDF_page_inputs &page_inputs,
-                                            TesseractOCRTextDetection::PDF_page_results &page_results);
+
+            void process_parallel_pdf_pages(PDF_page_inputs &page_inputs, PDF_page_results &page_results);
+            void process_serial_pdf_pages(PDF_page_inputs &page_inputs, PDF_page_results &page_results);
+
             log4cxx::LoggerPtr hw_logger_;
             QHash<QString, QString> parameters;
             OCR_filter_settings default_ocr_fset;
 
-            // Map of {OCR engine, language} pairs to Tesseract API pointers
-            std::map<std::pair<int, std::string>, tesseract::TessBaseAPI *> tess_api_map;
+            // Map of {OCR engine, language} pairs to TessApiWrapper
+            std::map<std::pair<int, std::string>, TessApiWrapper> tess_api_map;
 
-            static bool get_tesseract_detections(TesseractOCRTextDetection::OCR_job_inputs &input,
-                                                 TesseractOCRTextDetection::Image_results &result);
-            static bool process_parallel_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
-                                                    TesseractOCRTextDetection::Image_results &results);
-            static bool process_serial_image_runs(TesseractOCRTextDetection::OCR_job_inputs &inputs,
-                                                  TesseractOCRTextDetection::Image_results &results);
 
-            bool preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
-                                  MPFDetectionError &job_status);
+            static void get_tesseract_detections(OCR_job_inputs &input, Image_results &result);
+            
+            static void process_parallel_image_runs(OCR_job_inputs &inputs, Image_results &results);
+            static void process_serial_image_runs(OCR_job_inputs &inputs, Image_results &results);
 
-            static bool process_tesseract_lang_model(TesseractOCRTextDetection::OCR_job_inputs &input,
-                                                     TesseractOCRTextDetection::OCR_results  &result);
+            void preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset);
+            void rescale_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset);
+
+            static void process_tesseract_lang_model(OCR_job_inputs &input, OCR_results  &result);
 
             void set_default_parameters();
 
             void set_read_config_parameters();
 
-            void load_settings(const MPFJob &job, TesseractOCRTextDetection::OCR_filter_settings &ocr_fset, const Text_type &text_type = Unknown);
+            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, const Text_type &text_type = Unknown);
 
             void sharpen(cv::Mat &image, double weight);
 
-
-            bool process_ocr_text(Properties &detection_properties, const MPFImageJob &job, const OCR_output &ocr_out,
-                                      MPFDetectionError &job_status,
-                                      const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
-                                      int page_num = -1);
-
             static std::string process_osd_lang(const std::string &script_type,
-                                                const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset);
+                                                const OCR_filter_settings &ocr_fset);
 
             void get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job,
-                         TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
-                         Properties &detection_properties, MPFDetectionError &job_status,
+                         OCR_filter_settings &ocr_fset,
+                         Properties &detection_properties,
                          std::string &tessdata_script_dir, std::set<std::string> &missing_languages);
 
             static std::string return_valid_tessdir(const std::string &job_name,
@@ -255,10 +259,38 @@ namespace MPF {
                                                    std::set<std::string> &missing_languages,
                                                    std::set<std::string> &found_languages);
 
-            bool check_default_languages(const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+            void check_default_languages(const OCR_filter_settings &ocr_fset,
                                          const std::string &job_name,
                                          const std::string &run_dir,
                                          MPFDetectionError &job_status);
+        };
+
+        // The primary reason this class exists is that tesseract::TessBaseAPI segfaults when copying or moving.
+        // It is very easy to unintentionally invoke a copy constructor (e.g. forgetting a &),
+        // so we disable copying and moving in this class.
+        class TessApiWrapper {
+        public:
+            TessApiWrapper(const std::string& data_path, const std::string& language, tesseract::OcrEngineMode oem);
+
+            TessApiWrapper(const TessApiWrapper&) = delete;
+            TessApiWrapper& operator=(const TessApiWrapper&) = delete;
+            TessApiWrapper(TessApiWrapper&&) = delete;
+            TessApiWrapper& operator=(TessApiWrapper&&) = delete;
+
+            void SetPageSegMode(tesseract::PageSegMode mode);
+
+            void SetImage(const cv::Mat& image);
+
+            std::string GetUTF8Text();
+
+            int MeanTextConf();
+
+            void Clear();
+
+            bool DetectOS(OSResults* results);
+
+        private:
+            tesseract::TessBaseAPI tess_api_;
         };
 
     }

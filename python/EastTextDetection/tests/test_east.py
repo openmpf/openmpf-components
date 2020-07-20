@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2019 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2019 The MITRE Corporation                                      #
+# Copyright 2020 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -23,7 +23,6 @@
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
-from __future__ import division, print_function
 
 import sys
 import os
@@ -181,7 +180,9 @@ class TestEast(unittest.TestCase):
         # Check that there are 6 horizontal detections and 3 at about -25 degs
         round5 = lambda x: int(5 * round(float(x) / 5.0)) % 360
         rot_counts = Counter([round5(p['ROTATION']) for p in props])
-        self.assertItemsEqual(rot_counts, {0:6, 335:3})
+        self.assertEqual(2, len(rot_counts))
+        self.assertEqual(6, rot_counts[0])
+        self.assertEqual(3, rot_counts[335])
 
     def test_nms(self):
         comp = EastComponent()
@@ -500,8 +501,10 @@ class TestEast(unittest.TestCase):
         detections = [d for d in detections if d.height > 200 or d.width > 200]
 
         # Check that there are 3 horizontal and 3 vertical detections
-        rots = [round5(d.detection_properties['ROTATION']) for d in detections]
-        self.assertItemsEqual(Counter(rots), {0:3, 90:3})
+        rots = Counter([round5(d.detection_properties['ROTATION']) for d in detections])
+        self.assertEqual(2, len(rots))
+        self.assertEqual(3, rots[0])
+        self.assertEqual(3, rots[90])
 
     @staticmethod
     def _get_test_file(filename):

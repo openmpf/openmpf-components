@@ -38,6 +38,7 @@
 
 #include <log4cxx/xml/domconfigurator.h>
 #include <Utils.h>
+#include <MPFDetectionException.h>
 #include "JSON.h"
 
 using namespace MPF;
@@ -409,8 +410,7 @@ string KeywordTagger::GetDetectionType() {
     return "TEXT";
 }
 
-MPFDetectionError KeywordTagger::GetDetections(const MPFGenericJob &job,
-        vector<MPFGenericTrack> &tags) {
+vector<MPFGenericTrack> KeywordTagger::GetDetections(const MPFGenericJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
     MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
     map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
@@ -420,6 +420,7 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFGenericJob &job,
     MPFGenericTrack text_tags;
 
     wstring text;
+    vector<MPFGenericTrack> tags;
 
     if (job.has_feed_forward_track) {
         string temp = "";
@@ -433,7 +434,7 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFGenericJob &job,
             temp = properties.at("TRANSCRIPT");
         } else {
             LOG4CXX_DEBUG(hw_logger_, "Previous detection is missing text or transcript property");
-            return MPF_MISSING_PROPERTY;
+            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Previous detection is missing text or transcript property");
         }
 
         text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
@@ -455,11 +456,10 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFGenericJob &job,
     }
 
 
-    return job_status;
+    return tags;
 }
 
-MPFDetectionError KeywordTagger::GetDetections(const MPFAudioJob &job,
-                                               vector<MPFAudioTrack> &tags) {
+vector<MPFAudioTrack> KeywordTagger::GetDetections(const MPFAudioJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
     MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
     map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
@@ -467,6 +467,7 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFAudioJob &job,
     load_tags_json(job, job_status, json_kvs_regex);
 
     MPFAudioTrack text_tags;
+    vector<MPFAudioTrack> tags;
 
     wstring text;
 
@@ -479,11 +480,11 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFAudioJob &job,
             text_tags.detection_properties = job.feed_forward_track.detection_properties;
         } else {
             LOG4CXX_DEBUG(hw_logger_, "Detection from previous component is missing transcript property");
-            return MPF_MISSING_PROPERTY;
+            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Detection from previous component is missing transcript property");
         }
     } else {
         LOG4CXX_DEBUG(hw_logger_, "Job is not feed forward");
-        return MPF_MISSING_PROPERTY;
+        throw MPFDetectionException(MPF_MISSING_PROPERTY, "Job is not feed forward");
     }
 
     bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
@@ -494,11 +495,10 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFAudioJob &job,
     }
 
 
-    return job_status;
+    return tags;
 }
 
-MPFDetectionError KeywordTagger::GetDetections(const MPFVideoJob &job,
-                                               vector<MPFVideoTrack> &tags) {
+vector<MPFVideoTrack> KeywordTagger::GetDetections(const MPFVideoJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
     MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
     map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
@@ -506,6 +506,7 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFVideoJob &job,
     load_tags_json(job, job_status, json_kvs_regex);
 
     MPFVideoTrack text_tags;
+    vector<MPFVideoTrack> tags;
 
     wstring text;
 
@@ -518,11 +519,11 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFVideoJob &job,
             text_tags.detection_properties = job.feed_forward_track.detection_properties;
         } else {
             LOG4CXX_DEBUG(hw_logger_, "Detection from previous component is missing text property");
-            return MPF_MISSING_PROPERTY;
+            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Detection from previous component is missing text property");
         }
     } else {
         LOG4CXX_DEBUG(hw_logger_, "Job is not feed forward");
-        return MPF_MISSING_PROPERTY;
+        throw MPFDetectionException(MPF_MISSING_PROPERTY, "Job is not feed forward");
     }
 
     bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
@@ -533,12 +534,12 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFVideoJob &job,
     }
 
 
-    return job_status;
+    return tags;
 }
 
-MPFDetectionError KeywordTagger::GetDetections(const MPFImageJob &job,
-                                               vector<MPFImageLocation> &tags) {
+vector<MPFImageLocation> KeywordTagger::GetDetections(const MPFImageJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
+
 
     MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
     map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
@@ -546,6 +547,7 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFImageJob &job,
     load_tags_json(job, job_status, json_kvs_regex);
 
     MPFImageLocation text_tags;
+    vector<MPFImageLocation> tags;
 
     wstring text;
 
@@ -561,11 +563,12 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFImageJob &job,
 
         } else {
             LOG4CXX_DEBUG(hw_logger_, "Detection from previous component is missing text property");
-            return MPF_MISSING_PROPERTY;
+            throw MPFDetectionException(
+                    MPF_MISSING_PROPERTY, "Detection from previous component is missing text property");
         }
     } else {
         LOG4CXX_DEBUG(hw_logger_, "Job is not feed forward.");
-        return MPF_DETECTION_FAILED;
+        throw MPFDetectionException(MPF_DETECTION_FAILED, "Job is not feed forward");
     }
 
     bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
@@ -575,7 +578,7 @@ MPFDetectionError KeywordTagger::GetDetections(const MPFImageJob &job,
         tags.push_back(text_tags);
     }
 
-    return job_status;
+    return tags;
 }
 
 bool KeywordTagger::Supports(MPFDetectionDataType data_type) {

@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2019 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2019 The MITRE Corporation                                       *
+ * Copyright 2020 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -43,10 +43,8 @@ MPFVideoJob createSceneJob(const std::string &uri){
 void assertScenesDetected(const int &expected, const std::string &video_path,
                                  SceneChangeDetection &scenechange) {
     MPFVideoJob job = createSceneJob(video_path);
-    std::vector<MPFVideoTrack> detections;
-    MPFDetectionError rc = scenechange.GetDetections(job, detections);
+    std::vector<MPFVideoTrack> detections = scenechange.GetDetections(job);
 
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
     ASSERT_FALSE(detections.empty());
 
     ASSERT_TRUE(detections.size() == expected)

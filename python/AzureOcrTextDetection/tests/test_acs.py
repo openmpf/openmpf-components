@@ -24,14 +24,13 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
-import BaseHTTPServer
+import http.server
 import os
-import Queue
+import queue
 import shutil
 import sys
 import threading
+from typing import ClassVar
 import unittest
 
 import cv2
@@ -56,6 +55,8 @@ brotherhood.'''
 
 
 class TestAcs(unittest.TestCase):
+
+    mock_server: ClassVar['MockServer']
 
     @classmethod
     def setUpClass(cls):
@@ -143,7 +144,7 @@ class TestAcs(unittest.TestCase):
 
     def test_video(self):
         test_video_frame_count = 8
-        for i in xrange(test_video_frame_count):
+        for i in range(test_video_frame_count):
             self.set_results_path(get_test_file('orientation/video/results-frame{}.json'.format(i)))
 
         job = mpf.VideoJob('Test', get_test_file('orientation/video/test-vid.avi'), 0, -1, get_test_properties(), {},
@@ -337,8 +338,8 @@ of Darkness'''
 
     def test_multiple_regions_with_merging(self):
         self.set_results_path(get_test_file('multiple-regions/region-test-results.json'))
-        job = mpf.ImageJob('Test', get_test_file('multiple-regions/region-test.png'), get_test_properties(), {}, None)
-        job.job_properties['MERGE_REGIONS'] = 'true'
+        job = mpf.ImageJob('Test', get_test_file('multiple-regions/region-test.png'),
+                           get_test_properties(MERGE_REGIONS='true'), {}, None)
 
         detections = list(AcsOcrComponent().get_detections_from_image(job))
         self.assertEqual(1, len(detections))
@@ -397,9 +398,8 @@ of Darkness'''
 
     def test_multiple_regions_with_rotation_and_merging(self):
         self.set_results_path(get_test_file('multiple-regions/region-test-10deg-results.json'))
-        job = mpf.ImageJob('Test', get_test_file('multiple-regions/region-test-10deg.png'), get_test_properties(), {},
-                           None)
-        job.job_properties['MERGE_REGIONS'] = 'true'
+        job = mpf.ImageJob('Test', get_test_file('multiple-regions/region-test-10deg.png'),
+                           get_test_properties(MERGE_REGIONS='true'), {}, None)
 
         detections = list(AcsOcrComponent().get_detections_from_image(job))
         self.assertEqual(1, len(detections))
@@ -437,10 +437,10 @@ of Darkness'''
         self.assertEqual(expected_text, detection.detection_properties['TEXT'])
         self.assertEqual('zh-Hans', detection.detection_properties['TEXT_LANGUAGE'])
 
-        chinese_seven = '\xe4\xb8\x83'
+        chinese_seven = '\u4e03'
         self.assert_contains_tag(detection, 'TAG_' + chinese_seven, 'Should be able to handle foreign characters.')
 
-        chinese_eight = '\xe5\x85\xab'
+        chinese_eight = '\u516b'
         self.assert_contains_tag(detection, 'TAG_' + chinese_eight,
                                  'Should be able to handle regex with foreign characters.')
 
@@ -457,7 +457,7 @@ of Darkness'''
 
 
     def test_no_results_video(self):
-        for i in xrange(3):
+        for i in range(3):
             self.set_results_path(get_test_file('no-results/black-results.json'))
 
         job = mpf.VideoJob('Test', get_test_file('no-results/black.avi'), 0, 2, get_test_properties(), {}, None)
@@ -547,36 +547,61 @@ of Darkness'''
 
 
 
-def get_test_properties():
-    return dict(ACS_URL=os.getenv('ACS_URL', 'http://localhost:10669/vision/v1.0/ocr'),
-                ACS_SUBSCRIPTION_KEY=os.getenv('ACS_SUBSCRIPTION_KEY', 'test_key'),
-                TAGGING_FILE=get_test_file('test-text-tags.json'))
+def get_test_properties(**extra_properties):
+    return {
+        'ACS_URL': os.getenv('ACS_URL', 'http://localhost:10669/vision/v1.0/ocr'),
+        'ACS_SUBSCRIPTION_KEY': os.getenv('ACS_SUBSCRIPTION_KEY', 'test_key'),
+        'TAGGING_FILE': get_test_file('test-text-tags.json'),
+        **extra_properties
+    }
 
 
 def get_test_file(filename):
     return os.path.join(os.path.dirname(__file__), 'data', filename)
 
 
-class MockRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):
+
+class MockServer(http.server.HTTPServer):
+    def __init__(self):
+        super(MockServer, self).__init__(('', 10669), MockRequestHandler)
+        self._results_path_queue = queue.Queue()
+        threading.Thread(target=self.serve_forever).start()
+
+    def set_results_path(self, results_path):
+        self._results_path_queue.put_nowait(results_path)
+
+    def get_results_path(self):
+        return self._results_path_queue.get()
+
+    def drain_queue(self):
+        try:
+            while not self._results_path_queue.empty():
+                self._results_path_queue.get_nowait()
+        except queue.Empty:
+            pass
+
+
+class MockRequestHandler(http.server.BaseHTTPRequestHandler):
+    server: MockServer
 
     def do_POST(self):
         results_path = self.server.get_results_path()
 
-        if not self.headers.getheader('Ocp-Apim-Subscription-Key'):
+        if not self.headers['Ocp-Apim-Subscription-Key']:
             self.send_error(403, 'Expected the Ocp-Apim-Subscription-Key header to contain the subscription key.')
             return
 
-        if self.headers.getheader('Content-Type') != 'application/octet-stream':
+        if self.headers['Content-Type'] != 'application/octet-stream':
             self.send_error(415, 'Expected content type to be application/octet-stream')
             return
 
-        content_len = int(self.headers.getheader('Content-Length'))
+        content_len = int(self.headers['Content-Length'])
         post_body = self.rfile.read(content_len)
         self._validate_frame(post_body)
 
         self.send_response(200)
         self.end_headers()
-        with open(results_path) as f:
+        with open(results_path, 'rb') as f:
             shutil.copyfileobj(f, self.wfile)
 
 
@@ -586,7 +611,7 @@ class MockRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):
             self.send_error(400, msg)
             raise Exception(msg)
 
-        if not post_body.startswith('\x89PNG\x0d\x0a\x1a\x0a'):
+        if not post_body.startswith(b'\x89PNG\x0d\x0a\x1a\x0a'):
             msg = 'Expected a png file, but magic bytes were wrong.'
             self.send_error(400, msg)
             raise Exception(msg)
@@ -619,24 +644,6 @@ class MockRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):
             raise Exception(msg)
 
 
-class MockServer(BaseHTTPServer.HTTPServer, object):
-    def __init__(self):
-        super(MockServer, self).__init__(('', 10669), MockRequestHandler)
-        self._results_path_queue = Queue.Queue()
-        threading.Thread(target=self.serve_forever).start()
-
-    def set_results_path(self, results_path):
-        self._results_path_queue.put_nowait(results_path)
-
-    def get_results_path(self):
-        return self._results_path_queue.get()
-
-    def drain_queue(self):
-        try:
-            while not self._results_path_queue.empty():
-                self._results_path_queue.get_nowait()
-        except Queue.Empty:
-            pass
 
 
 if __name__ == '__main__':

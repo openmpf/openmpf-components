@@ -89,86 +89,79 @@ void print_detection_properties(Properties properties, float confidence) {
 }
 
 int main(int argc, char *argv[]) {
+    try {
+        if ((argc < 3)) {
+            print_usage(argv);
+            return 0;
+        }
 
-    if ((argc < 3)) {
-        print_usage(argv);
-        return 0;
-    }
+        std::string media_option(argv[1]);
+        std::string option_2(argv[2]);
+        std::string uri = "";
+        bool enable_osd = false;
 
-    std::string media_option(argv[1]);
-    std::string option_2(argv[2]);
-    std::string uri = "";
-    bool enable_osd = false;
+        Properties algorithm_properties;
+        Properties media_properties;
+        std::string job_name("OCR_test");
+        algorithm_properties["TAGGING_FILE"] = "text-tags.json";
+        algorithm_properties["THRS_FILTER"] = "false";
+        algorithm_properties["HIST_FILTER"] = "false";
+        algorithm_properties["SHARPEN"] = "1.0";
 
-    Properties algorithm_properties;
-    Properties media_properties;
-    std::string job_name("OCR_test");
-    algorithm_properties["TAGGING_FILE"] = "text-tags.json";
-    algorithm_properties["THRS_FILTER"] = "false";
-    algorithm_properties["HIST_FILTER"] = "false";
-    algorithm_properties["SHARPEN"] = "1.0";
+        if (option_2 == "--osd") {
+            uri = argv[3];
+            algorithm_properties["ENABLE_OSD_AUTOMATION"] = "true";
+            enable_osd = true;
+        }
+        else {
+            algorithm_properties["ENABLE_OSD_AUTOMATION"] = "false";
+            uri = argv[2];
+        }
 
-    if (option_2 == "--osd") {
-        uri = argv[3];
-        algorithm_properties["ENABLE_OSD_AUTOMATION"] = "true";
-        enable_osd = true;
-    } else {
-        algorithm_properties["ENABLE_OSD_AUTOMATION"] = "false";
-        uri = argv[2];
-    }
-    
-    if (argc == 4 && !enable_osd) {
-        algorithm_properties["TESSERACT_LANGUAGE"] = argv[3];
-    } else if(argc == 5 && enable_osd) {
-        algorithm_properties["TESSERACT_LANGUAGE"] = argv[4];
-    }
+        if (argc == 4 && !enable_osd) {
+            algorithm_properties["TESSERACT_LANGUAGE"] = argv[3];
+        }
+        else if (argc == 5 && enable_osd) {
+            algorithm_properties["TESSERACT_LANGUAGE"] = argv[4];
+        }
 
-    // Instantiate the component.
-    TesseractOCRTextDetection im;
-    im.SetRunDirectory("./plugin");
-    im.Init();
+        // Instantiate the component.
+        TesseractOCRTextDetection im;
+        im.SetRunDirectory("./plugin");
+        im.Init();
 
-    if (media_option == "-g") {
-        // Run uri as a generic data file.
-        std::cout << "Running job on generic data uri: " << uri << std::endl;
-        MPFGenericJob job(job_name, uri, algorithm_properties, media_properties);
+        if (media_option == "-g") {
+            // Run uri as a generic data file.
+            std::cout << "Running job on generic data uri: " << uri << std::endl;
+            MPFGenericJob job(job_name, uri, algorithm_properties, media_properties);
 
-        // Declare the vector of tracks to be filled in by the component.
-        std::vector<MPFGenericTrack> tracks;
-
-        // Pass the job to the ocr component.
-        if (MPF_DETECTION_SUCCESS == im.GetDetections(job, tracks)) {
+            std::vector<MPFGenericTrack> tracks = im.GetDetections(job);
             std::cout << "Number of tracks: " << tracks.size() << std::endl << std::endl;
             for (int i = 0; i < tracks.size(); i++) {
                 std::cout << "Page number: " << tracks[i].detection_properties.at("PAGE_NUM") << std::endl;
                 print_detection_properties(tracks[i].detection_properties, tracks[i].confidence);
             }
-        } else {
-            std::cout << "GetDetections failed" << std::endl;
         }
+        else if (media_option == "-i") {
+            // Run uri as an image data file.
+            std::cout << "Running job on image data uri: " << uri << std::endl;
+            MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
 
-    } else if (media_option == "-i") {
-        // Run uri as an image data file.
-        std::cout << "Running job on image data uri: " << uri << std::endl;
-        MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
-
-        // Declare the vector of image locations to be filled in by the component.
-        std::vector<MPFImageLocation> locations;
-
-        // Pass the job to the ocr component.
-        if (MPF_DETECTION_SUCCESS == im.GetDetections(job, locations)) {
+            std::vector<MPFImageLocation> locations = im.GetDetections(job);
             std::cout << "Number of image locations: " << locations.size() << std::endl << std::endl;
             for (int i = 0; i < locations.size(); i++) {
                 print_detection_properties(locations[i].detection_properties, locations[i].confidence);
             }
-        } else {
-            std::cout << "GetDetections failed" << std::endl;
+        }
+        else {
+            print_usage(argv);
         }
 
-    } else {
-        print_usage(argv);
+        im.Close();
+        return 0;
     }
-
-    im.Close();
-    return 0;
+    catch (const std::exception &ex) {
+        std::cerr << "Error: " << ex.what() << std::endl;
+        return 1;
+    }
 }

@@ -83,9 +83,7 @@ void runImageDetection(const std::string &image_path, TesseractOCRTextDetection 
                        const std::map<std::string, std::string> &custom = {},
                        bool wild_mode = false) {
     MPFImageJob job = createImageJob(image_path, custom, wild_mode);
-    MPFDetectionError rc = ocr.GetDetections(job, image_locations);
-
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    image_locations = ocr.GetDetections(job);
     ASSERT_FALSE(image_locations.empty());
 }
 
@@ -93,19 +91,29 @@ void runDocumentDetection(const std::string &image_path, TesseractOCRTextDetecti
                           std::vector<MPFGenericTrack> &generic_tracks,
                           const std::map<std::string, std::string> &custom = {}) {
     MPFGenericJob job = createPDFJob(image_path, custom);
-    MPFDetectionError rc = ocr.GetDetections(job, generic_tracks);
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    generic_tracks = ocr.GetDetections(job);
     ASSERT_FALSE(generic_tracks.empty());
 }
 
-void assertEmptyDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
+void assertEmptyImageDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
                           std::vector<MPFImageLocation> &image_locations,
                           const std::map<std::string, std::string> &custom = {},
                           bool wild_mode = false, MPFDetectionError error = MPF_DETECTION_SUCCESS) {
     MPFImageJob job = createImageJob(image_path, custom, wild_mode);
-    MPFDetectionError rc = ocr.GetDetections(job, image_locations);
 
-    ASSERT_EQ(rc, error);
+    try {
+        image_locations = ocr.GetDetections(job);
+        if (error != MPF_DETECTION_SUCCESS) {
+            FAIL() << "Expected error type: " << error;
+        }
+    }
+    catch (const MPFDetectionException &ex) {
+        ASSERT_EQ(error, ex.error_code);
+    }
+    catch (...) {
+        FAIL() << "Caught exception but expected error type: " << error;
+    }
+
     ASSERT_TRUE(image_locations.empty());
 }
 
@@ -114,8 +122,19 @@ void assertEmptyDocumentDetection(const std::string &image_path, TesseractOCRTex
                                   const std::map<std::string, std::string> &custom = {},
                                   MPFDetectionError error = MPF_DETECTION_SUCCESS) {
     MPFGenericJob job = createPDFJob(image_path, custom);
-    MPFDetectionError rc = ocr.GetDetections(job, generic_tracks);
-    ASSERT_EQ(rc, error);
+    try {
+        generic_tracks = ocr.GetDetections(job);
+        if (error != MPF_DETECTION_SUCCESS) {
+            FAIL() << "Expected error type: " << error;
+        }
+    }
+    catch (const MPFDetectionException &ex) {
+        ASSERT_EQ(error, ex.error_code);
+    }
+    catch (...) {
+        FAIL() << "Caught exception but expected error type: " << error;
+    }
+
     ASSERT_TRUE(generic_tracks.empty());
 }
 
@@ -179,7 +198,7 @@ void convert_results(std::vector<MPFImageLocation> &im_track, const std::vector<
         im_track.push_back(image_location);
     }
 }
-/*
+
 TEST(TESSERACTOCR, ImageProcessingTest) {
 
     // Ensure contrast and unstructured image processing settings are enabled.
@@ -202,7 +221,7 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
 
     results.clear();
     custom_properties = {{"MIN_HEIGHT", "60"}};
-    ASSERT_NO_FATAL_FAILURE(assertEmptyDetection("data/blurry.png", ocr, results,  custom_properties));
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blurry.png", ocr, results,  custom_properties));
 
     results.clear();
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/gradient.png", ocr, results,  custom_properties));
@@ -359,7 +378,7 @@ TEST(TESSERACTOCR, MissingLanguagesTest) {
                          {"MODELS_DIR_PATH",       "data/model_dir"},
                          {"ENABLE_OSD_AUTOMATION", "false"}};
 
-    ASSERT_NO_FATAL_FAILURE(assertEmptyDetection("data/eng-bul.png", ocr, results,
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/eng-bul.png", ocr, results,
                                                       custom_properties, false, MPF_COULD_NOT_OPEN_DATAFILE));
     results.clear();
     results_pdf.clear();
@@ -376,7 +395,7 @@ TEST(TESSERACTOCR, MissingLanguagesTest) {
                          {"MAX_PARALLEL_PAGE_THREADS", "0"},
                          {"MAX_PARALLEL_SCRIPT_THREADS", "0"}};
 
-    ASSERT_NO_FATAL_FAILURE(assertEmptyDetection("data/eng-bul.png", ocr, results,
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/eng-bul.png", ocr, results,
                                                       custom_properties, false, MPF_COULD_NOT_OPEN_DATAFILE));
     results.clear();
     results_pdf.clear();
@@ -388,6 +407,90 @@ TEST(TESSERACTOCR, MissingLanguagesTest) {
 
     boost::filesystem::remove_all("data/model_dir");
     ASSERT_TRUE(ocr.Close());
+}
+
+TEST(TESSERACTOCR, RescaleTest) {
+
+    // Ensure proper rescaling of images within Tesseract limits.
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    std::map<std::string,std::string> custom_properties = {};
+
+    // Expected image to be discarded due to invalid dimensions.
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_exceed_tesseract_limit.png", ocr, results,
+                            custom_properties, false, MPF_BAD_FRAME_SIZE));
+
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_tesseract_limit.png", ocr, results,
+                                custom_properties, false, MPF_BAD_FRAME_SIZE));
+
+    // If narrow height is not checked allow image to process.
+    custom_properties = {{"INVALID_MIN_IMAGE_SIZE", "-1"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_tesseract_limit.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Image should be rescaled to fit.
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_tesseract_rescalable.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "100000000"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_within_tesseract_limit.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "0.00000001"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_within_tesseract_limit.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Image should be rescaled to fit pixel constraints.
+    custom_properties = {{"MAX_PIXELS", "120000"}, {"STRUCTURED_TEXT_SCALE", "100000000"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Image should be rescaled to fit pixel constraints.
+    custom_properties = {{"MAX_PIXELS", "120000"}, {"STRUCTURED_TEXT_SCALE", "0.00000001"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Sanity check that rescaling is called outside of OSD processing when OSD is disabled.
+    // Image should be rescaled to fit.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_tesseract_rescalable.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "100000000"}, {"ENABLE_OSD_AUTOMATION", "false"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_within_tesseract_limit.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Ensure image scaling is capped at a certain point.
+    custom_properties = {{"STRUCTURED_TEXT_SCALE", "0.00000001"}, {"ENABLE_OSD_AUTOMATION", "false"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_within_tesseract_limit.png", ocr, results,
+                            custom_properties));
+    results.clear();
+
+    // Expected rescale failure due to min image size constraint.
+    custom_properties = {{"INVALID_MIN_IMAGE_SIZE", "60"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_tesseract_rescalable.png", ocr, results,
+                                custom_properties, false, MPF_BAD_FRAME_SIZE));
+    results.clear();
+
+    // Expected rescale failure due to max pixels and min image size conflict.
+    custom_properties = {{"MAX_PIXELS", "10"}};
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank_within_tesseract_limit.png", ocr, results,
+                            custom_properties, false, MPF_BAD_FRAME_SIZE));
+    results.clear();
 }
 
 TEST(TESSERACTOCR, TwoPassOCRTest) {
@@ -451,7 +554,6 @@ TEST(TESSERACTOCR, TrackFilterTest) {
 
     ASSERT_TRUE(ocr.Close());
 }
-*/
 
 TEST(TESSERACTOCR, OCRTest) {
 
@@ -527,7 +629,7 @@ TEST(TESSERACTOCR, OCRTest) {
 
     ASSERT_TRUE(ocr.Close());
 }
-
+/*
 
 TEST(TESSERACTOCR, BlankTest) {
 
@@ -538,7 +640,7 @@ TEST(TESSERACTOCR, BlankTest) {
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
 
     // Check no text detected for blank image.
-    ASSERT_NO_FATAL_FAILURE(assertEmptyDetection("data/blank.png", ocr, results, custom_properties));
+    ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/blank.png", ocr, results, custom_properties));
 
     ASSERT_TRUE(ocr.Close());
 }
@@ -996,6 +1098,9 @@ TEST(TESSERACTOCR, RedundantFilterTest) {
 
     ASSERT_TRUE(ocr.Close());
 }
+ */
+
+
 
 
 

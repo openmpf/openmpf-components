@@ -1,0 +1,62 @@
+{
+    "recordingsUrl": "http://localhost:10669/api/speechtotext/v2.0/recordings/poverty.mp3?test_queries",
+    "reportFileUrl": "test.report.file",
+    "resultsUrls": {
+        "channel_0": "http://localhost:10669/api/speechtotext/v2.0/outputs/test_diarization_disabled.json?test_queries"
+    },
+    "models": [
+        {
+            "modelKind": "AcousticAndLanguage",
+            "datasets": [],
+            "lastActionDateTime": "2019-11-02T01:08:30Z",
+            "status": "Succeeded",
+            "id": "85e81c06-e98b-4104-8f5b-93b3a61e9f0a",
+            "createdDateTime": "2019-11-02T00:02:28Z",
+            "locale": "en-US",
+            "name": "20191007",
+            "description": "en-US base model",
+            "properties": {
+                "Purpose": "OnlineTranscription,BatchTranscription,LanguageAdaptation,LanguageOnlineInterpolation",
+                "ModelClass": "unified-v4-pch",
+                "VadKind": "Tuned",
+                "UseOnlineInterpolation": "False",
+                "IsDynamicGrammarSupported": "True",
+                "UsesHalide": "True"
+            }
+        },
+        {
+            "modelKind": "AcousticAndLanguage",
+            "datasets": [],
+            "lastActionDateTime": "2019-11-02T01:08:30Z",
+            "status": "Succeeded",
+            "id": "85e81c06-e98b-4104-8f5b-93b3a61e9f0a",
+            "createdDateTime": "2019-11-02T00:02:28Z",
+            "locale": "en-US",
+            "name": "20191007",
+            "description": "en-US base model",
+            "properties": {
+                "Purpose": "OnlineTranscription,BatchTranscription,LanguageAdaptation,LanguageOnlineInterpolation",
+                "ModelClass": "unified-v4-pch",
+                "VadKind": "Tuned",
+                "UseOnlineInterpolation": "False",
+                "IsDynamicGrammarSupported": "True",
+                "UsesHalide": "True"
+            }
+        }
+    ],
+    "lastActionDateTime": "2020-06-11T21:22:16Z",
+    "status": "Succeeded",
+    "id": "b1993ed0-2844-4e80-9a9d-dc63d9392ef1",
+    "createdDateTime": "2020-06-11T21:21:31Z",
+    "locale": "en-US",
+    "name": "test_diarization_disabled",
+    "description": "test_diarization_disabled",
+    "properties": {
+        "AddWordLevelTimestamps": "True",
+        "AddDiarization": "False",
+        "ProfanityFilterMode": "Masked",
+        "PunctuationMode": "DictatedAndAutomatic",
+        "CustomPronunciation": "False",
+        "Duration": "00:01:00"
+    }
+}

@@ -1,0 +1,137 @@
+{
+    "AudioFileResults": [
+        {
+            "AudioFileName": "Channel.0.wav",
+            "AudioFileUrl": null,
+            "AudioLengthInSeconds": 5.02,
+            "CombinedResults": [
+                {
+                    "ChannelNumber": null,
+                    "Lexical": "there's three left on the left side the one closest to us",
+                    "ITN": "there's 3 left on the left side the one closest to us",
+                    "MaskedITN": "There's 3 left on the left side the one closest to us",
+                    "Display": "There's 3 left on the left side the one closest to us."
+                }
+            ],
+            "SegmentResults": [
+                {
+                    "RecognitionStatus": "Success",
+                    "ChannelNumber": null,
+                    "SpeakerId": null,
+                    "Offset": 6300000,
+                    "Duration": 38700000,
+                    "OffsetInSeconds": 0.63,
+                    "DurationInSeconds": 3.87,
+                    "NBest": [
+                        {
+                            "Confidence": 0.938951135,
+                            "Lexical": "there's three left on the left side the one closest to us",
+                            "ITN": "there's 3 left on the left side the one closest to us",
+                            "MaskedITN": "There's 3 left on the left side the one closest to us",
+                            "Display": "There's 3 left on the left side the one closest to us.",
+                            "Sentiment": null,
+                            "Words": [
+                                {
+                                    "Word": "there's",
+                                    "Offset": 9300000,
+                                    "Duration": 4000000,
+                                    "OffsetInSeconds": 0.93,
+                                    "DurationInSeconds": 0.4,
+                                    "Confidence": 0.908183
+                                },
+                                {
+                                    "Word": "three",
+                                    "Offset": 13300000,
+                                    "Duration": 4200000,
+                                    "OffsetInSeconds": 1.33,
+                                    "DurationInSeconds": 0.42,
+                                    "Confidence": 0.994331
+                                },
+                                {
+                                    "Word": "left",
+                                    "Offset": 17500000,
+                                    "Duration": 3200000,
+                                    "OffsetInSeconds": 1.75,
+                                    "DurationInSeconds": 0.32,
+                                    "Confidence": 0.987258
+                                },
+                                {
+                                    "Word": "on",
+                                    "Offset": 20700000,
+                                    "Duration": 1800000,
+                                    "OffsetInSeconds": 2.07,
+                                    "DurationInSeconds": 0.18,
+                                    "Confidence": 0.978082
+                                },
+                                {
+                                    "Word": "the",
+                                    "Offset": 22500000,
+                                    "Duration": 1200000,
+                                    "OffsetInSeconds": 2.25,
+                                    "DurationInSeconds": 0.12,
+                                    "Confidence": 0.931961
+                                },
+                                {
+                                    "Word": "left",
+                                    "Offset": 23700000,
+                                    "Duration": 3100000,
+                                    "OffsetInSeconds": 2.37,
+                                    "DurationInSeconds": 0.31,
+                                    "Confidence": 0.989997
+                                },
+                                {
+                                    "Word": "side",
+                                    "Offset": 26800000,
+                                    "Duration": 4300000,
+                                    "OffsetInSeconds": 2.68,
+                                    "DurationInSeconds": 0.43,
+                                    "Confidence": 0.994455
+                                },
+                                {
+                                    "Word": "the",
+                                    "Offset": 31300000,
+                                    "Duration": 2200000,
+                                    "OffsetInSeconds": 3.13,
+                                    "DurationInSeconds": 0.22,
+                                    "Confidence": 0.85266
+                                },
+                                {
+                                    "Word": "one",
+                                    "Offset": 33500000,
+                                    "Duration": 2000000,
+                                    "OffsetInSeconds": 3.35,
+                                    "DurationInSeconds": 0.2,
+                                    "Confidence": 0.945589
+                                },
+                                {
+                                    "Word": "closest",
+                                    "Offset": 35500000,
+                                    "Duration": 4400000,
+                                    "OffsetInSeconds": 3.55,
+                                    "DurationInSeconds": 0.44,
+                                    "Confidence": 0.983266
+                                },
+                                {
+                                    "Word": "to",
+                                    "Offset": 39900000,
+                                    "Duration": 1400000,
+                                    "OffsetInSeconds": 3.99,
+                                    "DurationInSeconds": 0.14,
+                                    "Confidence": 0.9915
+                                },
+                                {
+                                    "Word": "us",
+                                    "Offset": 41300000,
+                                    "Duration": 3500000,
+                                    "OffsetInSeconds": 4.13,
+                                    "DurationInSeconds": 0.35,
+                                    "Confidence": 0.991077
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
