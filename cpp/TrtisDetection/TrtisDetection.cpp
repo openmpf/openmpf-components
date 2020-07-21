@@ -104,17 +104,23 @@ TrtisJobConfig::TrtisJobConfig(const MPFJob &job){
   const Properties jpr = job.job_properties;
 
   string trtis_server_default = "localhost:8001";
-  char const* tmp_env = std::getenv("TRTIS_SERVER");
-  if (tmp_env != NULL) {
-      trtis_server_default = std::string(tmp_env);
-  }
   trtis_server = get<string>(jpr,"TRTIS_SERVER" , trtis_server_default);
+
+  if (trtis_server.empty()) {
+      char const* tmp_env = std::getenv("TRTIS_SERVER");
+      if (tmp_env != NULL) {
+          trtis_server = std::string(tmp_env);
+      } else {
+          trtis_server = trtis_server_default;
+      }
+  }
+
+  std::cout << "trtis_server: " << trtis_server << std::endl; // DEBUG
 
   model_name    = get<string>(jpr,"MODEL_NAME"   , "ip_irv2_coco");
   model_version = get<int>   (jpr,"MODEL_VERSION", -1);
   maxInferConcurrency = get<size_t>(jpr,"MAX_INFER_CONCURRENCY", 5);
   contextWaitTimeoutSec = get<size_t>(jpr,"CONTEXT_WAIT_TIMEOUT_SEC", 30);
-
 }
 
 /** ****************************************************************************
@@ -368,6 +374,9 @@ vector<uPtrInferCtx*> TrtisDetection::_niGetInferContexts(
   size_t numNewCtx = cfg.maxInferConcurrency - _infCtxs[key].size();
   for(int i=0; i < numNewCtx; i++){
     uPtrInferCtx* ctx = new uPtrInferCtx;
+
+    std::cout << "cfg.trtis_server: " << cfg.trtis_server << std::endl; // DEBUG
+
     NI_CHECK_OK(
       nic::InferGrpcContext::Create(ctx, cfg.trtis_server,
                                          cfg.model_name,
@@ -777,8 +786,9 @@ void TrtisDetection::_ip_irv2_coco_tracker(
 * \returns Tracks collection to which detections will be added
 ***************************************************************************** */
 std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
+  LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
 
- // if (job.has_feed_forward_track) { do something different ?!}
+  // if (job.has_feed_forward_track) { do something different ?!}
   try{
     if(job.data_uri.empty()){
       LOG4CXX_ERROR(_log, "[" << job.job_name << "] Input video file path is empty");
@@ -889,7 +899,10 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 
     for (MPFVideoTrack &track : tracks) {
       video_cap.ReverseTransform(track);
-    }                                                                           LOG4CXX_DEBUG(_log, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
+    }
+
+    LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
+
     return tracks;
 
   }catch(...){
@@ -913,6 +926,8 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 ***************************************************************************** */
 std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob   &job) {
   try{                                                                          LOG4CXX_DEBUG(_log, "Data URI = " << job.data_uri);
+    LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
+
     if(job.data_uri.empty()){
       LOG4CXX_ERROR(_log, "Invalid image file");
       throw MPF_INVALID_DATAFILE_URI;
@@ -955,6 +970,8 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob   
         locations[i].detection_properties["FEATURE"] = Base64::Encode(locations[i].detection_properties["FEATURE"]);
         image_reader.ReverseTransform(locations[i]);
       }                                                                         LOG4CXX_TRACE(_log,"base64 encoded new features in locations vector");
+
+      LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << locations.size() << " detections.");
 
       return locations;
 
