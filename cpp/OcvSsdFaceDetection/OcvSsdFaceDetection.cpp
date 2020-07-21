@@ -236,9 +236,11 @@ void OcvSsdFaceDetection::_assignDetections2Tracks(TrackPtrList             &tra
 MPFImageLocationVec OcvSsdFaceDetection::GetDetections(const MPFImageJob   &job) {
 
   try {                                                                        LOG4CXX_DEBUG(_log, "[" << job.job_name << "Data URI = " << job.data_uri);
+    LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
+
     JobConfig cfg(job);
     if(cfg.lastError != MPF_DETECTION_SUCCESS){
-      throw MPFDetectionException(cfg.lastError,"failed to parse image job configuration parameters");
+      throw MPFDetectionException(cfg.lastError, "failed to parse image job configuration parameters");
     }
     DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfg);
                                                                                LOG4CXX_DEBUG(_log, "[" << job.job_name << "] Number of faces detected = " << detections.size());
@@ -249,6 +251,9 @@ MPFImageLocationVec OcvSsdFaceDetection::GetDetections(const MPFImageJob   &job)
       cfg.ReverseTransform(loc);
       locations.push_back(loc);
     }
+
+    LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << locations.size() << " detections.");
+
     return locations;
 
   }catch(const runtime_error& re){
@@ -316,6 +321,8 @@ MPFVideoTrackVec OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job){
   TrackPtrList      trackPtrs;
 
   try{
+    LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
+
     JobConfig cfg(job);
     if(cfg.lastError != MPF_DETECTION_SUCCESS){
       throw MPFDetectionException(cfg.lastError,"failed to parse video job configuration parameters");
@@ -400,6 +407,8 @@ MPFVideoTrackVec OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job){
     for(auto &mpf_track:mpf_tracks){
       cfg.ReverseTransform(mpf_track);
     }
+
+    LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << mpf_tracks.size() << " tracks.");
 
     return mpf_tracks;
 
