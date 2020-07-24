@@ -452,7 +452,7 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
       }
     }
   }
-  #define DIAGNOSTIC_IMAGES
+  //#define DIAGNOSTIC_IMAGES
   #ifdef DIAGNOSTIC_IMAGES
   cv::Mat lm = cfg.bgrFrame.clone();
   #endif
