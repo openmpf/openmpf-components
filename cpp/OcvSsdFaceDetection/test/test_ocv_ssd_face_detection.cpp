@@ -269,10 +269,6 @@ TEST(OcvSsdFaceDetection, TestOnKnownImage) {
     vector<MPFImageLocation> found_detections = ocv_ssd_face_detection->GetDetections(image_job);
     EXPECT_FALSE(found_detections.empty());
 
-    float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_detections, known_detections);
-    GOUT("Detection comparison score: " << comparison_score);
-    ASSERT_TRUE(comparison_score > comparison_score_threshold);
-
     // create output video to view performance
     ImageGeneration image_generation;
     image_generation.WriteDetectionOutputImage(known_image_file,
@@ -281,6 +277,10 @@ TEST(OcvSsdFaceDetection, TestOnKnownImage) {
 
     WriteDetectionsToFile::WriteVideoTracks(test_output_dir + "/" + output_detections_file,
                                             found_detections);
+
+    float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_detections, known_detections);
+    GOUT("Detection comparison score: " << comparison_score);
+    ASSERT_TRUE(comparison_score > comparison_score_threshold);
 
     EXPECT_TRUE(ocv_ssd_face_detection->Close());
     delete ocv_ssd_face_detection;

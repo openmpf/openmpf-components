@@ -101,23 +101,28 @@ namespace MPF{
   *************************************************************************** */
   class JobConfig{
     public:
-      static log4cxx::LoggerPtr _log;  ///< shared log object
-      size_t minDetectionSize;         ///< minimum bounding box dimension
-      float  confThresh;               ///< detection confidence threshold
-      long   detFrameInterval;         ///< number of frames between looking for new detection (tracking only)
+      static    log4cxx::LoggerPtr _log;  ///< shared log object
+      size_t    minDetectionSize;         ///< minimum bounding box dimension
+      float     confThresh;               ///< detection confidence threshold
+      float     nmsThresh;                ///< non-maximum suppression threshold for removing redundant overlapping bounding boxes
+      float     bboxScaleFactor;          ///< scale factor for  width and height of the detector bounding box
+      bool      rotateDetect;             ///< perform multiple passes at different image rotations to increase detections found
+      OrientVec inferenceOrientations;    ///< ccw rotations of frame to inference (only multiples of 90 are accepted)
+      int       inferenceSize;            ///< max image dimension to use for inferencing e.g. 300 (-1 will use original but run slower)
+      long      detFrameInterval;         ///< number of frames between looking for new detection (tracking only)
 
-      float  maxFeatureDist;           ///< maximum feature distance to maintain track continuity
-      float  maxCenterDist;            ///< maximum spatial distance normalized by diagonal to maintain track continuity
-      long   maxFrameGap;              ///< maximum temporal distance (frames) to maintain track continuity
-      float  maxIOUDist;               ///< maximum for (1 - Intersection/Union) to maintain track continuity
+      float     maxFeatureDist;           ///< maximum feature distance to maintain track continuity
+      float     maxCenterDist;            ///< maximum spatial distance normalized by diagonal to maintain track continuity
+      long      maxFrameGap;              ///< maximum temporal distance (frames) to maintain track continuity
+      float     maxIOUDist;               ///< maximum for (1 - Intersection/Union) to maintain track continuity
 
-      float   widthOdiag;              ///< image (width/diagonal)
-      float   heightOdiag;             ///< image (height/diagonal)
-      size_t  frameIdx;                ///< index of current frame
-      double  frameTimeInSec;          ///< time of current frame in sec
-      double  frameTimeStep;           ///< time interval between frames in sec
+      float     widthOdiag;              ///< image (width/diagonal)
+      float     heightOdiag;             ///< image (height/diagonal)
+      size_t    frameIdx;                ///< index of current frame
+      double    frameTimeInSec;          ///< time of current frame in sec
+      double    frameTimeStep;           ///< time interval between frames in sec
 
-      cv::Mat bgrFrame;                ///< current BGR image frame
+      cv::Mat   bgrFrame;                ///< current BGR image frame
 
       bool  kfDisabled;                ///< if true kalman filtering is disabled
       cv::Mat_<float> RN;              ///< kalman filter measurement noise matrix
@@ -140,16 +145,11 @@ namespace MPF{
     private:
       unique_ptr<MPFImageReader>  _imreaderPtr;
       unique_ptr<MPFVideoCapture> _videocapPtr;
-      string                      _strRN;          ///< kalman filter measurement noise matrix serialized to string
-      string                      _strQN;          ///< kalman filter process noise matrix serialized to string
+      string                      _strRN;           ///< kalman filter measurement noise matrix serialized to string
+      string                      _strQN;           ///< kalman filter process noise matrix serialized to string
+      string                      _strOrientations; ///< ccw rotations of frame to inference (only multiples of 90 are accepted)
 
       void    _parse(const MPFJob &job);
-      cv::Mat _fromString(const string data,
-                          const int    rows,
-                          const int    cols,
-                          const string dt);
-
-
 
   };
 

@@ -63,7 +63,8 @@ namespace MPF{
                   const cv::Mat_<float> &rn,
                   const cv::Mat_<float> &qn);
 
-        #ifndef NDEBUG
+        //#define DIAGNOSTIC_FILES
+        #ifdef DIAGNOSTIC_FILES
           static size_t _objId;
           size_t _myId;
           void dump();

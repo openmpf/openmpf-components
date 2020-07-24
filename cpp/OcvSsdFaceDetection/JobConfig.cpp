@@ -33,7 +33,7 @@ using namespace MPF::COMPONENT;
 *   Parse a string into a opencv matrix
 *   e.g. [1,2,3,4, 5,6,7,8]
 *************************************************************************** */
-cv::Mat JobConfig::_fromString(const string data,const int rows,const int cols,const string dt="f"){
+cv::Mat _fromString(const string data,const int rows,const int cols,const string dt="f"){
   stringstream ss;
   ss << "{\"mat\":{\"type_id\":\"opencv-matrix\""
      << ",\"rows\":" << rows
@@ -47,28 +47,56 @@ cv::Mat JobConfig::_fromString(const string data,const int rows,const int cols,c
 }
 
 /** **************************************************************************
+*   Parse a string into a vector
+*   e.g. [1,2,3,4]
+*************************************************************************** */
+template<typename T>
+vector<T> _fromString(const string data){
+  string::size_type begin = data.find('[') + 1;
+  string::size_type end = data.find(']', begin);
+  stringstream ss( data.substr(begin, end - begin) );
+  vector<T> ret;
+  T val;
+  while(ss >> val){
+    ret.push_back(val);
+    ss.ignore(); // ignore seperating tokens e.g. ','
+  }
+  return ret;
+}
+
+
+/** **************************************************************************
 *   Parse argument fromMPFJob structure to our job objects
 *************************************************************************** */
 void JobConfig::_parse(const MPFJob &job){
   const Properties jpr = job.job_properties;
-  minDetectionSize = abs(getEnv<int>  (jpr,"MIN_DETECTION_SIZE",             minDetectionSize));  LOG4CXX_TRACE(_log, "MIN_DETECTION_SIZE: "             << minDetectionSize);
-  confThresh       = abs(getEnv<float>(jpr,"DETECTION_CONFIDENCE_THRESHOLD", confThresh));        LOG4CXX_TRACE(_log, "DETECTION_CONFIDENCE_THRESHOLD: " << confThresh);
-  detFrameInterval = abs(getEnv<int>  (jpr,"DETECTION_FRAME_INTERVAL",       detFrameInterval));  LOG4CXX_TRACE(_log, "DETECTION_FRAME_INTERVAL: "       << detFrameInterval);
+  minDetectionSize = abs(getEnv<int>  (jpr,"MIN_DETECTION_SIZE",             minDetectionSize));    LOG4CXX_TRACE(_log, "MIN_DETECTION_SIZE: "             << minDetectionSize);
+  confThresh       = abs(getEnv<float>(jpr,"DETECTION_CONFIDENCE_THRESHOLD", confThresh));          LOG4CXX_TRACE(_log, "DETECTION_CONFIDENCE_THRESHOLD: " << confThresh);
+  nmsThresh        = abs(getEnv<float>(jpr,"DETECTION_NMS_THRESHOLD",        nmsThresh));           LOG4CXX_TRACE(_log, "DETECTION_NMS_THRESHOLD: "        << nmsThresh);
+  inferenceSize    =     getEnv<int>  (jpr,"DETECTION_INFERENCE_SIZE",       inferenceSize);        LOG4CXX_TRACE(_log, "DETECTION_INFERENCE_SIZE: "       << inferenceSize);
+  rotateDetect     = getEnv<bool>     (jpr,"ROTATE_AND_DETECT",              rotateDetect);         LOG4CXX_TRACE(_log, "ROTATE_AND_DETECT: "              << rotateDetect);
+  detFrameInterval = abs(getEnv<int>  (jpr,"DETECTION_FRAME_INTERVAL",       detFrameInterval));    LOG4CXX_TRACE(_log, "DETECTION_FRAME_INTERVAL: "       << detFrameInterval);
+  bboxScaleFactor  = abs(getEnv<float>(jpr,"DETECTION_BOUNDING_BOX_SCALE_FACTOR",bboxScaleFactor)); LOG4CXX_TRACE(_log, "DETECTION_BOUNDING_BOX_SCALE_FACTOR: "<< bboxScaleFactor);
 
-  maxFeatureDist   = abs(getEnv<float>(jpr,"TRACKING_MAX_FEATURE_DIST",      maxFeatureDist));    LOG4CXX_TRACE(_log, "TRACKING_MAX_FEATURE_DIST: " << maxFeatureDist);
-  maxFrameGap      = abs(getEnv<int>  (jpr,"TRACKING_MAX_FRAME_GAP",         maxFrameGap));       LOG4CXX_TRACE(_log, "TRACKING_MAX_FRAME_GAP: "    << maxFrameGap);
-  maxCenterDist    = abs(getEnv<float>(jpr,"TRACKING_MAX_CENTER_DIST",       maxCenterDist));     LOG4CXX_TRACE(_log, "TRACKING_MAX_CENTER_DIST: "  << maxCenterDist);
-  maxIOUDist       = abs(getEnv<float>(jpr,"TRACKING_MAX_IOU_DIST",          maxIOUDist));        LOG4CXX_TRACE(_log, "TRACKING_MAX_IOU_DIST: "     << maxIOUDist);
+  maxFeatureDist   = abs(getEnv<float>(jpr,"TRACKING_MAX_FEATURE_DIST",      maxFeatureDist));      LOG4CXX_TRACE(_log, "TRACKING_MAX_FEATURE_DIST: " << maxFeatureDist);
+  maxFrameGap      = abs(getEnv<int>  (jpr,"TRACKING_MAX_FRAME_GAP",         maxFrameGap));         LOG4CXX_TRACE(_log, "TRACKING_MAX_FRAME_GAP: "    << maxFrameGap);
+  maxCenterDist    = abs(getEnv<float>(jpr,"TRACKING_MAX_CENTER_DIST",       maxCenterDist));       LOG4CXX_TRACE(_log, "TRACKING_MAX_CENTER_DIST: "  << maxCenterDist);
+  maxIOUDist       = abs(getEnv<float>(jpr,"TRACKING_MAX_IOU_DIST",          maxIOUDist));          LOG4CXX_TRACE(_log, "TRACKING_MAX_IOU_DIST: "     << maxIOUDist);
 
-  kfDisabled = getEnv<bool>(jpr,"KF_DISABLED", kfDisabled);                                       LOG4CXX_TRACE(_log, "KF_DISABLED: " << kfDisabled);
+  kfDisabled = getEnv<bool>(jpr,"KF_DISABLED", kfDisabled);                                         LOG4CXX_TRACE(_log, "KF_DISABLED: " << kfDisabled);
 
-  _strRN = getEnv<string>(jpr,"KF_RN",_strRN);                                                    LOG4CXX_TRACE(_log, "KF_RN: "       << _strRN);
-  _strQN = getEnv<string>(jpr,"KF_QN",_strQN);                                                    LOG4CXX_TRACE(_log, "KF_QN: "       << _strQN);
+  _strRN = getEnv<string>(jpr,"KF_RN",_strRN);                                                      LOG4CXX_TRACE(_log, "KF_RN: "       << _strRN);
+  _strQN = getEnv<string>(jpr,"KF_QN",_strQN);                                                      LOG4CXX_TRACE(_log, "KF_QN: "       << _strQN);
   RN = _fromString(_strRN, 4, 1, "f");
   QN = _fromString(_strQN, 4, 1, "f");
   //convert stddev to variances
   RN = RN.mul(RN);
   QN = QN.mul(QN);
+
+
+  _strOrientations = (rotateDetect) ? getEnv<string>(jpr, "ROTATE_ORIENTATIONS",_strOrientations) : "[0]";
+  inferenceOrientations = _fromString<OrientationType>(_strOrientations);
+
   fallback2CpuWhenGpuProblem = getEnv<bool>(jpr,"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
                                             fallback2CpuWhenGpuProblem);                          LOG4CXX_TRACE(_log, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM: " << fallback2CpuWhenGpuProblem);
   cudaDeviceId               = getEnv<int> (jpr,"CUDA_DEVICE_ID",
@@ -80,18 +108,22 @@ void JobConfig::_parse(const MPFJob &job){
 *************************************************************************** */
 ostream& operator<< (ostream& out, const JobConfig& cfg) {
   out << "{"
-      << "\"minDetectionSize\": " << cfg.minDetectionSize << ","
-      << "\"confThresh\":"        << cfg.confThresh       << ","
-      << "\"detFrameInterval\":"  << cfg.detFrameInterval << ","
-      <<  "\"maxFeatureDist\":"   << cfg.maxFeatureDist   << ","
-      <<  "\"maxFrameGap\":"      << cfg.maxFrameGap      << ","
-      <<  "\"maxCenterDist\":"    << cfg.maxCenterDist    << ","
-      <<  "\"maxIOUDist\":"       << cfg.maxIOUDist       << ","
-      <<  "\"kfDisabled\":"       << (cfg.kfDisabled ? "1":"0") << ","
-      <<  "\"kfProcessVar\":"     << format(cfg.QN) << ","
-      <<  "\"kfMeasurementVar\":" << format(cfg.RN) << ","
+      <<  "\"minDetectionSize\": "     << cfg.minDetectionSize << ","
+      <<  "\"confThresh\":"            << cfg.confThresh       << ","
+      <<  "\"nmsThresh\":"             << cfg.nmsThresh        << ","
+      <<  "\"rotateDetect\":"          << (cfg.rotateDetect ? "1":"0") << ","
+      <<  "\"inferenceOrientations\":" << cfg.inferenceOrientations << ","
+      <<  "\"bboxScaleFactor\":"       << cfg.bboxScaleFactor  << ","
+      <<  "\"detFrameInterval\":"      << cfg.detFrameInterval << ","
+      <<  "\"maxFeatureDist\":"        << cfg.maxFeatureDist   << ","
+      <<  "\"maxFrameGap\":"           << cfg.maxFrameGap      << ","
+      <<  "\"maxCenterDist\":"         << cfg.maxCenterDist    << ","
+      <<  "\"maxIOUDist\":"            << cfg.maxIOUDist       << ","
+      <<  "\"kfDisabled\":"            << (cfg.kfDisabled ? "1":"0") << ","
+      <<  "\"kfProcessVar\":"          << format(cfg.QN) << ","
+      <<  "\"kfMeasurementVar\":"      << format(cfg.RN) << ","
       <<  "\"fallback2CpuWhenGpuProblem\":" << (cfg.fallback2CpuWhenGpuProblem ? "1" : "0") << ","
-      <<  "\"cudaDeviceId\":"     << cfg.cudaDeviceId
+      <<  "\"cudaDeviceId\":"          << cfg.cudaDeviceId
       << "}";
   return out;
 }
@@ -101,7 +133,11 @@ ostream& operator<< (ostream& out, const JobConfig& cfg) {
 *************************************************************************** */
 JobConfig::JobConfig():
   minDetectionSize(46),
-  confThresh(0.5),
+  confThresh(0.3),
+  nmsThresh(0.3),
+  inferenceSize(-1),
+  rotateDetect(true),
+  bboxScaleFactor(1.0),
   maxFrameGap(4),
   detFrameInterval(1),
   maxFeatureDist(0.25),
@@ -110,9 +146,9 @@ JobConfig::JobConfig():
   kfDisabled(false),
   cudaDeviceId(0),
   fallback2CpuWhenGpuProblem(true),
-  frameIdx(-1),
-  frameTimeInSec(-1.0),
-  frameTimeStep(-1.0),
+  frameIdx(0),
+  frameTimeInSec(0),
+  frameTimeStep(0),
   lastError(MPF_DETECTION_SUCCESS),
   _imreaderPtr(unique_ptr<MPFImageReader>()),
   _videocapPtr(unique_ptr<MPFVideoCapture>()){
@@ -124,6 +160,10 @@ JobConfig::JobConfig():
     // Kalman Bounding Box Measurement noise sdtdev for covariance Matrix R
     _strRN = "[6.0, 6.0, 6.0, 6.0]";
     RN = _fromString(_strRN, 4, 1, "f");
+
+    // Inference rotations
+    _strOrientations = "[0, 90, 180, 270]";
+    inferenceOrientations = _fromString<OrientationType>(_strOrientations);
 
   }
 

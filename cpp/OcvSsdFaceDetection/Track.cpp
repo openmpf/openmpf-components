@@ -88,7 +88,9 @@ DetectionLocationPtr Track::ocvTrackerPredict(const JobConfig &cfg){
                     (p.y + p.height/2.0f)/static_cast<float>(cfg.bgrFrame.rows)),
         cfg.frameIdx,
         cfg.frameTimeInSec,
-        cfg.bgrFrame));                                                        LOG4CXX_TRACE(_log,"tracking " << (MPFImageLocation)*_locationPtrs.back() << " to " << (MPFImageLocation)*detPtr);
+        cfg.bgrFrame,
+        cfg.bgrFrame,
+        OrientationType::ROTATE_0));                                           LOG4CXX_TRACE(_log,"tracking " << (MPFImageLocation)*_locationPtrs.back() << " to " << (MPFImageLocation)*detPtr);
       // clone feature of prior detection
       detPtr->copyFeature(*(_locationPtrs.back()));
     }else{

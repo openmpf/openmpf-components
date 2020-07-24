@@ -28,10 +28,13 @@
 #define OCVSSDFACEDETECTION_TYPES_H
 
 #include <type_traits>
+#include <typeinfo>
 #include <memory>
 #include <list>
 #include <iomanip>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
+
+#include "OrientationType.h"
 
 namespace MPF{
  namespace COMPONENT{
@@ -56,6 +59,7 @@ namespace MPF{
    *  print out opencv matrix on a single line
    *
    * \param   m matrix to serialize to single line string
+   *
    * \returns single line string representation of matrix
    *
   ***************************************************************************** */

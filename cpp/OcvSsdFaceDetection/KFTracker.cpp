@@ -161,7 +161,7 @@ void KFTracker::predict(float t){
 *************************************************************************** */
 void KFTracker::correct(const cv::Rect2i &rec){
   _kf.correct(measurementFromBBox(rec));
-  #ifndef NDEBUG
+  #ifdef DIAGNOSTIC_FILES
     _state_trace << (*this) << endl;
   #endif
 }
@@ -268,7 +268,7 @@ KFTracker::KFTracker(const float t,
     _kf.errorCovPost.at<float>(10,10) = 10.0 * _kf.processNoiseCov.at<float>(10,10); // guess ~3 sigma
     _kf.errorCovPost.at<float>(11,11) = 10.0 * _kf.processNoiseCov.at<float>(11,11); // guess ~3 sigma
 
-    #ifndef NDEBUG
+    #ifdef DIAGNOSTIC_FILES
       _state_trace << (*this) << endl;                    // trace filter initial error stats
       _myId = _objId;                                     // used for output filename
       _objId++;
@@ -290,13 +290,13 @@ bool KFTracker::Init(log4cxx::LoggerPtr log, string plugin_path=""){
   return true;
 }
 
-#ifndef NDEBUG
+#ifdef DIAGNOSTIC_FILES
 
 #include <fstream>
 size_t KFTracker::_objId = 0;  // class static sequence variable
 
 /** **************************************************************************
-*  Write out error statisics over time to csv file for filter tuning
+*  Write out error statistics over time to csv file for filter tuning
 *************************************************************************** */
 void KFTracker::dump(){
   stringstream filename;

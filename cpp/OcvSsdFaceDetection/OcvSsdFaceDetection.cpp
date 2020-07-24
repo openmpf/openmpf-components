@@ -244,6 +244,7 @@ MPFImageLocationVec OcvSsdFaceDetection::GetDetections(const MPFImageJob   &job)
                                                                                LOG4CXX_DEBUG(_log, "[" << job.job_name << "] Number of faces detected = " << detections.size());
     MPFImageLocationVec locations;
     for(auto &det:detections){
+      det->detection_properties["ROTATION"] = to_string(det->getAngle());
       MPFImageLocation loc = *det;
       det.reset();                    // release frame object
       cfg.ReverseTransform(loc);
@@ -288,12 +289,13 @@ MPFVideoTrack OcvSsdFaceDetection::_convert_track(Track &track){
   mpf_track.detection_properties["START_FEATURE"] = start_feature.str();
   mpf_track.detection_properties["STOP_FEATURE"]  = stop_feature.str();
 
-  #ifndef NDEBUG
+  #ifdef DIAGNOSTIC_FILES
     track.kalmanDump();
   #endif
 
   for(auto &det:track){
     mpf_track.confidence += det->confidence;
+    det->detection_properties["ROTATION"] = to_string(det->getAngle());
     mpf_track.frame_locations.insert(mpf_track.frame_locations.end(),{det->frameIdx,*det});
     det.reset();
   }

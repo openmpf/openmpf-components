@@ -183,25 +183,45 @@ float DetectionLocation::featureDist(const Track &tr) const {
 /** **************************************************************************
 * Lazy accessor method to get/compute landmark points
 * 5-Landmark detector returns outside and inside eye corners and bottom of nose
-* 68-Landmark detector returns "standard" facial landmarks (see data/landmarks.png)
+*
 *
 * \returns landmarks
 *
 *************************************************************************** */
 const cvPoint2fVec& DetectionLocation::getLandmarks() const {
   if(_landmarks.empty()){
-    try{
-      dlib::cv_image<dlib::bgr_pixel> cimg(_bgrFrame);
-      dlib::full_object_detection
-        shape = (*_shapePredFuncPtr)(cimg, dlib::rectangle(x_left_upper,               // left
-                                                            y_left_upper,              // top
-                                                            x_left_upper + width-1,    // right
-                                                            y_left_upper + height-1)); // bottom
 
+    try{
+      dlib::cv_image<dlib::bgr_pixel> cimg(_bgrFrameRot);
+      cv::Rect2i bbox = rotate(getRect(),
+                              _detectionOrientation,
+                              cv::Size2i(_bgrFrameRot.cols-1,_bgrFrameRot.rows-1));
+      dlib::full_object_detection
+        shape = (*_shapePredFuncPtr)(cimg, dlib::rectangle( bbox.x,              // left
+                                                            bbox.y,              // top
+                                                            bbox.x + bbox.width-1,    // right
+                                                            bbox.y + bbox.height-1)); // bottom
+
+      cv::Size2f canvas(_bgrFrame.cols-1,_bgrFrame.rows-1);
       for(size_t i=0; i<shape.num_parts(); i++){
         dlib::point pt = shape.part(i);
-        _landmarks.push_back(cv::Point2f(pt.x(),pt.y()));
+        cv::Point2f lm = rotate(cv::Point2f(pt.x(),pt.y()), inv(_detectionOrientation), canvas);
+        _landmarks.push_back(lm);
       }
+
+      //calculate rotation angle
+      cv::Point2f vec =  0.25 * (_landmarks[0] + _landmarks[1] + _landmarks[2] + _landmarks[3]) - _landmarks[4];
+      int angle = static_cast<int>(degCCWfromVertical(vec) + 0.5);
+      if(abs(angleDiff(angle, _angle)) < 45){ // check if it makes sense
+        _angle = angle;
+      }else{                                  // guess landmarks based on orientation
+        cv::Point2f orig(bbox.x,bbox.y);
+        _landmarks[2] = rotate(orig + cv::Point2f(bbox.width*0.1941570,bbox.height*0.16926692),inv(_detectionOrientation),canvas);
+        _landmarks[0] = rotate(orig + cv::Point2f(bbox.width*0.7888591,bbox.height*0.15817115),inv(_detectionOrientation),canvas);
+        _landmarks[4] = rotate(orig + cv::Point2f(bbox.width*0.4949509,bbox.height*0.51444140),inv(_detectionOrientation),canvas);
+        _landmarks[1] = _landmarks[3] = (_landmarks[0] + _landmarks[2]) / 2.0;
+      }
+
     }catch(...){
       exception_ptr eptr = current_exception();
       LOG4CXX_FATAL(_log, "failed to determine landmarks");
@@ -228,8 +248,8 @@ const cv::Mat& DetectionLocation::getThumbnail() const {
     const size_t lmIdx[] = {2,0,4};       // if using 5 pt landmarks
     const cv::Mat dst =  (cv::Mat_<float>(3,2)
                           << 0.1941570 * THUMBNAIL_SIZE_X, 0.16926692 * THUMBNAIL_SIZE_Y,
-                              0.7888591 * THUMBNAIL_SIZE_X, 0.15817115 * THUMBNAIL_SIZE_Y,
-                              0.4949509 * THUMBNAIL_SIZE_X, 0.51444140 * THUMBNAIL_SIZE_Y);
+                             0.7888591 * THUMBNAIL_SIZE_X, 0.15817115 * THUMBNAIL_SIZE_Y,
+                             0.4949509 * THUMBNAIL_SIZE_X, 0.51444140 * THUMBNAIL_SIZE_Y);
 
     cv::Mat src = cv::Mat_<float>(3,2);
     for(size_t r=0; r<3; r++){
@@ -274,9 +294,20 @@ const cv::Mat& DetectionLocation::getBGRFrame() const{
 }
 
 /** **************************************************************************
+* accessor method to get face rotation angle
+*
+* \returns angle of face
+*
+*************************************************************************** */
+const int DetectionLocation::getAngle() const{
+  return _angle;
+}
+
+/** **************************************************************************
 * release reference to image frame
 *************************************************************************** */
-void DetectionLocation::releaseBGRFrame() {                                    LOG4CXX_TRACE(_log,"releasing bgrFrame for  f" << this->frameIdx << *this);
+void DetectionLocation::releaseBGRFrame() {                                    LOG4CXX_TRACE(_log,"releasing bgrFrames for  f" << this->frameIdx << *this);
+  _bgrFrameRot.release();
   _bgrFrame.release();
 }
 
@@ -298,13 +329,15 @@ void DetectionLocation::setRect(const cv::Rect2i& rec){
 }
 
 /** **************************************************************************
-* copy feature vector from another detection
+* copy feature vector and orientations from another detection
 *
 * \param   d detection from which to copy feature vector
 *
 *************************************************************************** */
 void DetectionLocation::copyFeature(const DetectionLocation& d){
   _feature = d.getFeature();
+  _angle   = d._angle;
+  _detectionOrientation = d._detectionOrientation;
 }
 
 /** **************************************************************************
@@ -320,10 +353,11 @@ const cv::Mat& DetectionLocation::getFeature() const {
            && y_left_upper > 0
            && x_left_upper + width  < _bgrFrame.cols - 1
            && y_left_upper + height < _bgrFrame.rows - 1)
-       || (   0.8 < aspect_ratio && aspect_ratio < 1.2)){
+       || (   0.5 < aspect_ratio && aspect_ratio < 2.0)){
       const double inScaleFactor = 1.0 / 255.0;
       const cv::Size blobSize(96, 96);
       const cv::Scalar meanVal(0.0, 0.0, 0.0);  // BGR mean pixel color
+
       cv::Mat inputBlob = cv::dnn::blobFromImage(getThumbnail(), // BGR image
                                                 inScaleFactor,   // no pixel value scaling (e.g. 1.0/255.0)
                                                 blobSize,        // expected network input size: 90x90
@@ -353,43 +387,97 @@ const cv::Mat& DetectionLocation::getFeature() const {
 *
 *************************************************************************** */
 DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg){
-  DetectionLocationPtrVec detections;
 
-  const double inScaleFactor = 1.0;
-  const cv::Size blobSize(300, 300);
-  const cv::Scalar meanVal(104.0, 117.0, 124.0);  // BGR mean pixel color
+  DetectionLocationPtrVec detections;                      // detection vector to be returned
 
-  cv::Mat inputBlob = cv::dnn::blobFromImage(cfg.bgrFrame, // BGR image
-                                            inScaleFactor, // no pixel value scaling (e.g. 1.0/255.0)
-                                            blobSize,      // expected network input size: 300x300
-                                            meanVal,       // mean BGR pixel value
-                                            true,          // swap RB channels
-                                            false          // center crop
-                                            );
-  _ssdNet.setInput(inputBlob,"data");
-  cv::Mat detection = _ssdNet.forward("detection_out");
-  cv::Mat detectionMat(detection.size[2], detection.size[3], CV_32F, detection.ptr<float>());
+  // some vars for NMS
+  cvRectVec               bboxes;                          // bounding boxes found for all orientations
+  cvPoint2fVec            centers;                         // centers of found bounding boxes for all orientations
+  vector<float>           scores;                          // confidence scores of found detections for all orientations
+  vector<OrientationType> orientations;                    // orientation for each found bounding box
 
-  for(int i = 0; i < detectionMat.rows; i++){
-    float conf = detectionMat.at<float>(i, 2);
-    if(conf > cfg.confThresh){
-      cv::Point2f ul(detectionMat.at<float>(i, 3),detectionMat.at<float>(i, 4));
-      cv::Point2f lr(detectionMat.at<float>(i, 5),detectionMat.at<float>(i, 6));
-      cv::Point2f wh = lr - ul;
-      int x1     = static_cast<int>(ul.x * cfg.bgrFrame.cols);
-      int y1     = static_cast<int>(ul.y * cfg.bgrFrame.rows);
-      int width  = static_cast<int>(wh.x * cfg.bgrFrame.cols);
-      int height = static_cast<int>(wh.y * cfg.bgrFrame.rows);
+  // setup related image variables
+  map<OrientationType,cv::Mat> rotImages;                      // rotated image cache for making detections objects
+  int maxSide = max(cfg.bgrFrame.cols,cfg.bgrFrame.rows);      // maximum image side length
+  cv::Rect2i canvas(0,0,cfg.bgrFrame.cols,cfg.bgrFrame.rows);  // canvas size for rotations
 
-      if(    width  >= cfg.minDetectionSize
-          && height >= cfg.minDetectionSize){
-        detections.push_back(DetectionLocationPtr(
-          new DetectionLocation(x1, y1, width, height, conf, (ul + lr) / 2.0,
-                                cfg.frameIdx, cfg.frameTimeInSec,
-                                cfg.bgrFrame)));                               LOG4CXX_TRACE(_log,"detection:" << *detections.back());
+  // create zero padded square version of bgrFrame
+  cv::Mat square;
+  cv::copyMakeBorder(cfg.bgrFrame, square,
+                     0, maxSide - cfg.bgrFrame.rows,
+                     0, maxSide - cfg.bgrFrame.cols,
+                     cv::BORDER_CONSTANT,cv::Scalar(0,0,0));
+  int infSize = (cfg.inferenceSize > 0 ) ? cfg.inferenceSize : maxSide;  // size to use for inferencing
+
+  for(auto& orientation:cfg.inferenceOrientations){
+
+    cv::Mat image        = rotate(square, orientation);
+    cv::Rect2i canvasRot = rotate(canvas, orientation,cv::Size2i(maxSide,maxSide));
+    rotImages.insert(pair<OrientationType,cv::Mat>(orientation,image(canvasRot)));
+
+    cv::Mat inputBlob = cv::dnn::blobFromImage(image,                           // BGR image
+                                               1.0,                             // no pixel value scaling (e.g. 1.0/255.0)
+                                               cv::Size(infSize,infSize),       // expected network input size: e.g.300x300
+                                               cv::Scalar(104.0, 117.0, 124.0), // mean BGR pixel value
+                                               true,                            // swap RB channels
+                                               false);                          // center crop
+
+    _ssdNet.setInput(inputBlob,"data");
+    cv::Mat netOut = _ssdNet.forward("detection_out");
+    cv::Mat_<float> res = cv::Mat(netOut.size[2], netOut.size[3], CV_32F, netOut.ptr<float>(0));
+    for(int i = 0; i < res.rows; i++){
+      float conf = res(i,2);
+      if(conf > cfg.confThresh){
+        cv::Rect2f rbox(res(i,3), res(i,4), res(i,5) - res(i,3),res(i,6) - res(i,4));   // normalized coords bounding box on rotated image
+        cv::Rect2f    bbox = rotate(rbox, inv(orientation),cv::Size2f(1.0, 1.0));       // normalized coords  cords bounding box on brgFrame
+        cv::Point2f center = 0.5 * (bbox.tl() + bbox.br());                             // normalized coords bounding box center
+        cv::Point2f     wh = cv::Point2f(bbox.width,bbox.height) * cfg.bboxScaleFactor; // normalized scaled width and height
+
+        int width  = static_cast<int>(wh.x * maxSide);                                  // width  in image pixels
+        int height = static_cast<int>(wh.y * maxSide);                                  // height in image pixels
+
+        if(width >= cfg.minDetectionSize && height >= cfg.minDetectionSize){
+          cv::Point2f ul = center - 0.5 * wh;                             // normalized coords upper left coordinate
+          int x1     = static_cast<int>(ul.x * maxSide);                  // upper left x in image pixels
+          int y1     = static_cast<int>(ul.y * maxSide);                  // upper left y in image pixels
+
+          cv::Rect2i iBbox = cv::Rect2i(x1,y1,width,height) & canvas;     // bounding box in pixels on image
+          if(iBbox.width  > 0 && iBbox.height > 0){
+            bboxes.push_back(iBbox);
+            scores.push_back(conf);
+            centers.push_back(center);
+            orientations.push_back(orientation);
+          }
+        }
       }
     }
   }
+  #define DIAGNOSTIC_IMAGES
+  #ifdef DIAGNOSTIC_IMAGES
+  cv::Mat lm = cfg.bgrFrame.clone();
+  #endif
+  // Perform non maximum supression (NMS)
+  vector<int> keepIdxs;
+  cv::dnn::NMSBoxes(bboxes, scores, cfg.confThresh, cfg.nmsThresh, keepIdxs);
+  for(int i:keepIdxs){
+    detections.push_back(DetectionLocationPtr(
+      new DetectionLocation(bboxes[i].x, bboxes[i].y, bboxes[i].width, bboxes[i].height,
+                            scores[i], centers[i],
+                            cfg.frameIdx, cfg.frameTimeInSec,
+                            cfg.bgrFrame,
+                            rotImages[orientations[i]],
+                            orientations[i])));                               LOG4CXX_TRACE(_log,"detection:" << *detections.back());
+    #ifdef DIAGNOSTIC_IMAGES
+    stringstream fn; fn << "thumb_"<< cfg.frameIdx <<"_" << i << ".png";
+    cv::imwrite(fn.str(),detections.back()->getThumbnail());
+    detections.back()->drawLandmarks(lm,cv::Scalar(0,0,0));
+    #endif
+  }
+  #ifdef DIAGNOSTIC_IMAGES
+  stringstream fn; fn << "landmarks_"<< cfg.frameIdx << ".png";
+  cv::imwrite(fn.str(),lm);
+  #endif
+
   return detections;
 }
 
@@ -491,15 +579,33 @@ bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
 
 
 /** **************************************************************************
-* constructor
+*  Private constructor for a detection object
+*
+* \param x                     top left x coordinate of bounding box
+* \param y                     top left y coordinate of bounding box
+* \param width                 bounding box width
+* \param height                bounding box height
+* \param conf                  confidence score of detection
+* \param center                normalized center coord of detection
+* \param frameIdx              video frame sequence number
+* \param frameTimeInSec        time stamp of video frame in sec
+* \param bgrFrame              frame in which detection was found
+* \param bgrFrameRot           bgrFrame rotated to detectionOrientation
+* \param detectionOrientation  orientation of the frame when detected
+*
 **************************************************************************** */
 DetectionLocation::DetectionLocation(int x,int y,int width,int height,float conf,
                                      cv::Point2f center,
                                      size_t frameIdx, double frameTimeInSec,
-                                     cv::Mat bgrFrame):
+                                     cv::Mat bgrFrame,
+                                     cv::Mat bgrFrameRot,
+                                     OrientationType detectionOrientation):
         MPFImageLocation(x,y,width,height,conf),
         center(center),
         frameIdx(frameIdx),
-        frameTimeInSec(frameTimeInSec){
-        _bgrFrame = bgrFrame.clone();
+        frameTimeInSec(frameTimeInSec),
+        _detectionOrientation(detectionOrientation),
+        _angle(degCCWfromVertical(detectionOrientation)){
+        _bgrFrame = bgrFrame; //.clone();
+        _bgrFrameRot = bgrFrameRot;
 }

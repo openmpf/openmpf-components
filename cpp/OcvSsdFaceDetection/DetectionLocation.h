@@ -49,6 +49,8 @@ namespace MPF{
 
   class DetectionLocation: public MPFImageLocation{ // extend MPFImageLocation
 
+
+
     public:
       using MPFImageLocation::MPFImageLocation;  // C++11 inherit all constructors for MPFImageLocation
 
@@ -63,6 +65,7 @@ namespace MPF{
       const cv::Mat&       getThumbnail() const;                             ///< get thumbnail image for detection
       const cv::Mat&       getFeature()   const;                             ///< get DNN features for detection
       const cv::Mat&       getBGRFrame()  const;                             ///< get image data associated with detection
+      const int            getAngle()     const;                             ///< get face rotation angle
 
       const cv::Rect2i  getRect() const;                                     ///< get location as an opencv rectange
       void              setRect(const cv::Rect2i& rec);                      ///< set location from an opencv rectangle
@@ -82,21 +85,25 @@ namespace MPF{
       DetectionLocation(int x,int y,int width,int height,float conf,
                         cv::Point2f center,
                         size_t frameIdx, double frameTimeInMillis,
-                        cv::Mat bgrFrame);                                   ///< private constructor for createDetections()
+                        cv::Mat bgrFrame,
+                        cv::Mat bgrFrameRot,
+                        OrientationType detectionOrientation);                           ///< private constructor for createDetections()
     private:
 
-      static log4cxx::LoggerPtr                _log;                ///< shared log object
-      static cv::dnn::Net                      _ssdNet;             ///< single shot DNN face detector network
-      static cv::dnn::Net                      _openFaceNet   ;     ///< feature generator
-      static unique_ptr<dlib::shape_predictor> _shapePredFuncPtr;   ///< landmark detector
+      static log4cxx::LoggerPtr                _log;                  ///< shared log object
+      static cv::dnn::Net                      _ssdNet;               ///< single shot DNN face detector network
+      static cv::dnn::Net                      _openFaceNet;          ///< feature generator
+      static unique_ptr<dlib::shape_predictor> _shapePredFuncPtr;     ///< landmark detector
 
       float _iouDist(const cv::Rect2i &rect) const;                 ///< compute intersectino over union
 
+      mutable OrientationType _detectionOrientation;      ///< rotation under which detection was aquired
+      mutable int             _angle;                     ///< rotation angle of face;
       mutable cvPoint2fVec    _landmarks;                 ///< vector of landmarks (e.g. eyes, nose, etc.)
       mutable cv::Mat         _thumbnail;                 ///< 96x96 image comprising an aligned thumbnail
       mutable cv::Mat         _feature;                   ///< DNN feature for matching-up detections
       cv::Mat                 _bgrFrame;                  ///< frame associated with detection (openCV memory managed :( )
-
+      cv::Mat                 _bgrFrameRot;               ///< rotated version of _bgrFrame
       static void _setCudaBackend(const bool enabled);    ///< turn on or off cuda backend for inferencing
   };
 

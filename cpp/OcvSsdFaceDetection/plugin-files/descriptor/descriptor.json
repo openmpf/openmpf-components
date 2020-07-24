@@ -31,6 +31,30 @@
           "defaultValue": "0.5"
         },
         {
+          "name": "DETECTION_NMS_THRESHOLD",
+          "description": "Detection non-maximum suppression threshold for removing redundant overlapping bounding boxes.",
+          "type": "FLOAT",
+          "defaultValue": "0.5"
+        },
+        {
+          "name": "DETECTION_INFERENCE_SIZE",
+          "description": "Max image dimension to use for inferencing e.g. 300 (0 will use original but run slower).",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "ROTATE_AND_DETECT",
+          "description": "Perform multiple passes at different image orientations to increase detections found.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "ROTATE_ORIENTATIONS",
+          "description": "CCW rotations of frame to inference (only multiples of 90 are accepted)",
+          "type": "STRING",
+          "defaultValue": " [0, 90, 180, 270] "
+        },
+        {
           "name": "MIN_DETECTION_SIZE",
           "description": "Minimum bounding box dimension in pixels to keep detection and start a track.",
           "type": "INT",
@@ -41,6 +65,12 @@
           "description": "Number of frames to skip running the detector and rely on just tracking",
           "type": "INT",
           "defaultValue": "0"
+        },
+        {
+          "name": "DETECTION_BOUNDING_BOX_SCALE_FACTOR",
+          "description": "Scale the width and height of the detector bounding box",
+          "type": "FLOAT",
+          "defaultValue": "1.0"
         },
         {
           "name": "TRACKING_MAX_IOU_DIST",

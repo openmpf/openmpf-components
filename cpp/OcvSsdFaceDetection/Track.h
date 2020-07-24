@@ -64,7 +64,7 @@ namespace MPF{
         void             kalmanCorrect();
         const cv::Rect2i kalmanPredictedBox()            const {return _kfPtr->predictedBBox();}
 
-        #ifndef NDEBUG
+        #ifdef DIAGNOSTIC_FILES
         void             kalmanDump(){_kfPtr->dump();};
         #endif
 
