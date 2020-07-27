@@ -39,7 +39,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./SceneChangeDet
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-ENV COMPONENT_LOG_NAME scenechange-detection.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/SceneChangeDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/SceneChangeDetection $PLUGINS_DIR/SceneChangeDetection
 

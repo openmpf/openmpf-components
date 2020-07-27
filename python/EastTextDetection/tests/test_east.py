@@ -26,6 +26,7 @@
 
 import sys
 import os
+import logging
 from collections import Counter
 
 # Add east_component to path.
@@ -37,6 +38,10 @@ import mpf_component_api as mpf
 
 
 class TestEast(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        logging.basicConfig(level=logging.DEBUG)
 
     def test_image_file(self):
         job = mpf.ImageJob(

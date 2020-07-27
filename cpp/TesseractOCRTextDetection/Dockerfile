@@ -74,7 +74,7 @@ RUN yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
-ENV COMPONENT_LOG_NAME tesseract-ocr-text-detection.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/TesseractOCRTextDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/TesseractOCRTextDetection $PLUGINS_DIR/TesseractOCRTextDetection
 

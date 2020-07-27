@@ -31,8 +31,6 @@
 #include <unordered_map>
 #include <utility>
 
-#include <log4cxx/xml/domconfigurator.h>
-
 #include <MPFImageReader.h>
 #include <MPFVideoCapture.h>
 #include <detectionComponentUtils.h>
@@ -54,7 +52,6 @@ bool DarknetDetection::Init() {
     cpu_darknet_lib_path_ = plugin_path + "/lib/libdarknet_wrapper.so";
     gpu_darknet_lib_path_ = plugin_path + "/lib/libdarknet_wrapper_cuda.so";
 
-    log4cxx::xml::DOMConfigurator::configure(plugin_path + "/config/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("DarknetDetection");
 
     try {

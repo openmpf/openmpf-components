@@ -54,7 +54,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./DlibFaceDetect
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-ENV COMPONENT_LOG_NAME dlib-face-detection.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/DlibFaceDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/DlibFaceDetection $PLUGINS_DIR/DlibFaceDetection
 

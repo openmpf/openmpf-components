@@ -26,6 +26,7 @@
 
 import collections
 import json
+import logging
 import math
 import os
 import re
@@ -41,7 +42,7 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 
-logger = mpf.configure_logging('acs-ocr-text-detection.log', __name__ == '__main__')
+logger = logging.getLogger('AcsOcrComponent')
 
 
 class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):

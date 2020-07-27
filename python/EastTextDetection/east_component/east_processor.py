@@ -272,13 +272,13 @@ class EastProcessor(object):
 
         return [
             mpf.ImageLocation(
-                x_left_upper=x,
-                y_left_upper=y,
-                width=w,
-                height=h,
-                confidence=s,
+                x_left_upper=int(x),
+                y_left_upper=int(y),
+                width=int(w),
+                height=int(h),
+                confidence=float(s),
                 detection_properties=dict(
-                    ROTATION=r,
+                    ROTATION=str(r),
                     TEXT_TYPE=text_type
                 )
             )
@@ -369,13 +369,13 @@ class EastProcessor(object):
 
                 image_locs.append([
                     mpf.ImageLocation(
-                        x_left_upper=x,
-                        y_left_upper=y,
-                        width=w,
-                        height=h,
-                        confidence=s,
+                        x_left_upper=int(x),
+                        y_left_upper=int(y),
+                        width=int(w),
+                        height=int(h),
+                        confidence=float(s),
                         detection_properties=dict(
-                            ROTATION=r,
+                            ROTATION=str(r),
                             TEXT_TYPE=text_type
                         )
                     )

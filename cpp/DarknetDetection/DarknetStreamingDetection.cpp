@@ -30,8 +30,6 @@
 #include <sstream>
 #include <utility>
 
-#include <log4cxx/xml/domconfigurator.h>
-
 #include <ModelsIniParser.h>
 #include <detectionComponentUtils.h>
 
@@ -43,11 +41,6 @@ using namespace MPF::COMPONENT;
 
 
 namespace {
-
-    log4cxx::LoggerPtr GetLogger(const MPFStreamingVideoJob &job) {
-        log4cxx::xml::DOMConfigurator::configure(job.run_directory + "/DarknetDetection/config/Log4cxxConfig.xml");
-        return log4cxx::Logger::getLogger("DarknetStreamingDetection");
-    }
 
     ModelSettings GetModelSettings(const MPFStreamingVideoJob &job) {
         const std::string &model_name = DetectionComponentUtils::GetProperty<std::string>(
@@ -131,7 +124,7 @@ namespace {
 
 
 DarknetStreamingDetection::DarknetStreamingDetection(const MPFStreamingVideoJob &job)
-    : DarknetStreamingDetection(job, GetLogger(job))
+    : DarknetStreamingDetection(job, log4cxx::Logger::getLogger("DarknetStreamingDetection"))
 {
 }
 

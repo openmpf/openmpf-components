@@ -40,8 +40,6 @@
 
 //log4cxx headers
 #include <log4cxx/logger.h>
-#include <log4cxx/xml/domconfigurator.h>
-#include <log4cxx/logmanager.h>
 
 //dlib
 // NOTE: Due to a name conflict between a function in the dlib library

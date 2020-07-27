@@ -34,8 +34,6 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/dnn.hpp>
 
-#include <log4cxx/logmanager.h>
-#include <log4cxx/xml/domconfigurator.h>
 #include <boost/algorithm/string.hpp>
 
 #include <Utils.h>
@@ -61,11 +59,7 @@ bool OcvDnnDetection::Init() {
         run_dir = ".";
     }
     std::string plugin_path = run_dir + "/OcvDnnDetection";
-    std::string config_path = plugin_path + "/config";
 
-    // Configure logger
-
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("OcvDnnDetection");
 
     LOG4CXX_DEBUG(logger_, "Plugin path: " << plugin_path);

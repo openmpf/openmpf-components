@@ -32,8 +32,6 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/video/tracking.hpp>
 
-#include <log4cxx/xml/domconfigurator.h>
-
 #include <QFile>
 #include <QFileInfo>
 
@@ -65,7 +63,6 @@ using cv::resize;
 using cv::rectangle;
 
 using log4cxx::Logger;
-using log4cxx::xml::DOMConfigurator;
 
 using namespace MPF;
 using namespace COMPONENT;
@@ -88,22 +85,10 @@ bool OcvFaceDetection::Init() {
     string run_dir = GetRunDirectory();
     string plugin_path = run_dir + "/OcvFaceDetection";
     string config_path = plugin_path + "/config";
-    string logconfig_file = config_path + "/Log4cxxConfig.xml";
-    //must initialize opencv face detection
 
-    // Load XML configuration file using DOMConfigurator
-    log4cxx::xml::DOMConfigurator::configure(logconfig_file);
     OpenFaceDetectionLogger = log4cxx::Logger::getLogger("OcvFaceDetection");
 
-    /* LOG LEVELS
-     *
-     *   TRACE,
-         DEBUG,
-         INFO,
-         WARN,
-         ERROR and
-         FATAL */
-
+    //must initialize opencv face detection
     if (!ocv_detection.Init(plugin_path)) {
         LOG4CXX_ERROR(OpenFaceDetectionLogger, "Failed to initialize OpenCV Detection");
         return false;

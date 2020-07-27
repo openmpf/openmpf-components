@@ -68,7 +68,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 
 COPY --from=download_weights /weights $PLUGINS_DIR/DarknetDetection/models
 
-ENV COMPONENT_LOG_NAME darknet-detection.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/DarknetDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/DarknetDetection $PLUGINS_DIR/DarknetDetection
 

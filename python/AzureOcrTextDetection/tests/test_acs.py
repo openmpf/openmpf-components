@@ -25,6 +25,7 @@
 #############################################################################
 
 import http.server
+import logging
 import os
 import queue
 import shutil
@@ -60,6 +61,7 @@ class TestAcs(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        logging.basicConfig(level=logging.DEBUG)
         cls.mock_server = MockServer()
 
     @classmethod

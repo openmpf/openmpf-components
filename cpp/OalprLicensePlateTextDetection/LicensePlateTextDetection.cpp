@@ -29,8 +29,6 @@
 #include <map>
 #include <QString>
 #include <QDir>
-#include <log4cxx/logmanager.h>
-#include <log4cxx/xml/domconfigurator.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <detectionComponentUtils.h>
@@ -46,7 +44,6 @@ using namespace std;
 using namespace alpr;
 
 using log4cxx::Logger;
-using log4cxx::xml::DOMConfigurator;
 
 //-----------------------------------------------------------------------------
 LicensePlateTextDetection::LicensePlateTextDetection() {
@@ -77,9 +74,6 @@ LicensePlateTextDetection::~LicensePlateTextDetection() {
     string plugin_path = run_dir + "/OalprLicensePlateTextDetection";
     string config_path = plugin_path + "/config";
 
-    // Configure logger
-
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
     td_logger_ = log4cxx::Logger::getLogger("OalprLicensePlateTextDetection");
 
     LOG4CXX_DEBUG(td_logger_, "Plugin path: " << plugin_path);

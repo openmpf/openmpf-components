@@ -39,7 +39,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvFaceDetecti
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-ENV COMPONENT_LOG_NAME ocv-face-detection.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvFaceDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/OcvFaceDetection $PLUGINS_DIR/OcvFaceDetection
 

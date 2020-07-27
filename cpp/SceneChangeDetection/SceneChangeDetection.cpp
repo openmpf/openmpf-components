@@ -26,42 +26,21 @@
 
 #include "SceneChangeDetection.h"
 
-#include <unistd.h>
-#include <fstream>
-#include <opencv2/opencv.hpp>
-
-#include <opencv2/core/core.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/videoio.hpp>
-
-#include <QDebug>
-#include <QtCore>
-#include <boost/tokenizer.hpp>
-
-
-
-#include <log4cxx/logmanager.h>
-#include <log4cxx/xml/domconfigurator.h>
-#include <boost/algorithm/string/predicate.hpp>
-
-
-#include <Utils.h>
-#include <detectionComponentUtils.h>
-
 #include <algorithm>
+#include <fstream>
+#include <utility>
 
-#include "MPFSimpleConfigLoader.h"
+#include <opencv2/imgproc.hpp>
+
+#include <detectionComponentUtils.h>
+#include <MPFSimpleConfigLoader.h>
+#include <MPFVideoCapture.h>
+#include <Utils.h>
+
 
 using namespace MPF::COMPONENT;
 using namespace cv;
 
-SceneChangeDetection::SceneChangeDetection() {
-
-}
-
-SceneChangeDetection::~SceneChangeDetection() {
-
-}
 
 std::string SceneChangeDetection::GetDetectionType() {
     return "SCENE";
@@ -77,8 +56,6 @@ bool SceneChangeDetection::Init() {
     std::string plugin_path = run_dir + "/SceneChangeDetection";
     std::string config_path = plugin_path + "/config";
 
-    // Configure logger.
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("SceneChangeDetection");
 
     LOG4CXX_DEBUG(logger_, "Plugin path: " << plugin_path);

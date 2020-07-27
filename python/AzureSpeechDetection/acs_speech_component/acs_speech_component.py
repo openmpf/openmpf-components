@@ -44,10 +44,7 @@ class MPFJobNameLoggerAdapter(logging.LoggerAdapter):
         return '[%s] %s' % (job_name, msg), kwargs
 
 logger = MPFJobNameLoggerAdapter(
-    mpf.configure_logging(
-        'acs-speech-detection.log',
-        __name__ == '__main__'
-    ),
+    logging.getLogger('AcsSpeechComponent'),
     extra={}
 )
 
