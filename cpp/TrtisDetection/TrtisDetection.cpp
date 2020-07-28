@@ -365,10 +365,6 @@ vector<uPtrInferCtx*> TrtisDetection::_niGetInferContexts(
   stringstream ss;
   ss << std::this_thread::get_id() << ":" << cfg.model_name << ":" << cfg.model_version;
   string key = ss.str();
-  const auto giter = _infCtxs.find(key);
-  if(giter == _infCtxs.end()){
-    _infCtxs[key] = *(new vector<uPtrInferCtx*>(0));
-  }
 
   nic::Error err;
   size_t numNewCtx = cfg.maxInferConcurrency - _infCtxs[key].size();
