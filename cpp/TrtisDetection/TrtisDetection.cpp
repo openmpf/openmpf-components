@@ -103,19 +103,15 @@ T get(const Properties &p, const string &k, const T def){
 TrtisJobConfig::TrtisJobConfig(const MPFJob &job){
   const Properties jpr = job.job_properties;
 
-  string trtis_server_default = "localhost:8001";
-  trtis_server = get<string>(jpr,"TRTIS_SERVER" , trtis_server_default);
-
+  trtis_server = get<string>(jpr,"TRTIS_SERVER" , "");
   if (trtis_server.empty()) {
       char const* tmp_env = std::getenv("TRTIS_SERVER");
       if (tmp_env != NULL) {
           trtis_server = std::string(tmp_env);
       } else {
-          trtis_server = trtis_server_default;
+          trtis_server = "localhost:8001";
       }
   }
-
-  std::cout << "trtis_server: " << trtis_server << std::endl; // DEBUG
 
   model_name    = get<string>(jpr,"MODEL_NAME"   , "ip_irv2_coco");
   model_version = get<int>   (jpr,"MODEL_VERSION", -1);
@@ -370,9 +366,6 @@ vector<uPtrInferCtx*> TrtisDetection::_niGetInferContexts(
   size_t numNewCtx = cfg.maxInferConcurrency - _infCtxs[key].size();
   for(int i=0; i < numNewCtx; i++){
     uPtrInferCtx* ctx = new uPtrInferCtx;
-
-    std::cout << "cfg.trtis_server: " << cfg.trtis_server << std::endl; // DEBUG
-
     NI_CHECK_OK(
       nic::InferGrpcContext::Create(ctx, cfg.trtis_server,
                                          cfg.model_name,
@@ -972,7 +965,7 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob   
       return locations;
 
     }else{
-      THROW_TRTISEXCEPTION("Unsupported model type:" + model_name);
+      THROW_TRTISEXCEPTION("Unsupported model type: " + model_name);
     }
 
   }catch (...) {

@@ -40,7 +40,6 @@ using namespace std;
 Properties getProperties_ip_irv2_coco() {
 
     return {
-            { "TRTIS_SERVER", "localhost:8001" },
             { "MODEL_NAME", "ip_irv2_coco" },
     };
 }
@@ -67,13 +66,7 @@ void assertObjectDetectedInImage(const string   &expected_object,
                                  TrtisDetection &trtisDet           ){
     MPFImageJob job("Test", image_path, getProperties_ip_irv2_coco(), {});
 
-    MPFImageLocationVec image_locations;
-
-    try {
-        image_locations = trtisDet.GetDetections(job);
-    } catch (const MPFDetectionException &ex) {
-        FAIL() << " GetDetections failed to process test image.";
-    }
+    MPFImageLocationVec image_locations = trtisDet.GetDetections(job);
 
     ASSERT_FALSE(image_locations.empty());
 
@@ -122,13 +115,7 @@ void assertObjectDetectedInVideo(const string     &object_name,
                                  TrtisDetection   &trtisDet) {
     MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 11, 12, job_props, {});
 
-    MPFVideoTrackVec tracks;
-
-    try {
-        tracks = trtisDet.GetDetections(job);
-    } catch (const MPFDetectionException &ex) {
-        FAIL() << " GetDetections failed to process test video.";
-    }
+    MPFVideoTrackVec tracks = trtisDet.GetDetections(job);
 
     ASSERT_FALSE(tracks.empty());
     ASSERT_TRUE(containsObject(object_name, tracks));
