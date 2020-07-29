@@ -114,20 +114,20 @@ namespace MPF{
       bool Init() override;
       bool Close() override;
       std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPFVideoJob &job) override;
-      std::vector<MPFImageLocation> GetDetections(const MPFImageJob   &job) override;
+      std::vector<MPFImageLocation> GetDetections(const MPFImageJob &job) override;
       string GetDetectionType() override;
 
     private:
 
       log4cxx::LoggerPtr                 _log;            ///< log object
-      map<string,vector<string>>         _class_labels;   ///< possible class labels keyed by model names
-      map<string, vector<uPtrInferCtx*>> _infCtxs;        ///< pool of inference contexts for models
+      map<string, vector<string>>        _class_labels;   ///< possible class labels keyed by model names
+      map<string, vector<uPtrInferCtx>>  _infCtxs;        ///< pool of inference contexts for models
 
       void _readClassNames(string model,
                            string class_label_file,
                            int    class_label_count);                           ///< read in class labels for a model from a file
 
-      vector<uPtrInferCtx*> _niGetInferContexts(const TrtisJobConfig cfg);      ///< get cached inference contexts
+      vector<uPtrInferCtx>& _niGetInferContexts(const TrtisJobConfig cfg);      ///< get cached inference contexts
 
       static string  _niType2Str(ni::DataType dt);                              ///< nvidia data type to string
       cv::Mat        _niResult2CVMat(const size_t batch_idx,
@@ -136,17 +136,17 @@ namespace MPF{
 
       cv::Mat _cvResize(const cv::Mat &img,
                         double        &scaleFactor,
-                        const size_t target_width,
-                        const size_t target_height);                            ///< aspect preserving resize image to ~[target_width, target_height]
+                        const size_t  target_width,
+                        const size_t  target_height);                           ///< aspect preserving resize image to ~[target_width, target_height]
 
       BytVec  _cvRGBBytes(const cv::Mat &img,
                           LngVec        &shape);                                ///< convert image to 8-bit RGB
 
       void _ip_irv2_coco_prepImageData(const TrtisIpIrv2CocoJobConfig &cfg,
                                        const cv::Mat                  &img,
-                                       const uPtrInferCtx*             ctx,
-                                       LngVec                        &shape,
-                                       BytVec                        &imgDat);  ///< prep image for inferencing
+                                       const uPtrInferCtx             &ctx,
+                                       LngVec                         &shape,
+                                       BytVec                         &imgDat);  ///< prep image for inferencing
 
       void _ip_irv2_coco_getDetections(const TrtisIpIrv2CocoJobConfig &cfg,
                                        StrUPtrInferCtxResMap          &res,
@@ -154,14 +154,14 @@ namespace MPF{
 
       void _ip_irv2_coco_tracker(const TrtisIpIrv2CocoJobConfig &cfg,
                                  MPFImageLocation               &loc,
-                                 const int                       frameIdx,
+                                 const int                      frameIdx,
                                  MPFVideoTrackVec               &tracks);       ///< tracking using time, space and feature proximity
 
       void _base64EncodeStopFeatures(MPFVideoTrackVec &tracks);                 ///< base64 encode "FEATURE" property of stop location
 
       void _addToTrack(MPFImageLocation &location,
-                       int               frame_index,
-                       MPFVideoTrack     &track);                               ///< add location to a track
+                       int              frame_index,
+                       MPFVideoTrack    &track);                                ///< add location to a track
 
   };
  }
