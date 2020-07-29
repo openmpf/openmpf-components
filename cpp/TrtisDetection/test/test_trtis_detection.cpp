@@ -28,7 +28,6 @@
 #include <fstream>
 #include <MPFDetectionComponent.h>
 #include <MPFImageReader.h>
-
 #include <gtest/gtest.h>
 
 #include "TrtisDetection.hpp"
@@ -36,13 +35,21 @@
 using namespace MPF::COMPONENT;
 using namespace std;
 
-//------------------------------------------------------------------------------
-Properties getProperties_ip_irv2_coco() {
-
-    return {
-            { "TRTIS_SERVER", "localhost:8001" },
-            { "MODEL_NAME", "ip_irv2_coco" },
-    };
+/** ***************************************************************************
+*   macros for "pretty" gtest messages
+**************************************************************************** */
+#define ANSI_TXT_GRN "\033[0;32m"
+#define ANSI_TXT_MGT "\033[0;35m" //Magenta
+#define ANSI_TXT_DFT "\033[0;0m" //Console default
+#define GTEST_BOX "[          ] "
+#define GOUT(MSG){                                                            \
+  std::cout << GTEST_BOX << MSG << std::endl;                                 \
+}
+#define GOUT_MGT(MSG){                                                        \
+  std::cout << ANSI_TXT_MGT << GTEST_BOX << MSG << ANSI_TXT_DFT << std::endl; \
+}
+#define GOUT_GRN(MSG){                                                        \
+  std::cout << ANSI_TXT_GRN << GTEST_BOX << MSG << ANSI_TXT_DFT << std::endl; \
 }
 
 //------------------------------------------------------------------------------
@@ -65,7 +72,7 @@ bool containsObject(const string              &object_name,
 void assertObjectDetectedInImage(const string   &expected_object,
                                  const string   &image_path,
                                  TrtisDetection &trtisDet           ){
-    MPFImageJob job("Test", image_path, getProperties_ip_irv2_coco(), {});
+    MPFImageJob job("Test", image_path, {}, {});
 
     MPFImageLocationVec image_locations;
 
@@ -108,6 +115,25 @@ TEST(TRTIS, InitTest) {
  }
 
 //------------------------------------------------------------------------------
+ TEST(TRTIS, ImageTimeoutTest) {
+
+    MPFImageLocationVec image_locations;
+    TrtisDetection trtisDet;
+    trtisDet.SetRunDirectory("../plugin");
+    ASSERT_TRUE(trtisDet.Init());
+
+    for(int t : {1, 2, 5}){
+      MPFImageJob job("Test", "test/traffic.jpg",{{"CONTEXT_WAIT_TIMEOUT_SEC",to_string(t)}},{});
+      try {
+        GOUT("Testing context timeout value " << to_string(t) << " [sec].");
+        image_locations = trtisDet.GetDetections(job);
+      }catch (const MPFDetectionException &ex) {
+        GOUT("Got exception:" << ex.what());
+      }
+    }
+ }
+
+//------------------------------------------------------------------------------
 bool containsObject(const string           &object_name,
                     const MPFVideoTrackVec &tracks) {
     return any_of(tracks.begin(), tracks.end(),
@@ -123,7 +149,6 @@ void assertObjectDetectedInVideo(const string     &object_name,
     MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 11, 12, job_props, {});
 
     MPFVideoTrackVec tracks;
-
     try {
         tracks = trtisDet.GetDetections(job);
     } catch (const MPFDetectionException &ex) {
@@ -140,10 +165,26 @@ TEST(TRTIS, VideoTest) {
     trtisDet.SetRunDirectory("../plugin");
 
     ASSERT_TRUE(trtisDet.Init());
-
-    Properties job_props = getProperties_ip_irv2_coco();
-    job_props["USER_FEATURE_ENABLE"] = "true";
-    assertObjectDetectedInVideo("clock", job_props, trtisDet);
-
+    assertObjectDetectedInVideo("clock", {{"USER_FEATURE_ENABLE","true"}}, trtisDet);
     ASSERT_TRUE(trtisDet.Close());
+}
+//------------------------------------------------------------------------------
+TEST(TRTIS, VideoTimeoutTest) {
+    MPFImageLocationVec image_locations;
+    TrtisDetection trtisDet;
+    trtisDet.SetRunDirectory("../plugin");
+    ASSERT_TRUE(trtisDet.Init());
+
+    for(int t : {1, 2, 5}){
+      MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 0, 12,
+       {{"CONTEXT_WAIT_TIMEOUT_SEC",to_string(t)},
+        {"USER_FEATURE_ENABLE","true"}}, {});
+      MPFVideoTrackVec tracks;
+      try {
+        GOUT("Testing with " << to_string(t) << " [sec] timeout.");
+        tracks = trtisDet.GetDetections(job);
+      } catch (const MPFDetectionException &ex) {
+         GOUT("Got exception:" << ex.what());
+      }
+    }
 }
