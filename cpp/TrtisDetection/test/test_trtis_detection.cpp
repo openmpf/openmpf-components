@@ -74,13 +74,7 @@ void assertObjectDetectedInImage(const string   &expected_object,
                                  TrtisDetection &trtisDet           ){
     MPFImageJob job("Test", image_path, {}, {});
 
-    MPFImageLocationVec image_locations;
-
-    try {
-        image_locations = trtisDet.GetDetections(job);
-    } catch (const MPFDetectionException &ex) {
-        FAIL() << " GetDetections failed to process test image.";
-    }
+    MPFImageLocationVec image_locations = trtisDet.GetDetections(job);
 
     ASSERT_FALSE(image_locations.empty());
 

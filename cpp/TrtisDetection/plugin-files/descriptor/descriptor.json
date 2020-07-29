@@ -24,97 +24,116 @@
         "DETECTION_CLASS_TRTIS"
       ],
       "properties": [
-        { "name": "TRTIS_SERVER",
-          "description": "The DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS) which is setup to server the requested model' inferences. If set to `NULL`, the component will instead use `localhost:8001` or the environment variable for `TRTIS_SERVER` if it is available.",
-          "type":"STRING",
-          "defaultValue":"NULL"
+        {
+          "name": "TRTIS_SERVER",
+          "description": "The DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS) which is setup to server the requested model' inferences. If the value is the empty string or this property is omitted, the component will instead use the environment variable for `TRTIS_SERVER`, if it is available, or default to `localhost:8001`.",
+          "type": "STRING",
+          "defaultValue": ""
         },
-        { "name": "MODEL_NAME",
+        {
+          "name": "MODEL_NAME",
           "description": "The model on the inference server to be used for inferencing. 'ip_irv2_coco' is provided by default. NOTE: Currently, only 'ip_irv2_coco' is supported.",
           "type": "STRING",
           "defaultValue": "ip_irv2_coco"
         },
-        { "name": "MODEL_VERSION",
+        {
+          "name": "MODEL_VERSION",
           "description": "The version number of the inference server model. '-1' means the latest version available on the server.",
           "type": "INT",
           "defaultValue": "-1"
         },
-        { "name": "MAX_INFER_CONCURRENCY",
+        {
+          "name": "MAX_INFER_CONCURRENCY",
           "description": "Maximum number of inference requests that will be sent to the server concurrently for video inferencing.  This allows time overlapping of inferencing on the server and reading/processing video frames on the client.",
           "type": "INT",
           "defaultValue": "5"
         },
-        { "name": "CONTEXT_WAIT_TIMEOUT_SEC",
+        {
+          "name": "CONTEXT_WAIT_TIMEOUT_SEC",
           "description": "Maximum number of seconds to wait for an inference context when using concurrent inferencing",
           "type": "INT",
           "defaultValue": "30"
         },
-        { "name": "USER_FEATURE_ENABLE",
+        {
+          "name": "USER_FEATURE_ENABLE",
           "description": "'ip_irv2_coco' model specific: Whether or not to generate similarity feature detections for user-specified bounding box.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
-        { "name": "USER_FEATURE_X_LEFT_UPPER",
+        {
+          "name": "USER_FEATURE_X_LEFT_UPPER",
           "description": "'ip_irv2_coco' model specific: Upper left hand user bounding box pixel x-coordinate.",
           "type": "INT",
           "defaultValue": "0"
         },
-        { "name": "USER_FEATURE_Y_LEFT_UPPER",
+        {
+          "name": "USER_FEATURE_Y_LEFT_UPPER",
           "description": "'ip_irv2_coco' model specific: Upper left hand user bounding box pixel y-coordinate.",
           "type": "INT",
           "defaultValue": "0"
         },
-        { "name": "USER_FEATURE_WIDTH",
+        {
+          "name": "USER_FEATURE_WIDTH",
           "description": "'ip_irv2_coco' model specific: Width of user bounding box in pixels, defaults to image/frame width when set to non-positive values.",
           "type": "INT",
           "defaultValue": "-1"
         },
-        { "name": "USER_FEATURE_HEIGHT",
+        {
+          "name": "USER_FEATURE_HEIGHT",
           "description": "'ip_irv2_coco' model specific: Height of user bounding box in pixels, defaults to image/frame height when set to non-positive values.",
           "type": "INT",
           "defaultValue": "-1"
         },
-        { "name": "FRAME_FEATURE_ENABLE",
+        {
+          "name": "FRAME_FEATURE_ENABLE",
           "description": "'ip_irv2_coco' model specific: Whether or not to generate a similarity feature for the entire image/each frame.  This feature is a size weighted average of all other features in the image/frame.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
-        { "name": "CLASS_FEATURE_ENABLE",
+        {
+          "name": "CLASS_FEATURE_ENABLE",
           "description": "'ip_irv2_coco' model specific: Whether or not to generate similarity features for any detected COCO-class objects.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
-        { "name": "EXTRA_FEATURE_ENABLE",
+        {
+          "name": "EXTRA_FEATURE_ENABLE",
           "description": "'ip_irv2_coco' model specific: Whether or not to generate similarity features for any candidate object regions that could not be classified as COCO objects.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
-        { "name": "CLIENT_PRESCALING_ENABLE",
+        {
+          "name": "CLIENT_PRESCALING_ENABLE",
           "description": "'ip_irv2_coco' model specific: Whether to scale images/frames on the client or inference server to approximately [1024 x 600] as required by this model.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
-        { "name": "RECOGNITION_ENROLL_ENABLE",
+        {
+          "name": "RECOGNITION_ENROLL_ENABLE",
           "description": "NOTE: Not implemented yet. 'ip_irv2_coco' model specific: Whether to send generated similarity features to recognition frame work for enrollment in a gallery.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
-        { "name": "EXTRA_CONFIDENCE_THRESHOLD",
+        {
+          "name": "EXTRA_CONFIDENCE_THRESHOLD",
           "description": "'ip_irv2_coco' model specific: Threshold for object region detections that could not be classified as COCO objects.  Note, the confidence scores of these extra detections is generally close to 0.",
           "type": "DOUBLE",
           "defaultValue": "0.0"
         },
-        { "name": "TRACK_MAX_FEATURE_GAP",
+        {
+          "name": "TRACK_MAX_FEATURE_GAP",
           "description": "'ip_irv2_coco' model specific: Maximum gap in similarity feature space (i.e. cos-distance) for objects to be considered to be in the same track.",
           "type": "DOUBLE",
           "defaultValue": "0.25"
         },
-        { "name": "TRACK_MAX_FRAME_GAP",
+        {
+          "name": "TRACK_MAX_FRAME_GAP",
           "description": "'ip_irv2_coco' model specific: Maximum gap in frames (i.e. time) for objects to be considered to be in the same track.",
           "type": "INT",
           "defaultValue": "30"
         },
-        { "name": "TRACK_MAX_SPACE_GAP",
+        {
+          "name": "TRACK_MAX_SPACE_GAP",
           "description": "'ip_irv2_coco' model specific: Maximum gap in diagonal-normalized pixel space for objects to be considered to be in the same track. Normalization is performed via the image/frame diagonal (sqrt[width*width + height*height])",
           "type": "DOUBLE",
           "defaultValue": "0.3"
@@ -123,29 +142,46 @@
     }
   },
   "actions": [
-    { "name": "TRTIS IP_IRV2_COCO DETECTION ACTION",
+    {
+      "name": "TRTIS IP_IRV2_COCO DETECTION ACTION",
       "description": "Performs TRTIS detection using the 'ip_irv2_coco' model.",
       "algorithm": "TRTIS",
       "properties": [
-        { "name": "MODEL_NAME",
+        {
+          "name": "MODEL_NAME",
           "value": "ip_irv2_coco"
         },
-        { "name": "MODEL_VERSION",
+        {
+          "name": "MODEL_VERSION",
           "value": "-1"
         }
       ]
     }
   ],
   "tasks": [
-    { "name": "TRTIS IP_IRV2_COCO DETECTION TASK",
+    {
+      "name": "TRTIS IP_IRV2_COCO DETECTION TASK",
       "description": "Performs TRTIS detection using the 'ip_irv2_coco' model.",
-      "actions": [ "TRTIS IP_IRV2_COCO DETECTION ACTION" ]
+      "actions": [
+        "TRTIS IP_IRV2_COCO DETECTION ACTION"
+      ]
     }
   ],
   "pipelines": [
-    { "name": "TRTIS IP_IRV2_COCO DETECTION PIPELINE",
+    {
+      "name": "TRTIS IP_IRV2_COCO DETECTION PIPELINE",
       "description": "Performs TRTIS detection using the 'ip_irv2_coco' model.",
-      "tasks": [ "TRTIS IP_IRV2_COCO DETECTION TASK" ]
+      "tasks": [
+        "TRTIS IP_IRV2_COCO DETECTION TASK"
+      ]
+    },
+    {
+      "name": "TRTIS IP_IRV2_COCO DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Performs TRTIS detection using the 'ip_irv2_coco' model and produces markup.",
+      "tasks": [
+        "TRTIS IP_IRV2_COCO DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
     }
   ]
 }

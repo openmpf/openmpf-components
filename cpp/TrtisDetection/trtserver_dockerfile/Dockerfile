@@ -24,7 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
-FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_test_server
+FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_server
 
 # Specify custom models here.
 # ADD <Path_to_custom_models>/models /models/

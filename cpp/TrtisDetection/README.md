@@ -22,17 +22,19 @@ Currently, the component supports both image and video jobs.
 
 Users can control inference and model behavior through the following job parameters:
 
-* `TRTIS_SERVER` : Specifies the DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS). If set to the string value `NULL`, the component will instead use `localhost:8001` or the environment variable for `TRTIS_SERVER` instead if it is available.
+* `TRTIS_SERVER` : Specifies the DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS). If the value is the empty string or this property is omitted, the component will instead use the environment variable for `TRTIS_SERVER`, if it is available, or default to `localhost:8001`.
 
 * `MODEL_NAME`   : Specifies the model on `TRTIS_SERVER` to be used for inferencing. Currently only the default model, `ip_irv2_coco`, is supported.
+
 * `MODEL_VERSION`: Specifies the version number of the inference server model, with the default value of `-1` indicating usage of the latest available version on the server.
 
 * `MAX_INFER_CONCURRENCY`   : Specifies the maximum number of inference requests that will be sent to the server concurrently for video frame inferencing.
+
 * `CONTEXT_WAIT_TIMEOUT_SEC`: Specifies maximum number of seconds to wait for an inference context when using concurrent inferencing.
 
 * `USER_FEATURE_X_LEFT_UPPER` and `USER_FEATURE_Y_LEFT_UPPER` allow users to define the upper left coordinates for a custom bounding box of the image or video frame during inference. `USER_FEATURE_WIDTH` and `USER_FEATURE_HEIGHT` allow users to control the width and height of the custom bounding box.
 
-* `CLIENT_PRESCALING_ENABLE`: Toggles whether to scale images and video frames to the approximate `[1024 x 600]` image size required by the 'ip_irv2_coco' model.
+* `CLIENT_PRESCALING_ENABLE`: Toggles whether to scale images and video frames to the approximate `[1024 x 600]` image size required by the `ip_irv2_coco` model.
 
 For enabling generation of similarity features:
 
@@ -43,6 +45,7 @@ For enabling generation of similarity features:
 * `FRAME_FEATURE_ENABLE`: Toggles generation of a size-weighted average of all other features found in an image or frame.
 
 * `EXTRA_FEATURE_ENABLE`: Toggles generation of similarity features for candidate object regions that could not be classified as COCO objects.
+
 * `EXTRA_CONFIDENCE_THRESHOLD`: Specifies threshold for object region detections that could not be classified as COCO objects. Please note that confidence scores for these extra detections is generally extremely low.
 
 For object tracking in video frames, the following settings control how objects are assessed and organized within the MPF video tracks.

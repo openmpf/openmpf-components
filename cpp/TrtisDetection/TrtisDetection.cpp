@@ -104,22 +104,20 @@ T get(const Properties &p, const string &k, const T def){
 TrtisJobConfig::TrtisJobConfig(const MPFJob &job){
   const Properties jpr = job.job_properties;
 
-  char const* tmp_env = std::getenv("TRTIS_SERVER");
-  if (tmp_env == NULL) {
-    trtis_server = "localhost:8001";
-  } else {
-    trtis_server = std::string(tmp_env);
+  trtis_server = get<string>(jpr,"TRTIS_SERVER" , "");
+  if (trtis_server.empty()) {
+      char const* tmp_env = std::getenv("TRTIS_SERVER");
+      if (tmp_env != NULL) {
+          trtis_server = std::string(tmp_env);
+      } else {
+          trtis_server = "localhost:8001";
+      }
   }
-  string trtis_server_candidate  = get<string>(jpr,"TRTIS_SERVER" , trtis_server);
-  if (trtis_server_candidate.compare("NULL") != 0) {
-    // Allow job property if not set to string "NULL". Otherwise use default or ENV variable instead.
-    trtis_server = trtis_server_candidate;
-  }
+
   model_name    = get<string>(jpr,"MODEL_NAME"   , "ip_irv2_coco");
   model_version = get<int>   (jpr,"MODEL_VERSION", -1);
   maxInferConcurrency = get<size_t>(jpr,"MAX_INFER_CONCURRENCY", 5);
   contextWaitTimeoutSec = get<size_t>(jpr,"CONTEXT_WAIT_TIMEOUT_SEC", 30);
-
 }
 
 /** ****************************************************************************
@@ -778,6 +776,7 @@ void TrtisDetection::_ip_irv2_coco_tracker(
 * \returns Tracks collection to which detections will be added
 ***************************************************************************** */
 std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
+  LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
 
  // if (job.has_feed_forward_track) { do something different ?!}
   std::vector<MPF::COMPONENT::MPFVideoTrack> tracks;
@@ -905,7 +904,10 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 
     for (MPFVideoTrack &track : tracks) {
       video_cap.ReverseTransform(track);
-    }                                                                           LOG4CXX_DEBUG(_log, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
+    }
+
+    LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
+
     return tracks;
 
   }catch(...){
@@ -930,6 +932,8 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 ***************************************************************************** */
 std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob   &job) {
   try{                                                                          LOG4CXX_DEBUG(_log, "Data URI = " << job.data_uri);
+    LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
+
     if(job.data_uri.empty()){
       LOG4CXX_ERROR(_log, "Invalid image file");
       throw MPF_INVALID_DATAFILE_URI;
@@ -973,10 +977,12 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob   
         image_reader.ReverseTransform(locations[i]);
       }                                                                         LOG4CXX_TRACE(_log,"base64 encoded new features in locations vector");
 
+      LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << locations.size() << " detections.");
+
       return locations;
 
     }else{
-      THROW_TRTISEXCEPTION("Unsupported model type:" + model_name);
+      THROW_TRTISEXCEPTION("Unsupported model type: " + model_name);
     }
 
   }catch (...) {
