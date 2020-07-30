@@ -59,7 +59,7 @@ using namespace MPF::COMPONENT;
 #define THROW_TRTISEXCEPTION(MSG){                               \
   string path(__FILE__);                                         \
   string f(path.substr(path.find_last_of("/\\") + 1));           \
-  throw runtime_error(f + "[" + to_string(__LINE__)+"] " + MSG); \
+  throw runtime_error(f + "[" + to_string(__LINE__)+"] " + (MSG)); \
 }
 
 /** ****************************************************************************
@@ -69,7 +69,7 @@ using namespace MPF::COMPONENT;
     nic::Error err = (X);                                                     \
     if (!err.IsOk()) {                                                        \
       stringstream ss("TrtisDetection.cpp["+to_string(__LINE__)+"] ");        \
-      ss << MSG << ":" << err;                                                \
+      ss << (MSG) << ":" << err;                                                \
       THROW_TRTISEXCEPTION(ss.str());                                         \
     }                                                                         \
 }
@@ -317,7 +317,7 @@ cv::Mat TrtisDetection::_cvResize(const cv::Mat &img,
 void TrtisDetection::_ip_irv2_coco_prepImageData(
                                         const TrtisIpIrv2CocoJobConfig &cfg,
                                         const cv::Mat                  &img,
-                                        const uPtrInferCtx             &ctx,
+                                        const sPtrInferCtx             &ctx,
                                         LngVec                         &shape,
                                         BytVec                         &imgDat){
   double scaleFactor=1.0;                                                       LOG4CXX_TRACE(_log, "Preparing image data for inferencing");
@@ -355,8 +355,7 @@ void TrtisDetection::_ip_irv2_coco_prepImageData(
 * \returns  vector of pointers to unique inferencing context
 *           to use for inferencing requests
 ***************************************************************************** */
-vector<uPtrInferCtx>& TrtisDetection::_niGetInferContexts(
-                                                     const TrtisJobConfig cfg)
+vector<sPtrInferCtx>& TrtisDetection::_niGetInferContexts(const TrtisJobConfig& cfg)
 {
   stringstream ss;
   ss << std::this_thread::get_id() << ":" << cfg.model_name << ":" << cfg.model_version;
@@ -367,9 +366,9 @@ vector<uPtrInferCtx>& TrtisDetection::_niGetInferContexts(
   for(int i=0; i < numNewCtx; i++){
     uPtrInferCtx ctx;
     NI_CHECK_OK(
-      nic::InferGrpcContext::Create(&ctx, cfg.trtis_server,
-                                         cfg.model_name,
-                                         cfg.model_version),
+      nic::InferGrpcContext::Create(&ctx, i, cfg.trtis_server,
+                                          cfg.model_name,
+                                          cfg.model_version),
       "unable to create TRTIS inference context");
 
     // Configure context for 'batch_size'=1  and return all outputs
@@ -382,8 +381,14 @@ vector<uPtrInferCtx>& TrtisDetection::_niGetInferContexts(
     }
     NI_CHECK_OK(ctx->SetRunOptions(*options),
                 "failed initializing TRTIS batch size and outputs");
+
+    LOG4CXX_TRACE(_log, "created ctx: " << ctx->CorrelationId());
+
     _infCtxs[key].push_back(std::move(ctx));
+
+    LOG4CXX_DEBUG(_log, "Pushed back InferContext " << i); // DEBUG
   }
+
   return _infCtxs[key];
 }
 
@@ -508,7 +513,7 @@ bool TrtisDetection::Init() {
       // Read class labels for model(s)
       _readClassNames("ip_irv2_coco", models_path + "/ip_irv2_coco/ip_irv2_coco.labels", 90);
     }catch(const exception &ex){
-        LOG4CXX_ERROR(_log, "Init failed: " << ex.what())
+        LOG4CXX_ERROR(_log, "Init failed: " << ex.what());
         return false;
     }                                                                           LOG4CXX_DEBUG(_log, "Plugin path: " << plugin_path);
 
@@ -800,25 +805,37 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
       if(!video_cap.Read(frame)) return tracks;
       TrtisIpIrv2CocoJobConfig cfg(job, frame.cols,frame.rows);
 
-      mutex poolMtx, tracksMtx, nextRxFrameMtx;                                 LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
+      mutex freeCtxPoolMtx, tracksMtx, nextRxFrameMtx;                              LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
       condition_variable cv, cvf;
       auto timeout = chrono::seconds(cfg.contextWaitTimeoutSec);
-      vector<uPtrInferCtx>& ctxPool = _niGetInferContexts(cfg);                 LOG4CXX_TRACE(_log,"Retrieved inferencing context pool of size " << ctxPool.size() << " for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
-      size_t initialCtxPoolSize = ctxPool.size();
+
+      vector<sPtrInferCtx>& ctxs = _niGetInferContexts(cfg);                  LOG4CXX_TRACE(_log,"Retrieved inferencing context pool of size " << ctxs.size() << " for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
+      size_t initialCtxPoolSize = ctxs.size();
+
+      unordered_map<int, sPtrInferCtx> ctxMap;
+      vector<int> freeCtxPool;
+      for (auto ctx : ctxs) {
+          ctxMap[ctx->CorrelationId()] = ctx;
+          freeCtxPool.push_back(ctx->CorrelationId());
+      }
+
       int frameIdx = 0;
       int nextRxFrameIdx = 0;
+
       do{                                                                       LOG4CXX_TRACE(_log,"requesting inference from TRTIS server for frame[" <<  frameIdx << "]" );
-        uPtrInferCtx ctx;
-        { unique_lock<mutex> lk(poolMtx);
-          if(ctxPool.size() < 1){                                               LOG4CXX_TRACE(_log,"wait for an infer context to become available");
-            if(!cv.wait_for(lk, timeout,[&ctxPool]{return ctxPool.size() > 0;})){
+        int ctxId;
+        { unique_lock<mutex> lk(freeCtxPoolMtx);
+          if(freeCtxPool.size() < 1){                                           LOG4CXX_TRACE(_log,"wait for an infer context to become available");
+            if(!cv.wait_for(lk, timeout,[&freeCtxPool]{return freeCtxPool.size() > 0;})){
               THROW_TRTISEXCEPTION("Waited longer than " +
                 to_string(timeout.count()) + " sec for an inference context.");
             }
           }
-          ctx = std::move(ctxPool.back());
-          ctxPool.pop_back();                                                   LOG4CXX_TRACE(_log,"removing ctx["<<ctxPool.size() <<"] from pool");
+          ctxId = freeCtxPool.back();
+          freeCtxPool.pop_back();                                               LOG4CXX_TRACE(_log,"removing ctx " << ctxId << " from pool");
         }
+
+        sPtrInferCtx& ctx = ctxMap[ctxId];
 
         LngVec shape;
         BytVec imgDat;
@@ -826,34 +843,38 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
                                                                                 LOG4CXX_DEBUG(_log,"frame["<<frameIdx<<"] sending");
         // Send inference request to the inference server.
         NI_CHECK_OK(
-          ctx->AsyncRun([&nextRxFrameMtx,
-                            &nextRxFrameIdx,
-                            &frameIdx,
-                            &cv,
-                            &cvf,
-                            &timeout,
-                            &cfg,
-                            &tracksMtx,
-                            &tracks,
-                            &poolMtx,
-                            &ctxPool,
-                            this](nic::InferContext* c, sPtrInferCtxReq req)
+          ctx->AsyncRun([frameIdx,
+                         &nextRxFrameMtx,
+                         &nextRxFrameIdx,
+                         &cv,
+                         &cvf,
+                         &timeout,
+                         &cfg,
+                         &tracksMtx,
+                         &tracks,
+                         &freeCtxPoolMtx,
+                         &freeCtxPool,
+                         this](nic::InferContext* c, sPtrInferCtxReq req)
           {
             {
+              // NOTE: When this callback is invoked, the frame has already been processed by the TRTIS server.
+              LOG4CXX_TRACE(_log,"Async run for frame " << frameIdx << " with context " << c->CorrelationId());
+
+              // Ensure tracking is performed on the frames in the proper order.
               unique_lock<mutex> lk(nextRxFrameMtx);
               if(frameIdx != nextRxFrameIdx){                                   LOG4CXX_TRACE(_log,"out of sequence frame response, expected frame[" << nextRxFrameIdx << "] but received frame[" << frameIdx << "]");
-                if(!cvf.wait_for(lk,
-                                 timeout,
-                                 [&frameIdx, &nextRxFrameIdx]{return frameIdx == nextRxFrameIdx;})){
+                if(!cvf.wait_for(lk, timeout,
+                                 [this, frameIdx, &nextRxFrameIdx] {
+                    LOG4CXX_TRACE(_log,"CHECK: out of sequence frame response, expected frame[" << nextRxFrameIdx << "] but received frame[" << frameIdx << "]");
+                    return frameIdx == nextRxFrameIdx;
+                })){
                   THROW_TRTISEXCEPTION("Waited longer than " +
                     to_string(timeout.count()) + " sec for response to request for frame["+to_string(nextRxFrameIdx)+"].");
                 }
               }
             }
-            { lock_guard<mutex> lk(nextRxFrameMtx);
-              nextRxFrameIdx++;
-              cvf.notify_all();
-            }
+
+            // Retrieve the results from the TRTIS server and update tracks.
             StrUPtrInferCtxResMap res;                                          LOG4CXX_TRACE(_log, "Callback[" << frameIdx << "] thread_id:" << std::this_thread::get_id());
             bool is_ready = false;
             NI_CHECK_OK(
@@ -869,27 +890,33 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
               _ip_irv2_coco_tracker(cfg, loc, frameIdx, tracks);
             }                                                                   LOG4CXX_TRACE(_log, "tracked objects in frame[" <<  frameIdx << "]");
 
-            { lock_guard<mutex> lk(poolMtx);
-              uPtrInferCtx ctx2(c);
-              ctxPool.push_back(std::move(ctx2));
-              cv.notify_all();                                                  LOG4CXX_TRACE(_log, "returned ctx[" << ctxPool.size() - 1 << "] to pool");
+            // Tracking for this frame is complete. Allow tracking on the next frame.
+            { lock_guard<mutex> lk(nextRxFrameMtx);
+                nextRxFrameIdx++;
+                LOG4CXX_TRACE(_log, "Increment nextRxFrameIdx to " << nextRxFrameIdx);
+                cvf.notify_all();
+            }
+
+            // We're done with the context. Add it back to the pool so it can be used for another frame.
+            { lock_guard<mutex> lk(freeCtxPoolMtx);
+              freeCtxPool.push_back(c->CorrelationId());
+              cv.notify_all();                                                  LOG4CXX_TRACE(_log, "returned ctx " << c->CorrelationId() << " to pool");
             }                                                                   LOG4CXX_DEBUG(_log,"frame["<<frameIdx<<"] complete");
           }),
           "unable to inference '" + cfg.model_name + "' ver."
                                   + to_string(cfg.model_version));              LOG4CXX_TRACE(_log,"Inference request sent");
                                                                                 LOG4CXX_DEBUG(_log,"frame["<<frameIdx<<"] sent");
 
-
         frameIdx++;
+        LOG4CXX_DEBUG(_log, "frameIdx++ to " << frameIdx);
       } while (video_cap.Read(frame));
 
-      if(ctxPool.size() < initialCtxPoolSize){                                  LOG4CXX_TRACE(_log,"wait inference context pool size to return to initial size of " << initialCtxPoolSize );
-        unique_lock<mutex> lk(poolMtx);
-        if(!cv.wait_for(lk, cfg.maxInferConcurrency * timeout
-                        ,[&ctxPool, &initialCtxPoolSize]{return ctxPool.size() == initialCtxPoolSize;})){
-                           THROW_TRTISEXCEPTION("Waited longer than " +
-                             to_string(timeout.count()) +
-                             " sec for context pool to return to initial size.");
+      if(freeCtxPool.size() < initialCtxPoolSize){                              LOG4CXX_TRACE(_log,"wait inference context pool size to return to initial size of " << initialCtxPoolSize );
+        unique_lock<mutex> lk(freeCtxPoolMtx);
+        if(!cv.wait_for(lk, cfg.maxInferConcurrency * timeout,
+                        [&freeCtxPool, &initialCtxPoolSize]{return freeCtxPool.size() == initialCtxPoolSize;})){
+            THROW_TRTISEXCEPTION("Waited longer than " + to_string(timeout.count())
+            + " sec for context pool to return to initial size.");
         }
       }                                                                         LOG4CXX_DEBUG(_log,"all frames complete");
 
@@ -925,7 +952,7 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 * \note  prior to returning the features are base64 encoded
 *
 ***************************************************************************** */
-std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob   &job) {
+std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &job) {
   try{                                                                          LOG4CXX_DEBUG(_log, "Data URI = " << job.data_uri);
     LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
 
@@ -950,7 +977,7 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob   
 
       TrtisIpIrv2CocoJobConfig cfg(job, img.cols, img.rows);                    LOG4CXX_TRACE(_log,"parsed job configuration settings");
       cfg.maxInferConcurrency = 1;
-      uPtrInferCtx& ctx = _niGetInferContexts(cfg)[0];                          LOG4CXX_TRACE(_log,"retrieved inferencing context for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
+      sPtrInferCtx& ctx = _niGetInferContexts(cfg)[0];                          LOG4CXX_TRACE(_log,"retrieved inferencing context for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
 
       LngVec shape;
       BytVec imgDat;

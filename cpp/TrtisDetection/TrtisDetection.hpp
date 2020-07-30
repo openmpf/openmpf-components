@@ -59,7 +59,8 @@ namespace MPF{
   typedef nic::InferContext::Result    InferCtxRes;           ///< inferencing message output context
   typedef nic::InferContext::Options   InferCtxOpt;           ///< inferencing message context options
   typedef nic::InferContext::Request   InferCtxReq;           ///< inferencing context request
-  typedef unique_ptr<InferCtx>         uPtrInferCtx;          ///< inferencing message context  pointer
+  typedef unique_ptr<InferCtx>         uPtrInferCtx;          ///< inferencing message context pointer
+  typedef shared_ptr<InferCtx>         sPtrInferCtx;          ///< inferencing message context pointer
   typedef unique_ptr<InferCtxOpt>      uPtrInferCtxOpt;       ///< inference options pointer
   typedef unique_ptr<InferCtxRes>      uPtrInferCtxRes;       ///< inference results pointer
   typedef shared_ptr<InferCtxInp>      sPtrInferCtxInp;       ///< inference input context pointer
@@ -121,13 +122,13 @@ namespace MPF{
 
       log4cxx::LoggerPtr                 _log;            ///< log object
       map<string, vector<string>>        _class_labels;   ///< possible class labels keyed by model names
-      map<string, vector<uPtrInferCtx>>  _infCtxs;        ///< pool of inference contexts for models
+      map<string, vector<sPtrInferCtx>>  _infCtxs;        ///< pool of inference contexts for models
 
       void _readClassNames(string model,
                            string class_label_file,
                            int    class_label_count);                           ///< read in class labels for a model from a file
 
-      vector<uPtrInferCtx>& _niGetInferContexts(const TrtisJobConfig cfg);      ///< get cached inference contexts
+      vector<sPtrInferCtx>& _niGetInferContexts(const TrtisJobConfig& cfg);     ///< get cached inference contexts
 
       static string  _niType2Str(ni::DataType dt);                              ///< nvidia data type to string
       cv::Mat        _niResult2CVMat(const size_t batch_idx,
@@ -144,7 +145,7 @@ namespace MPF{
 
       void _ip_irv2_coco_prepImageData(const TrtisIpIrv2CocoJobConfig &cfg,
                                        const cv::Mat                  &img,
-                                       const uPtrInferCtx             &ctx,
+                                       const sPtrInferCtx             &ctx,
                                        LngVec                         &shape,
                                        BytVec                         &imgDat);  ///< prep image for inferencing
 
