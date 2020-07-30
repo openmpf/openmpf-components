@@ -30,6 +30,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <chrono>
+#include <iomanip>
 #include <exception>
 
 #ifdef OUTPUT_IMAGES
@@ -43,6 +44,24 @@
 #include <log4cxx/logmanager.h>
 #include <log4cxx/xml/domconfigurator.h>
 
+#include <openssl/sha.h>
+
+#include <aws/core/auth/AWSCredentialsProvider.h>
+#include <aws/s3/model/Bucket.h>
+#include <aws/s3/model/Object.h>
+#include <aws/s3/model/Delete.h>
+#include <aws/s3/model/ObjectIdentifier.h>
+#include <aws/s3/model/ListObjectsV2Request.h>
+#include <aws/s3/model/ListObjectVersionsRequest.h>
+#include <aws/s3/model/PutObjectRequest.h>
+#include <aws/s3/model/GetObjectRequest.h>
+#include <aws/s3/model/DeleteObjectRequest.h>
+#include <aws/s3/model/DeleteObjectsRequest.h>
+#include <aws/s3/model/HeadObjectRequest.h>
+#include <aws/s3/model/HeadBucketRequest.h>
+#include <aws/s3/model/CreateBucketRequest.h>
+#include <aws/s3/model/DeleteBucketRequest.h>
+
 #include <Utils.h>
 #include <detectionComponentUtils.h>
 #include <MPFImageReader.h>
@@ -50,6 +69,7 @@
 
 #include "TrtisDetection.hpp"
 #include "base64.h"
+#include "uri.hpp"
 
 using namespace MPF::COMPONENT;
 
@@ -91,6 +111,26 @@ std::ostream& operator<< (std::ostream& out, const std::vector<T>& v) {
 }
 
 /** ****************************************************************************
+* shorthands for getting configuration from environment variables if not
+* provided by job configuration
+***************************************************************************** */
+template<typename T>
+T getEnv(const Properties &p, const string &k, const T def){
+  auto iter = p.find(k);
+  if (iter == p.end()) {
+    const char* env_p = getenv(k.c_str());
+    if(env_p != NULL){
+      map<string,string> envp;
+      envp.insert(pair<string,string>(k,string(env_p)));
+      return DetectionComponentUtils::GetProperty<T>(envp,k,def);
+    }else{
+      return def;
+    }
+  }
+  return DetectionComponentUtils::GetProperty<T>(p,k,def);
+}
+
+/** ****************************************************************************
 * shorthands for getting MPF properties of various types
 ***************************************************************************** */
 template<typename T>
@@ -101,32 +141,57 @@ T get(const Properties &p, const string &k, const T def){
 /** ****************************************************************************
 * Parse TRTIS setting out of MPFJob
 ***************************************************************************** */
-TrtisJobConfig::TrtisJobConfig(const MPFJob &job){
+TrtisJobConfig::TrtisJobConfig(const log4cxx::LoggerPtr log, const MPFJob &job){
   const Properties jpr = job.job_properties;
+  _log = log;
+  trtis_server          = getEnv<string>(jpr,"TRTIS_SERVER", "localhost:8001"); LOG4CXX_TRACE(_log, "TRTIS_SERVER: "  << trtis_server);
+  model_name            = get<string>   (jpr,"MODEL_NAME"   , "ip_irv2_coco");  LOG4CXX_TRACE(_log, "MODEL_NAME: "    << model_name);
+  model_version         = get<int>      (jpr,"MODEL_VERSION", -1);              LOG4CXX_TRACE(_log, "MODEL_VERSION: " << model_version);
+  s3_results_bucket_url = get<string>   (jpr,"S3_RESULTS_BUCKET","");           LOG4CXX_TRACE(_log, "S3_RESULTS_BUCKET: " << s3_results_bucket_url);
+  maxInferConcurrency   = getEnv<size_t>(jpr,"MAX_INFER_CONCURRENCY", 5);       LOG4CXX_TRACE(_log, "MAX_INFER_CONCURRENCY: " << maxInferConcurrency);
+  contextWaitTimeoutSec = getEnv<size_t>(jpr,"CONTEXT_WAIT_TIMEOUT_SEC", 30);   LOG4CXX_TRACE(_log, "CONTEXT_WAIT_TIMEOUT_SEC: " << contextWaitTimeoutSec);
 
-  trtis_server = get<string>(jpr,"TRTIS_SERVER" , "");
-  if (trtis_server.empty()) {
-      char const* tmp_env = std::getenv("TRTIS_SERVER");
-      if (tmp_env != NULL) {
-          trtis_server = std::string(tmp_env);
-      } else {
-          trtis_server = "localhost:8001";
-      }
+  if(!s3_results_bucket_url.empty()){                                           LOG4CXX_TRACE(_log, "Configuring S3 Client");
+    Aws::Client::ClientConfiguration awsClientConfig;
+    try{
+      uri s3_url(s3_results_bucket_url);
+      string endpoint = s3_url.get_scheme() + "://" + s3_url.get_host();
+      endpoint += ((s3_url.get_port()) ?  ":"+to_string(s3_url.get_port()) : "");
+      awsClientConfig.endpointOverride = Aws::String(endpoint.c_str());
+      s3_bucket = s3_url.get_path();
+      s3_bucket.erase(s3_bucket.find_last_not_of("/ ") + 1);
+      s3_bucket_full_path = endpoint + '/' + s3_bucket;
+    }catch(const exception &ex){
+      THROW_TRTISEXCEPTION("Could not parse S3 bucket url: "+ ex.what());
+    }
+
+    string accessKeyId = getEnv<string>(jpr,"AWS_ACCESS_KEY_ID","");
+    string secretKey = getEnv<string>(jpr,"AWS_SECRET_ACCESS_KEY","");
+    if(!accessKeyId.empty() && !secretKey.empty()){                             LOG4CXX_TRACE(_log, "Using job supplied S3 credentials");
+      Aws::Auth::AWSCredentials creds = Aws::Auth::AWSCredentials(
+                                               Aws::String(accessKeyId.c_str()),
+                                               Aws::String(secretKey.c_str()));
+      s3_client = Aws::S3::S3Client(creds, awsClientConfig,
+         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
+    }else{                                                                      LOG4CXX_TRACE(_log, "Using localhost default S3 credentials");
+      s3_client = Aws::S3::S3Client(awsClientConfig,
+         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
+
+    }
+  }else{
+    s3_bucket = "";                                                             LOG4CXX_TRACE(_log, "No S3 bucket, skipping S3 client configuration.");
   }
 
-  model_name    = get<string>(jpr,"MODEL_NAME"   , "ip_irv2_coco");
-  model_version = get<int>   (jpr,"MODEL_VERSION", -1);
-  maxInferConcurrency = get<size_t>(jpr,"MAX_INFER_CONCURRENCY", 5);
-  contextWaitTimeoutSec = get<size_t>(jpr,"CONTEXT_WAIT_TIMEOUT_SEC", 30);
 }
 
 /** ****************************************************************************
 * Parse ip_irv2_coco model setting out of MPFJob
 ***************************************************************************** */
-TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
-                                                   const size_t  image_width,
-                                                   const size_t  image_height)
-  :TrtisJobConfig(job),
+TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const log4cxx::LoggerPtr log,
+                                                   const MPFJob            &job,
+                                                   const size_t             image_width,
+                                                   const size_t             image_height)
+  :TrtisJobConfig(log,job),
   image_width(image_width),
   image_height(image_height),
   image_x_max(image_width-1),
@@ -134,12 +199,12 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
   userBBoxNorm({0.0f,0.0f,1.0f,1.0f})
 {
   const Properties jpr = job.job_properties;
-  userFeatEnabled    = get<bool>(jpr, "USER_FEATURE_ENABLE",false);
-  frameFeatEnabled   = get<bool>(jpr,"FRAME_FEATURE_ENABLE",true);
-  classFeatEnabled   = get<bool>(jpr,"CLASS_FEATURE_ENABLE",true);
-  extraFeatEnabled   = get<bool>(jpr,"EXTRA_FEATURE_ENABLE",true);
-  clientScaleEnabled = get<bool>(jpr,"CLIENT_PRESCALING_ENABLE",true);
-  recognitionEnroll  = get<bool>(jpr,"RECOGNITION_ENROLL_ENABLE",false);
+  userFeatEnabled    = get<bool>(jpr, "USER_FEATURE_ENABLE",false);             LOG4CXX_TRACE(_log,"USER_FEATURE_ENABLED:"      << userFeatEnabled);
+  frameFeatEnabled   = get<bool>(jpr,"FRAME_FEATURE_ENABLE",true);              LOG4CXX_TRACE(_log,"FRAME_FEATURE_ENABLE:"      << frameFeatEnabled);
+  classFeatEnabled   = get<bool>(jpr,"CLASS_FEATURE_ENABLE",true);              LOG4CXX_TRACE(_log,"CLASS_FEATURE_ENABLE:"      << classFeatEnabled);
+  extraFeatEnabled   = get<bool>(jpr,"EXTRA_FEATURE_ENABLE",true);              LOG4CXX_TRACE(_log,"EXTRA_FEATURE_ENABLE:"      << extraFeatEnabled);
+  clientScaleEnabled = get<bool>(jpr,"CLIENT_PRESCALING_ENABLE",true);          LOG4CXX_TRACE(_log,"CLIENT_PRESCALING_ENABLE:"  << clientScaleEnabled);
+  recognitionEnroll  = get<bool>(jpr,"RECOGNITION_ENROLL_ENABLE",false);        LOG4CXX_TRACE(_log,"RECOGNITION_ENROLL_ENABLE:" << recognitionEnroll);
   if(userFeatEnabled) {
     userBBox_x      = get<int64_t>(jpr, "USER_FEATURE_X_LEFT_UPPER",0);
     userBBox_y      = get<int64_t>(jpr, "USER_FEATURE_Y_LEFT_UPPER",0);
@@ -188,7 +253,8 @@ string TrtisDetection::GetDetectionType(){
 /******************************************************************************/
 bool TrtisDetection::Close(){
   _infCtxs.clear();  // release inference context pool
-   return true;
+  Aws::ShutdownAPI(_awsSdkOptions);
+  return true;
 }
 
 /** ****************************************************************************
@@ -231,8 +297,8 @@ void TrtisDetection::_readClassNames(string model,
 * Convert image colorspace to RGB and turn to bytes blob in prep for
 * inference server
 *
-* \param      img OpenCV  image to prep for inferencing
-* \param[out] shape       Shape of the scaled output data
+* \param      img    OpenCV  image to prep for inferencing
+* \param[out] shape  Shape of the scaled output data
 *
 * \returns  A continuous RGB data vector ready for inference server
 ***************************************************************************** */
@@ -345,6 +411,31 @@ void TrtisDetection::_ip_irv2_coco_prepImageData(
   NI_CHECK_OK(inBBox->SetRaw((uint8_t*)(&(cfg.userBBoxNorm[0])),
                                           cfg.userBBoxNorm.size()*sizeof(float)),
               "failed setting bbox_input");                                     LOG4CXX_TRACE(_log,"Prepped data for inferencing");
+}
+
+/** ****************************************************************************
+***************************************************************************** */
+uPtrInferCtx* TrtisDetection::_niGetInferContext(const TrtisJobConfig cfg){
+  nic::Error err;
+
+  uPtrInferCtx* ctx = new uPtrInferCtx;
+  NI_CHECK_OK(
+    nic::InferGrpcContext::Create(ctx, cfg.trtis_server,
+                                       cfg.model_name,
+                                       cfg.model_version),
+    "unable to create trtis inference context");
+
+  // Configure context for 'batch_size'=1  and return all outputs
+  uPtrInferCtxOpt options;
+  NI_CHECK_OK(nic::InferContext::Options::Create(&options),
+              "failed initializing trtis inference options");
+  options->SetBatchSize(1);
+  for (const auto& output : (*ctx)->Outputs()) {
+    options->AddRawResult(output);
+  }
+  NI_CHECK_OK((*ctx)->SetRunOptions(*options),
+              "failed initializing trtis batch size and outputs");
+  return ctx;
 }
 
 /** ****************************************************************************
@@ -507,6 +598,10 @@ bool TrtisDetection::Init() {
     _log = log4cxx::Logger::getLogger("TrtisDetection");
 
     try {
+      _awsSdkOptions.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Off;
+      //_awsSdkOptions.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Trace;
+      Aws::InitAPI(_awsSdkOptions);
+
       // Read class labels for model(s)
       _readClassNames("ip_irv2_coco", models_path + "/ip_irv2_coco/ip_irv2_coco.labels", 90);
     }catch(const exception &ex){
@@ -620,6 +715,31 @@ void TrtisDetection::_ip_irv2_coco_getDetections(
 
 }
 
+/** ****************************************************************************
+* base64 decode the feature in the track stop location if the string looks like
+* a valid base64 encoded sting.
+*
+* \param[in,out] tracks  tracks to perform stop feature decoding on.
+*
+***************************************************************************** */
+void TrtisDetection::_base64DecodeStopFeatures(MPFVideoTrackVec &tracks){
+  // Assuming tracks passed in come from somewhere that used base64 encoding,
+  // if not should remove this decode step
+  for(MPFVideoTrack &track : tracks){
+    auto dt = track.frame_locations[track.stop_frame].detection_properties;
+    auto it = dt.find("FEATURE");
+    if(it != dt.end()){                                                         LOG4CXX_TRACE(_log, "base64 Decoding track stop_frame[" << track.stop_frame << "] FEATURE");
+      if(Base64::valid(it->second)){
+        string feature;
+        Base64::Decode(it->second, feature);
+        it->second = feature;
+    // }else{
+    //  throw an error here if we know it should have been base64 ?!
+    //  THROW_TRTISEXCEPTION("Bad base64 feature encoding");
+      }
+    }
+  }
+}
 
 /** ****************************************************************************
 * base64 encode the feature in the track stop location
@@ -752,6 +872,8 @@ void TrtisDetection::_ip_irv2_coco_tracker(
     if(bestTrackPtr != NULL){                                                   LOG4CXX_TRACE(_log, "Adding to track(&" << bestTrackPtr << ") from frame[" << frameIdx <<"]");
       int bestStopFrame = bestTrackPtr->stop_frame;
       MPFImageLocation bestStopLoc = bestTrackPtr->frame_locations[bestStopFrame];
+      // bestStopLoc.detection_properties["FEATURE"] =
+      //   Base64::Encode(bestStopLoc.detection_properties["FEATURE"]);         LOG4CXX_TRACE(_log,"Re-encoded previous FEATURE for track(& " << bestTrackPtr << ") from frame[" << frameIdx <<"]");
      if(bestStopFrame != bestTrackPtr->start_frame){
         bestStopLoc.detection_properties.erase("FEATURE");                      LOG4CXX_TRACE(_log,"Erased previous FEATURE for track(& " << bestTrackPtr << ") from frame[" << frameIdx <<"]");
      }else{ // keep start frame feature for linking ?!
@@ -764,6 +886,28 @@ void TrtisDetection::_ip_irv2_coco_tracker(
       _addToTrack(loc, frameIdx, tracks.back());
     }
   }
+}
+
+/** ****************************************************************************
+* Make a dummy track and reverse transform it so we can get real image coords
+* on the fly.  Note a shallow copy of location is made
+*
+* \param video_cap  mpf video capture object that knows about transforms
+* \param frame_idx  frame index of image location to be transformed
+* \param loc        image location to be copied and transformed
+*
+* \returns transformed dummy track containing a transformed copy of loc
+*
+***************************************************************************** */
+MPFVideoTrack TrtisDetection::_dummyTransform(const MPFVideoCapture &video_cap,
+                                              const int              frame_idx,
+                                              const MPFImageLocation loc){
+  MPFVideoTrack t(frame_idx,frame_idx);
+  MPFImageLocation l(loc.x_left_upper,loc.y_left_upper,loc.width,loc.height,
+                     loc.confidence, loc.detection_properties);
+  t.frame_locations.insert({frame_idx,l});
+  video_cap.ReverseTransform(t);
+  return t;
 }
 
 /** ****************************************************************************
@@ -800,11 +944,21 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 
       // need to read a frame to get size
       if(!video_cap.Read(frame)) return tracks;
-      TrtisIpIrv2CocoJobConfig cfg(job, frame.cols,frame.rows);
+      TrtisIpIrv2CocoJobConfig cfg(_log, job, frame.cols,frame.rows);
+
+      // make sure s3 bucket is there if we need it
+      if(!cfg.s3_bucket.empty() && !_awsExistsS3Bucket(cfg)){
+        LOG4CXX_ERROR(_log, "Could verify existance of S3_RESULTS_BUCKET: " <<  cfg.s3_results_bucket_url);
+        throw MPF_FILE_WRITE_ERROR;
+      }
+
+      // frames per milli-sec if available
+      double fp_ms = get<double>(job.media_properties,"FPS",0.0) / 1000.0;
 
       // Assuming tracks passed in come from somewhere that used base64 encoded
       // feature vectors, if not should remove this decode step
       mutex poolMtx, tracksMtx, nextRxFrameMtx, errorMsgMtx;                    LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
+
       condition_variable cv, cvf;
       auto timeout = chrono::seconds(cfg.contextWaitTimeoutSec);
       vector<uPtrInferCtx*> ctxPool = _niGetInferContexts(cfg);                 LOG4CXX_TRACE(_log,"Retrieved inferencing context pool of size " << ctxPool.size() << " for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
@@ -856,11 +1010,23 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
               }                                                                 LOG4CXX_TRACE(_log, "inference complete");
               MPFImageLocationVec locations;
               _ip_irv2_coco_getDetections(cfg, res, locations);                 LOG4CXX_TRACE(_log, "inferenced frame[" <<  frameIdx << "]");
-              for(MPFImageLocation &loc : locations){
-                lock_guard<mutex> lk(tracksMtx);
-                _ip_irv2_coco_tracker(cfg, loc, frameIdx, tracks);
+              if(!cfg.s3_bucket.empty()){
+                for(MPFImageLocation &loc : locations){
+                  Properties &prop = loc.detection_properties;
+                  MPFVideoTrack dtrack = _dummyTransform(video_cap,frameIdx,loc);
+                  string feature_sha256 = _sha256(prop["FEATURE"]);
+                  prop["FEATURE_URI"] = cfg.s3_bucket_full_path + '/' + feature_sha256;
+                    _awsPutS3Object(cfg, feature_sha256, prop["FEATURE"],
+                                _prepS3Meta(job.data_uri,model_name,dtrack,fp_ms));
+                  lock_guard<mutex> lk(tracksMtx);
+                  _ip_irv2_coco_tracker(cfg, loc, frameIdx, tracks);
+                }                                                                 LOG4CXX_TRACE(_log, "tracked objects in frame[" <<  frameIdx << "]");
+              }else{
+                for(MPFImageLocation &loc : locations){
+                  lock_guard<mutex> lk(tracksMtx);
+                  _ip_irv2_coco_tracker(cfg, loc, frameIdx, tracks);
+                }                                                                 LOG4CXX_TRACE(_log, "tracked objects in frame[" <<  frameIdx << "]");
               }
-                                                                                LOG4CXX_TRACE(_log, "tracked objects in frame[" <<  frameIdx << "]");
             }catch(const exception &e){
               lock_guard<mutex> lk(errorMsgMtx);
               errorMessages.push_back(e.what());
@@ -904,9 +1070,7 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 
     for (MPFVideoTrack &track : tracks) {
       video_cap.ReverseTransform(track);
-    }
-
-    LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
+    }                                                                           LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
 
     return tracks;
 
@@ -953,7 +1117,13 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob   
 
     if(model_name == "ip_irv2_coco"){
 
-      TrtisIpIrv2CocoJobConfig cfg(job, img.cols, img.rows);                    LOG4CXX_TRACE(_log,"parsed job configuration settings");
+      TrtisIpIrv2CocoJobConfig cfg(_log, job, img.cols, img.rows);              LOG4CXX_TRACE(_log,"parsed job configuration settings");
+
+      // make sure s3 bucket is there if we need it
+      if(!cfg.s3_bucket.empty() && !_awsExistsS3Bucket(cfg)){
+        LOG4CXX_ERROR(_log, "Could verify existance of S3_RESULTS_BUCKET: " <<  cfg.s3_results_bucket_url);
+        throw MPF_FILE_WRITE_ERROR;
+      }
       cfg.maxInferConcurrency = 1;
       uPtrInferCtx* ctx  = _niGetInferContexts(cfg)[0];                         LOG4CXX_TRACE(_log,"retrieved inferencing context for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
 
@@ -970,17 +1140,25 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob   
       _ip_irv2_coco_getDetections(cfg, res, locations);
       size_t new_size = locations.size();                                       LOG4CXX_TRACE(_log,"parsed detections into locations vector");
 
-      for(size_t i = next_idx; i < new_size; i++){
-        // not sure if base64 encoding is needed here,
-        // might make sense for whatever serializes the output to do the encoding?!
-        locations[i].detection_properties["FEATURE"] = Base64::Encode(locations[i].detection_properties["FEATURE"]);
-        image_reader.ReverseTransform(locations[i]);
-      }                                                                         LOG4CXX_TRACE(_log,"base64 encoded new features in locations vector");
+      if(!cfg.s3_bucket.empty()){
+        for(size_t i = next_idx; i < new_size; i++){
+          MPFImageLocation &loc = locations[i];
+          Properties &prop = loc.detection_properties;
+          image_reader.ReverseTransform(loc);
+          string feature_sha256 = _sha256(prop["FEATURE"]);
+          prop["FEATURE_URI"] = cfg.s3_bucket_full_path + '/' + feature_sha256;
+          _awsPutS3Object(cfg, feature_sha256, prop["FEATURE"],
+                          _prepS3Meta(job.data_uri,model_name,locations[i]));
+          prop.erase(prop.find("FEATURE"));
 
-      LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << locations.size() << " detections.");
-
+        }                                                                       LOG4CXX_TRACE(_log,"wrote new features to s3 bucket");
+      }else{
+        for(size_t i = next_idx; i < new_size; i++){
+          locations[i].detection_properties["FEATURE"] = Base64::Encode(locations[i].detection_properties["FEATURE"]);
+          image_reader.ReverseTransform(locations[i]);
+        }                                                                       LOG4CXX_TRACE(_log,"base64 encoded new features in locations vector");
+      }                                                                         LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << locations.size() << " detections.");
       return locations;
-
     }else{
       THROW_TRTISEXCEPTION("Unsupported model type: " + model_name);
     }
@@ -992,8 +1170,376 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob   
 
 }
 
+/** ****************************************************************************
+* Grap metadata for s3 object from location
+*
+* \param    data_uri   source media uri
+* \param    model      name oftrtis model used
+* \param    loc        location object to pull meta-data from
+*
+* \returns  collection map to use as s3 meta-data
+*
+***************************************************************************** */
+map<string,string> TrtisDetection::_prepS3Meta(const string           &data_uri,
+                                               const string           &model,
+                                               MPFImageLocation       &loc){
+  map<string,string> s3Meta;
+  Properties &prop = loc.detection_properties;
+  s3Meta.insert({"model",model});
+  s3Meta.insert({"data_uri",data_uri});
+  s3Meta.insert({"x",to_string(loc.x_left_upper)});
+  s3Meta.insert({"y",to_string(loc.y_left_upper)});
+  s3Meta.insert({"width",to_string(loc.width)});
+  s3Meta.insert({"height",to_string(loc.height)});
+  s3Meta.insert({"height",to_string(loc.height)});
+  s3Meta.insert({"feature",prop["FEATURE-TYPE"]});
+  if(prop.find("CLASSIFICATION") != prop.end()){
+    s3Meta.insert({"class",prop["CLASSIFICATION"]});
+    if(loc.confidence > 0){
+      stringstream conf;
+      conf << setprecision(2) << fixed << loc.confidence;
+      s3Meta.insert({"confidence",conf.str()});
+    }
+  }
+  return s3Meta;
+}
 
-//-----------------------------------------------------------------------------
+/** ****************************************************************************
+* Grap metadata for s3 object from video track
+*
+* \param    data_uri   source media uri
+* \param    model      name oftrtis model used
+* \param    track      track object to pull meta-data from
+* \param    fp_ms      frames per milli-sec for time calculation
+*
+* \returns  collection map to use as s3 meta-data
+*
+***************************************************************************** */
+map<string,string> TrtisDetection::_prepS3Meta(const string           &data_uri,
+                                               const string           &model,
+                                               MPFVideoTrack          &track,
+                                               const double           &fp_ms){
+  map<string,string> s3Meta = _prepS3Meta(data_uri,model,
+                                        track.frame_locations.begin()->second);
+  s3Meta.insert({"offsetFrame",to_string(track.start_frame)});
+  if(fp_ms > 0.0){
+    stringstream ss;
+    ss << setprecision(0) << fixed << track.start_frame / fp_ms;
+    s3Meta.insert({"offsetTime",ss.str()});
+  }
+  return s3Meta;
+}
+/** ****************************************************************************
+* Calculate the sha256 digest for a string buffer
+*
+* \param    buffer     buffer to calculate the sha256 for
+*
+* \returns  lowercase hexadecimal string correstponding to the sha256
+*
+***************************************************************************** */
+string TrtisDetection::_sha256(const string &buffer){
+  unsigned char hash[SHA256_DIGEST_LENGTH];
+  SHA256_CTX sha256;
+  SHA256_Init(&sha256);
+  SHA256_Update(&sha256, buffer.c_str(), buffer.length());
+  SHA256_Final(hash, &sha256);
+  std::ostringstream ss;
+  ss << hex << setfill('0');
+  for(int i = 0; i < SHA256_DIGEST_LENGTH; i++){
+    ss << setw(2) << static_cast<unsigned>(hash[i]);
+  }
+  return ss.str();
+}
 
+/** ****************************************************************************
+* Write a string buffer to an S3 object in an S3 bucket
+*
+* \param    cfg configuration parameters for job (s3 client ,bucket etc.)
+* \param    object_name give the name/key for the object in the bucket
+* \param    buffer is the data to write
+*
+* \returns  true if successful
+*
+***************************************************************************** */
+bool TrtisDetection::_awsPutS3Object(const TrtisJobConfig     &cfg,
+                                     const string             &object_name,
+                                     const string             &buffer,
+                                     const std::map<string,string> &metaData){
+
+  Aws::S3::Model::PutObjectRequest req;
+  req.SetBucket(cfg.s3_bucket.c_str());
+  req.SetKey(object_name.c_str());
+  for(auto &m : metaData){
+    req.AddMetadata(Aws::String(m.first.c_str(),m.first.size()),
+                    Aws::String(m.second.c_str(),m.second.size()));
+  }
+  // see https://stackoverflow.com/questions/48666549/upload-uint8-t-buffer-to-aws-s3-without-going-via-filesystem
+  auto data = Aws::MakeShared<Aws::StringStream>("PutObjectInputStream",
+                                                    std::stringstream::in
+                                                  | std::stringstream::out
+                                                  | std::stringstream::binary);
+  data->write(reinterpret_cast<char*>(const_cast<char*>(buffer.c_str())), buffer.length());
+  req.SetBody(data);
+
+  auto res = cfg.s3_client.PutObject(req);
+  if (!res.IsSuccess()) {
+      auto error = res.GetError();
+      LOG4CXX_ERROR(_log, error.GetExceptionName()<<": "<< error.GetMessage());
+      return false;
+  }
+  return true;
+}
+
+/** ****************************************************************************
+* Read a string buffer to an S3 object in an S3 bucket
+*
+* \param         cfg configuration parameters for job (s3 client ,bucket etc.)
+* \param         object_name give the name/key for the object in the bucket
+* \param[out]    buffer is where the data will be returned
+* \param[in,out] metadata about the object if desired
+*
+* \returns  true if successful
+*
+***************************************************************************** */
+bool TrtisDetection::_awsGetS3Object(const TrtisJobConfig &cfg,
+                                     const string         &object_name,
+                                     string               &buffer){
+  Aws::S3::Model::GetObjectRequest req;
+  req.SetBucket(cfg.s3_bucket.c_str());
+  req.SetKey(object_name.c_str());
+  auto res = cfg.s3_client.GetObject(req);
+  if(res.IsSuccess()){
+    // for alternative to string copy see https://github.com/aws/aws-sdk-cpp/issues/64
+    auto &data = res.GetResultWithOwnership().GetBody();
+    std::stringstream ss;
+    ss << data.rdbuf();
+    buffer = ss.str();                                                          LOG4CXX_TRACE(_log, "Retrieved '" << object_name << "' of size " << buffer.length());
+    return true;
+  }else{
+    auto error = res.GetError();
+    LOG4CXX_ERROR(_log, error.GetExceptionName() << ": " << error.GetMessage());
+    return false;
+  }
+}
+/******************************************************************************/
+bool TrtisDetection::_awsGetS3Object(const TrtisJobConfig &cfg,
+                                     const string         &object_name,
+                                     string               &buffer,
+                                     map<string,string>   &metaData){
+  Aws::S3::Model::GetObjectRequest req;
+  req.SetBucket(cfg.s3_bucket.c_str());
+  req.SetKey(object_name.c_str());
+  auto res = cfg.s3_client.GetObject(req);
+  if(res.IsSuccess()){
+    // for alternative to string copy see https://github.com/aws/aws-sdk-cpp/issues/64
+    auto &data = res.GetResultWithOwnership().GetBody();
+    std::stringstream ss;
+    ss << data.rdbuf();
+    buffer = ss.str();                                                          LOG4CXX_TRACE(_log, "Retrieved '" << object_name << "' of size " << buffer.length());
+    for(auto &p : res.GetResult().GetMetadata()){
+      metaData[string(p.first.c_str(),p.first.size())] = string(p.second.c_str(),p.second.size());
+    }
+    return true;
+  }else{
+    auto error = res.GetError();
+    LOG4CXX_ERROR(_log, error.GetExceptionName() << ": " << error.GetMessage());
+    return false;
+  }
+}
+
+
+/** ****************************************************************************
+* Delete an object out of an S3 bucket
+*
+* \param    cfg configuration parameters for job (s3 client ,bucket etc.)
+* \param    object_name give the name/key for the object in the bucket
+*
+* \returns  true if successful
+*
+***************************************************************************** */
+bool TrtisDetection::_awsDeleteS3Object(const TrtisJobConfig &cfg,
+                                        const string         &object_name){
+  Aws::S3::Model::DeleteObjectRequest req;
+  req.SetBucket(cfg.s3_bucket.c_str());
+  req.SetKey(object_name.c_str());
+
+  auto res = cfg.s3_client.DeleteObject(req);
+
+  if (!res.IsSuccess()){
+      auto error = res.GetError();
+      LOG4CXX_ERROR(_log, "Could not delete object '" << object_name << "':"
+                      << error.GetExceptionName() <<": "<< error.GetMessage());
+      return false;
+  }
+  return true;
+}
+
+/** ****************************************************************************
+* Check if an object exists in an S3 bucket
+*
+* \param    cfg configuration parameters for job (s3 client ,bucket etc.)
+* \param    object_name give the name/key for the object in the bucket
+*
+* \returns  true if successful
+*
+***************************************************************************** */
+bool TrtisDetection::_awsExistsS3Object(const TrtisJobConfig &cfg,
+                                        const string         &object_name){
+
+  Aws::S3::Model::HeadObjectRequest req;
+  req.SetBucket(cfg.s3_bucket.c_str());
+  req.SetKey(object_name.c_str());
+
+  const auto res = cfg.s3_client.HeadObject(req);
+  return res.IsSuccess();
+}
+
+/** ****************************************************************************
+* Check if a bucket exists in an S3 store
+*
+* \param    cfg configuration parameters for job (s3 client ,bucket etc.)
+* \param    bucket_name give the name of the bucket into which to write
+*
+* \returns  true if successful
+*
+***************************************************************************** */
+bool TrtisDetection::_awsExistsS3Bucket(const TrtisJobConfig &cfg,
+                                        const string         &bucket_name){
+
+  Aws::S3::Model::HeadBucketRequest req;
+  const string bucket = bucket_name.empty() ? cfg.s3_bucket : bucket_name;
+  req.SetBucket(bucket.c_str());
+
+  const auto res = cfg.s3_client.HeadBucket(req);
+  return res.IsSuccess();
+}
+
+/** ****************************************************************************
+* Create a bucket in an S3 store if it does not exist
+*
+* \param    cfg configuration parameters for job (s3 client ,bucket etc.)
+* \param    bucket_name give the name of the bucket into which to write
+*
+* \returns  true if successful
+*
+***************************************************************************** */
+bool TrtisDetection::_awsCreateS3Bucket(const TrtisJobConfig &cfg,
+                                        const string         &bucket_name){
+  const string bucket = bucket_name.empty() ? cfg.s3_bucket : bucket_name;
+  if(!_awsExistsS3Bucket(cfg,bucket)){
+    Aws::S3::Model::CreateBucketRequest req;
+    req.SetBucket(bucket.c_str());
+
+    const auto res = cfg.s3_client.CreateBucket(req);
+    if(!res.IsSuccess()){
+      auto error = res.GetError();
+      LOG4CXX_ERROR(_log, "Unable to create bucket '" << bucket << "' : "
+                        << error.GetExceptionName()<<": "<< error.GetMessage());
+      return false;
+    }
+    return true;
+  }else{                                                                        LOG4CXX_TRACE(_log,"bucket '" << bucket <<"'already exists");
+    return true;
+  }
+}
+
+/** ****************************************************************************
+* Delete a bucket in an S3 store if it exists
+*
+* \param    cfg configuration parameters for job (s3 client ,bucket etc.)
+* \param    bucket_name give the name of the bucket into which to write
+*
+* \returns  true if successful
+*
+***************************************************************************** */
+bool TrtisDetection::_awsDeleteS3Bucket(const TrtisJobConfig &cfg,
+                                        const string         &bucket_name){
+
+  const string bucket = bucket_name.empty() ? cfg.s3_bucket : bucket_name;
+  if(_awsExistsS3Bucket(cfg,bucket)){
+    Aws::S3::Model::DeleteBucketRequest req;
+    req.SetBucket(bucket.c_str());
+
+    const auto res = cfg.s3_client.DeleteBucket(req);
+    if(!res.IsSuccess()){
+      auto error = res.GetError();
+      LOG4CXX_ERROR(_log, "Unable to delete bucket '" << bucket <<"' : "
+                        << error.GetExceptionName()<<": "<< error.GetMessage());
+      return false;
+    }
+    return true;
+  }else{                                                                        LOG4CXX_TRACE(_log,"bucket '" << bucket <<"'does not exists");
+    return true;
+  }
+}
+
+
+/** ****************************************************************************
+* Empty a bucket in an S3 store if it exists
+*
+* \param    cfg configuration parameters for job (s3 client ,bucket etc.)
+* \param    bucket_name give the name of the bucket into which to write
+*
+* \returns  true if successful
+*
+***************************************************************************** */
+bool TrtisDetection::_awsEmptyS3Bucket(const TrtisJobConfig &cfg,
+                                       const string         &bucket_name){
+  const string bucket = bucket_name.empty() ? cfg.s3_bucket : bucket_name;
+  if(_awsExistsS3Bucket(cfg,bucket)){
+    Aws::S3::Model::ListObjectsV2Request req;
+    req.SetBucket(bucket.c_str());
+    while(true){
+      auto res = cfg.s3_client.ListObjectsV2(req);
+      Aws::Vector<Aws::S3::Model::Object> oList = res.GetResult().GetContents();
+      if(oList.size() > 0){
+        Aws::S3::Model::Delete dObjs;
+        //see https://github.com/aws/aws-sdk-cpp/issues/91
+        for(auto const &o: oList){
+          Aws::S3::Model::ObjectIdentifier oId;
+          oId.SetKey(o.GetKey());
+          dObjs.AddObjects(oId);
+        }
+        Aws::S3::Model::DeleteObjectsRequest dReq;
+        dReq.SetBucket(bucket.c_str());
+        dReq.SetDelete(dObjs);
+        auto dRes = cfg.s3_client.DeleteObjects(dReq);
+        if(! dRes.IsSuccess()){
+          auto error = res.GetError();
+          LOG4CXX_TRACE(_log,"could delete all files in bucket '" << bucket <<"'"
+                          << error.GetExceptionName()<<": "<< error.GetMessage());
+          return false;
+        }
+      }else{
+        break;
+      }
+
+    }
+
+    // extra stuff needs to happen if versioned see https://docs.aws.amazon.com/AmazonS3/latest/dev/delete-or-empty-bucket.html#empty-bucket-awssdks
+    #ifdef VERSIONED_S3_OBJECTS
+    Aws::S3::Model::ListObjectVersionsRequest req;
+    req.SetBucket(bucket.c_str());
+    auto res = cfg.s3_client.ListObjectVersions(req);
+    Aws::Vector<Aws::S3::Model::Object> oList = res.GetResult().GetContents();
+    while(true){
+      for(auto const &o: oList){
+        do stuff
+      }
+      if(!res.GetIsTruncated()){
+        break;
+      }
+      res = cfg.s3_client.ListObjectsVersions(req);
+    }
+    #endif
+    return true;
+
+  }else{                                                                        LOG4CXX_TRACE(_log,"bucket '" << bucket <<"'does not exists");
+    return true;
+  }
+
+}
+
+/******************************************************************************/
 MPF_COMPONENT_CREATOR(TrtisDetection);
 MPF_COMPONENT_DELETER();

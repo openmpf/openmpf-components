@@ -31,6 +31,9 @@ project(trtis-detection)
 ADD_DEFINITIONS("-std=c++11")
 add_definitions(-Wfatal-errors)
 
+#set(CMAKE_BUILD_TYPE RelWithDebInfo)    # build release version with debug symbols
+set(CMAKE_BUILD_TYPE Debug)            # build debug version
+
 include(../ComponentSetup.cmake)
 
 set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
@@ -43,13 +46,18 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 find_package(request REQUIRED)
+#find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
+
+set(BUILD_SHARED_LIBS ON)  # make aws use shared linking
+find_package(AWSSDK REQUIRED COMPONENTS core s3)
 
 include_directories(${PROTOBUF_INCLUDE_DIR} ${CURL_INCLUDE_DIR})
 set(TRTIS_DETECTION_SOURCE_FILES TrtisDetection.cpp TrtisDetection.hpp)
 
 add_library(mpfTrtisDetection SHARED ${TRTIS_DETECTION_SOURCE_FILES})
-target_link_libraries(mpfTrtisDetection request mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES})
+target_link_libraries(mpfTrtisDetection request mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
+                      OpenSSL::SSL ${OpenCV_LIBS} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES} ${AWSSDK_LINK_LIBRARIES})
 
 configure_mpf_component(TrtisDetection TARGETS mpfTrtisDetection)
 
