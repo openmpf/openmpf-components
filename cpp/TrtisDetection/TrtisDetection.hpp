@@ -75,7 +75,7 @@ namespace MPF{
       size_t maxInferConcurrency;          ///< maximum number of concurrent video frame inferencing request
       size_t contextWaitTimeoutSec;        ///< max time to wait for an inference context from pool in sec
 
-      TrtisJobConfig(const MPFJob &job);
+      explicit TrtisJobConfig(const MPFJob &job);
   };
 
   class TrtisIpIrv2CocoJobConfig : public TrtisJobConfig{
@@ -131,7 +131,7 @@ namespace MPF{
       vector<sPtrInferCtx>& _niGetInferContexts(const TrtisJobConfig& cfg);     ///< get cached inference contexts
 
       static string  _niType2Str(ni::DataType dt);                              ///< nvidia data type to string
-      cv::Mat        _niResult2CVMat(const size_t batch_idx,
+      static cv::Mat _niResult2CVMat(const size_t batch_idx,
                                      const string name,
                                      StrUPtrInferCtxResMap& results);           ///< make an openCV mat header for nvidia tensor
 

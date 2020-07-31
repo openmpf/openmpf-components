@@ -25,9 +25,7 @@
  ******************************************************************************/
 
 #include <string>
-#include <fstream>
 #include <MPFDetectionComponent.h>
-#include <MPFImageReader.h>
 
 #include <gtest/gtest.h>
 
@@ -40,7 +38,7 @@ using namespace std;
 Properties getProperties_ip_irv2_coco() {
 
     return {
-            { "MODEL_NAME", "ip_irv2_coco" },
+            { "MODEL_NAME", "ip_irv2_coco" }
     };
 }
 
@@ -76,10 +74,7 @@ void assertObjectDetectedInImage(const string   &expected_object,
 
 //------------------------------------------------------------------------------
 TEST(TRTIS, InitTest) {
-
-    try{
-      std::remove("../Testing/log/trtis-detection.log");
-    }catch(...){}
+    std::remove("../Testing/log/trtis-detection.log");
     TrtisDetection trtisDet;
     trtisDet.SetRunDirectory("../plugin");
     ASSERT_TRUE(trtisDet.Init());
