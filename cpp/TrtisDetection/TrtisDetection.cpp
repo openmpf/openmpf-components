@@ -598,8 +598,8 @@ bool TrtisDetection::Init() {
     _log = log4cxx::Logger::getLogger("TrtisDetection");
 
     try {
-      _awsSdkOptions.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Off;
-      //_awsSdkOptions.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Trace;
+      //_awsSdkOptions.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Off;
+      _awsSdkOptions.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Trace;
       Aws::InitAPI(_awsSdkOptions);
 
       // Read class labels for model(s)
@@ -1190,7 +1190,6 @@ map<string,string> TrtisDetection::_prepS3Meta(const string           &data_uri,
   s3Meta.insert({"x",to_string(loc.x_left_upper)});
   s3Meta.insert({"y",to_string(loc.y_left_upper)});
   s3Meta.insert({"width",to_string(loc.width)});
-  s3Meta.insert({"height",to_string(loc.height)});
   s3Meta.insert({"height",to_string(loc.height)});
   s3Meta.insert({"feature",prop["FEATURE-TYPE"]});
   if(prop.find("CLASSIFICATION") != prop.end()){

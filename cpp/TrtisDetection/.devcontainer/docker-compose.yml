@@ -1,0 +1,64 @@
+version: '2.3'
+
+services:
+  TrtisDetection:
+    cpuset: "0,1,2,3"
+    #cpus: "1.0"
+    image: trtis-detection-dev:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: devcontainer.env
+
+    volumes:
+      # Mounts the project folder to '/workspace'. While this file is in .devcontainer,
+      # mounts are relative to the first file in the list, which is a level up.
+      - ../../../../openmpf-components:/home/mpf/openmpf-components:cached
+
+    # [Optional] Required for ptrace-based debuggers like C++, Go, and Rust
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: /bin/sh -c "while sleep 1000; do :; done"
+
+  trtserver:
+    image: nvcr.io/nvidia/tensorrtserver:19.04-py3
+    runtime: nvidia
+    ports:
+     - "8000:8000"  # server port
+     - "8001:8001"  # management port
+    environment:
+    # - NVIDIA_VISIBLE_DEVICES=all
+     - NVIDIA_VISIBLE_DEVICES=1
+
+    volumes:
+     - ../trtserver_dockerfile/models:/models
+
+    command: [trtserver,--model-store=/models]
+
+  minio:
+    image: minio/minio
+    volumes:
+      - data1-1:/data
+    ports:
+      - "9001:9000"
+    environment:
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+    command: server /data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+networks:
+  default:
+    external:
+      name: localdev
+
+volumes:
+  data1-1:

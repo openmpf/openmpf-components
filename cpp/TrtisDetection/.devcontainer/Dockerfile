@@ -24,24 +24,18 @@
 # limitations under the License.                                            #
 #############################################################################
 
-ARG BUILD_REGISTRY
-ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-RUN yum -y install vim mlocate git openssl-devel wget curl-devel \
-&& mkdir -p /home/mpf/component_build/plugin/TrtisDetection/models/ip_irv2_coco/1 \
-&& wget --load-cookies /tmp/cookies.txt \
-"https://docs.google.com/uc?export=download&confirm=$(\
-wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate \
-'https://docs.google.com/uc?export=download&id=1EVYe2RHs7g2A8E2KLjVUXp-TV_ndjdtn' -O- \
-| sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1EVYe2RHs7g2A8E2KLjVUXp-TV_ndjdtn" \
--O /home/mpf/component_build/plugin/TrtisDetection/models/ip_irv2_coco/1/model.graphdef \
-&& rm -rf /tmp/cookies.txt
+FROM openmpf_cpp_component_build:latest
+
+RUN yum -y install vim  openssl-devel wget git gdb which mlocate curl-devel;
+
+RUN echo '/usr/local/lib64' > /etc/ld.so.conf.d/usr_local_lib64.conf; \
+    ldconfig;
 
 # Install cares, protobuf, zlib, gRPC
 WORKDIR /tmp
 
-RUN git clone -b v1.20.0 https://github.com/grpc/grpc  && cd grpc && git submodule update --init --recursive \
+RUN git clone -b $(curl -L https://grpc.io/release) https://github.com/grpc/grpc  && cd grpc && git submodule update --init --recursive \
 && mkdir -p /tmp/grpc/third_party/protobuf/cmake/build \
 && cd /tmp/grpc/third_party/protobuf/cmake/build \
 && cmake3 -DCMAKE_POSITION_INDEPENDENT_CODE=ON -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release .. \
@@ -53,8 +47,9 @@ RUN git clone -b v1.20.0 https://github.com/grpc/grpc  && cd grpc && git submodu
 && cd /tmp/grpc/third_party/cares/cares/cmake/build \
 && cmake3 -DCMAKE_BUILD_TYPE=Release ../.. \
 && make -j`nproc` \
-&& make install \
-&& cd /tmp/ \
+&& make install
+
+RUN cd /tmp/ \
 && rm -rf /tmp/grpc/third_party/cares/cares \
 && rm -rf /tmp/grpc/third_party/zlib \
 && rm -rf /tmp/grpc/third_party/protobuf \
@@ -101,7 +96,6 @@ RUN cd /tmp/ \
 && cp /usr/local/lib64/libcurl.so /usr/local/lib/libcurl.so \
 && ldconfig
 
-
 # Install TensorRT-Inference-Server client libs.
 RUN cd /tmp/ \
 && git clone -b v1.7.0 https://github.com/NVIDIA/tensorrt-inference-server.git tensorrt-inference-server
@@ -139,41 +133,13 @@ RUN mkdir -p /tmp/tensorrt-inference-server/build/trtis-clients/build \
 
 ENV request_DIR=/root/trtis
 
-WORKDIR /home/mpf/component_src
-
-COPY . .
-
-RUN build-component.sh
-
-FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_test_server
-
-COPY --from=build_component /home/mpf/transfer/lib/* /usr/local/lib/
-COPY --from=build_component /opt/opencv-3.4.7/lib64 /apps/install/opencv3.4.7/lib64/
-COPY --from=build_component /home/mpf/component_build /Testing_MPF_FILES/
-COPY --from=build_component /home/mpf/component_src/test/run_docker_tests.sh /Testing_MPF_FILES/test
-
-ARG RUN_TESTS=false
-
-RUN if [ "${RUN_TESTS,,}" == true ]; \
-    then cd /Testing_MPF_FILES/test/ \
-    && LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/Testing_MPF_FILES/plugin/TrtisDetection/lib/:/apps/install/opencv3.4.7/lib64/ \
-    && ./run_docker_tests.sh \
-; fi
-
-FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
-
 ENV COMPONENT_LOG_NAME trtis-detection.log
 
-# Must copy from openmpf_trtis_test_server so that Docker BuildKit does not skip test stage.
-COPY --from=openmpf_trtis_test_server /Testing_MPF_FILES/plugin/TrtisDetection \
-                                      $PLUGINS_DIR/TrtisDetection
-COPY --from=openmpf_trtis_test_server /Testing_MPF_FILES/libmpfTrtisDetection.so \
-                                      $PLUGINS_DIR/TrtisDetection/lib/
-
-RUN cp $PLUGINS_DIR/TrtisDetection/lib/librequest.so /usr/local/lib/ && ldconfig
+RUN rm -fr /usr/bin/cmake \
+&& ln -s /usr/bin/cmake3 /usr/bin/cmake;
 
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF TRTIS Client Detection" \
+      org.label-schema.name="OpenMPF TRTIS Client Detection Dev" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \

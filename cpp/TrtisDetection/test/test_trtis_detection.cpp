@@ -26,9 +26,16 @@
 
 #include <string>
 #include <fstream>
+
+#include <aws/core/Aws.h>
+#include <aws/s3/S3Client.h>
+
 #include <MPFDetectionComponent.h>
 #include <MPFImageReader.h>
+
 #include <gtest/gtest.h>
+
+#define private public
 
 #include "TrtisDetection.hpp"
 
@@ -53,6 +60,58 @@ using namespace std;
 }
 
 //------------------------------------------------------------------------------
+TEST(TRTIS, S3Test) {
+
+    TrtisDetection trtisDet;
+    trtisDet.SetRunDirectory("../plugin");
+    ASSERT_TRUE(trtisDet.Init());
+    TrtisJobConfig cfg(trtisDet._log, MPFImageJob("Test", "foo.jpg",
+                                       {{"S3_RESULTS_BUCKET","http://minio:9000/trtis-test/"}},
+                                        {}));
+
+    Aws::S3::S3Client s3_client = cfg.s3_client;
+    string bucket = cfg.s3_bucket;
+    ASSERT_EQ(bucket,"trtis-test");
+
+    ASSERT_TRUE(trtisDet._awsEmptyS3Bucket(cfg));
+    ASSERT_TRUE(trtisDet._awsDeleteS3Bucket(cfg,bucket));
+    ASSERT_FALSE(trtisDet._awsExistsS3Bucket(cfg));
+    ASSERT_TRUE(trtisDet._awsCreateS3Bucket(cfg));
+    ASSERT_TRUE(trtisDet._awsExistsS3Bucket(cfg));
+    ASSERT_TRUE(trtisDet._awsCreateS3Bucket(cfg));
+
+    map<string,string> metaData;
+    metaData["mfoo"] = "mbar";
+    ASSERT_TRUE(trtisDet._awsPutS3Object(cfg,"foo-bar","hello",metaData));
+
+    ASSERT_TRUE(trtisDet._awsExistsS3Object(cfg,"foo-bar"));
+    ASSERT_TRUE(trtisDet._awsDeleteS3Object(cfg,"foo-bar"));
+    ASSERT_FALSE(trtisDet._awsExistsS3Object(cfg,"foo-bar"));
+    ASSERT_TRUE(trtisDet._awsDeleteS3Bucket(cfg));
+    ASSERT_FALSE(trtisDet._awsExistsS3Bucket(cfg));
+    ASSERT_TRUE(trtisDet._awsCreateS3Bucket(cfg));
+    ASSERT_TRUE(trtisDet._awsPutS3Object(cfg,"foo-bar","hello",metaData));
+
+    string buffer;
+    map<string,string> metaData2;
+    ASSERT_TRUE(trtisDet._awsGetS3Object(cfg,"foo-bar",buffer,metaData2));
+    ASSERT_EQ(buffer,"hello");
+    ASSERT_EQ(metaData2,metaData);
+    ASSERT_TRUE(trtisDet.Close());
+}
+
+//------------------------------------------------------------------------------
+void createS3Bucket(TrtisDetection& trtisDet, string bucketURL){
+
+    TrtisJobConfig cfg(trtisDet._log,
+                       MPFImageJob("", "", {{"S3_RESULTS_BUCKET",bucketURL}}, {}));
+
+    Aws::S3::S3Client s3_client = cfg.s3_client;
+    trtisDet._awsDeleteS3Bucket(cfg, cfg.s3_bucket);
+    ASSERT_TRUE(trtisDet._awsCreateS3Bucket(cfg));
+}
+
+//------------------------------------------------------------------------------
 bool containsObject(const string     &object_name,
                     const Properties &props       ) {
     auto class_prop_iter = props.find("CLASSIFICATION");
@@ -72,7 +131,11 @@ bool containsObject(const string              &object_name,
 void assertObjectDetectedInImage(const string   &expected_object,
                                  const string   &image_path,
                                  TrtisDetection &trtisDet           ){
-    MPFImageJob job("Test", image_path, {}, {});
+
+    string bucketURL = "http://minio:9000/trtis-image-test/";
+    createS3Bucket(trtisDet, bucketURL);
+
+    MPFImageJob job("Test", image_path, {{"S3_RESULTS_BUCKET",bucketURL}}, {});
 
     MPFImageLocationVec image_locations = trtisDet.GetDetections(job);
 
@@ -159,9 +222,17 @@ TEST(TRTIS, VideoTest) {
     trtisDet.SetRunDirectory("../plugin");
 
     ASSERT_TRUE(trtisDet.Init());
-    assertObjectDetectedInVideo("clock", {{"USER_FEATURE_ENABLE","true"}}, trtisDet);
+
+    string bucketURL = "http://minio:9000/trtis-video-test/";
+    createS3Bucket(trtisDet, bucketURL);
+
+    assertObjectDetectedInVideo("clock",
+                                {{"USER_FEATURE_ENABLE","true"},
+                                 {"S3_RESULTS_BUCKET",bucketURL}},
+                                trtisDet);
     ASSERT_TRUE(trtisDet.Close());
 }
+
 //------------------------------------------------------------------------------
 TEST(TRTIS, VideoTimeoutTest) {
     MPFImageLocationVec image_locations;
@@ -181,4 +252,14 @@ TEST(TRTIS, VideoTimeoutTest) {
          GOUT("Got exception:" << ex.what());
       }
     }
+}
+//------------------------------------------------------------------------------
+TEST(TRTIS, Sha256Test) {
+
+    TrtisDetection trtisDet;
+    trtisDet.SetRunDirectory("../plugin");
+
+    ASSERT_TRUE(trtisDet.Init());
+    ASSERT_EQ(trtisDet._sha256("hello"), "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+    ASSERT_TRUE(trtisDet.Close());
 }
