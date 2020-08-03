@@ -598,8 +598,11 @@ bool TrtisDetection::Init() {
     _log = log4cxx::Logger::getLogger("TrtisDetection");
 
     try {
-      //_awsSdkOptions.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Off;
-      _awsSdkOptions.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Trace;
+      if(_log->isTraceEnabled()){
+        _awsSdkOptions.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Trace;
+      }else{
+      _awsSdkOptions.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Off;
+      }
       Aws::InitAPI(_awsSdkOptions);
 
       // Read class labels for model(s)
