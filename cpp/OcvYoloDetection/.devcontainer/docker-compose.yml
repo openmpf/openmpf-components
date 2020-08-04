@@ -4,7 +4,7 @@ services:
   OcvYoloDetection:
     cpuset: "0,1,2,3"
     #cpus: "1.0"
-    image: openmpf/openmpf_cpp_component_dev:gpu
+    image: ocv_yolo_dev:gpu
     runtime: nvidia
     build:
       context: .

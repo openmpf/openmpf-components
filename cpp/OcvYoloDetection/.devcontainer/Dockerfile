@@ -23,7 +23,7 @@
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
-from openmpf/openmpf_cpp_component_build:gpu
+from openmpf_cpp_component_build:gpu
 
 RUN yum install --assumeyes \
                git gdb which mlocate \
