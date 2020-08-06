@@ -253,6 +253,30 @@ void DetectionLocation::copyFeature(const DetectionLocation& d) const{
 }
 
 /** **************************************************************************
+* get hanning window of specified size
+*
+* \param size  size of hanning windowing to return
+*
+*************************************************************************** */
+const cv::Mat1f   DetectionLocation::_getHanningWindow(const cv::Size &size) const {
+  if(   size.width  == _cfgPtr->dftSize
+     && size.height == _cfgPtr->dftSize){
+
+    static cv::Mat1f defWin;          // most common size so cache it.
+    if(   defWin.empty()
+       || defWin.rows != _cfgPtr->dftSize){
+      cv::createHanningWindow(defWin,cv::Size(_cfgPtr->dftSize,_cfgPtr->dftSize),CV_32F);  LOG_TRACE("Created default hanning window of size " << defWin.size());
+    }
+    return defWin;
+
+  }else{
+    cv::Mat1f customWin;
+    cv::createHanningWindow(customWin,size,CV_32F);                                        LOG_TRACE("Created custom hanning window of size " << customWin.size());
+    return customWin;
+  }
+}
+
+/** **************************************************************************
 * Lazy accessor method to get feature vector
 *
 * \returns unit magnitude feature vector
@@ -268,13 +292,17 @@ const cv::Mat& DetectionLocation::getFeature() const {
     std[0] = max(std[0],1/255.0);
     gray.convertTo(gray,CV_32FC1,1.0/std[0],-mean[0]/std[0]);                  LOG_TRACE("Converted to zero mean unit std float " << cv::typeToString(gray.type()) <<"(" << gray.size << ")");
 
-    // zero padd (or clip) center of grayscale image into center of dft buffer
+    // zero pad (or clip) center of grayscale image into center of dft buffer
     cv::Mat1f feature=cv::Mat1f::zeros(_cfgPtr->dftSize,_cfgPtr->dftSize);     LOG_TRACE("Created dft buffer of size: " << feature.size());
 
     cv::Rect2i grRoi((gray.size() - feature.size())/2, feature.size());
     grRoi = grRoi & cv::Rect2i(cv::Point2i(0,0),gray.size());                  LOG_TRACE("Crop  region from image: " << grRoi);
     cv::Rect2i ftRoi((feature.size() - grRoi.size())/2,grRoi.size());          LOG_TRACE("Paste region in buffer : " << ftRoi);
 
+    if(_cfgPtr->dftHannWindowEnabled){
+      cv::Mat1f hann = _getHanningWindow(grRoi.size());
+      cv::multiply(gray(grRoi),hann,gray(grRoi));                              LOG_TRACE("Applied hanning window of size " << hann.size() << " to image of size " << grRoi.size());
+    }
     gray(grRoi).copyTo(feature(ftRoi));                                        LOG_TRACE("Zero padded/clipped to " << cv::typeToString(feature.type()) << "(" << feature.size << ")");
 
     // take dft (CCS packed)
@@ -288,7 +316,7 @@ const cv::Mat& DetectionLocation::getFeature() const {
 /** ****************************************************************************
 * Detect objects using SSD DNN opencv face detector network
 *
-* \param  cfg job configuration setting including image frame
+* \param  cfgPtr job configuration setting including image frame
 *
 * \returns found face detections that meet size requirements.
 *

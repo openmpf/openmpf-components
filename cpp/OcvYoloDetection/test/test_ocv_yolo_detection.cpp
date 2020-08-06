@@ -160,10 +160,6 @@ TEST(OcvYoloDetection, TestCorrelator) {
     auto cfgPtr = make_shared<Config>(MPFImageJob("Testing", image_file, { }, { }));
     EXPECT_TRUE(NULL != cfgPtr->bgrFrame.data) << "Could not load:" << image_file;
 
-    //if(cfg.dftHannWindow){ // since we used image job create hanning window manually
-    // cv::createHanningWindow(cfg.defaultHanningWindow,cv::Size(cfg.dftSize,cfg.dftSize),CV_32F);
-   // }
-
     DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfgPtr);
     EXPECT_FALSE(detections.empty());
 

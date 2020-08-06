@@ -92,7 +92,9 @@ namespace MPF{
       static stringVec          _netOutputNames;       ///< list of DNN output names
 
       float              _iouDist(const cv::Rect2i &rect) const;    ///< compute intersectino over union
-      cv::Point2d _phaseCorrelate(const Track      &tr)   const;    ///< get bbox alignment via phase correlation
+
+      cv::Point2d       _phaseCorrelate(  const Track      &tr)    const;  ///< get bbox alignment via phase correlation
+      const cv::Mat1f   _getHanningWindow(const cv::Size   &size)  const;  ///< get hanning window of specified size
 
       static void _setCudaBackend(const bool enabled);    ///< turn on or off cuda backend for inferencing
   };
