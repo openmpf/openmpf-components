@@ -36,11 +36,9 @@
 
 using namespace MPF::COMPONENT;
 
-// Shared static members (might need mutex locks and condition variable if multithreading... )
-log4cxx::LoggerPtr                DetectionLocation::_log;
-cv::dnn::Net                      DetectionLocation::_yolo;
-stringVec                         DetectionLocation::_classes;
-stringVec                         DetectionLocation::_yoloOutputNames;
+cv::dnn::Net DetectionLocation::_net;                  ///< DNN detector network
+stringVec    DetectionLocation::_netClasses;           ///< list of classes for DNN
+stringVec    DetectionLocation::_netOutputNames;       ///< list of DNN output names
 
 /** ****************************************************************************
 *  Draw polylines to visualize landmark scoresVectors
@@ -81,7 +79,7 @@ float DetectionLocation::_iouDist(const cv::Rect2i &rect) const {
 
   float inter_area = max(0, lrx - ulx) * max(0, lry - uly);
   float union_area = width * height + rect.width * rect.height - inter_area;
-  float dist = 1.0f - inter_area / union_area;                                 LOG4CXX_TRACE(_log,"iou dist = " << dist);
+  float dist = 1.0f - inter_area / union_area;                                 LOG_TRACE("iou dist = " << dist);
   return dist;
 }
 
@@ -136,7 +134,7 @@ float DetectionLocation::frameDist(const Track &tr) const {
 float  DetectionLocation::center2CenterDist(const Track &tr) const {
   float dx = center.x - tr.back()->center.x;
   float dy = center.y - tr.back()->center.y;
-  float dist = sqrt( dx*dx + dy*dy );                                          LOG4CXX_TRACE(_log,"center-2-center dist = " << dist);
+  float dist = sqrt( dx*dx + dy*dy );                                          LOG_TRACE("center-2-center dist = " << dist);
   return dist;
 }
 
@@ -149,7 +147,7 @@ float  DetectionLocation::center2CenterDist(const Track &tr) const {
 *
 *************************************************************************** */
 cv::Point2d  DetectionLocation::_phaseCorrelate(const Track &tr) const {
-  cv::Mat_<float> P, Pm, C;
+  cv::Mat1f P, Pm, C;
   cv::mulSpectrums(getFeature(), tr.back()->getFeature(), P, 0, true);
   cv::magSpectrums(P, Pm);
   cv::divSpectrums(P, Pm, C, 0, false);
@@ -158,7 +156,7 @@ cv::Point2d  DetectionLocation::_phaseCorrelate(const Track &tr) const {
   cv::Point peakLoc;
   cv::minMaxLoc(C, NULL, NULL, NULL, &peakLoc);
   double response;
-  return cv::Point2d(_dftSize/2.0, _dftSize/2.0) -
+  return cv::Point2d(_cfgPtr->dftSize/2.0, _cfgPtr->dftSize/2.0) -
          cv::weightedCentroid(C, peakLoc, cv::Size(5, 5), &response);
 }
 
@@ -172,23 +170,31 @@ cv::Point2d  DetectionLocation::_phaseCorrelate(const Track &tr) const {
 *
 *************************************************************************** */
 float DetectionLocation::featureDist(const Track &tr) const {
-  //float dist = 1.0f - max(0.0f,static_cast<float>(getFeature().dot(tr.back()->getFeature())));  LOG4CXX_TRACE(_log,"feature dist = " << dist);
+  //float dist = 1.0f - max(0.0f,static_cast<float>(getFeature().dot(tr.back()->getFeature())));
 
-  // get overlap roi
-  cv::Rect2d olRoi =  cv::Rect2d(-_phaseCorrelate(tr), tr.back()->_bgrFrame.size())
-                    & cv::Rect2d(    cv::Point2d(0,0),            _bgrFrame.size());
+  float dist;
 
-  cv::Point2d ctr = olRoi.tl() + 0.5 * cv::Point2d(olRoi.size());
+  cv::Rect2d  trRoi(tr.back()->getRect());                                    // roi of track object in tr's frame
+  cv::Point2d ctr = cv::Point2d(x_left_upper + 0.5 * width,
+                                y_left_upper + 0.5 * height)
+                    - _phaseCorrelate(tr);                                    // center of shifted track roi
 
-  cv::Mat comp;
-  cv::getRectSubPix(_bgrFrame,olRoi.size(), ctr, comp);
-cv::imwrite("comp.png",comp);
-  cv::absdiff(tr.back()->_bgrFrame(cv::Rect2i(cv::Point2i(0,0),comp.size())),
-              comp,comp);
-cv::imwrite("diff.png",comp);
-  cv::Scalar mean = cv::mean(comp);
-  float dist = mean.ddot(mean);
-is 128 top lef ther best place to grab features?
+  if(cv::Rect2d(cv::Point2d(0,0),_bgrFrame.size()).contains(ctr)){            // center ok
+    cv::Mat comp;
+    cv::getRectSubPix(_bgrFrame,trRoi.size(), ctr, comp);                     // grab corresponding region from bgrFrame with border replication
+    #ifndef NDEBUG
+      if(_cfgPtr->log->isTraceEnabled()) cv::imwrite("comp.png",comp);
+    #endif
+    cv::absdiff(tr.back()->_bgrFrame(trRoi), comp, comp);                     // compute pixel wise absolute diff (could do HSV transfom 1st?!)
+    assert(_bgrFrame.depth() == CV_8U);
+    cv::Scalar mean = cv::mean(comp) / 255.0;                                 // get mean normalized BGR pixel difference
+    dist = mean.ddot(mean) / _bgrFrame.channels();                            // combine BGR: d = BGR.BGR
+    #ifndef NDEBUG
+      if(_cfgPtr->log->isTraceEnabled()) cv::imwrite("diff.png",comp);
+    #endif
+  }else{                                                                      LOG_TRACE("ctr " << ctr << " outside bgrFrame");
+    dist = 1.0;
+  }                                                                           LOG_TRACE("feature dist: " << dist);
   return dist;
 }
 
@@ -203,7 +209,7 @@ const cv::Mat& DetectionLocation::getBGRFrame() const{
     if(! _bgrFrame.empty()){
       return _bgrFrame;
     }else{
-      LOG4CXX_TRACE(_log,"BRG frame missing for detection: f" << this->frameIdx << *this);
+      LOG_TRACE("BRG frame missing for detection: f" << this->frameIdx << *this);
       THROW_EXCEPTION("BRG frame is not allocated");
     }
   #else           // release build
@@ -215,7 +221,7 @@ const cv::Mat& DetectionLocation::getBGRFrame() const{
 /** **************************************************************************
 * release reference to image frame
 *************************************************************************** */
-void DetectionLocation::releaseBGRFrame() {                                    LOG4CXX_TRACE(_log,"releasing bgrFrame for  f" << this->frameIdx << *this);
+void DetectionLocation::releaseBGRFrame() {                                    LOG_TRACE("releasing bgrFrame for  f" << this->frameIdx << *this);
   _bgrFrame.release();
 }
 
@@ -242,7 +248,7 @@ void DetectionLocation::setRect(const cv::Rect2i& rec){
 * \param   d detection from which to copy feature vector
 *
 *************************************************************************** */
-void DetectionLocation::copyFeature(const DetectionLocation& d){
+void DetectionLocation::copyFeature(const DetectionLocation& d) const{
   _feature = d.getFeature();
 }
 
@@ -254,24 +260,27 @@ void DetectionLocation::copyFeature(const DetectionLocation& d){
 *************************************************************************** */
 const cv::Mat& DetectionLocation::getFeature() const {
   if(_feature.empty()){
-
     // make normalized grayscale float image
     cv::Mat gray;
-    cv::cvtColor(_bgrFrame, gray, CV_BGR2GRAY);                                LOG4CXX_TRACE(_log,"Converted to gray scale " << cv::typeToString(gray.type()) << " (" << gray.size << ")");
+    cv::cvtColor(_bgrFrame(getRect()), gray, CV_BGR2GRAY);                     LOG_TRACE("Converted to gray scale " << cv::typeToString(gray.type()) << " (" << gray.size << ")");
     cv::Scalar mean,std;
     cv::meanStdDev(gray, mean, std);
     std[0] = max(std[0],1/255.0);
-    gray.convertTo(gray,CV_32FC1,1.0/std[0],-mean[0]/std[0]);                  LOG4CXX_TRACE(_log,"Converted to zero mean unit std float " << cv::typeToString(gray.type()) <<"(" << gray.size << ")");
+    gray.convertTo(gray,CV_32FC1,1.0/std[0],-mean[0]/std[0]);                  LOG_TRACE("Converted to zero mean unit std float " << cv::typeToString(gray.type()) <<"(" << gray.size << ")");
 
-    // zero padd (or clip) grayscale image into dft buffer
-    cv::Rect roi(0,0,min(_dftSize,_bgrFrame.cols),min(_dftSize,_bgrFrame.rows));
-    cv::Mat_<float> feature=cv::Mat_<float>::zeros(_dftSize,_dftSize);
-    gray(roi).copyTo(feature(roi));                                            LOG4CXX_TRACE(_log,"Zero padded/clipped to " << cv::typeToString(feature.type()) << "(" << feature.size << ")");
+    // zero padd (or clip) center of grayscale image into center of dft buffer
+    cv::Mat1f feature=cv::Mat1f::zeros(_cfgPtr->dftSize,_cfgPtr->dftSize);     LOG_TRACE("Created dft buffer of size: " << feature.size());
+
+    cv::Rect2i grRoi((gray.size() - feature.size())/2, feature.size());
+    grRoi = grRoi & cv::Rect2i(cv::Point2i(0,0),gray.size());                  LOG_TRACE("Crop  region from image: " << grRoi);
+    cv::Rect2i ftRoi((feature.size() - grRoi.size())/2,grRoi.size());          LOG_TRACE("Paste region in buffer : " << ftRoi);
+
+    gray(grRoi).copyTo(feature(ftRoi));                                        LOG_TRACE("Zero padded/clipped to " << cv::typeToString(feature.type()) << "(" << feature.size << ")");
 
     // take dft (CCS packed)
-    cv::dft(feature,feature,cv::DFT_REAL_OUTPUT);                              LOG4CXX_TRACE(_log,"Created CCS packed dft " << cv::typeToString(feature.type()) << "(" << feature.size << ")");
+    cv::dft(feature,feature,cv::DFT_REAL_OUTPUT);                              LOG_TRACE("Created CCS packed dft " << cv::typeToString(feature.type()) << "(" << feature.size << ")");
     _feature = feature.clone();
-  }                                                                            LOG4CXX_TRACE(_log,"returning feature " << cv::typeToString(_feature.type()) << "(" << _feature.size << ")");
+  }                                                                            LOG_TRACE("returning feature " << cv::typeToString(_feature.type()) << "(" << _feature.size << ")");
   assert(_feature.type() == CV_32FC1);
   return _feature;
 }
@@ -287,23 +296,24 @@ const cv::Mat& DetectionLocation::getFeature() const {
 *       should be released once no longer needed (i.e. scoresVectors care computed)
 *
 *************************************************************************** */
-DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg){
+DetectionLocationPtrVec DetectionLocation::createDetections(const ConfigPtr cfgPtr){
   DetectionLocationPtrVec detections;
 
-  float szScaleFactor = static_cast<float>(cfg.inputImageSize) / static_cast<float>(max(cfg.bgrFrame.cols,cfg.bgrFrame.rows));
-  const cv::Size blobSize(static_cast<int>(cfg.bgrFrame.cols * szScaleFactor + 0.5),
-                          static_cast<int>(cfg.bgrFrame.rows * szScaleFactor + 0.5));
+  float maxImageDim = max(cfgPtr->bgrFrame.cols,cfgPtr->bgrFrame.rows);
+  float szScaleFactor = cfgPtr->inputImageSize / maxImageDim;
+  const cv::Size blobSize(static_cast<int>(cfgPtr->bgrFrame.cols * szScaleFactor + 0.5),
+                          static_cast<int>(cfgPtr->bgrFrame.rows * szScaleFactor + 0.5));
 
   // determine padding to make image square of size cfg.inputImageSize
-  const int padWidth  = cfg.inputImageSize - blobSize.width;                   // horizonatal padding needed
-  const int padHeight = cfg.inputImageSize - blobSize.height;                  // vertical padding needed
+  const int padWidth  = cfgPtr->inputImageSize - blobSize.width;               // horizonatal padding needed
+  const int padHeight = cfgPtr->inputImageSize - blobSize.height;              // vertical padding needed
   cv::Point2f pad(padWidth  / 2.0, padHeight / 2.0);                           // padding x-y coordinate offsets
   const int padLeft   = static_cast<int>(pad.x + 0.5f);                        // left padding (1/2 of horizontal padding)
   const int padTop    = static_cast<int>(pad.y + 0.5f);                        // top  padding (1/2 of vertical padding)
 
   // scale and padd image for inferencing
   cv::Mat img,blobImg;
-  cv::resize(cfg.bgrFrame,img,blobSize);                                       // resize so largest dim matches cfg.inputImageSize
+  cv::resize(cfgPtr->bgrFrame,img,blobSize);                                   // resize so largest dim matches cfg.inputImageSize
   cv::copyMakeBorder(img, blobImg,
                      padTop , padHeight - padTop,
                      padLeft, padWidth  - padLeft,
@@ -311,16 +321,16 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
 
   cv::Mat inputBlob = cv::dnn::blobFromImage(blobImg,                          // square BGR image
                                             1/255.0,                           // no pixel value scaling (e.g. 1.0/255.0)
-                                            cv::Size(cfg.inputImageSize,cfg.inputImageSize),
+                                            cv::Size(cfgPtr->inputImageSize,cfgPtr->inputImageSize),
                                             cv::Scalar(0,0,0),                 // mean BGR pixel value
                                             true,                              // swap RB channels
                                             false);                            // center crop
-  _yolo.setInput(inputBlob,"data");
+  _net.setInput(inputBlob,"data");
   cvMatVec outs;
-  _yolo.forward(outs, _yoloOutputNames);                                       // inference
+  _net.forward(outs, _netOutputNames);                                         // inference
 
-  pad = pad / static_cast<float>(cfg.inputImageSize);                          // convert x-y offset to fractional
-  float revScaleFactor = cfg.inputImageSize / szScaleFactor;                   // calc reverse scaling factor
+  pad = pad / static_cast<float>(cfgPtr->inputImageSize);                      // convert x-y offset to fractional
+  float revScaleFactor = cfgPtr->inputImageSize / szScaleFactor;               // calc reverse scaling factor
 
   // grab outputs for NMS
   cvRectVec  bboxes;
@@ -334,7 +344,7 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
       cv::Point idx;
       double conf;
       cv::minMaxLoc(scores,nullptr,&conf,nullptr,&idx);
-      if(conf >= cfg.confThresh){
+      if(conf >= cfgPtr->confThresh){
         cv::Point2f center(data[0],data[1]);
         center = center - pad;                                                 // yolo zeropads top,bottom,left,right to get square image
         centers.push_back(center);
@@ -351,21 +361,12 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
 
   // Perform non maximum supression (NMS)
   intVec keepIdxs;
-  cv::dnn::NMSBoxes(bboxes,topConfidences,cfg.confThresh,cfg.nmsThresh,keepIdxs);
+  cv::dnn::NMSBoxes(bboxes,topConfidences,cfgPtr->confThresh,cfgPtr->nmsThresh,keepIdxs);
 
   // Create detection objects
   for(int& keepIdx : keepIdxs){
-    cv::Rect2d bbox = bboxes[keepIdx];
     detections.push_back(DetectionLocationPtr(
-      new DetectionLocation(static_cast<int>(bboxes[keepIdx].x + 0.5),
-                            static_cast<int>(bboxes[keepIdx].y + 0.5),
-                            static_cast<int>(bboxes[keepIdx].width + 0.5),
-                            static_cast<int>(bboxes[keepIdx].height + 0.5),
-                            topConfidences[keepIdx],
-                            centers[keepIdx],
-                            cfg.frameIdx, cfg.frameTimeInSec,
-                            cfg.bgrFrame,
-                            cfg.dftSize)));
+      new DetectionLocation(cfgPtr, bboxes[keepIdx], topConfidences[keepIdx], centers[keepIdx])));
 
     // add top N classifications
     vector<int> sort_idx(scoresVectors[keepIdx].cols);
@@ -373,20 +374,20 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
     stable_sort(sort_idx.begin(), sort_idx.end(),
       [&scoresVectors,&keepIdx](int i1, int i2) {
         return scoresVectors[keepIdx].at<float>(0,i1) > scoresVectors[keepIdx].at<float>(0,i2); });
-    stringstream class_list;
-    stringstream score_list;
-    class_list << _classes.at(sort_idx[0]);
-    score_list << scoresVectors[keepIdx].at<float>(0,sort_idx[0]);
+    stringstream classList;
+    stringstream scoreList;
+    classList << _netClasses.at(sort_idx[0]);
+    scoreList << scoresVectors[keepIdx].at<float>(0,sort_idx[0]);
     for(int i=1; i < sort_idx.size(); i++){
       if(scoresVectors[keepIdx].at<float>(0,sort_idx[i]) < numeric_limits<float>::epsilon()) break;
-      class_list << "; " << _classes.at(sort_idx[i]);
-      score_list << "; " << scoresVectors[keepIdx].at<float>(0,sort_idx[i]);
-      if(i >= cfg.numClassPerRegion) break;
+      classList << "; " << _netClasses.at(sort_idx[i]);
+      scoreList << "; " << scoresVectors[keepIdx].at<float>(0,sort_idx[i]);
+      if(i >= cfgPtr->numClassPerRegion) break;
     }
     detections.back()->detection_properties.insert({
-      {"CLASSIFICATION", _classes[sort_idx[0]]},
-      {"CLASSIFICATION LIST", class_list.str()},
-      {"CLASSIFICATION CONFIDENCE LIST", score_list.str()}});         LOG4CXX_TRACE(_log,"Detection " << (MPFImageLocation)(*detections.back()));
+      {"CLASSIFICATION", _netClasses[sort_idx[0]]},
+      {"CLASSIFICATION LIST", classList.str()},
+      {"CLASSIFICATION CONFIDENCE LIST", scoreList.str()}});         LOG_TRACE("Detection " << (MPFImageLocation)(*detections.back()));
   }
 
   return detections;
@@ -415,7 +416,7 @@ void DetectionLocation::_setCudaBackend(const bool enabled){
 *************************************************************************** */
 bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
   static int lastCudaDeviceId = -1;
-  const string err_msg = "Failed to configure CUDA for deviceID=";
+  string errMsg = "Failed to configure CUDA for deviceID=";
   try{
     #ifdef HAVE_CUDA
     if(lastCudaDeviceId != cudaDeviceId){
@@ -431,9 +432,9 @@ bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
     }
     return true;
     #endif
-  }catch(const runtime_error& re){                                           LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Runtime error: " << re.what());
-  }catch(const exception& ex){                                               LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Exception: " << ex.what());
-  }catch(...){                                                               LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Unknown failure occurred. Possible memory corruption");
+  }catch(const runtime_error& re){                                           LOG_FATAL( errMsg << cudaDeviceId << " Runtime error: " << re.what());
+  }catch(const exception& ex){                                               LOG_FATAL( errMsg << cudaDeviceId << " Exception: " << ex.what());
+  }catch(...){                                                               LOG_FATAL( errMsg << cudaDeviceId << " Unknown failure occurred. Possible memory corruption");
   }
   _setCudaBackend(false);
   lastCudaDeviceId = -1;
@@ -449,37 +450,34 @@ bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
 *
 * \return true if everything was properly initialized, false otherwise
 *************************************************************************** */
-bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
+bool DetectionLocation::Init(){
 
-  _log = log;
+  // Load DNN Network
+  string  modelPath        = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_WEIGHTS_FILE", "yolov3.weights");
+  string  modelConfigPath  = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_CONFIG_FILE" , "yolov3.cfg");
+  string  modelClassesPath = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_CLASS_FILE"  , "coco.names");
 
-  // Load Yolo Network
-  string  model_path   = plugin_path + "/data/" + getEnv<string>({},"MODEL_WEIGHTS_FILE", "yolov3.weights");
-  string  config_path  = plugin_path + "/data/" + getEnv<string>({},"MODEL_CONFIG_FILE" , "yolov3.cfg");
-  string  classes_path = plugin_path + "/data/" + getEnv<string>({},"MODEL_CLASS_FILE"  , "coco.names");
-
-  const string err_msg = "Failed to load model: " + config_path + ", " + model_path;
+  const string errMsg = "Failed to load model: " + modelConfigPath + ", " + modelPath + ", " + modelClassesPath;
   try{
       // load output class names
-      ifstream classfile(classes_path);
+      ifstream classfile(modelClassesPath);
       string str;
-      _classes.clear();
+      _netClasses.clear();
       while(getline(classfile, str)){
-        _classes.push_back(str);
+        _netClasses.push_back(str);
       }
 
       // load detector net
-      _yolo = cv::dnn::readNetFromDarknet(config_path, model_path);
+      _net = cv::dnn::readNetFromDarknet(modelConfigPath, modelPath);
 
       // get names of output layers
-      _yoloOutputNames = _yolo.getUnconnectedOutLayersNames();
+      _netOutputNames = _net.getUnconnectedOutLayersNames();
 
-
-  }catch(const runtime_error& re){                                           LOG4CXX_FATAL(_log, err_msg << " Runtime error: " << re.what());
+  }catch(const runtime_error& re){                                           LOG_FATAL( errMsg << " Runtime error: " << re.what());
     return false;
-  }catch(const exception& ex){                                               LOG4CXX_FATAL(_log, err_msg << " Exception: " << ex.what());
+  }catch(const exception& ex){                                               LOG_FATAL( errMsg << " Exception: " << ex.what());
     return false;
-  }catch(...){                                                               LOG4CXX_FATAL(_log, err_msg << " Unknown failure occurred. Possible memory corruption");
+  }catch(...){                                                               LOG_FATAL( errMsg << " Unknown failure occurred. Possible memory corruption");
     return false;
   }
 
@@ -492,15 +490,22 @@ bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
 /** **************************************************************************
 * constructor
 **************************************************************************** */
-DetectionLocation::DetectionLocation(int x,int y,int width,int height,float conf,
-                                     cv::Point2f center,
-                                     size_t frameIdx, double frameTimeInSec,
-                                     cv::Mat bgrFrame, int dftSize):
-        MPFImageLocation(x,y,width,height,conf),
+DetectionLocation::DetectionLocation(const ConfigPtr cfgPtr,
+                                     const cv::Rect2d bbox,
+                                     const float conf,
+                                     const cv::Point2f center):
+        MPFImageLocation(
+          static_cast<int>(bbox.x      + 0.5),
+          static_cast<int>(bbox.y      + 0.5),
+          static_cast<int>(bbox.width  + 0.5),
+          static_cast<int>(bbox.height + 0.5),
+          conf),
         center(center),
-        frameIdx(frameIdx),
-        frameTimeInSec(frameTimeInSec),
-        _dftSize(dftSize)
+        frameIdx(cfgPtr->frameIdx),
+        frameTimeInSec(cfgPtr->frameTimeInSec),
+        _bgrFrame(cfgPtr->bgrFrame),
+        _cfgPtr(cfgPtr)
         {
-        _bgrFrame = bgrFrame(cv::Rect(x,y,width,height)).clone();
+        //_bgrFrame = cfgPtr->bgrFrame;
+        //_bgrFrame = cfgPtr->bgrFrame(cv::Rect(x,y,width,height)).clone();
 }

@@ -70,7 +70,7 @@ if (${GTEST_FOUND})
 endif()
 
 set(OCV_YOLO_DETECTION_SOURCE_FILES
-        JobConfig.cpp
+        Config.cpp
         DetectionLocation.cpp
         Track.cpp
         KFTracker.cpp

@@ -61,6 +61,18 @@
           "defaultValue": "4"
         },
         {
+          "name": "TRACKING_DFT_SIZE",
+          "description": "DFT size for bbox alignment via phase correlation",
+          "type": "INT",
+          "defaultValue": "256"
+        },
+        {
+          "name": "TRACKING_DFT_USE_HANNING_WINDOW",
+          "description": "Use hanning windowing with DFT (better registration, but slower).",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
           "name": "KF_DISABLED",
           "description": "Disables the use of motion prediction via Kalman filtering during tracking.",
           "type": "BOOLEAN",

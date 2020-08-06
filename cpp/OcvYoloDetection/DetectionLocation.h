@@ -36,7 +36,7 @@
 //#include <dlib/opencv.h>
 
 #include "types.h"
-#include "JobConfig.h"
+#include "Config.h"
 
 #define CALL_MEMBER_FUNC(object,ptrToMember)  ((object).*(ptrToMember))
 
@@ -52,47 +52,47 @@ namespace MPF{
     public:
       using MPFImageLocation::MPFImageLocation;  // C++11 inherit all constructors for MPFImageLocation
 
-      const cv::Point2f       center;            ///< bounding box center normalized to image dimensions
-      const size_t            frameIdx;          ///< frame index frame where detection is located (for videos)
-      const double            frameTimeInSec;    ///< frame time in sec where detection is located (for videos)
+      cv::Point2f       center;            ///< bounding box center normalized to image dimensions
+      size_t            frameIdx;          ///< frame index frame where detection is located (for videos)
+      double            frameTimeInSec;    ///< frame time in sec where detection is located (for videos)
 
-      static bool Init(log4cxx::LoggerPtr log, const string plugin_path);    ///< setup class shared members
-      static DetectionLocationPtrVec createDetections(const JobConfig &cfg); ///< created detection objects from image frame
+      static bool Init();                                                      ///< setup class shared members
+      static DetectionLocationPtrVec createDetections(const ConfigPtr cfgPtr); ///< created detection objects from image frame
 
-      const cv::Mat&       getFeature()   const;                             ///< get dft for phase correlation
-      const cv::Mat&       getBGRFrame()  const;                             ///< get image data associated with detection
+      const cv::Mat&       getFeature()  const;  ///< get dft for phase correlation
+      const cv::Mat&       getBGRFrame() const;  ///< get cropped image data associated with detection
 
-      const cv::Rect2i  getRect() const;                                     ///< get location as an opencv rectange
-      void              setRect(const cv::Rect2i& rec);                      ///< set location from an opencv rectangle
+      const cv::Rect2i  getRect() const;                ///< get location   as an opencv rectange
+      void              setRect(const cv::Rect2i& rec); ///< set location from an opencv rectangle
 
-      void copyFeature(const DetectionLocation& d);                          ///< copy DNN feature from another detection
+      void copyFeature(const DetectionLocation& d) const; ///< copy DNN feature from another detection
 
-      float           iouDist(const Track &tr) const;             ///< 1 - compute intersection over union
-      float         kfIouDist(const Track &tr) const;             ///< 1 - compute intersection over union using kalman predicted location
-      float         frameDist(const Track &tr) const;             ///< compute temporal frame gap
-      float center2CenterDist(const Track &tr) const;             ///< compute normalized center to center distance
-      float       featureDist(const Track &tr) const;             ///< compute deep feature similarity distance
+      float           iouDist(const Track &tr) const;   ///< 1 - compute intersection over union
+      float         kfIouDist(const Track &tr) const;   ///< 1 - compute intersection over union using kalman predicted location
+      float         frameDist(const Track &tr) const;   ///< compute temporal frame gap
+      float center2CenterDist(const Track &tr) const;   ///< compute normalized center to center distance
+      float       featureDist(const Track &tr) const;   ///< compute deep feature similarity distance
 
-      void releaseBGRFrame();                                                ///< release reference to image frame
-      static bool trySetCudaDevice(const int cudaDeviceId);                  ///< try set CUDA to use specified GPU device
+      void releaseBGRFrame();                                ///< release reference to image frame
+      static bool trySetCudaDevice(const int cudaDeviceId);  ///< try set CUDA to use specified GPU device
 
-      DetectionLocation(int x,int y,int width,int height,float conf,
-                        cv::Point2f center,
-                        size_t frameIdx, double frameTimeInMillis,
-                        cv::Mat bgrFrame, int dftSize);                      ///< private constructor for createDetections()
+      DetectionLocation(const ConfigPtr   cfgPtr,
+                        const cv::Rect2d  bbox,
+                        const float       conf,
+                        const cv::Point2f center);     ///< constructor for createDetections()
+
     private:
 
-      static log4cxx::LoggerPtr                _log;                ///< shared log object
-      static cv::dnn::Net                      _yolo;               ///< yolo DNN detector network
-      static stringVec                         _classes;            ///< list of classes for yolo
-      static stringVec                         _yoloOutputNames;    ///< list of outputs from yolo
+      const ConfigPtr     _cfgPtr;               ///< job configuration and shared config state
+      mutable cv::Mat     _feature;              ///< dft for matching-up detections via phase correlation
+      cv::Mat             _bgrFrame;             ///< frame associated with detection (openCV memory managed :( )
+
+      static cv::dnn::Net       _net;                  ///< DNN detector network
+      static stringVec          _netClasses;           ///< list of classes for DNN
+      static stringVec          _netOutputNames;       ///< list of DNN output names
 
       float              _iouDist(const cv::Rect2i &rect) const;    ///< compute intersectino over union
       cv::Point2d _phaseCorrelate(const Track      &tr)   const;    ///< get bbox alignment via phase correlation
-
-      const int               _dftSize;                   ///< size of dft
-      mutable cv::Mat         _feature;                   ///< dft for matching-up detections via phase correlation
-      cv::Mat                 _bgrFrame;                  ///< frame associated with detection (openCV memory managed :( )
 
       static void _setCudaBackend(const bool enabled);    ///< turn on or off cuda backend for inferencing
   };

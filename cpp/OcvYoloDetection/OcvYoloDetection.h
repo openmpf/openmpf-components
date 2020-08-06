@@ -36,7 +36,7 @@
 #include "types.h"
 #include "Track.h"
 #include "DetectionLocation.h"
-#include "JobConfig.h"
+#include "Config.h"
 
 namespace MPF{
  namespace COMPONENT{

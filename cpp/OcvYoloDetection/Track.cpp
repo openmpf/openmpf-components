@@ -28,9 +28,6 @@
 
 using namespace MPF::COMPONENT;
 
-// Shared static members (might need mutex locks and condition variable if multithreading... )
-log4cxx::LoggerPtr Track::_log;
-
 string format(cv::Mat m);
 
 /** ***************************************************************************
@@ -40,15 +37,16 @@ string format(cv::Mat m);
 * \param cfg    job struct to initialize kalman filter params from
 *
 **************************************************************************** */
-Track::Track(unique_ptr<DetectionLocation> detPtr, const JobConfig &cfg){
-  if(! cfg.kfDisabled){
+Track::Track(const ConfigPtr cfgPtr, unique_ptr<DetectionLocation> detPtr):
+  _cfgPtr(cfgPtr){
+  if(! cfgPtr->kfDisabled){
     _kfPtr = unique_ptr<KFTracker>(
-      new KFTracker(cfg.frameTimeInSec,
-                    cfg.frameTimeStep,
+      new KFTracker(cfgPtr->frameTimeInSec,
+                    cfgPtr->frameTimeStep,
                     detPtr->getRect(),
-                    cv::Rect2i(0,0,cfg.bgrFrame.cols-1,cfg.bgrFrame.rows-1),
-                    cfg.RN,
-                    cfg.QN));
+                    cv::Rect2i(0,0,cfgPtr->bgrFrame.cols-1,cfgPtr->bgrFrame.rows-1),
+                    cfgPtr->RN,
+                    cfgPtr->QN));
   }
   _locationPtrs.push_back(move(detPtr));
 }
@@ -63,7 +61,7 @@ Track::Track(unique_ptr<DetectionLocation> detPtr, const JobConfig &cfg){
 * \note    tracker is passed on to the new location on success
 *
 **************************************************************************** */
-DetectionLocationPtr Track::ocvTrackerPredict(const JobConfig &cfg){
+DetectionLocationPtr Track::ocvTrackerPredict(){
 
   if(_trackerPtr.empty()){   // initialize a new tracker if we don't have one already
     cv::Rect2i bbox    = _locationPtrs.back()->getRect();
@@ -71,32 +69,29 @@ DetectionLocationPtr Track::ocvTrackerPredict(const JobConfig &cfg){
                                                 _locationPtrs.back()->getBGRFrame().rows -1);
      if(overlap.width > 1 && overlap.height > 1){
        _trackerPtr = cv::TrackerMOSSE::create();                               // could try different trackers here. e.g. cv::TrackerKCF::create();
-       _trackerPtr->init(_locationPtrs.back()->getBGRFrame(), bbox);           LOG4CXX_TRACE(_log,"tracker created for " << (MPFImageLocation)*_locationPtrs.back());
-       _trackerStartFrameIdx = cfg.frameIdx;
-    }else{                                                                     LOG4CXX_TRACE(_log,"can't create tracker created for " << (MPFImageLocation)*_locationPtrs.back());
+       _trackerPtr->init(_locationPtrs.back()->getBGRFrame(), bbox);           LOG_TRACE("tracker created for " << (MPFImageLocation)*_locationPtrs.back());
+       _trackerStartFrameIdx = _cfgPtr->frameIdx;
+    }else{                                                                     LOG_TRACE("can't create tracker created for " << (MPFImageLocation)*_locationPtrs.back());
       return nullptr;
     }
   }
 
   cv::Rect2d p;
   DetectionLocationPtr detPtr;
-  if(cfg.frameIdx - _trackerStartFrameIdx <= cfg.maxFrameGap){
-    if(_trackerPtr->update(cfg.bgrFrame,p)){
-      detPtr = DetectionLocationPtr(new DetectionLocation(
-        p.x, p.y, p.width, p.height, 0.0,
-        cv::Point2f((p.x + p.width/2.0f )/static_cast<float>(cfg.bgrFrame.cols),
-                    (p.y + p.height/2.0f)/static_cast<float>(cfg.bgrFrame.rows)),
-        cfg.frameIdx,
-        cfg.frameTimeInSec,
-        cfg.bgrFrame,
-        cfg.dftSize));                                                         LOG4CXX_TRACE(_log,"tracking " << (MPFImageLocation)*_locationPtrs.back() << " to " << (MPFImageLocation)*detPtr);
+  if(_cfgPtr->frameIdx - _trackerStartFrameIdx <= _cfgPtr->maxFrameGap){
+    if(_trackerPtr->update(_cfgPtr->bgrFrame, p)){
+      cv::Point2f center(p.tl() + cv::Point2d(p.size()) / 2.0);
+      center.x /= static_cast<float>(_cfgPtr->bgrFrame.cols);
+      center.y /= static_cast<float>(_cfgPtr->bgrFrame.rows);
+      detPtr = DetectionLocationPtr(
+                 new DetectionLocation(_cfgPtr, p, 0.0, center));              LOG_TRACE("tracking " << (MPFImageLocation)*_locationPtrs.back() << " to " << (MPFImageLocation)*detPtr);
       // clone feature of prior detection
       detPtr->copyFeature(*(_locationPtrs.back()));
     }else{
-                                                                               LOG4CXX_TRACE(_log,"could not track " << (MPFImageLocation)*_locationPtrs.back() << " to new location");
+                                                                               LOG_TRACE("could not track " << (MPFImageLocation)*_locationPtrs.back() << " to new location");
     }
   }else{
-                                                                               LOG4CXX_TRACE(_log,"extrapolation tracking stopped" << (MPFImageLocation)*_locationPtrs.back() << " frame gap = " << cfg.frameIdx - _trackerStartFrameIdx << " > " <<  cfg.maxFrameGap);
+                                                                               LOG_TRACE("extrapolation tracking stopped" << (MPFImageLocation)*_locationPtrs.back() << " frame gap = " << _cfgPtr->frameIdx - _trackerStartFrameIdx << " > " <<  _cfgPtr->maxFrameGap);
   }
   return detPtr;
 }
@@ -122,28 +117,15 @@ void Track::push_back(DetectionLocationPtr d){
  *
 *************************************************************************** */
 void Track::kalmanPredict(float t){
-  _kfPtr->predict(t);                                                          LOG4CXX_TRACE(_log,"kf pred:" << _locationPtrs.back()->getRect() << " => " << _kfPtr->predictedBBox());
+  _kfPtr->predict(t);                                                          LOG_TRACE("kf pred:" << _locationPtrs.back()->getRect() << " => " << _kfPtr->predictedBBox());
 }
 
 /** **************************************************************************
  * apply kalman correction to tail detection using tail's measurement
 *************************************************************************** */
 void Track::kalmanCorrect(){
-  if(_kfPtr){                                                                  LOG4CXX_TRACE(_log,"kf meas:" << _locationPtrs.back()->getRect());
-    _kfPtr->correct(_locationPtrs.back()->getRect());                          LOG4CXX_TRACE(_log,"kf corr:" << _locationPtrs.back()->getRect());
+  if(_kfPtr){                                                                  LOG_TRACE("kf meas:" << _locationPtrs.back()->getRect());
+    _kfPtr->correct(_locationPtrs.back()->getRect());                          LOG_TRACE("kf corr:" << _locationPtrs.back()->getRect());
     back()->setRect(_kfPtr->correctedBBox());
   }
-}
-
-/** **************************************************************************
-* Setup class shared static configurations and initialize
-*
-* \param log         logger object for logging
-* \param plugin_path plugin directory
-*
-* \return true if everything was properly initialized, false otherwise
-*************************************************************************** */
-bool Track::Init(log4cxx::LoggerPtr log, string plugin_path=""){
-  _log = log;
-  return true;
 }

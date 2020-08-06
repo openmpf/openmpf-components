@@ -157,45 +157,57 @@ TEST(OcvYoloDetection, TestCorrelator) {
     GOUT("Correlator Output:\t" << output_image_file);
     GOUT("Input Image:\t"       << image_file);
 
-    JobConfig cfg(MPFImageJob("Testing", image_file, { }, { }));
-    EXPECT_TRUE(NULL != cfg.bgrFrame.data) << "Could not load:" << image_file;
+    auto cfgPtr = make_shared<Config>(MPFImageJob("Testing", image_file, { }, { }));
+    EXPECT_TRUE(NULL != cfgPtr->bgrFrame.data) << "Could not load:" << image_file;
 
-    DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfg);
+    //if(cfg.dftHannWindow){ // since we used image job create hanning window manually
+    // cv::createHanningWindow(cfg.defaultHanningWindow,cv::Size(cfg.dftSize,cfg.dftSize),CV_32F);
+   // }
+
+    DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfgPtr);
     EXPECT_FALSE(detections.empty());
 
     DetectionLocationPtr dogPtr;
+    cv::Point2d center;
     for(auto& detPtr:detections){
       if(detPtr->detection_properties["CLASSIFICATION"]=="dog"){
         dogPtr = move(detPtr);
-        GOUT("Found:\t" << dogPtr->detection_properties["CLASSIFICATION"] << dogPtr->getRect() << " conf:" << dogPtr->confidence);
+        center = cv::Point2d(dogPtr->getRect().tl() + dogPtr->getRect().br()) / 2;
+        GOUT("Found:\t" << dogPtr->detection_properties["CLASSIFICATION"]
+                        << "  " << dogPtr->getRect()
+                        << " centered at " << center
+                        << " with conf:" << dogPtr->confidence);
       }
     }
     EXPECT_TRUE(dogPtr != NULL) << "Could not find dog in image.";
-
     cv::Point2d offset = cv::Point2d(15.5,22.5);
-    cv::Size    size(dogPtr->_bgrFrame.rows / 4, dogPtr->_bgrFrame.rows / 4 );
-    cv::Point2d center = offset + cv::Point2d(size.width,size.height)/2.0;
-    cv::Mat patch;
-    cv::getRectSubPix(dogPtr->_bgrFrame,size, center,patch);
+    cv::Size2d size(dogPtr->width*0.95,dogPtr->height*0.95);
+    cv::Mat dog;
+    cv::getRectSubPix(dogPtr->_bgrFrame, size, center+offset, dog);
+    cv::imwrite("correlationPatch.png", dog);
 
-    GOUT("Created clip of size:" << size << " with offset:" << offset);
+    cv::Mat frame = cv::Mat::zeros(dogPtr->_bgrFrame.size(),dogPtr->_bgrFrame.type());
+    cv::Rect2i pasteRoi(cv::Point2i(frame.size() - dog.size())/2, dog.size());
+    dog.copyTo(frame(pasteRoi));
+    cv::imwrite("correlationFrame.png",frame);
 
     DetectionLocationPtr dogPtr2;
     dogPtr2 = DetectionLocationPtr(new DetectionLocation(
-      dogPtr->x_left_upper + offset.x,
-      dogPtr->y_left_upper + offset.y,
-      patch.rows, patch.cols, 0.97,cv::Point2f(0.5,0.5),0,0,cfg.bgrFrame,dogPtr->_dftSize));
-    dogPtr2->_bgrFrame = patch;
+      cfgPtr,pasteRoi,0.97,cv::Point2f(0.5,0.5)));
+    dogPtr2->_bgrFrame = frame;
+    GOUT("Shift image " << dogPtr2->getRect() << " centered at " << (dogPtr2->getRect().tl()+dogPtr2->getRect().br())/2);
 
-    Track t(move(dogPtr2),cfg);
+    Track t(cfgPtr, move(dogPtr2));
 
     cv::Point2d ph_offset =  dogPtr->_phaseCorrelate(t);
     cv::Point2d diff = (offset + ph_offset);
     double dist = sqrt(diff.dot(diff));
-    GOUT("phase correlation found offset:" << ph_offset << " at a distance of " << dist);
-    EXPECT_LE(dist,1.0);
+    GOUT("phase correlation found offset:" << ph_offset << " at a distance of " << dist << " pixels");
+    EXPECT_LE(dist,2.0);
 
-    dogPtr->featureDist(t);
+    float feature_dist = dogPtr->featureDist(t);
+    GOUT("feature distance: "<< feature_dist );
+    EXPECT_LE(feature_dist,1E-3);
 
     EXPECT_TRUE(detection->Close());
     delete detection;

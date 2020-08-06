@@ -46,11 +46,9 @@
 #include "MPFSimpleConfigLoader.h"
 #include "detectionComponentUtils.h"
 
+#include "Config.h"
 
 using namespace MPF::COMPONENT;
-
-// Temporary initializer for static member variable
-log4cxx::LoggerPtr JobConfig::_log = log4cxx::Logger::getRootLogger();
 
 /** ****************************************************************************
  *  print out dlib matrix on a single line
@@ -83,46 +81,40 @@ string dformat(dlib::matrix<T> m){
 * \returns   true on success
 ***************************************************************************** */
 bool OcvYoloDetection::Init() {
-    string plugin_path    = GetRunDirectory() + "/OcvYoloDetection";
-    string config_path    = plugin_path       + "/config";
+    Config::pluginPath = GetRunDirectory() + "/OcvYoloDetection";
+    Config::configPath = Config::pluginPath + "/config";
 
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
-    _log = log4cxx::Logger::getLogger("OcvYoloDetection");                  LOG4CXX_DEBUG(_log,"Initializing OcvYoloDetector");
-    JobConfig::_log = _log;
+    log4cxx::xml::DOMConfigurator::configure(Config::configPath + "/Log4cxxConfig.xml");
+    Config::log = log4cxx::Logger::getLogger("OcvYoloDetection");              LOG_DEBUG("Initializing OcvYoloDetector");
 
     // read config file and create or update any missing env variables
-    string config_params_path = config_path + "/mpfOcvYoloDetection.ini";
+    string configParamsPath = Config::configPath + "/mpfOcvYoloDetection.ini";
     QHash<QString,QString> params;
-    if(LoadConfig(config_params_path, params)) {                               LOG4CXX_ERROR(_log, "Failed to load the OcvYoloDetection config from: " << config_params_path);
+    if(LoadConfig(configParamsPath, params)) {                                 LOG_ERROR( "Failed to load the OcvYoloDetection config from: " << configParamsPath);
         return false;
-    }                                                                          LOG4CXX_TRACE(_log,"read config file:" << config_params_path);
+    }                                                                          LOG_TRACE("read config file:" << configParamsPath);
     Properties props;
     for(auto p = params.begin(); p != params.end(); p++){
       const string key = p.key().toStdString();
-      const string val = p.value().toStdString();                              LOG4CXX_TRACE(_log,"Config    Vars:" << key << "=" << val);
-      const char* env_val = getenv(key.c_str());                               LOG4CXX_TRACE(_log,"Verifying ENVs:" << key << "=" << env_val);
+      const string val = p.value().toStdString();                              LOG_TRACE("Config    Vars:" << key << "=" << val);
+      const char* env_val = getenv(key.c_str());                               LOG_TRACE("Verifying ENVs:" << key << "=" << env_val);
       if(env_val == NULL){
-        if(setenv(key.c_str(), val.c_str(), 0) !=0){                           LOG4CXX_ERROR(_log,"Failed to convert config to env variable: " << key << "=" << val);
+        if(setenv(key.c_str(), val.c_str(), 0) !=0){                           LOG_ERROR("Failed to convert config to env variable: " << key << "=" << val);
           return false;
         }
-      }else if(string(env_val) != val){                                        LOG4CXX_INFO(_log,"Keeping existing env variable:" << key << "=" << string(env_val));
+      }else if(string(env_val) != val){                                        LOG_INFO("Keeping existing env variable:" << key << "=" << string(env_val));
       }
     }
 
-    bool detectionLocationInitalizedOK = DetectionLocation::Init(_log, plugin_path);
+    bool detectionLocationInitalizedOK = DetectionLocation::Init();
 
     //Properties fromEnv;
     int cudaDeviceId   = getEnv<int> ({},"CUDA_DEVICE_ID", -1);
     bool fallbackToCPU = getEnv<bool>({},"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", true);
     bool defaultCudaDeviceOK = DetectionLocation::trySetCudaDevice(cudaDeviceId) || fallbackToCPU;
 
-    bool trackInitializedOK = Track::Init(_log, plugin_path);
-    bool kfTrackerInitializedOK = KFTracker::Init(_log, plugin_path);
-
     return    detectionLocationInitalizedOK
-           && defaultCudaDeviceOK
-           && trackInitializedOK
-           && kfTrackerInitializedOK;
+           && defaultCudaDeviceOK;
 
 
 }
@@ -171,10 +163,10 @@ vector<long> OcvYoloDetection::_calcAssignmentVector(const TrackPtrList         
       }
     }
     r++;
-  }                                                                            LOG4CXX_TRACE(_log,"cost matrix[tr=" << costs.nr() << ",det=" << costs.nc() << "]: " << dformat(costs));
+  }                                                                            LOG_TRACE("cost matrix[tr=" << costs.nr() << ",det=" << costs.nc() << "]: " << dformat(costs));
 
   // solve cost matrix, track av[track] get assigned detection[av[track]]
-  av = dlib::max_cost_assignment(costs);                                       LOG4CXX_TRACE(_log, "solved assignment vec["<< av.size() << "] = "  << av);
+  av = dlib::max_cost_assignment(costs);                                       LOG_TRACE( "solved assignment vec["<< av.size() << "] = "  << av);
 
   // drop dummy tracks used to pad cost matrix
   av.resize(tracks.size());
@@ -184,7 +176,7 @@ vector<long> OcvYoloDetection::_calcAssignmentVector(const TrackPtrList         
     if(costs(t,av[t]) == 0){
       av[t] = -1;
     }
-  }                                                                            LOG4CXX_TRACE(_log, "modified assignment vec["<< av.size() << "] = "  << av);
+  }                                                                            LOG_TRACE( "modified assignment vec["<< av.size() << "] = "  << av);
 
   return av;
 }
@@ -206,7 +198,7 @@ void OcvYoloDetection::_assignDetections2Tracks(TrackPtrList             &tracks
 
   long t=0;
   for(auto &track:tracks){
-    if(assignmentVector[t] != -1){                                              LOG4CXX_TRACE(_log,"assigning det: " << "f" << detections[assignmentVector[t]]->frameIdx << " " <<  ((MPFImageLocation)*(detections[assignmentVector[t]])) << " to track " << *track);
+    if(assignmentVector[t] != -1){                                              LOG_TRACE("assigning det: " << "f" << detections[assignmentVector[t]]->frameIdx << " " <<  ((MPFImageLocation)*(detections[assignmentVector[t]])) << " to track " << *track);
       track->releaseTracker();
       track->push_back(move(detections.at(assignmentVector[t])));
       track->kalmanCorrect();
@@ -232,33 +224,33 @@ void OcvYoloDetection::_assignDetections2Tracks(TrackPtrList             &tracks
 ***************************************************************************** */
 MPFImageLocationVec OcvYoloDetection::GetDetections(const MPFImageJob   &job) {
 
-  try {                                                                        LOG4CXX_DEBUG(_log, "[" << job.job_name << "Data URI = " << job.data_uri);
-    JobConfig cfg(job);
-    if(cfg.lastError != MPF_DETECTION_SUCCESS){
-      throw MPFDetectionException(cfg.lastError,"failed to parse image job configuration parameters");
+  try {                                                                        LOG_DEBUG( "[" << job.job_name << "Data URI = " << job.data_uri);
+    auto cfgPtr = make_shared<Config>(job);
+    if(cfgPtr->lastError != MPF_DETECTION_SUCCESS){
+      throw MPFDetectionException(cfgPtr->lastError,"failed to parse image job configuration parameters");
     }
-    DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfg);
-                                                                               LOG4CXX_DEBUG(_log, "[" << job.job_name << "] Number of faces detected = " << detections.size());
+    DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfgPtr);
+                                                                               LOG_DEBUG( "[" << job.job_name << "] Number of detections = " << detections.size());
     MPFImageLocationVec locations;
     for(auto &det:detections){
       MPFImageLocation loc = *det;
       det.reset();                    // release frame object
-      cfg.ReverseTransform(loc);
+      cfgPtr->ReverseTransform(loc);
       locations.push_back(loc);
     }
     return locations;
 
   }catch(const runtime_error& re){
-    LOG4CXX_FATAL(_log, "[" << job.job_name << "] runtime error: " << re.what());
+    LOG_FATAL( "[" << job.job_name << "] runtime error: " << re.what());
     throw MPFDetectionException(re.what());
   }catch(const exception& ex){
-    LOG4CXX_FATAL(_log, "[" << job.job_name << "] exception: " << ex.what());
+    LOG_FATAL( "[" << job.job_name << "] exception: " << ex.what());
     throw MPFDetectionException(ex.what());
   }catch (...){
-    LOG4CXX_FATAL(_log, "[" << job.job_name << "] unknown error");
+    LOG_FATAL( "[" << job.job_name << "] unknown error");
     throw MPFDetectionException(" Unknown error processing image job");
   }
-                                                                               LOG4CXX_DEBUG(_log,"[" << job.job_name << "] complete.");
+                                                                               LOG_DEBUG("[" << job.job_name << "] complete.");
 }
 
 /** ****************************************************************************
@@ -313,17 +305,16 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
   TrackPtrList      trackPtrs;
 
   try{
-    JobConfig cfg(job);
-    if(cfg.lastError != MPF_DETECTION_SUCCESS){
-      throw MPFDetectionException(cfg.lastError,"failed to parse video job configuration parameters");
+    auto cfgPtr = make_shared<Config>(job);
+    if(cfgPtr->lastError != MPF_DETECTION_SUCCESS){
+      throw MPFDetectionException(cfgPtr->lastError,"failed to parse video job configuration parameters");
     }
-
     size_t detectTrigger = 0;
-    while(cfg.nextFrame()) {                                                   LOG4CXX_TRACE(_log, ".");
-                                                                               LOG4CXX_TRACE(_log, "processing frame " << cfg.frameIdx);
+    while(cfgPtr->nextFrame()) {                                                   LOG_TRACE( ".");
+                                                                                   LOG_TRACE( "processing frame " << cfgPtr->frameIdx);
       // remove any tracks too far in the past
       trackPtrs.remove_if([&](unique_ptr<Track>& tPtr){
-        if(cfg.frameIdx - tPtr->back()->frameIdx > cfg.maxFrameGap){           LOG4CXX_TRACE(_log,"dropping old track: " << *tPtr);
+        if(cfgPtr->frameIdx - tPtr->back()->frameIdx > cfgPtr->maxFrameGap){           LOG_TRACE("dropping old track: " << *tPtr);
           mpf_tracks.push_back(_convert_track(*tPtr));
           return true;
         }
@@ -331,52 +322,52 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
       });
 
       // advance kalman predictions
-      if(! cfg.kfDisabled){
+      if(! cfgPtr->kfDisabled){
         for(auto &trackPtr:trackPtrs){
-          trackPtr->kalmanPredict(cfg.frameTimeInSec);
+          trackPtr->kalmanPredict(cfgPtr->frameTimeInSec);
         }
       }
 
-      if(detectTrigger == 0){                                                  LOG4CXX_TRACE(_log,"checking for new detections");
-        DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfg); // look for new detections
+      if(detectTrigger == 0){                                                  LOG_TRACE("checking for new detections");
+        DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfgPtr); // look for new detections
 
         if(detections.size() > 0){   // found some detections in current frame
           if(trackPtrs.size() >= 0 ){  // not all tracks were dropped
-            vector<long> av;                                                   LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+            vector<long> av;                                                   LOG_TRACE( detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
             // intersection over union tracking and assignment
-            if(! cfg.kfDisabled){
-              av = _calcAssignmentVector<&DetectionLocation::kfIouDist>(trackPtrs,detections,cfg.maxIOUDist);
+            if(! cfgPtr->kfDisabled){
+              av = _calcAssignmentVector<&DetectionLocation::kfIouDist>(trackPtrs,detections,cfgPtr->maxIOUDist);
             }else{
-              av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detections,cfg.maxIOUDist);
+              av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detections,cfgPtr->maxIOUDist);
             }
-            _assignDetections2Tracks(trackPtrs, detections, av);               LOG4CXX_TRACE(_log,"IOU assignment complete");
+            _assignDetections2Tracks(trackPtrs, detections, av);               LOG_TRACE("IOU assignment complete");
 
             // feature-based tracking tracking and assignment
-            if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
-              av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detections,cfg.maxFeatureDist);
-              _assignDetections2Tracks(trackPtrs, detections, av);             LOG4CXX_TRACE(_log,"Feature assignment complete");
+            if(detections.size() > 0){                                         LOG_TRACE( detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+              av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detections,cfgPtr->maxFeatureDist);
+              _assignDetections2Tracks(trackPtrs, detections, av);             LOG_TRACE("Feature assignment complete");
             }
 
             // center-to-center distance tracking and assignment
-            if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
-              av = _calcAssignmentVector<&DetectionLocation::center2CenterDist>(trackPtrs,detections,cfg.maxCenterDist);
-              _assignDetections2Tracks(trackPtrs, detections, av);             LOG4CXX_TRACE(_log,"Center2Center assignment complete");
+            if(detections.size() > 0){                                         LOG_TRACE( detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+              av = _calcAssignmentVector<&DetectionLocation::center2CenterDist>(trackPtrs,detections,cfgPtr->maxCenterDist);
+              _assignDetections2Tracks(trackPtrs, detections, av);             LOG_TRACE("Center2Center assignment complete");
             }
 
           }
-                                                                               LOG4CXX_TRACE(_log, detections.size() <<" detections left for new tracks");
+                                                                               LOG_TRACE( detections.size() <<" detections left for new tracks");
           // any detection not assigned up to this point becomes a new track
           for(auto &det:detections){                                           // make any unassigned detections into new tracks
             det->getFeature();                                                 // start of tracks always get feature calculated
-            trackPtrs.push_back(unique_ptr<Track>(new Track(move(det),cfg)));  LOG4CXX_TRACE(_log,"created new track " << *(trackPtrs.back()));
+            trackPtrs.push_back(unique_ptr<Track>(new Track(cfgPtr,move(det))));  LOG_TRACE("created new track " << *(trackPtrs.back()));
           }
         }
       }
 
       // check any tracks that didn't get a detection and use tracker to continue them if possible
       for(auto &track:trackPtrs){
-        if(track->back()->frameIdx < cfg.frameIdx){  // no detections for track in current frame, try tracking
-          DetectionLocationPtr detPtr = track->ocvTrackerPredict(cfg);
+        if(track->back()->frameIdx < cfgPtr->frameIdx){  // no detections for track in current frame, try tracking
+          DetectionLocationPtr detPtr = track->ocvTrackerPredict();
           if(detPtr){  // tracker returned something
             track->push_back(move(detPtr));              // add new location as tracks's tail
             track->kalmanCorrect();
@@ -385,9 +376,9 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
       }
 
       detectTrigger++;
-      detectTrigger = detectTrigger % (cfg.detFrameInterval + 1);
+      detectTrigger = detectTrigger % (cfgPtr->detFrameInterval + 1);
 
-    }                                                                          LOG4CXX_DEBUG(_log, "[" << job.job_name << "] Number of tracks detected = " << trackPtrs.size());
+    }                                                                          LOG_DEBUG( "[" << job.job_name << "] Number of tracks detected = " << trackPtrs.size());
 
     // convert any remaining active tracks to MPFVideoTracks
     for(auto &trackPtr:trackPtrs){
@@ -396,19 +387,19 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
 
     // reverse transform all mpf tracks
     for(auto &mpf_track:mpf_tracks){
-      cfg.ReverseTransform(mpf_track);
+      cfgPtr->ReverseTransform(mpf_track);
     }
 
     return mpf_tracks;
 
-  }catch(const runtime_error& re){                                             LOG4CXX_FATAL(_log, "[" << job.job_name << "] runtime error: " << re.what());
+  }catch(const runtime_error& re){                                             LOG_FATAL( "[" << job.job_name << "] runtime error: " << re.what());
     throw MPFDetectionException(re.what());
-  }catch(const exception& ex){                                                 LOG4CXX_FATAL(_log, "[" << job.job_name << "] exception: " << ex.what());
+  }catch(const exception& ex){                                                 LOG_FATAL( "[" << job.job_name << "] exception: " << ex.what());
     throw MPFDetectionException(ex.what());
-  }catch (...) {                                                               LOG4CXX_FATAL(_log, "[" << job.job_name << "] unknown error");
+  }catch (...) {                                                               LOG_FATAL( "[" << job.job_name << "] unknown error");
     throw MPFDetectionException("Unknown error processing video job");
   }
-                                                                               LOG4CXX_DEBUG(_log,"[" << job.job_name << "] complete.");
+                                                                               LOG_DEBUG("[" << job.job_name << "] complete.");
 }
 
 

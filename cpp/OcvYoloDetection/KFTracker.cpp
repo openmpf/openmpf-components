@@ -31,8 +31,6 @@
 
 using namespace MPF::COMPONENT;
 
-log4cxx::LoggerPtr KFTracker::_log;
-
 // Kalman Filter Dimensions (4x constant acceleration model)
 const int KF_STATE_DIM = 12; ///< dimensionality of kalman state vector       [x, v_x, ,a_x, y, v_y, a_y, w, v_w, a_w, h, v_h, ah]
 const int KF_MEAS_DIM  = 4;  ///< dimensionality of kalman measurement vector [x, y, w, h]
@@ -50,7 +48,7 @@ const int KF_CTRL_DIM  = 0;  ///< dimensionality of kalman control input      []
 void KFTracker::_setTimeStep(float dt){
 
   if(fabs(_dt - dt) > 2 * numeric_limits<float>::epsilon()){
-    _dt = dt;                                                                  LOG4CXX_TRACE(_log,"kd dt:" << _dt);
+    _dt = dt;                                                                  LOG_TRACE("kd dt:" << _dt);
 
     float dt2 = dt  * dt;
     float dt3 = dt2 * dt;
@@ -111,8 +109,8 @@ void KFTracker::_setTimeStep(float dt){
  * \returns measurement vector
  *
 *************************************************************************** */
-cv::Mat_<float> KFTracker::measurementFromBBox(const cv::Rect2i& r){
-  cv::Mat_<float> z(KF_MEAS_DIM,1);
+cv::Mat1f KFTracker::measurementFromBBox(const cv::Rect2i& r){
+  cv::Mat1f z(KF_MEAS_DIM,1);
   z.at<float>(0) = r.x + r.width  / 2.0f;
   z.at<float>(1) = r.y + r.height / 2.0f;
   z.at<float>(2) = r.width;
@@ -129,7 +127,7 @@ cv::Mat_<float> KFTracker::measurementFromBBox(const cv::Rect2i& r){
  * \returns bounding box corresponding to state
  *
 *************************************************************************** */
-cv::Rect2i KFTracker::bboxFromState(const cv::Mat_<float> state){
+cv::Rect2i KFTracker::bboxFromState(const cv::Mat1f state){
   return cv::Rect2i(static_cast<int>(state.at<float>(0) - state.at<float>(6)/2.0f + 0.5f),
                     static_cast<int>(state.at<float>(3) - state.at<float>(9)/2.0f + 0.5f),
                     static_cast<int>(state.at<float>(6)                 + 0.5f),
@@ -181,15 +179,14 @@ KFTracker::KFTracker(const float t,
                      const float dt,
                      const cv::Rect2i &rec0,
                      const cv::Rect2i &roi,
-                     const cv::Mat_<float> &rn,
-                     const cv::Mat_<float> &qn):
+                     const cv::Mat1f &rn,
+                     const cv::Mat1f &qn):
   _t(t),
   _dt(-1.0f),
   _roi(roi),
   _qn(qn),
   _kf(KF_STATE_DIM,KF_MEAS_DIM,KF_CTRL_DIM,CV_32F)       // kalman(state_dim,meas_dim,contr_dim)
 {
-    assert(_log);
     assert(  rn.rows == KF_MEAS_DIM &&   rn.cols == 1);
     assert(  qn.rows == KF_MEAS_DIM &&   qn.cols == 1);  // only accelerations model noise should be specified
 
@@ -242,7 +239,7 @@ KFTracker::KFTracker(const float t,
     _setTimeStep(dt);
 
     //initialize filter state
-    cv::Mat_<float> z0 = measurementFromBBox(rec0);
+    cv::Mat1f z0 = measurementFromBBox(rec0);
     _kf.statePost.at<float>(0) = z0.at<float>(0);
     _kf.statePost.at<float>(3) = z0.at<float>(1);
     _kf.statePost.at<float>(6) = z0.at<float>(2);
@@ -273,21 +270,6 @@ KFTracker::KFTracker(const float t,
       _myId = _objId;                                     // used for output filename
       _objId++;
     #endif
-}
-
-/** **************************************************************************
-* Setup class shared static configurations and initialize
-*
-* \param log         logger object for logging
-* \param plugin_path plugin directory
-*
-* \return true if everything was properly initialized, false otherwise
-*************************************************************************** */
-bool KFTracker::Init(log4cxx::LoggerPtr log, string plugin_path=""){
-
-  _log = log;
-
-  return true;
 }
 
 #ifndef NDEBUG

@@ -32,7 +32,7 @@
 #include <opencv2/tracking.hpp>
 
 #include "types.h"
-#include "JobConfig.h"
+#include "Config.h"
 #include "DetectionLocation.h"
 #include "KFTracker.h"
 
@@ -45,10 +45,8 @@ namespace MPF{
 
       public:
 
-        static bool Init(log4cxx::LoggerPtr log, const string plugin_path);  ///< setup class shared members
-
-        DetectionLocationPtr ocvTrackerPredict(const JobConfig &cfg);        ///< predict a new detection from an exiting one using a tracker
-        void releaseTracker() {_trackerPtr.release();}                       ///< release tracker so it can be reinitialized
+        DetectionLocationPtr ocvTrackerPredict();                         ///< predict a new detection from an exiting one using a tracker
+        void releaseTracker() {_trackerPtr.release();}                    ///< release tracker so it can be reinitialized
 
         // Vector like interface detection pointer in tack
         const DetectionLocationPtr &at        (size_t i) const {return _locationPtrs.at(i);}
@@ -68,11 +66,10 @@ namespace MPF{
         void             kalmanDump(){_kfPtr->dump();};
         #endif
 
-        Track(DetectionLocationPtr detPtr, const JobConfig &cfg);
+        Track(const ConfigPtr cfgPtr,DetectionLocationPtr detPtr);
 
       private:
-        static log4cxx::LoggerPtr                _log;      ///< shared log object
-
+        const ConfigPtr         _cfgPtr;
         DetectionLocationPtrVec _locationPtrs;              ///< vector of pointers to locations  making up track
         cv::Ptr<cv::Tracker>    _trackerPtr;                ///< openCV tracker to help bridge gaps when detector fails
         size_t                  _trackerStartFrameIdx;      ///< frame index at which the tracker was initialized

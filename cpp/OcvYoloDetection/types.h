@@ -38,6 +38,7 @@ namespace MPF{
 
   using namespace std;
 
+  class Config;
   class DetectionLocation;
   class Track;
 
@@ -55,6 +56,7 @@ namespace MPF{
   typedef unique_ptr<DetectionLocation> DetectionLocationPtr;     ///< DetectionLocation pointers
   typedef vector<DetectionLocationPtr>  DetectionLocationPtrVec;  ///< vector of DetectionLocation pointers
   typedef list<unique_ptr<Track>>       TrackPtrList;             ///< list of track pointers
+  typedef shared_ptr<const Config>      ConfigPtr;                ///< Config pointer (state)
 
   /** ****************************************************************************
    *  print out opencv matrix on a single line
@@ -64,7 +66,7 @@ namespace MPF{
    *
   ***************************************************************************** */
   inline
-  string format(cv::Mat_<float> m){
+  string format(cv::Mat1f m){
     stringstream ss;
 
     ss << "[";

@@ -34,6 +34,7 @@
 #include <opencv2/tracking.hpp>
 
 #include "types.h"
+#include "Config.h"
 
 namespace MPF{
   namespace COMPONENT{
@@ -44,10 +45,8 @@ namespace MPF{
 
       public:
 
-        static bool Init(log4cxx::LoggerPtr log, const string plugin_path);  ///< setup class shared members
-
-        static cv::Mat_<float> measurementFromBBox(const cv::Rect2i& r);
-        static cv::Rect2i      bboxFromState(const cv::Mat_<float> state);
+        static cv::Mat1f measurementFromBBox(const cv::Rect2i& r);
+        static cv::Rect2i      bboxFromState(const cv::Mat1f state);
 
 
         const cv::Rect2i predictedBBox() const {return bboxFromState(_kf.statePre)  & _roi;};
@@ -60,8 +59,8 @@ namespace MPF{
                   const float dt,
                   const cv::Rect2i &rec0,
                   const cv::Rect2i &roi,
-                  const cv::Mat_<float> &rn,
-                  const cv::Mat_<float> &qn);
+                  const cv::Mat1f &rn,
+                  const cv::Mat1f &qn);
 
         #ifndef NDEBUG
           static size_t _objId;
@@ -72,12 +71,11 @@ namespace MPF{
         #endif
 
       private:
-        static log4cxx::LoggerPtr  _log;       ///< shared log object
         cv::KalmanFilter           _kf;        ///< kalman filter for bounding box
         float                      _t;         ///< time corresponding to kalman filter state
         float                      _dt;        ///< time step to use for filter updates
         const cv::Rect2i           _roi;       ///< canvas clipping limits for bboxes returned by filter
-        const cv::Mat_<float>      _qn;        ///< kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
+        const cv::Mat1f            _qn;        ///< kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
 
         void _setTimeStep(float dt);           ///< update model variables Q F for time step size dt
 
