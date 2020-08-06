@@ -1139,38 +1139,8 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     // Free up recognition results and any stored image data.
     tess_api.Clear();
 
+    // Store initial script result and set rotation if orientation confidence threshold is met.
     string initial_script = results.unicharset->get_script_from_script_id(results.best_result.script_id);
-    if (ocr_fset.enable_osd_fallback && (ocr_fset.min_orientation_confidence > results.best_result.oconfidence ||
-        initial_script == "NULL")) {
-        detection_properties["OSD_FALLBACK_OCCURRED"] = "true";
-        LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Attempting OSD processing with image amplification.");
-
-        // Replicate the image, four times across.
-        // Do not pass back MPF frame errors if amplified image cannot fit.
-        cv::Mat amplified_im = cv::repeat(imi, 1, 4);
-        // Double check that amplified image still fits OCR dimension limits.
-        // Restore scaling to original settings after check is complete.
-        double original_scale = ocr_fset.scale;
-        ocr_fset.scale = -1;
-        try {
-            rescale_image(job, amplified_im, ocr_fset);
-        }
-        catch (const MPFDetectionException &ex) {
-            LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OSD processing with image amplification not possible "
-                                      "under image size limits. Aborting second pass of OSD.");
-            ocr_fset.scale = original_scale;
-            return;
-        }
-
-        ocr_fset.scale = original_scale;
-        tess_api.SetPageSegMode(tesseract::PSM_AUTO_OSD);
-        tess_api.SetImage(amplified_im);
-        tess_api.DetectOS(&results);
-
-        // Free up recognition results and any stored image data.
-        tess_api.Clear();
-    }
-
     int best_ori = results.best_result.orientation_id;
     int best_id = results.best_result.script_id;
     int candidates = 0;
@@ -1219,6 +1189,45 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             default:
                 break;
         }
+    }
+
+    // If OSD fall back is enabled and initial script results are unacceptable, rerun OSD on amplified image.
+    if (ocr_fset.enable_osd_fallback && (initial_script == "NULL" ||
+        !(ocr_fset.min_script_confidence <= results.best_result.sconfidence &&
+          ocr_fset.min_script_score <= best_score))) {
+
+        detection_properties["OSD_FALLBACK_OCCURRED"] = "true";
+        LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Attempting OSD processing with image amplification.");
+
+        // Replicate the image, four times across.
+        // Do not pass back MPF frame errors if amplified image cannot fit.
+        cv::Mat amplified_im = cv::repeat(imi, 1, 4);
+        // Double check that amplified image still fits OCR dimension limits.
+        // Restore scaling to original settings after check is complete.
+        double original_scale = ocr_fset.scale;
+        ocr_fset.scale = -1;
+        try {
+            rescale_image(job, amplified_im, ocr_fset);
+        }
+        catch (const MPFDetectionException &ex) {
+            LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OSD processing with image amplification not possible "
+                                      "under image size limits. Aborting second pass of OSD.");
+            ocr_fset.scale = original_scale;
+            return;
+        }
+
+        ocr_fset.scale = original_scale;
+        tess_api.SetPageSegMode(tesseract::PSM_AUTO_OSD);
+        tess_api.SetImage(amplified_im);
+        tess_api.DetectOS(&results);
+
+        // Free up recognition results and any stored image data.
+        tess_api.Clear();
+
+        // Update best results after performing OSD fallback
+        best_ori = results.best_result.orientation_id;
+        best_id = results.best_result.script_id;
+        best_score = results.scripts_na[best_ori][best_id];
     }
 
     // Store OSD results.

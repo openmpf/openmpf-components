@@ -702,6 +702,7 @@ TEST(TESSERACTOCR, OSDConfidenceFilteringTest) {
     // In the OSDTest for eng.png, the component will accept the detected script and run it as the text_language model (script/Latin).
     // By setting the min script score level too high, the component must default back to original setting (eng).
     custom_properties = {{"ENABLE_OSD_AUTOMATION",             "true"},
+                         {"ENABLE_OSD_FALLBACK",               "false"},
                          {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE", "0"},
                          {"MIN_OSD_SCRIPT_SCORE",              "60"}};
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
@@ -711,6 +712,38 @@ TEST(TESSERACTOCR, OSDConfidenceFilteringTest) {
                                 << "Expected default language (eng) due to script score rejection.";
     assertInImage("data/eng.png", "All human beings", results, "TEXT");
     results.clear();
+
+    // Check script score filtering with OSD fallback enabled.
+    // In the OSDTest for eng.png, the component will accept the detected script and run it as the text_language model (script/Latin).
+    // By setting the min script score level too high, the component must default back to original setting (eng).
+    custom_properties = {{"ENABLE_OSD_AUTOMATION",             "true"},
+                         {"ENABLE_OSD_FALLBACK",               "true"},
+                         {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE", "0"},
+                         {"MIN_OSD_SCRIPT_SCORE",              "6000"}};
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng")
+                                << "Expected default language (eng) due to script score rejection despite OSD fallback occurring.";
+    assertInImage("data/eng.png", "All human beings", results, "TEXT");
+    results.clear();
+
+    // Check script score filtering with OSD fallback enabled.
+    // In the OSDTest for eng.png, the component will accept the detected script and run it as the text_language model (script/Latin).
+    // Check that OSD fallback now raises confidence scores to acceptable threshold.
+    custom_properties = {{"ENABLE_OSD_AUTOMATION",             "true"},
+                         {"ENABLE_OSD_FALLBACK",               "true"},
+                         {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE", "0"},
+                         {"MIN_OSD_SCRIPT_SCORE",              "60"}};
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
+    ASSERT_TRUE(results[0].detection_properties.at("ROTATION") == "0") << "Expected 0 degree text rotation.";
+    ASSERT_TRUE(results[0].detection_properties.at("OSD_PRIMARY_SCRIPT") == "Latin") << "Expected Latin script.";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "script/Latin")
+                                << "Expected Latin script due to OSD fallback improving confidence scores.";
+    assertInImage("data/eng.png", "All human beings", results, "TEXT");
+    results.clear();
+
+
 
     // Check orientation confidence filtering.
     // In the OSDTest for eng-rotated.png, the component will accept a detected rotation of 180 degrees.
@@ -918,7 +951,7 @@ TEST(TESSERACTOCR, OSDMultiPageTest) {
                                 << "Expected NULL script due to insufficient text.";
     ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng")
                                 << "Expected default language (eng) for second track.";
-                                
+
     results_pdf.clear();
     results.clear();
 
