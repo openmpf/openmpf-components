@@ -301,6 +301,7 @@ TEST(TESSERACTOCR, MissingLanguagesTest) {
                         "../plugin/TesseractOCRTextDetection/config").string();
     symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/config");
 
+    ocr->SetRunDirectory("data/model_dir");
     std::vector<MPFImageLocation> results;
 
     std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "eng"},
@@ -395,8 +396,10 @@ TEST(TESSERACTOCR, MissingLanguagesTest) {
 }
 
 TEST(TESSERACTOCR, RescaleTest) {
+
     // Ensure proper rescaling of images within Tesseract limits.
     TesseractOCRTextDetection* ocr = TESSERACTOCR::ocr;
+    ocr->SetRunDirectory("../plugin");
     std::vector<MPFImageLocation> results;
 
     std::map<std::string,std::string> custom_properties = {};
