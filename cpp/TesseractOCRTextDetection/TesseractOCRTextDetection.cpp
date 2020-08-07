@@ -1083,8 +1083,58 @@ string TesseractOCRTextDetection::process_osd_lang(const string &script_type, co
     }
 }
 
+// Get OSD orientation scores and convert them into ROTATION values.
+// Both the scaled imi image and unscaled imi_original image are also needed since vertical rotations may result in
+// changes to the original image rescaling. The final rescaled image will be stored in imi_scaled.
+bool TesseractOCRTextDetection::get_OSD_rotation(OSResults *results, cv::Mat &imi_scaled, cv::Mat &imi_original,
+                                                 int &rotation, const MPFImageJob &job, OCR_filter_settings &ocr_fset) {
 
-void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job,
+    switch (results->best_result.orientation_id) {
+        case 0:
+            // Do not rotate. Use the scaled image provided.
+            break;
+        case 1:
+            // Text is rotated 270 degrees counterclockwise.
+            // Image will need to be rotated 90 degrees counterclockwise to fix this.
+            // Reapply rescaling as rotation has changed image dimensions.
+            cv::rotate(imi_original, imi_scaled, cv::ROTATE_90_COUNTERCLOCKWISE);
+            try {
+                rescale_image(job, imi_scaled, ocr_fset);
+            }
+            catch (const MPFDetectionException &ex) {
+                return false;
+            }
+            // Report current orientation of image (uncorrected, counterclockwise).
+            rotation = 270;
+            break;
+        case 2:
+            // 180 degree rotation.
+            // Since width and height are unchanged, no rescaling is needed.
+            cv::rotate(imi_scaled, imi_scaled, cv::ROTATE_180);
+            rotation = 180;
+            break;
+        case 3:
+            // Text is rotated 90 degrees counterclockwise.
+            // Image will need to be rotated 270 degrees counterclockwise to fix this.
+            // Reapply rescaling as rotation has changed image dimensions.
+            cv::rotate(imi_original, imi_scaled, cv::ROTATE_90_CLOCKWISE);
+            try {
+                rescale_image(job, imi_scaled, ocr_fset);
+            }
+            catch (const MPFDetectionException &ex) {
+                return false;
+            }
+
+            // Report current orientation of image (uncorrected, counterclockwise).
+            rotation = 90;
+            break;
+        default:
+            break;
+        }
+    return true;
+}
+
+void TesseractOCRTextDetection::get_OSD(OSBestResult &best_result, cv::Mat &imi, const MPFImageJob &job,
                                         OCR_filter_settings &ocr_fset,
                                         Properties &detection_properties,
                                         string &tessdata_script_dir, set<string> &missing_languages) {
@@ -1094,6 +1144,8 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     pair<int, string> tess_api_key = make_pair(oem, "osd");
     set<string> found_languages;
     string run_dir = GetRunDirectory();
+    OSResults original_results, fallback_results;
+    OSResults *results;
 
     // Preserve a copy for images that may swap width and height. Rescaling will be performed based on new dimensions.
     cv::Mat imi_copy = imi.clone();
@@ -1133,70 +1185,26 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     auto& tess_api = tess_api_map.at(tess_api_key);
     tess_api.SetPageSegMode(tesseract::PSM_AUTO_OSD);
     tess_api.SetImage(imi);
-    if (!tess_api.DetectOS(&results)) {
+    if (!tess_api.DetectOS(&original_results)) {
         LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OSD processing returned no outputs.");
     }
     // Free up recognition results and any stored image data.
     tess_api.Clear();
 
     // Store initial script result and set rotation if orientation confidence threshold is met.
-    string initial_script = results.unicharset->get_script_from_script_id(results.best_result.script_id);
-    int best_ori = results.best_result.orientation_id;
-    int best_id = results.best_result.script_id;
+    results = &original_results;
+    string initial_script = results->unicharset->get_script_from_script_id(results->best_result.script_id);
+    best_result = original_results.best_result;
     int candidates = 0;
-    double best_score = results.scripts_na[best_ori][best_id];
+    double best_score = original_results.scripts_na[best_result.orientation_id][best_result.script_id];
     int rotation = 0;
-
-    if (ocr_fset.min_orientation_confidence <= results.best_result.oconfidence) {
-        switch (results.best_result.orientation_id) {
-            case 0:
-                // Do not rotate.
-                break;
-            case 1:
-                // Text is rotated 270 degrees counterclockwise.
-                // Image will need to be rotated 90 degrees counterclockwise to fix this.
-                // Reapply rescaling as rotation has changed image dimensions.
-                cv::rotate(imi_copy, imi, cv::ROTATE_90_COUNTERCLOCKWISE);
-                try {
-                    rescale_image(job, imi, ocr_fset);
-                }
-                catch (const MPFDetectionException &ex) {
-                    return;
-                }
-                // Report current orientation of image (uncorrected, counterclockwise).
-                rotation = 270;
-                break;
-            case 2:
-                // 180 degree rotation.
-                cv::rotate(imi, imi, cv::ROTATE_180);
-                rotation = 180;
-                break;
-            case 3:
-                // Text is rotated 90 degrees counterclockwise.
-                // Image will need to be rotated 270 degrees counterclockwise to fix this.
-                // Reapply rescaling as rotation has changed image dimensions.
-                cv::rotate(imi_copy, imi, cv::ROTATE_90_CLOCKWISE);
-                try {
-                    rescale_image(job, imi, ocr_fset);
-                }
-                catch (const MPFDetectionException &ex) {
-                    return;
-                }
-
-                // Report current orientation of image (uncorrected, counterclockwise).
-                rotation = 90;
-                break;
-            default:
-                break;
-        }
-    }
 
     // If OSD fall back is enabled and initial script results are unacceptable, rerun OSD on amplified image.
     if (ocr_fset.enable_osd_fallback && (initial_script == "NULL" ||
-        !(ocr_fset.min_script_confidence <= results.best_result.sconfidence &&
-          ocr_fset.min_script_score <= best_score))) {
+        !(ocr_fset.min_script_confidence <= best_result.sconfidence &&
+          ocr_fset.min_script_score <= best_score &&
+          ocr_fset.min_orientation_confidence <= best_result.oconfidence))) {
 
-        detection_properties["OSD_FALLBACK_OCCURRED"] = "true";
         LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Attempting OSD processing with image amplification.");
 
         // Replicate the image, four times across.
@@ -1219,25 +1227,40 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         ocr_fset.scale = original_scale;
         tess_api.SetPageSegMode(tesseract::PSM_AUTO_OSD);
         tess_api.SetImage(amplified_im);
-        tess_api.DetectOS(&results);
+        tess_api.DetectOS(&fallback_results);
 
         // Free up recognition results and any stored image data.
         tess_api.Clear();
+        double best_fallback_score = fallback_results.scripts_na[fallback_results.best_result.orientation_id]
+                                                                [fallback_results.best_result.script_id];
 
-        // Update best results after performing OSD fallback
-        best_ori = results.best_result.orientation_id;
-        best_id = results.best_result.script_id;
-        best_score = results.scripts_na[best_ori][best_id];
+        // Update best results after performing OSD fallback if all results are acceptable.
+        if (ocr_fset.min_script_confidence <= fallback_results.best_result.sconfidence &&
+            ocr_fset.min_script_score <= best_fallback_score &&
+            ocr_fset.min_orientation_confidence <= fallback_results.best_result.oconfidence) {
+
+            detection_properties["OSD_FALLBACK_OCCURRED"] = "true";
+            results = &fallback_results;
+            best_result = fallback_results.best_result;
+            best_score = best_fallback_score;
+        }
+    }
+
+    // Set rotation and rescale image if necessary.
+    if (ocr_fset.min_orientation_confidence <= best_result.oconfidence) {
+        if (!get_OSD_rotation(results, imi, imi_copy, rotation, job, ocr_fset))
+        {
+            return;
+        }
     }
 
     // Store OSD results.
-    detection_properties["OSD_PRIMARY_SCRIPT"] = results.unicharset->get_script_from_script_id(
-                results.best_result.script_id);
+    detection_properties["OSD_PRIMARY_SCRIPT"] = results->unicharset->get_script_from_script_id(best_result.script_id);
     if (detection_properties["OSD_PRIMARY_SCRIPT"] != "NULL") {
-        detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = to_string(results.best_result.sconfidence);
+        detection_properties["OSD_PRIMARY_SCRIPT_CONFIDENCE"] = to_string(best_result.sconfidence);
         detection_properties["OSD_PRIMARY_SCRIPT_SCORE"] = to_string(best_score);
         detection_properties["ROTATION"] = to_string(rotation);
-        detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = to_string(results.best_result.oconfidence);
+        detection_properties["OSD_TEXT_ORIENTATION_CONFIDENCE"] = to_string(best_result.oconfidence);
     }
 
     int max_scripts = ocr_fset.max_scripts;
@@ -1250,9 +1273,9 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         }
     }
 
-    if (ocr_fset.min_script_confidence <= results.best_result.sconfidence && ocr_fset.min_script_score <= best_score) {
+    if (ocr_fset.min_script_confidence <= best_result.sconfidence && ocr_fset.min_script_score <= best_score) {
 
-        OSD_script best_script = {best_id, best_score};
+        OSD_script best_script = {best_result.script_id, best_score};
         vector<OSD_script> script_list, backup_scripts, secondary_scripts;
 
         // If primary script is not NULL, check if secondary scripts are also valid.
@@ -1265,8 +1288,8 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             }
             // Skip index 0 to ignore the "Common" script.
             for (int i = 1; i < kMaxNumberOfScripts; ++i) {
-                double score = results.scripts_na[best_ori][i];
-                if (i != best_id && score >= score_cutoff) {
+                double score = results->scripts_na[best_result.orientation_id][i];
+                if (i != best_result.script_id && score >= score_cutoff) {
                     OSD_script script_out;
                     script_out.id = i;
                     script_out.score = score;
@@ -1298,7 +1321,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
         unique_vector script_results;
         int missing_count = 0;
         for (const OSD_script &script : script_list) {
-            string lang = process_osd_lang(results.unicharset->get_script_from_script_id(script.id), ocr_fset);
+            string lang = process_osd_lang(results->unicharset->get_script_from_script_id(script.id), ocr_fset);
             if (lang == "") {
                 continue;
             }
@@ -1323,7 +1346,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             OSD_script next_best = backup_scripts.front();
             backup_scripts.erase(backup_scripts.begin());
 
-            string lang = process_osd_lang(results.unicharset->get_script_from_script_id(next_best.id), ocr_fset);
+            string lang = process_osd_lang(results->unicharset->get_script_from_script_id(next_best.id), ocr_fset);
             if (lang == "") {
                 continue;
             }
@@ -1350,7 +1373,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
             vector<string> scores;
 
             for (const OSD_script &script : secondary_scripts) {
-                scripts.push_back(results.unicharset->get_script_from_script_id(script.id));
+                scripts.push_back(results->unicharset->get_script_from_script_id(script.id));
                 scores.push_back(to_string(script.score));
             }
 
@@ -1716,14 +1739,14 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
 
         if (ocr_fset.psm == 0 || ocr_fset.enable_osd) {
 
-            OSResults os_results;
-            get_OSD(os_results, image_data, job, ocr_fset, osd_detection_properties,
+            OSBestResult os_best_result;
+            get_OSD(os_best_result, image_data, job, ocr_fset, osd_detection_properties,
                     tessdata_script_dir, missing_languages);
 
             // Rotate upper left coordinates based on OSD results.
-            if (ocr_fset.min_orientation_confidence <= os_results.best_result.oconfidence) {
-                orientation_result = os_results.best_result.orientation_id;
-                set_coordinates(xLeftUpper, yLeftUpper, width, height, input_size, os_results.best_result.orientation_id);
+            if (ocr_fset.min_orientation_confidence <= os_best_result.oconfidence) {
+                orientation_result = os_best_result.orientation_id;
+                set_coordinates(xLeftUpper, yLeftUpper, width, height, input_size, os_best_result.orientation_id);
             }
 
             // When PSM is set to 0, there is no need to process any further.
@@ -1906,11 +1929,11 @@ void TesseractOCRTextDetection::process_parallel_pdf_pages(PDF_page_inputs &page
         thread_var[index].osd_track_results = MPFGenericTrack(-1.0);
         thread_var[index].tessdata_script_dir = "";
         if (page_inputs.ocr_fset.enable_osd) {
-            OSResults os_results;
+            OSBestResult os_best_result;
             // Reset to original specified language before processing OSD.
             page_inputs.ocr_fset.tesseract_lang = page_inputs.default_lang;
             set<string> missing_languages;
-            get_OSD(os_results, thread_var[index].image, c_job, page_inputs.ocr_fset, thread_var[index].osd_track_results.detection_properties,
+            get_OSD(os_best_result, thread_var[index].image, c_job, page_inputs.ocr_fset, thread_var[index].osd_track_results.detection_properties,
                     thread_var[index].tessdata_script_dir, missing_languages);
             page_results.all_missing_languages.insert(missing_languages.begin(), missing_languages.end());
         }
@@ -1992,11 +2015,11 @@ void TesseractOCRTextDetection::process_serial_pdf_pages(PDF_page_inputs &page_i
         MPFGenericTrack osd_track_results(-1);
         string tessdata_script_dir = "";
         if (page_inputs.ocr_fset.psm == 0 || page_inputs.ocr_fset.enable_osd) {
-            OSResults os_results;
+            OSBestResult os_best_result;
             // Reset to original specified language before processing OSD.
             page_inputs.ocr_fset.tesseract_lang = page_inputs.default_lang;
             set<string> missing_languages;
-            get_OSD(os_results, image_data, c_job, page_inputs.ocr_fset, osd_track_results.detection_properties,
+            get_OSD(os_best_result, image_data, c_job, page_inputs.ocr_fset, osd_track_results.detection_properties,
                     tessdata_script_dir, missing_languages);
             page_results.all_missing_languages.insert(missing_languages.begin(), missing_languages.end());
 
