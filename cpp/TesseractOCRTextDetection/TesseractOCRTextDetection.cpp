@@ -1219,7 +1219,7 @@ void TesseractOCRTextDetection::get_OSD(OSBestResult &best_result, cv::Mat &imi,
         }
         catch (const MPFDetectionException &ex) {
             LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] OSD processing with image amplification not possible "
-                                      "under image size limits. Aborting second pass of OSD.");
+                                      "within image size limits. Aborting second pass of OSD.");
             ocr_fset.scale = original_scale;
             return;
         }

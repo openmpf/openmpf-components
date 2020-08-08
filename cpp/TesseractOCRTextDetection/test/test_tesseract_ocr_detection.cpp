@@ -621,7 +621,6 @@ TEST(TESSERACTOCR, OSDConfidenceFilteringTest) {
     ASSERT_TRUE(ocr.Init());
 
     // Check script confidence filtering.
-    // In the OSDTest for eng.png, the component will accept the detected script and run it as the text_language model (script/Latin).
     // By setting the min script confidence level too high, the component must default back to original setting (eng).
     // Alternatively, setting the min script score too high would also work.
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION",             "true"},
@@ -636,8 +635,7 @@ TEST(TESSERACTOCR, OSDConfidenceFilteringTest) {
     results.clear();
 
     // Check script score filtering with OSD fallback enabled.
-    // In the OSDTest for eng.png, the component will accept the detected script and run it as the text_language model (script/Latin).
-    // Check that OSD fallback now raises confidence scores to acceptable threshold.
+    // Check that OSD fallback now raises detected script (script/Latin) confidence scores to acceptable threshold.
     custom_properties = {{"ENABLE_OSD_AUTOMATION",             "true"},
                          {"ENABLE_OSD_FALLBACK",               "true"},
                          {"MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE", "0"},
@@ -961,7 +959,7 @@ TEST(TESSERACTOCR, RedundantFilterTest) {
     std::vector<MPFImageLocation> results;
     ASSERT_TRUE(ocr.Init());
 
-    // Check that redundant scripts are ignored properly and that on track is returned for each non-redundant entry.
+    // Check that redundant scripts are ignored properly and that one track is returned for each non-redundant entry.
 
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION",             "false"},
                                                             {"TESSERACT_LANGUAGE",    "eng+eng,eng+eng,fra,fra+eng,eng+fra+fra"},
