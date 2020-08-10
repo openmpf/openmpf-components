@@ -27,7 +27,6 @@
 #include <fstream>
 #include <stdexcept>
 #include <thread>
-#include <condition_variable>
 #include <mutex>
 #include <chrono>
 
@@ -111,9 +110,9 @@ TrtisJobConfig::TrtisJobConfig(const MPFJob &job){
   }
 
   model_name    = get<string>(jpr,"MODEL_NAME"   , "ip_irv2_coco");
-  model_version = get<int>   (jpr,"MODEL_VERSION", -1);
-  maxInferConcurrency = get<size_t>(jpr,"MAX_INFER_CONCURRENCY", 5);
-  contextWaitTimeoutSec = get<size_t>(jpr,"CONTEXT_WAIT_TIMEOUT_SEC", 30);
+  model_version = get<int>(jpr,"MODEL_VERSION", -1);
+  maxInferConcurrency = get<int>(jpr,"MAX_INFER_CONCURRENCY", 5);
+  contextWaitTimeoutSec = get<int>(jpr,"CONTEXT_WAIT_TIMEOUT_SEC", 0);
 }
 
 /** ****************************************************************************
@@ -359,7 +358,7 @@ vector<sPtrInferCtx>& TrtisDetection::_niGetInferContexts(const TrtisJobConfig& 
   ss << std::this_thread::get_id() << ":" << cfg.model_name << ":" << cfg.model_version;
   string key = ss.str();
 
-  size_t numOrigCtx = _infCtxs[key].size();
+  int numOrigCtx = _infCtxs[key].size();
 
   // Grow the cache of contexts if necessary.
   nic::Error err;
@@ -767,6 +766,18 @@ void TrtisDetection::_ip_irv2_coco_tracker(
   }
 }
 
+template<typename UnaryPredicate>
+void TrtisDetection::_wait_for(condition_variable& cv, unique_lock<mutex>& lk, int timeoutSec, UnaryPredicate pred,
+                               string errorMsg) {
+  if (timeoutSec > 0) {
+    if (!cv.wait_for(lk, chrono::seconds(timeoutSec), pred)) {
+      THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED, errorMsg);
+    }
+  } else {
+    cv.wait(lk, pred);
+  }
+}
+
 /** ****************************************************************************
 * Read frames from a video, get object detections and make tracks
 *
@@ -796,7 +807,6 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 
       mutex freeCtxQueueMtx, nextRxFrameMtx, tracksMtx;                          LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
       condition_variable freeCtxQueueCv, nextRxFrameCv;
-      auto timeout = chrono::seconds(cfg.contextWaitTimeoutSec);
 
       vector<sPtrInferCtx>& ctxs = _niGetInferContexts(cfg);                     LOG4CXX_TRACE(_log,"Retrieved inferencing context pool of size " << ctxs.size() << " for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
       size_t initialCtxPoolSize = ctxs.size();
@@ -816,10 +826,9 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
         int ctxId;                                                               LOG4CXX_TRACE(_log, "requesting inference from TRTIS server for frame[" <<  frameIdx << "]" );
         { unique_lock<mutex> lk(freeCtxQueueMtx);
           if(freeCtxQueue.empty()){                                              LOG4CXX_TRACE(_log, "wait for an infer context to become available");
-            if(!freeCtxQueueCv.wait_for(lk, timeout,[&freeCtxQueue]{return !freeCtxQueue.empty();})){
-              THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
-                                   "Waited longer than " + to_string(timeout.count()) + " sec for an inference context.");
-            }
+            _wait_for(freeCtxQueueCv, lk, cfg.contextWaitTimeoutSec,
+                      [&freeCtxQueue]{ return !freeCtxQueue.empty(); },
+                      "Waited longer than " + to_string(cfg.contextWaitTimeoutSec) + " sec for an inference context.");
           }
           ctxId = freeCtxQueue.front();
           freeCtxQueue.pop();                                                    LOG4CXX_TRACE(_log, "removing context[" << ctxId << "] from pool");
@@ -833,31 +842,31 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
                                                                                  LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] sending");
         // Send inference request to the inference server.
         NI_CHECK_OK(
-          ctx->AsyncRun([frameIdx, &timeout, &cfg, &freeCtxQueueCv, &nextRxFrameCv,
+          ctx->AsyncRun([frameIdx, &cfg, &freeCtxQueueCv, &nextRxFrameCv,
                          &nextRxFrameMtx, &tracksMtx, &freeCtxQueueMtx,
                          &nextRxFrameIdx, &tracks, &freeCtxQueue,
                          this](nic::InferContext* c, sPtrInferCtxReq req)
           {
             // NOTE: When this callback is invoked, the frame has already been processed by the TRTIS server.
-            LOG4CXX_DEBUG(_log, "Async run for frame[" << frameIdx << "] with context[" << c->CorrelationId() << "]");
+            LOG4CXX_DEBUG(_log, "Async run callback for frame[" << frameIdx << "] with context["
+                << c->CorrelationId() << "] and thread_id:" << std::this_thread::get_id());
 
             // Ensure tracking is performed on the frames in the proper order.
             { unique_lock<mutex> lk(nextRxFrameMtx);
-              if(frameIdx != nextRxFrameIdx){                                    LOG4CXX_TRACE(_log, ">> Out of sequence frame response, waiting to process frame[" << frameIdx << "], but nextRxFrameIdx[" << nextRxFrameIdx << "]");
-                if(!nextRxFrameCv.wait_for(lk, timeout,
-                                 [this, frameIdx, &nextRxFrameIdx] {
-                    LOG4CXX_TRACE(_log,"CHECK: waiting to process frame[" << frameIdx << "], notified with nextRxFrameIdx[" << nextRxFrameIdx << "]");
-                    return frameIdx == nextRxFrameIdx;
-                })){
-                  THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
-                                       "Waited longer than " + to_string(timeout.count()) +
-                                       " sec for response to request for frame[" + to_string(nextRxFrameIdx) + "].");
-                }
+              if(frameIdx != nextRxFrameIdx){
+                LOG4CXX_TRACE(_log, ">> Out of sequence frame response, waiting to process frame[" << frameIdx << "], but nextRxFrameIdx[" << nextRxFrameIdx << "]");
+                _wait_for(nextRxFrameCv, lk, cfg.contextWaitTimeoutSec,
+                          [this, frameIdx, &nextRxFrameIdx] {
+                              LOG4CXX_TRACE(_log,"CHECK: waiting to process frame[" << frameIdx << "], notified with nextRxFrameIdx[" << nextRxFrameIdx << "]");
+                              return frameIdx == nextRxFrameIdx;
+                          },
+                          "Waited longer than " + to_string(cfg.contextWaitTimeoutSec) +
+                          " sec for response to request for frame[" + to_string(nextRxFrameIdx) + "].");
               }
             }
 
             // Retrieve the results from the TRTIS server and update tracks.
-            StrUPtrInferCtxResMap res;                                           LOG4CXX_TRACE(_log, "Callback[" << frameIdx << "] thread_id:" << std::this_thread::get_id());
+            StrUPtrInferCtxResMap res;
             bool is_ready = false;
             NI_CHECK_OK(
               c->GetAsyncRunResults(&res, &is_ready, req, true),
@@ -893,12 +902,10 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 
       if(freeCtxQueue.size() < initialCtxPoolSize){                              LOG4CXX_TRACE(_log, "wait for inference context pool size to return to initial size of " << initialCtxPoolSize);
         unique_lock<mutex> lk(freeCtxQueueMtx);
-        if(!freeCtxQueueCv.wait_for(lk, cfg.maxInferConcurrency * timeout,
-                        [&freeCtxQueue, &initialCtxPoolSize]{return freeCtxQueue.size() == initialCtxPoolSize;})){
-            THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
-                                 "Waited longer than " + to_string(timeout.count()) +
-                                 " sec for context pool to return to initial size.");
-        }
+        _wait_for(freeCtxQueueCv, lk, cfg.contextWaitTimeoutSec,
+                  [&freeCtxQueue, &initialCtxPoolSize]{ return freeCtxQueue.size() == initialCtxPoolSize; },
+                  "Waited longer than " + to_string(cfg.contextWaitTimeoutSec) +
+                  " sec for context pool to return to initial size.");
       }                                                                           LOG4CXX_DEBUG(_log,"all frames complete");
 
       _base64EncodeStopFeatures(tracks);                                          LOG4CXX_TRACE(_log, "finished (re)encoding track stop_frame FEATUREs to base64");
@@ -915,7 +922,6 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
     return tracks;
 
   }catch(...){
-    _infCtxs.clear();  // release inference context pool just to be safe
     Utils::LogAndReThrowException(job, _log);
   }
 
@@ -979,7 +985,6 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &j
     }
 
   }catch (...) {
-    _infCtxs.clear();  // release inference context pool just to be safe
     Utils::LogAndReThrowException(job, _log);
   }
 

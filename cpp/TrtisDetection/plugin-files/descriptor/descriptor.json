@@ -50,9 +50,9 @@
         },
         {
           "name": "CONTEXT_WAIT_TIMEOUT_SEC",
-          "description": "Maximum number of seconds to wait for an inference context when using concurrent inferencing",
+          "description": "Maximum number of seconds to wait for an inference context when using concurrent inferencing. Set to a value <= 0 to wait forever.",
           "type": "INT",
-          "defaultValue": "30"
+          "defaultValue": "0"
         },
         {
           "name": "USER_FEATURE_ENABLE",
