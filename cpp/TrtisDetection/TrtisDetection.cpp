@@ -40,7 +40,6 @@
 #include <detectionComponentUtils.h>
 #include <MPFImageReader.h>
 #include <MPFVideoCapture.h>
-#include <queue>
 
 #include "TrtisDetection.hpp"
 #include "base64.h"
@@ -805,17 +804,17 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
       if(!video_cap.Read(frame)) return tracks;
       TrtisIpIrv2CocoJobConfig cfg(job, frame.cols,frame.rows);
 
-      mutex freeCtxQueueMtx, nextRxFrameMtx, tracksMtx;                          LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
-      condition_variable freeCtxQueueCv, nextRxFrameCv;
+      mutex freeCtxMtx, nextRxFrameMtx, tracksMtx;                               LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
+      condition_variable freeCtxCv, nextRxFrameCv;
 
       vector<sPtrInferCtx>& ctxs = _niGetInferContexts(cfg);                     LOG4CXX_TRACE(_log,"Retrieved inferencing context pool of size " << ctxs.size() << " for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
       size_t initialCtxPoolSize = ctxs.size();
 
       unordered_map<int, sPtrInferCtx> ctxMap;
-      queue<int> freeCtxQueue;
+      unordered_set<int> freeCtxPool;
       for (auto ctx : ctxs) {
-          ctxMap[ctx->CorrelationId()] = ctx;
-          freeCtxQueue.push(ctx->CorrelationId());
+        ctxMap[ctx->CorrelationId()] = ctx;
+        freeCtxPool.insert(ctx->CorrelationId());
       }
 
       int frameIdx = 0;
@@ -824,14 +823,15 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
       do{
         // Wait for an available inference context.
         int ctxId;                                                               LOG4CXX_TRACE(_log, "requesting inference from TRTIS server for frame[" <<  frameIdx << "]" );
-        { unique_lock<mutex> lk(freeCtxQueueMtx);
-          if(freeCtxQueue.empty()){                                              LOG4CXX_TRACE(_log, "wait for an infer context to become available");
-            _wait_for(freeCtxQueueCv, lk, cfg.contextWaitTimeoutSec,
-                      [&freeCtxQueue]{ return !freeCtxQueue.empty(); },
+        { unique_lock<mutex> lk(freeCtxMtx);
+          if(freeCtxPool.empty()){                                               LOG4CXX_TRACE(_log, "wait for an infer context to become available");
+            _wait_for(freeCtxCv, lk, cfg.contextWaitTimeoutSec,
+                      [&freeCtxPool]{ return !freeCtxPool.empty(); },
                       "Waited longer than " + to_string(cfg.contextWaitTimeoutSec) + " sec for an inference context.");
           }
-          ctxId = freeCtxQueue.front();
-          freeCtxQueue.pop();                                                    LOG4CXX_TRACE(_log, "removing context[" << ctxId << "] from pool");
+          auto it = freeCtxPool.begin();
+          ctxId = *it;
+          freeCtxPool.erase(it);                                                 LOG4CXX_TRACE(_log, "removing context[" << ctxId << "] from pool");
         }
 
         sPtrInferCtx& ctx = ctxMap[ctxId];
@@ -842,9 +842,9 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
                                                                                  LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] sending");
         // Send inference request to the inference server.
         NI_CHECK_OK(
-          ctx->AsyncRun([frameIdx, &cfg, &freeCtxQueueCv, &nextRxFrameCv,
-                         &nextRxFrameMtx, &tracksMtx, &freeCtxQueueMtx,
-                         &nextRxFrameIdx, &tracks, &freeCtxQueue,
+          ctx->AsyncRun([frameIdx, &cfg, &freeCtxCv, &nextRxFrameCv,
+                         &nextRxFrameMtx, &tracksMtx, &freeCtxMtx,
+                         &nextRxFrameIdx, &tracks, &freeCtxPool,
                          this](nic::InferContext* c, sPtrInferCtxReq req)
           {
             // NOTE: When this callback is invoked, the frame has already been processed by the TRTIS server.
@@ -888,9 +888,9 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
             }
 
             // We're done with the context. Add it back to the pool so it can be used for another frame.
-            { lock_guard<mutex> lk(freeCtxQueueMtx);
-              freeCtxQueue.push(c->CorrelationId());
-                freeCtxQueueCv.notify_all();                                     LOG4CXX_TRACE(_log, "returned context " << c->CorrelationId() << " to pool");
+            { lock_guard<mutex> lk(freeCtxMtx);
+              freeCtxPool.insert(c->CorrelationId());
+                freeCtxCv.notify_all();                                          LOG4CXX_TRACE(_log, "returned context " << c->CorrelationId() << " to pool");
             }                                                                    LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] complete");
           }),
           "unable to inference '" + cfg.model_name + "' ver."
@@ -900,10 +900,10 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
         frameIdx++;                                                              LOG4CXX_TRACE(_log, "frameIdx++ to " << frameIdx);
       } while (video_cap.Read(frame));
 
-      if(freeCtxQueue.size() < initialCtxPoolSize){                              LOG4CXX_TRACE(_log, "wait for inference context pool size to return to initial size of " << initialCtxPoolSize);
-        unique_lock<mutex> lk(freeCtxQueueMtx);
-        _wait_for(freeCtxQueueCv, lk, cfg.contextWaitTimeoutSec,
-                  [&freeCtxQueue, &initialCtxPoolSize]{ return freeCtxQueue.size() == initialCtxPoolSize; },
+      if(freeCtxPool.size() < initialCtxPoolSize){                               LOG4CXX_TRACE(_log, "wait for inference context pool size to return to initial size of " << initialCtxPoolSize);
+        unique_lock<mutex> lk(freeCtxMtx);
+        _wait_for(freeCtxCv, lk, cfg.contextWaitTimeoutSec,
+                  [&freeCtxPool, &initialCtxPoolSize]{ return freeCtxPool.size() == initialCtxPoolSize; },
                   "Waited longer than " + to_string(cfg.contextWaitTimeoutSec) +
                   " sec for context pool to return to initial size.");
       }                                                                           LOG4CXX_DEBUG(_log,"all frames complete");
