@@ -1,5 +1,6 @@
 # things to ignore
 fsroot/
+gdb_printers/
 test_vids/misc/
 .unotes/
 ocv_face_known_tracks_short.txt

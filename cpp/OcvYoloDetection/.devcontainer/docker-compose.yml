@@ -14,6 +14,11 @@ services:
       THIS_MPF_NODE: .
       NVIDIA_VISIBLE_DEVICES: 1
     volumes:
+      # gdb printer stuff so we can debug into std::containers
+      # see https://sourceware.org/gdb/wiki/STLSupport
+      - ./.gdbinit:/root/.gdbinit
+      - ./gdb_printers:/root/gdb_printers
+
       # Mounts the project folder to '/workspace'. While this file is in .devcontainer,
       # mounts are relative to the first file in the list, which is a level up.
       #- ../../../.git:/home/mpf/openmpf-components/.git:cached
@@ -24,7 +29,6 @@ services:
       #- ../../../../openmpf-docker:/home/mpf/openmpf-docker:cached
       #- ../../../../openmpf-java-component-sdk:/home/mpf/openmpf-java-component-sdk:cached
       #- ../../../../openmpf-python-component-sdk:/home/mpf/openmpf-python-component-sdk:cached
-
 
     # [Optional] Required for ptrace-based debuggers like C++, Go, and Rust
     cap_add:

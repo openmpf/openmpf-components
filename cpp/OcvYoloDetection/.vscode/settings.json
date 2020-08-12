@@ -39,6 +39,11 @@
       "vector": "cpp",
       "ostream": "cpp",
       "sstream": "cpp",
-      "iostream": "cpp"
+      "iostream": "cpp",
+      "bitset": "cpp",
+      "initializer_list": "cpp",
+      "cmath": "cpp",
+      "complex": "cpp",
+      "cstdlib": "cpp"
     }
 }
