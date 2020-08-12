@@ -24,8 +24,8 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef OCVYOLODETECTION_Config_H
-#define OCVYOLODETECTION_Config_H
+#ifndef OCVYOLODETECTION_CONFIG_H
+#define OCVYOLODETECTION_CONFIG_H
 
 #include <log4cxx/logger.h>
 #include <opencv2/opencv.hpp>
@@ -34,6 +34,8 @@
 #include "adapters/MPFImageAndVideoDetectionComponentAdapter.h"
 #include "MPFImageReader.h"
 #include "MPFVideoCapture.h"
+
+#include "Frame.h"
 
 namespace MPF{
  namespace COMPONENT{
@@ -110,8 +112,8 @@ namespace MPF{
   class Config{
     public:
       float   confThresh;               ///< detection confidence threshold
-      float   nmsThresh;                ///< non-maximum supresssion threshold to remove redundant bboxes
-      int     inputImageSize;           ///< network imge input size (320, 416, 608)
+      float   nmsThresh;                ///< non-maximum supression threshold to remove redundant bboxes
+      int     inputImageSize;           ///< network image input size (320, 416, 608)
       int     numClassPerRegion;        ///< number of class labels and confidence scores to return for a bbox
       long    detFrameInterval;         ///< number of frames between looking for new detection (tracking only)
 
@@ -123,23 +125,14 @@ namespace MPF{
       int     dftSize;                  ///< size of dft used for bbox alignment
       bool    dftHannWindowEnabled;     ///< use hanning windowing with dft
 
-      float   widthOdiag;               ///< image (width/diagonal)
-      float   heightOdiag;              ///< image (height/diagonal)
-      float   aspectRatio;              ///< image aspect ratio (width/height)
-
-      size_t  frameIdx;                 ///< index of current frame
-      double  frameTimeInSec;           ///< time of current frame in sec
-      double  frameTimeStep;            ///< time interval between frames in sec
-      cv::Mat bgrFrame;                 ///< current BGR image frame
-
       bool    kfDisabled;               ///< if true kalman filtering is disabled
-      cv::Mat1f RN;               ///< kalman filter measurement noise matrix
-      cv::Mat1f QN;               ///< kalman filter process noise variances (i.e. unknown accelerations)
+      cv::Mat1f RN;                     ///< kalman filter measurement noise matrix
+      cv::Mat1f QN;                     ///< kalman filter process noise variances (i.e. unknown accelerations)
 
-      bool fallback2CpuWhenGpuProblem; ///< fallback to cpu if there is a gpu problem
-      int  cudaDeviceId;               ///< gpu device id to use for cuda
+      bool fallback2CpuWhenGpuProblem;  ///< fallback to cpu if there is a gpu problem
+      int  cudaDeviceId;                ///< gpu device id to use for cuda
 
-      MPFDetectionError   lastError;   ///< last MPF error that should be returned
+      MPFDetectionError   lastError;    ///< last MPF error that should be returned
 
       // configuration values shared by all jobs
       static string             pluginPath;        ///< path to the plugin
@@ -151,9 +144,11 @@ namespace MPF{
       Config(const MPFVideoJob &job);
       ~Config();
 
-      void ReverseTransform(MPFImageLocation loc) const {_imreaderPtr->ReverseTransform(loc);}
-      void ReverseTransform(MPFVideoTrack  track) const {_videocapPtr->ReverseTransform(track);}
-      bool nextFrame();
+      void  ReverseTransform(MPFImageLocation loc) const {_imreaderPtr->ReverseTransform(loc);  }
+      void  ReverseTransform(MPFVideoTrack  track) const {_videocapPtr->ReverseTransform(track);}
+
+      FramePtrVec getImageFrames(int numFrames) const;
+      FramePtrVec getVideoFrames(int numFrames) const;
 
     private:
       unique_ptr<MPFImageReader>  _imreaderPtr;

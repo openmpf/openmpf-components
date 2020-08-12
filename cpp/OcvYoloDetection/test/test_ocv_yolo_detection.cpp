@@ -158,14 +158,16 @@ TEST(OcvYoloDetection, TestCorrelator) {
     GOUT("Input Image:\t"       << image_file);
 
     auto cfgPtr = make_shared<Config>(MPFImageJob("Testing", image_file, { }, { }));
-    EXPECT_TRUE(NULL != cfgPtr->bgrFrame.data) << "Could not load:" << image_file;
+    FramePtrVec framePtrs = cfgPtr->getImageFrames(1);
+    EXPECT_FALSE(framePtrs[0]->bgr.empty()) << "Could not load:" << image_file;
 
-    DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfgPtr);
-    EXPECT_FALSE(detections.empty());
+
+    DetectionLocationPtrVecVec detections = DetectionLocation::createDetections(cfgPtr, framePtrs);
+    EXPECT_FALSE(detections[0].empty());
 
     DetectionLocationPtr dogPtr;
     cv::Point2d center;
-    for(auto& detPtr:detections){
+    for(auto& detPtr:detections[0]){
       if(detPtr->detection_properties["CLASSIFICATION"]=="dog"){
         dogPtr = move(detPtr);
         center = cv::Point2d(dogPtr->getRect().tl() + dogPtr->getRect().br()) / 2;
@@ -179,18 +181,19 @@ TEST(OcvYoloDetection, TestCorrelator) {
     cv::Point2d offset = cv::Point2d(15.5,22.5);
     cv::Size2d size(dogPtr->width*0.95,dogPtr->height*0.95);
     cv::Mat dog;
-    cv::getRectSubPix(dogPtr->_bgrFrame, size, center+offset, dog);
+    cv::getRectSubPix(dogPtr->framePtr->bgr, size, center+offset, dog);
     cv::imwrite("correlationPatch.png", dog);
 
-    cv::Mat frame = cv::Mat::zeros(dogPtr->_bgrFrame.size(),dogPtr->_bgrFrame.type());
-    cv::Rect2i pasteRoi(cv::Point2i(frame.size() - dog.size())/2, dog.size());
-    dog.copyTo(frame(pasteRoi));
-    cv::imwrite("correlationFrame.png",frame);
+    Frame frame;
+    frame.bgr = cv::Mat::zeros(dogPtr->framePtr->bgr.size(),dogPtr->framePtr->bgr.type());
+    cv::Rect2i pasteRoi(cv::Point2i(frame.bgr.size() - dog.size())/2, dog.size());
+    dog.copyTo(frame.bgr(pasteRoi));
+    cv::imwrite("correlationFrame.png",frame.bgr);
+
 
     DetectionLocationPtr dogPtr2;
     dogPtr2 = DetectionLocationPtr(new DetectionLocation(
-      cfgPtr,pasteRoi,0.97,cv::Point2f(0.5,0.5)));
-    dogPtr2->_bgrFrame = frame;
+      cfgPtr,make_shared<Frame>(frame),pasteRoi,0.97,cv::Point2f(0.5,0.5)));
     GOUT("Shift image " << dogPtr2->getRect() << " centered at " << (dogPtr2->getRect().tl()+dogPtr2->getRect().br())/2);
 
     Track t(cfgPtr, move(dogPtr2));

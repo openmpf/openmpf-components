@@ -38,25 +38,31 @@ namespace MPF{
 
   using namespace std;
 
+  class Frame;
   class Config;
   class DetectionLocation;
   class Track;
 
-  typedef vector<string>                stringVec;                ///< vector of strings
-  typedef vector<float>                 floatVec;                 ///< vector of floats
-  typedef vector<int>                   intVec;                   ///< vector of integers
-  typedef vector<MPFVideoTrack>         MPFVideoTrackVec;         ///< vector of MPFVideoTracks
-  typedef vector<MPFImageLocation>      MPFImageLocationVec;      ///< vector of MPFImageLocations
-  typedef vector<cv::Mat>               cvMatVec;                 ///< vector of OpenCV matrices/images
-  typedef vector<cv::Rect>              cvRectVec;                ///< vector of OpenCV rectangles
-  typedef vector<cv::Point>             cvPointVec;               ///< vector of OpenCV points
-  typedef vector<cv::Point2f>           cvPoint2fVec;             ///< vector of OpenCV 2D float points
-  typedef vector<cvPoint2fVec>          cvPoint2fVecVec;          ///< vector of vectors of OpenCV 2D float points
-  typedef cv::Point3_<uint8_t>          cvPixel;                  ///< image pixel type used by images
-  typedef unique_ptr<DetectionLocation> DetectionLocationPtr;     ///< DetectionLocation pointers
-  typedef vector<DetectionLocationPtr>  DetectionLocationPtrVec;  ///< vector of DetectionLocation pointers
-  typedef list<unique_ptr<Track>>       TrackPtrList;             ///< list of track pointers
-  typedef shared_ptr<const Config>      ConfigPtr;                ///< Config pointer (state)
+  typedef vector<string>                  stringVec;                   ///< vector of strings
+  typedef vector<float>                   floatVec;                    ///< vector of floats
+  typedef vector<int>                     intVec;                      ///< vector of integers
+  typedef vector<MPFVideoTrack>           MPFVideoTrackVec;            ///< vector of MPFVideoTracks
+  typedef vector<MPFImageLocation>        MPFImageLocationVec;         ///< vector of MPFImageLocations
+  typedef vector<MPFImageLocationVec>     MPFImageLocationVecVec;      ///< vector of MPFImageLocations vectors
+  typedef vector<cv::Mat>                 cvMatVec;                    ///< vector of OpenCV matrices/images
+  typedef vector<cvMatVec>                cvMatVecVec;                 ///< vector of OpenCV matrices vectors
+  typedef vector<cv::Rect2d>              cvRect2dVec;                 ///< vector of OpenCV rectangles
+  typedef vector<cv::Point2i>             cvPoint2iVec;                ///< vector of OpenCV points
+  typedef vector<cv::Point2f>             cvPoint2fVec;                ///< vector of OpenCV 2D float points
+  typedef vector<cvPoint2fVec>            cvPoint2fVecVec;             ///< vector of vectors of OpenCV 2D float points
+  typedef cv::Point3_<uint8_t>            cvPixel;                     ///< image pixel type used by images
+  typedef unique_ptr<DetectionLocation>   DetectionLocationPtr;        ///< DetectionLocation pointers
+  typedef vector<DetectionLocationPtr>    DetectionLocationPtrVec;     ///< vector of DetectionLocation pointers
+  typedef vector<DetectionLocationPtrVec> DetectionLocationPtrVecVec;  ///< vector of DetectionLocation pointers vectors
+  typedef list<unique_ptr<Track>>         TrackPtrList;                ///< list of track pointers
+  typedef shared_ptr<const Config>        ConfigPtr;                   ///< Config pointer (state)
+  typedef shared_ptr<const Frame>         FramePtr;                    ///< frame pointer
+  typedef vector<FramePtr>                FramePtrVec;                 ///< vector for Frame pointers
 
   /** ****************************************************************************
    *  print out opencv matrix on a single line
@@ -133,5 +139,4 @@ namespace MPF{
   }
  }
 }
-
 #endif

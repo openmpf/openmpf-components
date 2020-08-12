@@ -37,6 +37,7 @@
 
 #include "types.h"
 #include "Config.h"
+#include "Frame.h"
 
 #define CALL_MEMBER_FUNC(object,ptrToMember)  ((object).*(ptrToMember))
 
@@ -53,19 +54,13 @@ namespace MPF{
       using MPFImageLocation::MPFImageLocation;  // C++11 inherit all constructors for MPFImageLocation
 
       cv::Point2f       center;            ///< bounding box center normalized to image dimensions
-      size_t            frameIdx;          ///< frame index frame where detection is located (for videos)
-      double            frameTimeInSec;    ///< frame time in sec where detection is located (for videos)
+      const FramePtr    framePtr;          ///< frame associated with detection (openCV memory managed :( )
 
-      static bool Init();                                                      ///< setup class shared members
-      static DetectionLocationPtrVec createDetections(const ConfigPtr cfgPtr); ///< created detection objects from image frame
+      const cv::Mat&       getFeature()  const;            ///< get dft for phase correlation
+      const cv::Rect2i     getRect()     const;            ///< get location   as an opencv rectange
+      void                 setRect(const cv::Rect2i& rec); ///< set location from an opencv rectangle
 
-      const cv::Mat&       getFeature()  const;  ///< get dft for phase correlation
-      const cv::Mat&       getBGRFrame() const;  ///< get cropped image data associated with detection
-
-      const cv::Rect2i  getRect() const;                ///< get location   as an opencv rectange
-      void              setRect(const cv::Rect2i& rec); ///< set location from an opencv rectangle
-
-      void copyFeature(const DetectionLocation& d) const; ///< copy DNN feature from another detection
+      void copyFeature(const DetectionLocation& d) const;  ///< copy DNN feature from another detection
 
       float           iouDist(const Track &tr) const;   ///< 1 - compute intersection over union
       float         kfIouDist(const Track &tr) const;   ///< 1 - compute intersection over union using kalman predicted location
@@ -73,23 +68,27 @@ namespace MPF{
       float center2CenterDist(const Track &tr) const;   ///< compute normalized center to center distance
       float       featureDist(const Track &tr) const;   ///< compute deep feature similarity distance
 
-      void releaseBGRFrame();                                ///< release reference to image frame
-      static bool trySetCudaDevice(const int cudaDeviceId);  ///< try set CUDA to use specified GPU device
+      static bool                       Init();                                                                ///< setup class shared members
+      static DetectionLocationPtrVecVec createDetections(const ConfigPtr cfgPtr,const FramePtrVec &framePtrs); ///< created detection objects from image frame
+      static bool                       trySetCudaDevice(const int cudaDeviceId);                              ///< try set CUDA to use specified GPU device
 
       DetectionLocation(const ConfigPtr   cfgPtr,
+                        const FramePtr    frmPtr,
                         const cv::Rect2d  bbox,
                         const float       conf,
-                        const cv::Point2f center);     ///< constructor for createDetections()
+                        const cv::Point2f ctr);     ///< constructor for createDetections()
+       #ifndef NDEBUG
+      ~DetectionLocation(){ LOG_TRACE("Detection beeing destroyed");}
+      #endif
 
     private:
 
       const ConfigPtr     _cfgPtr;               ///< job configuration and shared config state
       mutable cv::Mat     _feature;              ///< dft for matching-up detections via phase correlation
-      cv::Mat             _bgrFrame;             ///< frame associated with detection (openCV memory managed :( )
 
-      static cv::dnn::Net       _net;                  ///< DNN detector network
-      static stringVec          _netClasses;           ///< list of classes for DNN
-      static stringVec          _netOutputNames;       ///< list of DNN output names
+      static cv::dnn::Net _net;                  ///< DNN detector network
+      static stringVec    _netClasses;           ///< list of classes for DNN
+      static stringVec    _netOutputNames;       ///< list of DNN output names
 
       float              _iouDist(const cv::Rect2i &rect) const;    ///< compute intersectino over union
 

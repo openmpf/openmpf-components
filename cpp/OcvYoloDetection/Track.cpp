@@ -41,10 +41,11 @@ Track::Track(const ConfigPtr cfgPtr, unique_ptr<DetectionLocation> detPtr):
   _cfgPtr(cfgPtr){
   if(! cfgPtr->kfDisabled){
     _kfPtr = unique_ptr<KFTracker>(
-      new KFTracker(cfgPtr->frameTimeInSec,
-                    cfgPtr->frameTimeStep,
+      new KFTracker(detPtr->framePtr->time,
+                    detPtr->framePtr->timeStep,
                     detPtr->getRect(),
-                    cv::Rect2i(0,0,cfgPtr->bgrFrame.cols-1,cfgPtr->bgrFrame.rows-1),
+                    cv::Rect2i(0,0,detPtr->framePtr->bgr.cols-1,
+                                   detPtr->framePtr->bgr.rows-1),
                     cfgPtr->RN,
                     cfgPtr->QN));
   }
@@ -54,23 +55,23 @@ Track::Track(const ConfigPtr cfgPtr, unique_ptr<DetectionLocation> detPtr):
 /** **************************************************************************
 *  Get a new DetectionLocation from an existing one based on a frame
 *
-* \param cfg job struct to access current image frame from
+* \param framePtr pointer to the frame with new tracking info
 *
 * \returns ptr to new location based on tracker's estimation
 *
 * \note    tracker is passed on to the new location on success
 *
 **************************************************************************** */
-DetectionLocationPtr Track::ocvTrackerPredict(){
+DetectionLocationPtr Track::ocvTrackerPredict(const FramePtr &framePtr){
 
   if(_trackerPtr.empty()){   // initialize a new tracker if we don't have one already
     cv::Rect2i bbox    = _locationPtrs.back()->getRect();
-    cv::Rect2i overlap =  bbox & cv::Rect2i(0,0,_locationPtrs.back()->getBGRFrame().cols -1,
-                                                _locationPtrs.back()->getBGRFrame().rows -1);
+    cv::Rect2i overlap =  bbox & cv::Rect2i(0,0,_locationPtrs.back()->framePtr->bgr.cols -1,
+                                                _locationPtrs.back()->framePtr->bgr.rows -1);
      if(overlap.width > 1 && overlap.height > 1){
        _trackerPtr = cv::TrackerMOSSE::create();                               // could try different trackers here. e.g. cv::TrackerKCF::create();
-       _trackerPtr->init(_locationPtrs.back()->getBGRFrame(), bbox);           LOG_TRACE("tracker created for " << (MPFImageLocation)*_locationPtrs.back());
-       _trackerStartFrameIdx = _cfgPtr->frameIdx;
+       _trackerPtr->init(_locationPtrs.back()->framePtr->bgr, bbox);           LOG_TRACE("tracker created for " << (MPFImageLocation)*_locationPtrs.back());
+       _trackerStartFrameIdx = framePtr->idx;
     }else{                                                                     LOG_TRACE("can't create tracker created for " << (MPFImageLocation)*_locationPtrs.back());
       return nullptr;
     }
@@ -78,20 +79,20 @@ DetectionLocationPtr Track::ocvTrackerPredict(){
 
   cv::Rect2d p;
   DetectionLocationPtr detPtr;
-  if(_cfgPtr->frameIdx - _trackerStartFrameIdx <= _cfgPtr->maxFrameGap){
-    if(_trackerPtr->update(_cfgPtr->bgrFrame, p)){
+  if(framePtr->idx -_trackerStartFrameIdx <= _cfgPtr->maxFrameGap){
+    if(_trackerPtr->update(framePtr->bgr, p)){
       cv::Point2f center(p.tl() + cv::Point2d(p.size()) / 2.0);
-      center.x /= static_cast<float>(_cfgPtr->bgrFrame.cols);
-      center.y /= static_cast<float>(_cfgPtr->bgrFrame.rows);
+      center.x /= static_cast<float>(framePtr->bgr.cols);
+      center.y /= static_cast<float>(framePtr->bgr.rows);
       detPtr = DetectionLocationPtr(
-                 new DetectionLocation(_cfgPtr, p, 0.0, center));              LOG_TRACE("tracking " << (MPFImageLocation)*_locationPtrs.back() << " to " << (MPFImageLocation)*detPtr);
+                 new DetectionLocation(_cfgPtr, framePtr, p, 0.0, center));    LOG_TRACE("tracking " << (MPFImageLocation)*_locationPtrs.back() << " to " << (MPFImageLocation)*detPtr);
       // clone feature of prior detection
       detPtr->copyFeature(*(_locationPtrs.back()));
     }else{
                                                                                LOG_TRACE("could not track " << (MPFImageLocation)*_locationPtrs.back() << " to new location");
     }
   }else{
-                                                                               LOG_TRACE("extrapolation tracking stopped" << (MPFImageLocation)*_locationPtrs.back() << " frame gap = " << _cfgPtr->frameIdx - _trackerStartFrameIdx << " > " <<  _cfgPtr->maxFrameGap);
+                                                                               LOG_TRACE("extrapolation tracking stopped" << (MPFImageLocation)*_locationPtrs.back() << " frame gap = " << framePtr->idx - _trackerStartFrameIdx << " > " <<  _cfgPtr->maxFrameGap);
   }
   return detPtr;
 }
@@ -106,7 +107,7 @@ DetectionLocationPtr Track::ocvTrackerPredict(){
 void Track::push_back(DetectionLocationPtr d){
 
   assert(_locationPtrs.size() > 0);
-  _locationPtrs.back()->releaseBGRFrame();
+  //const_cast<cv::Mat&>(_locationPtrs.back()->framePtr->bgr).release();          // don't access pixels after this...
   _locationPtrs.push_back(move(d));
 }
 

@@ -156,7 +156,7 @@ vector<long> OcvYoloDetection::_calcAssignmentVector(const TrackPtrList         
   size_t r = 0;
   for(auto &track:tracks){
     for(size_t c=0; c<detections.size(); c++){
-      if(track->back()->frameIdx < detections[c]->frameIdx){
+      if(track->back()->framePtr->idx < detections[c]->framePtr->idx){
         //float cost = CALL_MEMBER_FUNC(*(track->back()),COST_FUNC)(*detections[c]);
         float cost = CALL_MEMBER_FUNC(*detections[c],COST_FUNC)(*track);
         costs(r,c) = ((cost <= maxCost) ? (INT_MAX - static_cast<int>(1000.0f * cost)) : 0);
@@ -198,7 +198,7 @@ void OcvYoloDetection::_assignDetections2Tracks(TrackPtrList             &tracks
 
   long t=0;
   for(auto &track:tracks){
-    if(assignmentVector[t] != -1){                                              LOG_TRACE("assigning det: " << "f" << detections[assignmentVector[t]]->frameIdx << " " <<  ((MPFImageLocation)*(detections[assignmentVector[t]])) << " to track " << *track);
+    if(assignmentVector[t] != -1){                                              LOG_TRACE("assigning det: " << "f" << detections[assignmentVector[t]]->framePtr->idx << " " <<  ((MPFImageLocation)*(detections[assignmentVector[t]])) << " to track " << *track);
       track->releaseTracker();
       track->push_back(move(detections.at(assignmentVector[t])));
       track->kalmanCorrect();
@@ -229,16 +229,22 @@ MPFImageLocationVec OcvYoloDetection::GetDetections(const MPFImageJob   &job) {
     if(cfgPtr->lastError != MPF_DETECTION_SUCCESS){
       throw MPFDetectionException(cfgPtr->lastError,"failed to parse image job configuration parameters");
     }
-    DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfgPtr);
-                                                                               LOG_DEBUG( "[" << job.job_name << "] Number of detections = " << detections.size());
-    MPFImageLocationVec locations;
-    for(auto &det:detections){
-      MPFImageLocation loc = *det;
-      det.reset();                    // release frame object
-      cfgPtr->ReverseTransform(loc);
-      locations.push_back(loc);
+    FramePtrVec framePtrs = cfgPtr->getImageFrames(1);  // only do one frame at a time for now
+    DetectionLocationPtrVecVec detectionsVec = DetectionLocation::createDetections(cfgPtr, framePtrs);
+    assert(framePtrs.size() == detectionsVec.size());
+
+    MPFImageLocationVecVec locationsVec;
+    for(unsigned i=0; i<framePtrs.size(); i++){                                LOG_DEBUG( "[" << job.job_name << "] Number of detections = " << detectionsVec[i].size());
+      MPFImageLocationVec locations;
+      for(auto &det:detectionsVec[i]){
+        MPFImageLocation loc = *det;
+        det.reset();                    // release frame object
+        cfgPtr->ReverseTransform(loc);
+        locations.push_back(loc);
+      }
+      locationsVec.push_back(locations);
     }
-    return locations;
+    return locationsVec[0];   // only return the one for now
 
   }catch(const runtime_error& re){
     LOG_FATAL( "[" << job.job_name << "] runtime error: " << re.what());
@@ -267,8 +273,8 @@ MPFImageLocationVec OcvYoloDetection::GetDetections(const MPFImageJob   &job) {
 MPFVideoTrack OcvYoloDetection::_convert_track(Track &track){
 
   MPFVideoTrack mpf_track;
-  mpf_track.start_frame = track.front()->frameIdx;
-  mpf_track.stop_frame  = track.back()->frameIdx;
+  mpf_track.start_frame = track.front()->framePtr->idx;
+  mpf_track.stop_frame  = track.back()->framePtr->idx;
 
   stringstream start_feature;
   stringstream stop_feature;
@@ -283,7 +289,7 @@ MPFVideoTrack OcvYoloDetection::_convert_track(Track &track){
 
   for(auto &det:track){
     mpf_track.confidence += det->confidence;
-    mpf_track.frame_locations.insert(mpf_track.frame_locations.end(),{det->frameIdx,*det});
+    mpf_track.frame_locations.insert(mpf_track.frame_locations.end(),{det->framePtr->idx,*det});
     det.reset();
   }
   mpf_track.confidence /= static_cast<float>(track.size());
@@ -309,76 +315,80 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
     if(cfgPtr->lastError != MPF_DETECTION_SUCCESS){
       throw MPFDetectionException(cfgPtr->lastError,"failed to parse video job configuration parameters");
     }
-    size_t detectTrigger = 0;
-    while(cfgPtr->nextFrame()) {                                                   LOG_TRACE( ".");
-                                                                                   LOG_TRACE( "processing frame " << cfgPtr->frameIdx);
-      // remove any tracks too far in the past
-      trackPtrs.remove_if([&](unique_ptr<Track>& tPtr){
-        if(cfgPtr->frameIdx - tPtr->back()->frameIdx > cfgPtr->maxFrameGap){           LOG_TRACE("dropping old track: " << *tPtr);
-          mpf_tracks.push_back(_convert_track(*tPtr));
-          return true;
+
+    FramePtrVec framePtrs;
+    do {                                              LOG_TRACE( "processing frames [" << framePtrs.front()->idx << "..." << framePtrs.back()->idx);
+      framePtrs = cfgPtr->getVideoFrames(1);
+      // do something clever with frame skipping here
+      // detectTrigger++;
+      // detectTrigger = detectTrigger % (cfgPtr->detFrameInterval + 1);
+
+
+      DetectionLocationPtrVecVec detectionsVec = DetectionLocation::createDetections(cfgPtr, framePtrs); // look for new detections
+
+      assert(framePtrs.size() == detectionsVec.size());
+      for(unsigned i=0; i<framePtrs.size(); i++){
+
+        // remove any tracks too far in the past
+        trackPtrs.remove_if([&](unique_ptr<Track>& tPtr){
+          if(framePtrs[i]->idx - tPtr->back()->framePtr->idx > cfgPtr->maxFrameGap){       LOG_TRACE("dropping old track: " << *tPtr);
+            mpf_tracks.push_back(_convert_track(*tPtr));
+            return true;
+          }
+          return false;
+        });
+
+        // advance kalman predictions
+        if(! cfgPtr->kfDisabled){
+          for(auto &trackPtr:trackPtrs){
+            trackPtr->kalmanPredict(framePtrs[i]->time);
+          }
         }
-        return false;
-      });
 
-      // advance kalman predictions
-      if(! cfgPtr->kfDisabled){
-        for(auto &trackPtr:trackPtrs){
-          trackPtr->kalmanPredict(cfgPtr->frameTimeInSec);
-        }
-      }
-
-      if(detectTrigger == 0){                                                  LOG_TRACE("checking for new detections");
-        DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfgPtr); // look for new detections
-
-        if(detections.size() > 0){   // found some detections in current frame
+        if(detectionsVec[i].size() > 0){   // found some detections in current frame
           if(trackPtrs.size() >= 0 ){  // not all tracks were dropped
-            vector<long> av;                                                   LOG_TRACE( detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+            vector<long> av;                                                         LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
             // intersection over union tracking and assignment
             if(! cfgPtr->kfDisabled){
-              av = _calcAssignmentVector<&DetectionLocation::kfIouDist>(trackPtrs,detections,cfgPtr->maxIOUDist);
+              av = _calcAssignmentVector<&DetectionLocation::kfIouDist>(trackPtrs,detectionsVec[i],cfgPtr->maxIOUDist);
             }else{
-              av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detections,cfgPtr->maxIOUDist);
+              av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detectionsVec[i],cfgPtr->maxIOUDist);
             }
-            _assignDetections2Tracks(trackPtrs, detections, av);               LOG_TRACE("IOU assignment complete");
+            _assignDetections2Tracks(trackPtrs, detectionsVec[i], av);               LOG_TRACE("IOU assignment complete");
 
             // feature-based tracking tracking and assignment
-            if(detections.size() > 0){                                         LOG_TRACE( detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
-              av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detections,cfgPtr->maxFeatureDist);
-              _assignDetections2Tracks(trackPtrs, detections, av);             LOG_TRACE("Feature assignment complete");
+            if(detectionsVec[i].size() > 0){                                         LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+              av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detectionsVec[i],cfgPtr->maxFeatureDist);
+              _assignDetections2Tracks(trackPtrs, detectionsVec[i], av);             LOG_TRACE("Feature assignment complete");
             }
 
             // center-to-center distance tracking and assignment
-            if(detections.size() > 0){                                         LOG_TRACE( detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
-              av = _calcAssignmentVector<&DetectionLocation::center2CenterDist>(trackPtrs,detections,cfgPtr->maxCenterDist);
-              _assignDetections2Tracks(trackPtrs, detections, av);             LOG_TRACE("Center2Center assignment complete");
+            if(detectionsVec[i].size() > 0){                                         LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+              av = _calcAssignmentVector<&DetectionLocation::center2CenterDist>(trackPtrs,detectionsVec[i],cfgPtr->maxCenterDist);
+              _assignDetections2Tracks(trackPtrs, detectionsVec[i], av);             LOG_TRACE("Center2Center assignment complete");
             }
 
           }
-                                                                               LOG_TRACE( detections.size() <<" detections left for new tracks");
+                                                                                     LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
           // any detection not assigned up to this point becomes a new track
-          for(auto &det:detections){                                           // make any unassigned detections into new tracks
-            det->getFeature();                                                 // start of tracks always get feature calculated
-            trackPtrs.push_back(unique_ptr<Track>(new Track(cfgPtr,move(det))));  LOG_TRACE("created new track " << *(trackPtrs.back()));
+          for(auto &det:detectionsVec[i]){                                           // make any unassigned detections into new tracks
+            det->getFeature();                                                       // start of tracks always get feature calculated
+            trackPtrs.push_back(unique_ptr<Track>(new Track(cfgPtr,move(det))));     LOG_TRACE("created new track " << *(trackPtrs.back()));
           }
         }
-      }
 
-      // check any tracks that didn't get a detection and use tracker to continue them if possible
-      for(auto &track:trackPtrs){
-        if(track->back()->frameIdx < cfgPtr->frameIdx){  // no detections for track in current frame, try tracking
-          DetectionLocationPtr detPtr = track->ocvTrackerPredict();
-          if(detPtr){  // tracker returned something
-            track->push_back(move(detPtr));              // add new location as tracks's tail
-            track->kalmanCorrect();
+        // check any tracks that didn't get a detection and use tracker to continue them if possible
+        for(auto &track:trackPtrs){
+          if(track->back()->framePtr->idx < framePtrs[i]->idx){  // no detections for track in current frame, try tracking
+            DetectionLocationPtr detPtr = track->ocvTrackerPredict(framePtrs[i]);
+            if(detPtr){  // tracker returned something
+              track->push_back(move(detPtr));              // add new location as tracks's tail
+              track->kalmanCorrect();
+            }
           }
         }
-      }
-
-      detectTrigger++;
-      detectTrigger = detectTrigger % (cfgPtr->detFrameInterval + 1);
-
-    }                                                                          LOG_DEBUG( "[" << job.job_name << "] Number of tracks detected = " << trackPtrs.size());
+      }                                                                        LOG_DEBUG( "[" << job.job_name << "] Number of tracks detected = " << trackPtrs.size());
+    } while(framePtrs.size() > 0);
 
     // convert any remaining active tracks to MPFVideoTracks
     for(auto &trackPtr:trackPtrs){

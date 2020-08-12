@@ -89,22 +89,22 @@ void Config::_parse(const MPFJob &job){
 *************************************************************************** */
 ostream& operator<< (ostream& out, const Config& cfg) {
   out << "{"
-      << "\"confThresh\":"        << cfg.confThresh        << ","
-      << "\"nmsThresh\":"         << cfg.nmsThresh         << ","
-      << "\"inputImageSize\":"    << cfg.inputImageSize    << ","
-      << "\"detFrameInterval\":"  << cfg.detFrameInterval  << ","
-      << "\"numClassPerRegion\":" << cfg.numClassPerRegion << ","
-      << "\"maxFeatureDist\":"    << cfg.maxFeatureDist    << ","
-      << "\"maxFrameGap\":"       << cfg.maxFrameGap       << ","
-      << "\"maxCenterDist\":"     << cfg.maxCenterDist     << ","
-      << "\"maxIOUDist\":"        << cfg.maxIOUDist        << ","
-      << "\"dftSize\":"           << cfg.dftSize           << ","
-      << "\"dftHannWindow\":"     << (cfg.dftHannWindowEnabled ? "1" : "0") << ","
-      << "\"kfDisabled\":"        << (cfg.kfDisabled ? "1":"0") << ","
-      << "\"kfProcessVar\":"      << format(cfg.QN) << ","
-      << "\"kfMeasurementVar\":"  << format(cfg.RN) << ","
-      << "\"fallback2CpuWhenGpuProblem\":" << (cfg.fallback2CpuWhenGpuProblem ? "1" : "0") << ","
-      << "\"cudaDeviceId\":"      << cfg.cudaDeviceId
+      << "\"confThresh\":"                 << cfg.confThresh        << ","
+      << "\"nmsThresh\":"                  << cfg.nmsThresh         << ","
+      << "\"inputImageSize\":"             << cfg.inputImageSize    << ","
+      << "\"detFrameInterval\":"           << cfg.detFrameInterval  << ","
+      << "\"numClassPerRegion\":"          << cfg.numClassPerRegion << ","
+      << "\"maxFeatureDist\":"             << cfg.maxFeatureDist    << ","
+      << "\"maxFrameGap\":"                << cfg.maxFrameGap       << ","
+      << "\"maxCenterDist\":"              << cfg.maxCenterDist     << ","
+      << "\"maxIOUDist\":"                 << cfg.maxIOUDist        << ","
+      << "\"dftSize\":"                    << cfg.dftSize           << ","
+      << "\"dftHannWindow\":"              <<(cfg.dftHannWindowEnabled ? "1" : "0") << ","
+      << "\"kfDisabled\":"                 <<(cfg.kfDisabled ? "1":"0") << ","
+      << "\"fallback2CpuWhenGpuProblem\":" <<(cfg.fallback2CpuWhenGpuProblem ? "1" : "0") << ","
+      << "\"cudaDeviceId\":"               << cfg.cudaDeviceId << ","
+      << "\"kfProcessVar\":"        << format(cfg.QN) << ","
+      << "\"kfMeasurementVar\":"    << format(cfg.RN)
       << "}";
   return out;
 }
@@ -125,9 +125,6 @@ Config::Config():
   kfDisabled(false),
   cudaDeviceId(0),
   fallback2CpuWhenGpuProblem(true),
-  frameIdx(-1),
-  frameTimeInSec(-1.0),
-  frameTimeStep(-1.0),
   lastError(MPF_DETECTION_SUCCESS),
   _imreaderPtr(unique_ptr<MPFImageReader>()),
   _videocapPtr(unique_ptr<MPFVideoCapture>()){
@@ -149,19 +146,33 @@ Config::Config(const MPFImageJob &job):
   Config() {
                                                                                LOG_DEBUG( "[" << job.job_name << "Data URI = " << job.data_uri);
   _parse(job);
-
   if(job.data_uri.empty()) {                                                   LOG_ERROR( "[" << job.job_name << "Invalid image url");
     lastError = MPF_INVALID_DATAFILE_URI;
   }else{
     _imreaderPtr = unique_ptr<MPFImageReader>(new MPFImageReader(job));
-    bgrFrame = _imreaderPtr->GetImage();
-    if(bgrFrame.empty()){                                                      LOG_ERROR( "[" << job.job_name << "] Could not read image file: " << job.data_uri);
-      lastError = MPF_IMAGE_READ_ERROR;
-    }
-    aspectRatio = static_cast<float>(bgrFrame.cols) / static_cast<float>(bgrFrame.rows);
-                                                                               LOG_DEBUG( "[" << job.job_name << "] image.width  = " << bgrFrame.cols);
-                                                                               LOG_DEBUG( "[" << job.job_name << "] image.height = " << bgrFrame.rows);
   }
+}
+
+/** **************************************************************************
+*  Read image.
+*
+* \param numImages the number of frames to attempt to read.
+*
+* \returns all frames read in a vector of pointers
+*
+*************************************************************************** */
+FramePtrVec Config::getImageFrames(int numImages = 1) const{
+  assert(numImages == 1);  // only one image at a time is implemented
+
+  FramePtrVec frames;
+  Frame nextFrame;
+  auto framePtr = make_shared<Frame>();
+  framePtr->bgr = _imreaderPtr->GetImage();
+  if(framePtr->bgr.empty()){
+    throw MPF_IMAGE_READ_ERROR;
+  }
+  frames.push_back(framePtr);                                                  LOG_DEBUG( "image = " << frames.back()->bgr.size());
+  return frames;
 }
 
 /** **************************************************************************
@@ -170,7 +181,6 @@ Config::Config(const MPFImageJob &job):
 *************************************************************************** */
 Config::Config(const MPFVideoJob &job):
   Config() {
-
   _parse(job);
 
   if(job.data_uri.empty()) {                                                   LOG_ERROR( "[" << job.job_name << "Invalid video url");
@@ -180,26 +190,32 @@ Config::Config(const MPFVideoJob &job):
     if(!_videocapPtr->IsOpened()){                                             LOG_ERROR( "[" << job.job_name << "] Could not initialize capturing");
       lastError = MPF_COULD_NOT_OPEN_DATAFILE;
     }
-    // pre-compute diagonal normalization factor for distance normalizations
-    cv::Size fs = _videocapPtr->GetFrameSize();
-    float diag  = sqrt(fs.width*fs.width + fs.height*fs.height);
-    widthOdiag  = fs.width  / diag;
-    heightOdiag = fs.height / diag;
-    aspectRatio = static_cast<float>(fs.width) / static_cast<float>(fs.height);
-
-    frameTimeStep = 1.0 / _videocapPtr->GetFrameRate();
-
   }
 }
 
 /** **************************************************************************
-*  Read next frame of video into current bgrFrame member variable and advance
-*  frame index counter.
+*  Read next frames of video.
+*
+* \param numFrames the number of frames to attempt to read.
+*
+* \returns all frames read in a vector of pointers
+*
 *************************************************************************** */
-bool Config::nextFrame(){
-  frameIdx++;
-  frameTimeInSec = _videocapPtr->GetCurrentTimeInMillis() * 0.001;
-  return _videocapPtr->Read(bgrFrame);
+FramePtrVec Config::getVideoFrames(int numFrames = 1) const {
+  FramePtrVec frames;
+  Frame nextFrame;
+  for(int i=0; i<numFrames;i++){
+    auto framePtr = make_shared<Frame>();
+    if(_videocapPtr->Read(framePtr->bgr)){
+      framePtr->idx      =         _videocapPtr->GetCurrentFramePosition();
+      framePtr->time     = 0.001 * _videocapPtr->GetCurrentTimeInMillis() ;
+      framePtr->timeStep = 1.0   / _videocapPtr->GetFrameRate();
+      frames.push_back(framePtr);
+    }else{
+      break;
+    }
+  }
+  return frames;
 }
 
 /** **************************************************************************

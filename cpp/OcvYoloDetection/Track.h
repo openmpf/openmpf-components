@@ -45,8 +45,8 @@ namespace MPF{
 
       public:
 
-        DetectionLocationPtr ocvTrackerPredict();                         ///< predict a new detection from an exiting one using a tracker
-        void releaseTracker() {_trackerPtr.release();}                    ///< release tracker so it can be reinitialized
+        DetectionLocationPtr ocvTrackerPredict(const FramePtr &framePtr);  ///< predict a new detection from an exiting one using a tracker
+        void releaseTracker() {_trackerPtr.release();}         ///< release tracker so it can be reinitialized
 
         // Vector like interface detection pointer in tack
         const DetectionLocationPtr &at        (size_t i) const {return _locationPtrs.at(i);}
@@ -83,8 +83,8 @@ namespace MPF{
     *************************************************************************** */
     inline
     ostream& operator<< (ostream& out, const Track& t) {
-      out << "<f"   << t.front()->frameIdx << (MPFImageLocation)(*t.front())
-          << "...f" << t.back()->frameIdx  << (MPFImageLocation)(*t.back())
+      out << "<f"   << t.front()->framePtr->idx << (MPFImageLocation)(*t.front())
+          << "...f" << t.back()->framePtr->idx  << (MPFImageLocation)(*t.back())
           << ">("<<t.size()<<")";
       return out;
     }
