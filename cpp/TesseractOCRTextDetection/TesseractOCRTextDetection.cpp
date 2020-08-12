@@ -341,25 +341,6 @@ bool is_only_ascii_whitespace(const wstring &str) {
 /*
  * Helper function for string processing.
  */
-inline wstring to_lowercase(const wstring &data) {
-    wstring d2(data);
-    d2 = boost::locale::normalize(d2);
-    d2 = boost::locale::to_lower(d2);
-    return d2;
-}
-
-/*
- * Helper function for string processing.
- */
-inline wstring trim_punc(const wstring &in) {
-    wstring d2(in);
-    boost::trim_if(d2, [](wchar_t c) { return iswpunct(c); });
-    return d2;
-}
-
-/*
- * Helper function for string processing.
- */
 wstring clean_whitespace(const wstring &input) {
 
     boost::wregex re(L"\n(\n|[[:space:]])+");
@@ -749,20 +730,6 @@ bool TesseractOCRTextDetection::process_ocr_text(Properties &detection_propertie
         LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] No text found in image!");
         return false;
     }
-
-    set<wstring> trigger_words;
-    map<wstring, vector<string>> trigger_words_offset;
-
-    vector<string> offsets_list;
-    vector<wstring> triggers_list;
-    wstring tag_trigger = boost::algorithm::join(trigger_words, L"; ");
-    for (auto const& word_offset : trigger_words_offset )
-    {
-        triggers_list.push_back(word_offset.first);
-        offsets_list.push_back(boost::algorithm::join(word_offset.second, ", "));
-    }
-    string tag_offset = boost::algorithm::join(offsets_list, "; ");
-    tag_trigger = tag_trigger + boost::algorithm::join(triggers_list, L"; ");
 
     detection_properties["TEXT_LANGUAGE"] = ocr_lang;
     detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(full_text);

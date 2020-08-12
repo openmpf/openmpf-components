@@ -159,22 +159,22 @@ bool containsProp(const std::string &exp_text, const std::vector<MPFImageLocatio
 }
 
 bool assertSameText(const std::string &expected, const std::string &actual, log4cxx::LoggerPtr hw_logger_) {
-    int length = std::min(expected.length(), actual.length());
 
-    for (int i = 0; i < length; i++) {
-        if (expected[i] != actual[i]) {
-            LOG4CXX_DEBUG(hw_logger_, "Expeced and detected text are not the same. First differed at index " << i);
-            std::cout << i << "\n";
-            return false;
-        }
-    }
     if (expected.length() != actual.length()) {
-        LOG4CXX_DEBUG(hw_logger_, "Expeced and detected text are not the same. First differed at index " << length);
-        std::cout << length << "\n";
+        std::string error_msg = "Expected and detected text are not the same. The expected text has a length of " +
+                                std::to_string(expected.length()) +
+                                ", but the actual text has a length of " +
+                                std::to_string(actual.length()) + " ." ;
+        LOG4CXX_DEBUG(hw_logger_, error_msg);
         return false;
     }
 
-
+    for (int i = 0; i < actual.length(); i++) {
+        if (expected[i] != actual[i]) {
+            LOG4CXX_DEBUG(hw_logger_, "Expected and detected text are not the same. First differed at index " << i);
+            return false;
+        }
+    }
     return true;
 }
 
