@@ -237,10 +237,13 @@ namespace MPF {
             static std::string process_osd_lang(const std::string &script_type,
                                                 const OCR_filter_settings &ocr_fset);
 
-            void get_OSD(OSResults &results, cv::Mat &imi, const MPFImageJob &job,
+            void get_OSD(OSBestResult &best_result, cv::Mat &imi, const MPFImageJob &job,
                          OCR_filter_settings &ocr_fset,
                          Properties &detection_properties,
                          std::string &tessdata_script_dir, std::set<std::string> &missing_languages);
+
+            bool get_OSD_rotation(OSResults *results, cv::Mat &imi_scaled, cv::Mat &imi_original,
+                                  int &rotation, const MPFImageJob &job, OCR_filter_settings &ocr_fset);
 
             static std::string return_valid_tessdir(const std::string &job_name,
                                                     const std::string &lang_str,
