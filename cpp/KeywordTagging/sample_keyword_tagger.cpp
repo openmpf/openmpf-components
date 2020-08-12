@@ -31,45 +31,49 @@ using namespace MPF::COMPONENT;
 
 
 int main(int argc, char *argv[]) {
-
-    if ((argc != 2)) {
-        std::cout << "Usage: " << argv[0] << " DATA_URI" << std::endl;
-    }
-
-    std::string uri(argv[1]);
-    std::string job_name("tagger_test");
-
-    Properties algorithm_properties;
-    Properties media_properties;
-    MPFDetectionError rc = MPF_DETECTION_SUCCESS;
-
-    algorithm_properties["TAGGING_FILE"] = "text-tags.json";
-    MPFGenericTrack text_tags;
-    text_tags.detection_properties["TEXT"] = "Passenger Passport";
-    text_tags.detection_properties["EXTRA"] = "extra property";
-
-
-    KeywordTagger tagger;
-
-    tagger.SetRunDirectory("./plugin");
-    tagger.Init();
-
-    MPFGenericJob job(job_name, uri, text_tags, algorithm_properties, media_properties);
-
-    std::vector<MPFGenericTrack> tracks;
-
-    rc = tagger.GetDetections(job, tracks);
-    if (rc == MPF_DETECTION_SUCCESS) {
-        std::cout << "Number of generic tracks = " << tracks.size() << std::endl;
-
-        for(int i = 0; i < tracks.size(); i++) {
-            std::cout << "tags: " << tracks[i].detection_properties.at("TAGS") << std::endl;
-            std::cout << "extra property: " << tracks[i].detection_properties.at("EXTRA") << std::endl;
-            std::cout << "text: " << tracks[i].detection_properties.at("TEXT") << std::endl;
+    try {
+        if ((argc != 2)) {
+            std::cout << "Usage: " << argv[0] << " DATA_URI" << std::endl;
         }
+
+        std::string uri(argv[1]);
+        std::string job_name("tagger_test");
+
+        Properties algorithm_properties;
+        Properties media_properties;
+        MPFDetectionError rc = MPF_DETECTION_SUCCESS;
+
+        algorithm_properties["TAGGING_FILE"] = "text-tags.json";
+        MPFGenericTrack text_tags;
+        text_tags.detection_properties["TEXT"] = "Passenger Passport";
+        text_tags.detection_properties["EXTRA"] = "extra property";
+
+
+        KeywordTagger tagger;
+
+        tagger.SetRunDirectory("./plugin");
+        tagger.Init();
+
+        MPFGenericJob job(job_name, uri, text_tags, algorithm_properties, media_properties);
+
+        std::vector<MPFGenericTrack> tracks;
+
+        tracks = tagger.GetDetections(job);
+        if (rc == MPF_DETECTION_SUCCESS) {
+            std::cout << "Number of generic tracks = " << tracks.size() << std::endl;
+
+            for(int i = 0; i < tracks.size(); i++) {
+                std::cout << "tags: " << tracks[i].detection_properties.at("TAGS") << std::endl;
+                std::cout << "extra property: " << tracks[i].detection_properties.at("EXTRA") << std::endl;
+                std::cout << "text: " << tracks[i].detection_properties.at("TEXT") << std::endl;
+            }
+        }
+
+        tagger.Close();
+        return 0;
     }
-
-    tagger.Close();
-    return 0;
-
+    catch (const std::exception &ex) {
+        std::cerr << "Error: " << ex.what() << std::endl;
+        return 1;
+    }
 }

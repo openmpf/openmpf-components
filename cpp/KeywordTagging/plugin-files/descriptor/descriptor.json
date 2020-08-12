@@ -1,7 +1,7 @@
 {
   "componentName": "KeywordTaggingComponent",
-  "componentVersion": "4.1.0",
-  "middlewareVersion": "4.1.0",
+  "componentVersion": "5.0",
+  "middlewareVersion": "5.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/KeywordTaggingComponent/lib/libmpfKeywordTaggingComponent.so",
   "environmentVariables": [
@@ -18,8 +18,7 @@
     "actionType": "DETECTION",
     "requiresCollection": {
       "states": [
-        "DETECTION_TEXT",
-        "DETECTION_SPEECH"
+        "DETECTION_TEXT"
       ]
     },
     "providesCollection": {
