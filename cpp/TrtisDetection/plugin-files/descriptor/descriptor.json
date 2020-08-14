@@ -49,12 +49,6 @@
           "defaultValue": "5"
         },
         {
-          "name": "CONTEXT_WAIT_TIMEOUT_SEC",
-          "description": "Maximum number of seconds to wait for an inference context when using concurrent inferencing. Set to a value <= 0 to wait forever.",
-          "type": "INT",
-          "defaultValue": "0"
-        },
-        {
           "name": "USER_FEATURE_ENABLE",
           "description": "'ip_irv2_coco' model specific: Whether or not to generate similarity feature detections for user-specified bounding box.",
           "type": "BOOLEAN",

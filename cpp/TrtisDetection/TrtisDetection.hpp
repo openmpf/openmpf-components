@@ -74,7 +74,6 @@ namespace MPF{
       string model_name;                   ///< name of model as served by trtis
       int model_version;                   ///< version of model (e.g. -1 for latest)
       int maxInferConcurrency;             ///< maximum number of concurrent video frame inferencing request
-      int contextWaitTimeoutSec;           ///< max time to wait for an inference context from pool in sec
 
       explicit TrtisJobConfig(const MPFJob &job);
   };
@@ -164,14 +163,6 @@ namespace MPF{
       void _addToTrack(MPFImageLocation &location,
                        int              frame_index,
                        MPFVideoTrack    &track);                                ///< add location to a track
-
-      template<typename UnaryPredicate>
-      void _wait_for(std::condition_variable& cv,
-                     unique_lock<mutex>& lk,
-                     int timeoutSec,
-                     UnaryPredicate Pred,
-                     string errorMsg);                                          ///< wait for a condition with an optional timeout
-
   };
  }
 }

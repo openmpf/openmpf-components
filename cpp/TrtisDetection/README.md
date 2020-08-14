@@ -30,8 +30,6 @@ Users can control inference and model behavior through the following job paramet
 
 * `MAX_INFER_CONCURRENCY`   : Specifies the maximum number of inference requests that will be sent to the server concurrently for video frame inferencing.
 
-* `CONTEXT_WAIT_TIMEOUT_SEC`: Specifies maximum number of seconds to wait for an inference context when using concurrent inferencing.
-
 * `USER_FEATURE_X_LEFT_UPPER` and `USER_FEATURE_Y_LEFT_UPPER` allow users to define the upper left coordinates for a custom bounding box of the image or video frame during inference. `USER_FEATURE_WIDTH` and `USER_FEATURE_HEIGHT` allow users to control the width and height of the custom bounding box.
 
 * `CLIENT_PRESCALING_ENABLE`: Toggles whether to scale images and video frames to the approximate `[1024 x 600]` image size required by the `ip_irv2_coco` model.
