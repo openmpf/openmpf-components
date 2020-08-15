@@ -175,13 +175,12 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
 * While more of a FEATURE detector type, 'CLASS' seems to fit
 ***************************************************************************** */
 string TrtisDetection::GetDetectionType(){
- return "CLASS";
+  return "CLASS";
 }
 
 /******************************************************************************/
 bool TrtisDetection::Close(){
-  _infCtxs.clear();  // release inference context pool
-   return true;
+  return true;
 }
 
 /** ****************************************************************************
@@ -342,46 +341,52 @@ void TrtisDetection::_ip_irv2_coco_prepImageData(
 }
 
 /** ****************************************************************************
-* Get or create inference context for a model.  The context(s) are cached in
-* a local static container so they don't need recreated on every use.
+* Create an inference context for a model.
 *
 * \param cfg  job configuration settings containing TRTIS server info
 *
-* \returns  vector of shared pointers to inferencing contexts
+* \returns  shared pointer to an inferencing context
 *           to use for inferencing requests
 ***************************************************************************** */
-vector<sPtrInferCtx>& TrtisDetection::_niGetInferContexts(const TrtisJobConfig& cfg)
+sPtrInferCtx TrtisDetection::_niGetInferContext(const TrtisJobConfig& cfg, int ctxId) {
+  uPtrInferCtx ctx;
+  NI_CHECK_OK(nic::InferGrpcContext::Create(&ctx, ctxId, cfg.trtis_server, cfg.model_name, cfg.model_version),
+              "unable to create TRTIS inference context");
+
+  // Configure context for 'batch_size'=1  and return all outputs
+  uPtrInferCtxOpt options;
+  NI_CHECK_OK(nic::InferContext::Options::Create(&options),
+              "failed initializing TRTIS inference options");
+  options->SetBatchSize(1);
+  for (const auto& output : ctx->Outputs()) {
+    options->AddRawResult(output);
+  }
+  NI_CHECK_OK(ctx->SetRunOptions(*options),
+              "failed initializing TRTIS batch size and outputs");
+
+  LOG4CXX_TRACE(_log, "Created context[" << ctxId << "]");
+
+  return move(ctx);
+}
+
+/** ****************************************************************************
+* Create inference contexts for a model.
+*
+* \param cfg  job configuration settings containing TRTIS server info
+*
+* \returns  map of context ids to shared pointers to inferencing contexts
+***************************************************************************** */
+unordered_map<int, sPtrInferCtx> TrtisDetection::_niGetInferContexts(const TrtisJobConfig& cfg)
 {
-  stringstream ss;
-  ss << std::this_thread::get_id() << ":" << cfg.model_name << ":" << cfg.model_version;
-  string key = ss.str();
+  unordered_map<int, sPtrInferCtx> ctxMap;
 
-  int numOrigCtx = _infCtxs[key].size();
-
-  // Grow the cache of contexts if necessary.
   nic::Error err;
-  for(int i=0; i < (cfg.maxInferConcurrency - numOrigCtx); i++){
-    ni::CorrelationID ctxId = numOrigCtx + i + 1; // Start at 1 since 0 means don't use a correlation id
-
-    uPtrInferCtx ctx;
-    NI_CHECK_OK(nic::InferGrpcContext::Create(&ctx, ctxId, cfg.trtis_server, cfg.model_name, cfg.model_version),
-                "unable to create TRTIS inference context");
-
-    // Configure context for 'batch_size'=1  and return all outputs
-    uPtrInferCtxOpt options;
-    NI_CHECK_OK(nic::InferContext::Options::Create(&options),
-                "failed initializing TRTIS inference options");
-    options->SetBatchSize(1);
-    for (const auto& output : ctx->Outputs()) {
-      options->AddRawResult(output);
-    }
-    NI_CHECK_OK(ctx->SetRunOptions(*options),
-                "failed initializing TRTIS batch size and outputs");
-
-    _infCtxs[key].push_back(std::move(ctx));                                    LOG4CXX_TRACE(_log, "Created context[" << ctxId << "]");
+  for(int i=0; i < cfg.maxInferConcurrency; i++){
+    ni::CorrelationID ctxId = i + 1; // start at 1 since 0 isn't a valid correlation id
+    ctxMap[ctxId] = std::move(_niGetInferContext(cfg, ctxId));
   }
 
-  return _infCtxs[key];
+  return ctxMap;
 }
 
 /** ****************************************************************************
@@ -788,7 +793,6 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
   mutex freeCtxMtx, nextRxFrameMtx, tracksMtx, errorMtx;                        LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
   condition_variable freeCtxCv, nextRxFrameCv;
 
-  unordered_map<int, sPtrInferCtx> ctxMap;
   unordered_set<int> freeCtxPool;
   size_t initialCtxPoolSize = 0;
 
@@ -803,12 +807,11 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
     if(!video_cap.Read(frame)) return tracks;
     TrtisIpIrv2CocoJobConfig cfg(job, frame.cols,frame.rows);
 
-    vector<sPtrInferCtx>& ctxs = _niGetInferContexts(cfg);                     LOG4CXX_TRACE(_log,"Retrieved inferencing context pool of size " << ctxs.size() << " for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
-    initialCtxPoolSize = ctxs.size();
+    unordered_map<int, sPtrInferCtx> ctxMap = _niGetInferContexts(cfg);
+    initialCtxPoolSize = ctxMap.size();                                        LOG4CXX_TRACE(_log,"Retrieved inferencing context pool of size " << initialCtxPoolSize << " for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
 
-    for (auto ctx : ctxs) {
-      ctxMap[ctx->CorrelationId()] = ctx;
-      freeCtxPool.insert(ctx->CorrelationId());
+    for (const auto &pair : ctxMap ) {
+      freeCtxPool.insert(pair.first);
     }
 
     int frameIdx = 0;
@@ -897,7 +900,7 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
           // We're done with the context. Add it back to the pool so it can be used for another frame.
           { lock_guard<mutex> lk(freeCtxMtx);
             freeCtxPool.insert(c->CorrelationId());
-            freeCtxCv.notify_all();                                            LOG4CXX_TRACE(_log, "returned context " << c->CorrelationId() << " to pool");
+            freeCtxCv.notify_all();                                            LOG4CXX_TRACE(_log, "returned context[" << c->CorrelationId() << "] to pool");
           }                                                                    LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] complete");
         }),
         "unable to inference '" + cfg.model_name + "' ver."
@@ -971,7 +974,7 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &j
 
     TrtisIpIrv2CocoJobConfig cfg(job, img.cols, img.rows);                      LOG4CXX_TRACE(_log, "parsed job configuration settings");
     cfg.maxInferConcurrency = 1;
-    sPtrInferCtx& ctx = _niGetInferContexts(cfg)[0];                            LOG4CXX_TRACE(_log, "retrieved inferencing context for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
+    sPtrInferCtx ctx = _niGetInferContext(cfg);                                 LOG4CXX_TRACE(_log, "retrieved inferencing context for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
 
     LngVec shape;
     BytVec imgDat;

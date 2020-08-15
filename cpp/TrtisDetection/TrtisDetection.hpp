@@ -122,13 +122,15 @@ namespace MPF{
 
       log4cxx::LoggerPtr                 _log;            ///< log object
       map<string, vector<string>>        _class_labels;   ///< possible class labels keyed by model names
-      map<string, vector<sPtrInferCtx>>  _infCtxs;        ///< pool of inference contexts for models
 
       void _readClassNames(string model,
                            string class_label_file,
                            int    class_label_count);                           ///< read in class labels for a model from a file
 
-      vector<sPtrInferCtx>& _niGetInferContexts(const TrtisJobConfig& cfg);     ///< get cached inference contexts
+      sPtrInferCtx _niGetInferContext(const TrtisJobConfig& cfg,
+                                      int ctxId = 1);                           ///< get cached inference contexts
+
+      unordered_map<int, sPtrInferCtx> _niGetInferContexts(const TrtisJobConfig& cfg);  ///< get cached inference contexts
 
       static string  _niType2Str(ni::DataType dt);                              ///< nvidia data type to string
       static cv::Mat _niResult2CVMat(const size_t batch_idx,
