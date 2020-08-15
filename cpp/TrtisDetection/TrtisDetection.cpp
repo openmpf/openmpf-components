@@ -909,7 +909,7 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
                                                                                LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] sent");
 
       frameIdx++;                                                              LOG4CXX_TRACE(_log, "frameIdx++ to " << frameIdx);
-    } while (video_cap.Read(frame));                                        LOG4CXX_DEBUG(_log,"all frames complete");
+    } while (video_cap.Read(frame));
 
   } catch(...) {
     try {
@@ -931,8 +931,11 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 
   // Abort now if an error occurred.
   if (eptr) {
+    LOG4CXX_ERROR(_log, "[" << job.job_name << "] An error occurred. Aborting job.")
     throw eptr;
   }
+
+  LOG4CXX_DEBUG(_log,"all frames complete");
 
   _base64EncodeStopFeatures(tracks);                                          LOG4CXX_TRACE(_log, "finished (re)encoding track stop_frame FEATUREs to base64");
 
