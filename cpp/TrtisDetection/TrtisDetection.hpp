@@ -128,7 +128,7 @@ namespace MPF{
                            int    class_label_count);                           ///< read in class labels for a model from a file
 
       sPtrInferCtx _niGetInferContext(const TrtisJobConfig& cfg,
-                                      int ctxId = 1);                           ///< get cached inference contexts
+                                      int ctxId = 0);                           ///< get cached inference contexts
 
       unordered_map<int, sPtrInferCtx> _niGetInferContexts(const TrtisJobConfig& cfg);  ///< get cached inference contexts
 

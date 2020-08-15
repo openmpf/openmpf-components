@@ -364,7 +364,7 @@ sPtrInferCtx TrtisDetection::_niGetInferContext(const TrtisJobConfig& cfg, int c
   NI_CHECK_OK(ctx->SetRunOptions(*options),
               "failed initializing TRTIS batch size and outputs");
 
-  LOG4CXX_TRACE(_log, "Created context[" << ctxId << "]");
+  LOG4CXX_TRACE(_log, "Created context[" << ctx->CorrelationId() << "]");
 
   return move(ctx);
 }
@@ -382,8 +382,7 @@ unordered_map<int, sPtrInferCtx> TrtisDetection::_niGetInferContexts(const Trtis
 
   nic::Error err;
   for(int i=0; i < cfg.maxInferConcurrency; i++){
-    ni::CorrelationID ctxId = i + 1; // start at 1 since 0 isn't a valid correlation id
-    ctxMap[ctxId] = std::move(_niGetInferContext(cfg, ctxId));
+    ctxMap[i] = std::move(_niGetInferContext(cfg, i));
   }
 
   return ctxMap;
@@ -866,9 +865,11 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
             bool is_ready = false;
             NI_CHECK_OK(
                     c->GetAsyncRunResults(&res, &is_ready, req, true),
-                    "Failed to retrieve inference results");
+                    "Failed to retrieve inference results for context " + to_string(c->CorrelationId()));
             if (!is_ready) {
-              THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED, "Inference results not ready during callback");
+              THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
+                                   "Inference results not ready during callback for context " +
+                                   to_string(c->CorrelationId()));
             }
 
             LOG4CXX_TRACE(_log, "inference complete");
@@ -908,7 +909,7 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
                                                                                LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] sent");
 
       frameIdx++;                                                              LOG4CXX_TRACE(_log, "frameIdx++ to " << frameIdx);
-    } while (video_cap.Read(frame));
+    } while (video_cap.Read(frame));                                        LOG4CXX_DEBUG(_log,"all frames complete");
 
   } catch(...) {
     try {
@@ -926,7 +927,7 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
   if (freeCtxPool.size() < initialCtxPoolSize) {                              LOG4CXX_TRACE(_log, "wait for inference context pool size to return to initial size of " << initialCtxPoolSize);
     unique_lock<mutex> lk(freeCtxMtx);
     freeCtxCv.wait(lk, [&freeCtxPool, &initialCtxPoolSize]{ return freeCtxPool.size() == initialCtxPoolSize; });
-  }                                                                           LOG4CXX_DEBUG(_log,"all frames complete");
+  }
 
   // Abort now if an error occurred.
   if (eptr) {
