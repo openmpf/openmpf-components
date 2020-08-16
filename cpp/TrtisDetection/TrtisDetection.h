@@ -30,7 +30,6 @@
 
 #include <log4cxx/logger.h>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
-#include <condition_variable>
 
 // Nvidia TensorRT Inference Server (trtis) client lib includes
 // (see https://github.com/NVIDIA/tensorrt-inference-server)
@@ -38,6 +37,8 @@
 #include "request_grpc.h"
 #include "request_http.h"
 #include "model_config.pb.h"
+
+#include "S3StorageHelper.h"
 
 namespace MPF{
  namespace COMPONENT{
@@ -74,13 +75,15 @@ namespace MPF{
       string model_name;                   ///< name of model as served by trtis
       int model_version;                   ///< version of model (e.g. -1 for latest)
       int maxInferConcurrency;             ///< maximum number of concurrent video frame inferencing request
+      S3StorageHelper s3StorageHelper;     ///< AWS storage helper
 
-      explicit TrtisJobConfig(const MPFJob &job);
+      TrtisJobConfig(const MPFJob &job, const log4cxx::LoggerPtr &log);
+
+      bool RequiresS3Storage();
   };
 
   class TrtisIpIrv2CocoJobConfig : public TrtisJobConfig{
     public:
-
       bool   clientScaleEnabled;          ///< perform image scaling client side
       bool   frameFeatEnabled;            ///< process frame average feature
       bool   classFeatEnabled;            ///< process recognized coco objects
@@ -106,6 +109,7 @@ namespace MPF{
       float  maxSpaceGapPxSq;             ///< squared center to center distance in pixels
 
       TrtisIpIrv2CocoJobConfig(const MPFJob &job,
+                               const log4cxx::LoggerPtr &log,
                                const size_t image_width,
                                const size_t image_height);
   };

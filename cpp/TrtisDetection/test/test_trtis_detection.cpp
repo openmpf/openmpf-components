@@ -29,7 +29,7 @@
 
 #include <gtest/gtest.h>
 
-#include "TrtisDetection.hpp"
+#include "TrtisDetection.h"
 
 using namespace MPF::COMPONENT;
 using namespace std;
@@ -108,7 +108,7 @@ bool containsObject(const string           &object_name,
 void assertObjectDetectedInVideo(const string     &object_name,
                                  const Properties &job_props,
                                  TrtisDetection   &trtisDet) {
-    MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 11, 12, job_props, {});
+    MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 0, 8, job_props, {});
 
     MPFVideoTrackVec tracks = trtisDet.GetDetections(job);
 

@@ -29,6 +29,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <condition_variable>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -41,11 +42,10 @@
 #include <MPFImageReader.h>
 #include <MPFVideoCapture.h>
 
-#include "TrtisDetection.hpp"
+#include "TrtisDetection.h"
 #include "base64.h"
 
 using namespace MPF::COMPONENT;
-
 
 /** ****************************************************************************
 * Macro for throwing exception so we can see where in the code it happened
@@ -95,9 +95,8 @@ T get(const Properties &p, const string &k, const T def){
 /** ****************************************************************************
 * Parse TRTIS setting out of MPFJob
 ***************************************************************************** */
-TrtisJobConfig::TrtisJobConfig(const MPFJob &job){
+TrtisJobConfig::TrtisJobConfig(const MPFJob &job, const log4cxx::LoggerPtr &log) {
   const Properties jpr = job.job_properties;
-
   trtis_server = get<string>(jpr,"TRTIS_SERVER" , "");
   if (trtis_server.empty()) {
       char const* tmp_env = std::getenv("TRTIS_SERVER");
@@ -111,15 +110,39 @@ TrtisJobConfig::TrtisJobConfig(const MPFJob &job){
   model_name    = get<string>(jpr,"MODEL_NAME"   , "ip_irv2_coco");
   model_version = get<int>(jpr,"MODEL_VERSION", -1);
   maxInferConcurrency = get<int>(jpr,"MAX_INFER_CONCURRENCY", 5);
+
+  string s3_results_bucket_url = get<string>(jpr, "S3_RESULTS_BUCKET" ,"");
+  if (!s3_results_bucket_url.empty()) {
+    LOG4CXX_TRACE(log, "Configuring S3 Client");
+
+    string accessKey = get<string>(jpr, "S3_ACCESS_KEY","");
+    string secretKey = get<string>(jpr, "S3_SECRET_KEY","");
+
+    s3StorageHelper = S3StorageHelper(log, s3_results_bucket_url, accessKey, secretKey);
+
+    // fail fast if bucket does not exist
+    if (!s3StorageHelper.ExistsS3Bucket()) {
+      throw MPFDetectionException(MPF_INVALID_PROPERTY,
+                                  "S3_RESULTS_BUCKET '" + s3_results_bucket_url + "' does not exist.");
+    }
+  }
+}
+
+/** ****************************************************************************
+* Determine if AWS S3 storage is required
+***************************************************************************** */
+bool TrtisJobConfig::RequiresS3Storage() {
+  return s3StorageHelper.IsValid();
 }
 
 /** ****************************************************************************
 * Parse ip_irv2_coco model setting out of MPFJob
 ***************************************************************************** */
 TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
+                                                   const log4cxx::LoggerPtr &log,
                                                    const size_t image_width,
                                                    const size_t image_height)
-  :TrtisJobConfig(job),
+  :TrtisJobConfig(job, log),
   image_width(image_width),
   image_height(image_height),
   image_x_max(image_width-1),
@@ -804,7 +827,7 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 
     // need to read a frame to get size
     if(!video_cap.Read(frame)) return tracks;
-    TrtisIpIrv2CocoJobConfig cfg(job, frame.cols,frame.rows);
+    TrtisIpIrv2CocoJobConfig cfg(job, _log, frame.cols, frame.rows);
 
     unordered_map<int, sPtrInferCtx> ctxMap = _niGetInferContexts(cfg);
     initialCtxPoolSize = ctxMap.size();                                        LOG4CXX_TRACE(_log,"Retrieved inferencing context pool of size " << initialCtxPoolSize << " for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
@@ -976,7 +999,7 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &j
       THROW_TRTISEXCEPTION(MPF_INVALID_PROPERTY, "Unsupported model type: " + model_name);
     }
 
-    TrtisIpIrv2CocoJobConfig cfg(job, img.cols, img.rows);                      LOG4CXX_TRACE(_log, "parsed job configuration settings");
+    TrtisIpIrv2CocoJobConfig cfg(job, _log, img.cols, img.rows);                      LOG4CXX_TRACE(_log, "parsed job configuration settings");
     cfg.maxInferConcurrency = 1;
     sPtrInferCtx ctx = _niGetInferContext(cfg);                                 LOG4CXX_TRACE(_log, "retrieved inferencing context for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
 
@@ -993,6 +1016,11 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &j
     _ip_irv2_coco_getDetections(cfg, res, locations);
     size_t new_size = locations.size();                                         LOG4CXX_TRACE(_log, "parsed detections into locations vector");
 
+
+    _handleFeatures(cfg, )
+
+    HERE!
+
     for(size_t i = next_idx; i < new_size; i++){
       // not sure if base64 encoding is needed here,
       // might make sense for whatever serializes the output to do the encoding?!
@@ -1008,6 +1036,28 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &j
   }
 }
 
+void TrtisDetection::_handleFeatures(TrtisJobConfig &cfg, vector<MPFImageLocation> locations, int nextIdx) {
+  if (cfg.RequiresS3Storage()) {
+    S3StorageHelper &s3StorageHelper = cfg.s3StorageHelper;
+
+    for(int i = nextIdx; i < locations.size(); i++){
+      MPFImageLocation &loc = locations[i];
+      Properties &prop = loc.detection_properties;
+      image_reader.ReverseTransform(loc); // TODO: Reverse transform before we get here.
+
+      string feature_sha256 = s3StorageHelper.GetSha256(prop["FEATURE"]);
+      string s3ObjectUrl = s3StorageHelper.PutS3Object(feature_sha256, prop["FEATURE"],
+                                                       s3StorageHelper.PrepS3Meta(job.data_uri, cfg.model_name, locations[i]));
+      prop["FEATURE_URI"] = s3ObjectUrl;
+      prop.erase(prop.find("FEATURE"));
+    }                                                                       LOG4CXX_TRACE(_log,"wrote new features to s3 bucket");
+  } else {
+    for(int i = nextIdx; i < locations.size(); i++){
+      locations[i].detection_properties["FEATURE"] = Base64::Encode(locations[i].detection_properties["FEATURE"]);
+      image_reader.ReverseTransform(locations[i]);
+    }                                                                       LOG4CXX_TRACE(_log,"base64 encoded new features in locations vector");
+  }
+}
 
 //-----------------------------------------------------------------------------
 
