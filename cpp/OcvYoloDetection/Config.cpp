@@ -25,6 +25,7 @@
  ******************************************************************************/
 
 #include "types.h"
+#include "Frame.h"
 #include "Config.h"
 
 using namespace MPF::COMPONENT;
@@ -60,6 +61,7 @@ void Config::_parse(const MPFJob &job){
   nmsThresh         = abs(getEnv<float>(jpr,"DETECTION_NMS_THRESHOLD",             nmsThresh));          LOG_TRACE( "DETECTION_NMS_THRESHOLD: "                    << nmsThresh);
   inputImageSize    = abs(getEnv<int>  (jpr,"DETECTION_IMAGE_SIZE",                inputImageSize));     LOG_TRACE( "DETECTION_IMAGE_SIZE: "                       << inputImageSize);
   detFrameInterval  = abs(getEnv<int>  (jpr,"DETECTION_FRAME_INTERVAL",            detFrameInterval));   LOG_TRACE( "DETECTION_FRAME_INTERVAL: "                   << detFrameInterval);
+  frameBatchSize    = abs(getEnv<int>  (jpr,"DETECTION_FRAME_BATCH_SIZE",          frameBatchSize));     LOG_TRACE( "DETECTION_FRAME_BATCH_SIZE: "                 << frameBatchSize);
   numClassPerRegion = abs(getEnv<int>  (jpr,"NUMBER_OF_CLASSIFICATIONS_PER_REGION",numClassPerRegion));  LOG_TRACE( "NUMBER_OF_CLASSIFICATIONS_PER_REGION: "       << numClassPerRegion);
 
   maxFeatureDist   = abs(getEnv<float>(jpr,"TRACKING_MAX_FEATURE_DIST",      maxFeatureDist));           LOG_TRACE( "TRACKING_MAX_FEATURE_DIST: " << maxFeatureDist);
@@ -93,6 +95,7 @@ ostream& operator<< (ostream& out, const Config& cfg) {
       << "\"nmsThresh\":"                  << cfg.nmsThresh         << ","
       << "\"inputImageSize\":"             << cfg.inputImageSize    << ","
       << "\"detFrameInterval\":"           << cfg.detFrameInterval  << ","
+      << "\"frameBatchSize\":"             << cfg.frameBatchSize    << ","
       << "\"numClassPerRegion\":"          << cfg.numClassPerRegion << ","
       << "\"maxFeatureDist\":"             << cfg.maxFeatureDist    << ","
       << "\"maxFrameGap\":"                << cfg.maxFrameGap       << ","
@@ -118,6 +121,7 @@ Config::Config():
   inputImageSize(416),
   maxFrameGap(4),
   detFrameInterval(1),
+  frameBatchSize(1),
   numClassPerRegion(5),
   maxFeatureDist(0.25),
   maxCenterDist(0.0),

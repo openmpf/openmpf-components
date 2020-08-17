@@ -35,9 +35,9 @@
 
 using namespace MPF::COMPONENT;
 
-cv::dnn::Net DetectionLocation::_net;                  ///< DNN detector network
-stringVec    DetectionLocation::_netClasses;           ///< list of classes for DNN
-stringVec    DetectionLocation::_netOutputNames;       ///< list of DNN output names
+NetPtr     DetectionLocation::_netPtr;               ///< DNN detector network
+stringVec  DetectionLocation::_netClasses;           ///< list of classes for DNN
+stringVec  DetectionLocation::_netOutputNames;       ///< list of DNN output names
 
 /** ****************************************************************************
 *  Draw polylines to visualize landmark scoresVectors
@@ -166,31 +166,32 @@ cv::Point2d  DetectionLocation::_phaseCorrelate(const Track &tr) const {
 *
 *************************************************************************** */
 float DetectionLocation::featureDist(const Track &tr) const {
-  //float dist = 1.0f - max(0.0f,static_cast<float>(getFeature().dot(tr.back()->getFeature())));
-
   float dist;
+  cv::Rect2d  trRoi(tr.back()->getRect());                                   // roi of track object in tr's frame
+  if(trRoi.area() > 0.0){
+    cv::Point2d ctr = cv::Point2d(x_left_upper + 0.5 * width,
+                                  y_left_upper + 0.5 * height)
+                      - _phaseCorrelate(tr);                                   // center of shifted track roi
 
-  cv::Rect2d  trRoi(tr.back()->getRect());                                    // roi of track object in tr's frame
-  cv::Point2d ctr = cv::Point2d(x_left_upper + 0.5 * width,
-                                y_left_upper + 0.5 * height)
-                    - _phaseCorrelate(tr);                                    // center of shifted track roi
-
-  if(cv::Rect2d(cv::Point2d(0,0),framePtr->bgr.size()).contains(ctr)){        // center ok
-    cv::Mat comp;
-    cv::getRectSubPix(framePtr->bgr,trRoi.size(), ctr, comp);                 // grab corresponding region from bgrFrame with border replication
-    #ifndef NDEBUG
-      if(_cfgPtr->log->isTraceEnabled()) cv::imwrite("comp.png",comp);
-    #endif
-    cv::absdiff(tr.back()->framePtr->bgr(trRoi), comp, comp);                 // compute pixel wise absolute diff (could do HSV transform 1st?!)
-    assert(framePtr->bgr.depth() == CV_8U);
-    cv::Scalar mean = cv::mean(comp) / 255.0;                                 // get mean normalized BGR pixel difference
-    dist = mean.ddot(mean) / framePtr->bgr.channels();                        // combine BGR: d = BGR.BGR
-    #ifndef NDEBUG
-      if(_cfgPtr->log->isTraceEnabled()) cv::imwrite("diff.png",comp);
-    #endif
-  }else{                                                                      LOG_TRACE("ctr " << ctr << " outside bgrFrame");
+    if(cv::Rect2d(cv::Point2d(0,0),framePtr->bgr.size()).contains(ctr)){        // center ok
+      cv::Mat comp;
+      cv::getRectSubPix(framePtr->bgr,trRoi.size(), ctr, comp);                // grab corresponding region from bgrFrame with border replication
+      #ifndef NDEBUG
+        if(_cfgPtr->log->isTraceEnabled()) cv::imwrite("comp.png",comp);
+      #endif
+      cv::absdiff(tr.back()->framePtr->bgr(trRoi), comp, comp);                // compute pixel wise absolute diff (could do HSV transform 1st?!)
+      assert(framePtr->bgr.depth() == CV_8U);
+      cv::Scalar mean = cv::mean(comp) / 255.0;                                // get mean normalized BGR pixel difference
+      dist = mean.ddot(mean) / framePtr->bgr.channels();                       // combine BGR: d = BGR.BGR
+      #ifndef NDEBUG
+        if(_cfgPtr->log->isTraceEnabled()) cv::imwrite("diff.png",comp);
+      #endif
+    }else{                                                                     LOG_TRACE("ctr " << ctr << " outside bgrFrame");
+      dist = 1.0;
+    }
+  }else{                                                                       LOG_TRACE("tr tail " << trRoi << " has zero area");
     dist = 1.0;
-  }                                                                           LOG_TRACE("feature dist: " << dist);
+  }                                                                            LOG_TRACE("feature dist: " << dist);
   return dist;
 }
 
@@ -340,9 +341,9 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
                                               false);                          // center crop
                                                                                LOG_TRACE("Input blob size: " << inputBlob.size);
 
-  _net.setInput(inputBlob,"data");                                             // different output layers for different scales, e.g. yolo_82,yolo_94,yolo_106 for yolo_v3
+  _netPtr->setInput(inputBlob,"data");                                         // different output layers for different scales, e.g. yolo_82,yolo_94,yolo_106 for yolo_v3
   cvMatVec outs;                                                               // outs[output-layer][frame][detection][feature] =  0:cent_x, 1:cent_y, 2:width, 3:height, 4:objectness, 5..84:class-scores
-  _net.forward(outs, _netOutputNames);                                         // https://answers.opencv.org/question/212588/how-to-process-output-of-detection-network-when-batch-of-images-is-used-as-network-input/
+  _netPtr->forward(outs, _netOutputNames);                                     // https://answers.opencv.org/question/212588/how-to-process-output-of-detection-network-when-batch-of-images-is-used-as-network-input/
   #ifndef NDEBUG                                                               // https://towardsdatascience.com/yolo-v3-object-detection-53fb7d3bfe6b
   for(int i=0;i<outs.size();i++)                                               LOG_TRACE("output blob[" << i << "] " << outs[i].size);
   #endif
@@ -429,48 +430,62 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
 
 /** **************************************************************************
 *************************************************************************** */
-void DetectionLocation::_setCudaBackend(const bool enabled){
+void DetectionLocation::_loadNet(const bool useCUDA){
+
+  string  modelPath        = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_WEIGHTS_FILE", "yolov3.weights");
+  string  modelConfigPath  = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_CONFIG_FILE" , "yolov3.cfg");
+
+  _netPtr = NetPtr(new cv::dnn::Net(move(cv::dnn::readNetFromDarknet(modelConfigPath, modelPath))));
+
   #ifdef HAVE_CUDA
-  if(enabled){
-    _net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    _net.setPreferableTarget( cv::dnn::DNN_TARGET_CUDA);
+  if(useCUDA){
+    _netPtr->setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);                      LOG_TRACE("Set backend DNN_BACKEND_CUDA");
+    _netPtr->setPreferableTarget( cv::dnn::DNN_TARGET_CUDA);                       LOG_TRACE("Set target  DNN_TARGET_CUDA");
   }else{
-    _net.setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);
-    _net.setPreferableTarget( cv::dnn::DNN_TARGET_CPU);
+    _netPtr->setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);                   LOG_TRACE("Set backend DNN_BACKEND_DEFAULT");
+    _netPtr->setPreferableTarget( cv::dnn::DNN_TARGET_CPU);                        LOG_TRACE("Set target  DNN_TARGET_CPU");
   }
   #endif
 }
 
 /** **************************************************************************
-* try set CUDA to use specified GPU device
+* try set CUDA to use specified GPU device and load the network
 *
 * \param cudaDeviceId device to use for hardware acceleration (-1 to disable)
 *
 * \returns true if successful false otherwise
 *************************************************************************** */
-bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
+bool DetectionLocation::loadNetToCudaDevice(const int cudaDeviceId){
   static int lastCudaDeviceId = -1;
   string errMsg = "Failed to configure CUDA for deviceID=";
   try{
     #ifdef HAVE_CUDA
     if(lastCudaDeviceId != cudaDeviceId){
-      if(lastCudaDeviceId >=0) cv::cuda::resetDevice();  // if we were using a cuda device prior clean up old contex / cuda resources
+      if(lastCudaDeviceId >=0){
+        if(! _netPtr->empty()){
+          _netPtr.reset();                                                     // need to release network this prior to device reset
+        }
+        cv::cuda::resetDevice();                                               // if we were using a cuda device prior clean up old contex / cuda resources
+      }
       if(cudaDeviceId >=0){
         cv::cuda::setDevice(cudaDeviceId);
-        _setCudaBackend(true);
+        _loadNet(true);
+        #ifndef NDEBUG
+        cv::cuda::DeviceInfo di;                                               LOG_DEBUG("CUDA Device:" << di.name());
+        #endif
         lastCudaDeviceId = cudaDeviceId;
       }else{
-        _setCudaBackend(false);
+        _loadNet(false);
         lastCudaDeviceId = -1;
       }
     }
     return true;
     #endif
-  }catch(const runtime_error& re){                                           LOG_FATAL( errMsg << cudaDeviceId << " Runtime error: " << re.what());
-  }catch(const exception& ex){                                               LOG_FATAL( errMsg << cudaDeviceId << " Exception: " << ex.what());
-  }catch(...){                                                               LOG_FATAL( errMsg << cudaDeviceId << " Unknown failure occurred. Possible memory corruption");
+  }catch(const runtime_error& re){                                             LOG_FATAL( errMsg << cudaDeviceId << " Runtime error: " << re.what());
+  }catch(const exception& ex){                                                 LOG_FATAL( errMsg << cudaDeviceId << " Exception: " << ex.what());
+  }catch(...){                                                                 LOG_FATAL( errMsg << cudaDeviceId << " Unknown failure occurred. Possible memory corruption");
   }
-  _setCudaBackend(false);
+  _loadNet(false);
   lastCudaDeviceId = -1;
   return false;
 }
@@ -487,11 +502,10 @@ bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
 bool DetectionLocation::Init(){
 
   // Load DNN Network
-  string  modelPath        = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_WEIGHTS_FILE", "yolov3.weights");
-  string  modelConfigPath  = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_CONFIG_FILE" , "yolov3.cfg");
   string  modelClassesPath = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_CLASS_FILE"  , "coco.names");
+  int     cudaDeviceId     = getEnv<int> ({},"CUDA_DEVICE_ID",0);
 
-  const string errMsg = "Failed to load model: " + modelConfigPath + ", " + modelPath + ", " + modelClassesPath;
+  const string errMsg = "Failed to load model: " + modelClassesPath;
   try{
       // load output class names
       ifstream classfile(modelClassesPath);
@@ -502,10 +516,10 @@ bool DetectionLocation::Init(){
       }
 
       // load detector net
-      _net = cv::dnn::readNetFromDarknet(modelConfigPath, modelPath);
+      loadNetToCudaDevice(cudaDeviceId);
 
       // get names of output layers
-      _netOutputNames = _net.getUnconnectedOutLayersNames();
+      _netOutputNames = _netPtr->getUnconnectedOutLayersNames();
 
   }catch(const runtime_error& re){                                           LOG_FATAL( errMsg << " Runtime error: " << re.what());
     return false;
@@ -529,18 +543,10 @@ DetectionLocation::DetectionLocation(const ConfigPtr   cfgPtr,
                                      const cv::Rect2d  bbox,
                                      const float       conf,
                                      const cv::Point2f ctr):
-        MPFImageLocation(
-          static_cast<int>(bbox.x      + 0.5),
-          static_cast<int>(bbox.y      + 0.5),
-          static_cast<int>(bbox.width  + 0.5),
-          static_cast<int>(bbox.height + 0.5),
-          conf),
         center(ctr),
         framePtr(frmPtr),
         _cfgPtr(cfgPtr)
         {
-         //float a;
-         //LOG_TRACE(cfgPtr->confThresh << ctr);
-        //_bgrFrame = cfgPtr->bgrFrame;
-        //_bgrFrame = cfgPtr->bgrFrame(cv::Rect(x,y,width,height)).clone();
+          confidence = conf;
+          setRect(bbox & cv::Rect2d(0,0,frmPtr->bgr.cols,frmPtr->bgr.rows));
 }

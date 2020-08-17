@@ -31,7 +31,9 @@
 #include <memory>
 #include <list>
 #include <iomanip>
+#include <opencv2/dnn.hpp>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
+
 
 namespace MPF{
  namespace COMPONENT{
@@ -57,6 +59,7 @@ namespace MPF{
   typedef vector<cvPoint2fVec>            cvPoint2fVecVec;             ///< vector of vectors of OpenCV 2D float points
   typedef cv::Point3_<uint8_t>            cvPixel;                     ///< image pixel type used by images
   typedef unique_ptr<DetectionLocation>   DetectionLocationPtr;        ///< DetectionLocation pointers
+  typedef unique_ptr<cv::dnn::Net>        NetPtr;                      ///< pointer to DNN network
   typedef vector<DetectionLocationPtr>    DetectionLocationPtrVec;     ///< vector of DetectionLocation pointers
   typedef vector<DetectionLocationPtrVec> DetectionLocationPtrVecVec;  ///< vector of DetectionLocation pointers vectors
   typedef list<unique_ptr<Track>>         TrackPtrList;                ///< list of track pointers

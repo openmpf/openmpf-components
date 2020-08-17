@@ -70,7 +70,7 @@ namespace MPF{
 
       static bool                       Init();                                                                ///< setup class shared members
       static DetectionLocationPtrVecVec createDetections(const ConfigPtr cfgPtr,const FramePtrVec &framePtrs); ///< created detection objects from image frame
-      static bool                       trySetCudaDevice(const int cudaDeviceId);                              ///< try set CUDA to use specified GPU device
+      static bool                       loadNetToCudaDevice(const int cudaDeviceId);                           ///< load network to active CUDA device
 
       DetectionLocation(const ConfigPtr   cfgPtr,
                         const FramePtr    frmPtr,
@@ -78,7 +78,7 @@ namespace MPF{
                         const float       conf,
                         const cv::Point2f ctr);     ///< constructor for createDetections()
        #ifndef NDEBUG
-      ~DetectionLocation(){ LOG_TRACE("Detection beeing destroyed");}
+      ~DetectionLocation(){ LOG_TRACE("Detection " << this << " beeing destroyed");}
       #endif
 
     private:
@@ -86,7 +86,7 @@ namespace MPF{
       const ConfigPtr     _cfgPtr;               ///< job configuration and shared config state
       mutable cv::Mat     _feature;              ///< dft for matching-up detections via phase correlation
 
-      static cv::dnn::Net _net;                  ///< DNN detector network
+      static NetPtr       _netPtr;               ///< DNN detector network
       static stringVec    _netClasses;           ///< list of classes for DNN
       static stringVec    _netOutputNames;       ///< list of DNN output names
 
@@ -95,7 +95,7 @@ namespace MPF{
       cv::Point2d       _phaseCorrelate(  const Track      &tr)    const;  ///< get bbox alignment via phase correlation
       const cv::Mat1f   _getHanningWindow(const cv::Size   &size)  const;  ///< get hanning window of specified size
 
-      static void _setCudaBackend(const bool enabled);    ///< turn on or off cuda backend for inferencing
+      static void _loadNet(const bool useCUDA);    ///< turn on or off cuda backend for inferencing
   };
 
   /** **************************************************************************

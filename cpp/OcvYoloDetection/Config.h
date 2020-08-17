@@ -35,13 +35,12 @@
 #include "MPFImageReader.h"
 #include "MPFVideoCapture.h"
 
-#include "Frame.h"
+#include "types.h"
 
 namespace MPF{
  namespace COMPONENT{
 
   using namespace std;
-
 
   /** ****************************************************************************
   *   get MPF properties of various types
@@ -116,6 +115,7 @@ namespace MPF{
       int     inputImageSize;           ///< network image input size (320, 416, 608)
       int     numClassPerRegion;        ///< number of class labels and confidence scores to return for a bbox
       long    detFrameInterval;         ///< number of frames between looking for new detection (tracking only)
+      int     frameBatchSize;           ///< number of frames to batch inference when processing video
 
       float   maxFeatureDist;           ///< maximum feature distance to maintain track continuity
       float   maxCenterDist;            ///< maximum spatial distance normalized by diagonal to maintain track continuity

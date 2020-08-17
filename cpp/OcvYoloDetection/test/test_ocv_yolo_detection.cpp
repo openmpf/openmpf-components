@@ -42,6 +42,7 @@
 #include <ImageGeneration.h>
 
 #define private public
+#include "DetectionLocation.h"
 #include "OcvYoloDetection.h"
 #include "DetectionComparisonA.h"
 using namespace std;
@@ -136,6 +137,76 @@ TEST(OcvYoloDetection, Init) {
   delete ocv_yolo_detection;
 }
 
+/** ***************************************************************************
+*   Test yolo on GPU
+**************************************************************************** */
+TEST(OcvYoloDetection, YoloInference) {
+
+  string current_working_dir = GetCurrentWorkingDirectory();
+  GOUT("current working dir: " << current_working_dir);
+  ASSERT_TRUE(current_working_dir != "");
+
+  QHash<QString, QString> parameters = GetTestParameters();
+  GOUT("config file:" << parameters["CONFIG_FILE"].toStdString());
+  ASSERT_TRUE(parameters.count() > 1);
+
+  OcvYoloDetection *ocv_yolo_detection = new OcvYoloDetection();
+  ASSERT_TRUE(NULL != ocv_yolo_detection);
+
+  string dir_input(current_working_dir + "/../plugin");
+  ocv_yolo_detection->SetRunDirectory(dir_input);
+  string rundir = ocv_yolo_detection->GetRunDirectory();
+  EXPECT_EQ(dir_input, rundir);
+
+  string image_file = parameters["OCV_IMAGE_FILE" ].toStdString();
+
+  ASSERT_TRUE(ocv_yolo_detection->Init());
+
+  cv::Mat img = cv::imread(image_file);
+  ASSERT_FALSE(img.empty());
+
+  cv::Mat blob = cv::dnn::blobFromImage(img,
+                                         1/255.0,
+                                         cv::Size(416,416),
+                                         cv::Scalar(0,0,0),
+                                         true,false);
+  GOUT("input blob " << blob.size);
+
+  vector<cv::Mat> outs;
+  int inference_count = 30;
+  GOUT("Default device");
+  cv::cuda::DeviceInfo di;
+  GOUT("CUDA Device:" << di.name());
+  auto start_time = chrono::high_resolution_clock::now();
+  for(int i=0;i<inference_count;i++){
+    DetectionLocation::_netPtr->setInput(blob,"data");
+    DetectionLocation::_netPtr->forward(outs, DetectionLocation::_netOutputNames);
+  }
+  auto end_time = chrono::high_resolution_clock::now();
+  double time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
+  GOUT("\tCUDA inference time: " << fixed << setprecision(5) << time_taken/inference_count << "[sec]");
+  for(int i=0;i<outs.size();i++){
+    GOUT("output blob[" << i << "]" << outs[i].size);
+  }
+
+  GOUT("CPU only");
+  DetectionLocation::loadNetToCudaDevice(-1);
+  start_time = chrono::high_resolution_clock::now();
+  for(int i=0;i<inference_count;i++){
+    DetectionLocation::_netPtr->setInput(blob,"data");
+    DetectionLocation::_netPtr->forward(outs, DetectionLocation::_netOutputNames);
+  }
+  end_time = chrono::high_resolution_clock::now();
+  time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
+  GOUT("\tCPU inference time: " << fixed << setprecision(5) << time_taken/inference_count << "[sec]");
+  for(int i=0;i<outs.size();i++){
+    GOUT("output blob[" << i << "]" << outs[i].size);
+  }
+
+
+  EXPECT_TRUE(ocv_yolo_detection->Close());
+  delete ocv_yolo_detection;
+}
 /** ***************************************************************************
 *   Test phase correlator and similarity score images
 **************************************************************************** */
@@ -249,9 +320,9 @@ TEST(OcvYoloDetection, TestOnKnownImage) {
     vector<MPFImageLocation> found_detections = detection->GetDetections(image_job);
     EXPECT_FALSE(found_detections.empty());
 
-    //float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_detections, known_detections);
-    //GOUT("Detection comparison score: " << comparison_score);
-    //ASSERT_TRUE(comparison_score > comparison_score_threshold);
+    float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_detections, known_detections);
+    GOUT("Detection comparison score: " << comparison_score);
+    ASSERT_TRUE(comparison_score > comparison_score_threshold);
 
     // create output video to view performance
     ImageGeneration image_generation;
@@ -270,7 +341,7 @@ TEST(OcvYoloDetection, TestOnKnownImage) {
 /** ***************************************************************************
 *   Test face detection and tracking in videos
 **************************************************************************** */
-TEST(OcvYoloDetection, DISABLED_TestOnKnownVideo) {
+TEST(OcvYoloDetection, TestOnKnownVideo) {
 
     string         current_working_dir = GetCurrentWorkingDirectory();
     QHash<QString, QString> parameters = GetTestParameters();
@@ -279,14 +350,14 @@ TEST(OcvYoloDetection, DISABLED_TestOnKnownVideo) {
 
     GOUT("Reading parameters for video test.");
 
-    int start = parameters["OCV_FACE_START_FRAME"].toInt();
-    int  stop = parameters["OCV_FACE_STOP_FRAME" ].toInt();
-    int  rate = parameters["OCV_FACE_FRAME_RATE" ].toInt();
-    string inTrackFile  = parameters["OCV_FACE_KNOWN_TRACKS"     ].toStdString();
-    string inVideoFile  = parameters["OCV_FACE_VIDEO_FILE"       ].toStdString();
-    string outTrackFile = parameters["OCV_FACE_FOUND_TRACKS"     ].toStdString();
-    string outVideoFile = parameters["OCV_FACE_VIDEO_OUTPUT_FILE"].toStdString();
-    float comparison_score_threshold = parameters["OCV_FACE_COMPARISON_SCORE_VIDEO"].toFloat();
+    int start = parameters["OCV_VIDEO_START_FRAME"].toInt();
+    int  stop = parameters["OCV_VIDEO_STOP_FRAME" ].toInt();
+    int  rate = parameters["OCV_VIDEO_FRAME_RATE" ].toInt();
+    string inTrackFile  = parameters["OCV_VIDEO_KNOWN_TRACKS"].toStdString();
+    string inVideoFile  = parameters["OCV_VIDEO_FILE"].toStdString();
+    string outTrackFile = parameters["OCV_VIDEO_FOUND_TRACKS"].toStdString();
+    string outVideoFile = parameters["OCV_VIDEO_OUTPUT_FILE"].toStdString();
+    float comparison_score_threshold = parameters["OCV_VIDEO_COMPARISON_SCORE_VIDEO"].toFloat();
 
     GOUT("Start:\t"    << start);
     GOUT("Stop:\t"     << stop);
@@ -305,15 +376,15 @@ TEST(OcvYoloDetection, DISABLED_TestOnKnownVideo) {
     ASSERT_TRUE(ocv_yolo_detection->Init());
 
     // 	Load the known tracks into memory.
-    GOUT("\tLoading the known tracks into memory: " << inTrackFile);
-    vector<MPFVideoTrack> known_tracks;
-    ASSERT_TRUE(ReadDetectionsFromFile::ReadVideoTracks(inTrackFile, known_tracks));
+    //GOUT("\tLoading the known tracks into memory: " << inTrackFile);
+    //vector<MPFVideoTrack> known_tracks;
+    //ASSERT_TRUE(ReadDetectionsFromFile::ReadVideoTracks(inTrackFile, known_tracks));
 
     // create output known video to view ground truth
-    GOUT("\tWriting ground truth video and test tracks to files.");
-    VideoGeneration video_generation_gt;
-    video_generation_gt.WriteTrackOutputVideo(inVideoFile, known_tracks, (test_output_dir + "/ground_truth.avi"));
-    WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/ground_truth.txt"), known_tracks);
+    //GOUT("\tWriting ground truth video and test tracks to files.");
+    //VideoGeneration video_generation_gt;
+    //video_generation_gt.WriteTrackOutputVideo(inVideoFile, known_tracks, (test_output_dir + "/ground_truth.avi"));
+    //WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/ground_truth.txt"), known_tracks);
 
     // 	Evaluate the known video file to generate the test tracks.
     GOUT("\tRunning the tracker on the video: " << inVideoFile);
@@ -333,10 +404,10 @@ TEST(OcvYoloDetection, DISABLED_TestOnKnownVideo) {
     WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/" + outTrackFile), found_tracks);
 
     // 	Compare the known and test track output.
-    GOUT("\tComparing the known and test tracks.");
-    float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_tracks, known_tracks);
-    GOUT("Tracker comparison score: " << comparison_score);
-    ASSERT_TRUE(comparison_score > comparison_score_threshold);
+    //GOUT("\tComparing the known and test tracks.");
+    //float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_tracks, known_tracks);
+    //GOUT("Tracker comparison score: " << comparison_score);
+    //ASSERT_TRUE(comparison_score > comparison_score_threshold);
 
 
 

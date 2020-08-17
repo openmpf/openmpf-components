@@ -3,6 +3,7 @@ fsroot/
 gdb_printers/
 test_vids/misc/
 .unotes/
+ObjectDetection-YOLO/
 ocv_face_known_tracks_short.txt
 
 # CMake Files

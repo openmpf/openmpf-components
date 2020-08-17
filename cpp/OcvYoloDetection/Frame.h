@@ -27,21 +27,27 @@
 #define OCVYOLODETECTION_FRAME_H
 
 #include <opencv2/opencv.hpp>
+#include "types.h"
+#include "Config.h"
 
 namespace MPF{
  namespace COMPONENT{
 
-  using namespace std;
+    using namespace std;
 
-  /* **************************************************************************
-  *  Represent a frame with time stamp
-  *************************************************************************** */
+    /* **************************************************************************
+    *  Represent a frame with time stamp
+    *************************************************************************** */
      class Frame{
        public:
          size_t  idx=0;                 ///< index of frame
          double  time=0;                ///< time of current frame in sec
          double  timeStep=0;            ///< time interval between frames in sec
          cv::Mat bgr;                   ///< bgr image frame
+
+        #ifndef NDEBUG
+        ~Frame(){ LOG_TRACE("Frame " << this << " beeing destroyed"); }
+        #endif
      };
 
    }

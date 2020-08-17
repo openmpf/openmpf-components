@@ -111,7 +111,7 @@ bool OcvYoloDetection::Init() {
     //Properties fromEnv;
     int cudaDeviceId   = getEnv<int> ({},"CUDA_DEVICE_ID", -1);
     bool fallbackToCPU = getEnv<bool>({},"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", true);
-    bool defaultCudaDeviceOK = DetectionLocation::trySetCudaDevice(cudaDeviceId) || fallbackToCPU;
+    bool defaultCudaDeviceOK = DetectionLocation::loadNetToCudaDevice(cudaDeviceId) || fallbackToCPU;
 
     return    detectionLocationInitalizedOK
            && defaultCudaDeviceOK;
@@ -229,6 +229,8 @@ MPFImageLocationVec OcvYoloDetection::GetDetections(const MPFImageJob   &job) {
     if(cfgPtr->lastError != MPF_DETECTION_SUCCESS){
       throw MPFDetectionException(cfgPtr->lastError,"failed to parse image job configuration parameters");
     }
+    DetectionLocation::loadNetToCudaDevice(cfgPtr->cudaDeviceId);
+
     FramePtrVec framePtrs = cfgPtr->getImageFrames(1);  // only do one frame at a time for now
     DetectionLocationPtrVecVec detectionsVec = DetectionLocation::createDetections(cfgPtr, framePtrs);
     assert(framePtrs.size() == detectionsVec.size());
@@ -316,9 +318,10 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
       throw MPFDetectionException(cfgPtr->lastError,"failed to parse video job configuration parameters");
     }
 
-    FramePtrVec framePtrs;
-    do {                                              LOG_TRACE( "processing frames [" << framePtrs.front()->idx << "..." << framePtrs.back()->idx);
-      framePtrs = cfgPtr->getVideoFrames(1);
+    DetectionLocation::loadNetToCudaDevice(cfgPtr->cudaDeviceId);
+
+    FramePtrVec framePtrs = cfgPtr->getVideoFrames(cfgPtr->frameBatchSize);
+    do {                                                                       LOG_TRACE( "processing frames [" << framePtrs.front()->idx << "..." << framePtrs.back()->idx);
       // do something clever with frame skipping here
       // detectTrigger++;
       // detectTrigger = detectTrigger % (cfgPtr->detFrameInterval + 1);
@@ -371,7 +374,7 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
           }
                                                                                      LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
           // any detection not assigned up to this point becomes a new track
-          for(auto &det:detectionsVec[i]){                                           // make any unassigned detections into new tracks
+          for(DetectionLocationPtr &det:detectionsVec[i]){                                           // make any unassigned detections into new tracks
             det->getFeature();                                                       // start of tracks always get feature calculated
             trackPtrs.push_back(unique_ptr<Track>(new Track(cfgPtr,move(det))));     LOG_TRACE("created new track " << *(trackPtrs.back()));
           }
@@ -388,6 +391,7 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
           }
         }
       }                                                                        LOG_DEBUG( "[" << job.job_name << "] Number of tracks detected = " << trackPtrs.size());
+      framePtrs = cfgPtr->getVideoFrames(cfgPtr->frameBatchSize);
     } while(framePtrs.size() > 0);
 
     // convert any remaining active tracks to MPFVideoTracks

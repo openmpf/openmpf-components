@@ -50,7 +50,7 @@ find_package(OpenCV
   REQUIRED
   COMPONENTS
      opencv_dnn
-     opencv_video
+     opencv_videoio
      opencv_tracking
 )
 if(${OpenCV_VERSION} VERSION_LESS 3.4.7)
@@ -61,6 +61,7 @@ find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
+find_package(CUDA)
 
 find_package(GTest)
 if (${GTEST_FOUND})
@@ -68,6 +69,12 @@ if (${GTEST_FOUND})
     enable_testing()
     include(Dart)
 endif()
+
+IF(CUDA_FOUND)
+    MESSAGE( STATUS "I found CUDA !" )
+    SET(HAVE_CUDA ${CUDA_FOUND} CACHE BOOL "Set to TRUE if CUDA is found, FALSE otherwise")
+    set (CMAKE_CXX_FLAGS "-DHAVE_CUDA=1")
+ENDIF(CUDA_FOUND)
 
 set(OCV_YOLO_DETECTION_SOURCE_FILES
         Config.cpp
