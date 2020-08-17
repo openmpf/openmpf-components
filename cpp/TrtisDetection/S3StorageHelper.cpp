@@ -117,7 +117,7 @@ bool S3StorageHelper::IsValid() {
 *
 * \returns transformed dummy track containing a transformed copy of loc
 ***************************************************************************** */
-MPFVideoTrack S3StorageHelper::DummyTransform(const MPFVideoCapture &video_cap,
+MPFVideoTrack S3StorageHelper::DummyTransform(const MPFVideoCapture &video_cap, // TODO: Remove this
                                               const int frame_idx,
                                               const MPFImageLocation loc) {
   MPFVideoTrack t(frame_idx, frame_idx);
@@ -244,7 +244,7 @@ string S3StorageHelper::PutS3Object(const string &buffer,
 
   if (!res.IsSuccess()) {
     stringstream ss;
-    ss << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+    ss << "Could not put object: " << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
     throw MPFDetectionException(MPF_FILE_WRITE_ERROR, ss.str());
   }
 
@@ -257,53 +257,53 @@ string S3StorageHelper::PutS3Object(const string &buffer,
 * \param         object_name give the name/key for the object in the bucket
 * \param[out]    buffer is where the data will be returned
 * \param[in,out] metadata about the object if desired
-*
-* \returns  true if successful
 ***************************************************************************** */
-bool S3StorageHelper::GetS3Object(const string &object_name,
+void S3StorageHelper::GetS3Object(const string &object_name,
                                   string &buffer) {
   Aws::S3::Model::GetObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
   auto res = s3_client.GetObject(req);
-  if (res.IsSuccess()) {
-    // for alternative to string copy see https://github.com/aws/aws-sdk-cpp/issues/64
-    auto &data = res.GetResultWithOwnership().GetBody();
-    std::stringstream ss;
-    ss << data.rdbuf();
-    buffer = ss.str();
-    LOG4CXX_TRACE(_log, "Retrieved '" << object_name << "' of size " << buffer.length());
-    return true;
-  } else { // TODO: Refactor to throw exception.
-    auto error = res.GetError();
-    LOG4CXX_ERROR(_log, error.GetExceptionName() << ": " << error.GetMessage());
-    return false;
+
+  if (!res.IsSuccess()) {
+    stringstream ss;
+    ss << "Could not get object '" << object_name << "': "
+    << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+    throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
   }
+
+  // for alternative to string copy see https://github.com/aws/aws-sdk-cpp/issues/64
+  auto &data = res.GetResultWithOwnership().GetBody();
+  std::stringstream ss;
+  ss << data.rdbuf();
+  buffer = ss.str();
+  LOG4CXX_TRACE(_log, "Retrieved '" << object_name << "' of size " << buffer.length());
 }
 
 /******************************************************************************/
-bool S3StorageHelper::GetS3Object(const string &object_name,
+void S3StorageHelper::GetS3Object(const string &object_name,
                                   string &buffer,
                                   map<string, string> &metaData) {
   Aws::S3::Model::GetObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
   auto res = s3_client.GetObject(req);
-  if (res.IsSuccess()) {
-    // for alternative to string copy see https://github.com/aws/aws-sdk-cpp/issues/64
-    auto &data = res.GetResultWithOwnership().GetBody();
-    std::stringstream ss;
-    ss << data.rdbuf();
-    buffer = ss.str();
-    LOG4CXX_TRACE(_log, "Retrieved '" << object_name << "' of size " << buffer.length());
-    for (auto &p : res.GetResult().GetMetadata()) {
-      metaData[string(p.first.c_str(), p.first.size())] = string(p.second.c_str(), p.second.size());
-    }
-    return true;
-  } else { // TODO: Refactor to throw exception.
-    auto error = res.GetError();
-    LOG4CXX_ERROR(_log, error.GetExceptionName() << ": " << error.GetMessage());
-    return false;
+
+  if (!res.IsSuccess()) {
+    stringstream ss;
+    ss << "Could not get object '" << object_name << "': "
+    << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+    throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
+  }
+
+  // for alternative to string copy see https://github.com/aws/aws-sdk-cpp/issues/64
+  auto &data = res.GetResultWithOwnership().GetBody();
+  std::stringstream ss;
+  ss << data.rdbuf();
+  buffer = ss.str();
+  LOG4CXX_TRACE(_log, "Retrieved '" << object_name << "' of size " << buffer.length());
+  for (auto &p : res.GetResult().GetMetadata()) {
+    metaData[string(p.first.c_str(), p.first.size())] = string(p.second.c_str(), p.second.size());
   }
 }
 
@@ -311,21 +311,19 @@ bool S3StorageHelper::GetS3Object(const string &object_name,
 * Delete an object out of an S3 bucket
 *
 * \param    object_name give the name/key for the object in the bucket
-*
-* \returns  true if successful
 ***************************************************************************** */
-bool S3StorageHelper::DeleteS3Object(const string &object_name) {
+void S3StorageHelper::DeleteS3Object(const string &object_name) {
   Aws::S3::Model::DeleteObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
   auto res = s3_client.DeleteObject(req);
-  if (!res.IsSuccess()) { // TODO: Refactor to throw exception.
-    auto error = res.GetError();
-    LOG4CXX_ERROR(_log, "Could not delete object '" << object_name << "':"
-                                                    << error.GetExceptionName() << ": " << error.GetMessage());
-    return false;
+
+  if (!res.IsSuccess()) {
+    stringstream ss;
+    ss << "Could not delete object '" << object_name << "': "
+    << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+    throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
   }
-  return true;
 }
 
 /** ****************************************************************************
@@ -362,100 +360,90 @@ bool S3StorageHelper::ExistsS3Bucket(const string &bucket_name) {
 * Create a bucket in an S3 store if it does not exist
 *
 * \param    bucket_name give the name of the bucket into which to write
-*
-* \returns  true if successful
 ***************************************************************************** */
-bool S3StorageHelper::CreateS3Bucket(const string &bucket_name) {
+void S3StorageHelper::CreateS3Bucket(const string &bucket_name) {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (ExistsS3Bucket(bucket)) {
     LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' already exists");
-    return true;
   }
 
   Aws::S3::Model::CreateBucketRequest req;
   req.SetBucket(bucket.c_str());
   const auto res = s3_client.CreateBucket(req);
-  if (!res.IsSuccess()) { // TODO: Refactor to throw exception.
-    auto error = res.GetError();
-    LOG4CXX_ERROR(_log, "Unable to create bucket '" << bucket << "': "
-                                                    << error.GetExceptionName() << ": " << error.GetMessage());
-    return false;
-  }
 
-  return true;
+  if (!res.IsSuccess()) {
+    stringstream ss;
+    ss << "Unable to create bucket '" << bucket << "': "
+       << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+    throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
+  }
 }
 
 /** ****************************************************************************
 * Delete a bucket in an S3 store if it exists
 *
 * \param    bucket_name give the name of the bucket into which to write
-*
-* \returns  true if successful
 ***************************************************************************** */
-bool S3StorageHelper::DeleteS3Bucket(const string &bucket_name) {
+void S3StorageHelper::DeleteS3Bucket(const string &bucket_name) {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (!ExistsS3Bucket(bucket)) {
     LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' does not exist");
-    return true;
   }
 
   Aws::S3::Model::DeleteBucketRequest req;
   req.SetBucket(bucket.c_str());
   const auto res = s3_client.DeleteBucket(req);
-  if (!res.IsSuccess()) { // TODO: Refactor to throw exception.
-    auto error = res.GetError();
-    LOG4CXX_ERROR(_log, "Unable to delete bucket '" << bucket << "': "
-                                                    << error.GetExceptionName() << ": " << error.GetMessage());
-    return false;
-  }
 
-  return true;
+  if (!res.IsSuccess()) {
+    stringstream ss;
+    ss << "Unable to delete bucket '" << bucket << "': "
+       << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+    throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
+  }
 }
 
 /** ****************************************************************************
 * Empty a bucket in an S3 store if it exists
 *
 * \param    bucket_name give the name of the bucket into which to write
-*
-* \returns  true if successful
 ***************************************************************************** */
-bool S3StorageHelper::EmptyS3Bucket(const string &bucket_name) {
+void S3StorageHelper::EmptyS3Bucket(const string &bucket_name) {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (!ExistsS3Bucket(bucket)) {
     LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' does not exist");
-    return true;
   }
 
   Aws::S3::Model::ListObjectsV2Request req;
   req.SetBucket(bucket.c_str());
   while (true) {
-    auto res = s3_client.ListObjectsV2(req);
+    auto res = s3_client.ListObjectsV2(req); // returns some or all (up to 1,000) of the objects in a bucket
     Aws::Vector<Aws::S3::Model::Object> oList = res.GetResult().GetContents();
-    if (oList.size() > 0) {
-      Aws::S3::Model::Delete dObjs;
-      //see https://github.com/aws/aws-sdk-cpp/issues/91
-      for (auto const &o: oList) {
-        Aws::S3::Model::ObjectIdentifier oId;
-        oId.SetKey(o.GetKey());
-        dObjs.AddObjects(oId);
-      }
-      Aws::S3::Model::DeleteObjectsRequest dReq;
-      dReq.SetBucket(bucket.c_str());
-      dReq.SetDelete(dObjs);
-      auto dRes = s3_client.DeleteObjects(dReq);
-      if (!dRes.IsSuccess()) { // TODO: Refactor to throw exception.
-        auto error = res.GetError();
-        LOG4CXX_TRACE(_log, "Could delete all files in bucket '" << bucket << "': "
-                                                                 << error.GetExceptionName() << ": "
-                                                                 << error.GetMessage());
-        return false;
-      }
-    } else {
+    if (oList.empty()) {
       break;
+    }
+
+    Aws::S3::Model::Delete dObjs;
+    // see https://github.com/aws/aws-sdk-cpp/issues/91
+    for (auto const &o: oList) {
+      Aws::S3::Model::ObjectIdentifier oId;
+      oId.SetKey(o.GetKey());
+      dObjs.AddObjects(oId);
+    }
+    Aws::S3::Model::DeleteObjectsRequest dReq;
+    dReq.SetBucket(bucket.c_str());
+    dReq.SetDelete(dObjs);
+    auto dRes = s3_client.DeleteObjects(dReq);
+
+    if (!res.IsSuccess()) {
+      stringstream ss;
+      ss << "Could delete all files in bucket '" << bucket << "': "
+         << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+      throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
     }
   }
   // extra stuff needs to happen if versioned see https://docs.aws.amazon.com/AmazonS3/latest/dev/delete-or-empty-bucket.html#empty-bucket-awssdks
 #ifdef VERSIONED_S3_OBJECTS
+  // TODO: Complete me if necessary!
   Aws::S3::Model::ListObjectVersionsRequest req;
   req.SetBucket(bucket.c_str());
   auto res = cfg.s3_client.ListObjectVersions(req);
@@ -470,5 +458,4 @@ bool S3StorageHelper::EmptyS3Bucket(const string &bucket_name) {
     res = cfg.s3_client.ListObjectsVersions(req);
   }
 #endif
-  return true;
 }

@@ -81,24 +81,24 @@ class S3StorageHelper {
     string PutS3Object(const string                  &buffer,
                        const std::map<string,string> &metaData = {});         ///< write contents of string buffer out to s3 object
 
-    bool GetS3Object(const string         &object_name,
+    void GetS3Object(const string         &object_name,
                      string               &buffer);                           ///< read content of a object to a string buffer
 
-    bool GetS3Object(const string         &object_name,
+    void GetS3Object(const string         &object_name,
                      string               &buffer,
                      map<string,string>   &metaData);                         ///< read content of a object to a string buffer
 
-    bool DeleteS3Object(const string &object_name);                           ///< delete an object from an S3 bucket
+    void DeleteS3Object(const string &object_name);                           ///< delete an object from an S3 bucket
 
     bool ExistsS3Object(const string &object_name);                           ///< check if an object exists in an S3 bucket
 
     bool ExistsS3Bucket(const string &bucket_name="");                        ///< check if an S3 bucket exists
 
-    bool CreateS3Bucket(const string &bucket_name="");                        ///< create an S3 bucket if it does not exist
+    void CreateS3Bucket(const string &bucket_name="");                        ///< create an S3 bucket if it does not exist
 
-    bool DeleteS3Bucket(const string &bucket_name="");                        ///< delete an S3 bucket if it exists
+    void DeleteS3Bucket(const string &bucket_name="");                        ///< delete an S3 bucket if it exists
 
-    bool EmptyS3Bucket(const string  &bucket_name="");                        ///< remove all objects from a bucket
+    void EmptyS3Bucket(const string  &bucket_name="");                        ///< remove all objects from a bucket
 };
 
 #endif //TRTIS_DETECTION_S3STORAGEHELPER_H
