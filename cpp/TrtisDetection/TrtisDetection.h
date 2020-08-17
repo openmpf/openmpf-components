@@ -71,6 +71,7 @@ namespace MPF{
 
   class TrtisJobConfig{
     public:
+      string data_uri;                     ///< media to process
       string trtis_server;                 ///< url with port for trtis server e.g. localhost:8001
       string model_name;                   ///< name of model as served by trtis
       int model_version;                   ///< version of model (e.g. -1 for latest)
@@ -79,7 +80,7 @@ namespace MPF{
 
       TrtisJobConfig(const MPFJob &job, const log4cxx::LoggerPtr &log);
 
-      bool RequiresS3Storage();
+      bool RequiresS3Storage() const;
   };
 
   class TrtisIpIrv2CocoJobConfig : public TrtisJobConfig{
@@ -127,8 +128,8 @@ namespace MPF{
       log4cxx::LoggerPtr                 _log;            ///< log object
       map<string, vector<string>>        _class_labels;   ///< possible class labels keyed by model names
 
-      void _readClassNames(string model,
-                           string class_label_file,
+      void _readClassNames(const string model,
+                           const string class_label_file,
                            int    class_label_count);                           ///< read in class labels for a model from a file
 
       sPtrInferCtx _niGetInferContext(const TrtisJobConfig& cfg,
@@ -164,11 +165,19 @@ namespace MPF{
                                  const int                      frameIdx,
                                  MPFVideoTrackVec               &tracks);       ///< tracking using time, space and feature proximity
 
-      void _base64EncodeStopFeatures(MPFVideoTrackVec &tracks);                 ///< base64 encode "FEATURE" property of stop location
-
       void _addToTrack(MPFImageLocation &location,
                        int              frame_index,
                        MPFVideoTrack    &track);                                ///< add location to a track
+
+      map<string, string> _prepS3Meta(const string &data_uri,
+                                      const string &model,
+                                      const MPFImageLocation &loc);             ///< collect map to use as s3 meta-data
+
+      map<string, string> _prepS3Meta(const string &data_uri,
+                                      const string &model,
+                                      const MPFVideoTrack &track,
+                                      const MPFImageLocation &location,
+                                      const double &fp_ms);                     ///< collect map to use as s3 meta-data
   };
  }
 }

@@ -30,6 +30,7 @@
 #include <mutex>
 #include <chrono>
 #include <condition_variable>
+#include <iomanip>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -54,7 +55,7 @@ using namespace MPF::COMPONENT;
     MPFDetectionError e = (X);                                                \
     throw MPFDetectionException(e,                                            \
       "NVIDIA inference server error in TrtisDetection.cpp["                  \
-      + to_string(__LINE__) + "]: " + (MSG));                                  \
+      + to_string(__LINE__) + "]: " + (MSG));                                 \
 }
 
 /** ****************************************************************************
@@ -65,7 +66,7 @@ using namespace MPF::COMPONENT;
     if (!e.IsOk()) {                                                          \
       throw MPFDetectionException(MPF_OTHER_DETECTION_ERROR_TYPE,             \
         "NVIDIA inference server error in TrtisDetection.cpp["                \
-        + to_string(__LINE__) + "]: " + (MSG) + ": " + e.Message());            \
+        + to_string(__LINE__) + "]: " + (MSG) + ": " + e.Message());          \
     }                                                                         \
 }
 
@@ -73,12 +74,12 @@ using namespace MPF::COMPONENT;
 * Convenience << operator template for dumping vectors
 ***************************************************************************** */
 template<typename T>
-std::ostream& operator<< (std::ostream& out, const std::vector<T>& v) {
+std::ostream &operator<<(std::ostream &out, const std::vector<T> &v) {
   out << "{";
   size_t last = v.size() - 1;
-  for(size_t i = 0; i < v.size(); ++i){
+  for (size_t i = 0; i < v.size(); ++i) {
     out << v[i];
-    if(i != last) out << ", ";
+    if (i != last) out << ", ";
   }
   out << "}";
   return out;
@@ -88,35 +89,35 @@ std::ostream& operator<< (std::ostream& out, const std::vector<T>& v) {
 * shorthands for getting MPF properties of various types
 ***************************************************************************** */
 template<typename T>
-T get(const Properties &p, const string &k, const T def){
-  return DetectionComponentUtils::GetProperty<T>(p,k,def);
+T get(const Properties &p, const string &k, const T def) {
+  return DetectionComponentUtils::GetProperty<T>(p, k, def);
 }
 
 /** ****************************************************************************
 * Parse TRTIS setting out of MPFJob
 ***************************************************************************** */
-TrtisJobConfig::TrtisJobConfig(const MPFJob &job, const log4cxx::LoggerPtr &log) {
+TrtisJobConfig::TrtisJobConfig(const MPFJob &job, const log4cxx::LoggerPtr &log) : data_uri(job.data_uri) {
   const Properties jpr = job.job_properties;
-  trtis_server = get<string>(jpr,"TRTIS_SERVER" , "");
+  trtis_server = get<string>(jpr, "TRTIS_SERVER", "");
   if (trtis_server.empty()) {
-      char const* tmp_env = std::getenv("TRTIS_SERVER");
-      if (tmp_env != nullptr) {
-          trtis_server = std::string(tmp_env);
-      } else {
-          trtis_server = "localhost:8001";
-      }
+    char const *tmp_env = std::getenv("TRTIS_SERVER");
+    if (tmp_env != nullptr) {
+      trtis_server = std::string(tmp_env);
+    } else {
+      trtis_server = "localhost:8001";
+    }
   }
 
-  model_name    = get<string>(jpr,"MODEL_NAME"   , "ip_irv2_coco");
-  model_version = get<int>(jpr,"MODEL_VERSION", -1);
-  maxInferConcurrency = get<int>(jpr,"MAX_INFER_CONCURRENCY", 5);
+  model_name = get<string>(jpr, "MODEL_NAME", "ip_irv2_coco");
+  model_version = get<int>(jpr, "MODEL_VERSION", -1);
+  maxInferConcurrency = get<int>(jpr, "MAX_INFER_CONCURRENCY", 5);
 
-  string s3_results_bucket_url = get<string>(jpr, "S3_RESULTS_BUCKET" ,"");
+  string s3_results_bucket_url = get<string>(jpr, "S3_RESULTS_BUCKET", "");
   if (!s3_results_bucket_url.empty()) {
     LOG4CXX_TRACE(log, "Configuring S3 Client");
 
-    string accessKey = get<string>(jpr, "S3_ACCESS_KEY","");
-    string secretKey = get<string>(jpr, "S3_SECRET_KEY","");
+    string accessKey = get<string>(jpr, "S3_ACCESS_KEY", "");
+    string secretKey = get<string>(jpr, "S3_SECRET_KEY", "");
 
     s3StorageHelper = S3StorageHelper(log, s3_results_bucket_url, accessKey, secretKey);
 
@@ -131,7 +132,7 @@ TrtisJobConfig::TrtisJobConfig(const MPFJob &job, const log4cxx::LoggerPtr &log)
 /** ****************************************************************************
 * Determine if AWS S3 storage is required
 ***************************************************************************** */
-bool TrtisJobConfig::RequiresS3Storage() {
+bool TrtisJobConfig::RequiresS3Storage() const {
   return s3StorageHelper.IsValid();
 }
 
@@ -142,67 +143,65 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
                                                    const log4cxx::LoggerPtr &log,
                                                    const size_t image_width,
                                                    const size_t image_height)
-  :TrtisJobConfig(job, log),
-  image_width(image_width),
-  image_height(image_height),
-  image_x_max(image_width-1),
-  image_y_max(image_height-1),
-  userBBoxNorm({0.0f,0.0f,1.0f,1.0f})
-{
+        : TrtisJobConfig(job, log),
+          image_width(image_width),
+          image_height(image_height),
+          image_x_max(image_width - 1),
+          image_y_max(image_height - 1),
+          userBBoxNorm({0.0f, 0.0f, 1.0f, 1.0f}) {
   const Properties jpr = job.job_properties;
-  userFeatEnabled    = get<bool>(jpr, "USER_FEATURE_ENABLE",false);
-  frameFeatEnabled   = get<bool>(jpr,"FRAME_FEATURE_ENABLE",true);
-  classFeatEnabled   = get<bool>(jpr,"CLASS_FEATURE_ENABLE",true);
-  extraFeatEnabled   = get<bool>(jpr,"EXTRA_FEATURE_ENABLE",true);
-  clientScaleEnabled = get<bool>(jpr,"CLIENT_PRESCALING_ENABLE",true);
-  recognitionEnroll  = get<bool>(jpr,"RECOGNITION_ENROLL_ENABLE",false);
-  if(userFeatEnabled) {
-    userBBox_x      = get<int64_t>(jpr, "USER_FEATURE_X_LEFT_UPPER",0);
-    userBBox_y      = get<int64_t>(jpr, "USER_FEATURE_Y_LEFT_UPPER",0);
-    userBBox_width  = get<int64_t>(jpr, "USER_FEATURE_WIDTH" ,image_width);
+  userFeatEnabled = get<bool>(jpr, "USER_FEATURE_ENABLE", false);
+  frameFeatEnabled = get<bool>(jpr, "FRAME_FEATURE_ENABLE", true);
+  classFeatEnabled = get<bool>(jpr, "CLASS_FEATURE_ENABLE", true);
+  extraFeatEnabled = get<bool>(jpr, "EXTRA_FEATURE_ENABLE", true);
+  clientScaleEnabled = get<bool>(jpr, "CLIENT_PRESCALING_ENABLE", true);
+  recognitionEnroll = get<bool>(jpr, "RECOGNITION_ENROLL_ENABLE", false);
+  if (userFeatEnabled) {
+    userBBox_x = get<int64_t>(jpr, "USER_FEATURE_X_LEFT_UPPER", 0);
+    userBBox_y = get<int64_t>(jpr, "USER_FEATURE_Y_LEFT_UPPER", 0);
+    userBBox_width = get<int64_t>(jpr, "USER_FEATURE_WIDTH", image_width);
     if (userBBox_width <= 0) {
-        userBBox_width = image_width;
+      userBBox_width = image_width;
     }
-    userBBox_height = get<int64_t>(jpr, "USER_FEATURE_HEIGHT",image_height);
+    userBBox_height = get<int64_t>(jpr, "USER_FEATURE_HEIGHT", image_height);
     if (userBBox_height <= 0) {
-        userBBox_height = image_height;
+      userBBox_height = image_height;
     }
     userBBox.push_back(userBBox_y);
     userBBox.push_back(userBBox_x);
     userBBox.push_back(userBBox_y + userBBox_height - 1);
-    userBBox.push_back(userBBox_x + userBBox_width  - 1);
-    if(   userBBox[0] < 0 || userBBox[0] > image_y_max
-       || userBBox[2] < 0 || userBBox[2] > image_y_max
-       || userBBox[1] < 0 || userBBox[1] > image_x_max
-       || userBBox[3] < 0 || userBBox[3] > image_x_max){
+    userBBox.push_back(userBBox_x + userBBox_width - 1);
+    if (userBBox[0] < 0 || userBBox[0] > image_y_max
+        || userBBox[2] < 0 || userBBox[2] > image_y_max
+        || userBBox[1] < 0 || userBBox[1] > image_x_max
+        || userBBox[3] < 0 || userBBox[3] > image_x_max) {
       THROW_TRTISEXCEPTION(MPF_INVALID_PROPERTY, "Bad USER_FEATURE BBOX specification");
     }
-    userBBoxNorm[0] = ((float)userBBox[0]) / image_y_max;
-    userBBoxNorm[1] = ((float)userBBox[1]) / image_x_max;
-    userBBoxNorm[2] = ((float)userBBox[2]) / image_y_max;
-    userBBoxNorm[3] = ((float)userBBox[3]) / image_x_max;
+    userBBoxNorm[0] = ((float) userBBox[0]) / image_y_max;
+    userBBoxNorm[1] = ((float) userBBox[1]) / image_x_max;
+    userBBoxNorm[2] = ((float) userBBox[2]) / image_y_max;
+    userBBoxNorm[3] = ((float) userBBox[3]) / image_x_max;
   }
 
-  confThreshold      = get<float>(jpr, "CONFIDENCE_THRESHOLD", 0.0);
+  confThreshold = get<float>(jpr, "CONFIDENCE_THRESHOLD", 0.0);
   extraConfThreshold = get<float>(jpr, "EXTRA_CONFIDENCE_THRESHOLD", 0.0);
-  maxFeatureGap      = get<float> (jpr,"TRACK_MAX_FEATURE_GAP", 0.25);
-  maxFrameGap        = get<size_t>(jpr,"TRACK_MAX_FRAME_GAP", 30);
-  maxSpaceGap        = get<float> (jpr,"TRACK_MAX_SPACE_GAP", 0.3);
+  maxFeatureGap = get<float>(jpr, "TRACK_MAX_FEATURE_GAP", 0.25);
+  maxFrameGap = get<size_t>(jpr, "TRACK_MAX_FRAME_GAP", 30);
+  maxSpaceGap = get<float>(jpr, "TRACK_MAX_SPACE_GAP", 0.3);
 
-  size_t frameDiagSq = image_width*image_width + image_height*image_height;
-  maxSpaceGapPxSq    = maxSpaceGap * maxSpaceGap * frameDiagSq;
-
+  size_t frameDiagSq = image_width * image_width + image_height * image_height;
+  maxSpaceGapPxSq = maxSpaceGap * maxSpaceGap * frameDiagSq;
 }
 
 /** ****************************************************************************
 * While more of a FEATURE detector type, 'CLASS' seems to fit
 ***************************************************************************** */
-string TrtisDetection::GetDetectionType(){
+string TrtisDetection::GetDetectionType() {
   return "CLASS";
 }
 
 /******************************************************************************/
-bool TrtisDetection::Close(){
+bool TrtisDetection::Close() {
   return true;
 }
 
@@ -214,30 +213,30 @@ bool TrtisDetection::Close(){
 * \param class_label_file   filename from which to read class labels
 * \param class_label_count  highest class_id/line number (as an integrity check)
 ***************************************************************************** */
-void TrtisDetection::_readClassNames(string model,
-                                     string class_label_file,
-                                     int    class_label_count) {
+void TrtisDetection::_readClassNames(const string model,
+                                     const string class_label_file,
+                                     int class_label_count) {
   ifstream fp(class_label_file);
-  if(!fp.is_open()){
+  if (!fp.is_open()) {
     THROW_TRTISEXCEPTION(MPF_INVALID_PROPERTY, "Could not read class label file: " + class_label_file);
   }
 
   vector<string> class_labels;
   class_labels.reserve(class_label_count);
   string line;
-  while (getline(fp, line)){
-    if(line.length()){ class_labels.push_back(line); }
+  while (getline(fp, line)) {
+    if (line.length()) { class_labels.push_back(line); }
   }
   fp.close();
 
-  if(class_labels.size() != class_label_count){
+  if (class_labels.size() != class_label_count) {
     THROW_TRTISEXCEPTION(MPF_COULD_NOT_READ_DATAFILE,
-                        "Read class label count of "
-                        + to_string(class_labels.size()) + " in file '"
-                        + class_label_file
-                        + "' does not match expected count of "
-                        + to_string(class_label_count));
-  }else{
+                         "Read class label count of "
+                         + to_string(class_labels.size()) + " in file '"
+                         + class_label_file
+                         + "' does not match expected count of "
+                         + to_string(class_label_count));
+  } else {
     _class_labels[model] = class_labels;
   }
 }
@@ -252,20 +251,24 @@ void TrtisDetection::_readClassNames(string model,
 *
 * \returns  A continuous RGB data vector ready for inference server
 ***************************************************************************** */
-BytVec TrtisDetection::_cvRGBBytes(const cv::Mat &img, LngVec& shape){
+BytVec TrtisDetection::_cvRGBBytes(const cv::Mat &img, LngVec &shape) {
   cv::Mat rgbImg;
-  if(      img.channels() == 3){
-     cv::cvtColor(img, rgbImg, cv::COLOR_BGR2RGB);                              LOG4CXX_TRACE(_log, "Converted 3 channel BGR image to RGB");
-  }else if(img.channels() == 4){
-     cv::cvtColor(img, rgbImg, cv::COLOR_BGRA2RGB,3);                           LOG4CXX_TRACE(_log, "Converted 4 channel BGRA image to RGB");
-  }else if(img.channels() == 1){
-     cv::cvtColor(img, rgbImg, cv::COLOR_GRAY2RGB);                             LOG4CXX_TRACE(_log, "Converted 1 channel GRAY image to RGB");
-  }else{
+  if (img.channels() == 3) {
+    cv::cvtColor(img, rgbImg, cv::COLOR_BGR2RGB);
+    LOG4CXX_TRACE(_log, "Converted 3 channel BGR image to RGB");
+  } else if (img.channels() == 4) {
+    cv::cvtColor(img, rgbImg, cv::COLOR_BGRA2RGB, 3);
+    LOG4CXX_TRACE(_log, "Converted 4 channel BGRA image to RGB");
+  } else if (img.channels() == 1) {
+    cv::cvtColor(img, rgbImg, cv::COLOR_GRAY2RGB);
+    LOG4CXX_TRACE(_log, "Converted 1 channel GRAY image to RGB");
+  } else {
     THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED, "Image could not be converted to RGB.");
   }
 
-  if(rgbImg.type() != CV_8UC3){
-    rgbImg.convertTo(rgbImg, CV_8UC3);                                          LOG4CXX_TRACE(_log, "Converted Image to CV_8U precision");
+  if (rgbImg.type() != CV_8UC3) {
+    rgbImg.convertTo(rgbImg, CV_8UC3);
+    LOG4CXX_TRACE(_log, "Converted Image to CV_8U precision");
   }
 
   // return continuous chunk of image data in a byte vector
@@ -273,17 +276,18 @@ BytVec TrtisDetection::_cvRGBBytes(const cv::Mat &img, LngVec& shape){
   size_t img_byte_size = rgbImg.total() * rgbImg.elemSize();
   data.resize(img_byte_size);
 
-  if(rgbImg.isContinuous()){
+  if (rgbImg.isContinuous()) {
     memcpy(&(data[0]), rgbImg.datastart, img_byte_size);
-  }else{                                                                        LOG4CXX_TRACE(_log, "Converting image to have continuous data allocation");
+  } else {
+    LOG4CXX_TRACE(_log, "Converting image to have continuous data allocation");
     size_t pos = 0;
     size_t row_byte_size = rgbImg.cols * rgbImg.elemSize();
-    for(int r = 0; r < rgbImg.rows; ++r){
+    for (int r = 0; r < rgbImg.rows; ++r) {
       memcpy(&(data[pos]), rgbImg.ptr<uint8_t>(r), row_byte_size);
       pos += row_byte_size;
     }
   }
-  shape = {rgbImg.rows, rgbImg.cols ,3};
+  shape = {rgbImg.rows, rgbImg.cols, 3};
   return data;
 }
 
@@ -301,22 +305,23 @@ BytVec TrtisDetection::_cvRGBBytes(const cv::Mat &img, LngVec& shape){
 cv::Mat TrtisDetection::_cvResize(const cv::Mat &img,
                                   double &scaleFactor,
                                   const size_t target_width,
-                                  const size_t target_height){
+                                  const size_t target_height) {
 
-  if(img.cols > img.rows){                          // landscape image
-    scaleFactor = (float)target_height / img.rows;
-    if(scaleFactor * img.cols > target_width){
-      scaleFactor = (float)target_width / img.cols;
+  if (img.cols > img.rows) {                          // landscape image
+    scaleFactor = (float) target_height / img.rows;
+    if (scaleFactor * img.cols > target_width) {
+      scaleFactor = (float) target_width / img.cols;
     }
-  }else{                                             // portrait image
-    scaleFactor = (float)target_height / img.cols;
-    if(scaleFactor * img.rows > target_width){
-      scaleFactor = (float)target_width / img.rows;
+  } else {                                             // portrait image
+    scaleFactor = (float) target_height / img.cols;
+    if (scaleFactor * img.rows > target_width) {
+      scaleFactor = (float) target_width / img.rows;
     }
   }
   cv::Mat scaledImg;
-  cv::resize(img,scaledImg,cv::Size(),scaleFactor,scaleFactor,cv::INTER_CUBIC);
-                                                                                LOG4CXX_TRACE(_log, "Scaled image by factor " << scaleFactor << " from ["<< img.cols << "," << img.rows << "] to [" << scaledImg.cols << "," << scaledImg.rows << "]");
+  cv::resize(img, scaledImg, cv::Size(), scaleFactor, scaleFactor, cv::INTER_CUBIC);
+  LOG4CXX_TRACE(_log, "Scaled image by factor " << scaleFactor << " from [" << img.cols << "," << img.rows << "] to ["
+                                                << scaledImg.cols << "," << scaledImg.rows << "]");
   return scaledImg;
 }
 
@@ -332,35 +337,39 @@ cv::Mat TrtisDetection::_cvResize(const cv::Mat &img,
 * \note  shape and imgDat need to persist till inference call
 ***************************************************************************** */
 void TrtisDetection::_ip_irv2_coco_prepImageData(
-                                        const TrtisIpIrv2CocoJobConfig &cfg,
-                                        const cv::Mat                  &img,
-                                        const sPtrInferCtx             &ctx,
-                                        LngVec                         &shape,
-                                        BytVec                         &imgDat){
-  double scaleFactor=1.0;                                                       LOG4CXX_TRACE(_log, "Preparing image data for inferencing");
-  if(cfg.clientScaleEnabled){
-    imgDat = _cvRGBBytes(_cvResize(img,scaleFactor,1024,600), shape);           LOG4CXX_TRACE(_log, "using client side image scaling");
-  }else{
-    imgDat = _cvRGBBytes(img, shape);                                           LOG4CXX_TRACE(_log, "using TRTIS model's image scaling");
+        const TrtisIpIrv2CocoJobConfig &cfg,
+        const cv::Mat &img,
+        const sPtrInferCtx &ctx,
+        LngVec &shape,
+        BytVec &imgDat) {
+  double scaleFactor = 1.0;
+  LOG4CXX_TRACE(_log, "Preparing image data for inferencing");
+  if (cfg.clientScaleEnabled) {
+    imgDat = _cvRGBBytes(_cvResize(img, scaleFactor, 1024, 600), shape);
+    LOG4CXX_TRACE(_log, "using client side image scaling");
+  } else {
+    imgDat = _cvRGBBytes(img, shape);
+    LOG4CXX_TRACE(_log, "using TRTIS model's image scaling");
   }
 
   // Initialize the inputs with the data.
   sPtrInferCtxInp inImgDat, inBBox;
   NI_CHECK_OK(ctx->GetInput("image_input", &inImgDat),
-               "unable to get image_input");
-  NI_CHECK_OK(ctx->GetInput("bbox_input",  &inBBox),
+              "unable to get image_input");
+  NI_CHECK_OK(ctx->GetInput("bbox_input", &inBBox),
               "unable to get bbox_input");
   NI_CHECK_OK(inImgDat->Reset(),
               "unable to reset image_input");
-  NI_CHECK_OK(  inBBox->Reset(),
+  NI_CHECK_OK(inBBox->Reset(),
               "unable to reset bbox_input");
   NI_CHECK_OK(inImgDat->SetShape(shape),
               "failed setting image_input shape");
   NI_CHECK_OK(inImgDat->SetRaw(imgDat),
               "failed setting image_input");
-  NI_CHECK_OK(inBBox->SetRaw((uint8_t*)(&(cfg.userBBoxNorm[0])),
-                                          cfg.userBBoxNorm.size()*sizeof(float)),
-              "failed setting bbox_input");                                     LOG4CXX_TRACE(_log, "Prepped data for inferencing");
+  NI_CHECK_OK(inBBox->SetRaw((uint8_t *) (&(cfg.userBBoxNorm[0])),
+                             cfg.userBBoxNorm.size() * sizeof(float)),
+              "failed setting bbox_input");
+  LOG4CXX_TRACE(_log, "Prepped data for inferencing");
 }
 
 /** ****************************************************************************
@@ -371,7 +380,7 @@ void TrtisDetection::_ip_irv2_coco_prepImageData(
 * \returns  shared pointer to an inferencing context
 *           to use for inferencing requests
 ***************************************************************************** */
-sPtrInferCtx TrtisDetection::_niGetInferContext(const TrtisJobConfig& cfg, int ctxId) {
+sPtrInferCtx TrtisDetection::_niGetInferContext(const TrtisJobConfig &cfg, int ctxId) {
   uPtrInferCtx ctx;
   NI_CHECK_OK(nic::InferGrpcContext::Create(&ctx, ctxId, cfg.trtis_server, cfg.model_name, cfg.model_version),
               "unable to create TRTIS inference context");
@@ -381,7 +390,7 @@ sPtrInferCtx TrtisDetection::_niGetInferContext(const TrtisJobConfig& cfg, int c
   NI_CHECK_OK(nic::InferContext::Options::Create(&options),
               "failed initializing TRTIS inference options");
   options->SetBatchSize(1);
-  for (const auto& output : ctx->Outputs()) {
+  for (const auto &output : ctx->Outputs()) {
     options->AddRawResult(output);
   }
   NI_CHECK_OK(ctx->SetRunOptions(*options),
@@ -399,12 +408,11 @@ sPtrInferCtx TrtisDetection::_niGetInferContext(const TrtisJobConfig& cfg, int c
 *
 * \returns  map of context ids to shared pointers to inferencing contexts
 ***************************************************************************** */
-unordered_map<int, sPtrInferCtx> TrtisDetection::_niGetInferContexts(const TrtisJobConfig& cfg)
-{
+unordered_map<int, sPtrInferCtx> TrtisDetection::_niGetInferContexts(const TrtisJobConfig &cfg) {
   unordered_map<int, sPtrInferCtx> ctxMap;
 
   nic::Error err;
-  for(int i=0; i < cfg.maxInferConcurrency; i++){
+  for (int i = 0; i < cfg.maxInferConcurrency; i++) {
     ctxMap[i] = std::move(_niGetInferContext(cfg, i));
   }
 
@@ -418,23 +426,38 @@ unordered_map<int, sPtrInferCtx> TrtisDetection::_niGetInferContexts(const Trtis
 *
 * \returns  string descriptor of enum value
 ***************************************************************************** */
-string TrtisDetection::_niType2Str(ni::DataType dt){
-  switch(dt){
-    case ni::TYPE_INVALID: return "INVALID";
-    case ni::TYPE_BOOL:    return "BOOL";
-    case ni::TYPE_UINT8:   return "UINT8";
-    case ni::TYPE_UINT16:  return "UINT16";
-    case ni::TYPE_UINT32:  return "UINT32";
-    case ni::TYPE_UINT64:  return "UINT64";
-    case ni::TYPE_INT8:    return "INT8";
-    case ni::TYPE_INT16:   return "INT16";
-    case ni::TYPE_INT32:   return "INT32";
-    case ni::TYPE_INT64:   return "INT64";
-    case ni::TYPE_FP16:    return "FP16";
-    case ni::TYPE_FP32:    return "FP32";
-    case ni::TYPE_FP64:    return "FP64";
-    case ni::TYPE_STRING:  return "STRING";
-    default:               return "UNKNOWN";
+string TrtisDetection::_niType2Str(ni::DataType dt) {
+  switch (dt) {
+    case ni::TYPE_INVALID:
+      return "INVALID";
+    case ni::TYPE_BOOL:
+      return "BOOL";
+    case ni::TYPE_UINT8:
+      return "UINT8";
+    case ni::TYPE_UINT16:
+      return "UINT16";
+    case ni::TYPE_UINT32:
+      return "UINT32";
+    case ni::TYPE_UINT64:
+      return "UINT64";
+    case ni::TYPE_INT8:
+      return "INT8";
+    case ni::TYPE_INT16:
+      return "INT16";
+    case ni::TYPE_INT32:
+      return "INT32";
+    case ni::TYPE_INT64:
+      return "INT64";
+    case ni::TYPE_FP16:
+      return "FP16";
+    case ni::TYPE_FP32:
+      return "FP32";
+    case ni::TYPE_FP64:
+      return "FP64";
+    case ni::TYPE_STRING:
+      return "STRING";
+    default:
+      return "UNKNOWN";
   }
 }
 
@@ -448,23 +471,23 @@ string TrtisDetection::_niType2Str(ni::DataType dt){
 *
 * \returns  an openCV matrix corresponding to the tensor
 ***************************************************************************** */
-cv::Mat TrtisDetection::_niResult2CVMat(const size_t          batch_idx,
-                                        const string          name,
-                                        StrUPtrInferCtxResMap &results){
+cv::Mat TrtisDetection::_niResult2CVMat(const size_t batch_idx,
+                                        const string name,
+                                        StrUPtrInferCtxResMap &results) {
 
   // get raw data pointer and size
-  const uint8_t* ptrRaw;
+  const uint8_t *ptrRaw;
   size_t cntRaw;
   uPtrInferCtxRes *res = &results.at(name);
-  NI_CHECK_OK((*res)->GetRaw(batch_idx,&ptrRaw,&cntRaw),
+  NI_CHECK_OK((*res)->GetRaw(batch_idx, &ptrRaw, &cntRaw),
               "Failed to get inference server result raw data");
 
   // get raw data shape
   LngVec shape;
   NI_CHECK_OK((*res)->GetRawShape(&shape),
-    "Failed to get inference server result shape");
+              "Failed to get inference server result shape");
   int ndim = shape.size();
-  if(ndim < 2){ // force matrix for vector with single col?!
+  if (ndim < 2) { // force matrix for vector with single col?!
     ndim = 2;
     shape.push_back(1);
   }
@@ -472,24 +495,45 @@ cv::Mat TrtisDetection::_niResult2CVMat(const size_t          batch_idx,
   // calculate num elements from shape
   IntVec iShape;
   size_t numElementsFromShape = 1;
-  for (const auto& d: shape){
+  for (const auto &d: shape) {
     numElementsFromShape *= d;
-    iShape.push_back((int)d);
+    iShape.push_back((int) d);
   }
 
   // determine opencv type and calculate num elements from raw size and data type
   size_t cvType;
   size_t sizeofEl;
   ni::DataType niType = (*res)->GetOutput()->DType();
-  switch(niType){
-    case ni::TYPE_UINT8:  cvType = CV_8UC(ndim-1);  sizeofEl=sizeof(uint8_t);   break;
-    case ni::TYPE_UINT16: cvType = CV_16UC(ndim-1); sizeofEl=sizeof(uint16_t);  break;
-    case ni::TYPE_INT8:   cvType = CV_8SC(ndim-1);  sizeofEl=sizeof(int8_t);    break;
-    case ni::TYPE_INT16:  cvType = CV_16SC(ndim-1); sizeofEl=sizeof(int16_t);   break;
-    case ni::TYPE_INT32:  cvType = CV_32SC(ndim-1); sizeofEl=sizeof(int32_t);   break;
-    case ni::TYPE_FP32:   cvType = CV_32FC(ndim-1); sizeofEl=sizeof(float);     break;
-    case ni::TYPE_FP64:   cvType = CV_64FC(ndim-1); sizeofEl=sizeof(double);    break;
-    // OpenCV does not support these types ?!
+  switch (niType) {
+    case ni::TYPE_UINT8:
+      cvType = CV_8UC(ndim - 1);
+      sizeofEl = sizeof(uint8_t);
+      break;
+    case ni::TYPE_UINT16:
+      cvType = CV_16UC(ndim - 1);
+      sizeofEl = sizeof(uint16_t);
+      break;
+    case ni::TYPE_INT8:
+      cvType = CV_8SC(ndim - 1);
+      sizeofEl = sizeof(int8_t);
+      break;
+    case ni::TYPE_INT16:
+      cvType = CV_16SC(ndim - 1);
+      sizeofEl = sizeof(int16_t);
+      break;
+    case ni::TYPE_INT32:
+      cvType = CV_32SC(ndim - 1);
+      sizeofEl = sizeof(int32_t);
+      break;
+    case ni::TYPE_FP32:
+      cvType = CV_32FC(ndim - 1);
+      sizeofEl = sizeof(float);
+      break;
+    case ni::TYPE_FP64:
+      cvType = CV_64FC(ndim - 1);
+      sizeofEl = sizeof(double);
+      break;
+      // OpenCV does not support these types ?!
     case ni::TYPE_UINT32: //cvType = CV_32UC(ndim-1); sizeofEl=sizeof(uint32_t);  break;
     case ni::TYPE_UINT64: //cvType = CV_64UC(ndim-1); sizeofEl=sizeof(uint64_t);  break;
     case ni::TYPE_INT64:  //cvType = CV_64SC(ndim-1); sizeofEl=sizeof(int64_t);   break;
@@ -497,14 +541,13 @@ cv::Mat TrtisDetection::_niResult2CVMat(const size_t          batch_idx,
     case ni::TYPE_BOOL:
     case ni::TYPE_STRING:
     case ni::TYPE_INVALID:
-    default:
-      THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
-                           "Unsupported data_type " + _niType2Str(niType) + " in cv:Mat conversion");
+    default: THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
+                                  "Unsupported data_type " + _niType2Str(niType) + " in cv:Mat conversion");
   }
 
-  if( cntRaw/sizeofEl == numElementsFromShape){
-    return cv::Mat(ndim, iShape.data(), cvType, (void*)ptrRaw);
-  }else{
+  if (cntRaw / sizeofEl == numElementsFromShape) {
+    return cv::Mat(ndim, iShape.data(), cvType, (void *) ptrRaw);
+  } else {
     stringstream ss("Shape ");
     ss << shape << " and data-type " << _niType2Str(niType) << "are inconsistent with buffer size " << cntRaw;
     THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED, ss.str());
@@ -518,29 +561,29 @@ cv::Mat TrtisDetection::_niResult2CVMat(const size_t          batch_idx,
 ***************************************************************************** */
 bool TrtisDetection::Init() {
 
-    // Determine where the executable is running
-    string run_dir = GetRunDirectory();
-    if(run_dir.empty()){ run_dir = "."; }
+  // Determine where the executable is running
+  string run_dir = GetRunDirectory();
+  if (run_dir.empty()) { run_dir = "."; }
 
-    string plugin_path = run_dir + "/TrtisDetection";
-    string config_path = plugin_path + "/config";
-    string models_path = plugin_path + "/models";
+  string plugin_path = run_dir + "/TrtisDetection";
+  string config_path = plugin_path + "/config";
+  string models_path = plugin_path + "/models";
 
-    // Configure logger
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
-    _log = log4cxx::Logger::getLogger("TrtisDetection");
+  // Configure logger
+  log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
+  _log = log4cxx::Logger::getLogger("TrtisDetection");
 
-    try {
-      // Read class labels for model(s)
-      _readClassNames("ip_irv2_coco", models_path + "/ip_irv2_coco/ip_irv2_coco.labels", 90);
-    }catch(const exception &ex){
-        LOG4CXX_ERROR(_log, "Init failed: " << ex.what());
-        return false;
-    }                                                                           LOG4CXX_DEBUG(_log, "Plugin path: " << plugin_path);
+  try {
+    // Read class labels for model(s)
+    _readClassNames("ip_irv2_coco", models_path + "/ip_irv2_coco/ip_irv2_coco.labels", 90);
+  } catch (const exception &ex) {
+    LOG4CXX_ERROR(_log, "Init failed: " << ex.what());
+    return false;
+  }
+  LOG4CXX_DEBUG(_log, "Plugin path: " << plugin_path);
 
-    return true;
+  return true;
 }
-
 
 
 /** ****************************************************************************
@@ -563,80 +606,96 @@ bool TrtisDetection::Init() {
 *
 ***************************************************************************** */
 void TrtisDetection::_ip_irv2_coco_getDetections(
-                                 const TrtisIpIrv2CocoJobConfig &cfg,
-                                 StrUPtrInferCtxResMap          &res,
-                                 MPFImageLocationVec            &locations) {
+        const TrtisIpIrv2CocoJobConfig &cfg,
+        StrUPtrInferCtxResMap &res,
+        MPFImageLocationVec &locations) {
 
-  if(cfg.frameFeatEnabled){                                                     LOG4CXX_TRACE(_log, "processing global feature");
-    cv::Mat g_feat    = _niResult2CVMat(0,"G_Feat"   ,res);
-    cv::normalize(g_feat,g_feat,1,0,cv::NORM_L2);                               LOG4CXX_TRACE(_log, "normalized global feature");
+  if (cfg.frameFeatEnabled) {
+    LOG4CXX_TRACE(_log, "processing global feature");
+    cv::Mat g_feat = _niResult2CVMat(0, "G_Feat", res);
+    cv::normalize(g_feat, g_feat, 1, 0, cv::NORM_L2);
+    LOG4CXX_TRACE(_log, "normalized global feature");
     locations.push_back(MPFImageLocation(
-      0 ,0 ,cfg.image_x_max ,cfg.image_y_max, -1.0,
-      {{"FEATURE-TYPE","FRAME"},
-       {"FEATURE",string((const char*)g_feat.data,
-                         g_feat.total() * g_feat.elemSize())}}));               LOG4CXX_TRACE(_log, "added global feature to locations");
+            0, 0, cfg.image_x_max, cfg.image_y_max, -1.0,
+            {{"FEATURE-TYPE", "FRAME"},
+             {"FEATURE",      string((const char *) g_feat.data,
+                                     g_feat.total() * g_feat.elemSize())}}));
+    LOG4CXX_TRACE(_log, "added global feature to locations");
   }
 
-  if(cfg.userFeatEnabled){                                                      LOG4CXX_TRACE(_log, "processing user bbox specified feature");
-    cv::Mat m_feat    = _niResult2CVMat(0,"M_Feat"   ,res);
-    cv::normalize(m_feat,m_feat,1,0,cv::NORM_L2);                               LOG4CXX_TRACE(_log, "normalized user bbox specified feature");
+  if (cfg.userFeatEnabled) {
+    LOG4CXX_TRACE(_log, "processing user bbox specified feature");
+    cv::Mat m_feat = _niResult2CVMat(0, "M_Feat", res);
+    cv::normalize(m_feat, m_feat, 1, 0, cv::NORM_L2);
+    LOG4CXX_TRACE(_log, "normalized user bbox specified feature");
     locations.push_back(MPFImageLocation(
-      cfg.userBBox_x,cfg.userBBox_y,cfg.userBBox_width ,cfg.userBBox_height,
-     -1.0,
-      {{"FEATURE-TYPE","USER"},
-       {"FEATURE",string((const char*)m_feat.data,
-                         m_feat.total() * m_feat.elemSize())}}));               LOG4CXX_TRACE(_log, "added user bbox feature to locations");
+            cfg.userBBox_x, cfg.userBBox_y, cfg.userBBox_width, cfg.userBBox_height,
+            -1.0,
+            {{"FEATURE-TYPE", "USER"},
+             {"FEATURE",      string((const char *) m_feat.data,
+                                     m_feat.total() * m_feat.elemSize())}}));
+    LOG4CXX_TRACE(_log, "added user bbox feature to locations");
   }
 
-  if(cfg.classFeatEnabled){                                                     LOG4CXX_TRACE(_log, "processing detected object features with classifications");
-    cv::Mat d_bboxes  = _niResult2CVMat(0,"D_BBoxes" ,res);
-    cv::Mat d_classes = _niResult2CVMat(0,"D_Classes",res);
-    cv::Mat d_scores  = _niResult2CVMat(0,"D_Scores" ,res);
-    cv::Mat d_feats   = _niResult2CVMat(0,"D_Feats"  ,res);
+  if (cfg.classFeatEnabled) {
+    LOG4CXX_TRACE(_log, "processing detected object features with classifications");
+    cv::Mat d_bboxes = _niResult2CVMat(0, "D_BBoxes", res);
+    cv::Mat d_classes = _niResult2CVMat(0, "D_Classes", res);
+    cv::Mat d_scores = _niResult2CVMat(0, "D_Scores", res);
+    cv::Mat d_feats = _niResult2CVMat(0, "D_Feats", res);
     auto classes = _class_labels["ip_irv2_coco"];
-    for(int r = 0; r < d_feats.rows; r++){
-      float conf = d_scores.at<float>(r,0);
-      if(conf >= cfg.confThreshold){
-        cv::normalize(d_feats.row(r),d_feats.row(r),1,0,cv::NORM_L2);
-        int class_id = ((int)d_classes.at<float>(r,0));
+    for (int r = 0; r < d_feats.rows; r++) {
+      float conf = d_scores.at<float>(r, 0);
+      if (conf >= cfg.confThreshold) {
+        cv::normalize(d_feats.row(r), d_feats.row(r), 1, 0, cv::NORM_L2);
+        int class_id = ((int) d_classes.at<float>(r, 0));
         string label = (class_id <= 90) ? classes[class_id - 1] : "unknown";
         locations.push_back(MPFImageLocation(
-           d_bboxes.at<float>(r,1) * (cfg.image_x_max)
-          ,d_bboxes.at<float>(r,0) * (cfg.image_y_max)
-          ,(d_bboxes.at<float>(r,3)-d_bboxes.at<float>(r,1))*(cfg.image_x_max)
-          ,(d_bboxes.at<float>(r,2)-d_bboxes.at<float>(r,0))*(cfg.image_y_max)
-          ,conf
-          ,{{"FEATURE-TYPE","CLASS"},
-            {"FEATURE",string((const char*)d_feats.ptr(r),
-                              d_feats.cols * d_feats.elemSize())},
-            {"CLASSIFICATION", label }}));                                      LOG4CXX_TRACE(_log, "detected object with class[" << class_id << "] = " << label << " with confidence(" << locations.back().confidence << ")" << " at [" << locations.back().x_left_upper << "," << locations.back().y_left_upper << ","  << locations.back().width        << "," << locations.back().height << "]");
-      }
-    }                                                                           LOG4CXX_TRACE(_log, "added detected object features to locations");
-  }
-
-  if(cfg.extraFeatEnabled){                                                     LOG4CXX_TRACE(_log, "processing extra detected objects without classifications");
-    cv::Mat e_bboxes  = _niResult2CVMat(0,"E_BBoxes" ,res);
-    cv::Mat e_scores  = _niResult2CVMat(0,"E_Scores" ,res);
-    cv::Mat e_feats   = _niResult2CVMat(0,"E_Feats"  ,res);
-    for(int r = 0; r < e_feats.rows; r++){
-      float conf = e_scores.at<float>(r,0);
-      if(conf >= cfg.extraConfThreshold){
-        cv::normalize(e_feats.row(r),e_feats.row(r),1,0,cv::NORM_L2);
-        locations.push_back(MPFImageLocation(
-           e_bboxes.at<float>(r,1) * cfg.image_x_max
-          ,e_bboxes.at<float>(r,0) * cfg.image_y_max
-          ,(e_bboxes.at<float>(r,3) - e_bboxes.at<float>(r,1)) * cfg.image_x_max
-          ,(e_bboxes.at<float>(r,2) - e_bboxes.at<float>(r,0)) * cfg.image_y_max
-          ,conf
-          ,{{"FEATURE-TYPE","EXTRA"},
-            {"FEATURE",string((const char*)e_feats.ptr(r),
-                              e_feats.cols * e_feats.elemSize())}}));             LOG4CXX_TRACE(_log,"detected extra object with confidence(" << locations.back().confidence << ")" << " at [" << locations.back().x_left_upper << "," << locations.back().y_left_upper << ","     << locations.back().width        << "," << locations.back().height << "]");
+                d_bboxes.at<float>(r, 1) * (cfg.image_x_max), d_bboxes.at<float>(r, 0) * (cfg.image_y_max),
+                (d_bboxes.at<float>(r, 3) - d_bboxes.at<float>(r, 1)) * (cfg.image_x_max),
+                (d_bboxes.at<float>(r, 2) - d_bboxes.at<float>(r, 0)) * (cfg.image_y_max), conf,
+                {{"FEATURE-TYPE",   "CLASS"},
+                 {"FEATURE",        string((const char *) d_feats.ptr(r),
+                                           d_feats.cols * d_feats.elemSize())},
+                 {"CLASSIFICATION", label}}));
+        LOG4CXX_TRACE(_log, "detected object with class[" << class_id << "] = " << label << " with confidence("
+                                                          << locations.back().confidence << ")" << " at ["
+                                                          << locations.back().x_left_upper << ","
+                                                          << locations.back().y_left_upper << ","
+                                                          << locations.back().width << "," << locations.back().height
+                                                          << "]");
       }
     }
-    LOG4CXX_TRACE(_log,"added detected extra features to locations");
+    LOG4CXX_TRACE(_log, "added detected object features to locations");
   }
 
-  if(cfg.recognitionEnroll){
+  if (cfg.extraFeatEnabled) {
+    LOG4CXX_TRACE(_log, "processing extra detected objects without classifications");
+    cv::Mat e_bboxes = _niResult2CVMat(0, "E_BBoxes", res);
+    cv::Mat e_scores = _niResult2CVMat(0, "E_Scores", res);
+    cv::Mat e_feats = _niResult2CVMat(0, "E_Feats", res);
+    for (int r = 0; r < e_feats.rows; r++) {
+      float conf = e_scores.at<float>(r, 0);
+      if (conf >= cfg.extraConfThreshold) {
+        cv::normalize(e_feats.row(r), e_feats.row(r), 1, 0, cv::NORM_L2);
+        locations.push_back(MPFImageLocation(
+                e_bboxes.at<float>(r, 1) * cfg.image_x_max, e_bboxes.at<float>(r, 0) * cfg.image_y_max,
+                (e_bboxes.at<float>(r, 3) - e_bboxes.at<float>(r, 1)) * cfg.image_x_max,
+                (e_bboxes.at<float>(r, 2) - e_bboxes.at<float>(r, 0)) * cfg.image_y_max, conf,
+                {{"FEATURE-TYPE", "EXTRA"},
+                 {"FEATURE",      string((const char *) e_feats.ptr(r),
+                                         e_feats.cols * e_feats.elemSize())}}));
+        LOG4CXX_TRACE(_log, "detected extra object with confidence(" << locations.back().confidence << ")" << " at ["
+                                                                     << locations.back().x_left_upper << ","
+                                                                     << locations.back().y_left_upper << ","
+                                                                     << locations.back().width << ","
+                                                                     << locations.back().height << "]");
+      }
+    }
+    LOG4CXX_TRACE(_log, "added detected extra features to locations");
+  }
+
+  if (cfg.recognitionEnroll) {
     // _recognitionFrameworkEnroll(job,locations);
     // * needs to be implemented
     THROW_TRTISEXCEPTION(MPF_INVALID_PROPERTY,
@@ -645,22 +704,6 @@ void TrtisDetection::_ip_irv2_coco_getDetections(
 
 }
 
-
-/** ****************************************************************************
-* base64 encode the feature in the track stop location
-*
-* \param[in,out] tracks  tracks to perform stop feature decoding on.
-*
-***************************************************************************** */
-void TrtisDetection::_base64EncodeStopFeatures(MPFVideoTrackVec &tracks){
-  for(MPFVideoTrack &track : tracks){
-    auto dt = track.frame_locations[track.stop_frame].detection_properties;
-    auto it = dt.find("FEATURE");
-    if(it != dt.end()){                                                         LOG4CXX_TRACE(_log, "base64 encoding track stop_frame[" << track.stop_frame << "] FEATURE");
-      dt["FEATURE"] = Base64::Encode(it->second);
-    }
-  }
-}
 /** ****************************************************************************
 * Compute a similarity score based on Cos / Inner Product Distance
 *
@@ -673,13 +716,13 @@ void TrtisDetection::_base64EncodeStopFeatures(MPFVideoTrackVec &tracks){
 * \note  vectors are assumed to be normalized to magnitude of 1.0
 ***************************************************************************** */
 static float ipSimilarity(const float p1[],
-                     const float p2[],
-                     const size_t size) {
-    float res = 0;
-    for (size_t i = 0; i < size; i++) {
-        res += p1[i] * p2[i];
-    }
-    return res;
+                          const float p2[],
+                          const size_t size) {
+  float res = 0;
+  for (size_t i = 0; i < size; i++) {
+    res += p1[i] * p2[i];
+  }
+  return res;
 }
 
 /** ****************************************************************************
@@ -691,10 +734,10 @@ static float ipSimilarity(const float p1[],
 * \returns  pixel Euclidean distance squared between centers
 *
 ***************************************************************************** */
-static float centerDistSq(const MPFImageLocation &l1, const MPFImageLocation &l2){
-  float dx = l1.x_left_upper - l2.x_left_upper + (float)(l1.width  - l2.width ) / 2;
-  float dy = l1.y_left_upper - l2.y_left_upper + (float)(l1.height - l2.height) / 2;
-  return dx*dx + dy*dy;
+static float centerDistSq(const MPFImageLocation &l1, const MPFImageLocation &l2) {
+  float dx = l1.x_left_upper - l2.x_left_upper + (float) (l1.width - l2.width) / 2;
+  float dy = l1.y_left_upper - l2.y_left_upper + (float) (l1.height - l2.height) / 2;
+  return dx * dx + dy * dy;
 }
 
 /** ****************************************************************************
@@ -707,17 +750,18 @@ static float centerDistSq(const MPFImageLocation &l1, const MPFImageLocation &l2
 *
 ***************************************************************************** */
 void TrtisDetection::_addToTrack(MPFImageLocation &location,
-                                 int               frameIdx,
-                                 MPFVideoTrack    &track) {
-    track.stop_frame = frameIdx;
-    if (location.confidence > track.confidence) {
-        track.confidence = location.confidence;
-        auto it = location.detection_properties.find("CLASSIFICATION");
-        if(it != location.detection_properties.end()){
-          track.detection_properties["CLASSIFICATION"] = it->second;            LOG4CXX_TRACE(_log, "updating track class to " << it->second);
-        }
+                                 int frameIdx,
+                                 MPFVideoTrack &track) {
+  track.stop_frame = frameIdx;
+  if (location.confidence > track.confidence) {
+    track.confidence = location.confidence;
+    auto it = location.detection_properties.find("CLASSIFICATION");
+    if (it != location.detection_properties.end()) {
+      track.detection_properties["CLASSIFICATION"] = it->second;
+      LOG4CXX_TRACE(_log, "updating track class to " << it->second);
     }
-    track.frame_locations[frameIdx] = move(location);
+  }
+  track.frame_locations[frameIdx] = move(location);
 }
 
 /** ****************************************************************************
@@ -741,31 +785,34 @@ void TrtisDetection::_addToTrack(MPFImageLocation &location,
 *
 ***************************************************************************** */
 void TrtisDetection::_ip_irv2_coco_tracker(
-                          const TrtisIpIrv2CocoJobConfig &cfg,
-                          MPFImageLocation               &loc,
-                          const int                       frameIdx,
-                          MPFVideoTrackVec               &tracks){
+        const TrtisIpIrv2CocoJobConfig &cfg,
+        MPFImageLocation &loc,
+        const int frameIdx,
+        MPFVideoTrackVec &tracks) {
 
   const string feature_type = loc.detection_properties["FEATURE-TYPE"];
-  if( feature_type == "CLASS" || feature_type == "EXTRA"){                      LOG4CXX_TRACE(_log, "Found detection with feature_type:" << feature_type);
-    MPFVideoTrack* bestTrackPtr  = nullptr;
-    float          minFeatureGap = FLT_MAX;
-    for(MPFVideoTrack &track : tracks){
+  if (feature_type == "CLASS" || feature_type == "EXTRA") {
+    LOG4CXX_TRACE(_log, "Found detection with feature_type:" << feature_type);
+    MPFVideoTrack *bestTrackPtr = nullptr;
+    float minFeatureGap = FLT_MAX;
+    for (MPFVideoTrack &track : tracks) {
       size_t frameGap = frameIdx - track.stop_frame;
-      if( frameGap > 0 && frameGap <= cfg.maxFrameGap){
+      if (frameGap > 0 && frameGap <= cfg.maxFrameGap) {
         MPFImageLocation stopLoc = track.frame_locations[track.stop_frame];
-        size_t spaceGapPxSq = centerDistSq(stopLoc,loc);
-        if(spaceGapPxSq <= cfg.maxSpaceGapPxSq){
+        size_t spaceGapPxSq = centerDistSq(stopLoc, loc);
+        if (spaceGapPxSq <= cfg.maxSpaceGapPxSq) {
           auto trkFeat = stopLoc.detection_properties.find("FEATURE");
           auto locFeat = loc.detection_properties.find("FEATURE");
-          if(   trkFeat !=  stopLoc.detection_properties.end()
-             && locFeat !=      loc.detection_properties.end()){
-            auto stopFeature=(float*)(&(trkFeat->second[0]));
-            auto locFeature =(float*)(&(locFeat->second[0]));
-            float featureGap = 1.0f - ipSimilarity(stopFeature,locFeature,1088);
-            if(featureGap <= cfg.maxFeatureGap){                                LOG4CXX_TRACE(_log, "featureGap = " << featureGap << " < " << cfg.maxFeatureGap);
-              if(featureGap < minFeatureGap){                                   LOG4CXX_TRACE(_log, "bestTrack = " << &track);
-                bestTrackPtr  = &track;
+          if (trkFeat != stopLoc.detection_properties.end()
+              && locFeat != loc.detection_properties.end()) {
+            auto stopFeature = (float *) (&(trkFeat->second[0]));
+            auto locFeature = (float *) (&(locFeat->second[0]));
+            float featureGap = 1.0f - ipSimilarity(stopFeature, locFeature, 1088);
+            if (featureGap <= cfg.maxFeatureGap) {
+              LOG4CXX_TRACE(_log, "featureGap = " << featureGap << " < " << cfg.maxFeatureGap);
+              if (featureGap < minFeatureGap) {
+                LOG4CXX_TRACE(_log, "bestTrack = " << &track);
+                bestTrackPtr = &track;
                 minFeatureGap = featureGap;
               }
             }
@@ -774,18 +821,23 @@ void TrtisDetection::_ip_irv2_coco_tracker(
       }
     }
 
-    if(bestTrackPtr != nullptr){                                                LOG4CXX_TRACE(_log, "Adding to track(&" << bestTrackPtr << ") from frame[" << frameIdx <<"]");
+    if (bestTrackPtr != nullptr) {
+      LOG4CXX_TRACE(_log, "Adding to track(&" << bestTrackPtr << ") from frame[" << frameIdx << "]");
       int bestStopFrame = bestTrackPtr->stop_frame;
       MPFImageLocation bestStopLoc = bestTrackPtr->frame_locations[bestStopFrame];
-     if(bestStopFrame != bestTrackPtr->start_frame){
-        bestStopLoc.detection_properties.erase("FEATURE");                      LOG4CXX_TRACE(_log, "Erased previous FEATURE for track(& " << bestTrackPtr << ") from frame[" << frameIdx <<"]");
-     }else{ // keep start frame feature for linking ?!
+      if (bestStopFrame != bestTrackPtr->start_frame) {
+        bestStopLoc.detection_properties.erase("FEATURE");
+        LOG4CXX_TRACE(_log,
+                      "Erased previous FEATURE for track(& " << bestTrackPtr << ") from frame[" << frameIdx << "]");
+      } else { // keep start frame feature for linking ?!
         bestStopLoc.detection_properties["FEATURE"] =
-        Base64::Encode(bestStopLoc.detection_properties["FEATURE"]);            LOG4CXX_TRACE(_log, "Re-encoded track start feature");
-     }
-     _addToTrack(loc, frameIdx, *bestTrackPtr);
-    }else{
-      tracks.emplace_back(frameIdx, frameIdx);                                  LOG4CXX_TRACE(_log, "Created new track(&" << &(tracks.back()) << ") from frame[" << frameIdx <<"]");
+                Base64::Encode(bestStopLoc.detection_properties["FEATURE"]);
+        LOG4CXX_TRACE(_log, "Re-encoded track start feature");
+      }
+      _addToTrack(loc, frameIdx, *bestTrackPtr);
+    } else {
+      tracks.emplace_back(frameIdx, frameIdx);
+      LOG4CXX_TRACE(_log, "Created new track(&" << &(tracks.back()) << ") from frame[" << frameIdx << "]");
       _addToTrack(loc, frameIdx, tracks.back());
     }
   }
@@ -801,175 +853,225 @@ void TrtisDetection::_ip_irv2_coco_tracker(
 * \returns Tracks collection to which detections will be added
 ***************************************************************************** */
 std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
-  LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
+  try {
+    LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
 
-  // if (job.has_feed_forward_track) { do something different ?!}
+    // if (job.has_feed_forward_track) { do something different ?!}
 
-  MPFVideoCapture video_cap(job);
+    MPFVideoCapture video_cap(job);
 
-  std::vector<MPF::COMPONENT::MPFVideoTrack> tracks;
-  cv::Mat frame;
-  Properties jpr = job.job_properties;
-  string model_name = get<string>(jpr,"MODEL_NAME",  "ip_irv2_coco");
+    std::vector<MPF::COMPONENT::MPFVideoTrack> tracks;
+    cv::Mat frame;
+    Properties jpr = job.job_properties;
+    string model_name = get<string>(jpr, "MODEL_NAME", "ip_irv2_coco");
 
-  mutex freeCtxMtx, nextRxFrameMtx, tracksMtx, errorMtx;                        LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
-  condition_variable freeCtxCv, nextRxFrameCv;
-
-  unordered_set<int> freeCtxPool;
-  size_t initialCtxPoolSize = 0;
-
-  exception_ptr eptr; // first exception thrown
-
-  try{
-    if(model_name != "ip_irv2_coco") {
+    if (model_name != "ip_irv2_coco") {
       THROW_TRTISEXCEPTION(MPF_INVALID_PROPERTY, "Unsupported model type:" + model_name);
     }
 
     // need to read a frame to get size
-    if(!video_cap.Read(frame)) return tracks;
+    if (!video_cap.Read(frame)) return tracks;
     TrtisIpIrv2CocoJobConfig cfg(job, _log, frame.cols, frame.rows);
 
-    unordered_map<int, sPtrInferCtx> ctxMap = _niGetInferContexts(cfg);
-    initialCtxPoolSize = ctxMap.size();                                        LOG4CXX_TRACE(_log,"Retrieved inferencing context pool of size " << initialCtxPoolSize << " for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
+    // frames per milli-sec if available
+    double fp_ms = get<double>(job.media_properties, "FPS", 0.0) / 1000.0;
 
-    for (const auto &pair : ctxMap ) {
+    unordered_map<int, sPtrInferCtx> ctxMap = _niGetInferContexts(cfg);
+    int initialCtxPoolSize = ctxMap.size();
+    LOG4CXX_TRACE(_log, "Retrieved inferencing context pool of size " << initialCtxPoolSize << " for model '"
+                                                                      << cfg.model_name << "' from server "
+                                                                      << cfg.trtis_server);
+
+    unordered_set<int> freeCtxPool;
+    for (const auto &pair : ctxMap) {
       freeCtxPool.insert(pair.first);
     }
 
-    int frameIdx = 0;
-    int nextRxFrameIdx = 0;
+    mutex freeCtxMtx, nextRxFrameMtx, tracksMtx, errorMtx;
+    condition_variable freeCtxCv, nextRxFrameCv;
 
-    do {
-      // Wait for an available inference context.
-      int ctxId;                                                               LOG4CXX_TRACE(_log, "requesting inference from TRTIS server for frame[" <<  frameIdx << "]" );
-      { unique_lock<mutex> lk(freeCtxMtx);
-        if(freeCtxPool.empty()){                                               LOG4CXX_TRACE(_log, "wait for an infer context to become available");
-          freeCtxCv.wait(lk, [&freeCtxPool]{ return !freeCtxPool.empty(); });
-        }
-        { lock_guard<mutex> lk(errorMtx);
-          if (eptr) {
-            break; // stop processing frames
-          }
-        }
-        auto it = freeCtxPool.begin();
-        ctxId = *it;
-        freeCtxPool.erase(it);                                                 LOG4CXX_TRACE(_log, "removing context[" << ctxId << "] from pool");
-      }
+    exception_ptr eptr; // first exception thrown
 
-      sPtrInferCtx& ctx = ctxMap[ctxId];
-
-      LngVec shape;
-      BytVec imgDat;
-      _ip_irv2_coco_prepImageData(cfg, frame, ctx, shape, imgDat);             LOG4CXX_TRACE(_log, "Loaded data into inference context");
-                                                                               LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] sending");
-
-      // Send inference request to the inference server.
-      NI_CHECK_OK(
-        ctx->AsyncRun([frameIdx, &job, &cfg, &freeCtxCv, &nextRxFrameCv,
-                       &nextRxFrameMtx, &tracksMtx, &freeCtxMtx, &errorMtx,
-                       &nextRxFrameIdx, &tracks, &freeCtxPool, &eptr,
-                       this](nic::InferContext* c, sPtrInferCtxReq req)
-        {
-          // NOTE: When this callback is invoked, the frame has already been processed by the TRTIS server.
-          LOG4CXX_DEBUG(_log, "Async run callback for frame[" << frameIdx << "] with context["
-              << c->CorrelationId() << "] and thread_id:" << std::this_thread::get_id());
-
-          // Ensure tracking is performed on the frames in the proper order.
-          { unique_lock<mutex> lk(nextRxFrameMtx);
-            if(frameIdx != nextRxFrameIdx){
-              LOG4CXX_TRACE(_log, ">> Out of sequence frame response, waiting to process frame[" << frameIdx << "], but nextRxFrameIdx[" << nextRxFrameIdx << "]");
-              nextRxFrameCv.wait(lk, [this, frameIdx, &nextRxFrameIdx] { return frameIdx == nextRxFrameIdx; });
-            }
-          }
-
-          // Retrieve the results from the TRTIS server and update tracks.
-          try {
-            StrUPtrInferCtxResMap res;
-            bool is_ready = false;
-            NI_CHECK_OK(
-                    c->GetAsyncRunResults(&res, &is_ready, req, true),
-                    "Failed to retrieve inference results for context " + to_string(c->CorrelationId()));
-            if (!is_ready) {
-              THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
-                                   "Inference results not ready during callback for context " +
-                                   to_string(c->CorrelationId()));
-            }
-
-            LOG4CXX_TRACE(_log, "inference complete");
-            MPFImageLocationVec locations;
-            _ip_irv2_coco_getDetections(cfg, res, locations);                    LOG4CXX_TRACE(_log, "inferenced frame[" <<  frameIdx << "]");
-            { lock_guard<mutex> lk(tracksMtx);
-              for(MPFImageLocation &loc : locations){
-                _ip_irv2_coco_tracker(cfg, loc, frameIdx, tracks);
-              }                                                                  LOG4CXX_TRACE(_log, "tracked objects in frame[" <<  frameIdx << "]");
-            }
-          } catch(...) {
-            try {
-              Utils::LogAndReThrowException(job, _log);
-            } catch(MPFDetectionException e) {
-              { lock_guard<mutex> lk(errorMtx);
-                if (!eptr) {
-                  eptr = std::current_exception();
-                }
-              }
-            }
-          }
-
-          // Tracking for this frame is complete. Allow tracking on the next frame.
-          { lock_guard<mutex> lk(nextRxFrameMtx);
-            nextRxFrameIdx++;                                                  LOG4CXX_TRACE(_log, "nextRxFrameIdx++ to " << nextRxFrameIdx);
-            nextRxFrameCv.notify_all();
-          }
-
-          // We're done with the context. Add it back to the pool so it can be used for another frame.
-          { lock_guard<mutex> lk(freeCtxMtx);
-            freeCtxPool.insert(c->CorrelationId());
-            freeCtxCv.notify_all();                                            LOG4CXX_TRACE(_log, "returned context[" << c->CorrelationId() << "] to pool");
-          }                                                                    LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] complete");
-        }),
-        "unable to inference '" + cfg.model_name + "' ver."
-                                + to_string(cfg.model_version));               LOG4CXX_TRACE(_log, "Inference request sent");
-                                                                               LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] sent");
-
-      frameIdx++;                                                              LOG4CXX_TRACE(_log, "frameIdx++ to " << frameIdx);
-    } while (video_cap.Read(frame));
-
-  } catch(...) {
     try {
-      Utils::LogAndReThrowException(job, _log);
-    } catch(MPFDetectionException e) {
-      { lock_guard<mutex> lk(errorMtx);
-        if (!eptr) {
-          eptr = std::current_exception();
+      LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
+
+      int frameIdx = 0;
+      int nextRxFrameIdx = 0;
+
+      do {
+        // Wait for an available inference context.
+        LOG4CXX_TRACE(_log, "requesting inference from TRTIS server for frame[" << frameIdx << "]");
+
+        int ctxId;
+        {
+          unique_lock<mutex> lk(freeCtxMtx);
+          if (freeCtxPool.empty()) {
+            LOG4CXX_TRACE(_log, "wait for an infer context to become available");
+            freeCtxCv.wait(lk, [&freeCtxPool] { return !freeCtxPool.empty(); });
+          }
+          {
+            lock_guard<mutex> lk(errorMtx);
+            if (eptr) {
+              break; // stop processing frames
+            }
+          }
+          auto it = freeCtxPool.begin();
+          ctxId = *it;
+          freeCtxPool.erase(it);
+          LOG4CXX_TRACE(_log, "removing context[" << ctxId << "] from pool");
+        }
+
+        sPtrInferCtx &ctx = ctxMap[ctxId];
+
+        LngVec shape;
+        BytVec imgDat;
+        _ip_irv2_coco_prepImageData(cfg, frame, ctx, shape, imgDat);
+        LOG4CXX_TRACE(_log, "Loaded data into inference context");
+        LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] sending");
+
+        // Send inference request to the inference server.
+        NI_CHECK_OK(
+                ctx->AsyncRun([frameIdx, &job, &cfg, &freeCtxCv, &nextRxFrameCv,
+                                      &nextRxFrameMtx, &tracksMtx, &freeCtxMtx, &errorMtx,
+                                      &nextRxFrameIdx, &tracks, &freeCtxPool, &eptr,
+                                      this](nic::InferContext *c, sPtrInferCtxReq req) {
+                    // NOTE: When this callback is invoked, the frame has already been processed by the TRTIS server.
+                    LOG4CXX_DEBUG(_log, "Async run callback for frame[" << frameIdx << "] with context["
+                                                                        << c->CorrelationId() << "] and thread_id:"
+                                                                        << std::this_thread::get_id());
+
+                    // Ensure tracking is performed on the frames in the proper order.
+                    {
+                      unique_lock<mutex> lk(nextRxFrameMtx);
+                      if (frameIdx != nextRxFrameIdx) {
+                        LOG4CXX_TRACE(_log, ">> Out of sequence frame response, waiting to process frame[" << frameIdx
+                                                                                                           << "], but nextRxFrameIdx["
+                                                                                                           << nextRxFrameIdx
+                                                                                                           << "]");
+                        nextRxFrameCv.wait(lk,
+                                           [this, frameIdx, &nextRxFrameIdx] { return frameIdx == nextRxFrameIdx; });
+                      }
+                    }
+
+                    // Retrieve the results from the TRTIS server and update tracks.
+                    try {
+                      StrUPtrInferCtxResMap res;
+                      bool is_ready = false;
+                      NI_CHECK_OK(
+                              c->GetAsyncRunResults(&res, &is_ready, req, true),
+                              "Failed to retrieve inference results for context " + to_string(c->CorrelationId()));
+                      if (!is_ready) {
+                        THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
+                                             "Inference results not ready during callback for context " +
+                                             to_string(c->CorrelationId()));
+                      }
+
+                      LOG4CXX_TRACE(_log, "inference complete");
+                      MPFImageLocationVec locations;
+                      _ip_irv2_coco_getDetections(cfg, res, locations);
+                      LOG4CXX_TRACE(_log, "inferenced frame[" << frameIdx << "]");
+                      {
+                        lock_guard<mutex> lk(tracksMtx);
+                        for (MPFImageLocation &loc : locations) {
+                          _ip_irv2_coco_tracker(cfg, loc, frameIdx, tracks);
+                        }
+                        LOG4CXX_TRACE(_log, "tracked objects in frame[" << frameIdx << "]");
+                      }
+                    } catch (...) {
+                      try {
+                        Utils::LogAndReThrowException(job, _log);
+                      } catch (MPFDetectionException e) {
+                        {
+                          lock_guard<mutex> lk(errorMtx);
+                          if (!eptr) {
+                            eptr = std::current_exception();
+                          }
+                        }
+                      }
+                    }
+
+                    // Tracking for this frame is complete. Allow tracking on the next frame.
+                    {
+                      lock_guard<mutex> lk(nextRxFrameMtx);
+                      nextRxFrameIdx++;
+                      LOG4CXX_TRACE(_log, "nextRxFrameIdx++ to " << nextRxFrameIdx);
+                      nextRxFrameCv.notify_all();
+                    }
+
+                    // We're done with the context. Add it back to the pool so it can be used for another frame.
+                    {
+                      lock_guard<mutex> lk(freeCtxMtx);
+                      freeCtxPool.insert(c->CorrelationId());
+                      freeCtxCv.notify_all();
+                      LOG4CXX_TRACE(_log, "returned context[" << c->CorrelationId() << "] to pool");
+                    }
+                    LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] complete");
+                }),
+                "unable to inference '" + cfg.model_name + "' ver."
+                + to_string(cfg.model_version));
+        LOG4CXX_DEBUG(_log, "Inference request sent for frame[" << frameIdx << "] sent");
+
+        frameIdx++;
+        LOG4CXX_TRACE(_log, "frameIdx++ to " << frameIdx);
+      } while (video_cap.Read(frame));
+
+    } catch (...) {
+      try {
+        Utils::LogAndReThrowException(job, _log);
+      } catch (MPFDetectionException e) {
+        {
+          lock_guard<mutex> lk(errorMtx);
+          if (!eptr) {
+            eptr = std::current_exception();
+          }
         }
       }
     }
+
+    // Always wait for async threads to complete.
+    if (freeCtxPool.size() < initialCtxPoolSize) {
+      LOG4CXX_TRACE(_log, "wait for inference context pool size to return to initial size of " << initialCtxPoolSize);
+      unique_lock<mutex> lk(freeCtxMtx);
+      freeCtxCv.wait(lk, [&freeCtxPool, &initialCtxPoolSize] { return freeCtxPool.size() == initialCtxPoolSize; });
+    }
+
+    // Abort now if an error occurred.
+    if (eptr) {
+      LOG4CXX_ERROR(_log, "[" << job.job_name << "] An error occurred. Aborting job.")
+      throw eptr;
+    }
+
+    LOG4CXX_DEBUG(_log, "all frames complete");
+
+    for (MPFVideoTrack &track : tracks) {
+      video_cap.ReverseTransform(track);
+    }
+
+    // Only record features to S3 if the job is otherwise successful.
+    if (cfg.RequiresS3Storage()) {
+      for (auto track : tracks) {
+        for (auto pair : track.frame_locations) {
+          map<string, string> meta = _prepS3Meta(cfg.data_uri, cfg.model_name, track, pair.second, fp_ms);
+          Properties &prop = pair.second.detection_properties;
+          prop["FEATURE_URI"] = cfg.s3StorageHelper.PutS3Object(prop.at("FEATURE"), meta);
+          prop.erase(prop.find("FEATURE"));
+        }
+      }
+    } else {
+      for (auto track : tracks) {
+        for (auto pair : track.frame_locations) {
+          pair.second.detection_properties["FEATURE"] =
+                  Base64::Encode(pair.second.detection_properties.at("FEATURE")); // overwrite
+        }
+      }
+    }
+
+    LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
+
+    return tracks;
+  } catch (...) {
+    Utils::LogAndReThrowException(job, _log);
   }
-
-  // Always wait for async threads to complete.
-  if (freeCtxPool.size() < initialCtxPoolSize) {                              LOG4CXX_TRACE(_log, "wait for inference context pool size to return to initial size of " << initialCtxPoolSize);
-    unique_lock<mutex> lk(freeCtxMtx);
-    freeCtxCv.wait(lk, [&freeCtxPool, &initialCtxPoolSize]{ return freeCtxPool.size() == initialCtxPoolSize; });
-  }
-
-  // Abort now if an error occurred.
-  if (eptr) {
-    LOG4CXX_ERROR(_log, "[" << job.job_name << "] An error occurred. Aborting job.")
-    throw eptr;
-  }
-
-  LOG4CXX_DEBUG(_log,"all frames complete");
-
-  _base64EncodeStopFeatures(tracks);                                          LOG4CXX_TRACE(_log, "finished (re)encoding track stop_frame FEATUREs to base64");
-
-  for (MPFVideoTrack &track : tracks) {
-    video_cap.ReverseTransform(track);
-  }
-
-  LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
-
-  return tracks;
-
 }
 
 /** ****************************************************************************
@@ -985,48 +1087,61 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 *
 ***************************************************************************** */
 std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &job) {
-  try{                                                                            LOG4CXX_DEBUG(_log, "Data URI = " << job.data_uri);
+  try {
     LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
+    LOG4CXX_DEBUG(_log, "Data URI = " << job.data_uri);
 
     std::vector<MPFImageLocation> locations;
     MPFImageReader image_reader(job);
     cv::Mat img = image_reader.GetImage();
 
     Properties jpr = job.job_properties;
-    string model_name = get<string>(jpr,"MODEL_NAME",  "ip_irv2_coco");
+    string model_name = get<string>(jpr, "MODEL_NAME", "ip_irv2_coco");
 
-    if(model_name != "ip_irv2_coco"){
+    if (model_name != "ip_irv2_coco") {
       THROW_TRTISEXCEPTION(MPF_INVALID_PROPERTY, "Unsupported model type: " + model_name);
     }
 
-    TrtisIpIrv2CocoJobConfig cfg(job, _log, img.cols, img.rows);                      LOG4CXX_TRACE(_log, "parsed job configuration settings");
+    TrtisIpIrv2CocoJobConfig cfg(job, _log, img.cols, img.rows);
+    LOG4CXX_TRACE(_log, "parsed job configuration settings");
+
     cfg.maxInferConcurrency = 1;
-    sPtrInferCtx ctx = _niGetInferContext(cfg);                                 LOG4CXX_TRACE(_log, "retrieved inferencing context for model '" << cfg.model_name << "' from server " << cfg.trtis_server);
+    sPtrInferCtx ctx = _niGetInferContext(cfg);
+    LOG4CXX_TRACE(_log, "retrieved inferencing context for model '" << cfg.model_name << "' from server "
+                                                                    << cfg.trtis_server);
 
     LngVec shape;
     BytVec imgDat;
-    _ip_irv2_coco_prepImageData(cfg, img, ctx, shape, imgDat);                  LOG4CXX_TRACE(_log, "loaded data into inference context");
+    _ip_irv2_coco_prepImageData(cfg, img, ctx, shape, imgDat);
+    LOG4CXX_TRACE(_log, "loaded data into inference context");
 
     // Send inference request to the inference server.
     StrUPtrInferCtxResMap res;
-    NI_CHECK_OK(ctx->Run(&res),"unable to inference '" + cfg.model_name
-      + "' ver." + to_string(cfg.model_version));                               LOG4CXX_TRACE(_log, "inference complete");
+    NI_CHECK_OK(ctx->Run(&res), "unable to inference '" + cfg.model_name
+                                + "' ver." + to_string(cfg.model_version));
+    LOG4CXX_TRACE(_log, "inference complete");
 
     size_t next_idx = locations.size();
     _ip_irv2_coco_getDetections(cfg, res, locations);
-    size_t new_size = locations.size();                                         LOG4CXX_TRACE(_log, "parsed detections into locations vector");
+    LOG4CXX_TRACE(_log, "parsed detections into locations vector");
 
+    for (auto location : locations) {
+      image_reader.ReverseTransform(location);
+    }
 
-    _handleFeatures(cfg, )
-
-    HERE!
-
-    for(size_t i = next_idx; i < new_size; i++){
-      // not sure if base64 encoding is needed here,
-      // might make sense for whatever serializes the output to do the encoding?!
-      locations[i].detection_properties["FEATURE"] = Base64::Encode(locations[i].detection_properties["FEATURE"]);
-      image_reader.ReverseTransform(locations[i]);
-    }                                                                           LOG4CXX_TRACE(_log, "base64 encoded new features in locations vector");
+    if (cfg.RequiresS3Storage()) {
+      for (auto location : locations) {
+        map<string, string> meta = _prepS3Meta(cfg.data_uri, cfg.model_name, location);
+        Properties &prop = location.detection_properties;
+        prop["FEATURE_URI"] = cfg.s3StorageHelper.PutS3Object(prop.at("FEATURE"), meta);
+        prop.erase(prop.find("FEATURE"));
+      }
+    } else {
+      for (auto location : locations) {
+        location.detection_properties["FEATURE"] =
+                Base64::Encode(location.detection_properties.at("FEATURE")); // overwrite
+      }
+    }
 
     LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << locations.size() << " detections.");
 
@@ -1036,27 +1151,67 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &j
   }
 }
 
-void TrtisDetection::_handleFeatures(TrtisJobConfig &cfg, vector<MPFImageLocation> locations, int nextIdx) {
-  if (cfg.RequiresS3Storage()) {
-    S3StorageHelper &s3StorageHelper = cfg.s3StorageHelper;
+/** ****************************************************************************
+* Grab metadata for s3 object from location
+*
+* \param    data_uri   source media uri
+* \param    model      name oftrtis model used
+* \param    loc        location object to pull meta-data from
+*
+* \returns  collection map to use as s3 meta-data
+***************************************************************************** */
+map<string, string> TrtisDetection::_prepS3Meta(const string &data_uri,
+                                                const string &model,
+                                                const MPFImageLocation &loc) {
+  map<string, string> s3Meta;
 
-    for(int i = nextIdx; i < locations.size(); i++){
-      MPFImageLocation &loc = locations[i];
-      Properties &prop = loc.detection_properties;
-      image_reader.ReverseTransform(loc); // TODO: Reverse transform before we get here.
+  const Properties &prop = loc.detection_properties;
+  s3Meta.insert({"model", model});
+  s3Meta.insert({"data_uri", data_uri});
+  s3Meta.insert({"x", to_string(loc.x_left_upper)});
+  s3Meta.insert({"y", to_string(loc.y_left_upper)});
+  s3Meta.insert({"width", to_string(loc.width)});
+  s3Meta.insert({"height", to_string(loc.height)});
 
-      string feature_sha256 = s3StorageHelper.GetSha256(prop["FEATURE"]);
-      string s3ObjectUrl = s3StorageHelper.PutS3Object(feature_sha256, prop["FEATURE"],
-                                                       s3StorageHelper.PrepS3Meta(job.data_uri, cfg.model_name, locations[i]));
-      prop["FEATURE_URI"] = s3ObjectUrl;
-      prop.erase(prop.find("FEATURE"));
-    }                                                                       LOG4CXX_TRACE(_log,"wrote new features to s3 bucket");
-  } else {
-    for(int i = nextIdx; i < locations.size(); i++){
-      locations[i].detection_properties["FEATURE"] = Base64::Encode(locations[i].detection_properties["FEATURE"]);
-      image_reader.ReverseTransform(locations[i]);
-    }                                                                       LOG4CXX_TRACE(_log,"base64 encoded new features in locations vector");
+  s3Meta.insert({"feature", prop.at("FEATURE-TYPE")});
+  if (prop.find("CLASSIFICATION") != prop.end()) {
+    s3Meta.insert({"class", prop.at("CLASSIFICATION")});
+    if (loc.confidence > 0) {
+      stringstream conf;
+      conf << setprecision(2) << fixed << loc.confidence;
+      s3Meta.insert({"confidence", conf.str()});
+    }
   }
+
+  return s3Meta;
+}
+
+/** ****************************************************************************
+* Grab metadata for s3 object from video track
+*
+* \param    data_uri   source media uri
+* \param    model      name oftrtis model used
+* \param    track      track object to pull meta-data from
+ *\param    location   location object to pull meta-data from
+* \param    fp_ms      frames per milli-sec for time calculation
+*
+* \returns  collection map to use as s3 meta-data
+***************************************************************************** */
+map<string, string> TrtisDetection::_prepS3Meta(const string &data_uri,
+                                                const string &model,
+                                                const MPFVideoTrack &track,
+                                                const MPFImageLocation &location,
+                                                const double &fp_ms) {
+  map<string, string> s3Meta = _prepS3Meta(data_uri, model, location);
+
+  s3Meta.insert({"offsetFrame", to_string(track.start_frame)});
+  if (fp_ms > 0.0) {
+    stringstream ss;
+    ss << setprecision(0) << fixed << track.start_frame / fp_ms;
+    s3Meta.insert({"offsetTime", ss.str()});
+  }
+
+  return s3Meta;
 }
 
 //-----------------------------------------------------------------------------

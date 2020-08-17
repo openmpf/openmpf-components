@@ -103,95 +103,8 @@ S3StorageHelper::~S3StorageHelper() {
   Aws::ShutdownAPI(aws_sdk_options);
 }
 
-bool S3StorageHelper::IsValid() {
+bool S3StorageHelper::IsValid() const {
   return !s3_bucket.empty();
-}
-
-/** ****************************************************************************
-* Make a dummy track and reverse transform it so we can get real image coords
-* on the fly.  Note a shallow copy of location is made
-*
-* \param video_cap  mpf video capture object that knows about transforms
-* \param frame_idx  frame index of image location to be transformed
-* \param loc        image location to be copied and transformed
-*
-* \returns transformed dummy track containing a transformed copy of loc
-***************************************************************************** */
-MPFVideoTrack S3StorageHelper::DummyTransform(const MPFVideoCapture &video_cap, // TODO: Remove this
-                                              const int frame_idx,
-                                              const MPFImageLocation loc) {
-  MPFVideoTrack t(frame_idx, frame_idx);
-  MPFImageLocation l(loc.x_left_upper, loc.y_left_upper, loc.width, loc.height,
-                     loc.confidence, loc.detection_properties);
-  t.frame_locations.insert({frame_idx, l});
-  video_cap.ReverseTransform(t);
-  return t;
-}
-
-/** ****************************************************************************
-* Grap metadata for s3 object from location
-*
-* \param    data_uri   source media uri
-* \param    model      name oftrtis model used
-* \param    loc        location object to pull meta-data from
-*
-* \returns  collection map to use as s3 meta-data
-***************************************************************************** */
-// TODO: Refactor this to TrtisDetection class
-map<string, string> S3StorageHelper::PrepS3Meta(const string &data_uri,
-                                                const string &model,
-                                                MPFImageLocation &loc) {
-  map<string, string> s3Meta;
-
-  Properties &prop = loc.detection_properties;
-  s3Meta.insert({"model", model});
-  s3Meta.insert({"data_uri", data_uri});
-  s3Meta.insert({"x", to_string(loc.x_left_upper)});
-  s3Meta.insert({"y", to_string(loc.y_left_upper)});
-  s3Meta.insert({"width", to_string(loc.width)});
-  s3Meta.insert({"height", to_string(loc.height)});
-
-  s3Meta.insert({"feature", prop["FEATURE-TYPE"]});
-  if (prop.find("CLASSIFICATION") != prop.end()) {
-    s3Meta.insert({"class", prop["CLASSIFICATION"]});
-    if (loc.confidence > 0) {
-      stringstream conf;
-      conf << setprecision(2) << fixed << loc.confidence;
-      s3Meta.insert({"confidence", conf.str()});
-    }
-  }
-
-  return s3Meta;
-}
-
-/** ****************************************************************************
-* Grap metadata for s3 object from video track
-*
-* \param    data_uri   source media uri
-* \param    model      name oftrtis model used
-* \param    track      track object to pull meta-data from
-* \param    fp_ms      frames per milli-sec for time calculation
-*
-* \returns  collection map to use as s3 meta-data
-***************************************************************************** */
-// TODO: Refactor this to TrtisDetection class
-map<string, string> S3StorageHelper::PrepS3Meta(const string &data_uri,
-                                                const string &model,
-                                                MPFVideoTrack &track,
-                                                const double &fp_ms) {
-  // TODO: This gets the confidence of the first detection only!
-  // TODO: Remove need for dummyTransform() by pushing everything to S3 at end of GetDetections(). Doing it before might be wasted time.
-  map<string, string> s3Meta = PrepS3Meta(data_uri, model,
-                                          track.frame_locations.begin()->second);
-
-  s3Meta.insert({"offsetFrame", to_string(track.start_frame)});
-  if (fp_ms > 0.0) {
-    stringstream ss;
-    ss << setprecision(0) << fixed << track.start_frame / fp_ms;
-    s3Meta.insert({"offsetTime", ss.str()});
-  }
-
-  return s3Meta;
 }
 
 /** ****************************************************************************
@@ -199,7 +112,7 @@ map<string, string> S3StorageHelper::PrepS3Meta(const string &data_uri,
 *
 * \param    buffer     buffer to calculate the sha256 for
 *
-* \returns  lowercase hexadecimal string correstponding to the sha256
+* \returns  lowercase hexadecimal string corresponding to the sha256
 ***************************************************************************** */
 string S3StorageHelper::GetSha256(const string &buffer) {
   unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -224,7 +137,7 @@ string S3StorageHelper::GetSha256(const string &buffer) {
 * \returns  URL of object in S3 bucket
 ***************************************************************************** */
 string S3StorageHelper::PutS3Object(const string &buffer,
-                                    const std::map<string, string> &metaData) {
+                                    const std::map<string, string> &metaData) const {
   string objectSha = GetSha256(buffer);
   Aws::S3::Model::PutObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
@@ -259,7 +172,7 @@ string S3StorageHelper::PutS3Object(const string &buffer,
 * \param[in,out] metadata about the object if desired
 ***************************************************************************** */
 void S3StorageHelper::GetS3Object(const string &object_name,
-                                  string &buffer) {
+                                  string &buffer) const {
   Aws::S3::Model::GetObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
@@ -283,7 +196,7 @@ void S3StorageHelper::GetS3Object(const string &object_name,
 /******************************************************************************/
 void S3StorageHelper::GetS3Object(const string &object_name,
                                   string &buffer,
-                                  map<string, string> &metaData) {
+                                  map<string, string> &metaData) const {
   Aws::S3::Model::GetObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
@@ -312,7 +225,7 @@ void S3StorageHelper::GetS3Object(const string &object_name,
 *
 * \param    object_name give the name/key for the object in the bucket
 ***************************************************************************** */
-void S3StorageHelper::DeleteS3Object(const string &object_name) {
+void S3StorageHelper::DeleteS3Object(const string &object_name) const {
   Aws::S3::Model::DeleteObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
@@ -333,7 +246,7 @@ void S3StorageHelper::DeleteS3Object(const string &object_name) {
 *
 * \returns  true if successful
 ***************************************************************************** */
-bool S3StorageHelper::ExistsS3Object(const string &object_name) {
+bool S3StorageHelper::ExistsS3Object(const string &object_name) const {
   Aws::S3::Model::HeadObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
@@ -348,7 +261,7 @@ bool S3StorageHelper::ExistsS3Object(const string &object_name) {
 *
 * \returns  true if successful
 ***************************************************************************** */
-bool S3StorageHelper::ExistsS3Bucket(const string &bucket_name) {
+bool S3StorageHelper::ExistsS3Bucket(const string &bucket_name) const {
   Aws::S3::Model::HeadBucketRequest req;
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   req.SetBucket(bucket.c_str());
@@ -361,7 +274,7 @@ bool S3StorageHelper::ExistsS3Bucket(const string &bucket_name) {
 *
 * \param    bucket_name give the name of the bucket into which to write
 ***************************************************************************** */
-void S3StorageHelper::CreateS3Bucket(const string &bucket_name) {
+void S3StorageHelper::CreateS3Bucket(const string &bucket_name) const {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (ExistsS3Bucket(bucket)) {
     LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' already exists");
@@ -384,7 +297,7 @@ void S3StorageHelper::CreateS3Bucket(const string &bucket_name) {
 *
 * \param    bucket_name give the name of the bucket into which to write
 ***************************************************************************** */
-void S3StorageHelper::DeleteS3Bucket(const string &bucket_name) {
+void S3StorageHelper::DeleteS3Bucket(const string &bucket_name) const {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (!ExistsS3Bucket(bucket)) {
     LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' does not exist");
@@ -407,7 +320,7 @@ void S3StorageHelper::DeleteS3Bucket(const string &bucket_name) {
 *
 * \param    bucket_name give the name of the bucket into which to write
 ***************************************************************************** */
-void S3StorageHelper::EmptyS3Bucket(const string &bucket_name) {
+void S3StorageHelper::EmptyS3Bucket(const string &bucket_name) const {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (!ExistsS3Bucket(bucket)) {
     LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' does not exist");
@@ -443,7 +356,7 @@ void S3StorageHelper::EmptyS3Bucket(const string &bucket_name) {
   }
   // extra stuff needs to happen if versioned see https://docs.aws.amazon.com/AmazonS3/latest/dev/delete-or-empty-bucket.html#empty-bucket-awssdks
 #ifdef VERSIONED_S3_OBJECTS
-  // TODO: Complete me if necessary!
+  // TODO: Complete me if and when necessary!
   Aws::S3::Model::ListObjectVersionsRequest req;
   req.SetBucket(bucket.c_str());
   auto res = cfg.s3_client.ListObjectVersions(req);
