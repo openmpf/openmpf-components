@@ -38,7 +38,7 @@ using namespace std;
 Properties getProperties_ip_irv2_coco() {
 
     return {
-            { "MODEL_NAME", "ip_irv2_coco" }
+            {"MODEL_NAME", "ip_irv2_coco"}
     };
 }
 
@@ -108,7 +108,7 @@ bool containsObject(const string           &object_name,
 void assertObjectDetectedInVideo(const string     &object_name,
                                  const Properties &job_props,
                                  TrtisDetection   &trtisDet) {
-    MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 0, 8, job_props, {});
+    MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 11, 12, job_props, {});
 
     MPFVideoTrackVec tracks = trtisDet.GetDetections(job);
 

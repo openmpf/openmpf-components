@@ -24,8 +24,8 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef TRTIS_DETECTION_S3STORAGEHELPER_H
-#define TRTIS_DETECTION_S3STORAGEHELPER_H
+#ifndef TRTIS_DETECTION_S3STORAGEUTIL_H
+#define TRTIS_DETECTION_S3STORAGEUTIL_H
 
 #include <map>
 #include <string>
@@ -40,7 +40,8 @@
 using namespace std;
 using namespace MPF::COMPONENT;
 
-class S3StorageHelper {
+// TODO: Consider making part of the C++ Batch Component SDK.
+class S3StorageUtil {
   private:
     log4cxx::LoggerPtr _log;          ///< log object
     string s3_bucket;                 ///< amazon web services s3 bucket to use for job e.g. 'bucket'
@@ -49,15 +50,23 @@ class S3StorageHelper {
     Aws::SDKOptions aws_sdk_options;  ///< amazon web services s3 options
 
   public:
-    S3StorageHelper() = default;
-    S3StorageHelper(const log4cxx::LoggerPtr &log,
-                    const string &resultsBucketUrl,
-                    const string &accessKey,
-                    const string &secretKey);
+    S3StorageUtil(const log4cxx::LoggerPtr &log,
+                  const MPFJob &job);
 
-    ~S3StorageHelper();
+    S3StorageUtil(const log4cxx::LoggerPtr &log,
+                  const string &resultsBucketUrl,
+                  const string &accessKey,
+                  const string &secretKey);
 
-    bool IsValid() const;                                                     ///< check if this helper is valid
+    virtual ~S3StorageUtil();
+
+    static bool RequiresS3Storage(const MPFJob &job);                         ///< determine if AWS S3 storage is required; throws if missing/invalid properties
+
+    static bool RequiresS3Storage(const string &resultsBucketUrl,
+                                  const string &accessKey,
+                                  const string &secretKey);                   ///< determine if AWS S3 storage is required; throws if missing/invalid properties
+
+    string GetS3ResultsBucketUrl();                                           ///< get the AWS S3 results bucket
 
     static string GetSha256(const string &buffer);                            ///< cal sha256 for a string buffer
 
@@ -84,4 +93,4 @@ class S3StorageHelper {
     void EmptyS3Bucket(const string  &bucket_name="") const;                  ///< remove all objects from a bucket
 };
 
-#endif //TRTIS_DETECTION_S3STORAGEHELPER_H
+#endif //TRTIS_DETECTION_S3STORAGEUTIL_H

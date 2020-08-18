@@ -38,7 +38,7 @@
 #include "request_http.h"
 #include "model_config.pb.h"
 
-#include "S3StorageHelper.h"
+#include "IFeatureStorage.h"
 
 namespace MPF{
  namespace COMPONENT{
@@ -69,21 +69,23 @@ namespace MPF{
   typedef shared_ptr<InferCtxReq>      sPtrInferCtxReq;       ///< inference request context pointer
   typedef map<string,uPtrInferCtxRes>  StrUPtrInferCtxResMap; ///< map of inference outputs keyed by output name
 
-  class TrtisJobConfig{
+  class TrtisJobConfig {
+    private:
+      IFeatureStorage::uPtrFeatureStorage _getFeatureStorage(const MPFJob &job,
+                                                             const log4cxx::LoggerPtr &log);
+
     public:
       string data_uri;                     ///< media to process
       string trtis_server;                 ///< url with port for trtis server e.g. localhost:8001
       string model_name;                   ///< name of model as served by trtis
       int model_version;                   ///< version of model (e.g. -1 for latest)
       int maxInferConcurrency;             ///< maximum number of concurrent video frame inferencing request
-      S3StorageHelper s3StorageHelper;     ///< AWS storage helper
+      IFeatureStorage::uPtrFeatureStorage featureStorage;  ///< helper for storing FEATUREs
 
       TrtisJobConfig(const MPFJob &job, const log4cxx::LoggerPtr &log);
-
-      bool RequiresS3Storage() const;
   };
 
-  class TrtisIpIrv2CocoJobConfig : public TrtisJobConfig{
+  class TrtisIpIrv2CocoJobConfig : public TrtisJobConfig {
     public:
       bool   clientScaleEnabled;          ///< perform image scaling client side
       bool   frameFeatEnabled;            ///< process frame average feature
@@ -168,16 +170,6 @@ namespace MPF{
       void _addToTrack(MPFImageLocation &location,
                        int              frame_index,
                        MPFVideoTrack    &track);                                ///< add location to a track
-
-      map<string, string> _prepS3Meta(const string &data_uri,
-                                      const string &model,
-                                      const MPFImageLocation &loc);             ///< collect map to use as s3 meta-data
-
-      map<string, string> _prepS3Meta(const string &data_uri,
-                                      const string &model,
-                                      const MPFVideoTrack &track,
-                                      const MPFImageLocation &location,
-                                      const double &fp_ms);                     ///< collect map to use as s3 meta-data
   };
  }
 }

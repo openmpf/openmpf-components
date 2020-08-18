@@ -30,7 +30,6 @@
 #include <mutex>
 #include <chrono>
 #include <condition_variable>
-#include <iomanip>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -44,6 +43,9 @@
 #include <MPFVideoCapture.h>
 
 #include "TrtisDetection.h"
+#include "S3StorageUtil.h"
+#include "S3FeatureStorage.h"
+#include "JsonFeatureStorage.h"
 #include "base64.h"
 
 using namespace MPF::COMPONENT;
@@ -86,6 +88,25 @@ std::ostream &operator<<(std::ostream &out, const std::vector<T> &v) {
 }
 
 /** ****************************************************************************
+* shorthands for getting configuration from environment variables if not
+* provided by job configuration
+***************************************************************************** */
+template<typename T>
+T getEnv(const Properties &p, const string &k, const T def) {
+  auto iter = p.find(k);
+  if (iter != p.end()) {
+    if (!(*iter).second.empty()) { // only use if something other than the blank string ("") was provided
+      return DetectionComponentUtils::GetProperty<T>(p, k, def);
+    }
+  }
+  const char *env_p = getenv(k.c_str());
+  if (env_p == nullptr) {
+    return def; // use default value if no env. var.
+  }
+  return DetectionComponentUtils::GetProperty<T>({{k, string(env_p)}}, k, def); // convert env. var. to desired type
+}
+
+/** ****************************************************************************
 * shorthands for getting MPF properties of various types
 ***************************************************************************** */
 template<typename T>
@@ -96,44 +117,34 @@ T get(const Properties &p, const string &k, const T def) {
 /** ****************************************************************************
 * Parse TRTIS setting out of MPFJob
 ***************************************************************************** */
-TrtisJobConfig::TrtisJobConfig(const MPFJob &job, const log4cxx::LoggerPtr &log) : data_uri(job.data_uri) {
+TrtisJobConfig::TrtisJobConfig(const MPFJob &job,
+                               const log4cxx::LoggerPtr &log) :
+        data_uri(job.data_uri), featureStorage(_getFeatureStorage(job, log)) {
   const Properties jpr = job.job_properties;
-  trtis_server = get<string>(jpr, "TRTIS_SERVER", "");
-  if (trtis_server.empty()) {
-    char const *tmp_env = std::getenv("TRTIS_SERVER");
-    if (tmp_env != nullptr) {
-      trtis_server = std::string(tmp_env);
-    } else {
-      trtis_server = "localhost:8001";
-    }
-  }
+
+  trtis_server = getEnv<string>(jpr, "TRTIS_SERVER", "localhost:8001");
+  LOG4CXX_TRACE(log, "TRTIS_SERVER: " << trtis_server);
 
   model_name = get<string>(jpr, "MODEL_NAME", "ip_irv2_coco");
+  LOG4CXX_TRACE(log, "MODEL_NAME: " << model_name);
+
   model_version = get<int>(jpr, "MODEL_VERSION", -1);
-  maxInferConcurrency = get<int>(jpr, "MAX_INFER_CONCURRENCY", 5);
+  LOG4CXX_TRACE(log, "MODEL_VERSION: " << model_version);
 
-  string s3_results_bucket_url = get<string>(jpr, "S3_RESULTS_BUCKET", "");
-  if (!s3_results_bucket_url.empty()) {
-    LOG4CXX_TRACE(log, "Configuring S3 Client");
-
-    string accessKey = get<string>(jpr, "S3_ACCESS_KEY", "");
-    string secretKey = get<string>(jpr, "S3_SECRET_KEY", "");
-
-    s3StorageHelper = S3StorageHelper(log, s3_results_bucket_url, accessKey, secretKey);
-
-    // fail fast if bucket does not exist
-    if (!s3StorageHelper.ExistsS3Bucket()) {
-      throw MPFDetectionException(MPF_INVALID_PROPERTY,
-                                  "S3_RESULTS_BUCKET '" + s3_results_bucket_url + "' does not exist.");
-    }
-  }
+  maxInferConcurrency = getEnv<int>(jpr, "MAX_INFER_CONCURRENCY", 5);
+  LOG4CXX_TRACE(log, "MAX_INFER_CONCURRENCY: " << maxInferConcurrency);
 }
 
 /** ****************************************************************************
-* Determine if AWS S3 storage is required
+* Get the feature storage helper
 ***************************************************************************** */
-bool TrtisJobConfig::RequiresS3Storage() const {
-  return s3StorageHelper.IsValid();
+IFeatureStorage::uPtrFeatureStorage TrtisJobConfig::_getFeatureStorage(const MPFJob &job,
+                                                                       const log4cxx::LoggerPtr &log) {
+  if (S3StorageUtil::RequiresS3Storage(job)) {
+    return IFeatureStorage::uPtrFeatureStorage(new S3FeatureStorage(job, log));
+  } else {
+    return IFeatureStorage::uPtrFeatureStorage(new JsonFeatureStorage());
+  }
 }
 
 /** ****************************************************************************
@@ -1047,22 +1058,10 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
       video_cap.ReverseTransform(track);
     }
 
-    // Only record features to S3 if the job is otherwise successful.
-    if (cfg.RequiresS3Storage()) {
-      for (auto track : tracks) {
-        for (auto pair : track.frame_locations) {
-          map<string, string> meta = _prepS3Meta(cfg.data_uri, cfg.model_name, track, pair.second, fp_ms);
-          Properties &prop = pair.second.detection_properties;
-          prop["FEATURE_URI"] = cfg.s3StorageHelper.PutS3Object(prop.at("FEATURE"), meta);
-          prop.erase(prop.find("FEATURE"));
-        }
-      }
-    } else {
-      for (auto track : tracks) {
-        for (auto pair : track.frame_locations) {
-          pair.second.detection_properties["FEATURE"] =
-                  Base64::Encode(pair.second.detection_properties.at("FEATURE")); // overwrite
-        }
+    // Only record features (potentially to S3) if the job is otherwise successful.
+    for (auto track : tracks) {
+      for (auto pair : track.frame_locations) {
+        cfg.featureStorage->Store(cfg.data_uri, cfg.model_name, track, pair.second, fp_ms);
       }
     }
 
@@ -1129,18 +1128,8 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &j
       image_reader.ReverseTransform(location);
     }
 
-    if (cfg.RequiresS3Storage()) {
-      for (auto location : locations) {
-        map<string, string> meta = _prepS3Meta(cfg.data_uri, cfg.model_name, location);
-        Properties &prop = location.detection_properties;
-        prop["FEATURE_URI"] = cfg.s3StorageHelper.PutS3Object(prop.at("FEATURE"), meta);
-        prop.erase(prop.find("FEATURE"));
-      }
-    } else {
-      for (auto location : locations) {
-        location.detection_properties["FEATURE"] =
-                Base64::Encode(location.detection_properties.at("FEATURE")); // overwrite
-      }
+    for (auto location : locations) {
+      cfg.featureStorage->Store(cfg.data_uri, cfg.model_name, location);
     }
 
     LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << locations.size() << " detections.");
@@ -1149,69 +1138,6 @@ std::vector<MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &j
   } catch (...) {
     Utils::LogAndReThrowException(job, _log);
   }
-}
-
-/** ****************************************************************************
-* Grab metadata for s3 object from location
-*
-* \param    data_uri   source media uri
-* \param    model      name oftrtis model used
-* \param    loc        location object to pull meta-data from
-*
-* \returns  collection map to use as s3 meta-data
-***************************************************************************** */
-map<string, string> TrtisDetection::_prepS3Meta(const string &data_uri,
-                                                const string &model,
-                                                const MPFImageLocation &loc) {
-  map<string, string> s3Meta;
-
-  const Properties &prop = loc.detection_properties;
-  s3Meta.insert({"model", model});
-  s3Meta.insert({"data_uri", data_uri});
-  s3Meta.insert({"x", to_string(loc.x_left_upper)});
-  s3Meta.insert({"y", to_string(loc.y_left_upper)});
-  s3Meta.insert({"width", to_string(loc.width)});
-  s3Meta.insert({"height", to_string(loc.height)});
-
-  s3Meta.insert({"feature", prop.at("FEATURE-TYPE")});
-  if (prop.find("CLASSIFICATION") != prop.end()) {
-    s3Meta.insert({"class", prop.at("CLASSIFICATION")});
-    if (loc.confidence > 0) {
-      stringstream conf;
-      conf << setprecision(2) << fixed << loc.confidence;
-      s3Meta.insert({"confidence", conf.str()});
-    }
-  }
-
-  return s3Meta;
-}
-
-/** ****************************************************************************
-* Grab metadata for s3 object from video track
-*
-* \param    data_uri   source media uri
-* \param    model      name oftrtis model used
-* \param    track      track object to pull meta-data from
- *\param    location   location object to pull meta-data from
-* \param    fp_ms      frames per milli-sec for time calculation
-*
-* \returns  collection map to use as s3 meta-data
-***************************************************************************** */
-map<string, string> TrtisDetection::_prepS3Meta(const string &data_uri,
-                                                const string &model,
-                                                const MPFVideoTrack &track,
-                                                const MPFImageLocation &location,
-                                                const double &fp_ms) {
-  map<string, string> s3Meta = _prepS3Meta(data_uri, model, location);
-
-  s3Meta.insert({"offsetFrame", to_string(track.start_frame)});
-  if (fp_ms > 0.0) {
-    stringstream ss;
-    ss << setprecision(0) << fixed << track.start_frame / fp_ms;
-    s3Meta.insert({"offsetTime", ss.str()});
-  }
-
-  return s3Meta;
 }
 
 //-----------------------------------------------------------------------------

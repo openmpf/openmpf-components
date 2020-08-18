@@ -52,10 +52,13 @@ set(BUILD_SHARED_LIBS ON)  # make AWS use shared linking
 find_package(AWSSDK REQUIRED COMPONENTS core s3)
 
 include_directories(${PROTOBUF_INCLUDE_DIR} ${CURL_INCLUDE_DIR})
-set(TRTIS_DETECTION_SOURCE_FILES TrtisDetection.cpp TrtisDetection.h S3StorageHelper.cpp S3StorageHelper.h base64.h uri.h)
+set(TRTIS_DETECTION_SOURCE_FILES
+        TrtisDetection.cpp TrtisDetection.h IFeatureStorage.h JsonFeatureStorage.h JsonFeatureStorage.cpp
+        S3FeatureStorage.cpp S3FeatureStorage.h S3StorageUtil.cpp S3StorageUtil.h base64.h uri.h)
 
 add_library(mpfTrtisDetection SHARED ${TRTIS_DETECTION_SOURCE_FILES})
-target_link_libraries(mpfTrtisDetection request mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES} ${AWSSDK_LINK_LIBRARIES})
+target_link_libraries(mpfTrtisDetection request mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
+        ${OpenCV_LIBS} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES} ${AWSSDK_LINK_LIBRARIES})
 
 configure_mpf_component(TrtisDetection TARGETS mpfTrtisDetection)
 

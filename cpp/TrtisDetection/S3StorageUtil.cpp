@@ -42,33 +42,36 @@
 #include <aws/s3/model/CreateBucketRequest.h>
 #include <aws/s3/model/DeleteBucketRequest.h>
 
+#include <detectionComponentUtils.h>
 #include "MPFDetectionException.h"
 
-#include "S3StorageHelper.h"
+#include "S3StorageUtil.h"
 #include "uri.h"
 
-S3StorageHelper::S3StorageHelper(const log4cxx::LoggerPtr &log,
-                                 const string &resultsBucketUrl,
-                                 const string &accessKey,
-                                 const string &secretKey) : _log(log) {
+S3StorageUtil::S3StorageUtil(const log4cxx::LoggerPtr &log,
+                             const MPFJob &job) :
+        S3StorageUtil(log,
+                      DetectionComponentUtils::GetProperty(job.job_properties, "S3_RESULTS_BUCKET", ""),
+                      DetectionComponentUtils::GetProperty(job.job_properties, "S3_ACCESS_KEY", ""),
+                      DetectionComponentUtils::GetProperty(job.job_properties, "S3_SECRET_KEY", "")) {
+}
+
+S3StorageUtil::S3StorageUtil(const log4cxx::LoggerPtr &log,
+                             const string &resultsBucketUrl,
+                             const string &accessKey,
+                             const string &secretKey) : _log(log) {
   if (resultsBucketUrl.empty()) {
-    throw MPFDetectionException(MPF_MISSING_PROPERTY, "Missing S3_RESULTS_BUCKET property.");
+    throw MPFDetectionException(MPF_MISSING_PROPERTY, "The S3_RESULTS_BUCKET property was not set.");
+  }
+  RequiresS3Storage(resultsBucketUrl, accessKey, secretKey); // will throw if access key or secret key missing
+
+  if (_log->isTraceEnabled()) {
+    aws_sdk_options.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Trace;
+  } else {
+    aws_sdk_options.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Off;
   }
 
-  if (accessKey.empty() && secretKey.empty()) {
-    throw MPFDetectionException(MPF_MISSING_PROPERTY,
-                                "The S3_RESULTS_BUCKET property was set, but the S3_ACCESS_KEY and S3_SECRET_KEY properties were not.");
-  }
-
-  if (accessKey.empty()) {
-    throw MPFDetectionException(MPF_MISSING_PROPERTY,
-                                "The S3_RESULTS_BUCKET and S3_ACCESS_KEY properties were set, but the S3_SECRET_KEY property was not.");
-  }
-
-  if (secretKey.empty()) {
-    throw MPFDetectionException(MPF_MISSING_PROPERTY,
-                                "The S3_RESULTS_BUCKET and S3_SECRET_KEY properties were set, but the S3_ACCESS_KEY property was not.");
-  }
+  Aws::InitAPI(aws_sdk_options); // do this before creating the client configuration to prevent a segfault
 
   LOG4CXX_TRACE(_log, "Configuring S3 Client");
   Aws::Client::ClientConfiguration awsClientConfig;
@@ -89,22 +92,62 @@ S3StorageHelper::S3StorageHelper(const log4cxx::LoggerPtr &log,
                                                               Aws::String(secretKey.c_str()));
   s3_client = Aws::S3::S3Client(creds, awsClientConfig,
                                 Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
-
-  if (_log->isTraceEnabled()) {
-    aws_sdk_options.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Trace;
-  } else {
-    aws_sdk_options.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Off;
-  }
-
-  Aws::InitAPI(aws_sdk_options);
 }
 
-S3StorageHelper::~S3StorageHelper() {
+S3StorageUtil::~S3StorageUtil() {
   Aws::ShutdownAPI(aws_sdk_options);
 }
 
-bool S3StorageHelper::IsValid() const {
-  return !s3_bucket.empty();
+/** ****************************************************************************
+* Determine if AWS S3 storage is required
+*
+* \param    job     job with properties to check
+*
+* \returns  true if AWS storage is required; false otherwise
+***************************************************************************** */
+bool S3StorageUtil::RequiresS3Storage(const MPFJob &job) {
+  string resultsBucketUrl = DetectionComponentUtils::GetProperty(job.job_properties, "S3_RESULTS_BUCKET", "");
+  string accessKey = DetectionComponentUtils::GetProperty(job.job_properties, "S3_ACCESS_KEY", "");
+  string secretKey = DetectionComponentUtils::GetProperty(job.job_properties, "S3_SECRET_KEY", "");
+  return RequiresS3Storage(resultsBucketUrl, accessKey, secretKey);
+}
+
+/** ****************************************************************************
+* Determine if AWS S3 storage is required
+*
+* \param    resultsBucketUrl     results bucket URL
+* \param    accessKey            access key
+* \param    secretKey            secret key
+*
+* \returns  true if AWS storage is required; false otherwise
+***************************************************************************** */
+bool S3StorageUtil::RequiresS3Storage(const string &resultsBucketUrl,
+                                      const string &accessKey,
+                                      const string &secretKey) {
+  if (resultsBucketUrl.empty()) {
+    return false;
+  }
+
+  if (accessKey.empty() && secretKey.empty()) {
+    throw MPFDetectionException(MPF_MISSING_PROPERTY,
+                                "The S3_RESULTS_BUCKET property was set, but the S3_ACCESS_KEY and S3_SECRET_KEY properties were not.");
+  }
+
+  if (accessKey.empty()) {
+    throw MPFDetectionException(MPF_MISSING_PROPERTY,
+                                "The S3_RESULTS_BUCKET and S3_ACCESS_KEY properties were set, but the S3_SECRET_KEY property was not.");
+  }
+
+  if (secretKey.empty()) {
+    throw MPFDetectionException(MPF_MISSING_PROPERTY,
+                                "The S3_RESULTS_BUCKET and S3_SECRET_KEY properties were set, but the S3_ACCESS_KEY property was not.");
+  }
+
+  return true;
+}
+
+string S3StorageUtil::GetS3ResultsBucketUrl() {
+  return s3_bucket_url;
 }
 
 /** ****************************************************************************
@@ -114,7 +157,7 @@ bool S3StorageHelper::IsValid() const {
 *
 * \returns  lowercase hexadecimal string corresponding to the sha256
 ***************************************************************************** */
-string S3StorageHelper::GetSha256(const string &buffer) {
+string S3StorageUtil::GetSha256(const string &buffer) {
   unsigned char hash[SHA256_DIGEST_LENGTH];
   SHA256_CTX sha256;
   SHA256_Init(&sha256);
@@ -136,8 +179,8 @@ string S3StorageHelper::GetSha256(const string &buffer) {
 *
 * \returns  URL of object in S3 bucket
 ***************************************************************************** */
-string S3StorageHelper::PutS3Object(const string &buffer,
-                                    const std::map<string, string> &metaData) const {
+string S3StorageUtil::PutS3Object(const string &buffer,
+                                  const std::map<string, string> &metaData) const {
   string objectSha = GetSha256(buffer);
   Aws::S3::Model::PutObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
@@ -171,8 +214,8 @@ string S3StorageHelper::PutS3Object(const string &buffer,
 * \param[out]    buffer is where the data will be returned
 * \param[in,out] metadata about the object if desired
 ***************************************************************************** */
-void S3StorageHelper::GetS3Object(const string &object_name,
-                                  string &buffer) const {
+void S3StorageUtil::GetS3Object(const string &object_name,
+                                string &buffer) const {
   Aws::S3::Model::GetObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
@@ -181,7 +224,7 @@ void S3StorageHelper::GetS3Object(const string &object_name,
   if (!res.IsSuccess()) {
     stringstream ss;
     ss << "Could not get object '" << object_name << "': "
-    << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+       << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
     throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
   }
 
@@ -194,9 +237,9 @@ void S3StorageHelper::GetS3Object(const string &object_name,
 }
 
 /******************************************************************************/
-void S3StorageHelper::GetS3Object(const string &object_name,
-                                  string &buffer,
-                                  map<string, string> &metaData) const {
+void S3StorageUtil::GetS3Object(const string &object_name,
+                                string &buffer,
+                                map<string, string> &metaData) const {
   Aws::S3::Model::GetObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
@@ -205,7 +248,7 @@ void S3StorageHelper::GetS3Object(const string &object_name,
   if (!res.IsSuccess()) {
     stringstream ss;
     ss << "Could not get object '" << object_name << "': "
-    << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+       << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
     throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
   }
 
@@ -225,7 +268,7 @@ void S3StorageHelper::GetS3Object(const string &object_name,
 *
 * \param    object_name give the name/key for the object in the bucket
 ***************************************************************************** */
-void S3StorageHelper::DeleteS3Object(const string &object_name) const {
+void S3StorageUtil::DeleteS3Object(const string &object_name) const {
   Aws::S3::Model::DeleteObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
@@ -234,7 +277,7 @@ void S3StorageHelper::DeleteS3Object(const string &object_name) const {
   if (!res.IsSuccess()) {
     stringstream ss;
     ss << "Could not delete object '" << object_name << "': "
-    << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+       << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
     throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
   }
 }
@@ -246,7 +289,7 @@ void S3StorageHelper::DeleteS3Object(const string &object_name) const {
 *
 * \returns  true if successful
 ***************************************************************************** */
-bool S3StorageHelper::ExistsS3Object(const string &object_name) const {
+bool S3StorageUtil::ExistsS3Object(const string &object_name) const {
   Aws::S3::Model::HeadObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
@@ -261,7 +304,7 @@ bool S3StorageHelper::ExistsS3Object(const string &object_name) const {
 *
 * \returns  true if successful
 ***************************************************************************** */
-bool S3StorageHelper::ExistsS3Bucket(const string &bucket_name) const {
+bool S3StorageUtil::ExistsS3Bucket(const string &bucket_name) const {
   Aws::S3::Model::HeadBucketRequest req;
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   req.SetBucket(bucket.c_str());
@@ -274,7 +317,7 @@ bool S3StorageHelper::ExistsS3Bucket(const string &bucket_name) const {
 *
 * \param    bucket_name give the name of the bucket into which to write
 ***************************************************************************** */
-void S3StorageHelper::CreateS3Bucket(const string &bucket_name) const {
+void S3StorageUtil::CreateS3Bucket(const string &bucket_name) const {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (ExistsS3Bucket(bucket)) {
     LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' already exists");
@@ -297,7 +340,7 @@ void S3StorageHelper::CreateS3Bucket(const string &bucket_name) const {
 *
 * \param    bucket_name give the name of the bucket into which to write
 ***************************************************************************** */
-void S3StorageHelper::DeleteS3Bucket(const string &bucket_name) const {
+void S3StorageUtil::DeleteS3Bucket(const string &bucket_name) const {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (!ExistsS3Bucket(bucket)) {
     LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' does not exist");
@@ -320,7 +363,7 @@ void S3StorageHelper::DeleteS3Bucket(const string &bucket_name) const {
 *
 * \param    bucket_name give the name of the bucket into which to write
 ***************************************************************************** */
-void S3StorageHelper::EmptyS3Bucket(const string &bucket_name) const {
+void S3StorageUtil::EmptyS3Bucket(const string &bucket_name) const {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (!ExistsS3Bucket(bucket)) {
     LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' does not exist");
