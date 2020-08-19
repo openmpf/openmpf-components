@@ -46,8 +46,8 @@ class S3StorageUtil {
     log4cxx::LoggerPtr _log;          ///< log object
     string s3_bucket;                 ///< amazon web services s3 bucket to use for job e.g. 'bucket'
     string s3_bucket_url;             ///< amazon web services s3 bucket url to use for job e.g. 'http://localhost:80/bucket'
-    Aws::S3::S3Client s3_client;      ///< amazon web services s3 client
     Aws::SDKOptions aws_sdk_options;  ///< amazon web services s3 options
+    unique_ptr<Aws::S3::S3Client> s3_client;  ///< amazon web services s3 client
 
   public:
     S3StorageUtil(const log4cxx::LoggerPtr &log,
@@ -66,12 +66,18 @@ class S3StorageUtil {
                                   const string &accessKey,
                                   const string &secretKey);                   ///< determine if AWS S3 storage is required; throws if missing/invalid properties
 
-    string GetS3ResultsBucketUrl();                                           ///< get the AWS S3 results bucket
+    string GetS3ResultsBucketUrl();                                           ///< get the AWS S3 results bucket URL
+
+    string GetS3ResultsBucket();                                              ///< get the AWS S3 results bucket
 
     static string GetSha256(const string &buffer);                            ///< cal sha256 for a string buffer
 
+    string PutS3Object(const string                  &bucket_name,
+                       const string                  &buffer,
+                       const std::map<string,string> &metaData = {}) const;   ///< write contents of string buffer out to s3 object
+
     string PutS3Object(const string                  &buffer,
-                       const std::map<string,string> &metaData = {}) const;  ///< write contents of string buffer out to s3 object
+                       const std::map<string,string> &metaData = {}) const;   ///< write contents of string buffer out to s3 object
 
     void GetS3Object(const string         &object_name,
                      string               &buffer) const;                     ///< read content of a object to a string buffer

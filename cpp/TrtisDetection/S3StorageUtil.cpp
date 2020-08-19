@@ -90,8 +90,9 @@ S3StorageUtil::S3StorageUtil(const log4cxx::LoggerPtr &log,
 
   Aws::Auth::AWSCredentials creds = Aws::Auth::AWSCredentials(Aws::String(accessKey.c_str()),
                                                               Aws::String(secretKey.c_str()));
-  s3_client = Aws::S3::S3Client(creds, awsClientConfig,
-                                Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
+  s3_client = unique_ptr<Aws::S3::S3Client>(new Aws::S3::S3Client(creds, awsClientConfig,
+                                                                  Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
+                                                                  false));
 }
 
 S3StorageUtil::~S3StorageUtil() {
@@ -150,6 +151,10 @@ string S3StorageUtil::GetS3ResultsBucketUrl() {
   return s3_bucket_url;
 }
 
+string S3StorageUtil::GetS3ResultsBucket() {
+  return s3_bucket;
+}
+
 /** ****************************************************************************
 * Calculate the sha256 digest for a string buffer
 *
@@ -174,16 +179,31 @@ string S3StorageUtil::GetSha256(const string &buffer) {
 /** ****************************************************************************
 * Write a string buffer to an S3 object in an S3 bucket
 *
-* \param    object_name give the name/key for the object in the bucket
+* \param    object_name give the name/key for the object
 * \param    buffer is the data to write
 *
 * \returns  URL of object in S3 bucket
 ***************************************************************************** */
 string S3StorageUtil::PutS3Object(const string &buffer,
                                   const std::map<string, string> &metaData) const {
+  return PutS3Object(s3_bucket, buffer, metaData);
+}
+
+/** ****************************************************************************
+* Write a string buffer to an S3 object in an S3 bucket
+*
+* \param    bucket_name give the name of the bucket
+* \param    object_name give the name/key for the object in the bucket
+* \param    buffer is the data to write
+*
+* \returns  URL of object in S3 bucket
+***************************************************************************** */
+string S3StorageUtil::PutS3Object(const string &bucket_name,
+                                  const string &buffer,
+                                  const std::map<string, string> &metaData) const {
   string objectSha = GetSha256(buffer);
   Aws::S3::Model::PutObjectRequest req;
-  req.SetBucket(s3_bucket.c_str());
+  req.SetBucket(bucket_name.c_str());
   req.SetKey(objectSha.c_str());
   for (auto &m : metaData) {
     req.AddMetadata(Aws::String(m.first.c_str(), m.first.size()),
@@ -196,7 +216,7 @@ string S3StorageUtil::PutS3Object(const string &buffer,
                                                  | std::stringstream::binary);
   data->write(reinterpret_cast<char *>(const_cast<char *>(buffer.c_str())), buffer.length());
   req.SetBody(data);
-  auto res = s3_client.PutObject(req);
+  auto res = s3_client->PutObject(req);
 
   if (!res.IsSuccess()) {
     stringstream ss;
@@ -219,7 +239,7 @@ void S3StorageUtil::GetS3Object(const string &object_name,
   Aws::S3::Model::GetObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
-  auto res = s3_client.GetObject(req);
+  auto res = s3_client->GetObject(req);
 
   if (!res.IsSuccess()) {
     stringstream ss;
@@ -243,7 +263,7 @@ void S3StorageUtil::GetS3Object(const string &object_name,
   Aws::S3::Model::GetObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
-  auto res = s3_client.GetObject(req);
+  auto res = s3_client->GetObject(req);
 
   if (!res.IsSuccess()) {
     stringstream ss;
@@ -272,7 +292,7 @@ void S3StorageUtil::DeleteS3Object(const string &object_name) const {
   Aws::S3::Model::DeleteObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
-  auto res = s3_client.DeleteObject(req);
+  auto res = s3_client->DeleteObject(req);
 
   if (!res.IsSuccess()) {
     stringstream ss;
@@ -285,7 +305,7 @@ void S3StorageUtil::DeleteS3Object(const string &object_name) const {
 /** ****************************************************************************
 * Check if an object exists in an S3 bucket
 *
-* \param    object_name give the name/key for the object in the bucket
+* \param    object_name give the name/key for the object to check
 *
 * \returns  true if successful
 ***************************************************************************** */
@@ -293,14 +313,14 @@ bool S3StorageUtil::ExistsS3Object(const string &object_name) const {
   Aws::S3::Model::HeadObjectRequest req;
   req.SetBucket(s3_bucket.c_str());
   req.SetKey(object_name.c_str());
-  const auto res = s3_client.HeadObject(req);
+  const auto res = s3_client->HeadObject(req);
   return res.IsSuccess();
 }
 
 /** ****************************************************************************
 * Check if a bucket exists in an S3 store
 *
-* \param    bucket_name give the name of the bucket into which to write
+* \param    bucket_name give the name of the bucket to check
 *
 * \returns  true if successful
 ***************************************************************************** */
@@ -308,24 +328,35 @@ bool S3StorageUtil::ExistsS3Bucket(const string &bucket_name) const {
   Aws::S3::Model::HeadBucketRequest req;
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   req.SetBucket(bucket.c_str());
-  const auto res = s3_client.HeadBucket(req);
-  return res.IsSuccess();
+  const auto res = s3_client->HeadBucket(req);
+  if (res.IsSuccess()) {
+    return true;
+  }
+  if (res.GetError().GetErrorType() == Aws::S3::S3Errors::RESOURCE_NOT_FOUND ||
+      res.GetError().GetErrorType() == Aws::S3::S3Errors::NO_SUCH_BUCKET) {
+    return false;
+  }
+  stringstream ss;
+  ss << "Unable to determine if bucket '" << bucket << "' exists: "
+     << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+  throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
 }
 
 /** ****************************************************************************
 * Create a bucket in an S3 store if it does not exist
 *
-* \param    bucket_name give the name of the bucket into which to write
+* \param    bucket_name give the name of the bucket to create
 ***************************************************************************** */
 void S3StorageUtil::CreateS3Bucket(const string &bucket_name) const {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (ExistsS3Bucket(bucket)) {
-    LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' already exists");
+    LOG4CXX_TRACE(_log, "No need to create bucket '" << bucket << "' because it already exists.");
+    return;
   }
 
   Aws::S3::Model::CreateBucketRequest req;
   req.SetBucket(bucket.c_str());
-  const auto res = s3_client.CreateBucket(req);
+  const auto res = s3_client->CreateBucket(req);
 
   if (!res.IsSuccess()) {
     stringstream ss;
@@ -338,17 +369,18 @@ void S3StorageUtil::CreateS3Bucket(const string &bucket_name) const {
 /** ****************************************************************************
 * Delete a bucket in an S3 store if it exists
 *
-* \param    bucket_name give the name of the bucket into which to write
+* \param    bucket_name give the name of the bucket to delete
 ***************************************************************************** */
 void S3StorageUtil::DeleteS3Bucket(const string &bucket_name) const {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (!ExistsS3Bucket(bucket)) {
-    LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' does not exist");
+    LOG4CXX_TRACE(_log, "No need to delete bucket '" << bucket << "' because it does not exist.");
+    return;
   }
 
   Aws::S3::Model::DeleteBucketRequest req;
   req.SetBucket(bucket.c_str());
-  const auto res = s3_client.DeleteBucket(req);
+  const auto res = s3_client->DeleteBucket(req);
 
   if (!res.IsSuccess()) {
     stringstream ss;
@@ -361,18 +393,19 @@ void S3StorageUtil::DeleteS3Bucket(const string &bucket_name) const {
 /** ****************************************************************************
 * Empty a bucket in an S3 store if it exists
 *
-* \param    bucket_name give the name of the bucket into which to write
+* \param    bucket_name give the name of the bucket to empty
 ***************************************************************************** */
 void S3StorageUtil::EmptyS3Bucket(const string &bucket_name) const {
   const string bucket = bucket_name.empty() ? s3_bucket : bucket_name;
   if (!ExistsS3Bucket(bucket)) {
-    LOG4CXX_TRACE(_log, "Bucket '" << bucket << "' does not exist");
+    LOG4CXX_TRACE(_log, "No need to empty bucket '" << bucket << "' because it does not exist.");
+    return;
   }
 
   Aws::S3::Model::ListObjectsV2Request req;
   req.SetBucket(bucket.c_str());
   while (true) {
-    auto res = s3_client.ListObjectsV2(req); // returns some or all (up to 1,000) of the objects in a bucket
+    auto res = s3_client->ListObjectsV2(req); // returns some or all (up to 1,000) of the objects in a bucket
     Aws::Vector<Aws::S3::Model::Object> oList = res.GetResult().GetContents();
     if (oList.empty()) {
       break;
@@ -388,7 +421,7 @@ void S3StorageUtil::EmptyS3Bucket(const string &bucket_name) const {
     Aws::S3::Model::DeleteObjectsRequest dReq;
     dReq.SetBucket(bucket.c_str());
     dReq.SetDelete(dObjs);
-    auto dRes = s3_client.DeleteObjects(dReq);
+    auto dRes = s3_client->DeleteObjects(dReq);
 
     if (!res.IsSuccess()) {
       stringstream ss;
