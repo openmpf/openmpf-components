@@ -63,6 +63,12 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
+IF(CUDA_FOUND)
+    MESSAGE( STATUS "I found CUDA !" )
+    SET(HAVE_CUDA ${CUDA_FOUND} CACHE BOOL "Set to TRUE if CUDA is found, FALSE otherwise")
+    set (CMAKE_CXX_FLAGS "-DHAVE_CUDA=1")
+ENDIF(CUDA_FOUND)
+
 find_package(GTest)
 if (${GTEST_FOUND})
     message("-- found GTest, configuring tests")

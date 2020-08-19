@@ -80,7 +80,7 @@ namespace MPF{
 
       void drawLandmarks(cv::Mat &img, const cv::Scalar drawColor) const;    ///< draw landmark point on image
       void releaseBGRFrame();                                                ///< release reference to image frame
-      static bool trySetCudaDevice(const int cudaDeviceId);                  ///< try set CUDA to use specified GPU device
+      static bool loadNetToCudaDevice(const int cudaDeviceId);               ///< try set CUDA to use specified GPU device
 
       DetectionLocation(int x,int y,int width,int height,float conf,
                         cv::Point2f center,
@@ -94,6 +94,7 @@ namespace MPF{
       static cv::dnn::Net                      _ssdNet;               ///< single shot DNN face detector network
       static cv::dnn::Net                      _openFaceNet;          ///< feature generator
       static unique_ptr<dlib::shape_predictor> _shapePredFuncPtr;     ///< landmark detector
+      static string                            _modelsPath;           ///< where to find models files
 
       float _iouDist(const cv::Rect2i &rect) const;                 ///< compute intersectino over union
 
@@ -104,7 +105,7 @@ namespace MPF{
       mutable cv::Mat         _feature;                   ///< DNN feature for matching-up detections
       cv::Mat                 _bgrFrame;                  ///< frame associated with detection (openCV memory managed :( )
       cv::Mat                 _bgrFrameRot;               ///< rotated version of _bgrFrame
-      static void _setCudaBackend(const bool enabled);    ///< turn on or off cuda backend for inferencing
+      static void _loadNets(const bool enabled);          ///< turn on or off cuda backend for inferencing
   };
 
   /** **************************************************************************

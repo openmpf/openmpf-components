@@ -12,18 +12,12 @@ services:
     environment:
       MPF_LOG_PATH: .
       THIS_MPF_NODE: .
-      NVIDIA_VISIBLE_DEVICES: 1
+      NVIDIA_VISIBLE_DEVICES: all
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
     volumes:
       # Mounts the project folder to '/workspace'. While this file is in .devcontainer,
       # mounts are relative to the first file in the list, which is a level up.
-      - ../../../../.git:/home/mpf/.git:cached
-      - ../../../../openmpf:/home/mpf/openmpf:cached
-      - ../../../../openmpf-build-tools:/home/mpf/openmpf-build-tools:cached
       - ../../../../openmpf-components:/home/mpf/openmpf-components:cached
-      - ../../../../openmpf-cpp-component-sdk:/home/mpf/openmpf-cpp-component-sdk:cached
-      - ../../../../openmpf-docker:/home/mpf/openmpf-docker:cached
-      - ../../../../openmpf-java-component-sdk:/home/mpf/openmpf-java-component-sdk:cached
-      - ../../../../openmpf-python-component-sdk:/home/mpf/openmpf-python-component-sdk:cached
 
 
     # [Optional] Required for ptrace-based debuggers like C++, Go, and Rust

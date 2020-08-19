@@ -210,7 +210,7 @@ TEST(OcvSsdFaceDetection, VerifyQuality) {
     // Detect detections and check conf levels
     MPFImageJob job1("Testing1", test_image_path, { }, { });
     vector<MPFImageLocation> detections = ocv_ssd_face_detection->GetDetections(job1);
-    ASSERT_TRUE(detections.size() == 1);
+    ASSERT_TRUE(detections.size() > 0);
     GOUT("Detection: " << detections[0]);
     ASSERT_TRUE(detections[0].confidence > .9);
     detections.clear();

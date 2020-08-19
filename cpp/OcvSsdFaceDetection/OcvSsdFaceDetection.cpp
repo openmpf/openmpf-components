@@ -117,7 +117,7 @@ bool OcvSsdFaceDetection::Init() {
     Properties fromEnv;
     int cudaDeviceId   = getEnv<int> (fromEnv,"CUDA_DEVICE_ID", -1);
     bool fallbackToCPU = getEnv<bool>(fromEnv,"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", true);
-    bool defaultCudaDeviceOK = DetectionLocation::trySetCudaDevice(cudaDeviceId) || fallbackToCPU;
+    bool defaultCudaDeviceOK = DetectionLocation::loadNetToCudaDevice(cudaDeviceId) || fallbackToCPU;
 
     bool trackInitializedOK = Track::Init(_log, plugin_path);
     bool kfTrackerInitializedOK = KFTracker::Init(_log, plugin_path);
@@ -165,12 +165,17 @@ vector<long> OcvSsdFaceDetection::_calcAssignmentVector(const TrackPtrList      
 
   // fill in actual costs for non-dummy entries
   size_t r = 0;
+  vector<int> uniqueCosts;
   for(auto &track:tracks){
     for(size_t c=0; c<detections.size(); c++){
       if(track->back()->frameIdx < detections[c]->frameIdx){
         //float cost = CALL_MEMBER_FUNC(*(track->back()),COST_FUNC)(*detections[c]);
         float cost = CALL_MEMBER_FUNC(*detections[c],COST_FUNC)(*track);
-        costs(r,c) = ((cost <= maxCost) ? (INT_MAX - static_cast<int>(1000.0f * cost)) : 0);
+        int iCost = ((cost <= maxCost) ? (INT_MAX - static_cast<int>(1.E9 * cost)) : 0);
+        if(iCost !=0 )
+          while(find(uniqueCosts.begin(),uniqueCosts.end(),iCost) != uniqueCosts.end()) iCost--;  // cost have to be unique or dlib::max_cost_assignment() hangs...
+        costs(r,c) = iCost;
+        uniqueCosts.push_back(iCost);
       }
     }
     r++;

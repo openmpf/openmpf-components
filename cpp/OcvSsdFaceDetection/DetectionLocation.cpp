@@ -27,6 +27,7 @@
 #include <cassert>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/core/cuda.hpp>
+#include <opencv2/cvconfig.h>
 
 #include "DetectionLocation.h"
 #include "Track.h"
@@ -38,6 +39,7 @@ log4cxx::LoggerPtr                DetectionLocation::_log;
 cv::dnn::Net                      DetectionLocation::_ssdNet;                     ///< single shot DNN face detector network
 cv::dnn::Net                      DetectionLocation::_openFaceNet;                ///< feature generator
 unique_ptr<dlib::shape_predictor> DetectionLocation::_shapePredFuncPtr  = NULL;   ///< landmark detector function pointer
+string                            DetectionLocation::_modelsPath;                 ///< where to find model files
 
 /** ****************************************************************************
 *  Draw polylines to visualize landmark features
@@ -483,7 +485,19 @@ DetectionLocationPtrVec DetectionLocation::createDetections(const JobConfig &cfg
 
 /** **************************************************************************
 *************************************************************************** */
-void DetectionLocation::_setCudaBackend(const bool enabled){
+void DetectionLocation::_loadNets(const bool enabled){
+
+  // Load SSD Tensor Flow Network
+  string  tf_model_path = _modelsPath + "opencv_face_detector_uint8.pb";
+  string tf_config_path = _modelsPath + "opencv_face_detector.pbtxt";
+
+  string  tr_model_path = _modelsPath + "nn4.small2.v1.t7";
+
+  // load detector net
+  _ssdNet = cv::dnn::readNetFromTensorflow(tf_model_path, tf_config_path);
+  // load feature generator
+  _openFaceNet = cv::dnn::readNetFromTorch(tr_model_path);
+
   #ifdef HAVE_CUDA
   if(enabled){
     _ssdNet.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
@@ -506,19 +520,23 @@ void DetectionLocation::_setCudaBackend(const bool enabled){
 *
 * \returns true if successful false otherwise
 *************************************************************************** */
-bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
+bool DetectionLocation::loadNetToCudaDevice(const int cudaDeviceId){
   static int lastCudaDeviceId = -1;
   const string err_msg = "Failed to configure CUDA for deviceID=";
   try{
     #ifdef HAVE_CUDA
     if(lastCudaDeviceId != cudaDeviceId){
-      if(lastCudaDeviceId >=0) cv::cuda::resetDevice();  // if we were using a cuda device prior clean up old contex / cuda resources
+      if(lastCudaDeviceId >=0){
+        if(!_ssdNet.empty())           _ssdNet.~Net();         // need to release network this prior to device reset
+        if(!_openFaceNet.empty()) _openFaceNet.~Net();
+        cv::cuda::resetDevice();
+      }
       if(cudaDeviceId >=0){
         cv::cuda::setDevice(cudaDeviceId);
-        _setCudaBackend(true);
+        _loadNets(true);
         lastCudaDeviceId = cudaDeviceId;
       }else{
-        _setCudaBackend(false);
+        _loadNets(false);
         lastCudaDeviceId = -1;
       }
     }
@@ -528,7 +546,7 @@ bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
   }catch(const exception& ex){                                               LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Exception: " << ex.what());
   }catch(...){                                                               LOG4CXX_FATAL(_log, err_msg << cudaDeviceId << " Unknown failure occurred. Possible memory corruption");
   }
-  _setCudaBackend(false);
+  _loadNets(false);
   lastCudaDeviceId = -1;
   return false;
 }
@@ -544,25 +562,18 @@ bool DetectionLocation::trySetCudaDevice(const int cudaDeviceId){
 *************************************************************************** */
 bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
 
+  int     cudaDeviceId     = getEnv<int> ({},"CUDA_DEVICE_ID",0);
+
   _log = log;
+  _modelsPath = plugin_path + "/data/";
 
-  // Load SSD Tensor Flow Network
-  string  tf_model_path = plugin_path + "/data/opencv_face_detector_uint8.pb";
-  string tf_config_path = plugin_path + "/data/opencv_face_detector.pbtxt";
-
-  string  sp_model_path = plugin_path + "/data/shape_predictor_5_face_landmarks.dat";
-  string  tr_model_path = plugin_path + "/data/nn4.small2.v1.t7";
-
-  const string err_msg = "Failed to load models: " + tf_config_path + ", " + tf_model_path;
+  const string err_msg = "Failed to load models from  " + _modelsPath;
   try{
       // load detector net
-      _ssdNet = cv::dnn::readNetFromTensorflow(tf_model_path, tf_config_path);
+      loadNetToCudaDevice(cudaDeviceId);
 
       _shapePredFuncPtr = unique_ptr<dlib::shape_predictor>(new dlib::shape_predictor());
-      dlib::deserialize(sp_model_path) >> *_shapePredFuncPtr;
-
-      // load feature generator
-      _openFaceNet = cv::dnn::readNetFromTorch(tr_model_path);
+      dlib::deserialize(_modelsPath + "shape_predictor_5_face_landmarks.dat") >> *_shapePredFuncPtr;
 
   }catch(const runtime_error& re){                                           LOG4CXX_FATAL(_log, err_msg << " Runtime error: " << re.what());
     return false;
