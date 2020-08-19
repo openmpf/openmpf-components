@@ -45,7 +45,7 @@
 #include "TrtisDetection.h"
 #include "S3StorageUtil.h"
 #include "S3FeatureStorage.h"
-#include "JsonFeatureStorage.h"
+#include "EncodeFeatureStorage.h"
 #include "base64.h"
 
 using namespace MPF::COMPONENT;
@@ -143,7 +143,7 @@ IFeatureStorage::uPtrFeatureStorage TrtisJobConfig::_getFeatureStorage(const MPF
   if (S3StorageUtil::RequiresS3Storage(job)) {
     return IFeatureStorage::uPtrFeatureStorage(new S3FeatureStorage(job, log));
   } else {
-    return IFeatureStorage::uPtrFeatureStorage(new JsonFeatureStorage());
+    return IFeatureStorage::uPtrFeatureStorage(new EncodeFeatureStorage());
   }
 }
 

@@ -24,29 +24,27 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef TRTIS_DETECTION_JSONFEATURESTORAGE_H
-#define TRTIS_DETECTION_JSONFEATURESTORAGE_H
+#include "MPFDetectionException.h"
 
-#include "IFeatureStorage.h"
-#include "S3StorageUtil.h"
+#include "EncodeFeatureStorage.h"
+#include "base64.h"
 
-using namespace std;
 using namespace MPF::COMPONENT;
 
-class JsonFeatureStorage : public IFeatureStorage {
-  private:
-    void _store(Properties &prop);
+void EncodeFeatureStorage::_store(Properties &prop) {
+  prop["FEATURE"] = Base64::Encode(prop.at("FEATURE")); // overwrite
+}
 
-  public:
-    void Store(const string &data_uri,
-               const string &model,
-               MPFImageLocation &loc) override;
+void EncodeFeatureStorage::Store(const string &data_uri,
+                                 const string &model,
+                                 MPFImageLocation &location) {
+  _store(location.detection_properties);
+}
 
-    void Store(const string &data_uri,
-               const string &model,
-               const MPFVideoTrack &track,
-               MPFImageLocation &location,
-               double fp_ms) override;
-};
-
-#endif //TRTIS_DETECTION_JSONFEATURESTORAGE_H
+void EncodeFeatureStorage::Store(const string &data_uri,
+                                 const string &model,
+                                 const MPFVideoTrack &track,
+                                 MPFImageLocation &location,
+                                 double fp_ms) {
+  _store(location.detection_properties);
+}
