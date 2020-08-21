@@ -42,7 +42,8 @@ if (${GTEST_FOUND})
 
     add_test(NAME OcvDnnDetectionTest COMMAND OcvDnnDetectionTest)
 
-    # Install test images and videos
+    # Install test images, videos, and other files
     file(GLOB OCVDNN_TEST_FILES data/*)
     file(COPY ${OCVDNN_TEST_FILES} DESTINATION data)
+    file(COPY vehicle-whitelist.txt DESTINATION .)
 endif()

@@ -28,9 +28,10 @@
 
 #include <unistd.h>
 #include <fstream>
+#include <unordered_set>
+
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/videoio.hpp>
 #include <opencv2/dnn.hpp>
 
 #include <log4cxx/logmanager.h>
@@ -39,11 +40,56 @@
 
 #include <Utils.h>
 #include <detectionComponentUtils.h>
+#include <MPFInvalidPropertyException.h>
 #include <MPFImageReader.h>
 #include <MPFVideoCapture.h>
 
 
 using namespace MPF::COMPONENT;
+
+
+class FeedForwardWhitelistFilter {
+public:
+
+    FeedForwardWhitelistFilter(const std::string &whitelist_path) {
+        std::string expanded_file_path;
+        std::string error = Utils::expandFileName(whitelist_path, expanded_file_path);
+        if (!error.empty()) {
+            throw MPFInvalidPropertyException(
+                    "FEED_FORWARD_WHITELIST_FILE",
+                    "The value, \"" + whitelist_path + "\", could not be expanded due to: " + error);
+        }
+
+        std::ifstream whitelist_file(expanded_file_path);
+        if (!whitelist_file.good()) {
+            throw MPFDetectionException(
+                    MPF_COULD_NOT_OPEN_DATAFILE,
+                    "Failed to load feed-forward class whitelist that was supposed to be located at \""
+                    + expanded_file_path + "\".");
+        }
+
+        std::string line;
+        while (std::getline(whitelist_file, line)) {
+            Utils::trim(line);
+            if (!line.empty()) {
+                whitelist_.insert(line);
+            }
+        }
+
+        if (whitelist_.empty()) {
+            throw MPFDetectionException(
+                    MPF_COULD_NOT_READ_DATAFILE,
+                    "The feed-forward class whitelist file located at \"" + expanded_file_path + "\" was empty.");
+        }
+    }
+
+    bool operator()(const std::string& class_name) {
+        return whitelist_.count(class_name) > 0;
+    }
+
+private:
+    std::unordered_set<std::string> whitelist_;
+};
 
 
 //-----------------------------------------------------------------------------
@@ -128,45 +174,50 @@ void feedForwardTracker(std::string classification_type, MPFImageLocation &locat
 }
 
 
-
-std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job) {
-    if (job.has_feed_forward_track) {
-        return getDetections(job, feedForwardTracker);
+std::string getFeedForwardExcludeBehavior(const MPFJob &job, const Properties &feed_forward_props) {
+    if (feed_forward_props.find("CLASSIFICATION") != feed_forward_props.end()) {
+        std::string feed_forward_whitelist_file =
+                DetectionComponentUtils::GetProperty(job.job_properties, "FEED_FORWARD_WHITELIST_FILE", "");
+        if (!feed_forward_whitelist_file.empty()) {
+            FeedForwardWhitelistFilter filter(feed_forward_whitelist_file);
+            if (!filter(feed_forward_props.at("CLASSIFICATION"))) {
+                std::string feed_forward_exclude_behavior =
+                        DetectionComponentUtils::GetProperty(job.job_properties, "FEED_FORWARD_EXCLUDE_BEHAVIOR",
+                                                             "PASS_THROUGH");
+                if (feed_forward_exclude_behavior == "PASS_THROUGH" ||
+                    feed_forward_exclude_behavior == "DROP") {
+                    return feed_forward_exclude_behavior;
+                } else {
+                    throw MPFInvalidPropertyException(
+                            "FEED_FORWARD_EXCLUDE_BEHAVIOR",
+                            "The value, \"" + feed_forward_exclude_behavior +
+                            "\", is not valid. Only \"PASS_THROUGH\" and \"DROP\" are accepted.");
+                }
+            }
+        }
     }
-    else {
-        return getDetections(job, defaultTracker);
-    }
+    return "";
 }
 
 
-template<typename Tracker>
-std::vector<MPFVideoTrack> OcvDnnDetection::getDetections(const MPFVideoJob &job, Tracker tracker) const {
+
+std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job) {
     try {
-        OcvDnnJobConfig config(job.job_properties, models_parser_, logger_);
-
-        MPFVideoCapture video_cap(job);
-
-        cv::Mat frame;
-        int frame_index = -1;
-        std::vector<MPFVideoTrack> tracks;
-        while (video_cap.Read(frame)) {
-            frame_index++;
-            std::unique_ptr<MPFImageLocation> location = getDetection(config, frame);
-            if (!location) {
-                // Nothing found in current frame.
-                continue;
-            }
-
-            tracker(config.classification_type, *location, frame_index, tracks);
+        if (!job.has_feed_forward_track) {
+            return getDetections(job, defaultTracker);
         }
 
-        for (MPFVideoTrack &track : tracks) {
-            video_cap.ReverseTransform(track);
+        // TODO: Determine feed-forward behavior at start, process frames, if pass-through, add feed-forward track at end
+
+        const Properties &feed_forward_props = job.feed_forward_track.detection_properties;
+        std::string feed_forward_exclude_behavior = getFeedForwardExcludeBehavior(job, feed_forward_props);
+        if (feed_forward_exclude_behavior == "PASS_THROUGH") {
+            return {job.feed_forward_track};
+        } else if (feed_forward_exclude_behavior == "DROP") {
+            return {};
         }
 
-        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
-
-        return tracks;
+        return getDetections(job, feedForwardTracker);
     }
     catch (...) {
         Utils::LogAndReThrowException(job, logger_);
@@ -174,9 +225,50 @@ std::vector<MPFVideoTrack> OcvDnnDetection::getDetections(const MPFVideoJob &job
 }
 
 
+template<typename Tracker>
+std::vector<MPFVideoTrack> OcvDnnDetection::getDetections(const MPFVideoJob &job, Tracker tracker) const {
+    OcvDnnJobConfig config(job.job_properties, models_parser_, logger_);
+
+    MPFVideoCapture video_cap(job);
+
+    cv::Mat frame;
+    int frame_index = -1;
+    std::vector<MPFVideoTrack> tracks;
+    while (video_cap.Read(frame)) {
+        frame_index++;
+        std::unique_ptr<MPFImageLocation> location = getDetection(config, frame);
+        if (!location) {
+            // Nothing found in current frame.
+            continue;
+        }
+
+        tracker(config.classification_type, *location, frame_index, tracks);
+    }
+
+    for (MPFVideoTrack &track : tracks) {
+        video_cap.ReverseTransform(track);
+    }
+
+    LOG4CXX_INFO(logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
+
+    return tracks;
+}
+
+
 //-----------------------------------------------------------------------------
 std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &job) {
     try {
+        // TODO: Check if contains feed-forward location.
+        // TODO: Determine feed-forward behavior at start, process frame, if pass-through, add feed-forward location at end
+
+        const Properties &feed_forward_props = job.feed_forward_location.detection_properties;
+        std::string feed_forward_exclude_behavior = getFeedForwardExcludeBehavior(job, feed_forward_props);
+        if (feed_forward_exclude_behavior == "PASS_THROUGH") {
+            return {job.feed_forward_location};
+        } else if (feed_forward_exclude_behavior == "DROP") {
+            return {};
+        }
+
         OcvDnnJobConfig config(job.job_properties, models_parser_, logger_);
 
         LOG4CXX_DEBUG(logger_, "Data URI = " << job.data_uri);
@@ -497,6 +589,9 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
     number_of_classifications = GetProperty(props, "NUMBER_OF_CLASSIFICATIONS", 1);
     confidence_threshold = GetProperty(props, "CONFIDENCE_THRESHOLD", 0.0);
     classification_type = GetProperty(props, "CLASSIFICATION_TYPE", "CLASSIFICATION");
+
+    std::string feed_forward_whitelist_file = GetProperty(props, "FEED_FORWARD_WHITELIST_FILE", "");
+
 }
 
 

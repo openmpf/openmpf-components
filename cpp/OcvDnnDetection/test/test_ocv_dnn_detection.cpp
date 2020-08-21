@@ -59,29 +59,32 @@ Properties getVehicleColorProperties() {
 }
 
 
-bool containsObject(const std::string &object_name, const Properties &props) {
-    auto class_prop_iter = props.find("CLASSIFICATION");
+bool containsObject(const std::string &object_name, const Properties &props,
+                    const std::string classification_type = "CLASSIFICATION") {
+    auto class_prop_iter = props.find(classification_type);
     return class_prop_iter != props.end() && class_prop_iter->second == object_name;
 }
 
 bool containsObject(const std::string &object_name,
-                    const std::vector<MPFImageLocation> &locations) {
+                    const std::vector<MPFImageLocation> &locations,
+                    const std::string classification_type = "CLASSIFICATION") {
     return std::any_of(
         locations.begin(),
         locations.end(),
         [&](const MPFImageLocation &location) {
-            return containsObject(object_name, location.detection_properties);
+            return containsObject(object_name, location.detection_properties, classification_type);
         }
     );
 }
 
 bool containsObject(const std::string &object_name,
-                    const std::vector<MPFVideoTrack> &tracks) {
+                    const std::vector<MPFVideoTrack> &tracks,
+                    const std::string classification_type = "CLASSIFICATION") {
     return std::any_of(
         tracks.begin(),
         tracks.end(),
         [&](const MPFVideoTrack &track) {
-            return containsObject(object_name, track.detection_properties);
+            return containsObject(object_name, track.detection_properties, classification_type);
         }
     );
 }
@@ -205,3 +208,43 @@ TEST(OCVDNN, VehicleColorImageTest) {
 
     ASSERT_TRUE(ocv_dnn_component.Close());
 }
+
+TEST(OCVDNN, FeedForwardImageTest) {
+
+    OcvDnnDetection ocv_dnn_component;
+    ocv_dnn_component.SetRunDirectory("../plugin");
+
+    ASSERT_TRUE(ocv_dnn_component.Init());
+
+    std::string expected_color = "blue";
+    std::string image_path = "data/blue-car.jpg";
+    std::string classification_type = "COLOR";
+
+    Properties props = getVehicleColorProperties();
+    props["CLASSIFICATION_TYPE"] = classification_type;
+    props["FEED_FORWARD_TYPE"] = "FRAME";
+    props["FEED_FORWARD_WHITELIST_FILE"] = "vehicle-whitelist.txt";
+    props["FEED_FORWARD_EXCLUDE_BEHAVIOR"] = "PASS_THROUGH";
+
+    MPFImageJob job("Test", image_path, props, {});
+
+    job.feed_forward_location = {10, 20, 100, 200, 0.5,
+                                 {{"CLASSIFICATION", "person"},
+                                  {"CLASSIFICATION LIST", "person; gorilla; cat"},
+                                  {"CLASSIFICATION CONFIDENCE LIST", "0.8; 0.1; 0.05"}}};
+
+    std::vector<MPFImageLocation> image_locations = ocv_dnn_component.GetDetections(job);
+
+    ASSERT_FALSE(image_locations.empty());
+    ASSERT_TRUE(containsObject("person", image_locations))
+                                << "Expected feed-forward person detection to pass through.";
+    ASSERT_TRUE(containsObject("blue", image_locations, classification_type))
+                                << "Expected Vehicle Color model to detect a " << expected_color << " vehicle in "
+                                << image_path;
+
+    // TODO: Test DROP
+
+    ASSERT_TRUE(ocv_dnn_component.Close());
+}
+
+// TODO: FeedForwardVideoTest
