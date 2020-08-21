@@ -98,29 +98,31 @@ void addToTrack(MPFImageLocation &location, int frame_index, MPFVideoTrack &trac
     track.stop_frame = frame_index;
     if (location.confidence > track.confidence) {
         track.confidence = location.confidence;
-        track.detection_properties["CLASSIFICATION"] = location.detection_properties["CLASSIFICATION"];
+        track.detection_properties = location.detection_properties;
     }
     track.frame_locations[frame_index] = std::move(location);
 }
 
 
-void defaultTracker(MPFImageLocation &location, int frame_index, std::vector<MPFVideoTrack> &tracks) {
+void defaultTracker(std::string classification_type, MPFImageLocation &location, int frame_index,
+                    std::vector<MPFVideoTrack> &tracks) {
     bool should_start_new_track = tracks.empty()
-                               || tracks.back().detection_properties["CLASSIFICATION"]
-                                  != location.detection_properties["CLASSIFICATION"];
+                               || tracks.back().detection_properties[classification_type]
+                                  != location.detection_properties[classification_type];
 
     if (should_start_new_track) {
         tracks.emplace_back(frame_index, frame_index, location.confidence,
-                            Properties{ { "CLASSIFICATION", location.detection_properties["CLASSIFICATION"] } });
+                            Properties{ { classification_type, location.detection_properties[classification_type] } });
     }
     addToTrack(location, frame_index, tracks.back());
 }
 
 
-void feedForwardTracker(MPFImageLocation &location, int frame_index, std::vector<MPFVideoTrack> &tracks) {
+void feedForwardTracker(std::string classification_type, MPFImageLocation &location, int frame_index,
+                        std::vector<MPFVideoTrack> &tracks) {
     if (tracks.empty()) {
         tracks.emplace_back(frame_index, frame_index, location.confidence,
-                            Properties{ { "CLASSIFICATION", location.detection_properties["CLASSIFICATION"] } });
+                            Properties{ { classification_type, location.detection_properties[classification_type] } });
     }
     addToTrack(location, frame_index, tracks.back());
 }
@@ -155,7 +157,7 @@ std::vector<MPFVideoTrack> OcvDnnDetection::getDetections(const MPFVideoJob &job
                 continue;
             }
 
-            tracker(*location, frame_index, tracks);
+            tracker(config.classification_type, *location, frame_index, tracks);
         }
 
         for (MPFVideoTrack &track : tracks) {
@@ -191,13 +193,14 @@ std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &
         for (MPFImageLocation &location : locations) {
             image_reader.ReverseTransform(location);
         }
-        return locations;
 
+        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Processing complete. Found " << locations.size() << " detections.");
+
+        return locations;
     }
     catch (...) {
         Utils::LogAndReThrowException(job, logger_);
     }
-
 }
 
 
@@ -225,8 +228,8 @@ void OcvDnnDetection::getTopNClasses(cv::Mat &prob_blob,
 
 
 
-std::unique_ptr<MPFImageLocation> OcvDnnDetection::getDetection(
-        OcvDnnJobConfig &config, const cv::Mat &input_frame) const {
+std::unique_ptr<MPFImageLocation> OcvDnnDetection::getDetection(OcvDnnJobConfig &config,
+                                                                const cv::Mat &input_frame) const {
 
     cv::Mat prob;
     std::vector<std::pair<std::string, cv::Mat>> activation_layer_mats;
@@ -258,21 +261,18 @@ std::unique_ptr<MPFImageLocation> OcvDnnDetection::getDetection(
             new MPFImageLocation(0, 0, input_frame.cols, input_frame.rows));
 
     if (!class_info.empty()) {
-        // Save the highest confidence classification as the
-        // "CLASSIFICATION" property, and its corresponding confidence
+        // Save the highest confidence classification and its corresponding confidence
         // as the MPFImageLocation confidence.
         LOG4CXX_DEBUG(logger_, "class id #0: " << class_info[0].first);
         LOG4CXX_DEBUG(logger_, "confidence: " << class_info[0].second);
         location->confidence =  class_info[0].second;
-        location->detection_properties["CLASSIFICATION"] = config.class_names.at(class_info[0].first);
+        location->detection_properties[config.classification_type] = config.class_names.at(class_info[0].first);
 
-        // Begin accumulating the classifications in a stringstream
-        // for the "CLASSIFICATION LIST"
+        // Begin accumulating the classifications in a stringstream for the classification list.
         std::stringstream ss_ids;
         ss_ids << config.class_names.at(class_info[0].first);
 
-        // Use another stringstream for the
-        // "CLASSIFICATION CONFIDENCE LIST"
+        // Use another stringstream for the classification confidence list.
         std::stringstream ss_conf;
         ss_conf << class_info[0].second;
 
@@ -282,8 +282,8 @@ std::unique_ptr<MPFImageLocation> OcvDnnDetection::getDetection(
             ss_ids << "; " << config.class_names.at(class_info[i].first);
             ss_conf << "; " << class_info[i].second;
         }
-        location->detection_properties["CLASSIFICATION LIST"] = ss_ids.str();
-        location->detection_properties["CLASSIFICATION CONFIDENCE LIST"] = ss_conf.str();
+        location->detection_properties[config.classification_type + " LIST"] = ss_ids.str();
+        location->detection_properties[config.classification_type + " CONFIDENCE LIST"] = ss_conf.str();
     }
 
     addActivationLayerInfo(config, activation_layer_mats, location->detection_properties);
@@ -319,8 +319,8 @@ void OcvDnnDetection::addActivationLayerInfo(const OcvDnnDetection::OcvDnnJobCon
 
 
 void OcvDnnDetection::addSpectralHashInfo(OcvDnnDetection::OcvDnnJobConfig &config,
-                                         const std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_mats,
-                                         Properties &detection_properties) const {
+                                          const std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_mats,
+                                          Properties &detection_properties) const {
 
     for (const auto& hash_info_pair : spectral_hash_mats) {
         try {
@@ -383,10 +383,10 @@ std::pair<std::string, std::string> OcvDnnDetection::computeSpectralHash(const c
 
 
 void OcvDnnDetection::getNetworkOutput(OcvDnnDetection::OcvDnnJobConfig &config,
-                                      const cv::Mat &input_frame,
-                                      cv::Mat &output_layer,
-                                      std::vector<std::pair<std::string, cv::Mat>> &activation_layer_info,
-                                      std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_info) {
+                                       const cv::Mat &input_frame,
+                                       cv::Mat &output_layer,
+                                       std::vector<std::pair<std::string, cv::Mat>> &activation_layer_info,
+                                       std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_info) {
     cv::Mat frame;
     cv::resize(input_frame, frame, config.resize_size);
 
@@ -496,6 +496,7 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
 
     number_of_classifications = GetProperty(props, "NUMBER_OF_CLASSIFICATIONS", 1);
     confidence_threshold = GetProperty(props, "CONFIDENCE_THRESHOLD", 0.0);
+    classification_type = GetProperty(props, "CLASSIFICATION_TYPE", "CLASSIFICATION");
 }
 
 
