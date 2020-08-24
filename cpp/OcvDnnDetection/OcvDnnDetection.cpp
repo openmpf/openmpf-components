@@ -47,51 +47,6 @@
 
 using namespace MPF::COMPONENT;
 
-
-class FeedForwardWhitelistFilter {
-public:
-
-    FeedForwardWhitelistFilter(const std::string &whitelist_path) {
-        std::string expanded_file_path;
-        std::string error = Utils::expandFileName(whitelist_path, expanded_file_path);
-        if (!error.empty()) {
-            throw MPFInvalidPropertyException(
-                    "FEED_FORWARD_WHITELIST_FILE",
-                    "The value, \"" + whitelist_path + "\", could not be expanded due to: " + error);
-        }
-
-        std::ifstream whitelist_file(expanded_file_path);
-        if (!whitelist_file.good()) {
-            throw MPFDetectionException(
-                    MPF_COULD_NOT_OPEN_DATAFILE,
-                    "Failed to load feed-forward class whitelist that was supposed to be located at \""
-                    + expanded_file_path + "\".");
-        }
-
-        std::string line;
-        while (std::getline(whitelist_file, line)) {
-            Utils::trim(line);
-            if (!line.empty()) {
-                whitelist_.insert(line);
-            }
-        }
-
-        if (whitelist_.empty()) {
-            throw MPFDetectionException(
-                    MPF_COULD_NOT_READ_DATAFILE,
-                    "The feed-forward class whitelist file located at \"" + expanded_file_path + "\" was empty.");
-        }
-    }
-
-    bool operator()(const std::string& class_name) {
-        return whitelist_.count(class_name) > 0;
-    }
-
-private:
-    std::unordered_set<std::string> whitelist_;
-};
-
-
 //-----------------------------------------------------------------------------
 std::string OcvDnnDetection::GetDetectionType() {
     return "CLASS";
@@ -140,7 +95,7 @@ bool OcvDnnDetection::Close() {
 }
 
 
-void addToTrack(std::string classification_type, MPFImageLocation &location, int frame_index, MPFVideoTrack &track) {
+void addToTrack(const std::string &classification_type, MPFImageLocation &location, int frame_index, MPFVideoTrack &track) {
     track.stop_frame = frame_index;
     if (location.confidence > track.confidence) {
         track.confidence = location.confidence;
@@ -150,7 +105,7 @@ void addToTrack(std::string classification_type, MPFImageLocation &location, int
 }
 
 
-void defaultTracker(std::string classification_type, MPFImageLocation &location, int frame_index,
+void defaultTracker(const std::string &classification_type, MPFImageLocation &location, int frame_index,
                     std::vector<MPFVideoTrack> &tracks) {
     bool should_start_new_track = tracks.empty()
                                || tracks.back().detection_properties[classification_type]
@@ -164,7 +119,7 @@ void defaultTracker(std::string classification_type, MPFImageLocation &location,
 }
 
 
-void feedForwardTracker(std::string classification_type, MPFImageLocation &location, int frame_index,
+void feedForwardTracker(const std::string &classification_type, MPFImageLocation &location, int frame_index,
                         std::vector<MPFVideoTrack> &tracks) {
     if (tracks.empty()) {
         tracks.emplace_back(frame_index, frame_index, location.confidence,
@@ -175,12 +130,45 @@ void feedForwardTracker(std::string classification_type, MPFImageLocation &locat
 
 
 std::string getFeedForwardExcludeBehavior(const MPFJob &job, const Properties &feed_forward_props) {
-    if (feed_forward_props.find("CLASSIFICATION") != feed_forward_props.end()) {
+    if (feed_forward_props.count("CLASSIFICATION") != 0) {
         std::string feed_forward_whitelist_file =
                 DetectionComponentUtils::GetProperty(job.job_properties, "FEED_FORWARD_WHITELIST_FILE", "");
+
         if (!feed_forward_whitelist_file.empty()) {
-            FeedForwardWhitelistFilter filter(feed_forward_whitelist_file);
-            if (!filter(feed_forward_props.at("CLASSIFICATION"))) {
+            std::unordered_set<std::string> whitelist;
+            std::string expanded_file_path;
+            std::string error = Utils::expandFileName(feed_forward_whitelist_file, expanded_file_path);
+
+            if (!error.empty()) {
+                throw MPFInvalidPropertyException(
+                        "FEED_FORWARD_WHITELIST_FILE",
+                        "The value, \"" + feed_forward_whitelist_file + "\", could not be expanded due to: " + error);
+            }
+
+            std::ifstream whitelist_file(expanded_file_path);
+            if (!whitelist_file.good()) {
+                throw MPFDetectionException(
+                        MPF_COULD_NOT_OPEN_DATAFILE,
+                        "Failed to load feed-forward class whitelist that was supposed to be located at \""
+                        + expanded_file_path + "\".");
+            }
+
+            std::string line;
+            while (std::getline(whitelist_file, line)) {
+                Utils::trim(line);
+                if (!line.empty()) {
+                    whitelist.insert(line);
+                }
+            }
+
+            if (whitelist.empty()) {
+                throw MPFDetectionException(
+                        MPF_COULD_NOT_READ_DATAFILE,
+                        "The feed-forward class whitelist file located at \"" + expanded_file_path + "\" was empty.");
+            }
+
+            std::string class_name = feed_forward_props.at("CLASSIFICATION");
+            if (whitelist.count(class_name) == 0) {
                 std::string feed_forward_exclude_behavior =
                         DetectionComponentUtils::GetProperty(job.job_properties, "FEED_FORWARD_EXCLUDE_BEHAVIOR",
                                                              "PASS_THROUGH");
@@ -207,8 +195,8 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
             return getDetections(job, defaultTracker);
         }
 
-        const Properties &feed_forward_props = job.feed_forward_track.detection_properties;
-        std::string feed_forward_exclude_behavior = getFeedForwardExcludeBehavior(job, feed_forward_props);
+        const Properties &feed_forward_track_props = job.feed_forward_track.detection_properties;
+        std::string feed_forward_exclude_behavior = getFeedForwardExcludeBehavior(job, feed_forward_track_props);
         if (feed_forward_exclude_behavior == "PASS_THROUGH") {
             return {job.feed_forward_track};
         } else if (feed_forward_exclude_behavior == "DROP") {
@@ -216,25 +204,25 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
         }
 
         std::vector<MPFVideoTrack> tracks = getDetections(job, feedForwardTracker);
+
         for (MPFVideoTrack &track : tracks) {
-            // Update track properties
-            const Properties &feed_forward_props = job.feed_forward_track.detection_properties;
-            Properties &props = track.detection_properties;
-            for (const std::pair<std::string, std::string> &feed_forward_prop : feed_forward_props) {
-                if (props.count(feed_forward_prop.first) == 0) {
-                    props.insert(feed_forward_prop);
+            // Update track props with feed-forward props
+            Properties &track_props = track.detection_properties;
+            for (const std::pair<std::string, std::string> &feed_forward_track_prop : feed_forward_track_props) {
+                if (track_props.count(feed_forward_track_prop.first) == 0) {
+                    track_props.insert(feed_forward_track_prop);
                 }
             }
-            // Update location properties
+            // Update location props with corresponding feed-forward props
             for (std::pair<const int, MPFImageLocation> &pair : track.frame_locations) {
                 int frameId = pair.first;
                 if (job.feed_forward_track.frame_locations.count(frameId) != 0) {
-                    const Properties &feed_forward_props = job.feed_forward_track.frame_locations.at(
+                    const Properties &feed_forward_loc_props = job.feed_forward_track.frame_locations.at(
                             frameId).detection_properties;
-                    Properties &props = pair.second.detection_properties;
-                    for (const std::pair<std::string, std::string> &feed_forward_prop : feed_forward_props) {
-                        if (props.count(feed_forward_prop.first) == 0) {
-                            props.insert(feed_forward_prop);
+                    Properties &loc_props = pair.second.detection_properties;
+                    for (const std::pair<std::string, std::string> &feed_forward_prop : feed_forward_loc_props) {
+                        if (loc_props.count(feed_forward_prop.first) == 0) {
+                            loc_props.insert(feed_forward_prop);
                         }
                     }
                 }
@@ -310,8 +298,9 @@ std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &
         }
 
         if (job.has_feed_forward_location) {
+            // Update location props with feed-forward props
+            const Properties &feed_forward_props = job.feed_forward_location.detection_properties;
             for (MPFImageLocation &location : locations) {
-                const Properties &feed_forward_props = job.feed_forward_location.detection_properties;
                 Properties &props = location.detection_properties;
                 for (const std::pair<std::string, std::string> &feed_forward_prop : feed_forward_props) {
                     if (props.count(feed_forward_prop.first) == 0) {
@@ -624,9 +613,6 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
     number_of_classifications = GetProperty(props, "NUMBER_OF_CLASSIFICATIONS", 1);
     confidence_threshold = GetProperty(props, "CONFIDENCE_THRESHOLD", 0.0);
     classification_type = GetProperty(props, "CLASSIFICATION_TYPE", "CLASSIFICATION");
-
-    std::string feed_forward_whitelist_file = GetProperty(props, "FEED_FORWARD_WHITELIST_FILE", "");
-
 }
 
 

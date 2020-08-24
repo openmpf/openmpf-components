@@ -59,32 +59,29 @@ Properties getVehicleColorProperties() {
 }
 
 
-bool containsObject(const std::string &object_name, const Properties &props,
-                    const std::string &classification_type = "CLASSIFICATION") {
-    auto class_prop_iter = props.find(classification_type);
+bool containsObject(const std::string &object_name, const Properties &props) {
+    auto class_prop_iter = props.find("CLASSIFICATION");
     return class_prop_iter != props.end() && class_prop_iter->second == object_name;
 }
 
 bool containsObject(const std::string &object_name,
-                    const std::vector<MPFImageLocation> &locations,
-                    const std::string &classification_type = "CLASSIFICATION") {
+                    const std::vector<MPFImageLocation> &locations) {
     return std::any_of(
         locations.begin(),
         locations.end(),
         [&](const MPFImageLocation &location) {
-            return containsObject(object_name, location.detection_properties, classification_type);
+            return containsObject(object_name, location.detection_properties);
         }
     );
 }
 
 bool containsObject(const std::string &object_name,
-                    const std::vector<MPFVideoTrack> &tracks,
-                    const std::string &classification_type = "CLASSIFICATION") {
+                    const std::vector<MPFVideoTrack> &tracks) {
     return std::any_of(
         tracks.begin(),
         tracks.end(),
         [&](const MPFVideoTrack &track) {
-            return containsObject(object_name, track.detection_properties, classification_type);
+            return containsObject(object_name, track.detection_properties);
         }
     );
 }
@@ -269,7 +266,7 @@ TEST(OCVDNN, FeedForwardImageTest) {
     image_locations = ocv_dnn_component.GetDetections(color_job);
 
     ASSERT_EQ(1, image_locations.size());
-    ASSERT_TRUE(containsObject("blue", image_locations, classification_type))
+    ASSERT_EQ("blue", image_locations.at(0).detection_properties.at(classification_type))
                                 << "Expected Vehicle Color model to detect a " << expected_color << " vehicle in "
                                 << image_path;
     // "CLASSIFICATION*" props from feed-forward location and new "COLOR*" props
