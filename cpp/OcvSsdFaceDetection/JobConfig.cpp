@@ -218,7 +218,7 @@ JobConfig::JobConfig(const MPFVideoJob &job):
 *  frame index counter.
 *************************************************************************** */
 bool JobConfig::nextFrame(){
-  frameIdx++;
+  frameIdx       = _videocapPtr->GetCurrentFramePosition();
   frameTimeInSec = _videocapPtr->GetCurrentTimeInMillis() * 0.001;
   return _videocapPtr->Read(bgrFrame);
 }
