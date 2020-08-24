@@ -140,11 +140,11 @@ bool OcvDnnDetection::Close() {
 }
 
 
-void addToTrack(MPFImageLocation &location, int frame_index, MPFVideoTrack &track) {
+void addToTrack(std::string classification_type, MPFImageLocation &location, int frame_index, MPFVideoTrack &track) {
     track.stop_frame = frame_index;
     if (location.confidence > track.confidence) {
         track.confidence = location.confidence;
-        track.detection_properties = location.detection_properties;
+        track.detection_properties[classification_type] = location.detection_properties[classification_type];
     }
     track.frame_locations[frame_index] = std::move(location);
 }
@@ -160,7 +160,7 @@ void defaultTracker(std::string classification_type, MPFImageLocation &location,
         tracks.emplace_back(frame_index, frame_index, location.confidence,
                             Properties{ { classification_type, location.detection_properties[classification_type] } });
     }
-    addToTrack(location, frame_index, tracks.back());
+    addToTrack(classification_type, location, frame_index, tracks.back());
 }
 
 
@@ -170,7 +170,7 @@ void feedForwardTracker(std::string classification_type, MPFImageLocation &locat
         tracks.emplace_back(frame_index, frame_index, location.confidence,
                             Properties{ { classification_type, location.detection_properties[classification_type] } });
     }
-    addToTrack(location, frame_index, tracks.back());
+    addToTrack(classification_type, location, frame_index, tracks.back());
 }
 
 
@@ -207,8 +207,6 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
             return getDetections(job, defaultTracker);
         }
 
-        // TODO: Determine feed-forward behavior at start, process frames, if pass-through, add feed-forward track at end
-
         const Properties &feed_forward_props = job.feed_forward_track.detection_properties;
         std::string feed_forward_exclude_behavior = getFeedForwardExcludeBehavior(job, feed_forward_props);
         if (feed_forward_exclude_behavior == "PASS_THROUGH") {
@@ -217,7 +215,33 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
             return {};
         }
 
-        return getDetections(job, feedForwardTracker);
+        std::vector<MPFVideoTrack> tracks = getDetections(job, feedForwardTracker);
+        for (MPFVideoTrack &track : tracks) {
+            // Update track properties
+            const Properties &feed_forward_props = job.feed_forward_track.detection_properties;
+            Properties &props = track.detection_properties;
+            for (const std::pair<std::string, std::string> &feed_forward_prop : feed_forward_props) {
+                if (props.count(feed_forward_prop.first) == 0) {
+                    props.insert(feed_forward_prop);
+                }
+            }
+            // Update location properties
+            for (std::pair<const int, MPFImageLocation> &pair : track.frame_locations) {
+                int frameId = pair.first;
+                if (job.feed_forward_track.frame_locations.count(frameId) != 0) {
+                    const Properties &feed_forward_props = job.feed_forward_track.frame_locations.at(
+                            frameId).detection_properties;
+                    Properties &props = pair.second.detection_properties;
+                    for (const std::pair<std::string, std::string> &feed_forward_prop : feed_forward_props) {
+                        if (props.count(feed_forward_prop.first) == 0) {
+                            props.insert(feed_forward_prop);
+                        }
+                    }
+                }
+            }
+        }
+
+        return tracks;
     }
     catch (...) {
         Utils::LogAndReThrowException(job, logger_);
@@ -258,15 +282,14 @@ std::vector<MPFVideoTrack> OcvDnnDetection::getDetections(const MPFVideoJob &job
 //-----------------------------------------------------------------------------
 std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &job) {
     try {
-        // TODO: Check if contains feed-forward location.
-        // TODO: Determine feed-forward behavior at start, process frame, if pass-through, add feed-forward location at end
-
-        const Properties &feed_forward_props = job.feed_forward_location.detection_properties;
-        std::string feed_forward_exclude_behavior = getFeedForwardExcludeBehavior(job, feed_forward_props);
-        if (feed_forward_exclude_behavior == "PASS_THROUGH") {
-            return {job.feed_forward_location};
-        } else if (feed_forward_exclude_behavior == "DROP") {
-            return {};
+        if (job.has_feed_forward_location) {
+            const Properties &feed_forward_props = job.feed_forward_location.detection_properties;
+            std::string feed_forward_exclude_behavior = getFeedForwardExcludeBehavior(job, feed_forward_props);
+            if (feed_forward_exclude_behavior == "PASS_THROUGH") {
+                return {job.feed_forward_location};
+            } else if (feed_forward_exclude_behavior == "DROP") {
+                return {};
+            }
         }
 
         OcvDnnJobConfig config(job.job_properties, models_parser_, logger_);
@@ -284,6 +307,18 @@ std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &
 
         for (MPFImageLocation &location : locations) {
             image_reader.ReverseTransform(location);
+        }
+
+        if (job.has_feed_forward_location) {
+            for (MPFImageLocation &location : locations) {
+                const Properties &feed_forward_props = job.feed_forward_location.detection_properties;
+                Properties &props = location.detection_properties;
+                for (const std::pair<std::string, std::string> &feed_forward_prop : feed_forward_props) {
+                    if (props.count(feed_forward_prop.first) == 0) {
+                        props.insert(feed_forward_prop);
+                    }
+                }
+            }
         }
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Processing complete. Found " << locations.size() << " detections.");

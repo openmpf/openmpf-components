@@ -60,14 +60,14 @@ Properties getVehicleColorProperties() {
 
 
 bool containsObject(const std::string &object_name, const Properties &props,
-                    const std::string classification_type = "CLASSIFICATION") {
+                    const std::string &classification_type = "CLASSIFICATION") {
     auto class_prop_iter = props.find(classification_type);
     return class_prop_iter != props.end() && class_prop_iter->second == object_name;
 }
 
 bool containsObject(const std::string &object_name,
                     const std::vector<MPFImageLocation> &locations,
-                    const std::string classification_type = "CLASSIFICATION") {
+                    const std::string &classification_type = "CLASSIFICATION") {
     return std::any_of(
         locations.begin(),
         locations.end(),
@@ -79,7 +79,7 @@ bool containsObject(const std::string &object_name,
 
 bool containsObject(const std::string &object_name,
                     const std::vector<MPFVideoTrack> &tracks,
-                    const std::string classification_type = "CLASSIFICATION") {
+                    const std::string &classification_type = "CLASSIFICATION") {
     return std::any_of(
         tracks.begin(),
         tracks.end(),
@@ -220,31 +220,120 @@ TEST(OCVDNN, FeedForwardImageTest) {
     std::string image_path = "data/blue-car.jpg";
     std::string classification_type = "COLOR";
 
+    MPFImageLocation person_location = {10, 20, 100, 200, 0.5,
+                                        {{"CLASSIFICATION", "person"},
+                                         {"CLASSIFICATION LIST", "person; gorilla; cat"},
+                                         {"CLASSIFICATION CONFIDENCE LIST", "0.8; 0.1; 0.05"}}};
+
+    MPFImageLocation vehicle_location = {10, 20, 100, 200, 0.5,
+                                         {{"CLASSIFICATION", "car"},
+                                          {"CLASSIFICATION LIST", "car; truck; bus"},
+                                          {"CLASSIFICATION CONFIDENCE LIST", "0.6; 0.3; 0.05"}}};
+
     Properties props = getVehicleColorProperties();
     props["CLASSIFICATION_TYPE"] = classification_type;
     props["FEED_FORWARD_TYPE"] = "FRAME";
     props["FEED_FORWARD_WHITELIST_FILE"] = "vehicle-whitelist.txt";
+
+    // Test feed-forward person pass-through
+
     props["FEED_FORWARD_EXCLUDE_BEHAVIOR"] = "PASS_THROUGH";
+    MPFImageJob pass_job("Test", image_path, props, {});
+    pass_job.feed_forward_location = person_location;
+    pass_job.has_feed_forward_location = true;
 
-    MPFImageJob job("Test", image_path, props, {});
+    std::vector<MPFImageLocation> image_locations = ocv_dnn_component.GetDetections(pass_job);
 
-    job.feed_forward_location = {10, 20, 100, 200, 0.5,
-                                 {{"CLASSIFICATION", "person"},
-                                  {"CLASSIFICATION LIST", "person; gorilla; cat"},
-                                  {"CLASSIFICATION CONFIDENCE LIST", "0.8; 0.1; 0.05"}}};
-
-    std::vector<MPFImageLocation> image_locations = ocv_dnn_component.GetDetections(job);
-
-    ASSERT_FALSE(image_locations.empty());
+    ASSERT_EQ(1, image_locations.size());
     ASSERT_TRUE(containsObject("person", image_locations))
                                 << "Expected feed-forward person detection to pass through.";
+    ASSERT_EQ(3, image_locations.at(0).detection_properties.size());
+
+    // Test feed-forward person drop
+
+    props["FEED_FORWARD_EXCLUDE_BEHAVIOR"] = "DROP";
+    MPFImageJob drop_job("Test", image_path, props, {});
+    drop_job.feed_forward_location = person_location;
+    drop_job.has_feed_forward_location = true;
+
+    image_locations = ocv_dnn_component.GetDetections(drop_job);
+
+    ASSERT_TRUE(image_locations.empty());
+
+    // Test feed-forward vehicle processing
+
+    MPFImageJob color_job("Test", image_path, props, {});
+    color_job.feed_forward_location = vehicle_location;
+    color_job.has_feed_forward_location = true;
+
+    image_locations = ocv_dnn_component.GetDetections(color_job);
+
+    ASSERT_EQ(1, image_locations.size());
     ASSERT_TRUE(containsObject("blue", image_locations, classification_type))
                                 << "Expected Vehicle Color model to detect a " << expected_color << " vehicle in "
                                 << image_path;
-
-    // TODO: Test DROP
+    // "CLASSIFICATION*" props from feed-forward location and new "COLOR*" props
+    ASSERT_EQ(6, image_locations.at(0).detection_properties.size());
+    ASSERT_EQ(vehicle_location.detection_properties.at("CLASSIFICATION CONFIDENCE LIST"),
+              image_locations.at(0).detection_properties.at("CLASSIFICATION CONFIDENCE LIST"));
+    ASSERT_GT(image_locations.at(0).detection_properties.count(classification_type), 0);
 
     ASSERT_TRUE(ocv_dnn_component.Close());
 }
 
-// TODO: FeedForwardVideoTest
+TEST(OCVDNN, FeedForwardVideoTest) {
+
+    OcvDnnDetection ocv_dnn_component;
+    ocv_dnn_component.SetRunDirectory("../plugin");
+
+    ASSERT_TRUE(ocv_dnn_component.Init());
+
+    int end_frame = 2;
+    std::string expected_color = "red";
+    std::string video_path = "data/lp-ferrari-texas-shortened.mp4";
+    std::string classification_type = "COLOR";
+
+    Properties feed_forward_track_props = {{"CLASSIFICATION", "car"}};
+    MPFVideoTrack vehicle_track = {0, end_frame, 0.4, feed_forward_track_props};
+
+    for (int i = 0; i <= end_frame; i++) {
+        Properties feed_forward_location_props = {{"CLASSIFICATION",                 "car"},
+                                                  {"CLASSIFICATION LIST",            "car; truck; bus"},
+                                                  {"CLASSIFICATION CONFIDENCE LIST", std::to_string(0.2 + i) + "; 0.1; 0.05"}};
+        vehicle_track.frame_locations[i] = {10, 20, 100, 200, 0.5, feed_forward_location_props};;
+    }
+
+    Properties props = getVehicleColorProperties();
+    props["CLASSIFICATION_TYPE"] = classification_type;
+    props["FEED_FORWARD_TYPE"] = "FRAME";
+    props["FEED_FORWARD_WHITELIST_FILE"] = "vehicle-whitelist.txt";
+
+    // Test feed-forward vehicle processing
+
+    MPFVideoJob job("Test", video_path, 0, end_frame, props, {});
+    job.feed_forward_track = vehicle_track;
+    job.has_feed_forward_track = true;
+
+    std::vector<MPFVideoTrack> tracks = ocv_dnn_component.GetDetections(job);
+
+    ASSERT_EQ(1, tracks.size());
+    // "CLASSIFICATION" prop from feed-forward track and new "COLOR" prop
+    ASSERT_EQ(vehicle_track.detection_properties.at("CLASSIFICATION"),
+              tracks.at(0).detection_properties.at("CLASSIFICATION"));
+    ASSERT_GT(tracks.at(0).detection_properties.count(classification_type), 0);
+
+    ASSERT_EQ(end_frame+1, tracks.at(0).frame_locations.size());
+    for (int i = 0; i <= end_frame; i++) {
+        MPFImageLocation &location = tracks.at(0).frame_locations.at(i);
+        ASSERT_EQ("red", location.detection_properties.at(classification_type))
+                                    << "Expected Vehicle Color model to detect a " << expected_color << " vehicle in "
+                                    << video_path << " in frame " << i;
+        // "CLASSIFICATION*" props from feed-forward location and new "COLOR*" props
+        ASSERT_EQ(6, location.detection_properties.size());
+        ASSERT_EQ(vehicle_track.frame_locations.at(i).detection_properties.at("CLASSIFICATION CONFIDENCE LIST"),
+                  location.detection_properties.at("CLASSIFICATION CONFIDENCE LIST"));
+        ASSERT_GT(location.detection_properties.count(classification_type), 0);
+    }
+
+    ASSERT_TRUE(ocv_dnn_component.Close());
+}
