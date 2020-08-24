@@ -146,7 +146,7 @@ JobConfig::JobConfig():
   kfDisabled(false),
   cudaDeviceId(0),
   fallback2CpuWhenGpuProblem(true),
-  frameIdx(0),
+  frameIdx(-1),
   frameTimeInSec(0),
   frameTimeStep(0),
   lastError(MPF_DETECTION_SUCCESS),
