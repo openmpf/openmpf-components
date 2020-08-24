@@ -53,7 +53,8 @@ namespace MPF{
   typedef vector<cvPoint2fVec>          cvPoint2fVecVec;          ///< vector of vectors of OpenCV 2D float points
   typedef unique_ptr<DetectionLocation> DetectionLocationPtr;     ///< DetectionLocation pointers
   typedef vector<DetectionLocationPtr>  DetectionLocationPtrVec;  ///< vector of DetectionLocation pointers
-  typedef list<unique_ptr<Track>>       TrackPtrList;             ///< list of track pointers
+  typedef unique_ptr<Track>             TrackPtr;                 ///< pointer to a track
+  typedef list<TrackPtr>                TrackPtrList;             ///< list of track pointers
 
   /** ****************************************************************************
    *  print out opencv matrix on a single line

@@ -364,8 +364,9 @@ TEST(OcvSsdFaceDetection, Thumbnails) {
         }
       }else{
         //ssd->_assignDetections2Tracks(tracks,detections, ass);
+        TrackPtrList assignedTracks;
         vector<long> av = ssd->_calcAssignmentVector<&DetectionLocation::iouDist>(tracks,detections,cfg.maxIOUDist);
-        ssd->_assignDetections2Tracks(tracks,detections, av);
+        ssd->_assignDetections2Tracks(tracks,detections, av, assignedTracks);
       }
       float self_fd = tracks.back()->back()->featureDist(*tracks.back());
       GOUT("self feature dist: " << self_fd);

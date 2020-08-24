@@ -67,7 +67,8 @@ namespace MPF{
 
       void _assignDetections2Tracks(TrackPtrList            &tracks,
                                     DetectionLocationPtrVec &detections,
-                                    const vector<long>      &assignmentVector);  ///< assign detections to tracks
+                                    const vector<long>      &assignmentVector,
+                                    TrackPtrList            &assignedTracks);  ///< assign detections to tracks
 
       MPFVideoTrack _convert_track(Track &track);  ///< convert to MFVideoTrack and release
 

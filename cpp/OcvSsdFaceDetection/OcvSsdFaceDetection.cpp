@@ -210,7 +210,8 @@ vector<long> OcvSsdFaceDetection::_calcAssignmentVector(const TrackPtrList      
 ***************************************************************************** */
 void OcvSsdFaceDetection::_assignDetections2Tracks(TrackPtrList             &tracks,
                                                    DetectionLocationPtrVec  &detections,
-                                                   const vector<long>       &assignmentVector){
+                                                   const vector<long>       &assignmentVector,
+                                                   TrackPtrList             &assignedTracks){
 
   long t=0;
   for(auto &track:tracks){
@@ -218,9 +219,16 @@ void OcvSsdFaceDetection::_assignDetections2Tracks(TrackPtrList             &tra
       track->releaseTracker();
       track->push_back(move(detections.at(assignmentVector[t])));
       track->kalmanCorrect();
+      assignedTracks.push_back(move(track));
     }
     t++;
   }
+
+  //remove tracks that received and assignment
+  tracks.erase(remove_if(tracks.begin(),
+                         tracks.end(),
+                         [](TrackPtr const& d){return !d;}),
+               tracks.end());
 
   // remove detections that were assigned to tracks
   detections.erase(remove_if(detections.begin(),
@@ -347,30 +355,32 @@ MPFVideoTrackVec OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job){
         }
       }
 
-      if(detectTrigger == 0){                                                  LOG4CXX_TRACE(_log,"checking for new detections");
+      TrackPtrList assignedTracks;
+
+      if(detectTrigger == 0){                                                                  LOG4CXX_TRACE(_log,"checking for new detections");
         DetectionLocationPtrVec detections = DetectionLocation::createDetections(cfg); // look for new detections
 
         if(detections.size() > 0){   // found some detections in current frame
           if(trackPtrs.size() >= 0 ){  // not all tracks were dropped
-            vector<long> av;                                                   LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+            vector<long> av;                                                                   LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
             // intersection over union tracking and assignment
             if(! cfg.kfDisabled){
               av = _calcAssignmentVector<&DetectionLocation::kfIouDist>(trackPtrs,detections,cfg.maxIOUDist);
             }else{
               av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detections,cfg.maxIOUDist);
             }
-            _assignDetections2Tracks(trackPtrs, detections, av);               LOG4CXX_TRACE(_log,"IOU assignment complete");
+            _assignDetections2Tracks(trackPtrs, detections, av, assignedTracks);               LOG4CXX_TRACE(_log,"IOU assignment complete");
 
             // feature-based tracking tracking and assignment
-            if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+            if(detections.size() > 0){                                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
               av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detections,cfg.maxFeatureDist);
-              _assignDetections2Tracks(trackPtrs, detections, av);             LOG4CXX_TRACE(_log,"Feature assignment complete");
+              _assignDetections2Tracks(trackPtrs, detections, av, assignedTracks);             LOG4CXX_TRACE(_log,"Feature assignment complete");
             }
 
             // center-to-center distance tracking and assignment
-            if(detections.size() > 0){                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+            if(detections.size() > 0){                                                         LOG4CXX_TRACE(_log, detections.size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
               av = _calcAssignmentVector<&DetectionLocation::center2CenterDist>(trackPtrs,detections,cfg.maxCenterDist);
-              _assignDetections2Tracks(trackPtrs, detections, av);             LOG4CXX_TRACE(_log,"Center2Center assignment complete");
+              _assignDetections2Tracks(trackPtrs, detections, av, assignedTracks);             LOG4CXX_TRACE(_log,"Center2Center assignment complete");
             }
 
           }
@@ -393,6 +403,12 @@ MPFVideoTrackVec OcvSsdFaceDetection::GetDetections(const MPFVideoJob &job){
           }
         }
       }
+
+      // put all the tracks that were assigned a detection back into trackPtrs
+      for(auto& track:assignedTracks){
+        trackPtrs.push_back(move(track));
+      }
+      assignedTracks.clear();
 
       detectTrigger++;
       detectTrigger = detectTrigger % (cfg.detFrameInterval + 1);
