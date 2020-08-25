@@ -132,7 +132,7 @@ void feedForwardTracker(const std::string &classification_type, MPFImageLocation
 std::string getFeedForwardExcludeBehavior(const MPFJob &job, const Properties &feed_forward_props) {
     auto feed_forward_props_iter = feed_forward_props.find("CLASSIFICATION");
     if (feed_forward_props_iter != feed_forward_props.end()) {
-        const std::string class_name = feed_forward_props_iter->second;
+        const std::string &class_name = feed_forward_props_iter->second;
 
         std::string feed_forward_whitelist_file =
                 DetectionComponentUtils::GetProperty(job.job_properties, "FEED_FORWARD_WHITELIST_FILE", "");
