@@ -161,11 +161,11 @@ vector<long> OcvSsdFaceDetection::_calcAssignmentVector(const TrackPtrList      
 
   // rows -> tracks, cols -> detections, but matrix has to be square!
   size_t n = max(tracks.size(),detections.size());
-  dlib::matrix<int> costs = dlib::zeros_matrix<int>(n,n);
+  dlib::matrix<long> costs = dlib::zeros_matrix<long>(n,n);
 
   // fill in actual costs for non-dummy entries
   size_t r = 0;
-  vector<int> uniqueCosts;
+  vector<long> uniqueCosts;
   for(auto &track:tracks){
     for(size_t c=0; c<detections.size(); c++){
       if(track->back()->frameIdx < detections[c]->frameIdx){
