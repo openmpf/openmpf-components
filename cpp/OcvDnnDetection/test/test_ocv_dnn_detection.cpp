@@ -296,7 +296,7 @@ TEST(OCVDNN, FeedForwardVideoTest) {
     for (int i = 0; i <= end_frame; i++) {
         Properties feed_forward_location_props = {{"CLASSIFICATION",                 "car"},
                                                   {"CLASSIFICATION LIST",            "car; truck; bus"},
-                                                  {"CLASSIFICATION CONFIDENCE LIST", std::to_string(0.2 + i) + "; 0.1; 0.05"}};
+                                                  {"CLASSIFICATION CONFIDENCE LIST", std::to_string(0.2 + i/10.0) + "; 0.1; 0.05"}};
         vehicle_track.frame_locations[i] = {10, 20, 100, 200, 0.5, feed_forward_location_props};;
     }
 
