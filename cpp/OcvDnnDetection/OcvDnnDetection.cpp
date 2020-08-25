@@ -130,12 +130,14 @@ void feedForwardTracker(const std::string &classification_type, MPFImageLocation
 
 
 std::string getFeedForwardExcludeBehavior(const MPFJob &job, const Properties &feed_forward_props) {
-    if (feed_forward_props.count("CLASSIFICATION") != 0) {
+    auto feed_forward_props_iter = feed_forward_props.find("CLASSIFICATION");
+    if (feed_forward_props_iter != feed_forward_props.end()) {
+        const std::string class_name = feed_forward_props_iter->second;
+
         std::string feed_forward_whitelist_file =
                 DetectionComponentUtils::GetProperty(job.job_properties, "FEED_FORWARD_WHITELIST_FILE", "");
 
         if (!feed_forward_whitelist_file.empty()) {
-            std::unordered_set<std::string> whitelist;
             std::string expanded_file_path;
             std::string error = Utils::expandFileName(feed_forward_whitelist_file, expanded_file_path);
 
@@ -156,31 +158,22 @@ std::string getFeedForwardExcludeBehavior(const MPFJob &job, const Properties &f
             std::string line;
             while (std::getline(whitelist_file, line)) {
                 Utils::trim(line);
-                if (!line.empty()) {
-                    whitelist.insert(line);
+                if (boost::iequals(line, class_name)) {
+                    return "";
                 }
             }
 
-            if (whitelist.empty()) {
-                throw MPFDetectionException(
-                        MPF_COULD_NOT_READ_DATAFILE,
-                        "The feed-forward class whitelist file located at \"" + expanded_file_path + "\" was empty.");
-            }
-
-            std::string class_name = feed_forward_props.at("CLASSIFICATION");
-            if (whitelist.count(class_name) == 0) {
-                std::string feed_forward_exclude_behavior =
-                        DetectionComponentUtils::GetProperty(job.job_properties, "FEED_FORWARD_EXCLUDE_BEHAVIOR",
-                                                             "PASS_THROUGH");
-                if (feed_forward_exclude_behavior == "PASS_THROUGH" ||
-                    feed_forward_exclude_behavior == "DROP") {
-                    return feed_forward_exclude_behavior;
-                } else {
-                    throw MPFInvalidPropertyException(
-                            "FEED_FORWARD_EXCLUDE_BEHAVIOR",
-                            "The value, \"" + feed_forward_exclude_behavior +
-                            "\", is not valid. Only \"PASS_THROUGH\" and \"DROP\" are accepted.");
-                }
+            std::string feed_forward_exclude_behavior =
+                    DetectionComponentUtils::GetProperty(job.job_properties, "FEED_FORWARD_EXCLUDE_BEHAVIOR",
+                                                         "PASS_THROUGH");
+            if (feed_forward_exclude_behavior == "PASS_THROUGH" ||
+                feed_forward_exclude_behavior == "DROP") {
+                return feed_forward_exclude_behavior;
+            } else {
+                throw MPFInvalidPropertyException(
+                        "FEED_FORWARD_EXCLUDE_BEHAVIOR",
+                        "The value, \"" + feed_forward_exclude_behavior +
+                        "\", is not valid. Only \"PASS_THROUGH\" and \"DROP\" are accepted.");
             }
         }
     }
@@ -208,22 +201,18 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
         for (MPFVideoTrack &track : tracks) {
             // Update track props with feed-forward props
             Properties &track_props = track.detection_properties;
-            for (const std::pair<std::string, std::string> &feed_forward_track_prop : feed_forward_track_props) {
-                if (track_props.count(feed_forward_track_prop.first) == 0) {
-                    track_props.insert(feed_forward_track_prop);
-                }
+            for (const auto& feed_forward_track_prop : feed_forward_track_props) {
+                track_props.insert(feed_forward_track_prop);
             }
             // Update location props with corresponding feed-forward props
-            for (std::pair<const int, MPFImageLocation> &pair : track.frame_locations) {
+            for (auto& pair : track.frame_locations) {
                 int frameId = pair.first;
-                if (job.feed_forward_track.frame_locations.count(frameId) != 0) {
-                    const Properties &feed_forward_loc_props = job.feed_forward_track.frame_locations.at(
-                            frameId).detection_properties;
+                auto feed_forward_loc_iter = job.feed_forward_track.frame_locations.find(frameId);
+                if (feed_forward_loc_iter != job.feed_forward_track.frame_locations.end()) {
+                    const Properties &feed_forward_loc_props = feed_forward_loc_iter->second.detection_properties;
                     Properties &loc_props = pair.second.detection_properties;
-                    for (const std::pair<std::string, std::string> &feed_forward_prop : feed_forward_loc_props) {
-                        if (loc_props.count(feed_forward_prop.first) == 0) {
-                            loc_props.insert(feed_forward_prop);
-                        }
+                    for (const auto& feed_forward_prop : feed_forward_loc_props) {
+                        loc_props.insert(feed_forward_prop);
                     }
                 }
             }
@@ -302,10 +291,8 @@ std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &
             const Properties &feed_forward_props = job.feed_forward_location.detection_properties;
             for (MPFImageLocation &location : locations) {
                 Properties &props = location.detection_properties;
-                for (const std::pair<std::string, std::string> &feed_forward_prop : feed_forward_props) {
-                    if (props.count(feed_forward_prop.first) == 0) {
-                        props.insert(feed_forward_prop);
-                    }
+                for (const auto& feed_forward_prop : feed_forward_props) {
+                    props.insert(feed_forward_prop);
                 }
             }
         }
