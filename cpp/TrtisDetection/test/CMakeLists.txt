@@ -42,7 +42,7 @@ if (${GTEST_FOUND})
     target_link_libraries(TrtisDetectionTest mpfTrtisDetection mpfComponentTestUtils GTest::GTest GTest::Main pthread)
     add_test(NAME TrtisDetectionTest COMMAND TrtisDetectionTest)
 
-    # Uncomment to build the AWS S3 tests
+    # Build AWS S3 tests to ensure S3StorageUtil interface is valid even though tests are not run as part of a normal Docker build
     add_executable(TrtisDetectionS3Test test_trtis_s3_detection.cpp)
     target_link_libraries(TrtisDetectionS3Test mpfTrtisDetection mpfComponentTestUtils GTest::GTest GTest::Main pthread)
     add_test(NAME TrtisDetectionS3Test COMMAND TrtisDetectionS3Test)

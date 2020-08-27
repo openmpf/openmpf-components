@@ -91,7 +91,7 @@ TEST(S3Storage, TestDefaultBucket) {
   ASSERT_EQ(metaIn, metaOut);
   ASSERT_EQ("http://minio:9000/test-bucket/" + sha, url);
 
-  val = "nometa";
+  val = "bar-nometa";
   sha = s3StorageUtil.GetSha256(val);
   s3StorageUtil.PutS3Object(val);
   s3StorageUtil.GetS3Object(sha, buffer);
@@ -149,7 +149,7 @@ TEST(S3Storage, TestOtherBucket) {
   ASSERT_EQ(metaIn, metaOut);
   ASSERT_EQ("http://minio:9000/animal-bucket/" + sha, url);
 
-  val = "nometa";
+  val = "cat-nometa";
   sha = s3StorageUtil.GetSha256(val);
   s3StorageUtil.PutS3Object(s3Bucket, val);
   s3StorageUtil.GetS3Object(s3Bucket, sha, buffer);
