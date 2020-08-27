@@ -37,95 +37,95 @@ using namespace std;
 //------------------------------------------------------------------------------
 Properties getProperties_ip_irv2_coco() {
 
-    return {
-            {"MODEL_NAME", "ip_irv2_coco"}
-    };
+  return {
+          {"MODEL_NAME", "ip_irv2_coco"}
+  };
 }
 
 //------------------------------------------------------------------------------
-bool containsObject(const string     &object_name,
-                    const Properties &props       ) {
-    auto class_prop_iter = props.find("CLASSIFICATION");
-    return class_prop_iter != props.end() && class_prop_iter->second == object_name;
+bool containsObject(const string &object_name,
+                    const Properties &props) {
+  auto class_prop_iter = props.find("CLASSIFICATION");
+  return class_prop_iter != props.end() && class_prop_iter->second == object_name;
 }
 
 //------------------------------------------------------------------------------
-bool containsObject(const string              &object_name,
-                    const MPFImageLocationVec &locations   ) {
-    return any_of(locations.begin(), locations.end(),
-                  [&](const MPFImageLocation &location) {
-                  return containsObject(object_name, location.detection_properties);
-                 });
+bool containsObject(const string &object_name,
+                    const MPFImageLocationVec &locations) {
+  return any_of(locations.begin(), locations.end(),
+                [&](const MPFImageLocation &location) {
+                    return containsObject(object_name, location.detection_properties);
+                });
 }
 
 //------------------------------------------------------------------------------
-void assertObjectDetectedInImage(const string   &expected_object,
-                                 const string   &image_path,
-                                 TrtisDetection &trtisDet           ){
-    MPFImageJob job("Test", image_path, getProperties_ip_irv2_coco(), {});
+void assertObjectDetectedInImage(const string &expected_object,
+                                 const string &image_path,
+                                 TrtisDetection &trtisDet) {
+  MPFImageJob job("Test", image_path, getProperties_ip_irv2_coco(), {});
 
-    MPFImageLocationVec image_locations = trtisDet.GetDetections(job);
+  MPFImageLocationVec image_locations = trtisDet.GetDetections(job);
 
-    ASSERT_FALSE(image_locations.empty());
+  ASSERT_FALSE(image_locations.empty());
 
-    ASSERT_TRUE(containsObject(expected_object, image_locations))
-                                << "Expected Trtis to detect a \"" << expected_object << "\" in " << image_path;
+  ASSERT_TRUE(containsObject(expected_object, image_locations))
+                        << "Expected Trtis to detect a \"" << expected_object << "\" in " << image_path;
 }
 
 //------------------------------------------------------------------------------
 TEST(TRTIS, InitTest) {
-    std::remove("../Testing/log/trtis-detection.log");
-    TrtisDetection trtisDet;
-    trtisDet.SetRunDirectory("../plugin");
-    ASSERT_TRUE(trtisDet.Init());
-    ASSERT_TRUE(trtisDet.Close());
+  std::remove("../Testing/log/trtis-detection.log");
+  TrtisDetection trtisDet;
+  trtisDet.SetRunDirectory("../plugin");
+  ASSERT_TRUE(trtisDet.Init());
+  ASSERT_TRUE(trtisDet.Close());
 }
 
 //------------------------------------------------------------------------------
- TEST(TRTIS, ImageTest) {
+TEST(TRTIS, ImageTest) {
 
-     TrtisDetection trtisDet;
-     trtisDet.SetRunDirectory("../plugin");
+  TrtisDetection trtisDet;
+  trtisDet.SetRunDirectory("../plugin");
 
-     ASSERT_TRUE(trtisDet.Init());
+  ASSERT_TRUE(trtisDet.Init());
 
-     assertObjectDetectedInImage("clock", "test/digital-clock.jpg", trtisDet);
-     assertObjectDetectedInImage("car", "test/traffic.jpg", trtisDet);
+  assertObjectDetectedInImage("clock", "test/digital-clock.jpg", trtisDet);
+  assertObjectDetectedInImage("car", "test/traffic.jpg", trtisDet);
 
-     ASSERT_TRUE(trtisDet.Close());
- }
+  ASSERT_TRUE(trtisDet.Close());
+}
 
 //------------------------------------------------------------------------------
-bool containsObject(const string           &object_name,
+bool containsObject(const string &object_name,
                     const MPFVideoTrackVec &tracks) {
-    return any_of(tracks.begin(), tracks.end(),
-                  [&](const MPFVideoTrack &track) {
-                  return containsObject(object_name, track.detection_properties);
-                 });
+  return any_of(tracks.begin(), tracks.end(),
+                [&](const MPFVideoTrack &track) {
+                    return containsObject(object_name, track.detection_properties);
+                });
 }
 
 //------------------------------------------------------------------------------
-void assertObjectDetectedInVideo(const string     &object_name,
+void assertObjectDetectedInVideo(const string &object_name,
                                  const Properties &job_props,
-                                 TrtisDetection   &trtisDet) {
-    MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 11, 12, job_props, {});
+                                 TrtisDetection &trtisDet) {
+  MPFVideoJob job("TEST", "test/ff-region-object-motion.avi", 11, 12, job_props, {});
 
-    MPFVideoTrackVec tracks = trtisDet.GetDetections(job);
+  MPFVideoTrackVec tracks = trtisDet.GetDetections(job);
 
-    ASSERT_FALSE(tracks.empty());
-    ASSERT_TRUE(containsObject(object_name, tracks));
+  ASSERT_FALSE(tracks.empty());
+  ASSERT_TRUE(containsObject(object_name, tracks));
 }
 
 //------------------------------------------------------------------------------
 TEST(TRTIS, VideoTest) {
-    TrtisDetection trtisDet;
-    trtisDet.SetRunDirectory("../plugin");
+  TrtisDetection trtisDet;
+  trtisDet.SetRunDirectory("../plugin");
 
-    ASSERT_TRUE(trtisDet.Init());
+  ASSERT_TRUE(trtisDet.Init());
 
-    Properties job_props = getProperties_ip_irv2_coco();
-    job_props["USER_FEATURE_ENABLE"] = "true";
-    assertObjectDetectedInVideo("clock", job_props, trtisDet);
+  Properties job_props = getProperties_ip_irv2_coco();
+  job_props["USER_FEATURE_ENABLE"] = "true";
+  assertObjectDetectedInVideo("clock", job_props, trtisDet);
 
-    ASSERT_TRUE(trtisDet.Close());
+  ASSERT_TRUE(trtisDet.Close());
 }

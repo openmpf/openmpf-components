@@ -77,12 +77,12 @@ S3StorageUtil::S3StorageUtil(const log4cxx::LoggerPtr &log,
   Aws::Client::ClientConfiguration awsClientConfig;
   try {
     uri s3Url(resultsBucketUrl);
-    string endpoint = s3Url.get_scheme() + "://" + s3Url.get_host();
-    endpoint += ((s3Url.get_port()) ? ":" + to_string(s3Url.get_port()) : "");
-    awsClientConfig.endpointOverride = Aws::String(endpoint.c_str());
+    s3_endpoint = s3Url.get_scheme() + "://" + s3Url.get_host();
+    s3_endpoint += ((s3Url.get_port()) ? ":" + to_string(s3Url.get_port()) : "");
+    awsClientConfig.endpointOverride = Aws::String(s3_endpoint.c_str());
     s3_bucket = s3Url.get_path();
     s3_bucket.erase(s3_bucket.find_last_not_of("/ ") + 1);
-    s3_bucket_url = endpoint + '/' + s3_bucket;
+    s3_bucket_url = s3_endpoint + '/' + s3_bucket;
   } catch (exception ex) {
     throw MPFDetectionException(MPF_INVALID_PROPERTY, "Could not parse S3_RESULTS_BUCKET '" +
                                                       resultsBucketUrl + "': " + string(ex.what()));
@@ -149,6 +149,10 @@ bool S3StorageUtil::RequiresS3Storage(const string &resultsBucketUrl,
 
 string S3StorageUtil::GetS3ResultsBucketUrl() {
   return s3_bucket_url;
+}
+
+string S3StorageUtil::GetS3ResultsEndpoint() {
+  return s3_endpoint;
 }
 
 string S3StorageUtil::GetS3ResultsBucket() {
@@ -224,29 +228,31 @@ string S3StorageUtil::PutS3Object(const string &bucket_name,
     throw MPFDetectionException(MPF_FILE_WRITE_ERROR, ss.str());
   }
 
-  return s3_bucket_url + '/' + objectSha;
+  return s3_endpoint + '/' + bucket_name + '/' + objectSha;
 }
 
 /** ****************************************************************************
-* Read a string buffer to an S3 object in an S3 bucket
+* Read a string buffer to an S3 object in S3 bucket
 *
-* \param         object_name give the name/key for the object in the bucket
-* \param[out]    buffer is where the data will be returned
-* \param[in,out] metadata about the object if desired
+* \param         object_name   give the name/key for the object in the bucket
+* \param[out]    buffer        is where the data will be returned
 ***************************************************************************** */
 void S3StorageUtil::GetS3Object(const string &object_name,
                                 string &buffer) const {
-  Aws::S3::Model::GetObjectRequest req;
-  req.SetBucket(s3_bucket.c_str());
-  req.SetKey(object_name.c_str());
-  auto res = s3_client->GetObject(req);
+  GetS3Object(s3_bucket, object_name, buffer);
+}
 
-  if (!res.IsSuccess()) {
-    stringstream ss;
-    ss << "Could not get object '" << object_name << "': "
-       << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
-    throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
-  }
+/** ****************************************************************************
+* Read a string buffer to an S3 object in S3 bucket
+*
+* \param         bucket_name   give the name of the bucket
+* \param         object_name   give the name/key for the object in the bucket
+* \param[out]    buffer        is where the data will be returned
+***************************************************************************** */
+void S3StorageUtil::GetS3Object(const string &bucket_name,
+                                const string &object_name,
+                                string &buffer) const {
+  auto res = _getS3Object(bucket_name, object_name);
 
   // for alternative to string copy see https://github.com/aws/aws-sdk-cpp/issues/64
   auto &data = res.GetResultWithOwnership().GetBody();
@@ -256,21 +262,32 @@ void S3StorageUtil::GetS3Object(const string &object_name,
   LOG4CXX_TRACE(_log, "Retrieved '" << object_name << "' of size " << buffer.length());
 }
 
-/******************************************************************************/
+/** ****************************************************************************
+* Read a string buffer to an S3 object in an S3 bucket
+*
+* \param         object_name   give the name/key for the object in the bucket
+* \param[out]    buffer        is where the data will be returned
+* \param[in,out] metadata      about the object if desired
+***************************************************************************** */
 void S3StorageUtil::GetS3Object(const string &object_name,
                                 string &buffer,
                                 map<string, string> &metaData) const {
-  Aws::S3::Model::GetObjectRequest req;
-  req.SetBucket(s3_bucket.c_str());
-  req.SetKey(object_name.c_str());
-  auto res = s3_client->GetObject(req);
+  GetS3Object(s3_bucket, object_name, buffer, metaData);
+}
 
-  if (!res.IsSuccess()) {
-    stringstream ss;
-    ss << "Could not get object '" << object_name << "': "
-       << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
-    throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
-  }
+/** ****************************************************************************
+* Read a string buffer to an S3 object in an S3 bucket
+*
+* \param         bucket_name   give the name of the bucket
+* \param         object_name   give the name/key for the object in the bucket
+* \param[out]    buffer        is where the data will be returned
+* \param[in,out] metadata      about the object if desired
+***************************************************************************** */
+void S3StorageUtil::GetS3Object(const string &bucket_name,
+                                const string &object_name,
+                                string &buffer,
+                                map<string, string> &metaData) const {
+  auto res = _getS3Object(bucket_name, object_name);
 
   // for alternative to string copy see https://github.com/aws/aws-sdk-cpp/issues/64
   auto &data = res.GetResultWithOwnership().GetBody();
@@ -283,14 +300,42 @@ void S3StorageUtil::GetS3Object(const string &object_name,
   }
 }
 
+Aws::S3::Model::GetObjectOutcome S3StorageUtil::_getS3Object(const string bucket_name,
+                                                             const string &object_name) const {
+  Aws::S3::Model::GetObjectRequest req;
+  req.SetBucket(bucket_name.c_str());
+  req.SetKey(object_name.c_str());
+  Aws::S3::Model::GetObjectOutcome res = s3_client->GetObject(req);
+
+  if (!res.IsSuccess()) {
+    stringstream ss;
+    ss << "Could not get object '" << object_name << "': "
+       << res.GetError().GetExceptionName() << ": " << res.GetError().GetMessage();
+    throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, ss.str());
+  }
+
+  return res;
+}
+
 /** ****************************************************************************
 * Delete an object out of an S3 bucket
 *
 * \param    object_name give the name/key for the object in the bucket
 ***************************************************************************** */
 void S3StorageUtil::DeleteS3Object(const string &object_name) const {
+  DeleteS3Object(s3_bucket, object_name);
+}
+
+/** ****************************************************************************
+* Delete an object out of an S3 bucket
+*
+* \param    bucket_name   give the name of the bucket
+* \param    object_name   give the name/key for the object in the bucket
+***************************************************************************** */
+void S3StorageUtil::DeleteS3Object(const string &bucket_name,
+                                   const string &object_name) const {
   Aws::S3::Model::DeleteObjectRequest req;
-  req.SetBucket(s3_bucket.c_str());
+  req.SetBucket(bucket_name.c_str());
   req.SetKey(object_name.c_str());
   auto res = s3_client->DeleteObject(req);
 
@@ -310,8 +355,21 @@ void S3StorageUtil::DeleteS3Object(const string &object_name) const {
 * \returns  true if successful
 ***************************************************************************** */
 bool S3StorageUtil::ExistsS3Object(const string &object_name) const {
+  return ExistsS3Object(s3_bucket, object_name);
+}
+
+/** ****************************************************************************
+* Check if an object exists in an S3 bucket
+*
+* \param    bucket_name give the name of the bucket
+* \param    object_name give the name/key for the object to check
+*
+* \returns  true if successful
+***************************************************************************** */
+bool S3StorageUtil::ExistsS3Object(const string &bucket_name,
+                                   const string &object_name) const {
   Aws::S3::Model::HeadObjectRequest req;
-  req.SetBucket(s3_bucket.c_str());
+  req.SetBucket(bucket_name.c_str());
   req.SetKey(object_name.c_str());
   const auto res = s3_client->HeadObject(req);
   return res.IsSuccess();

@@ -43,10 +43,14 @@ using namespace MPF::COMPONENT;
 class S3StorageUtil {
   private:
     log4cxx::LoggerPtr _log;          ///< log object
-    string s3_bucket;                 ///< amazon web services s3 bucket to use for job e.g. 'bucket'
-    string s3_bucket_url;             ///< amazon web services s3 bucket url to use for job e.g. 'http://localhost:80/bucket'
-    Aws::SDKOptions aws_sdk_options;  ///< amazon web services s3 options
-    unique_ptr<Aws::S3::S3Client> s3_client;  ///< amazon web services s3 client
+    string s3_bucket_url;             ///< AWS S3 bucket url to use for job (e.g. 'http://localhost:80/bucket')
+    string s3_endpoint;               ///< AWS S3 endpoint url to use for job (e.g. 'http://localhost:80')
+    string s3_bucket;                 ///< AWS S3 bucket to use for job (e.g. 'bucket')
+    Aws::SDKOptions aws_sdk_options;  ///< AWS S3 options
+    unique_ptr<Aws::S3::S3Client> s3_client;  ///< AWS S3 client
+
+    Aws::S3::Model::GetObjectOutcome _getS3Object(const string bucket_name,
+                                                  const string &object_name) const;  ///< GetObjectOutcome for S3 object
 
   public:
     S3StorageUtil(const log4cxx::LoggerPtr &log,
@@ -65,18 +69,20 @@ class S3StorageUtil {
                                   const string &accessKey,
                                   const string &secretKey);                   ///< determine if AWS S3 storage is required; throws if missing/invalid properties
 
-    string GetS3ResultsBucketUrl();                                           ///< get the AWS S3 results bucket URL
+    string GetS3ResultsBucketUrl();                                           ///< get the AWS S3 results bucket URL (e.g. 'http://localhost:80/bucket')
 
-    string GetS3ResultsBucket();                                              ///< get the AWS S3 results bucket
+    string GetS3ResultsEndpoint();                                            ///< get the AWS S3 results endpoint URL (e.g. 'http://localhost:80')
+
+    string GetS3ResultsBucket();                                              ///< get the AWS S3 results bucket (e.g. 'bucket')
 
     static string GetSha256(const string &buffer);                            ///< cal sha256 for a string buffer
 
+    string PutS3Object(const string                  &buffer,
+                       const std::map<string,string> &metaData = {}) const;   ///< write contents of string buffer out to S3 object
+
     string PutS3Object(const string                  &bucket_name,
                        const string                  &buffer,
-                       const std::map<string,string> &metaData = {}) const;   ///< write contents of string buffer out to s3 object
-
-    string PutS3Object(const string                  &buffer,
-                       const std::map<string,string> &metaData = {}) const;   ///< write contents of string buffer out to s3 object
+                       const std::map<string,string> &metaData = {}) const;   ///< write contents of string buffer out to S3 object
 
     void GetS3Object(const string         &object_name,
                      string               &buffer) const;                     ///< read content of a object to a string buffer
@@ -85,9 +91,24 @@ class S3StorageUtil {
                      string               &buffer,
                      map<string,string>   &metaData) const;                   ///< read content of a object to a string buffer
 
+    void GetS3Object(const string         &bucket_name,
+                     const string         &object_name,
+                     string               &buffer) const;                     ///< read content of a object to a string buffer
+
+    void GetS3Object(const string         &bucket_name,
+                     const string         &object_name,
+                     string               &buffer,
+                     map<string,string>   &metaData) const;                   ///< read content of a object to a string buffer
+
+    void DeleteS3Object(const string &bucket_name,
+                        const string &object_name) const;                     ///< delete an object from an S3 bucket
+
     void DeleteS3Object(const string &object_name) const;                     ///< delete an object from an S3 bucket
 
     bool ExistsS3Object(const string &object_name) const;                     ///< check if an object exists in an S3 bucket
+
+    bool ExistsS3Object(const string &bucket_name,
+                        const string &object_name) const;                     ///< check if an object exists in an S3 bucket
 
     bool ExistsS3Bucket(const string &bucket_name="") const;                  ///< check if an S3 bucket exists
 
