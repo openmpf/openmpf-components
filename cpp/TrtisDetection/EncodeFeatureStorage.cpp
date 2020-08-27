@@ -24,60 +24,27 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include <iostream>
-#include <string>
-#include <vector>
-#include "TrtisDetection.h"
+#include "MPFDetectionException.h"
+
+#include "EncodeFeatureStorage.h"
+#include "base64.h"
 
 using namespace MPF::COMPONENT;
-using namespace std;
 
-int main(int argc, char* argv[]) {
+void EncodeFeatureStorage::_store(Properties &prop) {
+  prop["FEATURE"] = Base64::Encode(prop.at("FEATURE")); // overwrite
+}
 
-    if ((argc < 2) || (argc > 5)) {
-        cout << "argc = " << argc << endl;
-        cout << "Usage: " << argv[0] << " <image URI> <trtis_server> <num classifications> <confidence threshold>" << endl;
-        return EXIT_SUCCESS;
-    }
+void EncodeFeatureStorage::Store(const string &data_uri,
+                                 const string &model,
+                                 MPFImageLocation &location) {
+  _store(location.detection_properties);
+}
 
-    TrtisDetection trtis_component;
-    trtis_component.SetRunDirectory("plugin");
-
-    if (!trtis_component.Init()) {
-        cout << "Component initialization failed, exiting." << endl;
-        return EXIT_FAILURE;
-    }
-
-    Properties algorithm_properties;
-
-    // DEBUG
-    algorithm_properties["TRTIS_SERVER"] = "localhost:8001";
-    algorithm_properties["MODEL_NAME"] = "ip_irv2_coco";
-    algorithm_properties["CONFIDENCE_THRESHOLD"] = 0.2;
-    algorithm_properties["RESIZE"] = "true";
-
-    string uri(argv[1]);
-    cout << "uri is " << uri << std::endl;
-
-    if(argc > 2){ algorithm_properties["TRTIS_SERVER"] = string(argv[2]); }
-    cout << "Trtis server name and port = "
-         << algorithm_properties["TRTIS_SERVER"] << std::endl;
-
-
-    if(argc > 3){ algorithm_properties["CONFIDENCE_THRESHOLD"] = string(argv[3]); }
-    cout << "Confidence threshold = " << algorithm_properties["CONFIDENCE_THRESHOLD"] << endl;
-
-    Properties media_properties;
-    string job_name("Testing Trtis");
-
-    MPFImageLocationVec detections;
-    MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
-    detections = trtis_component.GetDetections(job);
-    for (int i = 0; i < detections.size(); i++) {
-      cout << "detection number " << i
-      << " classification is " << detections[i].detection_properties["CLASSIFICATION"]
-      << " and confidence is " << detections[i].confidence << endl;
-    }
-    trtis_component.Close();
-    return EXIT_SUCCESS;
+void EncodeFeatureStorage::Store(const string &data_uri,
+                                 const string &model,
+                                 const MPFVideoTrack &track,
+                                 MPFImageLocation &location,
+                                 double fp_ms) {
+  _store(location.detection_properties);
 }

@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -18,52 +20,31 @@
 #    http://www.apache.org/licenses/LICENSE-2.0                             #
 #                                                                           #
 # Unless required by applicable law or agreed to in writing, software       #
-# distributed under the License is distributed on an "AS IS" BASIS,         #
+# distributed under the License is distributed don an "AS IS" BASIS,        #
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  #
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
 
+# TRTIS 1.1.0 (nvcr.io/nvidia/tensorrtserver:19.04-py3) has a bug that occurs
+# when creating the container using "docker-compose up", pressing ctrl-C to
+# stop the deployment (without running "docker-compose down"), and then
+# running "docker-compose up" again:
+#
+#  trtis-detection-server_1     | WARNING: The NVIDIA Driver was not detected.  GPU functionality will not be available.
+#  trtis-detection-server_1     |    Use 'nvidia-docker run' to start this container; see
+#  trtis-detection-server_1     |    https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker .
+#  trtis-detection-server_1     | ln: failed to create symbolic link '/opt/tensorrtserver/lib/libcuda.so.1': File exists
+#  openmpf_trtis-detection-server_1 exited with code 1
+#
+# This only happens when running in CPU mode ("NVIDIA_VISIBLE_DEVICES=").
+# To address this, we ensure that the symlinks created by the previous run of
+# the "nvidia_entrypoint.sh" script are removed before running it again.
 
-cmake_minimum_required(VERSION 3.6)
-project(trtis-detection)
+if [[ "$(find /usr -name libcuda.so.1 | grep -v "compat") " == " " || "$(ls /dev/nvidiactl 2>/dev/null) " == " " ]]; then
+  rm -f /opt/tensorrtserver/lib/libcuda.so.1
+  rm -f /opt/tensorrtserver/lib/libnvidia-ml.so.1
+  rm -f /opt/tensorrtserver/lib/libnvidia-fatbinaryloader.so.${CUDA_DRIVER_VERSION}
+fi
 
-ADD_DEFINITIONS("-std=c++11")
-add_definitions(-Wfatal-errors)
-
-set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
-# set(CMAKE_BUILD_TYPE Debug)           # build debug version
-
-include(../ComponentSetup.cmake)
-
-set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
-message("Package in ${PACKAGE_DIR}")
-
-find_package(OpenCV 3.4.7 EXACT REQUIRED PATHS /opt/opencv-3.4.7
-    COMPONENTS opencv_core)
-find_package(mpfComponentInterface REQUIRED)
-find_package(mpfDetectionComponentApi REQUIRED)
-find_package(mpfComponentUtils REQUIRED)
-find_package(Qt4 REQUIRED)
-find_package(request REQUIRED)
-find_package(CURL REQUIRED)
-
-set(BUILD_SHARED_LIBS ON)  # make AWS use shared linking
-find_package(AWSSDK REQUIRED COMPONENTS core s3)
-
-include_directories(${PROTOBUF_INCLUDE_DIR} ${CURL_INCLUDE_DIR})
-set(TRTIS_DETECTION_SOURCE_FILES
-        TrtisDetection.cpp TrtisDetection.h IFeatureStorage.h EncodeFeatureStorage.h EncodeFeatureStorage.cpp
-        S3FeatureStorage.cpp S3FeatureStorage.h S3StorageUtil.cpp S3StorageUtil.h base64.h uri.h)
-
-add_library(mpfTrtisDetection SHARED ${TRTIS_DETECTION_SOURCE_FILES})
-target_link_libraries(mpfTrtisDetection request mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
-        ${OpenCV_LIBS} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES} ${AWSSDK_LINK_LIBRARIES})
-
-configure_mpf_component(TrtisDetection TARGETS mpfTrtisDetection)
-
-add_subdirectory(test)
-
-# Build sample executable
-add_executable(sample_trtis_detector sample_trtis_detector.cpp)
-target_link_libraries(sample_trtis_detector mpfTrtisDetection)
+exec /opt/tensorrtserver/nvidia_entrypoint.sh "$@"

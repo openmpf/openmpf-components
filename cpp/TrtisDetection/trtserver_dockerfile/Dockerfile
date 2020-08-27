@@ -39,6 +39,10 @@ wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-c
 -O /models/ip_irv2_coco/1/model.graphdef \
 && rm -rf /tmp/cookies.txt
 
+COPY docker-entrypoint.sh /opt/tensorrtserver
+
+ENTRYPOINT ["/opt/tensorrtserver/docker-entrypoint.sh"]
+
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF TRTIS Server." \
       org.label-schema.schema-version="1.0" \
