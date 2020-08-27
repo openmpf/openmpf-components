@@ -37,10 +37,15 @@ if (${GTEST_FOUND})
     find_package(mpfComponentTestUtils REQUIRED)
 
     include_directories(..)
+
     add_executable(TrtisDetectionTest test_trtis_detection.cpp)
     target_link_libraries(TrtisDetectionTest mpfTrtisDetection mpfComponentTestUtils GTest::GTest GTest::Main pthread)
-
     add_test(NAME TrtisDetectionTest COMMAND TrtisDetectionTest)
+
+    # Uncomment to build the AWS S3 tests
+    add_executable(TrtisDetectionS3Test test_trtis_s3_detection.cpp)
+    target_link_libraries(TrtisDetectionS3Test mpfTrtisDetection mpfComponentTestUtils GTest::GTest GTest::Main pthread)
+    add_test(NAME TrtisDetectionS3Test COMMAND TrtisDetectionS3Test)
 
     # Install test images and videos
     file(COPY data/ DESTINATION test)
