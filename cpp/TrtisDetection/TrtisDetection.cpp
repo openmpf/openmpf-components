@@ -859,7 +859,7 @@ void TrtisDetection::_ip_irv2_coco_tracker(
 *
 * \param         job     MPF Video job
 *
-* \throws an MPF error constant or TRTIS runtime error
+* \throws MPFDetectionException
 *
 * \returns Tracks collection to which detections will be added
 ***************************************************************************** */
@@ -1078,7 +1078,7 @@ std::vector<MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const M
 *
 * \param         job        MPF Image job
 *
-* \throws an MPF error constant or TRTIS runtime error
+* \throws MPFDetectionException
 *
 * \returns locations collection to which detections will be added
 *

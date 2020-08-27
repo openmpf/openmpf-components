@@ -61,7 +61,7 @@ S3StorageUtil::S3StorageUtil(const log4cxx::LoggerPtr &log,
                              const string &accessKey,
                              const string &secretKey) : _log(log) {
   if (resultsBucketUrl.empty()) {
-    throw MPFDetectionException(MPF_MISSING_PROPERTY, "The S3_RESULTS_BUCKET property was not set.");
+    throw MPFDetectionException(MPF_MISSING_PROPERTY, "S3_RESULTS_BUCKET was not set.");
   }
   RequiresS3Storage(resultsBucketUrl, accessKey, secretKey); // will throw if access key or secret key missing
 
@@ -131,17 +131,17 @@ bool S3StorageUtil::RequiresS3Storage(const string &resultsBucketUrl,
 
   if (accessKey.empty() && secretKey.empty()) {
     throw MPFDetectionException(MPF_MISSING_PROPERTY,
-                                "The S3_RESULTS_BUCKET property was set, but the S3_ACCESS_KEY and S3_SECRET_KEY properties were not.");
+                                "S3_RESULTS_BUCKET was set, but S3_ACCESS_KEY and S3_SECRET_KEY were not.");
   }
 
   if (accessKey.empty()) {
     throw MPFDetectionException(MPF_MISSING_PROPERTY,
-                                "The S3_RESULTS_BUCKET and S3_ACCESS_KEY properties were set, but the S3_SECRET_KEY property was not.");
+                                "S3_RESULTS_BUCKET and S3_ACCESS_KEY were set, but S3_SECRET_KEY was not.");
   }
 
   if (secretKey.empty()) {
     throw MPFDetectionException(MPF_MISSING_PROPERTY,
-                                "The S3_RESULTS_BUCKET and S3_SECRET_KEY properties were set, but the S3_ACCESS_KEY property was not.");
+                                "S3_RESULTS_BUCKET and S3_SECRET_KEY were set, but S3_ACCESS_KEY was not.");
   }
 
   return true;
@@ -168,7 +168,7 @@ string S3StorageUtil::GetSha256(const string &buffer) {
   SHA256_Init(&sha256);
   SHA256_Update(&sha256, buffer.c_str(), buffer.length());
   SHA256_Final(hash, &sha256);
-  std::ostringstream ss;
+  ostringstream ss;
   ss << hex << setfill('0');
   for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
     ss << setw(2) << static_cast<unsigned>(hash[i]);
@@ -185,7 +185,7 @@ string S3StorageUtil::GetSha256(const string &buffer) {
 * \returns  URL of object in S3 bucket
 ***************************************************************************** */
 string S3StorageUtil::PutS3Object(const string &buffer,
-                                  const std::map<string, string> &metaData) const {
+                                  const map<string, string> &metaData) const {
   return PutS3Object(s3_bucket, buffer, metaData);
 }
 
@@ -200,7 +200,7 @@ string S3StorageUtil::PutS3Object(const string &buffer,
 ***************************************************************************** */
 string S3StorageUtil::PutS3Object(const string &bucket_name,
                                   const string &buffer,
-                                  const std::map<string, string> &metaData) const {
+                                  const map<string, string> &metaData) const {
   string objectSha = GetSha256(buffer);
   Aws::S3::Model::PutObjectRequest req;
   req.SetBucket(bucket_name.c_str());
@@ -211,9 +211,9 @@ string S3StorageUtil::PutS3Object(const string &bucket_name,
   }
   // see https://stackoverflow.com/questions/48666549/upload-uint8-t-buffer-to-aws-s3-without-going-via-filesystem
   auto data = Aws::MakeShared<Aws::StringStream>("PutObjectInputStream",
-                                                 std::stringstream::in
-                                                 | std::stringstream::out
-                                                 | std::stringstream::binary);
+                                                 stringstream::in
+                                                 | stringstream::out
+                                                 | stringstream::binary);
   data->write(reinterpret_cast<char *>(const_cast<char *>(buffer.c_str())), buffer.length());
   req.SetBody(data);
   auto res = s3_client->PutObject(req);
@@ -250,7 +250,7 @@ void S3StorageUtil::GetS3Object(const string &object_name,
 
   // for alternative to string copy see https://github.com/aws/aws-sdk-cpp/issues/64
   auto &data = res.GetResultWithOwnership().GetBody();
-  std::stringstream ss;
+  stringstream ss;
   ss << data.rdbuf();
   buffer = ss.str();
   LOG4CXX_TRACE(_log, "Retrieved '" << object_name << "' of size " << buffer.length());
@@ -274,7 +274,7 @@ void S3StorageUtil::GetS3Object(const string &object_name,
 
   // for alternative to string copy see https://github.com/aws/aws-sdk-cpp/issues/64
   auto &data = res.GetResultWithOwnership().GetBody();
-  std::stringstream ss;
+  stringstream ss;
   ss << data.rdbuf();
   buffer = ss.str();
   LOG4CXX_TRACE(_log, "Retrieved '" << object_name << "' of size " << buffer.length());

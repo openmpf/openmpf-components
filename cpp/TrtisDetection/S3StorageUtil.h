@@ -35,7 +35,6 @@
 #include <aws/s3/S3Client.h>
 
 #include "MPFDetectionComponent.h"
-#include "MPFVideoCapture.h"
 
 using namespace std;
 using namespace MPF::COMPONENT;
