@@ -20,6 +20,8 @@ in `TrtisDetection/plugin-files/models/ip_irv2_coco/ip_irv2_coco.labels`.
 
 Currently, the component supports both image and video jobs.
 
+# Inference Properties
+
 Users can control inference and model behavior through the following job parameters:
 
 * `TRTIS_SERVER` : Specifies the DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS). If the value is set to the empty string "", the component will instead use the environment variable for `TRTIS_SERVER`, if it is available.
@@ -34,6 +36,8 @@ Users can control inference and model behavior through the following job paramet
 
 * `CLIENT_PRESCALING_ENABLE`: Toggles whether to scale images and video frames to the approximate `[1024 x 600]` image size required by the `ip_irv2_coco` model.
 
+# Feature-Generation Properties
+
 For enabling generation of similarity features:
 
 * `USER_FEATURE_ENABLE` : Toggles generation of similarity feature detections for a user-specified bounding box.
@@ -46,6 +50,10 @@ For enabling generation of similarity features:
 
 * `EXTRA_CONFIDENCE_THRESHOLD`: Specifies threshold for object region detections that could not be classified as COCO objects. Please note that confidence scores for these extra detections is generally extremely low.
 
+Each detection will have a `FEATURE TYPE` detection property set to either `USER`, `CLASS`, `FRAME`, or `EXTRA`, depending on which feature types are enabled. `CLASS` detections will have a `CLASSIFICATION` detection property.
+
+# Tracking Properties
+
 For object tracking in video frames, the following settings control how objects are assessed and organized within the MPF video tracks.
 Each condition must be met for an object to be considered to be part of the same MPF video track:
 
@@ -56,5 +64,11 @@ Each condition must be met for an object to be considered to be part of the same
 * `TRACK_MAX_SPACE_GAP`: Specifies the maximum gap in normalized pixel space.
 
 Currently video tracking uses basic search space calculations to match preexisting tracks to the closest candidate object detections being considered within the current video frame. If a match occurs, an MPFImageLocation is appended to the matching track.
+
 When a newly detected object fails to match to a preexisting track, a new track is created for that object.
 
+# Feature Storage
+
+If the `S3_RESULTS_BUCKET`, `S3_ACCESS_KEY`, and `S3_SECRET_KEY` properties are defined, then the feature vector for each detection will be stored in the specified S3 bucket. Each detection will have a `FEATURE URI` detection property that represents the full URL to that object in that bucket. Refer to the [S3 Object Storage](https://openmpf.github.io/docs/site/Object-Storage-Guide/index.html#s3-object-storage) section of the Object Storage Guide for more information about these properties.
+
+Alternatively, if the S3 properties are not defined, then each detection will have a `FEATURE` detection property set to the value of the base64-encoded version of the feature vector.
