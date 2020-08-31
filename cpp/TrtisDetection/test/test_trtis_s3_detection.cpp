@@ -63,42 +63,42 @@ TEST(S3Storage, TestDefaultBucket) {
     s3StorageUtil.CreateS3Bucket(); // should not throw
 
     string val = "foo";
-    string sha = s3StorageUtil.GetSha256(val);
+    string key = s3StorageUtil.GetObjectName(s3StorageUtil.GetSha256(val));
     map<string, string> metaIn({{"meta-foo-key", "meta-foo-val"}});
 
-    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(sha));
+    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(key));
     s3StorageUtil.PutS3Object(val, metaIn);
-    ASSERT_TRUE(s3StorageUtil.ExistsS3Object(sha));
+    ASSERT_TRUE(s3StorageUtil.ExistsS3Object(key));
 
     string buffer;
     map<string, string> metaOut;
-    s3StorageUtil.GetS3Object(sha, buffer, metaOut);
+    s3StorageUtil.GetS3Object(key, buffer, metaOut);
     ASSERT_EQ(val, buffer);
     ASSERT_EQ(metaIn, metaOut);
 
-    s3StorageUtil.DeleteS3Object(sha);
-    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(sha));
+    s3StorageUtil.DeleteS3Object(key);
+    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(key));
 
     metaIn.clear();
     metaOut.clear();
 
     val = "bar";
-    sha = s3StorageUtil.GetSha256(val);
+    key = s3StorageUtil.GetObjectName(s3StorageUtil.GetSha256(val));
     metaIn.insert({"meta-bar-key", "meta-bar-val"});
     string url = s3StorageUtil.PutS3Object(val, metaIn);
-    s3StorageUtil.GetS3Object(sha, buffer, metaOut);
+    s3StorageUtil.GetS3Object(key, buffer, metaOut);
     ASSERT_EQ(val, buffer);
     ASSERT_EQ(metaIn, metaOut);
-    ASSERT_EQ("http://minio:9000/test-bucket/" + sha, url);
+    ASSERT_EQ("http://minio:9000/test-bucket/" + key, url);
 
     val = "bar-nometa";
-    sha = s3StorageUtil.GetSha256(val);
+    key = s3StorageUtil.GetObjectName(s3StorageUtil.GetSha256(val));
     s3StorageUtil.PutS3Object(val);
-    s3StorageUtil.GetS3Object(sha, buffer);
+    s3StorageUtil.GetS3Object(key, buffer);
     ASSERT_EQ(val, buffer);
 
     s3StorageUtil.EmptyS3Bucket();
-    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(sha));
+    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(key));
     ASSERT_TRUE(s3StorageUtil.ExistsS3Bucket());
 
     s3StorageUtil.DeleteS3Bucket();
@@ -120,43 +120,43 @@ TEST(S3Storage, TestOtherBucket) {
     s3StorageUtil.CreateS3Bucket(s3Bucket); // should not throw
 
     string val = "dog";
-    string sha = s3StorageUtil.GetSha256(val);
+    string key = s3StorageUtil.GetObjectName(s3StorageUtil.GetSha256(val));
     map<string, string> metaIn({{"meta-dog-key", "meta-dog-val"}});
 
-    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(s3Bucket, sha));
+    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(s3Bucket, key));
     s3StorageUtil.PutS3Object(s3Bucket, val, metaIn);
-    ASSERT_TRUE(s3StorageUtil.ExistsS3Object(s3Bucket, sha));
-    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(sha)); // not in default bucket
+    ASSERT_TRUE(s3StorageUtil.ExistsS3Object(s3Bucket, key));
+    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(key)); // not in default bucket
 
     string buffer;
     map<string, string> metaOut;
-    s3StorageUtil.GetS3Object(s3Bucket, sha, buffer, metaOut);
+    s3StorageUtil.GetS3Object(s3Bucket, key, buffer, metaOut);
     ASSERT_EQ(val, buffer);
     ASSERT_EQ(metaIn, metaOut);
 
-    s3StorageUtil.DeleteS3Object(s3Bucket, sha);
-    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(s3Bucket, sha));
+    s3StorageUtil.DeleteS3Object(s3Bucket, key);
+    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(s3Bucket, key));
 
     metaIn.clear();
     metaOut.clear();
 
     val = "cat";
-    sha = s3StorageUtil.GetSha256(val);
+    key = s3StorageUtil.GetObjectName(s3StorageUtil.GetSha256(val));
     metaIn.insert({"meta-cat-key", "meta-cat-val"});
     string url = s3StorageUtil.PutS3Object(s3Bucket, val, metaIn);
-    s3StorageUtil.GetS3Object(s3Bucket, sha, buffer, metaOut);
+    s3StorageUtil.GetS3Object(s3Bucket, key, buffer, metaOut);
     ASSERT_EQ(val, buffer);
     ASSERT_EQ(metaIn, metaOut);
-    ASSERT_EQ("http://minio:9000/animal-bucket/" + sha, url);
+    ASSERT_EQ("http://minio:9000/animal-bucket/" + key, url);
 
     val = "cat-nometa";
-    sha = s3StorageUtil.GetSha256(val);
+    key = s3StorageUtil.GetObjectName(s3StorageUtil.GetSha256(val));
     s3StorageUtil.PutS3Object(s3Bucket, val);
-    s3StorageUtil.GetS3Object(s3Bucket, sha, buffer);
+    s3StorageUtil.GetS3Object(s3Bucket, key, buffer);
     ASSERT_EQ(val, buffer);
 
     s3StorageUtil.EmptyS3Bucket(s3Bucket);
-    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(s3Bucket, sha));
+    ASSERT_FALSE(s3StorageUtil.ExistsS3Object(s3Bucket, key));
     ASSERT_TRUE(s3StorageUtil.ExistsS3Bucket(s3Bucket));
 
     s3StorageUtil.DeleteS3Bucket(s3Bucket);

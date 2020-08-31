@@ -77,6 +77,8 @@ public:
 
     static string GetSha256(const string &buffer);                            ///< cal sha256 for a string buffer
 
+    static string GetObjectName(const string &hash);                          ///< get the object name in the form "xx/yy/hash"
+
     string PutS3Object(const string                  &buffer,
                        const std::map<string,string> &metaData = {}) const;   ///< write contents of string buffer out to S3 object
 

@@ -181,6 +181,19 @@ string S3StorageUtil::GetSha256(const string &buffer) {
 }
 
 /** ****************************************************************************
+* Get the object name in the form "xx/yy/hash".
+*
+* \param hash  sha256 hash for the object
+*
+* \returns object name
+***************************************************************************** */
+string S3StorageUtil::GetObjectName(const string &hash) {
+    string firstPair = hash.substr(0, 2);
+    string secondPair = hash.substr(2, 2);
+    return firstPair + '/' + secondPair + '/' + hash;
+}
+
+/** ****************************************************************************
 * Write a string buffer to an S3 object in an S3 bucket
 *
 * \param object_name  give the name/key for the object
@@ -205,10 +218,10 @@ string S3StorageUtil::PutS3Object(const string &buffer,
 string S3StorageUtil::PutS3Object(const string &bucket_name,
                                   const string &buffer,
                                   const map <string, string> &metaData) const {
-    string objectSha = GetSha256(buffer);
+    string objectKey = GetObjectName(GetSha256(buffer));
     Aws::S3::Model::PutObjectRequest req;
     req.SetBucket(bucket_name.c_str());
-    req.SetKey(objectSha.c_str());
+    req.SetKey(objectKey.c_str());
     for (auto &m : metaData) {
         req.AddMetadata(Aws::String(m.first.c_str(), m.first.size()),
                         Aws::String(m.second.c_str(), m.second.size()));
@@ -228,7 +241,7 @@ string S3StorageUtil::PutS3Object(const string &bucket_name,
         throw MPFDetectionException(MPF_FILE_WRITE_ERROR, ss.str());
     }
 
-    return s3_endpoint + '/' + bucket_name + '/' + objectSha;
+    return s3_endpoint + '/' + bucket_name + '/' + objectKey;
 }
 
 /** ****************************************************************************
