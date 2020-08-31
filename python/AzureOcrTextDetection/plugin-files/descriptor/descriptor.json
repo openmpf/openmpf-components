@@ -123,6 +123,14 @@
         "AZURE OCR TEXT DETECTION (WITH REGION MERGING) TASK",
         "OCV GENERIC MARKUP TASK"
       ]
+    },
+    {
+      "name": "AZURE OCR TEXT DETECTION WITH KEYWORD TAGGING",
+      "description": "Uses Azure Cognitive Services to perform optical character recognition and performs keyword tagging.",
+      "tasks": [
+        "AZURE OCR TEXT DETECTION (WITH REGION MERGING) TASK",
+        "KEYWORD TAGGING TASK"
+      ]
     }
   ]
 }

@@ -83,6 +83,14 @@
       "tasks": [
         "TIKA TEXT DETECTION TASK"
       ]
+    },
+    {
+      "name": "TIKA TEXT DETECTION WITH KEYWORD TAGGING PIPELINE",
+      "description": "Performs Tika text detection with keyword tagging.",
+      "tasks": [
+        "TIKA TEXT DETECTION TASK",
+        "KEYWORD TAGGING TASK"
+      ]
     }
   ]
 }

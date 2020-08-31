@@ -17,9 +17,7 @@
     "detectionType": "TEXT",
     "actionType": "DETECTION",
     "requiresCollection": {
-      "states": [
-        "DETECTION_TEXT"
-      ]
+      "states": []
     },
     "providesCollection": {
       "states": [

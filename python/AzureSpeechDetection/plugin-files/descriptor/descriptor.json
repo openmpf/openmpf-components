@@ -105,6 +105,14 @@
       "tasks": [
         "AZURE SPEECH DETECTION TASK"
       ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION WITH TAGGING PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in English and then tags the results",
+      "tasks": [
+        "AZURE SPEECH DETECTION TASK",
+        "KEYWORD TAGGING TASK"
+      ]
     }
   ]
 }
