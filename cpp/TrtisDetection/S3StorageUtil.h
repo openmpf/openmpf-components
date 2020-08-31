@@ -41,18 +41,18 @@ using namespace MPF::COMPONENT;
 
 // TODO: Consider making part of the C++ Batch Component SDK.
 class S3StorageUtil {
-  private:
+private:
     log4cxx::LoggerPtr _log;          ///< log object
     string s3_bucket_url;             ///< AWS S3 bucket url to use for job (e.g. 'http://localhost:80/bucket')
     string s3_endpoint;               ///< AWS S3 endpoint url to use for job (e.g. 'http://localhost:80')
     string s3_bucket;                 ///< AWS S3 bucket to use for job (e.g. 'bucket')
     Aws::SDKOptions aws_sdk_options;  ///< AWS S3 options
-    unique_ptr<Aws::S3::S3Client> s3_client;  ///< AWS S3 client
+    unique_ptr <Aws::S3::S3Client> s3_client;  ///< AWS S3 client
 
     Aws::S3::Model::GetObjectOutcome _getS3Object(const string bucket_name,
                                                   const string &object_name) const;  ///< GetObjectOutcome for S3 object
 
-  public:
+public:
     S3StorageUtil(const log4cxx::LoggerPtr &log,
                   const MPFJob &job);
 

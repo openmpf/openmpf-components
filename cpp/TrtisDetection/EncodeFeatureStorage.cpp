@@ -32,13 +32,13 @@
 using namespace MPF::COMPONENT;
 
 void EncodeFeatureStorage::_store(Properties &prop) {
-  prop["FEATURE"] = Base64::Encode(prop.at("FEATURE")); // overwrite
+    prop["FEATURE"] = Base64::Encode(prop.at("FEATURE")); // overwrite
 }
 
 void EncodeFeatureStorage::Store(const string &data_uri,
                                  const string &model,
                                  MPFImageLocation &location) {
-  _store(location.detection_properties);
+    _store(location.detection_properties);
 }
 
 void EncodeFeatureStorage::Store(const string &data_uri,
@@ -46,5 +46,5 @@ void EncodeFeatureStorage::Store(const string &data_uri,
                                  const MPFVideoTrack &track,
                                  MPFImageLocation &location,
                                  double fp_ms) {
-  _store(location.detection_properties);
+    _store(location.detection_properties);
 }

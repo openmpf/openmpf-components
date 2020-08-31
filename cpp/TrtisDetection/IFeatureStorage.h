@@ -36,8 +36,8 @@ using namespace std;
 using namespace MPF::COMPONENT;
 
 class IFeatureStorage {
-  public:
-    typedef std::unique_ptr<IFeatureStorage> uPtrFeatureStorage;
+public:
+    typedef std::unique_ptr <IFeatureStorage> uPtrFeatureStorage;
 
     virtual ~IFeatureStorage() = default;
 

@@ -75,11 +75,11 @@ namespace MPF{
                                                              const log4cxx::LoggerPtr &log);
 
     public:
-      string data_uri;                     ///< media to process
-      string trtis_server;                 ///< url with port for trtis server e.g. localhost:8001
-      string model_name;                   ///< name of model as served by trtis
-      int model_version;                   ///< version of model (e.g. -1 for latest)
-      int maxInferConcurrency;             ///< maximum number of concurrent video frame inferencing request
+      string data_uri;                    ///< media to process
+      string trtis_server;                ///< url with port for trtis server e.g. localhost:8001
+      string model_name;                  ///< name of model as served by trtis
+      int model_version;                  ///< version of model (e.g. -1 for latest)
+      int maxInferConcurrency;            ///< maximum number of concurrent video frame inferencing request
       IFeatureStorage::uPtrFeatureStorage featureStorage;  ///< helper for storing FEATUREs
 
       TrtisJobConfig(const MPFJob &job, const log4cxx::LoggerPtr &log);
@@ -156,7 +156,7 @@ namespace MPF{
                                        const cv::Mat                  &img,
                                        const sPtrInferCtx             &ctx,
                                        LngVec                         &shape,
-                                       BytVec                         &imgDat);  ///< prep image for inferencing
+                                       BytVec                         &imgDat); ///< prep image for inferencing
 
       void _ip_irv2_coco_getDetections(const TrtisIpIrv2CocoJobConfig &cfg,
                                        StrUPtrInferCtxResMap          &res,

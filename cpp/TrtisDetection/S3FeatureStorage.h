@@ -34,23 +34,23 @@ using namespace std;
 using namespace MPF::COMPONENT;
 
 class S3FeatureStorage : public IFeatureStorage {
-  private:
+private:
     S3StorageUtil s3StorageUtil;
 
-    map<string, string> _prepMeta(const string &data_uri,
-                                  const string &model,
-                                  const MPFImageLocation &location);
+    map <string, string> _prepMeta(const string &data_uri,
+                                   const string &model,
+                                   const MPFImageLocation &location);
 
-    map<string, string> _prepMeta(const string &data_uri,
-                                  const string &model,
-                                  const MPFVideoTrack &track,
-                                  const MPFImageLocation &location,
-                                  double fp_ms);
+    map <string, string> _prepMeta(const string &data_uri,
+                                   const string &model,
+                                   const MPFVideoTrack &track,
+                                   const MPFImageLocation &location,
+                                   double fp_ms);
 
-    void _store(const map<string, string> &meta,
+    void _store(const map <string, string> &meta,
                 Properties &prop);
 
-  public:
+public:
     S3FeatureStorage(const MPFJob &job,
                      const log4cxx::LoggerPtr &log);
 

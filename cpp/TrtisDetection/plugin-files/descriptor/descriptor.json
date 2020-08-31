@@ -26,9 +26,9 @@
       "properties": [
         {
           "name": "TRTIS_SERVER",
-          "description": "The DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS) which is setup to server the requested model' inferences. If the value is the empty string or this property is omitted, the component will instead use the environment variable for `TRTIS_SERVER`, if it is available.",
+          "description": "The DNS name or IP address and GRPC port of an NVIDIA TensorRT Inference Server (TRTIS) which is setup to server the requested model' inferences. If the value is set to the empty string \"\", the component will instead use the environment variable for `TRTIS_SERVER`, if it is available.",
           "type": "STRING",
-          "defaultValue": "localhost:8001"
+          "defaultValue": "trtis-detection-server:8001"
         },
         {
           "name": "MODEL_NAME",
@@ -44,7 +44,7 @@
         },
         {
           "name": "MAX_INFER_CONCURRENCY",
-          "description": "Maximum number of inference requests that will be sent to the server concurrently for video inferencing.  This allows time overlapping of inferencing on the server and reading/processing video frames on the client. If the value is the empty string or this property is omitted, the component will instead use the environment variable for `MAX_INFER_CONCURRENCY`, if it is available.",
+          "description": "Maximum number of inference requests that will be sent to the server concurrently for video inferencing.  This allows time overlapping of inferencing on the server and reading/processing video frames on the client. If the value is set to the empty string \"\", the component will instead use the environment variable for `MAX_INFER_CONCURRENCY`, if it is available.",
           "type": "INT",
           "defaultValue": "5"
         },

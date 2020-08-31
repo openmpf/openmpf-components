@@ -34,10 +34,10 @@ using namespace std;
 using namespace MPF::COMPONENT;
 
 class EncodeFeatureStorage : public IFeatureStorage {
-  private:
+private:
     void _store(Properties &prop);
 
-  public:
+public:
     void Store(const string &data_uri,
                const string &model,
                MPFImageLocation &loc) override;

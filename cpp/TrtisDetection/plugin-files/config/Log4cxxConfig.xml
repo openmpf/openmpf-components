@@ -42,4 +42,4 @@
     <appender-ref ref="TRTIS-DETECTION-FILE"/>
   </logger>
 
- </log4j:configuration>
+</log4j:configuration>

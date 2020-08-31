@@ -49,4 +49,4 @@ if (${GTEST_FOUND})
 
     # Install test images and videos
     file(COPY data/ DESTINATION test)
-endif()
+endif ()

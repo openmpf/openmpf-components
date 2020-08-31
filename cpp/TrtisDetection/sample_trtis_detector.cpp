@@ -32,11 +32,12 @@
 using namespace MPF::COMPONENT;
 using namespace std;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
     if ((argc < 2) || (argc > 5)) {
         cout << "argc = " << argc << endl;
-        cout << "Usage: " << argv[0] << " <image URI> <trtis_server> <num classifications> <confidence threshold>" << endl;
+        cout << "Usage: " << argv[0] << " <image URI> <trtis_server> <num classifications> <confidence threshold>"
+             << endl;
         return EXIT_SUCCESS;
     }
 
@@ -59,12 +60,12 @@ int main(int argc, char* argv[]) {
     string uri(argv[1]);
     cout << "uri is " << uri << std::endl;
 
-    if(argc > 2){ algorithm_properties["TRTIS_SERVER"] = string(argv[2]); }
+    if (argc > 2) { algorithm_properties["TRTIS_SERVER"] = string(argv[2]); }
     cout << "Trtis server name and port = "
          << algorithm_properties["TRTIS_SERVER"] << std::endl;
 
 
-    if(argc > 3){ algorithm_properties["CONFIDENCE_THRESHOLD"] = string(argv[3]); }
+    if (argc > 3) { algorithm_properties["CONFIDENCE_THRESHOLD"] = string(argv[3]); }
     cout << "Confidence threshold = " << algorithm_properties["CONFIDENCE_THRESHOLD"] << endl;
 
     Properties media_properties;
@@ -74,9 +75,9 @@ int main(int argc, char* argv[]) {
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
     detections = trtis_component.GetDetections(job);
     for (int i = 0; i < detections.size(); i++) {
-      cout << "detection number " << i
-      << " classification is " << detections[i].detection_properties["CLASSIFICATION"]
-      << " and confidence is " << detections[i].confidence << endl;
+        cout << "detection number " << i
+             << " classification is " << detections[i].detection_properties["CLASSIFICATION"]
+             << " and confidence is " << detections[i].confidence << endl;
     }
     trtis_component.Close();
     return EXIT_SUCCESS;
