@@ -56,41 +56,54 @@ namespace MPF{
       cv::Point2f       center;            ///< bounding box center normalized to image dimensions
       const FramePtr    framePtr;          ///< frame associated with detection (openCV memory managed :( )
 
-      const cv::Mat&       getFeature()  const;            ///< get dft for phase correlation
-      const cv::Rect2i     getRect()     const;            ///< get location   as an opencv rectange
+      const cv::Mat&       getClassFeature() const;        ///< get unit vector of scores
+      const cv::Mat&       getDFTFeature()   const;        ///< get dft for phase correlation
+      const cv::Rect2i     getRect()         const;        ///< get location   as an opencv rectange
       void                 setRect(const cv::Rect2i& rec); ///< set location from an opencv rectangle
-
-      void copyFeature(const DetectionLocation& d) const;  ///< copy DNN feature from another detection
 
       float           iouDist(const Track &tr) const;   ///< 1 - compute intersection over union
       float         kfIouDist(const Track &tr) const;   ///< 1 - compute intersection over union using kalman predicted location
       float         frameDist(const Track &tr) const;   ///< compute temporal frame gap
       float center2CenterDist(const Track &tr) const;   ///< compute normalized center to center distance
       float       featureDist(const Track &tr) const;   ///< compute deep feature similarity distance
+      float         classDist(const Track &tr) const;   ///< compute class similarity distance
+      float    kfResidualDist(const Track &tr) const;   ///< comput kalman filter residual distance
 
       static bool                       Init();                                                                ///< setup class shared members
       static DetectionLocationPtrVecVec createDetections(const ConfigPtr cfgPtr,const FramePtrVec &framePtrs); ///< created detection objects from image frame
       static bool                       loadNetToCudaDevice(const int cudaDeviceId);                           ///< load network to active CUDA device
+      static cv::Rect2i snapToEdges(const cv::Rect2i& rt, const cv::Rect2i& rm,
+                                    const cv::Size2i& frameSize, const float edgeSnapDist);                    ///< snap a rectangle to frame edges if close
 
       DetectionLocation(const ConfigPtr   cfgPtr,
                         const FramePtr    frmPtr,
                         const cv::Rect2d  bbox,
                         const float       conf,
-                        const cv::Point2f ctr);     ///< constructor for createDetections()
-       #ifndef NDEBUG
-      ~DetectionLocation(){ LOG_TRACE("Detection " << this << " beeing destroyed");}
-      #endif
+                        const cv::Point2f ctr,
+                        const cv::Mat     classFeature);
+
+      DetectionLocation(const ConfigPtr   cfgPtr,
+                        const FramePtr    frmPtr,
+                        const cv::Rect2d  bbox,
+                        const float       conf,
+                        const cv::Point2f ctr,
+                        const cv::Mat     classFeature,
+                        const cv::Mat     dftFeature);
+
 
     private:
 
       const ConfigPtr     _cfgPtr;               ///< job configuration and shared config state
-      mutable cv::Mat     _feature;              ///< dft for matching-up detections via phase correlation
+      const cv::Mat       _classFeature;         ///< unit vector of with elements proportional to scores for each classes
+      mutable cv::Mat     _dftFeature;           ///< dft for matching-up detections via phase correlation
 
-      static NetPtr       _netPtr;               ///< DNN detector network
+      static cv::dnn::Net _net;                  ///< DNN detector network
       static stringVec    _netClasses;           ///< list of classes for DNN
       static stringVec    _netOutputNames;       ///< list of DNN output names
+      static cv::Mat1f    _netConfusion;         ///< classifier confusion matrix
+      static intVec       _classGroupIdx;        ///< class index to class group mapping from confusion matrix
 
-      float              _iouDist(const cv::Rect2i &rect) const;    ///< compute intersectino over union
+      float              _iouDist(const cv::Rect2i &rect) const;    ///< compute intersection over union
 
       cv::Point2d       _phaseCorrelate(  const Track      &tr)    const;  ///< get bbox alignment via phase correlation
       const cv::Mat1f   _getHanningWindow(const cv::Size   &size)  const;  ///< get hanning window of specified size

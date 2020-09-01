@@ -61,6 +61,12 @@
           "defaultValue": "4"
         },
         {
+          "name": "TRACKING_EDGE_SNAP_DIST",
+          "description": "Frame border as fraction of frame dimension within which detection bounding boxes are snapped to edge.",
+          "type": "FLOAT",
+          "defaultValue": "0.0075"
+        },
+        {
           "name": "TRACKING_DFT_SIZE",
           "description": "DFT size for bbox alignment via phase correlation",
           "type": "INT",
@@ -71,6 +77,12 @@
           "description": "Use hanning windowing with DFT (better registration, but slower).",
           "type": "BOOLEAN",
           "defaultValue": "true"
+        },
+        {
+          "name": "KF_MAX_ASSIGNMENT_RESIDUAL",
+          "description": "Maximim number of standard deviations of a kalman filter state residual that a potential detection assignment is allowed to cause.",
+          "type": "FLOAT",
+          "defaultValue": "4.0"
         },
         {
           "name": "KF_DISABLED",

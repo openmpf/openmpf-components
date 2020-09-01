@@ -44,10 +44,6 @@ namespace MPF{
          double  time=0;                ///< time of current frame in sec
          double  timeStep=0;            ///< time interval between frames in sec
          cv::Mat bgr;                   ///< bgr image frame
-
-        #ifndef NDEBUG
-        ~Frame(){ LOG_TRACE("Frame " << this << " beeing destroyed"); }
-        #endif
      };
 
    }

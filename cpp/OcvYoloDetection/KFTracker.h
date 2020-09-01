@@ -44,16 +44,14 @@ namespace MPF{
     class KFTracker{
 
       public:
+        void             setStatePreFromBBox (const cv::Rect2i& r);
+        void             setStatePostFromBBox(const cv::Rect2i& r);
+        const cv::Rect2i predictedBBox() const {return _bboxFromState(_kf.statePre)  & _roi;};
+        const cv::Rect2i correctedBBox() const {return _bboxFromState(_kf.statePost) & _roi;};
 
-        static cv::Mat1f measurementFromBBox(const cv::Rect2i& r);
-        static cv::Rect2i      bboxFromState(const cv::Mat1f state);
-
-
-        const cv::Rect2i predictedBBox() const {return bboxFromState(_kf.statePre)  & _roi;};
-        const cv::Rect2i correctedBBox() const {return bboxFromState(_kf.statePost) & _roi;};
-
-        void predict(const float t);         ///< advance Kalman state to time t and get predicted bbox
-        void correct(const cv::Rect2i &rec); ///< correct current filter state with measurement rec
+        void predict(const float t);                ///< advance Kalman state to time t and get predicted bbox
+        void correct(const cv::Rect2i &rec);        ///< correct current filter state with measurement rec
+        float testResidual(const cv::Rect2i &rec,const float snapDist);  ///< return a normalized error if rec is assigned
 
         KFTracker(const float t,
                   const float dt,
@@ -62,10 +60,8 @@ namespace MPF{
                   const cv::Mat1f &rn,
                   const cv::Mat1f &qn);
 
-        #ifndef NDEBUG
-          static size_t _objId;
-          size_t _myId;
-          void dump();
+        #ifdef KFDUMP_STATE
+          void dump(string filename);
           stringstream _state_trace;
           friend ostream& operator<< (ostream& out, const KFTracker& kft);
         #endif
@@ -77,7 +73,9 @@ namespace MPF{
         const cv::Rect2i           _roi;       ///< canvas clipping limits for bboxes returned by filter
         const cv::Mat1f            _qn;        ///< kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
 
-        void _setTimeStep(float dt);           ///< update model variables Q F for time step size dt
+        static cv::Mat1f      _measurementFromBBox(const cv::Rect2i& r);
+        static cv::Rect2i     _bboxFromState(const cv::Mat1f& state);
+        void                  _setTimeStep(float dt);           ///< update model variables Q F for time step size dt
 
     };
 

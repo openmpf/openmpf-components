@@ -30,8 +30,8 @@ project(ocv-ssd-face-detection)
 
 set(CMAKE_CXX_STANDARD 11)
 
-#set(CMAKE_BUILD_TYPE RelWithDebInfo)    # build release version with debug symbols
-set(CMAKE_BUILD_TYPE Debug)            # build debug version
+set(CMAKE_BUILD_TYPE RelWithDebInfo)    # build release version with debug symbols
+#set(CMAKE_BUILD_TYPE Debug)            # build debug version
 
 add_definitions(-Wfatal-errors)
 include(../ComponentSetup.cmake)
@@ -44,7 +44,7 @@ include(../ComponentSetup.cmake)
 
 # Uncomment if not specifying dlib source directory.
 # Warning: may not work with dlib release installation.
-# find_package(dlib REQUIRED)
+find_package(dlib REQUIRED)
 
 find_package(OpenCV
   REQUIRED

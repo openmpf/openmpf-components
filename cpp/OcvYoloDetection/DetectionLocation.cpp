@@ -28,6 +28,7 @@
 #include <fstream>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/core/cuda.hpp>
+#include <opencv2/cvconfig.h>
 
 #include "DetectionLocation.h"
 #include "Track.h"
@@ -35,9 +36,11 @@
 
 using namespace MPF::COMPONENT;
 
-NetPtr     DetectionLocation::_netPtr;               ///< DNN detector network
-stringVec  DetectionLocation::_netClasses;           ///< list of classes for DNN
-stringVec  DetectionLocation::_netOutputNames;       ///< list of DNN output names
+cv::dnn::Net DetectionLocation::_net;                  ///< DNN detector network
+stringVec    DetectionLocation::_netClasses;           ///< list of classes for DNN
+stringVec    DetectionLocation::_netOutputNames;       ///< list of DNN output names
+cv::Mat1f    DetectionLocation::_netConfusion;         ///< DNN detector classification confusion matrix
+intVec       DetectionLocation::_classGroupIdx;        ///< class index to class group mapping from confusion matrix
 
 /** ****************************************************************************
 *  Draw polylines to visualize landmark scoresVectors
@@ -59,7 +62,43 @@ void drawPolyline(cv::Mat &im, const cvPoint2fVec &landmarks,
   }
   cv::polylines(im, points, isClosed, drawColor, 2, 16);
 }
+/** **************************************************************************
+* If a test rectange is within snapDist from frame edges then change another
+* rectangel to touch the corresponding frame edges
+*
+* \param   rt           rectangle to for snap distance test
+* \param   rm           rectangle to change and return
+* \param   frame        frame whose edges to snap to
+* \param   edgeSnapDist max distance in pixels from the edge for a snap
+*
+* \returns altered 'rm' rectangle that is touching the frame edges if snapped
+*          or the original rectangle 'rm' if no snap happened
+*
+*************************************************************************** */
+cv::Rect2i DetectionLocation::snapToEdges(const cv::Rect2i& rt, const cv::Rect2i& rm, const cv::Size2i& frameSize, const float edgeSnapDist=0.0075){
 
+  cv::Point2i rt_tl = rt.tl();
+  cv::Point2i rt_br = rt.br();
+  cv::Point2i rm_tl = rm.tl();
+  cv::Point2i rm_br = rm.br();
+
+  int border_x = static_cast<int>(edgeSnapDist * frameSize.width);
+  int border_y = static_cast<int>(edgeSnapDist * frameSize.height);
+
+  if(rt_tl.x <= border_x){                             // near   left side of frame
+    rm_tl.x = 0;
+  }else if(rt_br.x >= frameSize.width - border_x - 1){ // near  right side of frame
+    rm_br.x = frameSize.width - 1;
+  }
+
+  if(rt_tl.y <= border_y){                              // near    top side of frame
+    rm_tl.y = 0;
+  }else if(rt_br.y >= frameSize.height - border_y - 1){ // near bottom side of frame
+    rm_br.y = frameSize.height - 1;
+  }
+
+  return cv::Rect2i(rm_tl , rm_br);
+}
 
 /** **************************************************************************
 * Compute (1 - Intersection Over Union) metric between a rectangel and detection
@@ -78,7 +117,7 @@ float DetectionLocation::_iouDist(const cv::Rect2i &rect) const {
 
   float inter_area = max(0, lrx - ulx) * max(0, lry - uly);
   float union_area = width * height + rect.width * rect.height - inter_area;
-  float dist = 1.0f - inter_area / union_area;                                 LOG_TRACE("iou dist = " << dist);
+  float dist = 1.0f - inter_area / union_area;
   return dist;
 }
 
@@ -90,10 +129,11 @@ float DetectionLocation::_iouDist(const cv::Rect2i &rect) const {
 *
 *************************************************************************** */
 float DetectionLocation::iouDist(const Track &tr) const {
-  return _iouDist(cv::Rect2i(tr.back()->x_left_upper,
-                             tr.back()->y_left_upper,
-                             tr.back()->width,
-                             tr.back()->height));
+  float dist = _iouDist(cv::Rect2i(tr.back()->x_left_upper,
+                                   tr.back()->y_left_upper,
+                                   tr.back()->width,
+                                   tr.back()->height));                        LOG_TRACE("iou dist = " << dist << " between " << *this << " and " << tr);
+  return dist;
 }
 
 /** **************************************************************************
@@ -105,7 +145,8 @@ float DetectionLocation::iouDist(const Track &tr) const {
 *
 *************************************************************************** */
 float DetectionLocation::kfIouDist(const Track &tr) const {
-  return _iouDist(tr.kalmanPredictedBox());
+  float dist = _iouDist(tr.kalmanPredictedBox());                              LOG_TRACE("kfIou dist = " << dist << " between " << *this << " and " << tr);
+  return dist;
 }
 
 /** **************************************************************************
@@ -130,7 +171,16 @@ float DetectionLocation::frameDist(const Track &tr) const {
 float  DetectionLocation::center2CenterDist(const Track &tr) const {
   float dx = center.x - tr.back()->center.x;
   float dy = center.y - tr.back()->center.y;
-  float dist = sqrt( dx*dx + dy*dy );                                          LOG_TRACE("center-2-center dist = " << dist);
+  float dist = sqrt( dx*dx + dy*dy );                                          LOG_TRACE("center-2-center dist: " << dist << " between " << *this << " and " << tr);
+  return dist;
+}
+
+/** **************************************************************************
+* Class distance
+*
+*************************************************************************** */
+float DetectionLocation::classDist(const Track& tr) const {
+  float dist = 1.0f - max( 0.0f, min( 1.0f, static_cast<float>(_classFeature.dot(tr.back()->getClassFeature()))));  LOG_TRACE("class dist = " << dist << " between " << *this << " and " << tr);
   return dist;
 }
 
@@ -144,7 +194,7 @@ float  DetectionLocation::center2CenterDist(const Track &tr) const {
 *************************************************************************** */
 cv::Point2d  DetectionLocation::_phaseCorrelate(const Track &tr) const {
   cv::Mat1f P, Pm, C;
-  cv::mulSpectrums(getFeature(), tr.back()->getFeature(), P, 0, true);
+  cv::mulSpectrums(getDFTFeature(), tr.back()->getDFTFeature(), P, 0, true);
   cv::magSpectrums(P, Pm);
   cv::divSpectrums(P, Pm, C, 0, false);
   cv::idft(C,C);
@@ -169,6 +219,7 @@ float DetectionLocation::featureDist(const Track &tr) const {
   float dist;
   cv::Rect2d  trRoi(tr.back()->getRect());                                   // roi of track object in tr's frame
   if(trRoi.area() > 0.0){
+
     cv::Point2d ctr = cv::Point2d(x_left_upper + 0.5 * width,
                                   y_left_upper + 0.5 * height)
                       - _phaseCorrelate(tr);                                   // center of shifted track roi
@@ -176,24 +227,32 @@ float DetectionLocation::featureDist(const Track &tr) const {
     if(cv::Rect2d(cv::Point2d(0,0),framePtr->bgr.size()).contains(ctr)){        // center ok
       cv::Mat comp;
       cv::getRectSubPix(framePtr->bgr,trRoi.size(), ctr, comp);                // grab corresponding region from bgrFrame with border replication
-      #ifndef NDEBUG
-        if(_cfgPtr->log->isTraceEnabled()) cv::imwrite("comp.png",comp);
-      #endif
       cv::absdiff(tr.back()->framePtr->bgr(trRoi), comp, comp);                // compute pixel wise absolute diff (could do HSV transform 1st?!)
       assert(framePtr->bgr.depth() == CV_8U);
       cv::Scalar mean = cv::mean(comp) / 255.0;                                // get mean normalized BGR pixel difference
       dist = mean.ddot(mean) / framePtr->bgr.channels();                       // combine BGR: d = BGR.BGR
-      #ifndef NDEBUG
-        if(_cfgPtr->log->isTraceEnabled()) cv::imwrite("diff.png",comp);
-      #endif
     }else{                                                                     LOG_TRACE("ctr " << ctr << " outside bgrFrame");
       dist = 1.0;
     }
   }else{                                                                       LOG_TRACE("tr tail " << trRoi << " has zero area");
     dist = 1.0;
-  }                                                                            LOG_TRACE("feature dist: " << dist);
+  }                                                                            LOG_TRACE("feature dist: " << dist << " between " << *this << " and " << tr);
   return dist;
 }
+
+
+/** **************************************************************************
+* Compute kalman distance (error from predicted) to track's tail detection's
+*
+* \param   tr track
+* \returns distance
+*
+*************************************************************************** */
+float DetectionLocation::kfResidualDist(const Track &tr) const {
+  float dist = tr.testResidual(*this);                                         LOG_TRACE("residual dist: " << dist << " between " << *this << " and " << tr);
+  return dist;
+}
+
 
 /** **************************************************************************
 * get the location as an opencv rectange
@@ -206,10 +265,11 @@ const cv::Rect2i DetectionLocation::getRect() const {
 * set the location from an opencv rectange
 *************************************************************************** */
 void DetectionLocation::setRect(const cv::Rect2i& rec){
-  x_left_upper = rec.x;
-  y_left_upper = rec.y;
-        width  = rec.width;
-        height = rec.height;
+  cv::Rect2i snaped = snapToEdges(rec,rec,framePtr->bgr.size(),_cfgPtr->edgeSnapDist);
+  x_left_upper = snaped.x;
+  y_left_upper = snaped.y;
+        width  = snaped.width;
+        height = snaped.height;
 }
 
 /** **************************************************************************
@@ -218,9 +278,9 @@ void DetectionLocation::setRect(const cv::Rect2i& rec){
 * \param   d detection from which to copy feature vector
 *
 *************************************************************************** */
-void DetectionLocation::copyFeature(const DetectionLocation& d) const{
-  _feature = d.getFeature();
-}
+//void DetectionLocation::copyFeature(const DetectionLocation& d) {
+//  _dftFeature   = d.getDFTFeature();
+//}
 
 /** **************************************************************************
 * get hanning window of specified size
@@ -235,15 +295,24 @@ const cv::Mat1f   DetectionLocation::_getHanningWindow(const cv::Size &size) con
     static cv::Mat1f defWin;          // most common size so cache it.
     if(   defWin.empty()
        || defWin.rows != _cfgPtr->dftSize){
-      cv::createHanningWindow(defWin,cv::Size(_cfgPtr->dftSize,_cfgPtr->dftSize),CV_32F);  LOG_TRACE("Created default hanning window of size " << defWin.size());
+      cv::createHanningWindow(defWin,cv::Size(_cfgPtr->dftSize,_cfgPtr->dftSize),CV_32F);  //LOG_TRACE("Created default hanning window of size " << defWin.size());
     }
     return defWin;
 
   }else{
     cv::Mat1f customWin;
-    cv::createHanningWindow(customWin,size,CV_32F);                                        LOG_TRACE("Created custom hanning window of size " << customWin.size());
+    cv::createHanningWindow(customWin,size,CV_32F);                                        //LOG_TRACE("Created custom hanning window of size " << customWin.size());
     return customWin;
   }
+}
+/** **************************************************************************
+* get class feature vector consisting of a unit vector of scores
+*
+* \returns unit magnitude class score feature vector
+*
+*************************************************************************** */
+const cv::Mat& DetectionLocation::getClassFeature() const {
+  return _classFeature;
 }
 
 /** **************************************************************************
@@ -252,35 +321,35 @@ const cv::Mat1f   DetectionLocation::_getHanningWindow(const cv::Size &size) con
 * \returns unit magnitude feature vector
 *
 *************************************************************************** */
-const cv::Mat& DetectionLocation::getFeature() const {
-  if(_feature.empty()){
+const cv::Mat& DetectionLocation::getDFTFeature() const {
+  if(_dftFeature.empty()){
     // make normalized grayscale float image
     cv::Mat gray;
-    cv::cvtColor(framePtr->bgr(getRect()), gray, CV_BGR2GRAY);                 LOG_TRACE("Converted to gray scale " << cv::typeToString(gray.type()) << " (" << gray.size << ")");
+    cv::cvtColor(framePtr->bgr(getRect()), gray, CV_BGR2GRAY);                 //LOG_TRACE("Converted to gray scale " << cv::typeToString(gray.type()) << " (" << gray.size << ")");
     cv::Scalar mean,std;
     cv::meanStdDev(gray, mean, std);
     std[0] = max(std[0],1/255.0);
-    gray.convertTo(gray,CV_32FC1,1.0/std[0],-mean[0]/std[0]);                  LOG_TRACE("Converted to zero mean unit std float " << cv::typeToString(gray.type()) <<"(" << gray.size << ")");
+    gray.convertTo(gray,CV_32FC1,1.0/std[0],-mean[0]/std[0]);                  //LOG_TRACE("Converted to zero mean unit std float " << cv::typeToString(gray.type()) <<"(" << gray.size << ")");
 
     // zero pad (or clip) center of grayscale image into center of dft buffer
-    cv::Mat1f feature=cv::Mat1f::zeros(_cfgPtr->dftSize,_cfgPtr->dftSize);     LOG_TRACE("Created dft buffer of size: " << feature.size());
+    cv::Mat1f feature=cv::Mat1f::zeros(_cfgPtr->dftSize,_cfgPtr->dftSize);     //LOG_TRACE("Created dft buffer of size: " << feature.size());
 
     cv::Rect2i grRoi((gray.size() - feature.size())/2, feature.size());
-    grRoi = grRoi & cv::Rect2i(cv::Point2i(0,0),gray.size());                  LOG_TRACE("Crop  region from image: " << grRoi);
-    cv::Rect2i ftRoi((feature.size() - grRoi.size())/2,grRoi.size());          LOG_TRACE("Paste region in buffer : " << ftRoi);
+    grRoi = grRoi & cv::Rect2i(cv::Point2i(0,0),gray.size());                  //LOG_TRACE("Crop  region from image: " << grRoi);
+    cv::Rect2i ftRoi((feature.size() - grRoi.size())/2,grRoi.size());          //LOG_TRACE("Paste region in buffer : " << ftRoi);
 
     if(_cfgPtr->dftHannWindowEnabled){
       cv::Mat1f hann = _getHanningWindow(grRoi.size());
-      cv::multiply(gray(grRoi),hann,gray(grRoi));                              LOG_TRACE("Applied hanning window of size " << hann.size() << " to image of size " << grRoi.size());
+      cv::multiply(gray(grRoi),hann,gray(grRoi));                              //LOG_TRACE("Applied hanning window of size " << hann.size() << " to image of size " << grRoi.size());
     }
-    gray(grRoi).copyTo(feature(ftRoi));                                        LOG_TRACE("Zero padded/clipped to " << cv::typeToString(feature.type()) << "(" << feature.size << ")");
+    gray(grRoi).copyTo(feature(ftRoi));                                        //LOG_TRACE("Zero padded/clipped to " << cv::typeToString(feature.type()) << "(" << feature.size << ")");
 
     // take dft (CCS packed)
-    cv::dft(feature,feature,cv::DFT_REAL_OUTPUT);                              LOG_TRACE("Created CCS packed dft " << cv::typeToString(feature.type()) << "(" << feature.size << ")");
-    _feature = feature.clone();
-  }                                                                            LOG_TRACE("returning feature " << cv::typeToString(_feature.type()) << "(" << _feature.size << ")");
-  assert(_feature.type() == CV_32FC1);
-  return _feature;
+    cv::dft(feature,feature,cv::DFT_REAL_OUTPUT);                              //LOG_TRACE("Created CCS packed dft " << cv::typeToString(feature.type()) << "(" << feature.size << ")");
+    _dftFeature = feature.clone();
+  }                                                                            //LOG_TRACE("returning feature " << cv::typeToString(_feature.type()) << "(" << _feature.size << ")");
+  assert(_dftFeature.type() == CV_32FC1);
+  return _dftFeature;
 }
 
 /** ****************************************************************************
@@ -298,13 +367,13 @@ const cv::Mat& DetectionLocation::getFeature() const {
 DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr cfgPtr, const FramePtrVec &framePtrs){
                                                                                LOG_TRACE("Createing detections in frame batch of size " << framePtrs.size());
   int inputImageSize = cfgPtr->inputImageSize;
-  if(inputImageSize <= 0){                                                     LOG_TRACE("Determining max image dimension in batch");
+  if(inputImageSize <= 0){                                                     //LOG_TRACE("Determining max image dimension in batch");
     for(auto& framePtr:framePtrs){
       int maxImageDim = max(framePtr->bgr.cols,framePtr->bgr.rows);
       if(maxImageDim > inputImageSize){
         inputImageSize = maxImageDim;
       }
-    }                                                                          LOG_TRACE("Using max batch dimension = " <<  inputImageSize <<" as input size");
+    }                                                                          //LOG_TRACE("Using max batch dimension = " <<  inputImageSize <<" as input size");
   }
 
   floatVec         sizeScaleFactors;                                           // scale factor for each image
@@ -328,8 +397,14 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
     cv::copyMakeBorder(scaledImg, paddedScaledImg,                             // add black bars to keep image square (yolo3 should do this but ocv fails)
                       padTop , inputImageSize - padTop  - scaledImg.rows,
                       padLeft, inputImageSize - padLeft - scaledImg.cols,
-                      cv::BORDER_CONSTANT,cv::Scalar(0,0,0));
+                      //cv::BORDER_CONSTANT,cv::Scalar(0,0,0));
+                      cv::BORDER_REPLICATE,cv::Scalar(0,0,0));                 // seems to not create as many large false positives
     blobImgs.push_back(paddedScaledImg);                                       LOG_TRACE("Inference image size " << paddedScaledImg.size());
+    if(framePtr->idx == 173){
+      stringstream ss;
+      ss << framePtr->idx << ".png";
+      cv::imwrite(ss.str(),paddedScaledImg);
+    }
   }
 
   cv::Mat inputBlob = cv::dnn::blobFromImages(blobImgs,                        // square BGR image
@@ -339,18 +414,19 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
                                               cv::Scalar(0,0,0),               // mean BGR pixel value
                                               true,                            // swap RB channels
                                               false);                          // center crop
-                                                                               LOG_TRACE("Input blob size: " << inputBlob.size);
+                                                                               //LOG_TRACE("Input blob size: " << inputBlob.size);
 
-  _netPtr->setInput(inputBlob,"data");                                         // different output layers for different scales, e.g. yolo_82,yolo_94,yolo_106 for yolo_v3
+  _net.setInput(inputBlob,"data");                                             // different output layers for different scales, e.g. yolo_82,yolo_94,yolo_106 for yolo_v3
   cvMatVec outs;                                                               // outs[output-layer][frame][detection][feature] =  0:cent_x, 1:cent_y, 2:width, 3:height, 4:objectness, 5..84:class-scores
-  _netPtr->forward(outs, _netOutputNames);                                     // https://answers.opencv.org/question/212588/how-to-process-output-of-detection-network-when-batch-of-images-is-used-as-network-input/
+  _net.forward(outs, _netOutputNames);                                         // https://answers.opencv.org/question/212588/how-to-process-output-of-detection-network-when-batch-of-images-is-used-as-network-input/
   #ifndef NDEBUG                                                               // https://towardsdatascience.com/yolo-v3-object-detection-53fb7d3bfe6b
-  for(int i=0;i<outs.size();i++)                                               LOG_TRACE("output blob[" << i << "] " << outs[i].size);
+  for(int i=0;i<outs.size();i++){                                              //LOG_TRACE("output blob[" << i << "] " << outs[i].size);
+  }
   #endif
 
   DetectionLocationPtrVecVec detections;
-  for(int fr=0; fr<framePtrs.size(); fr++){                                    LOG_TRACE("Processing inference results for frame: " << fr);
-    float revSizeScaleFactor = inputImageSize /sizeScaleFactors[fr];
+  for(int fr=0; fr<framePtrs.size(); fr++){                                    LOG_TRACE("Processing inference results for batch frame: " << fr);
+    float revSizeScaleFactor = inputImageSize / sizeScaleFactors[fr];
     cv::Point2f padOffset = padOffsets[fr];
     // grab outputs for NMS
     cvRect2dVec  bboxes;
@@ -360,7 +436,7 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
     for(int  lr=0; lr<outs.size(); lr++){
       cv::Mat1f data = cv::Mat(outs[lr].size[outs[lr].dims-2],
                                outs[lr].size[outs[lr].dims-1],
-                               CV_32F,outs[lr].ptr<float>(fr));                LOG_TRACE("Processing layer " << lr << " output of size: " << data.size());
+                               CV_32F,outs[lr].ptr<float>(fr));                //LOG_TRACE("Processing layer " << lr << " output of size: " << data.size());
       assert(data.cols == 85); // yolo output feature are 85 floats
       for(int rw=0; rw<data.rows; rw++){
         cv::Mat scores = data.row(rw).colRange(5,data.cols);
@@ -393,11 +469,14 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
     // Create detection objects for frame
     detections.push_back(DetectionLocationPtrVec());
     for(int& keepIdx : keepIdxs){
+      cv::Mat classFeature;
+      cv::normalize(scoresVectors[keepIdx] * _netConfusion, classFeature,1.0,0.0,cv::NORM_L2);
       auto detPtr = DetectionLocationPtr(
         new DetectionLocation(cfgPtr, framePtrs[fr],
                                        bboxes[keepIdx],
                                topConfidences[keepIdx],
-                                      centers[keepIdx]));
+                                      centers[keepIdx],
+                                      classFeature));
       // add top N classifications
       vector<int> sort_idx(scoresVectors[keepIdx].cols);
       iota(sort_idx.begin(), sort_idx.end(), 0);  //initialize sort_index
@@ -420,7 +499,7 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
         {"CLASSIFICATION LIST", classList.str()},
         {"CLASSIFICATION CONFIDENCE LIST", scoreList.str()}});         LOG_TRACE("Detection " << (MPFImageLocation)(*detPtr));
 
-      detections.back().push_back(move(detPtr));
+        detections.back().push_back(move(detPtr));
 
     }  // keep indicies
   } // frames
@@ -432,18 +511,19 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
 *************************************************************************** */
 void DetectionLocation::_loadNet(const bool useCUDA){
 
-  string  modelPath        = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_WEIGHTS_FILE", "yolov3.weights");
-  string  modelConfigPath  = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_CONFIG_FILE" , "yolov3.cfg");
+  string  modelPath          = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_WEIGHTS_FILE",   "yolov3.weights");
+  string  modelConfigPath    = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_CONFIG_FILE" ,   "yolov3.cfg");
 
-  _netPtr = NetPtr(new cv::dnn::Net(move(cv::dnn::readNetFromDarknet(modelConfigPath, modelPath))));
+  //_netPtr = NetPtr(new (cv::dnn::Net(move(cv::dnn::readNetFromDarknet(modelConfigPath, modelPath))));
+  _net = cv::dnn::readNetFromDarknet(modelConfigPath, modelPath);
 
   #ifdef HAVE_CUDA
   if(useCUDA){
-    _netPtr->setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);                      LOG_TRACE("Set backend DNN_BACKEND_CUDA");
-    _netPtr->setPreferableTarget( cv::dnn::DNN_TARGET_CUDA);                       LOG_TRACE("Set target  DNN_TARGET_CUDA");
+    _net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);                      LOG_TRACE("Set backend DNN_BACKEND_CUDA");
+    _net.setPreferableTarget( cv::dnn::DNN_TARGET_CUDA);                       LOG_TRACE("Set target  DNN_TARGET_CUDA");
   }else{
-    _netPtr->setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);                   LOG_TRACE("Set backend DNN_BACKEND_DEFAULT");
-    _netPtr->setPreferableTarget( cv::dnn::DNN_TARGET_CPU);                        LOG_TRACE("Set target  DNN_TARGET_CPU");
+    _net.setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);                   LOG_TRACE("Set backend DNN_BACKEND_DEFAULT");
+    _net.setPreferableTarget( cv::dnn::DNN_TARGET_CPU);                        LOG_TRACE("Set target  DNN_TARGET_CPU");
   }
   #endif
 }
@@ -456,15 +536,13 @@ void DetectionLocation::_loadNet(const bool useCUDA){
 * \returns true if successful false otherwise
 *************************************************************************** */
 bool DetectionLocation::loadNetToCudaDevice(const int cudaDeviceId){
-  static int lastCudaDeviceId = -1;
+  static int lastCudaDeviceId = -2;
   string errMsg = "Failed to configure CUDA for deviceID=";
   try{
     #ifdef HAVE_CUDA
     if(lastCudaDeviceId != cudaDeviceId){
       if(lastCudaDeviceId >=0){
-        if(! _netPtr->empty()){
-          _netPtr.reset();                                                     // need to release network this prior to device reset
-        }
+        if(! _net.empty()) _net.~Net();                                        // need to release network this prior to device reset
         cv::cuda::resetDevice();                                               // if we were using a cuda device prior clean up old contex / cuda resources
       }
       if(cudaDeviceId >=0){
@@ -503,6 +581,8 @@ bool DetectionLocation::Init(){
 
   // Load DNN Network
   string  modelClassesPath = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_CLASS_FILE"  , "coco.names");
+  string  modelConfusionPath = Config::pluginPath + "/data/" + getEnv<string>({},"MODEL_CONFUSION_FILE", "yolov3-confusion-matrix.json");
+
   int     cudaDeviceId     = getEnv<int> ({},"CUDA_DEVICE_ID",0);
 
   const string errMsg = "Failed to load model: " + modelClassesPath;
@@ -515,11 +595,33 @@ bool DetectionLocation::Init(){
         _netClasses.push_back(str);
       }
 
+      // load classification confusion matrix for yolov3-tiny
+      cv::FileStorage fs(modelConfusionPath,cv::FileStorage::READ | cv::FileStorage::FORMAT_JSON);
+      fs["confusion"] >> _netConfusion;
+      fs.release();
+      cv::Mat1f cf = _netConfusion.clone();
+      cv::transpose(_netConfusion,_netConfusion);  // transpose for use on score row vectors
+
+      // calculate class groups
+      cf = cf + _netConfusion;
+      _classGroupIdx = intVec(cf.rows,-1);
+      int g = 0;
+      for(int r=0; r< cf.rows; r++){
+        if(_classGroupIdx[r] < 0){
+          for(int c=0; c<cf.cols; c++){
+            if(cf(r,c) > 0.1){
+              _classGroupIdx[c] = g;
+            }
+          }
+          g++;
+        }
+      }
+
       // load detector net
       loadNetToCudaDevice(cudaDeviceId);
 
       // get names of output layers
-      _netOutputNames = _netPtr->getUnconnectedOutLayersNames();
+      _netOutputNames = _net.getUnconnectedOutLayersNames();
 
   }catch(const runtime_error& re){                                           LOG_FATAL( errMsg << " Runtime error: " << re.what());
     return false;
@@ -542,11 +644,30 @@ DetectionLocation::DetectionLocation(const ConfigPtr   cfgPtr,
                                      const FramePtr    frmPtr,
                                      const cv::Rect2d  bbox,
                                      const float       conf,
-                                     const cv::Point2f ctr):
-        center(ctr),
-        framePtr(frmPtr),
-        _cfgPtr(cfgPtr)
-        {
-          confidence = conf;
-          setRect(bbox & cv::Rect2d(0,0,frmPtr->bgr.cols,frmPtr->bgr.rows));
+                                     const cv::Point2f ctr,
+                                     const cv::Mat     classFeature):
+   center(ctr),
+   framePtr(frmPtr),
+  _cfgPtr(cfgPtr),
+  _classFeature(classFeature)
+{
+  confidence = conf;
+  setRect(bbox & cv::Rect2d(0,0,frmPtr->bgr.cols,frmPtr->bgr.rows));
+}
+
+DetectionLocation::DetectionLocation(const ConfigPtr   cfgPtr,
+                                     const FramePtr    frmPtr,
+                                     const cv::Rect2d  bbox,
+                                     const float       conf,
+                                     const cv::Point2f ctr,
+                                     const cv::Mat     classFeature,
+                                     const cv::Mat     dftFeature):
+   center(ctr),
+   framePtr(frmPtr),
+  _cfgPtr(cfgPtr),
+  _classFeature(classFeature),
+  _dftFeature(dftFeature)
+{
+  confidence = conf;
+  setRect(bbox & cv::Rect2d(0,0,frmPtr->bgr.cols,frmPtr->bgr.rows));
 }

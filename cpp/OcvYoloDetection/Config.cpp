@@ -64,12 +64,16 @@ void Config::_parse(const MPFJob &job){
   frameBatchSize    = abs(getEnv<int>  (jpr,"DETECTION_FRAME_BATCH_SIZE",          frameBatchSize));     LOG_TRACE( "DETECTION_FRAME_BATCH_SIZE: "                 << frameBatchSize);
   numClassPerRegion = abs(getEnv<int>  (jpr,"NUMBER_OF_CLASSIFICATIONS_PER_REGION",numClassPerRegion));  LOG_TRACE( "NUMBER_OF_CLASSIFICATIONS_PER_REGION: "       << numClassPerRegion);
 
+  maxClassDist     = abs(getEnv<float>(jpr,"TRACKING_MAX_CLASS_DIST",        maxClassDist));             LOG_TRACE( "TRACKING_MAX_CLASS_DIST: "   << maxClassDist);
   maxFeatureDist   = abs(getEnv<float>(jpr,"TRACKING_MAX_FEATURE_DIST",      maxFeatureDist));           LOG_TRACE( "TRACKING_MAX_FEATURE_DIST: " << maxFeatureDist);
   maxFrameGap      = abs(getEnv<int>  (jpr,"TRACKING_MAX_FRAME_GAP",         maxFrameGap));              LOG_TRACE( "TRACKING_MAX_FRAME_GAP: "    << maxFrameGap);
   maxCenterDist    = abs(getEnv<float>(jpr,"TRACKING_MAX_CENTER_DIST",       maxCenterDist));            LOG_TRACE( "TRACKING_MAX_CENTER_DIST: "  << maxCenterDist);
   maxIOUDist       = abs(getEnv<float>(jpr,"TRACKING_MAX_IOU_DIST",          maxIOUDist));               LOG_TRACE( "TRACKING_MAX_IOU_DIST: "     << maxIOUDist);
+  maxKFResidual    = abs(getEnv<float>(jpr,"KF_MAX_ASSIGNMENT_RESIDUAL",     maxKFResidual));            LOG_TRACE( "KF_MAX_ASSIGNMENT_RESIDUAL: "<< maxKFResidual);
+  edgeSnapDist     = abs(getEnv<float>(jpr,"TRACKING_EDGE_SNAP_DIST",        edgeSnapDist));             LOG_TRACE( "TRACKING_EDGE_SNAP_DIST: "   << edgeSnapDist);
   dftSize          = abs(getEnv<int>  (jpr,"TRACKING_DFT_SIZE",              dftSize));                  LOG_TRACE( "TRACKING_DFT_SIZE:"          << dftSize);
   dftHannWindowEnabled = getEnv<bool> (jpr,"TRACKING_DFT_USE_HANNING_WINDOW",dftHannWindowEnabled);      LOG_TRACE( "TRACKING_DFT_USE_HANNING_WINDOW: " << dftHannWindowEnabled);
+  mosseTrackerDisabled = getEnv<bool> (jpr,"TRACKING_DISABLE_MOSSE_TRACKER" ,mosseTrackerDisabled);      LOG_TRACE( "TRACKING_DISABLE_MOSSE_TRACKER: "  << mosseTrackerDisabled);
 
 
   kfDisabled = getEnv<bool>(jpr,"KF_DISABLED", kfDisabled);                                        LOG_TRACE( "KF_DISABLED: " << kfDisabled);
@@ -97,13 +101,17 @@ ostream& operator<< (ostream& out, const Config& cfg) {
       << "\"detFrameInterval\":"           << cfg.detFrameInterval  << ","
       << "\"frameBatchSize\":"             << cfg.frameBatchSize    << ","
       << "\"numClassPerRegion\":"          << cfg.numClassPerRegion << ","
+      << "\"maxClassDist\":"               << cfg.maxClassDist      << ","
       << "\"maxFeatureDist\":"             << cfg.maxFeatureDist    << ","
       << "\"maxFrameGap\":"                << cfg.maxFrameGap       << ","
       << "\"maxCenterDist\":"              << cfg.maxCenterDist     << ","
       << "\"maxIOUDist\":"                 << cfg.maxIOUDist        << ","
+      << "\"edgeSnapDist\":"               << cfg.edgeSnapDist      << ","
       << "\"dftSize\":"                    << cfg.dftSize           << ","
       << "\"dftHannWindow\":"              <<(cfg.dftHannWindowEnabled ? "1" : "0") << ","
+      << "\"maxKFResidual\":"              << cfg.maxKFResidual << ","
       << "\"kfDisabled\":"                 <<(cfg.kfDisabled ? "1":"0") << ","
+      << "\"mosseTrackerDisabled\":"       <<(cfg.mosseTrackerDisabled ? "1":"0") << ","
       << "\"fallback2CpuWhenGpuProblem\":" <<(cfg.fallback2CpuWhenGpuProblem ? "1" : "0") << ","
       << "\"cudaDeviceId\":"               << cfg.cudaDeviceId << ","
       << "\"kfProcessVar\":"        << format(cfg.QN) << ","
@@ -123,10 +131,14 @@ Config::Config():
   detFrameInterval(1),
   frameBatchSize(1),
   numClassPerRegion(5),
+  maxClassDist(0.25),
   maxFeatureDist(0.25),
   maxCenterDist(0.0),
   maxIOUDist(0.5),
+  edgeSnapDist(0.0075),
+  maxKFResidual(4.0),
   kfDisabled(false),
+  mosseTrackerDisabled(false),
   cudaDeviceId(0),
   fallback2CpuWhenGpuProblem(true),
   lastError(MPF_DETECTION_SUCCESS),
@@ -210,10 +222,10 @@ FramePtrVec Config::getVideoFrames(int numFrames = 1) const {
   Frame nextFrame;
   for(int i=0; i<numFrames;i++){
     auto framePtr = make_shared<Frame>();
+    framePtr->idx      =         _videocapPtr->GetCurrentFramePosition();
+    framePtr->time     = 0.001 * _videocapPtr->GetCurrentTimeInMillis() ;
+    framePtr->timeStep = 1.0   / _videocapPtr->GetFrameRate();
     if(_videocapPtr->Read(framePtr->bgr)){
-      framePtr->idx      =         _videocapPtr->GetCurrentFramePosition();
-      framePtr->time     = 0.001 * _videocapPtr->GetCurrentTimeInMillis() ;
-      framePtr->timeStep = 1.0   / _videocapPtr->GetFrameRate();
       frames.push_back(framePtr);
     }else{
       break;

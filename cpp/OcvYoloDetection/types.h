@@ -35,6 +35,8 @@
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
 
 
+#define KFDUMP_STATE  //enable csv debug output for kalman filter states
+
 namespace MPF{
  namespace COMPONENT{
 
@@ -59,10 +61,10 @@ namespace MPF{
   typedef vector<cvPoint2fVec>            cvPoint2fVecVec;             ///< vector of vectors of OpenCV 2D float points
   typedef cv::Point3_<uint8_t>            cvPixel;                     ///< image pixel type used by images
   typedef unique_ptr<DetectionLocation>   DetectionLocationPtr;        ///< DetectionLocation pointers
-  typedef unique_ptr<cv::dnn::Net>        NetPtr;                      ///< pointer to DNN network
   typedef vector<DetectionLocationPtr>    DetectionLocationPtrVec;     ///< vector of DetectionLocation pointers
   typedef vector<DetectionLocationPtrVec> DetectionLocationPtrVecVec;  ///< vector of DetectionLocation pointers vectors
-  typedef list<unique_ptr<Track>>         TrackPtrList;                ///< list of track pointers
+  typedef unique_ptr<Track>               TrackPtr;                    ///< pointer to a track
+  typedef list<TrackPtr>                  TrackPtrList;                ///< list of track pointers
   typedef shared_ptr<const Config>        ConfigPtr;                   ///< Config pointer (state)
   typedef shared_ptr<const Frame>         FramePtr;                    ///< frame pointer
   typedef vector<FramePtr>                FramePtrVec;                 ///< vector for Frame pointers
@@ -142,4 +144,15 @@ namespace MPF{
   }
  }
 }
+
+  /** **************************************************************************
+  *   Redefine ocv output for rect
+  *************************************************************************** */
+namespace cv{
+  inline
+  std::ostream& operator<< (std::ostream& os, const cv::Rect& r) {
+    os << "[" << r.x << "," << r.y << "]-(" << r.width << "," << r.height << ")";
+    return os;
+  }
+ }
 #endif

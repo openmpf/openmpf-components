@@ -45,6 +45,8 @@
       "cmath": "cpp",
       "complex": "cpp",
       "cstdlib": "cpp",
-      "chrono": "cpp"
+      "chrono": "cpp",
+      "iosfwd": "cpp",
+      "random": "cpp"
     }
 }

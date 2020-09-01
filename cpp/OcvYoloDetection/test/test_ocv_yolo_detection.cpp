@@ -105,6 +105,15 @@ TEST(OcvYoloDetection, OpenCVVersion) {
   #elif(CV_MAJOR_VERSION > 2)
     GOUT("OpenCV Version: 3.x");
   #endif
+
+  cv::FileStorage fs("test.json", cv::FileStorage::WRITE);
+
+  cv::Mat2f test = cv::Mat2f::eye(4,4);
+  fs << "ident" << test;
+  fs.release();
+
+
+
 }
 
 /** ***************************************************************************
@@ -133,6 +142,17 @@ TEST(OcvYoloDetection, Init) {
   MPFComponentType comp_type = ocv_yolo_detection->GetComponentType();
   ASSERT_TRUE(MPF_DETECTION_COMPONENT == comp_type);
 
+  map<int,vector<string>> classGroups;
+  for(int c=0; c < DetectionLocation::_classGroupIdx.size(); c++){
+    classGroups[DetectionLocation::_classGroupIdx[c]].push_back(DetectionLocation::_netClasses[c]);
+  }
+
+  for(auto &g : classGroups){
+    stringstream ss;
+    for(string s : g.second) ss << s << ",";
+    GOUT("Group " << g.first << ":" << ss.str());
+  }
+
   EXPECT_TRUE(ocv_yolo_detection->Close());
   delete ocv_yolo_detection;
 }
@@ -140,7 +160,7 @@ TEST(OcvYoloDetection, Init) {
 /** ***************************************************************************
 *   Test yolo on GPU
 **************************************************************************** */
-TEST(OcvYoloDetection, YoloInference) {
+TEST(OcvYoloDetection, DISABLED_YoloInference) {
 
   string current_working_dir = GetCurrentWorkingDirectory();
   GOUT("current working dir: " << current_working_dir);
@@ -179,8 +199,8 @@ TEST(OcvYoloDetection, YoloInference) {
   GOUT("CUDA Device:" << di.name());
   auto start_time = chrono::high_resolution_clock::now();
   for(int i=0;i<inference_count;i++){
-    DetectionLocation::_netPtr->setInput(blob,"data");
-    DetectionLocation::_netPtr->forward(outs, DetectionLocation::_netOutputNames);
+    DetectionLocation::_net.setInput(blob,"data");
+    DetectionLocation::_net.forward(outs, DetectionLocation::_netOutputNames);
   }
   auto end_time = chrono::high_resolution_clock::now();
   double time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
@@ -193,8 +213,8 @@ TEST(OcvYoloDetection, YoloInference) {
   DetectionLocation::loadNetToCudaDevice(-1);
   start_time = chrono::high_resolution_clock::now();
   for(int i=0;i<inference_count;i++){
-    DetectionLocation::_netPtr->setInput(blob,"data");
-    DetectionLocation::_netPtr->forward(outs, DetectionLocation::_netOutputNames);
+    DetectionLocation::_net.setInput(blob,"data");
+    DetectionLocation::_net.forward(outs, DetectionLocation::_netOutputNames);
   }
   end_time = chrono::high_resolution_clock::now();
   time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
@@ -264,7 +284,7 @@ TEST(OcvYoloDetection, TestCorrelator) {
 
     DetectionLocationPtr dogPtr2;
     dogPtr2 = DetectionLocationPtr(new DetectionLocation(
-      cfgPtr,make_shared<Frame>(frame),pasteRoi,0.97,cv::Point2f(0.5,0.5)));
+      cfgPtr,make_shared<Frame>(frame),pasteRoi,0.97,cv::Point2f(0.5,0.5),dogPtr->getClassFeature()));
     GOUT("Shift image " << dogPtr2->getRect() << " centered at " << (dogPtr2->getRect().tl()+dogPtr2->getRect().br())/2);
 
     Track t(cfgPtr, move(dogPtr2));
@@ -320,10 +340,6 @@ TEST(OcvYoloDetection, TestOnKnownImage) {
     vector<MPFImageLocation> found_detections = detection->GetDetections(image_job);
     EXPECT_FALSE(found_detections.empty());
 
-    float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_detections, known_detections);
-    GOUT("Detection comparison score: " << comparison_score);
-    ASSERT_TRUE(comparison_score > comparison_score_threshold);
-
     // create output video to view performance
     ImageGeneration image_generation;
     image_generation.WriteDetectionOutputImage(known_image_file,
@@ -332,6 +348,10 @@ TEST(OcvYoloDetection, TestOnKnownImage) {
 
     WriteDetectionsToFile::WriteVideoTracks(test_output_dir + "/" + output_detections_file,
                                             found_detections);
+
+    float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_detections, known_detections);
+    GOUT("Detection comparison score: " << comparison_score);
+    ASSERT_TRUE(comparison_score > comparison_score_threshold);
 
     EXPECT_TRUE(detection->Close());
     delete detection;
@@ -416,6 +436,30 @@ TEST(OcvYoloDetection, TestOnKnownVideo) {
     EXPECT_TRUE(ocv_yolo_detection->Close());
     delete ocv_yolo_detection;
 }
+
+
+/** ***************************************************************************
+*   Test face detection and tracking in videos
+**************************************************************************** */
+#include <dlib/optimization.h>
+TEST(OcvYoloDetection, DISABLED_MaxCostAssignment) {
+  dlib::matrix<long> costs = dlib::zeros_matrix<long>(8,8);
+  //dlib::matrix<int> costs = dlib::zeros_matrix<int>(8,8);  // this gives wrong result. Overflow ?!
+  costs = 1,2,2080142655,2086630807,3,4,5,6,
+          2096932173,2068833426,7,8,2098569871,9,10,11,
+          2144440038,2115634073,12,13,2134986491,14,15,16,
+          2129194210,2147086229,17,18,2132959446,19,20,21,
+          2141311336,2123985951,22,23,2144927865,24,25,26,
+          27,28,2087059297,2147231454,29,30,31,32,
+          33,34,2147248774,2082771391,35,36,37,38,
+          2126672429,2138828231,39,40,2116060790,41,42,43;
+
+  vector<long> av; //assignment vector to return
+  av = dlib::max_cost_assignment(costs);
+  GOUT( "solved assignment vec["<< av.size() << "] = "  << av);
+
+}
+
 
 /** **************************************************************************
 *

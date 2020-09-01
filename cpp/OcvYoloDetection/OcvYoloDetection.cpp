@@ -46,6 +46,7 @@
 #include "MPFSimpleConfigLoader.h"
 #include "detectionComponentUtils.h"
 
+#include "types.h"
 #include "Config.h"
 
 using namespace MPF::COMPONENT;
@@ -93,6 +94,7 @@ bool OcvYoloDetection::Init() {
     if(LoadConfig(configParamsPath, params)) {                                 LOG_ERROR( "Failed to load the OcvYoloDetection config from: " << configParamsPath);
         return false;
     }                                                                          LOG_TRACE("read config file:" << configParamsPath);
+
     Properties props;
     for(auto p = params.begin(); p != params.end(); p++){
       const string key = p.key().toStdString();
@@ -136,30 +138,43 @@ bool OcvYoloDetection::Close() {
 * \param detections    vector of detections that need assigned to tracks
 * \param maxCost       maximum assignment cost, if exceeded the particular
 *                      detection to track assignment will be removed from result
+* \param maxClassDist  maximum class distance for track to detection
+*
+
 * \returns assignment vector am[track,detection] with dim (# tracks x # detections)
 *          if am[x,y]==0 then detection[y] should be assigned to track[x]
 *
 ***************************************************************************** */
 template<DetectionLocationCostFunc COST_FUNC>
 vector<long> OcvYoloDetection::_calcAssignmentVector(const TrackPtrList            &tracks,
-                                                        const DetectionLocationPtrVec &detections,
-                                                        const float                    maxCost = INT_MAX){
+                                                     const DetectionLocationPtrVec &detections,
+                                                     const float                    maxCost = INT_MAX,
+                                                     const float                    maxClassDist = 0.5,
+                                                     const float                    maxKFResidual = 4.0){
   vector<long> av; //assignment vector to return
 
   if(tracks.size() == 0 || detections.size() ==0) return av;  // nothing to do
 
   // rows -> tracks, cols -> detections, but matrix has to be square!
   size_t n = max(tracks.size(),detections.size());
-  dlib::matrix<int> costs = dlib::zeros_matrix<int>(n,n);
-
+  dlib::matrix<long> costs = dlib::zeros_matrix<long>(n,n);
   // fill in actual costs for non-dummy entries
   size_t r = 0;
+  intVec uniqueCosts;
   for(auto &track:tracks){
     for(size_t c=0; c<detections.size(); c++){
       if(track->back()->framePtr->idx < detections[c]->framePtr->idx){
-        //float cost = CALL_MEMBER_FUNC(*(track->back()),COST_FUNC)(*detections[c]);
-        float cost = CALL_MEMBER_FUNC(*detections[c],COST_FUNC)(*track);
-        costs(r,c) = ((cost <= maxCost) ? (INT_MAX - static_cast<int>(1000.0f * cost)) : 0);
+        if(    detections[c]->classDist(*track)   <= maxClassDist                      // must be of a class similar to track's tail to be considered
+            && detections[c]->kfResidualDist(*track) <= maxKFResidual ){               // must produce a reasonable normalized residual
+          float cost = CALL_MEMBER_FUNC(*detections[c],COST_FUNC)(*track);
+          int iCost = ((cost <= maxCost) ? (INT_MAX - static_cast<int>(1.0E9 * cost)) : 0); //r*detections.size()+c);
+          if(iCost != 0 ){
+            while(find(uniqueCosts.begin(),uniqueCosts.end(),iCost) != uniqueCosts.end()) iCost--;  // cost have to be unique or dlib::max_cost_assignment() hangs...
+            uniqueCosts.push_back(iCost);
+          }
+          costs(r,c) = iCost;                                                  //LOG_TRACE("C[" << r << "," << c << "]=" << cost << ":" << iCost);
+        }
+      }else{                                                                   LOG_TRACE("track back idx(" << track->back()->framePtr->idx <<") < detection idx(" << detections[c]->framePtr->idx << ")");
       }
     }
     r++;
@@ -173,7 +188,7 @@ vector<long> OcvYoloDetection::_calcAssignmentVector(const TrackPtrList         
 
   // knock out assignments that are too costly (i.e. new track needed)
   for(long t=0; t<av.size(); t++){
-    if(costs(t,av[t]) == 0){
+    if(costs(t,av[t]) == 0 ){
       av[t] = -1;
     }
   }                                                                            LOG_TRACE( "modified assignment vec["<< av.size() << "] = "  << av);
@@ -186,25 +201,34 @@ vector<long> OcvYoloDetection::_calcAssignmentVector(const TrackPtrList         
 *
 * \param [in,out] tracks           list of tracks
 * \param [in,out] detections       vector of detections
-* \param          assignmentVector (v[track] <=> detection[v[track]]) with with -1 in
-*                                   skip assignment
+* \param          assignmentVector (v[track] <=> detection[v[track]]) with with -1 in skip assignment
+* \param [in,out] assignedTracks   list of tracks that received a detection assignment
 *
 * \note detections that are assigned are removed from detections
+*       and tracks that were assigned a detection are moved to assignedTracks
 *
 ***************************************************************************** */
 void OcvYoloDetection::_assignDetections2Tracks(TrackPtrList             &tracks,
-                                                   DetectionLocationPtrVec  &detections,
-                                                   const vector<long>       &assignmentVector){
+                                                DetectionLocationPtrVec  &detections,
+                                                const vector<long>       &assignmentVector,
+                                                TrackPtrList             &assignedTracks){
 
   long t=0;
   for(auto &track:tracks){
     if(assignmentVector[t] != -1){                                              LOG_TRACE("assigning det: " << "f" << detections[assignmentVector[t]]->framePtr->idx << " " <<  ((MPFImageLocation)*(detections[assignmentVector[t]])) << " to track " << *track);
-      track->releaseTracker();
+      track->releaseOCVTracker();
       track->push_back(move(detections.at(assignmentVector[t])));
       track->kalmanCorrect();
+      assignedTracks.push_back(move(track));
     }
     t++;
   }
+
+  //remove tracks that received an assignment
+  tracks.erase(remove_if(tracks.begin(),
+                         tracks.end(),
+                         [](TrackPtr const& d){return !d;}),
+               tracks.end());
 
   // remove detections that were assigned to tracks
   detections.erase(remove_if(detections.begin(),
@@ -264,7 +288,7 @@ MPFImageLocationVec OcvYoloDetection::GetDetections(const MPFImageJob   &job) {
 /** ****************************************************************************
 * Convert track (list of detection ptrs) to an MPFVideoTrack object
 *
-* \param[in,out]  tracks  Tracks collection to which detections will be added
+* \param [in,out]  tracks  Tracks collection to which detections will be added
 *
 * \returns MPFVideoTrack object resulting from conversion
 *
@@ -278,15 +302,19 @@ MPFVideoTrack OcvYoloDetection::_convert_track(Track &track){
   mpf_track.start_frame = track.front()->framePtr->idx;
   mpf_track.stop_frame  = track.back()->framePtr->idx;
 
-  stringstream start_feature;
-  stringstream stop_feature;
-  start_feature << track.front()->getFeature();  // make sure we have computed features to serialize
-  stop_feature << track.back()->getFeature();    //  for the start and end detections.
-  mpf_track.detection_properties["START_FEATURE"] = start_feature.str();
-  mpf_track.detection_properties["STOP_FEATURE"]  = stop_feature.str();
+  //stringstream start_feature;
+  //stringstream stop_feature;
+  //start_feature << track.front()->getDFTFeature();  // make sure we have computed features to serialize
+  //stop_feature << track.back()->getDFTFeature();    //  for the start and end detections.
+  //mpf_track.detection_properties["START_FEATURE"] = start_feature.str();
+  //mpf_track.detection_properties["STOP_FEATURE"]  = stop_feature.str();
 
-  #ifndef NDEBUG
-    track.kalmanDump();
+  #ifdef KFDUMP_STATE
+    stringstream ss;
+    ss << &track << ".csv";
+    string filename = ss.str();
+    track.kalmanDump(filename);
+    mpf_track.detection_properties["kf_id"] = filename;
   #endif
 
   for(auto &det:track){
@@ -321,8 +349,9 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
     DetectionLocation::loadNetToCudaDevice(cfgPtr->cudaDeviceId);
 
     FramePtrVec framePtrs = cfgPtr->getVideoFrames(cfgPtr->frameBatchSize);
-    do {                                                                       LOG_TRACE( "processing frames [" << framePtrs.front()->idx << "..." << framePtrs.back()->idx);
-      // do something clever with frame skipping here
+    do {                                                                       LOG_TRACE(".");
+                                                                               LOG_TRACE("processing frames [" << framePtrs.front()->idx << "..." << framePtrs.back()->idx << "]");
+      // do something clever with frame skipping here ?
       // detectTrigger++;
       // detectTrigger = detectTrigger % (cfgPtr->detFrameInterval + 1);
 
@@ -333,7 +362,7 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
       for(unsigned i=0; i<framePtrs.size(); i++){
 
         // remove any tracks too far in the past
-        trackPtrs.remove_if([&](unique_ptr<Track>& tPtr){
+        trackPtrs.remove_if([&](TrackPtr& tPtr){
           if(framePtrs[i]->idx - tPtr->back()->framePtr->idx > cfgPtr->maxFrameGap){       LOG_TRACE("dropping old track: " << *tPtr);
             mpf_tracks.push_back(_convert_track(*tPtr));
             return true;
@@ -348,48 +377,70 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
           }
         }
 
+        TrackPtrList assignedTracks;
+
         if(detectionsVec[i].size() > 0){   // found some detections in current frame
           if(trackPtrs.size() >= 0 ){  // not all tracks were dropped
-            vector<long> av;                                                         LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+                                                                                            LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+
+            // calculate forbidden assignmest based on classes
+
+
+             vector<long> av;
             // intersection over union tracking and assignment
-            if(! cfgPtr->kfDisabled){
-              av = _calcAssignmentVector<&DetectionLocation::kfIouDist>(trackPtrs,detectionsVec[i],cfgPtr->maxIOUDist);
-            }else{
-              av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detectionsVec[i],cfgPtr->maxIOUDist);
+            if(   detectionsVec[i].size() > 0
+               && cfgPtr->maxIOUDist      > 0){
+              if(! cfgPtr->kfDisabled){
+                av = _calcAssignmentVector<&DetectionLocation::kfIouDist>(trackPtrs,detectionsVec[i],cfgPtr->maxIOUDist,cfgPtr->maxClassDist,cfgPtr->maxKFResidual);
+              }else{
+                av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detectionsVec[i],cfgPtr->maxIOUDist,cfgPtr->maxClassDist,cfgPtr->maxKFResidual);
+              }
+              _assignDetections2Tracks(trackPtrs, detectionsVec[i], av, assignedTracks);     LOG_TRACE("IOU assignment complete");
             }
-            _assignDetections2Tracks(trackPtrs, detectionsVec[i], av);               LOG_TRACE("IOU assignment complete");
 
             // feature-based tracking tracking and assignment
-            if(detectionsVec[i].size() > 0){                                         LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
-              av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detectionsVec[i],cfgPtr->maxFeatureDist);
-              _assignDetections2Tracks(trackPtrs, detectionsVec[i], av);             LOG_TRACE("Feature assignment complete");
+            if(   detectionsVec[i].size() > 0
+               && cfgPtr->maxFeatureDist  > 0){                                              LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+              av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detectionsVec[i],cfgPtr->maxFeatureDist,cfgPtr->maxClassDist,cfgPtr->maxKFResidual);
+              _assignDetections2Tracks(trackPtrs, detectionsVec[i], av, assignedTracks);     LOG_TRACE("Feature assignment complete");
             }
 
             // center-to-center distance tracking and assignment
-            if(detectionsVec[i].size() > 0){                                         LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
-              av = _calcAssignmentVector<&DetectionLocation::center2CenterDist>(trackPtrs,detectionsVec[i],cfgPtr->maxCenterDist);
-              _assignDetections2Tracks(trackPtrs, detectionsVec[i], av);             LOG_TRACE("Center2Center assignment complete");
+            if(   detectionsVec[i].size() > 0
+              &&  cfgPtr->maxCenterDist   > 0){                                              LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+              av = _calcAssignmentVector<&DetectionLocation::center2CenterDist>(trackPtrs,detectionsVec[i],cfgPtr->maxCenterDist,cfgPtr->maxClassDist,cfgPtr->maxKFResidual);
+              _assignDetections2Tracks(trackPtrs, detectionsVec[i], av, assignedTracks);     LOG_TRACE("Center2Center assignment complete");
             }
 
           }
-                                                                                     LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
+
+                                                                                      LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
           // any detection not assigned up to this point becomes a new track
-          for(DetectionLocationPtr &det:detectionsVec[i]){                                           // make any unassigned detections into new tracks
-            det->getFeature();                                                       // start of tracks always get feature calculated
-            trackPtrs.push_back(unique_ptr<Track>(new Track(cfgPtr,move(det))));     LOG_TRACE("created new track " << *(trackPtrs.back()));
+          for(DetectionLocationPtr &det:detectionsVec[i]){                           // make any unassigned detections into new tracks
+            det->getDFTFeature();                                                    // start of tracks always get feature calculated
+            assignedTracks.push_back(unique_ptr<Track>(new Track(cfgPtr,move(det))));     LOG_TRACE("created new track " << *(assignedTracks.back()));
           }
         }
 
-        // check any tracks that didn't get a detection and use tracker to continue them if possible
-        for(auto &track:trackPtrs){
-          if(track->back()->framePtr->idx < framePtrs[i]->idx){  // no detections for track in current frame, try tracking
+        if(!cfgPtr->mosseTrackerDisabled){
+          // check any tracks that didn't get a detection and use tracker to continue them if possible
+          for(auto &track:trackPtrs){  // track left have no detections in current frame, try tracking
             DetectionLocationPtr detPtr = track->ocvTrackerPredict(framePtrs[i]);
             if(detPtr){  // tracker returned something
-              track->push_back(move(detPtr));              // add new location as tracks's tail
-              track->kalmanCorrect();
+              if(detPtr->kfResidualDist(*track) <= cfgPtr->maxKFResidual){
+                track->push_back(move(detPtr));              // add new location as tracks's tail
+                track->kalmanCorrect();
+              }
             }
           }
         }
+
+        // put all the tracks that were assigned a detection back into trackPtrs
+        for(auto& track:assignedTracks){
+          trackPtrs.push_back(move(track));
+        }
+        assignedTracks.clear();
+
       }                                                                        LOG_DEBUG( "[" << job.job_name << "] Number of tracks detected = " << trackPtrs.size());
       framePtrs = cfgPtr->getVideoFrames(cfgPtr->frameBatchSize);
     } while(framePtrs.size() > 0);
@@ -403,6 +454,22 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
     for(auto &mpf_track:mpf_tracks){
       cfgPtr->ReverseTransform(mpf_track);
     }
+
+    // sort tracks by start frame
+    sort(mpf_tracks.begin(),mpf_tracks.end(),
+      [](const MPFVideoTrack &a, const MPFVideoTrack &b){
+        return a.start_frame < b.start_frame;
+      });
+
+    #ifdef KFDUMP_STATE    // rename kalman filter debug outputs
+    for(size_t i=0; i < mpf_tracks.size(); i++){
+      stringstream ssOld, ssNew;
+      ssOld << mpf_tracks[i].detection_properties["kf_id"];
+      mpf_tracks[i].detection_properties.erase("kf_id");
+      ssNew << setw(4) << setfill('0') << i << ".csv";
+      rename(ssOld.str().c_str(), ssNew.str().c_str());
+    }
+    #endif
 
     return mpf_tracks;
 

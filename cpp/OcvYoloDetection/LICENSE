@@ -27,3 +27,6 @@
  the resulting product inherits the license and usage restrictions of that model,
  which are not explicitly stated by the original author. Please contact the author
  before using this component for commercial purposes.
+
+yolov3-confusion-matrix.json adapted from
+ https://github.com/whynotw/YOLO_metric

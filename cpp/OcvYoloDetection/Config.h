@@ -117,17 +117,22 @@ namespace MPF{
       long    detFrameInterval;         ///< number of frames between looking for new detection (tracking only)
       int     frameBatchSize;           ///< number of frames to batch inference when processing video
 
+      float   maxClassDist;             ///< maximun class feature scores above which detections will not be considered for the same track
       float   maxFeatureDist;           ///< maximum feature distance to maintain track continuity
       float   maxCenterDist;            ///< maximum spatial distance normalized by diagonal to maintain track continuity
       long    maxFrameGap;              ///< maximum temporal distance (frames) to maintain track continuity
       float   maxIOUDist;               ///< maximum for (1 - Intersection/Union) to maintain track continuity
+      float   edgeSnapDist;             ///< distance as a fractino of image dimensions within which bboxes are snapped to frame edge
 
       int     dftSize;                  ///< size of dft used for bbox alignment
       bool    dftHannWindowEnabled;     ///< use hanning windowing with dft
+      bool    mosseTrackerDisabled;     ///< disable builtin OCV MOSSE tracking
 
+      float   maxKFResidual;            ///< maximim residulal for valid detection to track assignment
       bool    kfDisabled;               ///< if true kalman filtering is disabled
       cv::Mat1f RN;                     ///< kalman filter measurement noise matrix
       cv::Mat1f QN;                     ///< kalman filter process noise variances (i.e. unknown accelerations)
+
 
       bool fallback2CpuWhenGpuProblem;  ///< fallback to cpu if there is a gpu problem
       int  cudaDeviceId;                ///< gpu device id to use for cuda

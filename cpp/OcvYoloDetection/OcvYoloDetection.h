@@ -62,11 +62,14 @@ namespace MPF{
       template<DetectionLocationCostFunc COST_FUNC>
       vector<long> _calcAssignmentVector(const TrackPtrList            &tracks,
                                          const DetectionLocationPtrVec &detections,
-                                         const float                    maxCost); ///< determine costs of assigning detections to tracks
+                                         const float                    maxCost,
+                                         const float                    maxClassDist,
+                                         const float                    maxKFResidual); ///< determine costs of assigning detections to tracks
 
       void _assignDetections2Tracks(TrackPtrList            &tracks,
                                     DetectionLocationPtrVec &detections,
-                                    const vector<long>      &assignmentVector);  ///< assign detections to tracks
+                                    const vector<long>      &assignmentVector,
+                                    TrackPtrList            &assignedTracks);          ///< assign detections to tracks
 
       MPFVideoTrack _convert_track(Track &track);  ///< convert to MFVideoTrack and release
   };

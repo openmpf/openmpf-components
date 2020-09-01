@@ -24,7 +24,9 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include "DetectionLocation.h"
 #include "KFTracker.h"
+
 
 #define PROCESS_NOISE CONTINUOUS_WHITE
 //#define PROCESS_NOISE PIECEWISE_WHITE
@@ -48,7 +50,7 @@ const int KF_CTRL_DIM  = 0;  ///< dimensionality of kalman control input      []
 void KFTracker::_setTimeStep(float dt){
 
   if(fabs(_dt - dt) > 2 * numeric_limits<float>::epsilon()){
-    _dt = dt;                                                                  LOG_TRACE("kd dt:" << _dt);
+    _dt = dt;                                                                  //LOG_TRACE("kd dt:" << _dt);
 
     float dt2 = dt  * dt;
     float dt3 = dt2 * dt;
@@ -109,13 +111,57 @@ void KFTracker::_setTimeStep(float dt){
  * \returns measurement vector
  *
 *************************************************************************** */
-cv::Mat1f KFTracker::measurementFromBBox(const cv::Rect2i& r){
+cv::Mat1f KFTracker::_measurementFromBBox(const cv::Rect2i& r){
   cv::Mat1f z(KF_MEAS_DIM,1);
   z.at<float>(0) = r.x + r.width  / 2.0f;
   z.at<float>(1) = r.y + r.height / 2.0f;
   z.at<float>(2) = r.width;
   z.at<float>(3) = r.height;
   return z;
+}
+
+/** **************************************************************************
+ * "Paste" a rectangle   [ x  y  w  h]
+ *  into a filter state  [ x,vx,ax, y,vy,ay, w,wv,aw, h,vh,ah]
+ *                         0  1  2  3  4  5  6  7  8  9 10 11
+ *
+ * \param r        rectange to paste into state
+ * \param [in,out] state state to paste measurement into
+ *
+ * \note "hidden" (not effected by measurement) states will not be changed
+ *
+*************************************************************************** */
+void KFTracker::setStatePreFromBBox(const cv::Rect2i& r){
+
+  cv::Mat1f ns = _kf.measurementMatrix.t() * _measurementFromBBox(r);
+
+  for(int i=0;i<ns.rows;i++){
+    if(fabs(ns.at<float>(i)) > FLT_EPSILON ){
+      _kf.statePre.at<float>(i) = ns.at<float>(i);
+    }
+  }
+}
+
+/** **************************************************************************
+ * "Paste" a rectangle   [ x  y  w  h]
+ *  into a filter state  [ x,vx,ax, y,vy,ay, w,wv,aw, h,vh,ah]
+ *                         0  1  2  3  4  5  6  7  8  9 10 11
+ *
+ * \param r        rectange to paste into state
+ * \param [in,out] state state to paste measurement into
+ *
+ * \note "hidden" (not effected by measurement) states will not be changed
+ *
+*************************************************************************** */
+void KFTracker::setStatePostFromBBox(const cv::Rect2i& r){
+
+  cv::Mat1f ns = _kf.measurementMatrix.t() * _measurementFromBBox(r);
+
+  for(int i=0;i<ns.rows;i++){
+    if(fabs(ns.at<float>(i)) > FLT_EPSILON ){
+      _kf.statePost.at<float>(i) = ns.at<float>(i);
+    }
+  }
 }
 
 /** **************************************************************************
@@ -127,7 +173,7 @@ cv::Mat1f KFTracker::measurementFromBBox(const cv::Rect2i& r){
  * \returns bounding box corresponding to state
  *
 *************************************************************************** */
-cv::Rect2i KFTracker::bboxFromState(const cv::Mat1f state){
+cv::Rect2i KFTracker::_bboxFromState(const cv::Mat1f& state){
   return cv::Rect2i(static_cast<int>(state.at<float>(0) - state.at<float>(6)/2.0f + 0.5f),
                     static_cast<int>(state.at<float>(3) - state.at<float>(9)/2.0f + 0.5f),
                     static_cast<int>(state.at<float>(6)                 + 0.5f),
@@ -158,10 +204,66 @@ void KFTracker::predict(float t){
  *
 *************************************************************************** */
 void KFTracker::correct(const cv::Rect2i &rec){
-  _kf.correct(measurementFromBBox(rec));
-  #ifndef NDEBUG
+  _kf.correct(_measurementFromBBox(rec));
+  #ifdef KFDUMP_STATE
     _state_trace << (*this) << endl;
   #endif
+}
+
+/** **************************************************************************
+ * [ x,vx,ax, y,vy,ay, w,wv,aw, h,vh,ah] to roi(x,y,w,h)
+ *   0  1  2  3  4  5  6  7  8  9 10 11
+*************************************************************************** */
+float KFTracker::testResidual(const cv::Rect2i &rec, const float edgeSnapDist){
+  // backup variables
+  cv::Mat1f gain          = _kf.gain.clone();
+  cv::Mat1f statePost     = _kf.statePost.clone();
+  cv::Mat1f errorCovPost  = _kf.errorCovPost.clone();
+
+  // perform trial correction and get error squared
+  _kf.correct(_measurementFromBBox(rec));
+
+  cv::Mat1f err_sq = _kf.statePre - _kf.statePost;
+  err_sq = err_sq.mul(err_sq);
+
+  // be permissive knock out errors due to frame edges
+  int border_x = static_cast<float>(edgeSnapDist * _roi.width);
+  cv::Rect2i corrBBox = correctedBBox();
+  if(   corrBBox.x <= border_x
+     || corrBBox.x >= _roi.width - border_x
+     || rec.x      <= border_x
+     || rec.x      >= _roi.width - border_x){
+    err_sq.at<float>(0) =
+    err_sq.at<float>(1) =
+    err_sq.at<float>(2) =
+    err_sq.at<float>(6) =
+    err_sq.at<float>(7) =
+    err_sq.at<float>(8) = 0.0f;
+  }
+  int border_y = static_cast<float>(edgeSnapDist * _roi.height);
+  if(   corrBBox.y <= border_y
+     || corrBBox.y >= _roi.height - border_y
+     || rec.y      <= border_y
+     || rec.y      >= _roi.height - border_y){
+    err_sq.at<float>( 3) =
+    err_sq.at<float>( 4) =
+    err_sq.at<float>( 5) =
+    err_sq.at<float>( 9) =
+    err_sq.at<float>(10) =
+    err_sq.at<float>(11) = 0.0f;
+  }
+
+  // restore variables changed by correction
+  _kf.gain = gain;
+  _kf.statePost = statePost;
+  _kf.errorCovPost = errorCovPost;
+
+  // get max maximum normalized error
+  err_sq = err_sq / _kf.errorCovPre.diag();  // div by 0.0 is handled by returning 0.0
+  float maxErr_sq = 0.0;
+  for(int i=0; i<err_sq.rows; i++) maxErr_sq = max(maxErr_sq, err_sq.at<float>(i));
+  float maxErr = sqrt(maxErr_sq);                                              LOG_TRACE("testResidual = " << maxErr);
+  return maxErr;
 }
 
 /** **************************************************************************
@@ -239,7 +341,7 @@ KFTracker::KFTracker(const float t,
     _setTimeStep(dt);
 
     //initialize filter state
-    cv::Mat1f z0 = measurementFromBBox(rec0);
+    cv::Mat1f z0 = _measurementFromBBox(rec0);
     _kf.statePost.at<float>(0) = z0.at<float>(0);
     _kf.statePost.at<float>(3) = z0.at<float>(1);
     _kf.statePost.at<float>(6) = z0.at<float>(2);
@@ -265,27 +367,20 @@ KFTracker::KFTracker(const float t,
     _kf.errorCovPost.at<float>(10,10) = 10.0 * _kf.processNoiseCov.at<float>(10,10); // guess ~3 sigma
     _kf.errorCovPost.at<float>(11,11) = 10.0 * _kf.processNoiseCov.at<float>(11,11); // guess ~3 sigma
 
-    #ifndef NDEBUG
+    #ifdef KFDUMP_STATE
       _state_trace << (*this) << endl;                    // trace filter initial error stats
-      _myId = _objId;                                     // used for output filename
-      _objId++;
     #endif
 }
 
-#ifndef NDEBUG
+#ifdef KFDUMP_STATE
 
 #include <fstream>
-size_t KFTracker::_objId = 0;  // class static sequence variable
-
 /** **************************************************************************
 *  Write out error statisics over time to csv file for filter tuning
 *************************************************************************** */
-void KFTracker::dump(){
-  stringstream filename;
-  filename << "kf_" << setfill('0') << setw(4) << _myId;
-  filename << ".csv";
+void KFTracker::dump(string filename){
   ofstream dump;
-  dump.open(filename.str(),ofstream::out | ofstream::trunc);
+  dump.open(filename,ofstream::out | ofstream::trunc);
   dump << "t,";
   dump << "px,pvx,pax, py,pvy,pay, pw,pvw,paw, ph,pvh,pah, ";
   dump << "cx,cvx,cax, cy,cvy,cay, cw,cvw,caw, ch,cvh,cah, ";
