@@ -68,13 +68,13 @@
         },
         {
           "name": "USER_FEATURE_WIDTH",
-          "description": "'ip_irv2_coco' model specific: Width of user bounding box in pixels, defaults to image/frame width when set to non-positive values.",
+          "description": "'ip_irv2_coco' model specific: Width of user bounding box in pixels, defaults to image/frame width when value <= 0.",
           "type": "INT",
           "defaultValue": "-1"
         },
         {
           "name": "USER_FEATURE_HEIGHT",
-          "description": "'ip_irv2_coco' model specific: Height of user bounding box in pixels, defaults to image/frame height when set to non-positive values.",
+          "description": "'ip_irv2_coco' model specific: Height of user bounding box in pixels, defaults to image/frame height when value <= 0.",
           "type": "INT",
           "defaultValue": "-1"
         },
