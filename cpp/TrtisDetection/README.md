@@ -30,7 +30,7 @@ Users can control inference and model behavior through the following job paramet
 
 * `MODEL_VERSION`: Specifies the version number of the inference server model, with the default value of `-1` indicating usage of the latest available version on the server.
 
-* `MAX_INFER_CONCURRENCY` : Specifies the maximum number of inference requests that will be sent to the server concurrently for video frame inferencing. If the value is the empty string "", the component will instead use the environment variable for `MAX_INFER_CONCURRENCY`, if it is available.
+* `MAX_INFER_CONCURRENCY` : Specifies the maximum number of inference requests that will be sent to the server concurrently for video frame inferencing.
 
 * `USER_FEATURE_X_LEFT_UPPER` and `USER_FEATURE_Y_LEFT_UPPER` allow users to define the upper left coordinates for a custom bounding box of the image or video frame during inference. `USER_FEATURE_WIDTH` and `USER_FEATURE_HEIGHT` allow users to control the width and height of the custom bounding box.
 

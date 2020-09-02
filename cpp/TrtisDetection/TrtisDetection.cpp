@@ -131,7 +131,7 @@ TrtisJobConfig::TrtisJobConfig(const MPFJob &job,
     model_version = get<int>(jpr, "MODEL_VERSION", -1);
     LOG4CXX_TRACE(log, "MODEL_VERSION: " << model_version);
 
-    maxInferConcurrency = getEnv<int>(jpr, "MAX_INFER_CONCURRENCY", 5);
+    maxInferConcurrency = get<int>(jpr, "MAX_INFER_CONCURRENCY", 5);
     LOG4CXX_TRACE(log, "MAX_INFER_CONCURRENCY: " << maxInferConcurrency);
 }
 
