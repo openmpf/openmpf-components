@@ -50,7 +50,7 @@
         },
         {
           "name": "USER_FEATURE_ENABLE",
-          "description": "'ip_irv2_coco' model specific: Whether or not to generate similarity feature detections for user-specified bounding box.",
+          "description": "'ip_irv2_coco' model specific: Whether or not to generate similarity feature detections for user-specified bounding box. All of these features have a confidence of -1.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
@@ -80,7 +80,7 @@
         },
         {
           "name": "FRAME_FEATURE_ENABLE",
-          "description": "'ip_irv2_coco' model specific: Whether or not to generate a similarity feature for the entire image/each frame.  This feature is a size weighted average of all other features in the image/frame.",
+          "description": "'ip_irv2_coco' model specific: Whether or not to generate a similarity feature for the entire image/each frame.  This feature is a size weighted average of all other features in the image/frame. All of these features have a confidence of -1.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
@@ -107,6 +107,12 @@
           "description": "NOTE: Not implemented yet. 'ip_irv2_coco' model specific: Whether to send generated similarity features to recognition frame work for enrollment in a gallery.",
           "type": "BOOLEAN",
           "defaultValue": "false"
+        },
+        {
+          "name": "CLASS_CONFIDENCE_THRESHOLD",
+          "description": "'ip_irv2_coco' model specific: Specifies threshold for object region detections that can be classified as COCO objects.",
+          "type": "DOUBLE",
+          "defaultValue": "0.0"
         },
         {
           "name": "EXTRA_CONFIDENCE_THRESHOLD",

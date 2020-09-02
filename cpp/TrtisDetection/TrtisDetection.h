@@ -71,7 +71,7 @@ namespace MPF{
 
   class TrtisJobConfig {
     private:
-      IFeatureStorage::uPtrFeatureStorage _getFeatureStorage(const MPFJob &job,
+      static IFeatureStorage::uPtrFeatureStorage _getFeatureStorage(const MPFJob &job,
                                                              const log4cxx::LoggerPtr &log);
 
     public:
@@ -92,8 +92,6 @@ namespace MPF{
       bool   classFeatEnabled;            ///< process recognized coco objects
       bool   extraFeatEnabled;            ///< process extra unclassified object
       bool   userFeatEnabled;             ///< process user feature per BBox
-      size_t image_width;                 ///< width of image or frame
-      size_t image_height;                ///< height of image or frame
       size_t image_x_max;                 ///< maximum x pixel coordinate (width - 1)
       size_t image_y_max;                 ///< maximum y pixel coordinate (height - 1)
       size_t userBBox_x;                  ///< user bounding box upper left x1
@@ -104,7 +102,7 @@ namespace MPF{
       FltVec userBBoxNorm;                ///< user bounding box normalized with image dimensions
       bool   recognitionEnroll;           ///< enroll features in recognition framework
 
-      float  confThreshold;               ///< object detection confidence threshold
+      float  classConfThreshold;          ///< class detection confidence threshold
       float  extraConfThreshold;          ///< extra detections confidence threshold
       float  maxFeatureGap;               ///< max distance of object track members in feature space
       size_t maxFrameGap;                 ///< max distance of object track members in frame space
@@ -121,8 +119,8 @@ namespace MPF{
     public:
       bool Init() override;
       bool Close() override;
-      std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPFVideoJob &job) override;
-      std::vector<MPFImageLocation> GetDetections(const MPFImageJob &job) override;
+      vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPFVideoJob &job) override;
+      vector<MPFImageLocation> GetDetections(const MPFImageJob &job) override;
       string GetDetectionType() override;
 
     private:
@@ -130,19 +128,19 @@ namespace MPF{
       log4cxx::LoggerPtr                 _log;            ///< log object
       map<string, vector<string>>        _class_labels;   ///< possible class labels keyed by model names
 
-      void _readClassNames(const string model,
-                           const string class_label_file,
+      void _readClassNames(const string &model,
+                           const string &class_label_file,
                            int    class_label_count);                           ///< read in class labels for a model from a file
 
-      sPtrInferCtx _niGetInferContext(const TrtisJobConfig& cfg,
+      sPtrInferCtx _niGetInferContext(const TrtisJobConfig &cfg,
                                       int ctxId = 0);                           ///< get cached inference contexts
 
-      unordered_map<int, sPtrInferCtx> _niGetInferContexts(const TrtisJobConfig& cfg);  ///< get cached inference contexts
+      unordered_map<int, sPtrInferCtx> _niGetInferContexts(const TrtisJobConfig &cfg);  ///< get cached inference contexts
 
       static string  _niType2Str(ni::DataType dt);                              ///< nvidia data type to string
       static cv::Mat _niResult2CVMat(const size_t batch_idx,
-                                     const string name,
-                                     StrUPtrInferCtxResMap& results);           ///< make an openCV mat header for nvidia tensor
+                                     const string &name,
+                                     StrUPtrInferCtxResMap &results);           ///< make an openCV mat header for nvidia tensor
 
       cv::Mat _cvResize(const cv::Mat &img,
                         double        &scaleFactor,

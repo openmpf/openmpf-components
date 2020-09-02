@@ -40,13 +40,15 @@ Users can control inference and model behavior through the following job paramet
 
 For enabling generation of similarity features:
 
-* `USER_FEATURE_ENABLE` : Toggles generation of similarity feature detections for a user-specified bounding box.
+* `USER_FEATURE_ENABLE` : Toggles generation of similarity feature detections for a user-specified bounding box. All of these features have a confidence of -1.
 
 * `CLASS_FEATURE_ENABLE`: Toggles generation of similarity features for any COCO-class objects detected.
 
-* `FRAME_FEATURE_ENABLE`: Toggles generation of a size-weighted average of all other features found in an image or frame.
+* `FRAME_FEATURE_ENABLE`: Toggles generation of a size-weighted average of all other features found in an image or frame. All of these features have a confidence of -1.
 
 * `EXTRA_FEATURE_ENABLE`: Toggles generation of similarity features for candidate object regions that could not be classified as COCO objects.
+
+* `CLASS_CONFIDENCE_THRESHOLD`: Specifies threshold for object region detections that can be classified as COCO objects.
 
 * `EXTRA_CONFIDENCE_THRESHOLD`: Specifies threshold for object region detections that could not be classified as COCO objects. Please note that confidence scores for these extra detections is generally extremely low.
 

@@ -56,8 +56,8 @@ using namespace MPF::COMPONENT;
 #define THROW_TRTISEXCEPTION(X, MSG) {                                        \
     MPFDetectionError e = (X);                                                \
     throw MPFDetectionException(e,                                            \
-      "NVIDIA inference server error in TrtisDetection.cpp["                  \
-      + to_string(__LINE__) + "]: " + (MSG));                                 \
+      /* "Error in TrtisDetection.cpp[" + to_string(__LINE__) + "]: " + */    \
+      (MSG));                                                                 \
 }
 
 /** ****************************************************************************
@@ -67,8 +67,9 @@ using namespace MPF::COMPONENT;
     nic::Error e = (X);                                                       \
     if (!e.IsOk()) {                                                          \
       throw MPFDetectionException(MPF_OTHER_DETECTION_ERROR_TYPE,             \
-        "NVIDIA inference server error in TrtisDetection.cpp["                \
-        + to_string(__LINE__) + "]: " + (MSG) + ": " + e.Message());          \
+        string("NVIDIA inference server error")                               \
+        /* + " in TrtisDetection.cpp[" + to_string( __LINE__) + "]" */        \
+        + ": " + (MSG) + ": " + e.Message());                                 \
     }                                                                         \
 }
 
@@ -76,7 +77,7 @@ using namespace MPF::COMPONENT;
 * Convenience << operator template for dumping vectors
 ***************************************************************************** */
 template<typename T>
-std::ostream &operator<<(std::ostream &out, const std::vector <T> &v) {
+ostream &operator<<(ostream &out, const vector <T> &v) {
     out << "{";
     size_t last = v.size() - 1;
     for (size_t i = 0; i < v.size(); ++i) {
@@ -92,7 +93,7 @@ std::ostream &operator<<(std::ostream &out, const std::vector <T> &v) {
 * provided by job configuration
 ***************************************************************************** */
 template<typename T>
-T getEnv(const Properties &p, const string &k, const T def) {
+T getEnv(const Properties &p, const string &k, const T &def) {
     auto iter = p.find(k);
     if (iter != p.end()) {
         if (!(*iter).second.empty()) { // only use if something other than the blank string ("") was provided
@@ -155,8 +156,6 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
                                                    const size_t image_width,
                                                    const size_t image_height)
         : TrtisJobConfig(job, log),
-          image_width(image_width),
-          image_height(image_height),
           image_x_max(image_width - 1),
           image_y_max(image_height - 1),
           userBBoxNorm({0.0f, 0.0f, 1.0f, 1.0f}) {
@@ -194,7 +193,7 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
         userBBoxNorm[3] = ((float) userBBox[3]) / image_x_max;
     }
 
-    confThreshold = get<float>(jpr, "CONFIDENCE_THRESHOLD", 0.0);
+    classConfThreshold = get<float>(jpr, "CLASS_CONFIDENCE_THRESHOLD", 0.0);
     extraConfThreshold = get<float>(jpr, "EXTRA_CONFIDENCE_THRESHOLD", 0.0);
     maxFeatureGap = get<float>(jpr, "TRACK_MAX_FEATURE_GAP", 0.25);
     maxFrameGap = get<size_t>(jpr, "TRACK_MAX_FRAME_GAP", 30);
@@ -224,8 +223,8 @@ bool TrtisDetection::Close() {
 * \param class_label_file   filename from which to read class labels
 * \param class_label_count  highest class_id/line number (as an integrity check)
 ***************************************************************************** */
-void TrtisDetection::_readClassNames(const string model,
-                                     const string class_label_file,
+void TrtisDetection::_readClassNames(const string &model,
+                                     const string &class_label_file,
                                      int class_label_count) {
     ifstream fp(class_label_file);
     if (!fp.is_open()) {
@@ -424,7 +423,7 @@ unordered_map<int, sPtrInferCtx> TrtisDetection::_niGetInferContexts(const Trtis
 
     nic::Error err;
     for (int i = 0; i < cfg.maxInferConcurrency; i++) {
-        ctxMap[i] = std::move(_niGetInferContext(cfg, i));
+        ctxMap[i] = move(_niGetInferContext(cfg, i));
     }
 
     return ctxMap;
@@ -483,7 +482,7 @@ string TrtisDetection::_niType2Str(ni::DataType dt) {
 * \returns an openCV matrix corresponding to the tensor
 ***************************************************************************** */
 cv::Mat TrtisDetection::_niResult2CVMat(const size_t batch_idx,
-                                        const string name,
+                                        const string &name,
                                         StrUPtrInferCtxResMap &results) {
 
     // get raw data pointer and size
@@ -657,7 +656,7 @@ void TrtisDetection::_ip_irv2_coco_getDetections(
         auto classes = _class_labels["ip_irv2_coco"];
         for (int r = 0; r < d_feats.rows; r++) {
             float conf = d_scores.at<float>(r, 0);
-            if (conf >= cfg.confThreshold) {
+            if (conf >= cfg.classConfThreshold) {
                 cv::normalize(d_feats.row(r), d_feats.row(r), 1, 0, cv::NORM_L2);
                 int class_id = ((int) d_classes.at<float>(r, 0));
                 string label = (class_id <= 90) ? classes[class_id - 1] : "unknown";
@@ -863,7 +862,7 @@ void TrtisDetection::_ip_irv2_coco_tracker(
 *
 * \returns Tracks collection to which detections will be added
 ***************************************************************************** */
-std::vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
+vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
     try {
         LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
 
@@ -871,7 +870,7 @@ std::vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const 
 
         MPFVideoCapture video_cap(job);
 
-        std::vector <MPF::COMPONENT::MPFVideoTrack> tracks;
+        vector <MPF::COMPONENT::MPFVideoTrack> tracks;
         cv::Mat frame;
         Properties jpr = job.job_properties;
         string model_name = get<string>(jpr, "MODEL_NAME", "ip_irv2_coco");
@@ -904,7 +903,7 @@ std::vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const 
         exception_ptr eptr; // first exception thrown
 
         try {
-            LOG4CXX_TRACE(_log, "Main thread_id:" << std::this_thread::get_id());
+            LOG4CXX_TRACE(_log, "Main thread_id:" << this_thread::get_id());
 
             int frameIdx = 0;
             int nextRxFrameIdx = 0;
@@ -950,7 +949,7 @@ std::vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const 
                             LOG4CXX_DEBUG(_log, "Async run callback for frame[" << frameIdx << "] with context["
                                                                                 << c->CorrelationId()
                                                                                 << "] and thread_id:"
-                                                                                << std::this_thread::get_id());
+                                                                                << this_thread::get_id());
 
                             // Ensure tracking is performed on the frames in the proper order.
                             {
@@ -996,11 +995,11 @@ std::vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const 
                             } catch (...) {
                                 try {
                                     Utils::LogAndReThrowException(job, _log);
-                                } catch (MPFDetectionException e) {
+                                } catch (MPFDetectionException &e) {
                                     {
                                         lock_guard <mutex> lk(errorMtx);
                                         if (!eptr) {
-                                            eptr = std::current_exception();
+                                            eptr = current_exception();
                                         }
                                     }
                                 }
@@ -1034,11 +1033,11 @@ std::vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const 
         } catch (...) {
             try {
                 Utils::LogAndReThrowException(job, _log);
-            } catch (MPFDetectionException e) {
+            } catch (MPFDetectionException &e) {
                 {
                     lock_guard <mutex> lk(errorMtx);
                     if (!eptr) {
-                        eptr = std::current_exception();
+                        eptr = current_exception();
                     }
                 }
             }
@@ -1056,7 +1055,7 @@ std::vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const 
         // Abort now if an error occurred.
         if (eptr) {
             LOG4CXX_ERROR(_log, "[" << job.job_name << "] An error occurred. Aborting job.")
-            throw eptr;
+            rethrow_exception(eptr);
         }
 
         LOG4CXX_DEBUG(_log, "all frames complete");
@@ -1092,12 +1091,12 @@ std::vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const 
 * \note prior to returning the features are base64 encoded
 *
 ***************************************************************************** */
-std::vector <MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &job) {
+vector <MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &job) {
     try {
         LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
         LOG4CXX_DEBUG(_log, "Data URI = " << job.data_uri);
 
-        std::vector <MPFImageLocation> locations;
+        vector <MPFImageLocation> locations;
         MPFImageReader image_reader(job);
         cv::Mat img = image_reader.GetImage();
 
