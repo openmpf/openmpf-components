@@ -92,12 +92,12 @@ namespace MPF{
       bool   classFeatEnabled;            ///< process recognized coco objects
       bool   extraFeatEnabled;            ///< process extra unclassified object
       bool   userFeatEnabled;             ///< process user feature per BBox
-      size_t image_x_max;                 ///< maximum x pixel coordinate (width - 1)
-      size_t image_y_max;                 ///< maximum y pixel coordinate (height - 1)
-      size_t userBBox_x;                  ///< user bounding box upper left x1
-      size_t userBBox_y;                  ///< user bounding box upper left y1
-      size_t userBBox_width;              ///< user bounding box width
-      size_t userBBox_height;             ///< user bounding box height
+      int    image_x_max;                 ///< maximum x pixel coordinate (width - 1)
+      int    image_y_max;                 ///< maximum y pixel coordinate (height - 1)
+      int    userBBox_x;                  ///< user bounding box upper left x1
+      int    userBBox_y;                  ///< user bounding box upper left y1
+      int    userBBox_width;              ///< user bounding box width
+      int    userBBox_height;             ///< user bounding box height
       LngVec userBBox;                    ///< user bounding box as [y1,x1,x2,x2]
       FltVec userBBoxNorm;                ///< user bounding box normalized with image dimensions
       bool   recognitionEnroll;           ///< enroll features in recognition framework
@@ -105,21 +105,21 @@ namespace MPF{
       float  classConfThreshold;          ///< class detection confidence threshold
       float  extraConfThreshold;          ///< extra detections confidence threshold
       float  maxFeatureGap;               ///< max distance of object track members in feature space
-      size_t maxFrameGap;                 ///< max distance of object track members in frame space
+      int    maxFrameGap;                 ///< max distance of object track members in frame space
       float  maxSpaceGap;                 ///< max center to center spacial distance of object track members normalized with image diagonal
       float  maxSpaceGapPxSq;             ///< squared center to center distance in pixels
 
       TrtisIpIrv2CocoJobConfig(const MPFJob &job,
                                const log4cxx::LoggerPtr &log,
-                               const size_t image_width,
-                               const size_t image_height);
+                               const int image_width,
+                               const int image_height);
   };
 
   class TrtisDetection : public MPFImageAndVideoDetectionComponentAdapter {
     public:
       bool Init() override;
       bool Close() override;
-      vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPFVideoJob &job) override;
+      vector<MPFVideoTrack> GetDetections(const MPFVideoJob &job) override;
       vector<MPFImageLocation> GetDetections(const MPFImageJob &job) override;
       string GetDetectionType() override;
 
@@ -138,14 +138,14 @@ namespace MPF{
       unordered_map<int, sPtrInferCtx> _niGetInferContexts(const TrtisJobConfig &cfg);  ///< get cached inference contexts
 
       static string  _niType2Str(ni::DataType dt);                              ///< nvidia data type to string
-      static cv::Mat _niResult2CVMat(const size_t batch_idx,
+      static cv::Mat _niResult2CVMat(const int batch_idx,
                                      const string &name,
                                      StrUPtrInferCtxResMap &results);           ///< make an openCV mat header for nvidia tensor
 
       cv::Mat _cvResize(const cv::Mat &img,
                         double        &scaleFactor,
-                        const size_t  target_width,
-                        const size_t  target_height);                           ///< aspect preserving resize image to ~[target_width, target_height]
+                        const int     target_width,
+                        const int     target_height);                           ///< aspect preserving resize image to ~[target_width, target_height]
 
       BytVec  _cvRGBBytes(const cv::Mat &img,
                           LngVec        &shape);                                ///< convert image to 8-bit RGB

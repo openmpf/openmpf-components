@@ -153,8 +153,8 @@ IFeatureStorage::uPtrFeatureStorage TrtisJobConfig::_getFeatureStorage(const MPF
 ***************************************************************************** */
 TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
                                                    const log4cxx::LoggerPtr &log,
-                                                   const size_t image_width,
-                                                   const size_t image_height)
+                                                   const int image_width,
+                                                   const int image_height)
         : TrtisJobConfig(job, log),
           image_x_max(image_width - 1),
           image_y_max(image_height - 1),
@@ -167,15 +167,15 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
     clientScaleEnabled = get<bool>(jpr, "CLIENT_PRESCALING_ENABLE", true);
     recognitionEnroll = get<bool>(jpr, "RECOGNITION_ENROLL_ENABLE", false);
     if (userFeatEnabled) {
-        userBBox_x = get<int64_t>(jpr, "USER_FEATURE_X_LEFT_UPPER", 0);
-        userBBox_y = get<int64_t>(jpr, "USER_FEATURE_Y_LEFT_UPPER", 0);
-        userBBox_width = get<int64_t>(jpr, "USER_FEATURE_WIDTH", image_width);
+        userBBox_x = get<int>(jpr, "USER_FEATURE_X_LEFT_UPPER", 0);
+        userBBox_y = get<int>(jpr, "USER_FEATURE_Y_LEFT_UPPER", 0);
+        userBBox_width = get<int>(jpr, "USER_FEATURE_WIDTH", image_width);
         if (userBBox_width <= 0) {
-            userBBox_width = image_width;
+            userBBox_width = image_width - userBBox_x;
         }
-        userBBox_height = get<int64_t>(jpr, "USER_FEATURE_HEIGHT", image_height);
+        userBBox_height = get<int>(jpr, "USER_FEATURE_HEIGHT", image_height);
         if (userBBox_height <= 0) {
-            userBBox_height = image_height;
+            userBBox_height = image_height - userBBox_y;
         }
         userBBox.push_back(userBBox_y);
         userBBox.push_back(userBBox_x);
@@ -196,10 +196,10 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
     classConfThreshold = get<float>(jpr, "CLASS_CONFIDENCE_THRESHOLD", 0.0);
     extraConfThreshold = get<float>(jpr, "EXTRA_CONFIDENCE_THRESHOLD", 0.0);
     maxFeatureGap = get<float>(jpr, "TRACK_MAX_FEATURE_GAP", 0.25);
-    maxFrameGap = get<size_t>(jpr, "TRACK_MAX_FRAME_GAP", 30);
+    maxFrameGap = get<int>(jpr, "TRACK_MAX_FRAME_GAP", 30);
     maxSpaceGap = get<float>(jpr, "TRACK_MAX_SPACE_GAP", 0.3);
 
-    size_t frameDiagSq = image_width * image_width + image_height * image_height;
+    int frameDiagSq = image_width * image_width + image_height * image_height;
     maxSpaceGapPxSq = maxSpaceGap * maxSpaceGap * frameDiagSq;
 }
 
@@ -307,15 +307,17 @@ BytVec TrtisDetection::_cvRGBBytes(const cv::Mat &img, LngVec &shape) {
 * shorter side equal target_height pixel but keep longer side below
 * target_width pixels and preserve aspect ratio.
 *
-* \param      img          OpenCV image to be resized to fit model
-* \param[out] scaleFactor  scaling factor that was used to get to target dims
+* \param      img            OpenCV image to be resized to fit model
+* \param[out] scaleFactor    scaling factor that was used to get to target dims
+* \param      target_width   target width
+* \param      target_height  target height
 *
 * \returns A scaled OpenCV image
 ***************************************************************************** */
 cv::Mat TrtisDetection::_cvResize(const cv::Mat &img,
                                   double &scaleFactor,
-                                  const size_t target_width,
-                                  const size_t target_height) {
+                                  const int target_width,
+                                  const int target_height) {
 
     if (img.cols > img.rows) {                          // landscape image
         scaleFactor = (float) target_height / img.rows;
@@ -481,7 +483,7 @@ string TrtisDetection::_niType2Str(ni::DataType dt) {
 *
 * \returns an openCV matrix corresponding to the tensor
 ***************************************************************************** */
-cv::Mat TrtisDetection::_niResult2CVMat(const size_t batch_idx,
+cv::Mat TrtisDetection::_niResult2CVMat(const int batch_idx,
                                         const string &name,
                                         StrUPtrInferCtxResMap &results) {
 
@@ -496,7 +498,7 @@ cv::Mat TrtisDetection::_niResult2CVMat(const size_t batch_idx,
     LngVec shape;
     NI_CHECK_OK((*res)->GetRawShape(&shape),
                 "Failed to get inference server result shape");
-    int ndim = shape.size();
+    size_t ndim = shape.size();
     if (ndim < 2) { // force matrix for vector with single col?!
         ndim = 2;
         shape.push_back(1);
@@ -504,7 +506,7 @@ cv::Mat TrtisDetection::_niResult2CVMat(const size_t batch_idx,
 
     // calculate num elements from shape
     IntVec iShape;
-    size_t numElementsFromShape = 1;
+    int64 numElementsFromShape = 1;
     for (const auto &d: shape) {
         numElementsFromShape *= d;
         iShape.push_back((int) d);
@@ -805,10 +807,10 @@ void TrtisDetection::_ip_irv2_coco_tracker(
         MPFVideoTrack *bestTrackPtr = nullptr;
         float minFeatureGap = FLT_MAX;
         for (MPFVideoTrack &track : tracks) {
-            size_t frameGap = frameIdx - track.stop_frame;
+            int frameGap = frameIdx - track.stop_frame;
             if (frameGap > 0 && frameGap <= cfg.maxFrameGap) {
                 MPFImageLocation stopLoc = track.frame_locations[track.stop_frame];
-                size_t spaceGapPxSq = centerDistSq(stopLoc, loc);
+                float spaceGapPxSq = centerDistSq(stopLoc, loc);
                 if (spaceGapPxSq <= cfg.maxSpaceGapPxSq) {
                     auto trkFeat = stopLoc.detection_properties.find("FEATURE");
                     auto locFeat = loc.detection_properties.find("FEATURE");
@@ -862,7 +864,7 @@ void TrtisDetection::_ip_irv2_coco_tracker(
 *
 * \returns Tracks collection to which detections will be added
 ***************************************************************************** */
-vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
+vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
     try {
         LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
 
@@ -870,7 +872,7 @@ vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const MPFVi
 
         MPFVideoCapture video_cap(job);
 
-        vector <MPF::COMPONENT::MPFVideoTrack> tracks;
+        vector <MPFVideoTrack> tracks;
         cv::Mat frame;
         Properties jpr = job.job_properties;
         string model_name = get<string>(jpr, "MODEL_NAME", "ip_irv2_coco");
@@ -887,7 +889,7 @@ vector <MPF::COMPONENT::MPFVideoTrack> TrtisDetection::GetDetections(const MPFVi
         double fp_ms = get<double>(job.media_properties, "FPS", 0.0) / 1000.0;
 
         unordered_map<int, sPtrInferCtx> ctxMap = _niGetInferContexts(cfg);
-        int initialCtxPoolSize = ctxMap.size();
+        size_t initialCtxPoolSize = ctxMap.size();
         LOG4CXX_TRACE(_log, "Retrieved inferencing context pool of size " << initialCtxPoolSize << " for model '"
                                                                           << cfg.model_name << "' from server "
                                                                           << cfg.trtis_server);
