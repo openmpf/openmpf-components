@@ -203,11 +203,9 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
     maxSpaceGapPxSq = maxSpaceGap * maxSpaceGap * frameDiagSq;
 }
 
-/** ****************************************************************************
-* While more of a FEATURE detector type, 'CLASS' seems to fit
-***************************************************************************** */
+/******************************************************************************/
 string TrtisDetection::GetDetectionType() {
-    return "CLASS";
+    return "FEATURE";
 }
 
 /******************************************************************************/
@@ -769,6 +767,7 @@ void TrtisDetection::_addToTrack(MPFImageLocation &location,
         track.confidence = location.confidence;
         auto it = location.detection_properties.find("CLASSIFICATION");
         if (it != location.detection_properties.end()) {
+            track.detection_properties["FEATURE TYPE"] = "CLASS";
             track.detection_properties["CLASSIFICATION"] = it->second;
             LOG4CXX_TRACE(_log, "updating track class to " << it->second);
         }
@@ -801,57 +800,55 @@ void TrtisDetection::_ip_irv2_coco_tracker(
         const int frameIdx,
         MPFVideoTrackVec &tracks) {
 
-    const string feature_type = loc.detection_properties["FEATURE TYPE"];
-    if (feature_type == "CLASS" || feature_type == "EXTRA") {
-        LOG4CXX_TRACE(_log, "Found detection with feature_type:" << feature_type);
-        MPFVideoTrack *bestTrackPtr = nullptr;
-        float minFeatureGap = FLT_MAX;
-        for (MPFVideoTrack &track : tracks) {
-            int frameGap = frameIdx - track.stop_frame;
-            if (frameGap > 0 && frameGap <= cfg.maxFrameGap) {
-                MPFImageLocation stopLoc = track.frame_locations[track.stop_frame];
-                float spaceGapPxSq = centerDistSq(stopLoc, loc);
-                if (spaceGapPxSq <= cfg.maxSpaceGapPxSq) {
-                    auto trkFeat = stopLoc.detection_properties.find("FEATURE");
-                    auto locFeat = loc.detection_properties.find("FEATURE");
-                    if (trkFeat != stopLoc.detection_properties.end()
-                        && locFeat != loc.detection_properties.end()) {
-                        auto stopFeature = (float *) (&(trkFeat->second[0]));
-                        auto locFeature = (float *) (&(locFeat->second[0]));
-                        float featureGap = 1.0f - ipSimilarity(stopFeature, locFeature, 1088);
-                        if (featureGap <= cfg.maxFeatureGap) {
-                            LOG4CXX_TRACE(_log, "featureGap = " << featureGap << " < " << cfg.maxFeatureGap);
-                            if (featureGap < minFeatureGap) {
-                                LOG4CXX_TRACE(_log, "bestTrack = " << &track);
-                                bestTrackPtr = &track;
-                                minFeatureGap = featureGap;
-                            }
+    MPFVideoTrack *bestTrackPtr = nullptr;
+    float minFeatureGap = FLT_MAX;
+    for (MPFVideoTrack &track : tracks) {
+        int frameGap = frameIdx - track.stop_frame;
+        if (frameGap > 0 && frameGap <= cfg.maxFrameGap) {
+            MPFImageLocation stopLoc = track.frame_locations[track.stop_frame];
+            float spaceGapPxSq = centerDistSq(stopLoc, loc);
+            if (spaceGapPxSq <= cfg.maxSpaceGapPxSq) {
+                auto trkFeat = stopLoc.detection_properties.find("FEATURE");
+                auto locFeat = loc.detection_properties.find("FEATURE");
+                if (trkFeat != stopLoc.detection_properties.end()
+                    && locFeat != loc.detection_properties.end()) {
+                    auto stopFeature = (float *) (&(trkFeat->second[0]));
+                    auto locFeature = (float *) (&(locFeat->second[0]));
+                    float featureGap = 1.0f - ipSimilarity(stopFeature, locFeature, 1088);
+                    if (featureGap <= cfg.maxFeatureGap) {
+                        LOG4CXX_TRACE(_log, "featureGap = " << featureGap << " < " << cfg.maxFeatureGap);
+                        if (featureGap < minFeatureGap) {
+                            LOG4CXX_TRACE(_log, "bestTrack = " << &track);
+                            bestTrackPtr = &track;
+                            minFeatureGap = featureGap;
                         }
                     }
                 }
             }
         }
+    }
 
-        if (bestTrackPtr != nullptr) {
-            LOG4CXX_TRACE(_log, "Adding to track(&" << bestTrackPtr << ") from frame[" << frameIdx << "]");
-            int bestStopFrame = bestTrackPtr->stop_frame;
-            MPFImageLocation bestStopLoc = bestTrackPtr->frame_locations[bestStopFrame];
-            if (bestStopFrame != bestTrackPtr->start_frame) {
-                bestStopLoc.detection_properties.erase("FEATURE");
-                LOG4CXX_TRACE(_log,
-                              "Erased previous FEATURE for track(& " << bestTrackPtr << ") from frame[" << frameIdx
-                                                                     << "]");
-            } else { // keep start frame feature for linking ?!
-                bestStopLoc.detection_properties["FEATURE"] =
-                        Base64::Encode(bestStopLoc.detection_properties["FEATURE"]);
-                LOG4CXX_TRACE(_log, "Re-encoded track start feature");
-            }
-            _addToTrack(loc, frameIdx, *bestTrackPtr);
-        } else {
-            tracks.emplace_back(frameIdx, frameIdx);
-            LOG4CXX_TRACE(_log, "Created new track(&" << &(tracks.back()) << ") from frame[" << frameIdx << "]");
-            _addToTrack(loc, frameIdx, tracks.back());
+    if (bestTrackPtr != nullptr) {
+        LOG4CXX_TRACE(_log, "Adding to track(&" << bestTrackPtr << ") from frame[" << frameIdx << "]");
+        int bestStopFrame = bestTrackPtr->stop_frame;
+        MPFImageLocation bestStopLoc = bestTrackPtr->frame_locations[bestStopFrame];
+        if (bestStopFrame != bestTrackPtr->start_frame) {
+            bestStopLoc.detection_properties.erase("FEATURE");
+            LOG4CXX_TRACE(_log,
+                          "Erased previous FEATURE for track(& " << bestTrackPtr << ") from frame[" << frameIdx
+                                                                 << "]");
+        } else { // keep start frame feature for linking ?!
+            bestStopLoc.detection_properties["FEATURE"] =
+                    Base64::Encode(bestStopLoc.detection_properties["FEATURE"]);
+            LOG4CXX_TRACE(_log, "Re-encoded track start feature");
         }
+        _addToTrack(loc, frameIdx, *bestTrackPtr);
+    } else {
+        // track is EXTRA until first CLASS detection is added
+        MPFVideoTrack newTrack(frameIdx, frameIdx, -1, { {"FEATURE TYPE", "EXTRA"} });
+        tracks.push_back(move(newTrack));
+        LOG4CXX_TRACE(_log, "Created new track(&" << &(tracks.back()) << ") from frame[" << frameIdx << "]");
+        _addToTrack(loc, frameIdx, tracks.back());
     }
 }
 
@@ -872,7 +869,10 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
 
         MPFVideoCapture video_cap(job);
 
-        vector <MPFVideoTrack> tracks;
+        vector <MPFVideoTrack> class_extra_tracks;
+        MPFVideoTrack frame_track(0, 0, -1, { {"FEATURE TYPE", "FRAME"} });
+        MPFVideoTrack user_track(0, 0, -1, { {"FEATURE TYPE", "USER"} });
+
         cv::Mat frame;
         Properties jpr = job.job_properties;
         string model_name = get<string>(jpr, "MODEL_NAME", "ip_irv2_coco");
@@ -882,7 +882,7 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
         }
 
         // need to read a frame to get size
-        if (!video_cap.Read(frame)) return tracks;
+        if (!video_cap.Read(frame)) return {};
         TrtisIpIrv2CocoJobConfig cfg(job, _log, frame.cols, frame.rows);
 
         // frames per milli-sec if available
@@ -945,7 +945,8 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
                 NI_CHECK_OK(
                         ctx->AsyncRun([frameIdx, &job, &cfg, &freeCtxCv, &nextRxFrameCv,
                                               &nextRxFrameMtx, &tracksMtx, &freeCtxMtx, &errorMtx,
-                                              &nextRxFrameIdx, &tracks, &freeCtxPool, &eptr,
+                                              &nextRxFrameIdx, &freeCtxPool, &eptr,
+                                              &class_extra_tracks, &frame_track, &user_track,
                                               this](nic::InferContext *c, sPtrInferCtxReq req) {
                             // NOTE: When this callback is invoked, the frame has already been processed by the TRTIS server.
                             LOG4CXX_DEBUG(_log, "Async run callback for frame[" << frameIdx << "] with context["
@@ -963,7 +964,7 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
                                             << nextRxFrameIdx
                                             << "]");
                                     nextRxFrameCv.wait(lk,
-                                                       [this, frameIdx, &nextRxFrameIdx] {
+                                                       [frameIdx, &nextRxFrameIdx] {
                                                            return frameIdx == nextRxFrameIdx;
                                                        });
                                 }
@@ -990,7 +991,17 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
                                 {
                                     lock_guard <mutex> lk(tracksMtx);
                                     for (MPFImageLocation &loc : locations) {
-                                        _ip_irv2_coco_tracker(cfg, loc, frameIdx, tracks);
+                                        const string feature_type = loc.detection_properties["FEATURE TYPE"];
+                                        LOG4CXX_TRACE(_log, "Found detection with feature_type:" << feature_type);
+                                        if (feature_type == "CLASS" || feature_type == "EXTRA") {
+                                            _ip_irv2_coco_tracker(cfg, loc, frameIdx, class_extra_tracks);
+                                        } else if (feature_type == "FRAME") {
+                                            frame_track.stop_frame = frameIdx;
+                                            frame_track.frame_locations[frameIdx] = loc;
+                                        } else if (feature_type == "USER") {
+                                            user_track.stop_frame = frameIdx;
+                                            user_track.frame_locations[frameIdx] = loc;
+                                        }
                                     }
                                     LOG4CXX_TRACE(_log, "tracked objects in frame[" << frameIdx << "]");
                                 }
@@ -1061,6 +1072,14 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
         }
 
         LOG4CXX_DEBUG(_log, "all frames complete");
+
+        vector <MPFVideoTrack> tracks = move(class_extra_tracks);
+        if (!frame_track.frame_locations.empty()) {
+            tracks.push_back(move(frame_track));
+        }
+        if (!user_track.frame_locations.empty()) {
+            tracks.push_back(move(user_track));
+        }
 
         for (MPFVideoTrack &track : tracks) {
             video_cap.ReverseTransform(track);
