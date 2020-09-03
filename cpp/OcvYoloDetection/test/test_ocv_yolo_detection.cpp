@@ -248,12 +248,12 @@ TEST(OcvYoloDetection, TestCorrelator) {
     GOUT("Correlator Output:\t" << output_image_file);
     GOUT("Input Image:\t"       << image_file);
 
-    auto cfgPtr = make_shared<Config>(MPFImageJob("Testing", image_file, { }, { }));
-    FramePtrVec framePtrs = cfgPtr->getImageFrames(1);
+    Config cfg(MPFImageJob("Testing", image_file, { }, { }));
+    FramePtrVec framePtrs = cfg.getImageFrames(1);
     EXPECT_FALSE(framePtrs[0]->bgr.empty()) << "Could not load:" << image_file;
 
 
-    DetectionLocationPtrVecVec detections = DetectionLocation::createDetections(cfgPtr, framePtrs);
+    DetectionLocationPtrVecVec detections = DetectionLocation::createDetections(cfg, framePtrs);
     EXPECT_FALSE(detections[0].empty());
 
     DetectionLocationPtr dogPtr;
@@ -284,10 +284,10 @@ TEST(OcvYoloDetection, TestCorrelator) {
 
     DetectionLocationPtr dogPtr2;
     dogPtr2 = DetectionLocationPtr(new DetectionLocation(
-      cfgPtr,make_shared<Frame>(frame),pasteRoi,0.97,cv::Point2f(0.5,0.5),dogPtr->getClassFeature()));
+      cfg,make_shared<Frame>(frame),pasteRoi,0.97,cv::Point2f(0.5,0.5),dogPtr->getClassFeature()));
     GOUT("Shift image " << dogPtr2->getRect() << " centered at " << (dogPtr2->getRect().tl()+dogPtr2->getRect().br())/2);
 
-    Track t(cfgPtr, move(dogPtr2));
+    Track t(cfg, move(dogPtr2));
 
     cv::Point2d ph_offset =  dogPtr->_phaseCorrelate(t);
     cv::Point2d diff = (offset + ph_offset);

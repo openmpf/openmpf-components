@@ -59,13 +59,14 @@ namespace MPF{
   typedef vector<cv::Point2i>             cvPoint2iVec;                ///< vector of OpenCV points
   typedef vector<cv::Point2f>             cvPoint2fVec;                ///< vector of OpenCV 2D float points
   typedef vector<cvPoint2fVec>            cvPoint2fVecVec;             ///< vector of vectors of OpenCV 2D float points
+
   typedef cv::Point3_<uint8_t>            cvPixel;                     ///< image pixel type used by images
   typedef unique_ptr<DetectionLocation>   DetectionLocationPtr;        ///< DetectionLocation pointers
   typedef vector<DetectionLocationPtr>    DetectionLocationPtrVec;     ///< vector of DetectionLocation pointers
   typedef vector<DetectionLocationPtrVec> DetectionLocationPtrVecVec;  ///< vector of DetectionLocation pointers vectors
-  typedef unique_ptr<Track>               TrackPtr;                    ///< pointer to a track
-  typedef list<TrackPtr>                  TrackPtrList;                ///< list of track pointers
-  typedef shared_ptr<const Config>        ConfigPtr;                   ///< Config pointer (state)
+  //typedef unique_ptr<Track>               TrackPtr;                    ///< pointer to a track
+  //typedef list<TrackPtr>                  TrackPtrList;                ///< list of track pointers
+  typedef list<Track>                     TrackList;                   ///< list of tracks
   typedef shared_ptr<const Frame>         FramePtr;                    ///< frame pointer
   typedef vector<FramePtr>                FramePtrVec;                 ///< vector for Frame pointers
 

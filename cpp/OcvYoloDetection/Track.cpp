@@ -37,20 +37,18 @@ string format(cv::Mat m);
 * \param cfg    job struct to initialize kalman filter params from
 *
 **************************************************************************** */
-Track::Track(const ConfigPtr cfgPtr, unique_ptr<DetectionLocation> detPtr):
-  _cfgPtr(cfgPtr){
-  if(! cfgPtr->kfDisabled){
-    _kfPtr = unique_ptr<KFTracker>(
-      new KFTracker(detPtr->framePtr->time,
-                    detPtr->framePtr->timeStep,
-                    detPtr->getRect(),
-                    cv::Rect2i(0,0,detPtr->framePtr->bgr.cols-1,
-                                   detPtr->framePtr->bgr.rows-1),
-                    cfgPtr->RN,
-                    cfgPtr->QN));
-  }
+Track::Track(const Config &cfg, unique_ptr<DetectionLocation> detPtr):
+  _cfg(cfg),
+  _kf(detPtr->framePtr->time,
+      detPtr->framePtr->timeStep,
+      detPtr->getRect(),
+      cv::Rect2i(0,0,detPtr->framePtr->bgr.cols-1,
+                     detPtr->framePtr->bgr.rows-1),
+      cfg.RN,
+      cfg.QN){
   _locationPtrs.push_back(move(detPtr));
 }
+
 
 /** **************************************************************************
 *  Get a new DetectionLocation from an existing one based on a frame
@@ -79,13 +77,13 @@ DetectionLocationPtr Track::ocvTrackerPredict(const FramePtr &framePtr){
 
   cv::Rect2d p;
   DetectionLocationPtr detPtr;
-  if(framePtr->idx -_ocvTrackerStartFrameIdx <= _cfgPtr->maxFrameGap){
+  if(framePtr->idx -_ocvTrackerStartFrameIdx <= _cfg.maxFrameGap){
     if(_ocvTrackerPtr->update(framePtr->bgr, p)){
       cv::Point2f center(p.tl() + cv::Point2d(p.size()) / 2.0);
       center.x /= static_cast<float>(framePtr->bgr.cols);
       center.y /= static_cast<float>(framePtr->bgr.rows);
       detPtr = DetectionLocationPtr(
-                 new DetectionLocation(_cfgPtr, framePtr, p, 0.0, center,
+                 new DetectionLocation(_cfg, framePtr, p, 0.0, center,
                                        _locationPtrs.back()->getClassFeature(),
                                        _locationPtrs.back()->getDFTFeature()));     LOG_TRACE("tracking " << (MPFImageLocation)*_locationPtrs.back() << " to " << (MPFImageLocation)*detPtr);
 //      detPtr->copyFeature(*(_locationPtrs.back()));
@@ -93,7 +91,7 @@ DetectionLocationPtr Track::ocvTrackerPredict(const FramePtr &framePtr){
                                                                                LOG_TRACE("could not track " << (MPFImageLocation)*_locationPtrs.back() << " to new location");
     }
   }else{
-                                                                               LOG_TRACE("extrapolation tracking stopped" << (MPFImageLocation)*_locationPtrs.back() << " frame gap = " << framePtr->idx - _ocvTrackerStartFrameIdx << " > " <<  _cfgPtr->maxFrameGap);
+                                                                               LOG_TRACE("extrapolation tracking stopped" << (MPFImageLocation)*_locationPtrs.back() << " frame gap = " << framePtr->idx - _ocvTrackerStartFrameIdx << " > " <<  _cfg.maxFrameGap);
   }
   return detPtr;
 }
@@ -105,9 +103,9 @@ DetectionLocationPtr Track::ocvTrackerPredict(const FramePtr &framePtr){
 *
 * \note the previous track tail will have its image frame released
 *************************************************************************** */
-void Track::push_back(DetectionLocationPtr d){
+void Track::push_back(DetectionLocationPtr&& d){
 
-  assert(_locationPtrs.size() > 0);
+  assert(!_locationPtrs.empty());
   //const_cast<cv::Mat&>(_locationPtrs.back()->framePtr->bgr).release();          // don't access pixels after this...
   _locationPtrs.push_back(move(d));
 }
@@ -119,40 +117,40 @@ void Track::push_back(DetectionLocationPtr d){
  *
 *************************************************************************** */
 void Track::kalmanPredict(float t){
-  _kfPtr->predict(t);
+  _kf.predict(t);
 
   // make frame edges "sticky"
-  _kfPtr->setStatePreFromBBox(DetectionLocation::snapToEdges(
+  _kf.setStatePreFromBBox(DetectionLocation::snapToEdges(
     _locationPtrs.back()->getRect(),
-    _kfPtr->predictedBBox(),
+    _kf.predictedBBox(),
     _locationPtrs.back()->framePtr->bgr.size(),
-    _cfgPtr->edgeSnapDist));
+    _cfg.edgeSnapDist));
 
-                                                            LOG_TRACE("kf pred:" << _locationPtrs.back()->getRect() << " => " << _kfPtr->predictedBBox());
+                                                            LOG_TRACE("kf pred:" << _locationPtrs.back()->getRect() << " => " << _kf.predictedBBox());
 }
 
 /** **************************************************************************
  * apply kalman correction to tail detection using tail's measurement
 *************************************************************************** */
 void Track::kalmanCorrect(){
-  if(_kfPtr){                                                                  LOG_TRACE("kf meas:" << _locationPtrs.back()->getRect());
-    _kfPtr->correct(_locationPtrs.back()->getRect());
+  if(!_cfg.kfDisabled){                                                        LOG_TRACE("kf meas:" << _locationPtrs.back()->getRect());
+    _kf.correct(_locationPtrs.back()->getRect());
 
-    _kfPtr->setStatePostFromBBox(DetectionLocation::snapToEdges(
+    _kf.setStatePostFromBBox(DetectionLocation::snapToEdges(
       _locationPtrs.back()->getRect(),
-      _kfPtr->correctedBBox(),
+      _kf.correctedBBox(),
       _locationPtrs.back()->framePtr->bgr.size(),
-      _cfgPtr->edgeSnapDist));
+      _cfg.edgeSnapDist));
 
-    _locationPtrs.back()->setRect(_kfPtr->correctedBBox());                    LOG_TRACE("kf corr:" << _locationPtrs.back()->getRect());
+    _locationPtrs.back()->setRect(_kf.correctedBBox());                    LOG_TRACE("kf corr:" << _locationPtrs.back()->getRect());
   }
 }
 
 /** **************************************************************************
 *************************************************************************** */
 float Track::testResidual(DetectionLocation const& d) const{
-  if(_kfPtr){
-    return _kfPtr->testResidual(d.getRect(),_cfgPtr->edgeSnapDist);
+  if(!_cfg.kfDisabled){
+    return _kf.testResidual(d.getRect(),_cfg.edgeSnapDist);
   }else{
     return 0.0;
   }

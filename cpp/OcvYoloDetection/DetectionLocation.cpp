@@ -202,7 +202,7 @@ cv::Point2d  DetectionLocation::_phaseCorrelate(const Track &tr) const {
   cv::Point peakLoc;
   cv::minMaxLoc(C, NULL, NULL, NULL, &peakLoc);
   double response;
-  return cv::Point2d(_cfgPtr->dftSize/2.0, _cfgPtr->dftSize/2.0) -
+  return cv::Point2d(_cfg.dftSize/2.0, _cfg.dftSize/2.0) -
          cv::weightedCentroid(C, peakLoc, cv::Size(5, 5), &response);
 }
 
@@ -265,7 +265,7 @@ const cv::Rect2i DetectionLocation::getRect() const {
 * set the location from an opencv rectange
 *************************************************************************** */
 void DetectionLocation::setRect(const cv::Rect2i& rec){
-  cv::Rect2i snaped = snapToEdges(rec,rec,framePtr->bgr.size(),_cfgPtr->edgeSnapDist);
+  cv::Rect2i snaped = snapToEdges(rec,rec,framePtr->bgr.size(),_cfg.edgeSnapDist);
   x_left_upper = snaped.x;
   y_left_upper = snaped.y;
         width  = snaped.width;
@@ -289,13 +289,13 @@ void DetectionLocation::setRect(const cv::Rect2i& rec){
 *
 *************************************************************************** */
 const cv::Mat1f   DetectionLocation::_getHanningWindow(const cv::Size &size) const {
-  if(   size.width  == _cfgPtr->dftSize
-     && size.height == _cfgPtr->dftSize){
+  if(   size.width  == _cfg.dftSize
+     && size.height == _cfg.dftSize){
 
     static cv::Mat1f defWin;          // most common size so cache it.
     if(   defWin.empty()
-       || defWin.rows != _cfgPtr->dftSize){
-      cv::createHanningWindow(defWin,cv::Size(_cfgPtr->dftSize,_cfgPtr->dftSize),CV_32F);  //LOG_TRACE("Created default hanning window of size " << defWin.size());
+       || defWin.rows != _cfg.dftSize){
+      cv::createHanningWindow(defWin,cv::Size(_cfg.dftSize,_cfg.dftSize),CV_32F);  //LOG_TRACE("Created default hanning window of size " << defWin.size());
     }
     return defWin;
 
@@ -332,13 +332,13 @@ const cv::Mat& DetectionLocation::getDFTFeature() const {
     gray.convertTo(gray,CV_32FC1,1.0/std[0],-mean[0]/std[0]);                  //LOG_TRACE("Converted to zero mean unit std float " << cv::typeToString(gray.type()) <<"(" << gray.size << ")");
 
     // zero pad (or clip) center of grayscale image into center of dft buffer
-    cv::Mat1f feature=cv::Mat1f::zeros(_cfgPtr->dftSize,_cfgPtr->dftSize);     //LOG_TRACE("Created dft buffer of size: " << feature.size());
+    cv::Mat1f feature=cv::Mat1f::zeros(_cfg.dftSize,_cfg.dftSize);     //LOG_TRACE("Created dft buffer of size: " << feature.size());
 
     cv::Rect2i grRoi((gray.size() - feature.size())/2, feature.size());
     grRoi = grRoi & cv::Rect2i(cv::Point2i(0,0),gray.size());                  //LOG_TRACE("Crop  region from image: " << grRoi);
     cv::Rect2i ftRoi((feature.size() - grRoi.size())/2,grRoi.size());          //LOG_TRACE("Paste region in buffer : " << ftRoi);
 
-    if(_cfgPtr->dftHannWindowEnabled){
+    if(_cfg.dftHannWindowEnabled){
       cv::Mat1f hann = _getHanningWindow(grRoi.size());
       cv::multiply(gray(grRoi),hann,gray(grRoi));                              //LOG_TRACE("Applied hanning window of size " << hann.size() << " to image of size " << grRoi.size());
     }
@@ -355,7 +355,7 @@ const cv::Mat& DetectionLocation::getDFTFeature() const {
 /** ****************************************************************************
 * Detect objects using SSD DNN opencv face detector network
 *
-* \param  cfgPtr    job configuration setting including image frame
+* \param  cfg       job configuration setting
 * \param  framePtrs frames to process in one inference call
 *
 * \returns found face detections that meet size requirements.
@@ -364,9 +364,9 @@ const cv::Mat& DetectionLocation::getDFTFeature() const {
 *       should be released once no longer needed (i.e. scoresVectors care computed)
 *
 *************************************************************************** */
-DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr cfgPtr, const FramePtrVec &framePtrs){
-                                                                               LOG_TRACE("Createing detections in frame batch of size " << framePtrs.size());
-  int inputImageSize = cfgPtr->inputImageSize;
+DetectionLocationPtrVecVec DetectionLocation::createDetections(const Config& cfg, const FramePtrVec &framePtrs){
+                                                                               LOG_TRACE("Creating detections in frame batch of size " << framePtrs.size());
+  int inputImageSize = cfg.inputImageSize;
   if(inputImageSize <= 0){                                                     //LOG_TRACE("Determining max image dimension in batch");
     for(auto& framePtr:framePtrs){
       int maxImageDim = max(framePtr->bgr.cols,framePtr->bgr.rows);
@@ -443,7 +443,7 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
         cv::Point idx;
         double conf;
         cv::minMaxLoc(scores,nullptr,&conf,nullptr,&idx);
-        if(conf >= cfgPtr->confThresh){
+        if(conf >= cfg.confThresh){
           float* rowPtr = data.ptr<float>(rw);
           cv::Point2f center(rowPtr[0],rowPtr[1]);
           center = center - padOffset;                                                 // yolo zeropads top,bottom,left,right to get square image
@@ -462,8 +462,8 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
     // Perform non maximum supression (NMS)
     intVec keepIdxs;                                                           LOG_TRACE("Performing non max supression of " <<bboxes.size() << " detections");
     cv::dnn::NMSBoxes(bboxes,topConfidences,
-                      cfgPtr->confThresh,
-                      cfgPtr->nmsThresh,
+                      cfg.confThresh,
+                      cfg.nmsThresh,
                       keepIdxs);                                               LOG_TRACE("Kept " << keepIdxs.size() << " detections");
 
     // Create detection objects for frame
@@ -472,7 +472,7 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
       cv::Mat classFeature;
       cv::normalize(scoresVectors[keepIdx] * _netConfusion, classFeature,1.0,0.0,cv::NORM_L2);
       auto detPtr = DetectionLocationPtr(
-        new DetectionLocation(cfgPtr, framePtrs[fr],
+        new DetectionLocation(cfg,  framePtrs[fr],
                                        bboxes[keepIdx],
                                topConfidences[keepIdx],
                                       centers[keepIdx],
@@ -492,7 +492,7 @@ DetectionLocationPtrVecVec DetectionLocation::createDetections(const ConfigPtr c
         if(scoresVectors[keepIdx].at<float>(0,sort_idx[i]) < numeric_limits<float>::epsilon()) break;
         classList << "; " << _netClasses.at(sort_idx[i]);
         scoreList << "; " << scoresVectors[keepIdx].at<float>(0,sort_idx[i]);
-        if(i >= cfgPtr->numClassPerRegion) break;
+        if(i >= cfg.numClassPerRegion) break;
       }
       detPtr->detection_properties.insert({
         {"CLASSIFICATION", _netClasses[sort_idx[0]]},
@@ -640,7 +640,7 @@ bool DetectionLocation::Init(){
 /** **************************************************************************
 * constructor
 **************************************************************************** */
-DetectionLocation::DetectionLocation(const ConfigPtr   cfgPtr,
+DetectionLocation::DetectionLocation(const Config     &cfg,
                                      const FramePtr    frmPtr,
                                      const cv::Rect2d  bbox,
                                      const float       conf,
@@ -648,14 +648,14 @@ DetectionLocation::DetectionLocation(const ConfigPtr   cfgPtr,
                                      const cv::Mat     classFeature):
    center(ctr),
    framePtr(frmPtr),
-  _cfgPtr(cfgPtr),
+  _cfg(cfg),
   _classFeature(classFeature)
 {
   confidence = conf;
   setRect(bbox & cv::Rect2d(0,0,frmPtr->bgr.cols,frmPtr->bgr.rows));
 }
 
-DetectionLocation::DetectionLocation(const ConfigPtr   cfgPtr,
+DetectionLocation::DetectionLocation(const Config     &cfg,
                                      const FramePtr    frmPtr,
                                      const cv::Rect2d  bbox,
                                      const float       conf,
@@ -664,7 +664,7 @@ DetectionLocation::DetectionLocation(const ConfigPtr   cfgPtr,
                                      const cv::Mat     dftFeature):
    center(ctr),
    framePtr(frmPtr),
-  _cfgPtr(cfgPtr),
+  _cfg(cfg),
   _classFeature(classFeature),
   _dftFeature(dftFeature)
 {

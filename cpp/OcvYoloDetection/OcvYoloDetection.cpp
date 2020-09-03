@@ -146,27 +146,28 @@ bool OcvYoloDetection::Close() {
 *
 ***************************************************************************** */
 template<DetectionLocationCostFunc COST_FUNC>
-vector<long> OcvYoloDetection::_calcAssignmentVector(const TrackPtrList            &tracks,
+vector<long> OcvYoloDetection::_calcAssignmentVector(const TrackList               &tracks,
                                                      const DetectionLocationPtrVec &detections,
                                                      const float                    maxCost = INT_MAX,
                                                      const float                    maxClassDist = 0.5,
                                                      const float                    maxKFResidual = 4.0){
   vector<long> av; //assignment vector to return
 
-  if(tracks.size() == 0 || detections.size() ==0) return av;  // nothing to do
+  if(tracks.empty() || detections.empty()) return av;  // nothing to do
 
   // rows -> tracks, cols -> detections, but matrix has to be square!
   size_t n = max(tracks.size(),detections.size());
   dlib::matrix<long> costs = dlib::zeros_matrix<long>(n,n);
+
   // fill in actual costs for non-dummy entries
   size_t r = 0;
   intVec uniqueCosts;
   for(auto &track:tracks){
     for(size_t c=0; c<detections.size(); c++){
-      if(track->back()->framePtr->idx < detections[c]->framePtr->idx){
-        if(    detections[c]->classDist(*track)   <= maxClassDist                      // must be of a class similar to track's tail to be considered
-            && detections[c]->kfResidualDist(*track) <= maxKFResidual ){               // must produce a reasonable normalized residual
-          float cost = CALL_MEMBER_FUNC(*detections[c],COST_FUNC)(*track);
+      if(track.back()->framePtr->idx < detections[c]->framePtr->idx){
+        if(    detections[c]->classDist(track)   <= maxClassDist                      // must be of a class similar to track's tail to be considered
+            && detections[c]->kfResidualDist(track) <= maxKFResidual ){               // must produce a reasonable normalized residual
+          float cost = CALL_MEMBER_FUNC(*detections[c],COST_FUNC)(track);
           int iCost = ((cost <= maxCost) ? (INT_MAX - static_cast<int>(1.0E9 * cost)) : 0); //r*detections.size()+c);
           if(iCost != 0 ){
             while(find(uniqueCosts.begin(),uniqueCosts.end(),iCost) != uniqueCosts.end()) iCost--;  // cost have to be unique or dlib::max_cost_assignment() hangs...
@@ -174,7 +175,7 @@ vector<long> OcvYoloDetection::_calcAssignmentVector(const TrackPtrList         
           }
           costs(r,c) = iCost;                                                  //LOG_TRACE("C[" << r << "," << c << "]=" << cost << ":" << iCost);
         }
-      }else{                                                                   LOG_TRACE("track back idx(" << track->back()->framePtr->idx <<") < detection idx(" << detections[c]->framePtr->idx << ")");
+      }else{                                                                   LOG_TRACE("track back idx(" << track.back()->framePtr->idx <<") < detection idx(" << detections[c]->framePtr->idx << ")");
       }
     }
     r++;
@@ -208,28 +209,25 @@ vector<long> OcvYoloDetection::_calcAssignmentVector(const TrackPtrList         
 *       and tracks that were assigned a detection are moved to assignedTracks
 *
 ***************************************************************************** */
-void OcvYoloDetection::_assignDetections2Tracks(TrackPtrList             &tracks,
-                                                DetectionLocationPtrVec  &detections,
+void OcvYoloDetection::_assignDetections2Tracks(TrackList                &tracks,
+                                                vector<unique_ptr<DetectionLocation>>  &detections,
                                                 const vector<long>       &assignmentVector,
-                                                TrackPtrList             &assignedTracks){
+                                                TrackList                &assignedTracks){
 
-  long t=0;
-  for(auto &track:tracks){
-    if(assignmentVector[t] != -1){                                              LOG_TRACE("assigning det: " << "f" << detections[assignmentVector[t]]->framePtr->idx << " " <<  ((MPFImageLocation)*(detections[assignmentVector[t]])) << " to track " << *track);
-      track->releaseOCVTracker();
-      track->push_back(move(detections.at(assignmentVector[t])));
-      track->kalmanCorrect();
-      assignedTracks.push_back(move(track));
+
+  assert(tracks.size() == assignmentVector.size());
+
+  auto trIter=tracks.begin();
+  for(long detIdx:assignmentVector){
+    if(detIdx != -1){                                                  LOG_TRACE("assigning det: " << "f" << detections[detIdx]->framePtr->idx << " " <<  ((MPFImageLocation)*(detections[detIdx])) << " to track " << *trIter);
+      trIter->releaseOCVTracker();
+      trIter->push_back(move(detections.at(detIdx)));
+      trIter->kalmanCorrect();
+      assignedTracks.splice(assignedTracks.end(),tracks,trIter++);
+    }else{
+      trIter++;
     }
-    t++;
   }
-
-  //remove tracks that received an assignment
-  tracks.erase(remove_if(tracks.begin(),
-                         tracks.end(),
-                         [](TrackPtr const& d){return !d;}),
-               tracks.end());
-
   // remove detections that were assigned to tracks
   detections.erase(remove_if(detections.begin(),
                              detections.end(),
@@ -249,14 +247,14 @@ void OcvYoloDetection::_assignDetections2Tracks(TrackPtrList             &tracks
 MPFImageLocationVec OcvYoloDetection::GetDetections(const MPFImageJob   &job) {
 
   try {                                                                        LOG_DEBUG( "[" << job.job_name << "Data URI = " << job.data_uri);
-    auto cfgPtr = make_shared<Config>(job);
-    if(cfgPtr->lastError != MPF_DETECTION_SUCCESS){
-      throw MPFDetectionException(cfgPtr->lastError,"failed to parse image job configuration parameters");
+    Config cfg(job);
+    if(cfg.lastError != MPF_DETECTION_SUCCESS){
+      throw MPFDetectionException(cfg.lastError,"failed to parse image job configuration parameters");
     }
-    DetectionLocation::loadNetToCudaDevice(cfgPtr->cudaDeviceId);
+    DetectionLocation::loadNetToCudaDevice(cfg.cudaDeviceId);
 
-    FramePtrVec framePtrs = cfgPtr->getImageFrames(1);  // only do one frame at a time for now
-    DetectionLocationPtrVecVec detectionsVec = DetectionLocation::createDetections(cfgPtr, framePtrs);
+    FramePtrVec framePtrs = cfg.getImageFrames(1);  // only do one frame at a time for now
+    DetectionLocationPtrVecVec detectionsVec = DetectionLocation::createDetections(cfg, framePtrs);
     assert(framePtrs.size() == detectionsVec.size());
 
     MPFImageLocationVecVec locationsVec;
@@ -265,7 +263,7 @@ MPFImageLocationVec OcvYoloDetection::GetDetections(const MPFImageJob   &job) {
       for(auto &det:detectionsVec[i]){
         MPFImageLocation loc = *det;
         det.reset();                    // release frame object
-        cfgPtr->ReverseTransform(loc);
+        cfg.ReverseTransform(loc);
         locations.push_back(loc);
       }
       locationsVec.push_back(locations);
@@ -338,124 +336,122 @@ MPFVideoTrack OcvYoloDetection::_convert_track(Track &track){
 MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
 
   MPFVideoTrackVec  mpf_tracks;
-  TrackPtrList      trackPtrs;
+  TrackList         tracks;
 
   try{
-    auto cfgPtr = make_shared<Config>(job);
-    if(cfgPtr->lastError != MPF_DETECTION_SUCCESS){
-      throw MPFDetectionException(cfgPtr->lastError,"failed to parse video job configuration parameters");
+    Config cfg(job);
+    if(cfg.lastError != MPF_DETECTION_SUCCESS){
+      throw MPFDetectionException(cfg.lastError,"failed to parse video job configuration parameters");
     }
 
-    DetectionLocation::loadNetToCudaDevice(cfgPtr->cudaDeviceId);
+    DetectionLocation::loadNetToCudaDevice(cfg.cudaDeviceId);
 
-    FramePtrVec framePtrs = cfgPtr->getVideoFrames(cfgPtr->frameBatchSize);
+    FramePtrVec framePtrs = cfg.getVideoFrames(cfg.frameBatchSize);            // get initial batch of frames
     do {                                                                       LOG_TRACE(".");
                                                                                LOG_TRACE("processing frames [" << framePtrs.front()->idx << "..." << framePtrs.back()->idx << "]");
       // do something clever with frame skipping here ?
       // detectTrigger++;
-      // detectTrigger = detectTrigger % (cfgPtr->detFrameInterval + 1);
+      // detectTrigger = detectTrigger % (cfg.detFrameInterval + 1);
 
 
-      DetectionLocationPtrVecVec detectionsVec = DetectionLocation::createDetections(cfgPtr, framePtrs); // look for new detections
+      DetectionLocationPtrVecVec detectionsVec = DetectionLocation::createDetections(cfg, framePtrs); // look for new detections
 
       assert(framePtrs.size() == detectionsVec.size());
       for(unsigned i=0; i<framePtrs.size(); i++){
 
-        // remove any tracks too far in the past
-        trackPtrs.remove_if([&](TrackPtr& tPtr){
-          if(framePtrs[i]->idx - tPtr->back()->framePtr->idx > cfgPtr->maxFrameGap){       LOG_TRACE("dropping old track: " << *tPtr);
-            mpf_tracks.push_back(_convert_track(*tPtr));
+        // remove and archive any tracks too far in the past from the active list
+        tracks.remove_if([&](Track& track){
+          if(framePtrs[i]->idx - track.back()->framePtr->idx > cfg.maxFrameGap){       LOG_TRACE("dropping old track: " << track);
+            mpf_tracks.push_back(_convert_track(track));
             return true;
           }
           return false;
         });
 
+        DetectionLocationCostFunc iouCostFunc;
         // advance kalman predictions
-        if(! cfgPtr->kfDisabled){
-          for(auto &trackPtr:trackPtrs){
-            trackPtr->kalmanPredict(framePtrs[i]->time);
+        if(! cfg.kfDisabled){
+          for(auto &track:tracks){
+            track.kalmanPredict(framePtrs[i]->time);
           }
         }
 
-        TrackPtrList assignedTracks;
+        TrackList assignedTracks;          // tracks that were assigned a detection in the current frame
 
-        if(detectionsVec[i].size() > 0){   // found some detections in current frame
-          if(trackPtrs.size() >= 0 ){  // not all tracks were dropped
-                                                                                            LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
+        if(!tracks.empty()){             // not all tracks were dropped
+                                                                                          LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << tracks.size() << " tracks");
 
-            // calculate forbidden assignmest based on classes
+          // calculate forbidden assignments based on classes
 
 
-             vector<long> av;
-            // intersection over union tracking and assignment
-            if(   detectionsVec[i].size() > 0
-               && cfgPtr->maxIOUDist      > 0){
-              if(! cfgPtr->kfDisabled){
-                av = _calcAssignmentVector<&DetectionLocation::kfIouDist>(trackPtrs,detectionsVec[i],cfgPtr->maxIOUDist,cfgPtr->maxClassDist,cfgPtr->maxKFResidual);
-              }else{
-                av = _calcAssignmentVector<&DetectionLocation::iouDist>(trackPtrs,detectionsVec[i],cfgPtr->maxIOUDist,cfgPtr->maxClassDist,cfgPtr->maxKFResidual);
-              }
-              _assignDetections2Tracks(trackPtrs, detectionsVec[i], av, assignedTracks);     LOG_TRACE("IOU assignment complete");
+            vector<long> av;  // assignment vector i.e. av[track_idx] = det_idx
+
+          // intersection over union tracking and assignment
+          if(!detectionsVec[i].empty() && cfg.maxIOUDist > 0){
+            if(! cfg.kfDisabled){
+              av = _calcAssignmentVector<&DetectionLocation::kfIouDist>(tracks,detectionsVec[i],cfg.maxIOUDist,cfg.maxClassDist,cfg.maxKFResidual);
+            }else{
+              av = _calcAssignmentVector<&DetectionLocation::iouDist>(tracks,detectionsVec[i],cfg.maxIOUDist,cfg.maxClassDist,cfg.maxKFResidual);
             }
-
-            // feature-based tracking tracking and assignment
-            if(   detectionsVec[i].size() > 0
-               && cfgPtr->maxFeatureDist  > 0){                                              LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
-              av = _calcAssignmentVector<&DetectionLocation::featureDist>(trackPtrs,detectionsVec[i],cfgPtr->maxFeatureDist,cfgPtr->maxClassDist,cfgPtr->maxKFResidual);
-              _assignDetections2Tracks(trackPtrs, detectionsVec[i], av, assignedTracks);     LOG_TRACE("Feature assignment complete");
-            }
-
-            // center-to-center distance tracking and assignment
-            if(   detectionsVec[i].size() > 0
-              &&  cfgPtr->maxCenterDist   > 0){                                              LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << trackPtrs.size() << " tracks");
-              av = _calcAssignmentVector<&DetectionLocation::center2CenterDist>(trackPtrs,detectionsVec[i],cfgPtr->maxCenterDist,cfgPtr->maxClassDist,cfgPtr->maxKFResidual);
-              _assignDetections2Tracks(trackPtrs, detectionsVec[i], av, assignedTracks);     LOG_TRACE("Center2Center assignment complete");
-            }
-
+            _assignDetections2Tracks(tracks, detectionsVec[i], av, assignedTracks);     LOG_TRACE("IOU assignment complete");
           }
 
-                                                                                      LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
-          // any detection not assigned up to this point becomes a new track
-          for(DetectionLocationPtr &det:detectionsVec[i]){                           // make any unassigned detections into new tracks
-            det->getDFTFeature();                                                    // start of tracks always get feature calculated
-            assignedTracks.push_back(unique_ptr<Track>(new Track(cfgPtr,move(det))));     LOG_TRACE("created new track " << *(assignedTracks.back()));
+          // feature-based tracking tracking and assignment
+          if(!detectionsVec[i].empty() && cfg.maxFeatureDist > 0){                                              LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << tracks.size() << " tracks");
+            av = _calcAssignmentVector<&DetectionLocation::featureDist>(tracks,detectionsVec[i],cfg.maxFeatureDist,cfg.maxClassDist,cfg.maxKFResidual);
+            _assignDetections2Tracks(tracks, detectionsVec[i], av, assignedTracks);     LOG_TRACE("Feature assignment complete");
           }
+
+          // center-to-center distance tracking and assignment
+          if(!detectionsVec[i].empty() && cfg.maxCenterDist > 0){                                              LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << tracks.size() << " tracks");
+            av = _calcAssignmentVector<&DetectionLocation::center2CenterDist>(tracks,detectionsVec[i],cfg.maxCenterDist,cfg.maxClassDist,cfg.maxKFResidual);
+            _assignDetections2Tracks(tracks, detectionsVec[i], av, assignedTracks);     LOG_TRACE("Center2Center assignment complete");
+          }
+
         }
 
-        if(!cfgPtr->mosseTrackerDisabled){
+                                                                                    LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
+        // any detection not assigned up to this point becomes a new track
+        for(DetectionLocationPtr &det:detectionsVec[i]){                           // make any unassigned detections into new tracks
+          det->getDFTFeature();                                       // start of tracks always get feature calculated
+
+          assignedTracks.push_back(Track(cfg, move(det)));                         LOG_TRACE("created new track " << assignedTracks.back());
+        }
+
+
+        if(!cfg.mosseTrackerDisabled){
           // check any tracks that didn't get a detection and use tracker to continue them if possible
-          for(auto &track:trackPtrs){  // track left have no detections in current frame, try tracking
-            DetectionLocationPtr detPtr = track->ocvTrackerPredict(framePtrs[i]);
+          for(auto &track:tracks){  // track left have no detections in current frame, try tracking
+            DetectionLocationPtr detPtr = track.ocvTrackerPredict(framePtrs[i]);
             if(detPtr){  // tracker returned something
-              if(detPtr->kfResidualDist(*track) <= cfgPtr->maxKFResidual){
-                track->push_back(move(detPtr));              // add new location as tracks's tail
-                track->kalmanCorrect();
+              if(detPtr->kfResidualDist(track) <= cfg.maxKFResidual){
+                track.push_back(move(detPtr));              // add new location as tracks's tail
+                track.kalmanCorrect();
               }
             }
           }
         }
 
-        // put all the tracks that were assigned a detection back into trackPtrs
-        for(auto& track:assignedTracks){
-          trackPtrs.push_back(move(track));
-        }
-        assignedTracks.clear();
+        // put all the tracks that were assigned a detection back into active tracks list
+        tracks.splice(tracks.end(),assignedTracks);
 
-      }                                                                        LOG_DEBUG( "[" << job.job_name << "] Number of tracks detected = " << trackPtrs.size());
-      framePtrs = cfgPtr->getVideoFrames(cfgPtr->frameBatchSize);
+      }                                                                        LOG_DEBUG( "[" << job.job_name << "] Number of tracks detected = " << tracks.size());
+
+      // grab next batch of frames
+      framePtrs = cfg.getVideoFrames(cfg.frameBatchSize);
     } while(framePtrs.size() > 0);
 
     // convert any remaining active tracks to MPFVideoTracks
-    for(auto &trackPtr:trackPtrs){
-      mpf_tracks.push_back(_convert_track(*trackPtr));
+    for(auto &track:tracks){
+      mpf_tracks.push_back(_convert_track(track));
     }
 
     // reverse transform all mpf tracks
     for(auto &mpf_track:mpf_tracks){
-      cfgPtr->ReverseTransform(mpf_track);
+      cfg.ReverseTransform(mpf_track);
     }
 
-    // sort tracks by start frame
+    // sort tracks by start frame, just to be nice :)
     sort(mpf_tracks.begin(),mpf_tracks.end(),
       [](const MPFVideoTrack &a, const MPFVideoTrack &b){
         return a.start_frame < b.start_frame;
@@ -467,7 +463,7 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
       ssOld << mpf_tracks[i].detection_properties["kf_id"];
       mpf_tracks[i].detection_properties.erase("kf_id");
       ssNew << setw(4) << setfill('0') << i << ".csv";
-      rename(ssOld.str().c_str(), ssNew.str().c_str());
+      rename(ssOld.str().c_str(), ssNew.str().c_str());                        LOG_TRACE(i << ":" << ssOld.str());
     }
     #endif
 

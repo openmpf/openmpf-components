@@ -70,19 +70,19 @@ namespace MPF{
       float    kfResidualDist(const Track &tr) const;   ///< comput kalman filter residual distance
 
       static bool                       Init();                                                                ///< setup class shared members
-      static DetectionLocationPtrVecVec createDetections(const ConfigPtr cfgPtr,const FramePtrVec &framePtrs); ///< created detection objects from image frame
+      static DetectionLocationPtrVecVec createDetections(const Config &cfg,const FramePtrVec &framePtrs); ///< created detection objects from image frame
       static bool                       loadNetToCudaDevice(const int cudaDeviceId);                           ///< load network to active CUDA device
       static cv::Rect2i snapToEdges(const cv::Rect2i& rt, const cv::Rect2i& rm,
                                     const cv::Size2i& frameSize, const float edgeSnapDist);                    ///< snap a rectangle to frame edges if close
 
-      DetectionLocation(const ConfigPtr   cfgPtr,
+      DetectionLocation(const Config     &cfg,
                         const FramePtr    frmPtr,
                         const cv::Rect2d  bbox,
                         const float       conf,
                         const cv::Point2f ctr,
                         const cv::Mat     classFeature);
 
-      DetectionLocation(const ConfigPtr   cfgPtr,
+      DetectionLocation(const Config     &cfg,
                         const FramePtr    frmPtr,
                         const cv::Rect2d  bbox,
                         const float       conf,
@@ -90,10 +90,11 @@ namespace MPF{
                         const cv::Mat     classFeature,
                         const cv::Mat     dftFeature);
 
+     // ~DetectionLocation(){LOG_TRACE("destroying detection:" << this);}
 
     private:
 
-      const ConfigPtr     _cfgPtr;               ///< job configuration and shared config state
+      const Config       &_cfg;                  ///< job configuration and shared config state
       const cv::Mat       _classFeature;         ///< unit vector of with elements proportional to scores for each classes
       mutable cv::Mat     _dftFeature;           ///< dft for matching-up detections via phase correlation
 

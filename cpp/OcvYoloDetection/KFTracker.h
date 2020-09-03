@@ -51,8 +51,7 @@ namespace MPF{
 
         void predict(const float t);                ///< advance Kalman state to time t and get predicted bbox
         void correct(const cv::Rect2i &rec);        ///< correct current filter state with measurement rec
-        float testResidual(const cv::Rect2i &rec,const float snapDist);  ///< return a normalized error if rec is assigned
-
+        float testResidual(const cv::Rect2i &rec,const float snapDist) const;  ///< return a normalized error if rec is assigned
         KFTracker(const float t,
                   const float dt,
                   const cv::Rect2i &rec0,
@@ -60,18 +59,24 @@ namespace MPF{
                   const cv::Mat1f &rn,
                   const cv::Mat1f &qn);
 
-        #ifdef KFDUMP_STATE
-          void dump(string filename);
-          stringstream _state_trace;
-          friend ostream& operator<< (ostream& out, const KFTracker& kft);
-        #endif
+        KFTracker(KFTracker &&t):_kf(move(t._kf)),
+                                 _t(t._t),
+                                 _dt(t._dt),
+                                 _roi(move(t._roi)),
+                                 _qn(move(t._qn)),
+                                 _state_trace(t._state_trace.str()){}
+
+        // diagnostic output function for debug/tuning
+        void dump(string filename);
+        friend ostream& operator<< (ostream& out, const KFTracker& kft);
 
       private:
-        cv::KalmanFilter           _kf;        ///< kalman filter for bounding box
-        float                      _t;         ///< time corresponding to kalman filter state
-        float                      _dt;        ///< time step to use for filter updates
-        const cv::Rect2i           _roi;       ///< canvas clipping limits for bboxes returned by filter
-        const cv::Mat1f            _qn;        ///< kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
+        mutable cv::KalmanFilter _kf;          ///< kalman filter for bounding box
+        float                    _t;           ///< time corresponding to kalman filter state
+        float                    _dt;          ///< time step to use for filter updates
+        cv::Rect2i               _roi;         ///< canvas clipping limits for bboxes returned by filter
+        cv::Mat1f                _qn;          ///< kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
+        stringstream             _state_trace; ///< time series of states for csv file output supporting debug/tuning
 
         static cv::Mat1f      _measurementFromBBox(const cv::Rect2i& r);
         static cv::Rect2i     _bboxFromState(const cv::Mat1f& state);

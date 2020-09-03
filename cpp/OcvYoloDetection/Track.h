@@ -56,26 +56,32 @@ namespace MPF{
         const size_t                         size()      const {return _locationPtrs.size();}
         DetectionLocationPtrVec::iterator    begin()           {return _locationPtrs.begin();}
         DetectionLocationPtrVec::iterator    end()             {return _locationPtrs.end();}
-        void                                 push_back(DetectionLocationPtr d);
+        void                                 push_back(DetectionLocationPtr&& d);
 
         void             kalmanPredict(float t);
         void             kalmanCorrect();
         float            testResidual(DetectionLocation const& d) const;
-        const cv::Rect2i kalmanPredictedBox()            const {return _kfPtr->predictedBBox();}
+        const cv::Rect2i kalmanPredictedBox()            const {return _kf.predictedBBox();}
 
         #ifdef KFDUMP_STATE
-        void             kalmanDump(string filename){if(!_cfgPtr->kfDisabled) _kfPtr->dump(filename);}
+        void             kalmanDump(string filename){if(!_cfg.kfDisabled) _kf.dump(filename);}
         #endif
 
-        Track(const ConfigPtr cfgPtr,DetectionLocationPtr detPtr);
+        Track(const Config &cfg, DetectionLocationPtr detPtr);
+        Track(Track &&t):_cfg(t._cfg),
+                         _locationPtrs(move(t._locationPtrs)),
+                         _ocvTrackerPtr(move(t._ocvTrackerPtr)),
+                         _ocvTrackerStartFrameIdx(t._ocvTrackerStartFrameIdx),
+                         _kf(move(t._kf)){
+                           //for(auto &locPtr:t._locationPtrs) _locationPtrs.push_back(move(locPtr));
+                         }
 
       private:
-        const ConfigPtr         _cfgPtr;
+        const Config                 &_cfg;
         DetectionLocationPtrVec _locationPtrs;                 ///< vector of pointers to locations  making up track
         cv::Ptr<cv::Tracker>    _ocvTrackerPtr;                ///< openCV tracker to help bridge gaps when detector fails
         size_t                  _ocvTrackerStartFrameIdx;      ///< frame index at which the tracker was initialized
-
-        unique_ptr<KFTracker>   _kfPtr;                        ///< kalman filter tracker
+        KFTracker              _kf;                            ///< kalman filter tracker
 
     };
 
