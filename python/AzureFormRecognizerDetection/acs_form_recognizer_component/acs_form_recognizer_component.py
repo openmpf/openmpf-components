@@ -46,6 +46,7 @@ import mpf_component_util as mpf_util
 
 logger = mpf.configure_logging('acs-form-recognizer-detection.log', __name__ == '__main__')
 
+
 class AcsFormRecognizerComponent(mpf_util.ImageReaderMixin, object):
     detection_type = 'TEXT'
 
@@ -78,6 +79,7 @@ class AcsFormRecognizerComponent(mpf_util.ImageReaderMixin, object):
             logger.exception('[%s] Failed to complete job due to the following exception:', image_job.job_name)
             raise
 
+
 class JobRunner(object):
     """ Class process a single job and hold its configuration info. """
 
@@ -109,6 +111,7 @@ class JobRunner(object):
         # Extract text results.
         page_num = 0
         detections = []
+
         for page in form_results_json['analyzeResult']['readResults']:
             page_num = page['page'] - 1
             line_num = 0
@@ -123,7 +126,7 @@ class JobRunner(object):
                     line_num += 1
                 else:
                     lines.append(line["text"])
-            if self._merge_lines:
+            if self._merge_lines and len(lines) > 0:
                 detection_properties = dict(OUTPUT_TYPE = "MERGED_LINES",
                                             PAGE_NUM = str(page_num),
                                             TEXT = "\n".join(lines))
@@ -145,7 +148,7 @@ class JobRunner(object):
                     writer.writerow(row)
                 cs_output = output.getvalue()
                 output.close()
-                print("Adding table result")
+
                 detection_properties = dict(OUTPUT_TYPE = "TABLE",
                                             PAGE_NUM=str(page_num),
                                             TABLE_NUM = str(table_num),
@@ -162,8 +165,6 @@ class JobRunner(object):
         form_results_json = self._post_to_acs(pdf_content)
 
         return self._process_image_results(form_results_json)
-
-
 
     def get_image_detections(self, frames):
         """

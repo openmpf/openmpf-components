@@ -1,0 +1,12 @@
+{"status": "succeeded",
+ "createdDateTime": "2020-09-04T20:19:30Z",
+ "lastUpdatedDateTime": "2020-09-04T20:19:36Z",
+ "analyzeResult": {"version": "2.0.0",
+  "readResults": [{"page": 1,
+    "language": "en",
+    "angle": 0,
+    "width": 60,
+    "height": 60,
+    "unit": "pixel",
+    "lines": []}],
+  "pageResults": [{"page": 1, "tables": []}]}}

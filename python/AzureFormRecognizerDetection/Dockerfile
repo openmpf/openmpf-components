@@ -35,9 +35,9 @@ COPY . .
 
 RUN install-component.sh
 
-#TODO:
-#ARG RUN_TESTS=false
-#RUN if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs.py; fi
+
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs.py; fi
 
 
 
