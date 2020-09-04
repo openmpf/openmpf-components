@@ -100,26 +100,24 @@ private:
 
 
     // Sets the location parameter to a MPFImageLocation if a detection is found in the input frame.
-    std::unique_ptr<MPF::COMPONENT::MPFImageLocation> getDetection(
-            OcvDnnDetection::OcvDnnJobConfig &config, const cv::Mat &input_frame) const;
+    std::unique_ptr<MPF::COMPONENT::MPFImageLocation> getDetection(OcvDnnJobConfig &config,
+                                                                   const cv::Mat &input_frame) const;
 
     template <typename Tracker>
-    std::vector<MPF::COMPONENT::MPFVideoTrack> getDetections(
-            const MPF::COMPONENT::MPFVideoJob &job, Tracker tracker) const;
+    std::vector<MPF::COMPONENT::MPFVideoTrack> getDetections(const MPF::COMPONENT::MPFVideoJob &job,
+                                                             Tracker tracker) const;
 
 
-    static void getNetworkOutput(
-            OcvDnnJobConfig &config,
-            const cv::Mat &input_frame,
-            cv::Mat &output_layer,
-            std::vector<std::pair<std::string, cv::Mat>> &activation_layer_info,
-            std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_info);
+    static void getNetworkOutput(OcvDnnJobConfig &config,
+                                 const cv::Mat &input_frame,
+                                 cv::Mat &output_layer,
+                                 std::vector<std::pair<std::string, cv::Mat>> &activation_layer_info,
+                                 std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_info);
 
 
     // struct to hold configuration options and data structures that change every job.
     struct OcvDnnJobConfig {
     public:
-//        MPF::COMPONENT::MPFDetectionError error;
         std::vector<std::string> class_names;
         cv::dnn::Net net;
 
@@ -147,9 +145,9 @@ private:
         std::vector<SpectralHashInfo> spectral_hash_info;
         std::vector<std::string> bad_hash_file_names;
 
-
         int number_of_classifications;
         double confidence_threshold;
+        std::string classification_type;
 
         OcvDnnJobConfig(const MPF::COMPONENT::Properties &props,
                        const MPF::COMPONENT::ModelsIniParser<ModelSettings> &model_parser,
