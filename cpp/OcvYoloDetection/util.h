@@ -23,39 +23,20 @@
  * See the License for the specific language governing permissions and        *
  * limitations under the License.                                             *
  ******************************************************************************/
-#ifndef OCVYOLODETECTION_FRAME_H
-#define OCVYOLODETECTION_FRAME_H
+#ifndef OCVYOLODETECTION_UTIL_H
+#define OCVYOLODETECTION_UTIL_H
 
 #include <opencv2/opencv.hpp>
-#include "types.h"
-#include "Config.h"
 
 namespace MPF{
  namespace COMPONENT{
 
     using namespace std;
 
-    /* **************************************************************************
-    *  Represent a frame with time stamp
-    *************************************************************************** */
-     class Frame{
-       public:
-         size_t  idx=0;                 ///< index of frame
-         double  time=0;                ///< time of current frame in sec
-         double  timeStep=0;            ///< time interval between frames in sec
-         cv::Mat bgr;                   ///< bgr image frame
-
-         cv::Rect2i getRect() const { return cv::Rect2i(0,0,bgr.cols-1,bgr.rows-1); }
-
-         Frame(){};
-         Frame(size_t idx, double time, double timeStep, cv::Mat bgr):
-           idx(idx),
-           time(time),
-           timeStep(timeStep),
-           bgr(bgr){};
-     };
+    cv::Rect2i snapToEdges(const cv::Rect2i& rt, const cv::Rect2i& rm,
+                           const cv::Size2i& frameSize, const float edgeSnapDist);                    ///< snap a rectangle to frame edges if close
 
    }
-}
+ }
 
 #endif

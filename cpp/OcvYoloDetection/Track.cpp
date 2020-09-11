@@ -24,6 +24,7 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include "util.h"
 #include "Track.h"
 
 using namespace MPF::COMPONENT;
@@ -31,24 +32,16 @@ using namespace MPF::COMPONENT;
 string format(cv::Mat m);
 
 /** ***************************************************************************
-*  Constructor
-*
-* \param detPtr a 1st detection to add to the new track
-* \param cfg    job struct to initialize kalman filter params from
-*
+ *
 **************************************************************************** */
-Track::Track(const Config &cfg, unique_ptr<DetectionLocation> detPtr):
-  _cfg(cfg),
-  _kf(detPtr->framePtr->time,
-      detPtr->framePtr->timeStep,
-      detPtr->getRect(),
-      cv::Rect2i(0,0,detPtr->framePtr->bgr.cols-1,
-                     detPtr->framePtr->bgr.rows-1),
-      cfg.RN,
-      cfg.QN){
-  _locationPtrs.push_back(move(detPtr));
+void Track::kalmanInit(const float t,
+                       const float dt,
+                       const cv::Rect2i &rec0,
+                       const cv::Rect2i &roi,
+                       const cv::Mat1f &rn,
+                       const cv::Mat1f &qn){
+  _kfPtr = unique_ptr<KFTracker>(new KFTracker(t,dt,rec0,roi,rn,qn));
 }
-
 
 /** **************************************************************************
 *  Get a new DetectionLocation from an existing one based on a frame
@@ -60,54 +53,44 @@ Track::Track(const Config &cfg, unique_ptr<DetectionLocation> detPtr):
 * \note    tracker is passed on to the new location on success
 *
 **************************************************************************** */
-DetectionLocationPtr Track::ocvTrackerPredict(const FramePtr &framePtr){
+ bool Track::ocvTrackerPredict(const Frame &frame, const long maxFrameGap, cv::Rect2i &prediction){
 
   if(_ocvTrackerPtr.empty()){   // initialize a new tracker if we don't have one already
-    cv::Rect2i bbox    = _locationPtrs.back()->getRect();
-    cv::Rect2i overlap =  bbox & cv::Rect2i(0,0,_locationPtrs.back()->framePtr->bgr.cols -1,
-                                                _locationPtrs.back()->framePtr->bgr.rows -1);
+    cv::Rect2i bbox    = locations.back().getRect();
+    cv::Rect2i overlap =  bbox & cv::Rect2i(0,0,locations.back().frame.bgr.cols -1,
+                                                locations.back().frame.bgr.rows -1);
      if(overlap.width > 1 && overlap.height > 1){
        _ocvTrackerPtr = cv::TrackerMOSSE::create();                            // could try different trackers here. e.g. cv::TrackerKCF::create();
-       _ocvTrackerPtr->init(_locationPtrs.back()->framePtr->bgr, bbox);        LOG_TRACE("tracker created for " << (MPFImageLocation)*_locationPtrs.back());
-       _ocvTrackerStartFrameIdx = framePtr->idx;
-    }else{                                                                     LOG_TRACE("can't create tracker created for " << (MPFImageLocation)*_locationPtrs.back());
-      return nullptr;
+       _ocvTrackerPtr->init(locations.back().frame.bgr, bbox);                 LOG_TRACE("tracker created for " << (MPFImageLocation)locations.back());
+       _ocvTrackerStartFrameIdx = frame.idx;
+    }else{                                                                     LOG_TRACE("can't create tracker created for " << (MPFImageLocation)locations.back());
+      return false;
     }
   }
 
-  cv::Rect2d p;
-  DetectionLocationPtr detPtr;
-  if(framePtr->idx -_ocvTrackerStartFrameIdx <= _cfg.maxFrameGap){
-    if(_ocvTrackerPtr->update(framePtr->bgr, p)){
-      cv::Point2f center(p.tl() + cv::Point2d(p.size()) / 2.0);
-      center.x /= static_cast<float>(framePtr->bgr.cols);
-      center.y /= static_cast<float>(framePtr->bgr.rows);
-      detPtr = DetectionLocationPtr(
-                 new DetectionLocation(_cfg, framePtr, p, 0.0, center,
-                                       _locationPtrs.back()->getClassFeature(),
-                                       _locationPtrs.back()->getDFTFeature()));     LOG_TRACE("tracking " << (MPFImageLocation)*_locationPtrs.back() << " to " << (MPFImageLocation)*detPtr);
-//      detPtr->copyFeature(*(_locationPtrs.back()));
-    }else{
-                                                                               LOG_TRACE("could not track " << (MPFImageLocation)*_locationPtrs.back() << " to new location");
+  if(frame.idx -_ocvTrackerStartFrameIdx <= maxFrameGap){
+    cv::Rect2d pred;
+    if(_ocvTrackerPtr->update(frame.bgr, pred)){
+      prediction.x      = static_cast<int>(pred.x      + 0.5);                 // handle rounding
+      prediction.y      = static_cast<int>(pred.y      + 0.5);
+      prediction.width  = static_cast<int>(pred.width  + 0.5);
+      prediction.height = static_cast<int>(pred.height + 0.5);                 LOG_TRACE("tracking " << (MPFImageLocation)locations.back() << " to " << prediction);
+      return true;
+    }else{                                                                     LOG_TRACE("could not track " << (MPFImageLocation)locations.back() << " to new location");
     }
-  }else{
-                                                                               LOG_TRACE("extrapolation tracking stopped" << (MPFImageLocation)*_locationPtrs.back() << " frame gap = " << framePtr->idx - _ocvTrackerStartFrameIdx << " > " <<  _cfg.maxFrameGap);
-  }
-  return detPtr;
+  }                                                                            LOG_TRACE("extrapolation tracking stopped" << (MPFImageLocation)locations.back() << " frame gap = " << frame.idx - _ocvTrackerStartFrameIdx << " > " <<  maxFrameGap);
+  return false;
 }
 
 /** **************************************************************************
-* Add detection pointer to the end of the track
-*
-* \param d pointer to the detection to append to the track
-*
-* \note the previous track tail will have its image frame released
-*************************************************************************** */
-void Track::push_back(DetectionLocationPtr&& d){
 
-  assert(!_locationPtrs.empty());
-  //const_cast<cv::Mat&>(_locationPtrs.back()->framePtr->bgr).release();          // don't access pixels after this...
-  _locationPtrs.push_back(move(d));
+*************************************************************************** */
+const cv::Rect2i Track::predictedBox() const {
+  if(_kfPtr){
+    return _kfPtr->predictedBBox();
+  }else{
+    return locations.back().getRect();
+  }
 }
 
 /** **************************************************************************
@@ -116,41 +99,37 @@ void Track::push_back(DetectionLocationPtr&& d){
  * \param t time in sec to which kalamn filter state is advanced to
  *
 *************************************************************************** */
-void Track::kalmanPredict(float t){
-  _kf.predict(t);
+void Track::kalmanPredict(const float t, const float edgeSnap){
+  if(_kfPtr){
+    _kfPtr->predict(t);
 
-  // make frame edges "sticky"
-  _kf.setStatePreFromBBox(DetectionLocation::snapToEdges(
-    _locationPtrs.back()->getRect(),
-    _kf.predictedBBox(),
-    _locationPtrs.back()->framePtr->bgr.size(),
-    _cfg.edgeSnapDist));
-
-                                                            LOG_TRACE("kf pred:" << _locationPtrs.back()->getRect() << " => " << _kf.predictedBBox());
+    // make frame edges "sticky"
+    _kfPtr->setStatePreFromBBox(
+      snapToEdges(locations.back().getRect(),_kfPtr->predictedBBox(),
+                  locations.back().frame.bgr.size(), edgeSnap));           LOG_TRACE("kf pred:" << locations.back().getRect() << " => " << _kfPtr->predictedBBox());
+  }
 }
 
 /** **************************************************************************
  * apply kalman correction to tail detection using tail's measurement
 *************************************************************************** */
-void Track::kalmanCorrect(){
-  if(!_cfg.kfDisabled){                                                        LOG_TRACE("kf meas:" << _locationPtrs.back()->getRect());
-    _kf.correct(_locationPtrs.back()->getRect());
+void Track::kalmanCorrect(const float edgeSnap){
+  if(_kfPtr){                                                                  LOG_TRACE("kf meas:" << locations.back().getRect());
+    _kfPtr->correct(locations.back().getRect());
 
-    _kf.setStatePostFromBBox(DetectionLocation::snapToEdges(
-      _locationPtrs.back()->getRect(),
-      _kf.correctedBBox(),
-      _locationPtrs.back()->framePtr->bgr.size(),
-      _cfg.edgeSnapDist));
+    _kfPtr->setStatePostFromBBox(
+      snapToEdges(locations.back().getRect(),_kfPtr->correctedBBox(),
+                  locations.back().frame.bgr.size(), edgeSnap));
 
-    _locationPtrs.back()->setRect(_kf.correctedBBox());                    LOG_TRACE("kf corr:" << _locationPtrs.back()->getRect());
+    locations.back().setRect(_kfPtr->correctedBBox());                         LOG_TRACE("kf corr:" << locations.back().getRect());
   }
 }
 
 /** **************************************************************************
 *************************************************************************** */
-float Track::testResidual(DetectionLocation const& d) const{
-  if(!_cfg.kfDisabled){
-    return _kf.testResidual(d.getRect(),_cfg.edgeSnapDist);
+float Track::testResidual(const cv::Rect2i bbox, const float edgeSnap) const{
+  if(_kfPtr){
+    return _kfPtr->testResidual(bbox, edgeSnap);
   }else{
     return 0.0;
   }

@@ -46,7 +46,7 @@
   </appender>
 
   <logger name="OcvYoloDetection" additivity="false">
-    <level value="TRACE"/>
+    <level value="DEBUG"/>
     <appender-ref ref="OCV-YOLO-DETECTION-FILE"/>
     <appender-ref ref="Console"/>
   </logger>

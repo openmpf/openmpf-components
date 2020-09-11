@@ -249,53 +249,56 @@ TEST(OcvYoloDetection, TestCorrelator) {
     GOUT("Input Image:\t"       << image_file);
 
     Config cfg(MPFImageJob("Testing", image_file, { }, { }));
-    FramePtrVec framePtrs = cfg.getImageFrames(1);
-    EXPECT_FALSE(framePtrs[0]->bgr.empty()) << "Could not load:" << image_file;
+    FrameVec framesVec = {cfg.getImageFrame()};
+    EXPECT_FALSE(framesVec[0].bgr.empty()) << "Could not load:" << image_file;
 
 
-    DetectionLocationPtrVecVec detections = DetectionLocation::createDetections(cfg, framePtrs);
+    DetectionLocationListVec detections = DetectionLocation::createDetections(cfg, framesVec);
     EXPECT_FALSE(detections[0].empty());
 
-    DetectionLocationPtr dogPtr;
-    cv::Point2d center;
-    for(auto& detPtr:detections[0]){
-      if(detPtr->detection_properties["CLASSIFICATION"]=="dog"){
-        dogPtr = move(detPtr);
-        center = cv::Point2d(dogPtr->getRect().tl() + dogPtr->getRect().br()) / 2;
-        GOUT("Found:\t" << dogPtr->detection_properties["CLASSIFICATION"]
-                        << "  " << dogPtr->getRect()
-                        << " centered at " << center
-                        << " with conf:" << dogPtr->confidence);
+    DetectionLocationList::iterator dogItr=detections[0].begin();
+    while(dogItr != detections[0].end()){
+      if(dogItr->detection_properties["CLASSIFICATION"]=="dog"){
+        GOUT("Found:\t" << dogItr->detection_properties["CLASSIFICATION"]
+                        << "  " << dogItr->getRect()
+                        << " centered at " << (dogItr->getRect().tl() + dogItr->getRect().br()) / 2.0
+                        << " with conf:" << dogItr->confidence);
+        break;
       }
+      dogItr++;
     }
-    EXPECT_TRUE(dogPtr != NULL) << "Could not find dog in image.";
+    EXPECT_TRUE(dogItr != detections[0].end()) << "Could not find dog in image.";
     cv::Point2d offset = cv::Point2d(15.5,22.5);
-    cv::Size2d size(dogPtr->width*0.95,dogPtr->height*0.95);
+    cv::Size2d size(dogItr->width*0.95,dogItr->height*0.95);
+    cv::Point2d center(cv::Point2d(dogItr->getRect().tl() + dogItr->getRect().br()) / 2.0);
     cv::Mat dog;
-    cv::getRectSubPix(dogPtr->framePtr->bgr, size, center+offset, dog);
+    cv::getRectSubPix(dogItr->frame.bgr, size, center + offset, dog);
     cv::imwrite("correlationPatch.png", dog);
 
     Frame frame;
-    frame.bgr = cv::Mat::zeros(dogPtr->framePtr->bgr.size(),dogPtr->framePtr->bgr.type());
-    cv::Rect2i pasteRoi(cv::Point2i(frame.bgr.size() - dog.size())/2, dog.size());
+    frame.bgr = cv::Mat::zeros(dogItr->frame.bgr.size(),dogItr->frame.bgr.type());
+    cv::Rect2i pasteRoi(cv::Point2i(frame.bgr.size() - dog.size()) / 2, dog.size());
     dog.copyTo(frame.bgr(pasteRoi));
     cv::imwrite("correlationFrame.png",frame.bgr);
 
+    Track t;
+    t.locations.push_back(
+      DetectionLocation(cfg,
+                        frame,
+                        pasteRoi,
+                        0.97,
+                        dogItr->getClassFeature(),
+                        cv::Mat()));
+    GOUT("Shift image " << t.locations.back().getRect() << " centered at " << (t.locations.back().getRect().tl()+t.locations.back().getRect().br())/2.0);
 
-    DetectionLocationPtr dogPtr2;
-    dogPtr2 = DetectionLocationPtr(new DetectionLocation(
-      cfg,make_shared<Frame>(frame),pasteRoi,0.97,cv::Point2f(0.5,0.5),dogPtr->getClassFeature()));
-    GOUT("Shift image " << dogPtr2->getRect() << " centered at " << (dogPtr2->getRect().tl()+dogPtr2->getRect().br())/2);
 
-    Track t(cfg, move(dogPtr2));
-
-    cv::Point2d ph_offset =  dogPtr->_phaseCorrelate(t);
+    cv::Point2d ph_offset =  dogItr->_phaseCorrelate(t);
     cv::Point2d diff = (offset + ph_offset);
     double dist = sqrt(diff.dot(diff));
     GOUT("phase correlation found offset:" << ph_offset << " at a distance of " << dist << " pixels");
     EXPECT_LE(dist,2.0);
 
-    float feature_dist = dogPtr->featureDist(t);
+    float feature_dist = dogItr->featureDist(t);
     GOUT("feature distance: "<< feature_dist );
     EXPECT_LE(feature_dist,1E-3);
 
@@ -336,7 +339,10 @@ TEST(OcvYoloDetection, TestOnKnownImage) {
     ASSERT_TRUE(ReadDetectionsFromFile::ReadImageLocations(known_detections_file, known_detections));
 
 
-    MPFImageJob image_job("Testing", known_image_file, { }, { });
+    MPFImageJob image_job("Testing", known_image_file, {{"DETECTION_CONFIDENCE_THRESHOLD","0.3"},
+                                                        {"DETECTION_NMS_THRESHOLD","0.5"},
+                                                        {"DETECTION_IMAGE_SIZE","320"}},
+                                                       {});
     vector<MPFImageLocation> found_detections = detection->GetDetections(image_job);
     EXPECT_FALSE(found_detections.empty());
 

@@ -77,7 +77,9 @@ IF(CUDA_FOUND)
 ENDIF(CUDA_FOUND)
 
 set(OCV_YOLO_DETECTION_SOURCE_FILES
+        util.cpp
         Config.cpp
+        Frame.cpp
         DetectionLocation.cpp
         Track.cpp
         KFTracker.cpp

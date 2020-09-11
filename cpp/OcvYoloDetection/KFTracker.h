@@ -51,7 +51,7 @@ namespace MPF{
 
         void predict(const float t);                ///< advance Kalman state to time t and get predicted bbox
         void correct(const cv::Rect2i &rec);        ///< correct current filter state with measurement rec
-        float testResidual(const cv::Rect2i &rec,const float snapDist) const;  ///< return a normalized error if rec is assigned
+        float testResidual(const cv::Rect2i &rec, const int snapDist) const;  ///< return a normalized error if rec is assigned
         KFTracker(const float t,
                   const float dt,
                   const cv::Rect2i &rec0,

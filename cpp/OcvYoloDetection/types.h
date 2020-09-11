@@ -50,9 +50,12 @@ namespace MPF{
   typedef vector<string>                  stringVec;                   ///< vector of strings
   typedef vector<float>                   floatVec;                    ///< vector of floats
   typedef vector<int>                     intVec;                      ///< vector of integers
+
   typedef vector<MPFVideoTrack>           MPFVideoTrackVec;            ///< vector of MPFVideoTracks
   typedef vector<MPFImageLocation>        MPFImageLocationVec;         ///< vector of MPFImageLocations
   typedef vector<MPFImageLocationVec>     MPFImageLocationVecVec;      ///< vector of MPFImageLocations vectors
+
+  typedef cv::Point3_<uint8_t>            cvPixel;                     ///< image pixel type used by images
   typedef vector<cv::Mat>                 cvMatVec;                    ///< vector of OpenCV matrices/images
   typedef vector<cvMatVec>                cvMatVecVec;                 ///< vector of OpenCV matrices vectors
   typedef vector<cv::Rect2d>              cvRect2dVec;                 ///< vector of OpenCV rectangles
@@ -60,15 +63,18 @@ namespace MPF{
   typedef vector<cv::Point2f>             cvPoint2fVec;                ///< vector of OpenCV 2D float points
   typedef vector<cvPoint2fVec>            cvPoint2fVecVec;             ///< vector of vectors of OpenCV 2D float points
 
-  typedef cv::Point3_<uint8_t>            cvPixel;                     ///< image pixel type used by images
-  typedef unique_ptr<DetectionLocation>   DetectionLocationPtr;        ///< DetectionLocation pointers
-  typedef vector<DetectionLocationPtr>    DetectionLocationPtrVec;     ///< vector of DetectionLocation pointers
-  typedef vector<DetectionLocationPtrVec> DetectionLocationPtrVecVec;  ///< vector of DetectionLocation pointers vectors
-  //typedef unique_ptr<Track>               TrackPtr;                    ///< pointer to a track
-  //typedef list<TrackPtr>                  TrackPtrList;                ///< list of track pointers
+  typedef list<DetectionLocation>         DetectionLocationList;       ///< list of detection locations
+  //typedef unique_ptr<DetectionLocation>   DetectionLocationPtr;        ///< DetectionLocation pointers
+  //typedef vector<DetectionLocationPtr>    DetectionLocationPtrVec;     ///< vector of DetectionLocation pointers
+  typedef vector<DetectionLocationList>   DetectionLocationListVec;    ///< vector of DetectionLocation Lists
+
+  typedef vector<DetectionLocation>       DetectionLocationVec;        ///< vector of DetectionLocations
+
   typedef list<Track>                     TrackList;                   ///< list of tracks
-  typedef shared_ptr<const Frame>         FramePtr;                    ///< frame pointer
-  typedef vector<FramePtr>                FramePtrVec;                 ///< vector for Frame pointers
+
+  //typedef shared_ptr<const Frame>         FramePtr;                    ///< frame pointer
+  //typedef vector<FramePtr>                FramePtrVec;                 ///< vector for Frame pointers
+  typedef vector<Frame>                   FrameVec;                    ///< vector for Frames
 
   /** ****************************************************************************
    *  print out opencv matrix on a single line

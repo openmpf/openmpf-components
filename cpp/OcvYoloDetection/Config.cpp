@@ -172,23 +172,18 @@ Config::Config(const MPFImageJob &job):
 /** **************************************************************************
 *  Read image.
 *
-* \param numImages the number of frames to attempt to read.
 *
 * \returns all frames read in a vector of pointers
 *
 *************************************************************************** */
-FramePtrVec Config::getImageFrames(int numImages = 1) const{
-  assert(numImages == 1);  // only one image at a time is implemented
+Frame Config::getImageFrame() const{
 
-  FramePtrVec frames;
-  Frame nextFrame;
-  auto framePtr = make_shared<Frame>();
-  framePtr->bgr = _imreaderPtr->GetImage();
-  if(framePtr->bgr.empty()){
+  Frame frame;
+  frame.bgr = _imreaderPtr->GetImage();
+  if(frame.bgr.empty()){
     throw MPF_IMAGE_READ_ERROR;
-  }
-  frames.push_back(framePtr);                                                  LOG_DEBUG( "image = " << frames.back()->bgr.size());
-  return frames;
+  }                                                                            LOG_DEBUG( "image = " << frame.bgr.size());
+  return frame;
 }
 
 /** **************************************************************************
@@ -217,17 +212,16 @@ Config::Config(const MPFVideoJob &job):
 * \returns all frames read in a vector of pointers
 *
 *************************************************************************** */
-FramePtrVec Config::getVideoFrames(int numFrames = 1) const {
-  FramePtrVec frames;
-  Frame nextFrame;
+FrameVec Config::getVideoFrames(int numFrames = 1) const {
+  FrameVec frames;
+  frames.reserve(numFrames);
   for(int i=0; i<numFrames;i++){
-    auto framePtr = make_shared<Frame>();
-    framePtr->idx      =         _videocapPtr->GetCurrentFramePosition();
-    framePtr->time     = 0.001 * _videocapPtr->GetCurrentTimeInMillis() ;
-    framePtr->timeStep = 1.0   / _videocapPtr->GetFrameRate();
-    if(_videocapPtr->Read(framePtr->bgr)){
-      frames.push_back(framePtr);
-    }else{
+    frames.push_back(Frame(_videocapPtr->GetCurrentFramePosition(),
+                           _videocapPtr->GetCurrentTimeInMillis() * 0.001,
+                            1.0   / _videocapPtr->GetFrameRate(),
+                            cv::Mat()));
+    if(!_videocapPtr->Read(frames.back().bgr)){
+      frames.pop_back();
       break;
     }
   }

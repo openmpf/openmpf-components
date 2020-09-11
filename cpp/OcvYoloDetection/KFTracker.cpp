@@ -214,7 +214,7 @@ void KFTracker::correct(const cv::Rect2i &rec){
  * [ x,vx,ax, y,vy,ay, w,wv,aw, h,vh,ah] to roi(x,y,w,h)
  *   0  1  2  3  4  5  6  7  8  9 10 11
 *************************************************************************** */
-float KFTracker::testResidual(const cv::Rect2i &rec, const float edgeSnapDist) const{
+float KFTracker::testResidual(const cv::Rect2i &rec, const int edgeSnapDist) const{
   // backup variables
   cv::Mat1f gain          = _kf.gain.clone();
   cv::Mat1f statePost     = _kf.statePost.clone();

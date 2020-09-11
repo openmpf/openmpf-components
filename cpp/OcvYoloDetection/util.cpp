@@ -23,39 +23,44 @@
  * See the License for the specific language governing permissions and        *
  * limitations under the License.                                             *
  ******************************************************************************/
-#ifndef OCVYOLODETECTION_FRAME_H
-#define OCVYOLODETECTION_FRAME_H
+#include "util.h"
 
-#include <opencv2/opencv.hpp>
-#include "types.h"
-#include "Config.h"
+using namespace MPF::COMPONENT;
 
-namespace MPF{
- namespace COMPONENT{
+/** **************************************************************************
+* If a test rectange is within snapDist from frame edges then change another
+* rectangel to touch the corresponding frame edges
+*
+* \param   rt           rectangle to for snap distance test
+* \param   rm           rectangle to change and return
+* \param   frame        frame whose edges to snap to
+* \param   edgeSnapDist max distance in pixels from the edge for a snap
+*
+* \returns altered 'rm' rectangle that is touching the frame edges if snapped
+*          or the original rectangle 'rm' if no snap happened
+*
+*************************************************************************** */
+cv::Rect2i MPF::COMPONENT::snapToEdges(const cv::Rect2i& rt, const cv::Rect2i& rm, const cv::Size2i& frameSize, const float edgeSnapDist=0.0075){
 
-    using namespace std;
+  cv::Point2i rt_tl = rt.tl();
+  cv::Point2i rt_br = rt.br();
+  cv::Point2i rm_tl = rm.tl();
+  cv::Point2i rm_br = rm.br();
 
-    /* **************************************************************************
-    *  Represent a frame with time stamp
-    *************************************************************************** */
-     class Frame{
-       public:
-         size_t  idx=0;                 ///< index of frame
-         double  time=0;                ///< time of current frame in sec
-         double  timeStep=0;            ///< time interval between frames in sec
-         cv::Mat bgr;                   ///< bgr image frame
+  int border_x = static_cast<int>(edgeSnapDist * frameSize.width);
+  int border_y = static_cast<int>(edgeSnapDist * frameSize.height);
 
-         cv::Rect2i getRect() const { return cv::Rect2i(0,0,bgr.cols-1,bgr.rows-1); }
+  if(rt_tl.x <= border_x){                             // near   left side of frame
+    rm_tl.x = 0;
+  }else if(rt_br.x >= frameSize.width - border_x - 1){ // near  right side of frame
+    rm_br.x = frameSize.width - 1;
+  }
 
-         Frame(){};
-         Frame(size_t idx, double time, double timeStep, cv::Mat bgr):
-           idx(idx),
-           time(time),
-           timeStep(timeStep),
-           bgr(bgr){};
-     };
+  if(rt_tl.y <= border_y){                              // near    top side of frame
+    rm_tl.y = 0;
+  }else if(rt_br.y >= frameSize.height - border_y - 1){ // near bottom side of frame
+    rm_br.y = frameSize.height - 1;
+  }
 
-   }
+  return cv::Rect2i(rm_tl , rm_br);
 }
-
-#endif

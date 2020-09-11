@@ -152,8 +152,8 @@ namespace MPF{
       void  ReverseTransform(MPFImageLocation loc) const {_imreaderPtr->ReverseTransform(loc);  }
       void  ReverseTransform(MPFVideoTrack  track) const {_videocapPtr->ReverseTransform(track);}
 
-      FramePtrVec getImageFrames(int numFrames) const;
-      FramePtrVec getVideoFrames(int numFrames) const;
+      Frame    getImageFrame() const;
+      FrameVec getVideoFrames(int numFrames) const;
 
     private:
       unique_ptr<MPFImageReader>  _imreaderPtr;

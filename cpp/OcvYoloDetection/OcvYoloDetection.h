@@ -57,20 +57,6 @@ namespace MPF{
 
       log4cxx::LoggerPtr _log;
 
-      typedef float (DetectionLocation::*DetectionLocationCostFunc)(const Track &tr) const; ///< cost member-function pointer type
-
-      template<DetectionLocationCostFunc COST_FUNC>
-      vector<long> _calcAssignmentVector(const TrackList               &tracks,
-                                         const DetectionLocationPtrVec &detections,
-                                         const float                    maxCost,
-                                         const float                    maxClassDist,
-                                         const float                    maxKFResidual); ///< determine costs of assigning detections to tracks
-
-      void _assignDetections2Tracks(TrackList               &tracks,
-                                    DetectionLocationPtrVec &detections,
-                                    const vector<long>      &assignmentVector,
-                                    TrackList               &assignedTracks);          ///< assign detections to tracks
-
       MPFVideoTrack _convert_track(Track &track);  ///< convert to MFVideoTrack and release
   };
  }
