@@ -1,0 +1,68 @@
+# Overview
+
+This repository contains source code for the OpenMPF Azure Cognitive Services
+Translation Component. This component utilizes the [Azure Cognitive Services 
+Translator REST endpoint](https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-translate)
+to translate the content of detection properties. It has only been tested
+against v3.0 of the API.
+
+This component translates the content of existing detection properties,
+so it only makes sense to use it with 
+[feed forward](https://openmpf.github.io/docs/site/Feed-Forward-Guide) and 
+when it isn't the first element of a pipeline.
+ 
+When a detection property is translated, the translation is put in to a new 
+detection property named using this pattern: 
+`<prop_name> (TRANSLATED TO <to_language>)` (e.g. 
+`TRANSCRIPT (TRANSLATED TO EN)`). The original detection property is not 
+modified.
+
+When the source text is multiple languages, the translation endpoint will only
+translate one of the languages. For example, translating 
+"你叫什么名字？ ¿Cómo te llamas?" to English results in 
+"What is your name? The Cómo te llamas?".
+
+
+# Required Job Properties
+In order for the component to process any jobs, the job properties listed below
+must be provided. Neither has a default value. Both can also get the value
+from environment variables with the same name. If both are provided, 
+the job property will be used. 
+
+- `ACS_URL`: Base URL for the Azure Cognitive Services Translator Endpoint. 
+   e.g. `https://api.cognitive.microsofttranslator.com` or 
+   `https://<custom-translate-host>/translator/text/v3.0`. The URL should
+   not end with `/translate` because two separate endpoints are
+   used. `ACS_URL + '/translate'` is used for translation.
+   `ACS_URL + '/breaksentence'` is used to break up text when it is too long
+   for a single translation request.
+   
+- `ACS_SUBSCRIPTION_KEY`: A string containing your Azure Cognitive Services
+  subscription key. To get one you will need to create an 
+  Azure Cognitive Services account.
+  
+  
+# Important Job Properties:
+- `TO_LANGUAGE`: The BCP-47 language code for language that the properties 
+   should be translated to.
+- `TRANSLATE_PROPERTIES`: Comma-separated list of job properties indicating 
+   which detection properties should be translated.
+- `FROM_LANGUAGE`: In most cases, this property should not be used. It should
+  only be used when automatic language detection is detecting the wrong 
+  language. Providing this property prevents the translation endpoint from 
+  doing automatic language detection. If `FROM_LANGUAGE` is provided, and the 
+  text is actually another language, the translation endpoint will return the 
+  input text unchanged.
+  
+
+# Listing Supported Languages
+To list the supported languages replace `${ACS_URL}` and 
+`${ACS_SUBSCRIPTION_KEY}` in the following command and run it:
+```shell script
+curl -H "Ocp-Apim-Subscription-Key: ${ACS_SUBSCRIPTION_KEY}" "https://${ACS_URL}/languages?api-version=3.0&scope=translation"
+```
+
+
+# Sample Program
+`sample_acs_translator.py` can be used to quickly test with the Azure
+endpoint. It translates strings provided via command line arguments.

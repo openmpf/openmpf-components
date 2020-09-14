@@ -1,0 +1,97 @@
+{
+  "componentName": "AzureTranslation",
+  "componentVersion": "5.0",
+  "middlewareVersion": "5.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "AzureTranslation",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "AZURE_TRANSLATION",
+    "description": "Uses Azure Cognitive Services to perform translation.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TRANSLATION",
+        "DETECTION_TRANSLATION_AZURE"
+      ],
+      "properties": [
+        {
+          "name": "ACS_URL",
+          "description": "Base URL for the Azure Cognitive Services Endpoint. e.g. https://api.cognitive.microsofttranslator.com . Can also be provided by an environment variable with the same name. If both are provided, the job property is used. Note that the component was only tested against v3.0 of the API.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_SUBSCRIPTION_KEY",
+          "description": "Azure Cognitive Services subscription key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "TRANSLATE_PROPERTIES",
+          "description": "Comma-separated list of detection property names indicating which detection properties should be translated.",
+          "type": "STRING",
+          "defaultValue": "TEXT,TRANSCRIPT"
+        },
+        {
+          "name": "TO_LANGUAGE",
+          "description": "The BCP-47 language code for language that the properties should be translated to.",
+          "type": "STRING",
+          "defaultValue": "en"
+        },
+        {
+          "name": "FROM_LANGUAGE",
+          "description": "Optional property that indicates the source language of the text. When provided, it disables automatic language detection. If the text isn't actually the specified FROM_LANGUAGE, the translation endpoint returns the text unmodified.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "SUGGESTED_FROM_LANGUAGE",
+          "description": "Optional property that indicates the fallback source language to use when automatic language detection fails. The value from this property is only used when automatic language detection fails.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "CATEGORY",
+          "description": "An optional property specifying the category (domain) of the translation. This parameter is used to get translations from a customized system built with Custom Translator.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "STRIP_NEW_LINE_BEHAVIOR",
+          "description": "The translation endpoint treats newline characters as sentence boundaries. To prevent this newlines can be removed from the input text. Valid values are SPACE (replace with space character), REMOVE (remove newlines), NONE (leave newlines as they are), and GUESS (If source language is Chinese or Japanese use REMOVE, else use SPACE).",
+          "type": "STRING",
+          "defaultValue": "GUESS"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "AZURE TRANSLATION ACTION",
+      "description": "Uses Azure Cognitive Services to perform translation.",
+      "algorithm": "AZURE_TRANSLATION",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "AZURE TRANSLATION TASK",
+      "description": "Uses Azure Cognitive Services to perform translation.",
+      "actions": [
+        "AZURE TRANSLATION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+  ]
+}
