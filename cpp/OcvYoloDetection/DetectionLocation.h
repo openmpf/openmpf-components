@@ -36,22 +36,23 @@
 //#include <dlib/opencv.h>
 
 #include "types.h"
+#include "util.h"
 #include "Config.h"
 #include "Frame.h"
-
-#define CALL_MEMBER_FUNC(object,ptrToMember)  ((object).*(ptrToMember))
 
 namespace MPF{
  namespace COMPONENT{
 
   using namespace std;
 
-  typedef float (DetectionLocation::*DetectionLocationCostFunc)(const Track &tr) const; ///< cost member-function pointer type
+  using DetectionLocationCostFunc = float (DetectionLocation::*)(const Track &tr) const; ///< assignment cost member-function type
 
   class DetectionLocation: public MPFImageLocation{ // extend MPFImageLocation
 
     public:
       using MPFImageLocation::MPFImageLocation;  // C++11 inherit all constructors for MPFImageLocation
+
+      const Frame frame;                                   ///< frame associated with detection
 
       const cv::Mat&       getClassFeature() const;        ///< get unit vector of scores
       const cv::Mat&       getDFTFeature()   const;        ///< get dft for phase correlation
@@ -63,6 +64,7 @@ namespace MPF{
       float center2CenterDist(const Track &tr) const;   ///< compute normalized center to center distance
       float       featureDist(const Track &tr) const;   ///< compute deep feature similarity distance
       float         classDist(const Track &tr) const;   ///< compute class similarity distance
+      float         classDist(const DetectionLocation &d) const;
       float    kfResidualDist(const Track &tr) const;   ///< comput kalman filter residual distance
 
       static bool                       Init();                                                                ///< setup class shared members
@@ -83,12 +85,7 @@ namespace MPF{
                                                _dftFeature(move(d._dftFeature))
                                                {}
 
-     // ~DetectionLocation(){LOG_TRACE("destroying detection:" << this);}
-
-      const Frame frame;                         ///< frame associated with detection
-
     private:
-
       const Config       &_cfg;                  ///< job configuration and shared config state
       const cv::Mat     _classFeature;           ///< unit vector of with elements proportional to scores for each classes
       const cv::Mat     _dftFeature;             ///< dft for matching-up detections via phase correlation
@@ -108,7 +105,7 @@ namespace MPF{
   };
 
   /** **************************************************************************
-  *   Dump MPFLocation to a stream
+  *   Dump DetectionLocation to a stream
   *************************************************************************** */
   inline
   ostream& operator<< (ostream& out, const DetectionLocation& d) {

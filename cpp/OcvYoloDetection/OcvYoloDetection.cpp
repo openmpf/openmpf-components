@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <limits.h>
+#include <chrono>
 
 #include <log4cxx/xml/domconfigurator.h>
 
@@ -44,10 +45,9 @@
 
 #include "types.h"
 #include "Config.h"
+#include "Cluster.h"
 
 using namespace MPF::COMPONENT;
-
-
 
 /** ****************************************************************************
 *  Initialize Yolo detector module by setting up paths and reading configs
@@ -215,14 +215,93 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
       // detectTrigger++;
       // detectTrigger = detectTrigger % (cfg.detFrameInterval + 1);
 
-
+      #ifndef NDEBUG
+      auto start_time = chrono::high_resolution_clock::now();
+      #endif
       DetectionLocationListVec detectionsVec = DetectionLocation::createDetections(cfg, framesVec); // look for new detections
+      #ifndef NDEBUG
+      auto end_time = chrono::high_resolution_clock::now();
+      double time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
+      LOG_DEBUG("Detection time:  " << fixed << setprecision(5) << time_taken << "[sec] for " << framesVec.size() << " frames");
+      LOG_DEBUG("Detection  speed: " << framesVec.size() / time_taken << "[fps]");
+      #endif
 
+      #ifndef NDEBUG
+      start_time = chrono::high_resolution_clock::now();
+      #endif
       assert(framesVec.size() == detectionsVec.size());
       for(unsigned i=0; i<framesVec.size(); i++){
 
-        // remove and convert any tracks too far in the past from the active list
+                                                                          LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << tracks.size() << " tracks");
+        TrackList assignedTracks;          // tracks that were assigned a detection in the current frame
 
+        // group detections according to class features
+        auto detClusterList = DetectionCluster::cluster(detectionsVec[i],cfg.maxClassDist);
+        assert(detectionsVec[i].empty());
+
+        //group tracks according to class features
+        auto trackClusterList = TrackCluster::cluster(tracks,cfg.maxClassDist);
+        assert(tracks.empty());
+
+        // intersection over union tracking and assignment
+        Track::assignDetections<decltype(trackClusterList), decltype(detClusterList),
+                                &DetectionLocation::iouDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxIOUDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
+        LOG_TRACE("IOU assignment complete");
+
+        // feature-based tracking tracking and assignment
+        Track::assignDetections<decltype(trackClusterList), decltype(detClusterList),
+                                &DetectionLocation::featureDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxFeatureDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
+        LOG_TRACE("Feature assignment complete");
+
+        // center-to-center distance tracking and assignment
+        Track::assignDetections<decltype(trackClusterList), decltype(detClusterList),
+                                &DetectionLocation::center2CenterDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxCenterDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
+        LOG_TRACE("Center2Center assignment complete");
+
+                                                                                    // LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
+        // any detection not assigned up to this point becomes a new track
+        for(auto& detCluster : detClusterList){
+          auto detItr = detCluster.members.begin();
+          while(detItr != detCluster.members.end()){             // make any unassigned detections into new tracks
+            detItr->getDFTFeature();                             // start of tracks always get feature calculated
+            assignedTracks.push_back(Track());                                      // create new track
+            if(!cfg.kfDisabled){                                                    // initialize kalman tracker
+              assignedTracks.back().kalmanInit(detItr->frame.time,
+                                              detItr->frame.timeStep,
+                                              detItr->getRect(),
+                                              detItr->frame.getRect(),
+                                              cfg.RN,cfg.QN);
+            }
+            assignedTracks.back().locations.splice(assignedTracks.back().locations.end(), detCluster.members, detItr++); // add 1st detection to track
+
+                                                        LOG_TRACE("created new track " << assignedTracks.back());
+          }
+          assert(detCluster.members.empty());                                  // all detections should be removed at this point
+        }
+
+        for(auto& trackCluster : trackClusterList){
+          if(!cfg.mosseTrackerDisabled){                                         // check any tracks that didn't get a detection and use tracker to continue them if possible
+            cv::Rect2i pred;
+            for(auto &track : trackCluster.members){                                           // track leftover have no detections in current frame, try tracking
+              if(track.ocvTrackerPredict(framesVec[i],cfg.maxFrameGap, pred)){   // tracker returned something
+                if(track.testResidual(pred, cfg.edgeSnapDist) <= cfg.maxKFResidual){
+                  auto& prevTailDet = track.locations.back();
+                  track.locations.push_back(
+                    DetectionLocation(cfg, framesVec[i], pred, 0.0,
+                                      track.locations.back().getClassFeature(),
+                                      track.locations.back().getDFTFeature()));
+                  track.kalmanCorrect(cfg.edgeSnapDist);
+                }
+              }
+            }
+          }
+          assignedTracks.splice(assignedTracks.end(), trackCluster.members);
+          assert(trackCluster.members.empty());
+        }
+        tracks.splice(tracks.end(), assignedTracks);
+        assert(assignedTracks.empty());
+
+        // remove and convert any tracks too far in the past from the active list
         tracks.remove_if([&](Track& track){
           if(framesVec[i].idx - track.locations.back().frame.idx > cfg.maxFrameGap){       LOG_TRACE("dropping old track: " << track);
             mpf_tracks.push_back(_convert_track(track));
@@ -231,7 +310,6 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
           return false;
         });
 
-        DetectionLocationCostFunc iouCostFunc;
         // advance kalman predictions
         if(! cfg.kfDisabled){
           for(auto &track:tracks){
@@ -239,69 +317,27 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
           }
         }
 
-        TrackList assignedTracks;          // tracks that were assigned a detection in the current frame
-
-        if(!tracks.empty()){             // not all tracks were dropped
-                                                                               LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << tracks.size() << " tracks");
-
-          // calculate forbidden assignments based on classes
-
-
-          // intersection over union tracking and assignment
-          Track::assignDetections<&DetectionLocation::iouDist>(tracks,detectionsVec[i],assignedTracks,cfg.maxIOUDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
-          LOG_TRACE("IOU assignment complete");
-
-          // feature-based tracking tracking and assignment
-          Track::assignDetections<&DetectionLocation::featureDist>(tracks,detectionsVec[i],assignedTracks,cfg.maxFeatureDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
-
-          // center-to-center distance tracking and assignment
-          Track::assignDetections<&DetectionLocation::center2CenterDist>(tracks,detectionsVec[i],assignedTracks,cfg.maxCenterDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
-          LOG_TRACE("Center2Center assignment complete");
-
-        }
-
-                                                                                    LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
-        // any detection not assigned up to this point becomes a new track
-        auto detItr = detectionsVec[i].begin();
-        while(detItr != detectionsVec[i].end()){                 // make any unassigned detections into new tracks
-          detItr->getDFTFeature();                             // start of tracks always get feature calculated
-          assignedTracks.push_back(Track());                                      // create new track
-          if(!cfg.kfDisabled){                                                    // initialize kalman tracker
-            assignedTracks.back().kalmanInit(detItr->frame.time,
-                                             detItr->frame.timeStep,
-                                             detItr->getRect(),
-                                             detItr->frame.getRect(),
-                                             cfg.RN,cfg.QN);
-          }
-          assignedTracks.back().locations.splice(assignedTracks.back().locations.end(),detectionsVec[i], detItr++); // add 1st detection to track
-
-                                                       LOG_TRACE("created new track " << assignedTracks.back());
-        }
-
-
-        if(!cfg.mosseTrackerDisabled){                                         // check any tracks that didn't get a detection and use tracker to continue them if possible
-          cv::Rect2i pred;
-          for(auto &track : tracks){                                           // track left have no detections in current frame, try tracking
-            if(track.ocvTrackerPredict(framesVec[i],cfg.maxFrameGap, pred)){   // tracker returned something
-              if(track.testResidual(pred, cfg.edgeSnapDist) <= cfg.maxKFResidual){
-                auto& prevTailDet = track.locations.back();
-                track.locations.push_back(
-                  DetectionLocation(cfg, framesVec[i], pred, 0.0,
-                                    track.locations.back().getClassFeature(),
-                                    track.locations.back().getDFTFeature()));
-                track.kalmanCorrect(cfg.edgeSnapDist);
-              }
-            }
-          }
-        }
-
-        // put all the tracks that were assigned a detection back into active tracks list
-        tracks.splice(tracks.end(), assignedTracks);
 
       }                                                                        LOG_DEBUG( "[" << job.job_name << "] Number of tracks detected = " << tracks.size());
+      #ifndef NDEBUG
+      end_time = chrono::high_resolution_clock::now();
+      time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
+      LOG_DEBUG("Tracking time:  " << fixed << setprecision(5) << time_taken << "[sec] for " << framesVec.size() << " frames");
+      LOG_DEBUG("Tracking  speed: " << framesVec.size() / time_taken << "[fps]");
+      #endif
 
+      #ifndef NDEBUG
+      start_time = chrono::high_resolution_clock::now();
+      #endif
       // grab next batch of frames
       framesVec = cfg.getVideoFrames(cfg.frameBatchSize);
+      #ifndef NDEBUG
+      end_time = chrono::high_resolution_clock::now();
+      time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
+      LOG_DEBUG("Frame read time:  " << fixed << setprecision(5) << time_taken << "[sec] for " << framesVec.size() << " frames");
+      LOG_DEBUG("Read speed: " << framesVec.size() / time_taken << "[fps]");
+      #endif
+
     } while(framesVec.size() > 0);
 
     // convert any remaining active tracks to MPFVideoTracks

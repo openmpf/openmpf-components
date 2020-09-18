@@ -77,7 +77,6 @@ namespace MPF{
         cv::Rect2i               _roi;         ///< canvas clipping limits for bboxes returned by filter
         cv::Mat1f                _qn;          ///< kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
         stringstream             _state_trace; ///< time series of states for csv file output supporting debug/tuning
-        static unsigned long     _idCounter;
 
         static cv::Mat1f      _measurementFromBBox(const cv::Rect2i& r);
         static cv::Rect2i     _bboxFromState(const cv::Mat1f& state);

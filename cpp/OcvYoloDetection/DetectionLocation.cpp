@@ -63,7 +63,7 @@ float DetectionLocation::iouDist(const Track &tr) const {
 
   float inter_area = max(0, lrx - ulx) * max(0, lry - uly);
   float union_area = width * height + rect.width * rect.height - inter_area;
-  float dist = 1.0f - inter_area / union_area;                                 LOG_TRACE("iou dist = " << dist << " between " << *this << " and " << tr);
+  float dist = 1.0f - inter_area / union_area;                                 // LOG_TRACE("iou dist = " << dist << " between " << *this << " and " << tr);
   return dist;
 }
 
@@ -101,7 +101,7 @@ float  DetectionLocation::center2CenterDist(const Track &tr) const {
 *
 *************************************************************************** */
 float DetectionLocation::classDist(const Track& tr) const {
-  float dist = 1.0f - max( 0.0f, min( 1.0f, static_cast<float>(_classFeature.dot(tr.locations.back().getClassFeature()))));  LOG_TRACE("class dist = " << dist << " between " << *this << " and " << tr);
+  float dist = cosDist(_classFeature,tr.locations.back().getClassFeature());      LOG_TRACE("class dist = " << dist << " between " << *this << " and " << tr);
   return dist;
 }
 
@@ -157,7 +157,7 @@ float DetectionLocation::featureDist(const Track &tr) const {
     }
   }else{                                                                       LOG_TRACE("tr tail " << trRoi << " has zero area");
     dist = 1.0;
-  }                                                                            LOG_TRACE("feature dist: " << dist << " between " << *this << " and " << tr);
+  }                                                                            //LOG_TRACE("feature dist: " << dist << " between " << *this << " and " << tr);
   return dist;
 }
 
@@ -170,7 +170,8 @@ float DetectionLocation::featureDist(const Track &tr) const {
 *
 *************************************************************************** */
 float DetectionLocation::kfResidualDist(const Track &tr) const {
-  float dist = tr.testResidual(getRect(), _cfg.edgeSnapDist);                      LOG_TRACE("residual dist: " << dist << " between " << *this << " and " << tr);
+  float dist = tr.testResidual(getRect(), _cfg.edgeSnapDist);
+                                                                               //LOG_TRACE("residual dist: " << dist << " between " << *this << " and " << tr);
   return dist;
 }
 
@@ -299,6 +300,9 @@ DetectionLocationListVec DetectionLocation::createDetections(const Config& cfg, 
   floatVec         sizeScaleFactors;                                           // scale factor for each image
   cvPoint2fVec     padOffsets;                                                 // coordinate offsets due to padding to make image square
   cvMatVec         blobImgs;                                                   // padded, square image of inputSize
+  #ifndef NDEBUG
+  auto start_time = chrono::high_resolution_clock::now();
+  #endif
   for(auto& f : frames){
     float maxImageDim     = fmax(f.bgr.cols,f.bgr.rows);
     float sizeScaleFactor = inputImageSize / maxImageDim;
@@ -328,14 +332,34 @@ DetectionLocationListVec DetectionLocation::createDetections(const Config& cfg, 
                                               cv::Scalar(0,0,0),               // mean BGR pixel value
                                               true,                            // swap RB channels
                                               false);                          // center crop
+  #ifndef NDEBUG
+  auto end_time = chrono::high_resolution_clock::now();
+  double time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
+  LOG_DEBUG("Image Prep time:  " << fixed << setprecision(5) << time_taken << "[sec] for " << frames.size() << " frames");
+  LOG_DEBUG("Prep speed: " << frames.size() / time_taken << "[fps]");
+  #endif
 
+  #ifndef NDEBUG
+  start_time = chrono::high_resolution_clock::now();
+  #endif
   _net.setInput(inputBlob,"data");                                             // different output layers for different scales, e.g. yolo_82,yolo_94,yolo_106 for yolo_v3
   cvMatVec outs;                                                               // outs[output-layer][frame][detection][feature] =  0:cent_x, 1:cent_y, 2:width, 3:height, 4:objectness, 5..84:class-scores
   _net.forward(outs, _netOutputNames);                                         // https://answers.opencv.org/question/212588/how-to-process-output-of-detection-network-when-batch-of-images-is-used-as-network-input/
                                                                                // https://towardsdatascience.com/yolo-v3-object-detection-53fb7d3bfe6b
 
+  #ifndef NDEBUG
+  end_time = chrono::high_resolution_clock::now();
+  time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
+  LOG_DEBUG("Inference time:  " << fixed << setprecision(5) << time_taken << "[sec] for " << frames.size() << " frames");
+  LOG_DEBUG("Inference speed: " << frames.size() / time_taken << "[fps]");
+  #endif
+
   DetectionLocationListVec detections;
   detections.reserve(frames.size());
+
+  #ifndef NDEBUG
+  start_time = chrono::high_resolution_clock::now();
+  #endif
   for(int fr=0; fr<frames.size(); fr++){                                       LOG_TRACE("Processing inference results for batch frame: " << fr);
     float revSizeScaleFactor = inputImageSize / sizeScaleFactors[fr];
     cv::Point2f padOffset = padOffsets[fr];
@@ -381,12 +405,6 @@ DetectionLocationListVec DetectionLocation::createDetections(const Config& cfg, 
     for(int& keepIdx : keepIdxs){
       cv::Mat classFeature;
       cv::normalize(scoresVectors[keepIdx] * _netConfusion, classFeature,1.0,0.0,cv::NORM_L2);
-      detections.back().push_back(
-        DetectionLocation(cfg,
-                          frames[fr],
-                          bboxes[keepIdx],
-                          topConfidences[keepIdx],
-                          classFeature,cv::Mat()));
       // add top N classifications
       vector<int> sort_idx(scoresVectors[keepIdx].cols);
       iota(sort_idx.begin(), sort_idx.end(), 0);  //initialize sort_index
@@ -404,6 +422,13 @@ DetectionLocationListVec DetectionLocation::createDetections(const Config& cfg, 
         scoreList << "; " << scoresVectors[keepIdx].at<float>(0,sort_idx[i]);
         if(i >= cfg.numClassPerRegion) break;
       }
+      detections.back().push_back(
+        DetectionLocation(cfg,
+                          frames[fr],
+                          bboxes[keepIdx],
+                          topConfidences[keepIdx],
+                          classFeature,cv::Mat()));
+
       detections.back().back().detection_properties.insert({
         {"CLASSIFICATION", _netClasses[sort_idx[0]]},
         {"CLASSIFICATION LIST", classList.str()},
@@ -412,7 +437,12 @@ DetectionLocationListVec DetectionLocation::createDetections(const Config& cfg, 
 
     }  // keep indicies
   } // frames
-
+  #ifndef NDEBUG
+  end_time = chrono::high_resolution_clock::now();
+  time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
+  LOG_DEBUG("Detection post processing time:  " << fixed << setprecision(5) << time_taken << "[sec] for " << frames.size() << " frames");
+  LOG_DEBUG("post processing speed: " << frames.size() / time_taken << "[fps]");
+  #endif
   return detections;
 }
 
@@ -503,6 +533,7 @@ bool DetectionLocation::Init(){
       while(getline(classfile, str)){
         _netClasses.push_back(str);
       }
+
 
       // load classification confusion matrix for yolov3-tiny
       cv::FileStorage fs(modelConfusionPath,cv::FileStorage::READ | cv::FileStorage::FORMAT_JSON);

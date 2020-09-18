@@ -23,44 +23,37 @@
  * See the License for the specific language governing permissions and        *
  * limitations under the License.                                             *
  ******************************************************************************/
-#ifndef OCVYOLODETECTION_UTIL_H
-#define OCVYOLODETECTION_UTIL_H
-
-#include <opencv2/opencv.hpp>
-#include <dlib/matrix.h>
+#ifndef OCVYOLODETECTION_CLUSTER_H
+#define OCVYOLODETECTION_CLUSTER_H
 
 #include "types.h"
 
 namespace MPF{
-  namespace COMPONENT{
+ namespace COMPONENT{
 
     using namespace std;
 
-    cv::Rect2i snapToEdges(const cv::Rect2i& rt,
-                           const cv::Rect2i& rm,
-                           const cv::Size2i& frameSize,
-                          const float edgeSnapDist);                           ///< snap a rectangle to frame edges if close
+    template<class T>
+    using featureFunc  = const cv::Mat&(T::*)() const;             // could parameterize away cv::Mat
+    using distanceFunc = float(*)(const cv::Mat&, const cv::Mat&);
 
-    inline
-    float cosDist(const cv::Mat &f1, const cv::Mat &f2){                       ///< cosine distance between two unit vectors
-      return 1.0f - max( 0.0f, min( 1.0f, static_cast<float>(f1.dot(f2))));
-    }
+    template<class T, featureFunc<T> fFunc, distanceFunc dFunc>
+    class Cluster{
+      public:
+        cv::Mat aveFeature;                            ///< average feature (centroid) of the cluster
+        list<T> members;                               ///< members of the cluster
 
-    string format(cv::Mat1f m);                                                ///< output cv matrix on single line
+        void add(T&& m);                               ///< move an item into member list
 
-    template<typename T>
-    string dformat(dlib::matrix<T> m);                                         ///< output dlib matrix on single line
+        static void cluster(list<T>                           &lis,
+                            list<Cluster<T, fFunc, dFunc>>    &clList,
+                            float                              maxDist);  ///< cluster items in a list
 
-    template<typename T>
-    ostream& operator<< (ostream& os, const vector<T>& v);                     ///< output vector to stream
-    ostream& operator<< (ostream& os, const MPFImageLocation& l);              ///< output MPFImageLocation to stream
-    ostream& operator<< (ostream& os, const MPFVideoTrack& t);                 ///< output MPFVideoTrack to stream
+        static list<Cluster<T, fFunc, dFunc>> cluster(list<T> &lis,
+                                                      float    maxDist);  ///< cluster items in a list
 
-  }
-}
-
-namespace cv{
-  std::ostream& operator<< (std::ostream& os, const cv::Rect& r);              ///< reformat cv::rect output to stream
+   };
+ }
 }
 
 #endif

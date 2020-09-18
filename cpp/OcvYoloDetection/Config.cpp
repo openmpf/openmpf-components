@@ -25,6 +25,7 @@
  ******************************************************************************/
 
 #include "types.h"
+#include "util.h"
 #include "Frame.h"
 #include "Config.h"
 

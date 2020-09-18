@@ -81,6 +81,7 @@ set(OCV_YOLO_DETECTION_SOURCE_FILES
         Config.cpp
         Frame.cpp
         DetectionLocation.cpp
+        Cluster.cpp
         Track.cpp
         KFTracker.cpp
         OcvYoloDetection.cpp
