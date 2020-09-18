@@ -38,6 +38,7 @@ const int KF_STATE_DIM = 12; ///< dimensionality of kalman state vector       [x
 const int KF_MEAS_DIM  = 4;  ///< dimensionality of kalman measurement vector [x, y, w, h]
 const int KF_CTRL_DIM  = 0;  ///< dimensionality of kalman control input      []
 
+
 /** **************************************************************************
  * Update the model state transision matrix F and the model noise covariance
  * matrix Q to be suitable of a timestep of dt
@@ -136,7 +137,7 @@ void KFTracker::setStatePreFromBBox(const cv::Rect2i& r){
   cv::Mat1f ns = _kf.measurementMatrix.t() * _measurementFromBBox(r);
 
   for(int i=0;i<ns.rows;i++){
-    if(fabs(ns.at<float>(i)) > FLT_EPSILON ){
+    if(fabs(ns.at<float>(i)) > 2.0*FLT_EPSILON ){
       _kf.statePre.at<float>(i) = ns.at<float>(i);
     }
   }
@@ -158,7 +159,7 @@ void KFTracker::setStatePostFromBBox(const cv::Rect2i& r){
   cv::Mat1f ns = _kf.measurementMatrix.t() * _measurementFromBBox(r);
 
   for(int i=0;i<ns.rows;i++){
-    if(fabs(ns.at<float>(i)) > FLT_EPSILON ){
+    if(fabs(ns.at<float>(i)) > 2.0*FLT_EPSILON ){
       _kf.statePost.at<float>(i) = ns.at<float>(i);
     }
   }
@@ -191,6 +192,12 @@ void KFTracker::predict(float t){
   _setTimeStep(t - _t);
   _t = t;
   _kf.predict();
+  _kf.errorCovPre += _kf.errorCovPre.t();   // guarantee cov symetry to help stability
+  _kf.errorCovPre /= 2.0f;
+  /*_kf.statePre.at<float>(8) =
+  _kf.statePre.at<float>(11) = 0.0;  // kill width & height acceleration
+  _kf.statePre.at<float>(7) =
+  _kf.statePre.at<float>(10) = 0.0;  // kill width & height velocity */
 }
 
 /** **************************************************************************
@@ -205,6 +212,12 @@ void KFTracker::predict(float t){
 *************************************************************************** */
 void KFTracker::correct(const cv::Rect2i &rec){
   _kf.correct(_measurementFromBBox(rec));
+   _kf.errorCovPost += _kf.errorCovPost.t();   // guarantee cov symetry to help stability
+   _kf.errorCovPost /= 2.0f;
+  /*_kf.statePost.at<float>(8) =
+  _kf.statePost.at<float>(11) = 0.0;  // kill width & height acceleration
+  _kf.statePost.at<float>(7) =
+  _kf.statePost.at<float>(10) = 0.0;  // kill width & height velocity */
   #ifdef KFDUMP_STATE
     _state_trace << (*this) << endl;
   #endif
@@ -222,6 +235,8 @@ float KFTracker::testResidual(const cv::Rect2i &rec, const int edgeSnapDist) con
 
   // perform trial correction and get error squared
   _kf.correct(_measurementFromBBox(rec));
+  //_kf.errorCovPost += _kf.errorCovPost.t();   // guarantee cov symetry to help stability
+  //_kf.errorCovPost /= 2.0f;
 
   cv::Mat1f err_sq = _kf.statePre - _kf.statePost;
   err_sq = err_sq.mul(err_sq);
@@ -233,9 +248,9 @@ float KFTracker::testResidual(const cv::Rect2i &rec, const int edgeSnapDist) con
      || corrBBox.x >= _roi.width - border_x
      || rec.x      <= border_x
      || rec.x      >= _roi.width - border_x){
-    err_sq.at<float>(0) =
-    err_sq.at<float>(1) =
-    err_sq.at<float>(2) =
+    //err_sq.at<float>(0) =
+    //err_sq.at<float>(1) =
+    //err_sq.at<float>(2) =
     err_sq.at<float>(6) =
     err_sq.at<float>(7) =
     err_sq.at<float>(8) = 0.0f;
@@ -245,9 +260,9 @@ float KFTracker::testResidual(const cv::Rect2i &rec, const int edgeSnapDist) con
      || corrBBox.y >= _roi.height - border_y
      || rec.y      <= border_y
      || rec.y      >= _roi.height - border_y){
-    err_sq.at<float>( 3) =
-    err_sq.at<float>( 4) =
-    err_sq.at<float>( 5) =
+    //err_sq.at<float>( 3) =
+    //err_sq.at<float>( 4) =
+    //err_sq.at<float>( 5) =
     err_sq.at<float>( 9) =
     err_sq.at<float>(10) =
     err_sq.at<float>(11) = 0.0f;
@@ -262,7 +277,7 @@ float KFTracker::testResidual(const cv::Rect2i &rec, const int edgeSnapDist) con
   err_sq = err_sq / _kf.errorCovPre.diag();  // div by 0.0 is handled by returning 0.0
   float maxErr_sq = 0.0;
   for(int i=0; i<err_sq.rows; i++) maxErr_sq = max(maxErr_sq, err_sq.at<float>(i));
-  float maxErr = sqrt(maxErr_sq);                                              LOG_TRACE("testResidual = " << maxErr);
+  float maxErr = sqrt(maxErr_sq);
   return maxErr;
 }
 
@@ -296,6 +311,7 @@ KFTracker::KFTracker(const float t,
     assert(_roi.y == 0);
     assert(_roi.width  > 0);
     assert(_roi.height > 0);
+
 
     // state transition matrix F
     //    | 0  1    2   3  4    5    6  7    8    9 10   11
