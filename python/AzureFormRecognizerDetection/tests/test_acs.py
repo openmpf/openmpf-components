@@ -44,6 +44,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../acs_form_recogniz
 import acs_form_recognizer_component
 from acs_form_recognizer_component import AcsFormRecognizerComponent, FrameEncoder
 
+
 class TestAcs(unittest.TestCase):
 
     mock_server: ClassVar['MockServer']
