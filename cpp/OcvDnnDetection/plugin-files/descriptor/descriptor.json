@@ -1,7 +1,7 @@
 {
   "componentName": "OcvDnnDetection",
-  "componentVersion": "5.0",
-  "middlewareVersion": "5.0",
+  "componentVersion": "5.1",
+  "middlewareVersion": "5.1",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/OcvDnnDetection/lib/libmpfOcvDnnDetection.so",
   "environmentVariables": [
@@ -92,7 +92,7 @@
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",
-          "description": "After the input image is resized and cropped, subtract this value from the blue color channel for all of the pixels. The range is [0.0, 255.0].",
+          "description": "After the input image is resized and cropped, subtract this value from the blue color channel for all of the pixels. The range is [0.0, 255.1].",
           "type": "FLOAT",
           "defaultValue": "0.0"
         },
