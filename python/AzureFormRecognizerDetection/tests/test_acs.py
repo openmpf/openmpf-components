@@ -38,11 +38,11 @@ import numpy as np
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
-import acs_form_recognizer_component
-from acs_form_recognizer_component import AcsFormRecognizerComponent, FrameEncoder
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../acs_form_recognizer_component'))
 
+import acs_form_recognizer_component
+from acs_form_recognizer_component import AcsFormRecognizerComponent, FrameEncoder
 
 class TestAcs(unittest.TestCase):
 
