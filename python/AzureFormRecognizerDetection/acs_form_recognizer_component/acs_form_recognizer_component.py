@@ -99,7 +99,7 @@ class JobRunner(object):
 
     def get_image_detections(self, frame):
         """
-        :param frames: A numpy.ndarray with shape (h, w, 3)
+        :param frame: A numpy.ndarray with shape (h, w, 3)
         :return: An iterable of mpf.ImageLocation
         """
         encoder = FrameEncoder()
@@ -337,8 +337,6 @@ class FrameEncoder(object):
                 'but the frame was %sx%s.',
                 cls.MAX_DIMENSION_LENGTH, original_frame_size.width, original_frame_size.height)
 
-        new_pixel_count = new_frame_size.width * new_frame_size.height
-
         return new_frame_size
 
 
@@ -357,8 +355,7 @@ class FormResultsProcessor(object):
         self._is_image = is_image
         self._resize_scale_factor = resize_scale_factor
         self._merge_lines = merge_lines
-    
-    
+
     def _create_detection(self, detection_properties, bounding_box):
         if self._is_image:
             corrected_bounding_box = self._correct_region_bounding_box(bounding_box)
@@ -382,16 +379,14 @@ class FormResultsProcessor(object):
         height = bounding_box.height * self._resize_scale_factor
 
         # Map ACS orientation info to MPF rotation info
-        #corrected_top_left, corrected_angle = self._orientation_correction(x, y)'
-        top_left = (x,y)
+        top_left = (x, y)
         corrected_box = mpf_util.Rect.from_corner_and_size(top_left, (width, height))
-        return corrected_box #, mpf_util.normalize_angle(corrected_angle)
+        return corrected_box
 
     def _convert_to_rect(self, bonding_box):
         p1 = (bonding_box[0], bonding_box[1])
         p2 = (bonding_box[4], bonding_box[5])
         return mpf_util.Rect.from_corners(p1, p2)
-
 
     def process_form_results(self, form_results_json):
         # Extract text results.

@@ -34,6 +34,7 @@ import mpf_component_api as mpf
 
 from acs_form_recognizer_component import AcsFormRecognizerComponent
 
+
 def main():
     if len(sys.argv) != 4:
         sys.exit('Error: Invalid number of arguments. \nUsage: {} <acs_url> <acs_subscription_key> <img_path>'
@@ -41,12 +42,13 @@ def main():
     _, acs_url, acs_subscription_key, img_path = sys.argv
 
     if img_path.lower().endswith('.pdf'):
-        job = mpf.GenericJob('Sample Job', img_path, dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key), {},
-                            None)
+        job = mpf.GenericJob('Sample Job', img_path,
+                             dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key), {},
+                             None)
         detections = list(AcsFormRecognizerComponent().get_detections_from_generic(job))
     else:
         job = mpf.ImageJob('Sample Job', img_path, dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key), {},
-                            None)
+                           None)
         detections = list(AcsFormRecognizerComponent().get_detections_from_image(job))
 
     print('Found', len(detections), 'detections.')
@@ -57,10 +59,6 @@ def main():
     print('=' * 80)
     print()
     for idx, detection in enumerate(detections):
-        #print('Detection', idx + 1, 'Text:')
-        #print()
-        #print(detection.detection_properties['LINE_TEXT'])
-        #print('-' * 80)
         print('Detection', idx + 1, 'details:')
         print(detection)
         print()

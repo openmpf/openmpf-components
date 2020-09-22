@@ -38,11 +38,10 @@ import numpy as np
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
-
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../acs_form_recognizer_component'))
 import acs_form_recognizer_component
 from acs_form_recognizer_component import AcsFormRecognizerComponent, FrameEncoder
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../acs_form_recognizer_component'))
 
 
 class TestAcs(unittest.TestCase):
@@ -63,8 +62,6 @@ class TestAcs(unittest.TestCase):
 
     def tearDown(self):
         self.mock_server.drain_queue()
-
-
 
     def assert_contains_tag(self, detection, tag, msg=None):
         self.assertIn(tag, detection.detection_properties['TAGS'], msg)
@@ -89,7 +86,6 @@ class TestAcs(unittest.TestCase):
 
         self.assertTrue(len(encoded_frame) <= FrameEncoder.MAX_FILE_SIZE)
 
-
     def test_resize_frame_due_to_pixel_count(self):
         self.assert_new_size(1234, 421, 1234, 421)
         self.assert_new_size(12000, 600, 10000, 500)
@@ -97,13 +93,11 @@ class TestAcs(unittest.TestCase):
         self.assert_new_size(750, 13324, 562, 10000)
         self.assert_new_size(1000, 40, 1250, 50)
 
-
     def test_invalid_frame_size(self):
         frame = np.zeros((FrameEncoder.MIN_DIMENSION_LENGTH - 1, FrameEncoder.MAX_DIMENSION_LENGTH + 1, 3), np.uint8)
         with self.assertRaises(mpf.DetectionException) as cm:
             FrameEncoder().resize_and_encode(frame)
         self.assertEqual(mpf.DetectionError.BAD_FRAME_SIZE, cm.exception.error_code)
-
 
     def test_invalid_frame_size_too_big_after_resize(self):
         frame = np.zeros((10, 4200, 3), np.uint8)
@@ -111,13 +105,11 @@ class TestAcs(unittest.TestCase):
             FrameEncoder().resize_and_encode(frame)
         self.assertEqual(mpf.DetectionError.BAD_FRAME_SIZE, cm.exception.error_code)
 
-
     def test_invalid_frame_size_too_small_after_resize(self):
         frame = np.zeros((10, 4400, 3), np.uint8)
         with self.assertRaises(mpf.DetectionException) as cm:
             FrameEncoder().resize_and_encode(frame)
         self.assertEqual(mpf.DetectionError.BAD_FRAME_SIZE, cm.exception.error_code)
-
 
     def test_resize_due_to_compression(self):
         img = cv2.imread(get_test_file('downsampling/noise.png'))
@@ -166,8 +158,6 @@ class TestAcs(unittest.TestCase):
         self.assertTrue('554 Magnolia Way\nWalnut, WY, 98432' in line_detection.detection_properties['TEXT'])
         self.assertTrue('Thank you for your business!' in line_detection.detection_properties['TEXT'])
 
-
-
     def test_upsampling(self):
         self.set_results_path(get_test_file('upsampling/tiny-image-results.json'))
         job = mpf.ImageJob('Test', get_test_file('upsampling/tiny-image.png'), get_test_properties(), {}, None)
@@ -177,19 +167,16 @@ class TestAcs(unittest.TestCase):
         detection = detections[0]
         self.assertEqual('It was the best of times, it was the worst of times', detection.detection_properties['TEXT'])
 
-
     def test_no_results_img(self):
         self.set_results_path(get_test_file('no-results/black-results.json'))
         job = mpf.ImageJob('Test', get_test_file('no-results/black.png'), get_test_properties(), {}, None)
         detections = list(AcsFormRecognizerComponent().get_detections_from_image(job))
         self.assertEqual(0, len(detections))
 
-
     def test_get_acs_url_default_options(self):
         acs_url = 'http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze'
         self.assertEqual('http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?includeTextDetails=true',
                          acs_form_recognizer_component.JobRunner.get_acs_url(dict(ACS_URL=acs_url)))
-
 
     def test_get_acs_url_preserves_existing_query_params(self):
         acs_url = 'http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?hello=world'
@@ -197,17 +184,20 @@ class TestAcs(unittest.TestCase):
         url = acs_form_recognizer_component.JobRunner.get_acs_url(properties)
 
         if '?d' in url:
-            self.assertEqual('http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?includeTextDetails=true&hello=world', url)
+            self.assertEqual('http://localhost:10669/formrecognizer/'
+                             'v2.1-preview.1/Layout/analyze?includeTextDetails=true&hello=world', url)
         else:
-            self.assertEqual('http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?hello=world&includeTextDetails=true', url)
-
+            self.assertEqual('http://localhost:10669/formrecognizer/'
+                             'v2.1-preview.1/Layout/analyze?hello=world&includeTextDetails=true', url)
 
     def test_get_acs_url_modified_parameter(self):
         acs_url = 'http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze'
         properties = dict(ACS_URL=acs_url, INCLUDE_TEXT_DETAILS='false')
 
         url = acs_form_recognizer_component.JobRunner.get_acs_url(properties)
-        self.assertEqual('http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?includeTextDetails=false', url)
+        self.assertEqual('http://localhost:10669/formrecognizer/'
+                         'v2.1-preview.1/Layout/analyze?includeTextDetails=false', url)
+
 
 def get_test_properties(**extra_properties):
     return {
@@ -219,6 +209,7 @@ def get_test_properties(**extra_properties):
 
 def get_test_file(filename):
     return os.path.join(os.path.dirname(__file__), 'data', filename)
+
 
 class MockServer(http.server.HTTPServer):
     def __init__(self):
@@ -260,7 +251,7 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
             self._validate_frame(post_body)
 
         self.send_response(200)
-        self.send_header("Operation-Location","http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze")
+        self.send_header("Operation-Location", "http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze")
         self.end_headers()
 
     def do_GET(self):
