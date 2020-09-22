@@ -21,26 +21,21 @@ the job property will be used.
   subscription key. To get one you will need to create an 
   Azure Cognitive Services account.
 
+Optional job properties include:
+- 'MERGE_LINES': A boolean toggle to specify whether text detection in a page should appear as separate 'LINE' outputs or
+   a single 'MERGED_LINES' output. The default is to merge lines as an excessive number of detections may be reported
+   otherwise.
+-  'INCLUDE_TEXT_DETAILS': A boolean toggle to specify whether text output should also be provided alongside tables
+   and key-value pairings produced by form recognizer models. Set to true by default.
 
-# Text Tagging (TO BE IMPLEMENTED/REMOVED)
-All text extracted from an image can also be tagged using regex and keyword 
-tags in a given json file. For keyword tagging, users can provide either words 
-or phrases (ex. `"bank-tag: [money, bank of america, etc.]"`). Phrases must 
-contain words separated by whitespace. For more complex pattern matching, 
-use regex tags instead. Both forms of tagging are case-insensitive. 
+# Job Outputs
+Currently the component provides line-based outputs and csv table outputs in separate detection tracks.
+Detection tracks with 'OUTPUT_TYPE' set to 'LINE' or 'MERGED_LINES' will include 'TEXT' results, whereas tracks
+with 'OUTPUT_TYPE' set to 'TABLE' will contain a single 'TABLE_CSV_OUTPUT'.
 
-By default, the json tagging file is located in the acs_ocr_component folder 
-as `text-tags.json`, however users can provide an alternate full path to a 
-tagging file of their choice. English and foreign text tags following 
-UTF-8 encoding are supported.
-
-Note that when using `TAGS_BY_REGEX` with multi-word phrases or any regular
-expression that includes a space, in many cases you will likely want to use
-`"\\s+"` instead of the space character. `"\\s+"` matches a sequence of one or 
-more whitespace characters. The recognized text preserves line breaks, so the 
-phrase you are looking for may have a line break in the middle of it. 
-For example, instead of `"\\bhello world\\b"`, you will likely want to use 
-`"\\bhello\\s+world\\b"`. 
+Results are organized by 'PAGE_NUM' and output indexes ('LINE_NUM', 'TABLE_NUM') with 0 as the starting index.
+For images, the bounding box information (for lines, merged lines, and whole tables) is also provided in the detection
+track.
 
 
 # Sample Program
