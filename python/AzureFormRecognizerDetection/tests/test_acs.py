@@ -42,7 +42,7 @@ import mpf_component_util as mpf_util
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../acs_form_recognizer_component'))
 import acs_form_recognizer_component
-from acs_form_recognizer_component import AcsFormRecognizerComponent, FrameEncoder, TextTagger
+from acs_form_recognizer_component import AcsFormRecognizerComponent, FrameEncoder
 
 
 class TestAcs(unittest.TestCase):
@@ -80,7 +80,6 @@ class TestAcs(unittest.TestCase):
         self.assertEqual(expected_height, new_size.height)
 
         self.assertEqual(initial_width // initial_height, new_size.width // new_size.height)
-        self.assertTrue((new_size.width * new_size.height) <= FrameEncoder.MAX_PIXELS)
 
         self.assertTrue(new_size.width >= FrameEncoder.MIN_DIMENSION_LENGTH)
         self.assertTrue(new_size.height >= FrameEncoder.MIN_DIMENSION_LENGTH)
@@ -93,15 +92,10 @@ class TestAcs(unittest.TestCase):
 
     def test_resize_frame_due_to_pixel_count(self):
         self.assert_new_size(1234, 421, 1234, 421)
-        self.assert_new_size(5000, 1000, 4200, 840)
-        self.assert_new_size(1000, 5000, 840, 4200)
-
-        self.assert_new_size(4000, 5000, 2828, 3535)
-
-        self.assert_new_size(4229, 75082, 236, 4200)
-        self.assert_new_size(750, 13324, 236, 4200)
-
-        self.assert_new_size(1000, 49, 1020, 50)
+        self.assert_new_size(12000, 600, 10000, 500)
+        self.assert_new_size(600, 12000, 500, 10000)
+        self.assert_new_size(750, 13324, 562, 10000)
+        self.assert_new_size(1000, 40, 1250, 50)
 
 
     def test_invalid_frame_size(self):
@@ -119,7 +113,7 @@ class TestAcs(unittest.TestCase):
 
 
     def test_invalid_frame_size_too_small_after_resize(self):
-        frame = np.zeros((50, 4400, 3), np.uint8)
+        frame = np.zeros((10, 4400, 3), np.uint8)
         with self.assertRaises(mpf.DetectionException) as cm:
             FrameEncoder().resize_and_encode(frame)
         self.assertEqual(mpf.DetectionError.BAD_FRAME_SIZE, cm.exception.error_code)
@@ -134,10 +128,44 @@ class TestAcs(unittest.TestCase):
 
         self.assertTrue(len(encoded_frame) <= FrameEncoder.MAX_FILE_SIZE)
         self.assertEqual(original_size.width // original_size.height, new_size.width // new_size.height)
-        self.assertTrue((new_size.width * new_size.height) <= FrameEncoder.MAX_PIXELS)
         self.assertTrue(new_size.width <= FrameEncoder.MAX_DIMENSION_LENGTH)
         self.assertTrue(new_size.height <= FrameEncoder.MAX_DIMENSION_LENGTH)
         self.assertTrue(len(encoded_frame) <= FrameEncoder.MAX_FILE_SIZE)
+
+    def test_pdf_form(self):
+        self.set_results_path(get_test_file('regular-forms/pdf-results.json'))
+        job = mpf.GenericJob('Test', get_test_file('regular-forms/form-recognizer-demo-sample1.pdf'),
+                             get_test_properties(), {}, None)
+        detections = list(AcsFormRecognizerComponent().get_detections_from_generic(job))
+
+        self.assertEqual(3, len(detections))
+
+        line_detection = detections[0]
+        self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertTrue('Phone: 432-555-0189' in line_detection.detection_properties['TEXT'])
+        self.assertTrue('Email: contoso@example.com' in line_detection.detection_properties['TEXT'])
+        self.assertTrue('Invoice Date:\n4/14/2019' in line_detection.detection_properties['TEXT'])
+
+        table_detection = detections[1]
+        self.assertEqual('TABLE', table_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertTrue('Item #,Description,Qty,Unit Price,Discount,Price' in
+                        table_detection.detection_properties['TABLE_CSV_OUTPUT'])
+        self.assertTrue('Z4567,Invoice 3-456-2 Data 1,39,$ 5.00,$ -,$ 195.00' in
+                        table_detection.detection_properties['TABLE_CSV_OUTPUT'])
+
+    def test_png_form(self):
+        self.set_results_path(get_test_file('regular-forms/png-results.json'))
+        job = mpf.ImageJob('Test', get_test_file('regular-forms/contoso-invoice.png'), get_test_properties(), {}, None)
+        detections = list(AcsFormRecognizerComponent().get_detections_from_image(job))
+
+        self.assertEqual(1, len(detections))
+
+        line_detection = detections[0]
+        self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertTrue('Contoso, Ltd.' in line_detection.detection_properties['TEXT'])
+        self.assertTrue('554 Magnolia Way\nWalnut, WY, 98432' in line_detection.detection_properties['TEXT'])
+        self.assertTrue('Thank you for your business!' in line_detection.detection_properties['TEXT'])
+
 
 
     def test_upsampling(self):
@@ -158,66 +186,33 @@ class TestAcs(unittest.TestCase):
 
 
     def test_get_acs_url_default_options(self):
-        acs_url = 'http://localhost:10669/vision/v1.0/ocr'
-        self.assertEqual('http://localhost:10669/vision/v1.0/ocr?includeTextDetails=true',
+        acs_url = 'http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze'
+        self.assertEqual('http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?includeTextDetails=true',
                          acs_form_recognizer_component.JobRunner.get_acs_url(dict(ACS_URL=acs_url)))
 
 
     def test_get_acs_url_preserves_existing_query_params(self):
-        acs_url = 'http://localhost:10669/vision/v1.0/ocr?hello=world'
+        acs_url = 'http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?hello=world'
         properties = dict(ACS_URL=acs_url)
         url = acs_form_recognizer_component.JobRunner.get_acs_url(properties)
 
         if '?d' in url:
-            self.assertEqual('http://localhost:10669/vision/v1.0/ocr?includeTextDetails=true&hello=world', url)
+            self.assertEqual('http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?includeTextDetails=true&hello=world', url)
         else:
-            self.assertEqual('http://localhost:10669/vision/v1.0/ocr?hello=world&includeTextDetails=true', url)
+            self.assertEqual('http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?hello=world&includeTextDetails=true', url)
 
 
     def test_get_acs_url_modified_parameter(self):
-        acs_url = 'http://localhost:10669/vision/v1.0/ocr'
+        acs_url = 'http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze'
         properties = dict(ACS_URL=acs_url, INCLUDE_TEXT_DETAILS='false')
 
         url = acs_form_recognizer_component.JobRunner.get_acs_url(properties)
-        self.assertEqual('http://localhost:10669/vision/v1.0/ocr?includeTextDetails=false', url)
-
-    def test_loading_tags_from_within_package(self):
-        tagger = TextTagger(dict(TAGGING_FILE='text-tags.json'))
-        self.assertTrue(tagger.tagging_enabled)
-        tags = tagger.find_tags('bike')
-        self.assertEqual('vehicle', tags)
-
-    def test_loading_tags_from_path(self):
-        tagger = TextTagger(dict(TAGGING_FILE=get_test_file('test-text-tags.json')))
-        self.assertTrue(tagger.tagging_enabled)
-        tags = tagger.find_tags('human')
-        self.assertEqual('TAG_4', tags)
-
-    def test_disable_tagging(self):
-        tagger = TextTagger(dict())
-        self.assertFalse(tagger.tagging_enabled)
-        tags = tagger.find_tags('human')
-        self.assertEqual('', tags)
-
-
-    def test_missing_tag_file(self):
-        with self.assertRaises(mpf.DetectionException) as cm:
-            TextTagger(dict(TAGGING_FILE='asdf.json'))
-        self.assertEqual(mpf.DetectionError.COULD_NOT_READ_DATAFILE, cm.exception.error_code)
-
-
-    def test_invalid_tag_file(self):
-        with self.assertRaises(mpf.DetectionException) as cm:
-            TextTagger(dict(TAGGING_FILE=get_test_file('NOTICE')))
-        self.assertEqual(mpf.DetectionError.COULD_NOT_READ_DATAFILE, cm.exception.error_code)
-
-
+        self.assertEqual('http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?includeTextDetails=false', url)
 
 def get_test_properties(**extra_properties):
     return {
-        'ACS_URL': os.getenv('ACS_URL', 'http://localhost:10669/vision/v1.0/ocr'),
+        'ACS_URL': os.getenv('ACS_URL', 'http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze'),
         'ACS_SUBSCRIPTION_KEY': os.getenv('ACS_SUBSCRIPTION_KEY', 'test_key'),
-        'TAGGING_FILE': get_test_file('test-text-tags.json'),
         **extra_properties
     }
 
@@ -260,10 +255,12 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
 
         content_len = int(self.headers['Content-Length'])
         post_body = self.rfile.read(content_len)
-        self._validate_frame(post_body)
+
+        if self.headers['Content-Type'] == 'application/octet-stream':
+            self._validate_frame(post_body)
 
         self.send_response(200)
-        self.send_header("Operation-Location","http://localhost:10669/vision/v1.0/ocr")
+        self.send_header("Operation-Location","http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze")
         self.end_headers()
 
     def do_GET(self):
@@ -279,17 +276,13 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(400, msg)
             raise Exception(msg)
 
-        if not post_body.startswith(b'\x89PNG\x0d\x0a\x1a\x0a'):
-            msg = 'Expected a png file, but magic bytes were wrong.'
+        if not post_body.startswith(b'\x89PNG\x0d\x0a\x1a\x0a') and not post_body.startswith(b'%PDF'):
+            msg = 'Expected a png or pdf file, but magic bytes were wrong.'
             self.send_error(400, msg)
             raise Exception(msg)
 
         frame = cv2.imdecode(np.frombuffer(post_body, dtype=np.uint8), cv2.IMREAD_COLOR)
         size = mpf_util.Size.from_frame(frame)
-        if size.width * size.height > FrameEncoder.MAX_PIXELS:
-            msg = 'Image contained too many pixels.'
-            self.send_error(400, msg)
-            raise Exception(msg)
 
         if size.width < FrameEncoder.MIN_DIMENSION_LENGTH:
             msg = 'Image was not wide enough.'

@@ -24,19 +24,16 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import collections
 import csv
 import io
 import json
 import math
 import os
-import re
+import time
 import urllib
 import urllib.error
 import urllib.parse
 import urllib.request
-import ssl
-import time
 
 import cv2
 import numpy as np
@@ -53,7 +50,9 @@ class AcsFormRecognizerComponent(mpf_util.ImageReaderMixin, object):
     def get_detections_from_generic(self, generic_job):
         try:
             logger.info('[%s] Received generic job: %s', generic_job.job_name, generic_job)
-            detections = JobRunner(generic_job.job_properties, False).get_pdf_detections(generic_job.data_uri)
+            detections = JobRunner(generic_job.job_name,
+                                   generic_job.job_properties,
+                                   False).get_pdf_detections(generic_job.data_uri)
             num_detections = len(detections)
             logger.info('[%s] Processing complete. Found %s detections.', generic_job.job_name, num_detections)
 
@@ -69,7 +68,7 @@ class AcsFormRecognizerComponent(mpf_util.ImageReaderMixin, object):
 
             num_detections = 0
             image = image_reader.get_image()
-            detections = JobRunner(image_job.job_properties, True).get_image_detections((image,))
+            detections = JobRunner(image_job.job_name, image_job.job_properties, True).get_image_detections(image)
             for detection in detections:
                 # We don't need to anything with the index for a image jobs.
                 yield detection
@@ -83,116 +82,91 @@ class AcsFormRecognizerComponent(mpf_util.ImageReaderMixin, object):
 class JobRunner(object):
     """ Class process a single job and hold its configuration info. """
 
-    def __init__(self, job_properties, is_image):
+    def __init__(self, job_name, job_properties, is_image):
+        self._job_name = job_name
         self._acs_url = self.get_acs_url(job_properties)
         self._is_image = is_image
-        self._merge_lines = json.loads(job_properties.get("MERGE_LINES", "true").lower())
+        self._merge_lines = json.loads(job_properties.get('MERGE_LINES', 'true').lower())
         subscription_key = self._get_acs_property_or_env_value('ACS_SUBSCRIPTION_KEY', job_properties)
 
-
-        if (self._is_image):
+        if self._is_image:
             self._acs_headers = {'Ocp-Apim-Subscription-Key': subscription_key,
                                  'Content-Type': 'application/octet-stream'}
         else:
             # Only supports PDF files.
             self._acs_headers = {'Ocp-Apim-Subscription-Key': subscription_key,
                                  'Content-Type': 'application/pdf'}
-        self._text_tagger = TextTagger(job_properties)
 
-    def create_detection(self, detection_properties):
-        if self._is_image:
-            return mpf.ImageLocation(0, 0, 0, 0, -1, detection_properties)
-        else:
-            return mpf.GenericTrack(-1, detection_properties)
-
-    # Uses results_post_processor as a reference.
-    def _process_image_results(self, form_results_json):
-
-        # Extract text results.
-        page_num = 0
-        detections = []
-
-        for page in form_results_json['analyzeResult']['readResults']:
-            page_num = page['page'] - 1
-            line_num = 0
-            lines = []
-            for line in page["lines"]:
-                if not self._merge_lines:
-                    detection_properties = dict(OUTPUT_TYPE = "LINE",
-                                                PAGE_NUM = str(page_num),
-                                                LINE_NUM = str(line_num),
-                                                TEXT = line["text"])
-                    detections.append(self.create_detection(detection_properties))
-                    line_num += 1
-                else:
-                    lines.append(line["text"])
-            if self._merge_lines and len(lines) > 0:
-                detection_properties = dict(OUTPUT_TYPE = "MERGED_LINES",
-                                            PAGE_NUM = str(page_num),
-                                            TEXT = "\n".join(lines))
-                detections.append(self.create_detection(detection_properties))
-
-        # Extract table results.
-        for page in form_results_json['analyzeResult']['pageResults']:
-            page_num = page['page'] - 1
-            table_num = 0
-            for table in page['tables']:
-                row = table['rows']
-                col = table['columns']
-                table_array = np.full([row, col], None)
-                for cell in table['cells']:
-                    table_array[cell['rowIndex']][cell['columnIndex']] = cell['text']
-                output = io.StringIO()
-                writer = csv.writer(output)
-                for row in table_array:
-                    writer.writerow(row)
-                cs_output = output.getvalue()
-                output.close()
-
-                detection_properties = dict(OUTPUT_TYPE = "TABLE",
-                                            PAGE_NUM=str(page_num),
-                                            TABLE_NUM = str(table_num),
-                                            TABLE_CSV_OUTPUT=cs_output)
-                detections.append(self.create_detection(detection_properties))
-                table_num += 1
-
-        return detections
-
-    def get_pdf_detections(self, data_uri):
-        pdf_content = None
-        with open(data_uri, 'rb') as f:
-            pdf_content = f.read()
-        form_results_json = self._post_to_acs(pdf_content)
-
-        return self._process_image_results(form_results_json)
-
-    def get_image_detections(self, frames):
+    def get_image_detections(self, frame):
         """
-        :param frames: An iterable of frames in a numpy.ndarray with shape (h, w, 3)
-        :return: An iterable of (frame_number, mpf.ImageLocation)
+        :param frames: A numpy.ndarray with shape (h, w, 3)
+        :return: An iterable of mpf.ImageLocation
         """
         encoder = FrameEncoder()
 
-        for idx, frame in enumerate(frames):
-            # Encode frame in a format compatible with ACS API. This may result in the frame size changing.
-            encoded_frame, resized_frame_dimensions = encoder.resize_and_encode(frame)
-            form_results_json = self._post_to_acs(encoded_frame)
-            initial_frame_size = mpf_util.Size.from_frame(frame)
+        # Encode frame in a format compatible with ACS API. This may result in the frame size changing.
+        encoded_frame, resized_frame_dimensions = encoder.resize_and_encode(frame)
+        form_results_json = self._post_to_acs(encoded_frame)
+        initial_frame_size = mpf_util.Size.from_frame(frame)
 
-            # Convert the results from the ACS JSON to mpf.ImageLocations
-            # TODO: Add self._text_tagger to process LINE results.
-            detections = self._process_image_results(form_results_json)
-            for detection in detections:
-                yield detection
+        resize_scale_factor = initial_frame_size.width / resized_frame_dimensions.width
+
+        # Convert the results from the ACS JSON to mpf.ImageLocations
+        detections = FormResultsProcessor(self._is_image,
+                                          resize_scale_factor,
+                                          self._merge_lines).process_form_results(form_results_json)
+        for detection in detections:
+            yield detection
+            
+    def get_pdf_detections(self, data_uri):
+        with open(data_uri, 'rb') as f:
+            pdf_content = f.read()
+        
+        form_results_json = self._post_to_acs(pdf_content)
+
+        return FormResultsProcessor(self._is_image, 1, self._merge_lines).process_form_results(form_results_json)
+
+    def _get_acs_result(self, result_request):
+        logger.info('[%s] Contacting ACS server for form results.', self._job_name)
+        max_attempts = 10
+        attempt_num = 0
+        wait_sec = 5
+        while attempt_num < max_attempts:
+            logger.info('[%s] Sending GET request.', self._job_name)
+            try:
+                results = urllib.request.urlopen(result_request)
+                json_results = json.load(results)
+                if results.status != 200:
+                    logger.warning("GET Layout results failed:\n{}".format(json_results))
+                    raise mpf.DetectionException('GET Request failed with HTTP status {}'.format(results.status))
+                status = json_results["status"]
+                if status == "succeeded":
+                    logger.info('[%s] Layout Analysis succeeded. Processing form results.', self._job_name)
+                    return json_results
+                if status == "failed":
+                    logger.warning("Layout Analysis failed:\n{}".format(json_results))
+                    raise mpf.DetectionException('GET Request failed.')
+                # Analysis still running. Wait and then retry GET request.
+                logger.info('[%s] Form results not available yet. Recontacting server in [%d] seconds.', self._job_name,
+                            wait_sec)
+                time.sleep(wait_sec)
+                attempt_num += 1
+            except urllib.error.HTTPError as e:
+                response_content = e.read().decode('utf-8', errors='replace')
+                raise mpf.DetectionException('GET Request failed with HTTP status {} and message: {}'
+                                             .format(e.code, response_content), mpf.DetectionError.DETECTION_FAILED)
+        logger.error('[%s] Max attempts exceeded. Unable to retrieve server results. Ending job.', self._job_name)
+        raise mpf.DetectionException('Unable to retrieve results from ACS server.')
 
     def _post_to_acs(self, encoded_frame):
+        logger.info('[%s] Sending POST request to ACS server.', self._job_name)
         request = urllib.request.Request(self._acs_url, bytes(encoded_frame), self._acs_headers)
         try:
             response = urllib.request.urlopen(request)
-            results_url = response.headers["operation-location"]
+            results_url = response.headers['operation-location']
             result_request = urllib.request.Request(results_url, None, self._acs_headers)
-            results = urllib.request.urlopen(result_request)
-            return json.load(results)
+            logger.info('[%s] Received response from ACS server. Obtained form results url.', self._job_name)
+            return self._get_acs_result(result_request)
         except urllib.error.HTTPError as e:
             response_content = e.read().decode('utf-8', errors='replace')
             raise mpf.DetectionException('Request failed with HTTP status {} and message: {}'
@@ -225,121 +199,15 @@ class JobRunner(object):
             mpf.DetectionError.MISSING_PROPERTY)
 
 
-class TextTagger(object):
-    def __init__(self, job_properties):
-        tags_json_file = self._get_tags_json_path(job_properties)
-        if tags_json_file:
-            self._tags_to_compiled_regexes = self._load_tag_dict(tags_json_file)
-        else:
-            self._tags_to_compiled_regexes = {}
-
-        self.tagging_enabled = len(self._tags_to_compiled_regexes) > 0
-
-
-    def find_tags(self, content):
-        """
-        Searches the given content for text matching the loaded tags.
-
-        :param content: The text to search for matches.
-        :return: A unicode string containing a comma-separated list of matching tags.
-        """
-        matching_tags = (tag for tag, rxs in self._tags_to_compiled_regexes.items()
-                         if self._any_regex_matches(content, rxs))
-        return ', '.join(matching_tags)
-
-
-    @staticmethod
-    def _any_regex_matches(content, regexes):
-        return any(r.search(content) for r in regexes)
-
-
-    @staticmethod
-    def _get_tags_json_path(job_properties):
-        tagging_file = job_properties.get('TAGGING_FILE')
-        if not tagging_file:
-            return None
-
-        expanded_tagging_file = os.path.expandvars(tagging_file)
-
-        absolute_path = os.path.abspath(expanded_tagging_file)
-        if os.path.exists(absolute_path):
-            return absolute_path
-
-        internal_path = os.path.abspath(os.path.join(os.path.dirname(__file__), expanded_tagging_file))
-        if os.path.exists(internal_path):
-            return internal_path
-
-        if absolute_path == internal_path:
-            error_msg = 'Tagging file not found. Expected it to exist at "{}".'.format(absolute_path)
-        else:
-            error_msg = 'Tagging file not found. Expected it to exist at either "{}" or "{}".'.format(
-                absolute_path, internal_path)
-
-        raise mpf.DetectionException(error_msg, mpf.DetectionError.COULD_NOT_READ_DATAFILE)
-
-
-    @classmethod
-    def _load_tag_dict(cls, tags_json_file):
-        """
-        Loads text tags from a JSON file.
-
-        :param tags_json_file: Path to file containing the text tags JSON.
-        :return: A dictionary where the key the tag and the value is a list of compiled regexes.
-        :rtype: dict[unicode, list[re.RegexObject]]
-        """
-        with open(tags_json_file) as f:
-            try:
-                tags_json = json.load(f)
-            except ValueError as e:
-                raise mpf.DetectionException(
-                    'Failed to load text tags JSON from \"{}\" due to: {}'.format(tags_json_file, e),
-                    mpf.DetectionError.COULD_NOT_READ_DATAFILE)
-
-        tags_to_compiled_regexes = collections.defaultdict(list)
-        regex_flags = re.MULTILINE | re.IGNORECASE | re.UNICODE | re.DOTALL
-
-        tags_by_regex = tags_json.get('TAGS_BY_REGEX', {})
-        for tag, regexes in tags_by_regex.items():
-            tags_to_compiled_regexes[tag] = [re.compile(r, regex_flags) for r in regexes]
-
-        tags_by_keyword = tags_json.get('TAGS_BY_KEYWORD', {})
-        for tag, keywords in tags_by_keyword.items():
-            compiled_regexes = (cls._convert_keyword_to_regex(w, regex_flags) for w in keywords)
-            tags_to_compiled_regexes[tag].extend(compiled_regexes)
-
-        return tags_to_compiled_regexes
-
-
-    _SLASH_THEN_WHITE_SPACE_REGEX = re.compile(r'\\\s', re.UNICODE)
-
-    @classmethod
-    def _convert_keyword_to_regex(cls, word, regex_flags):
-        # Converts 'hello world' to r'\bhello\s+world\b'.
-
-        # re.escape doesn't just escape regex metacharacters, it escapes all non-printable and non-ASCII text.
-        # This causes space characters to also be escaped which makes it harder to replace them with '\s+'
-        escaped = re.escape(word)
-        # word = 'hello world'
-        # escaped = 'hello\ world'
-
-        with_generic_white_space = cls._SLASH_THEN_WHITE_SPACE_REGEX.sub(r'\\s+', escaped)
-        # with_generic_white_space = 'hello\s+world'
-
-        with_word_boundaries = r'\b' + with_generic_white_space + r'\b'
-        # with_word_boundaries = '\bhello\s+world\b'
-
-        return re.compile(with_word_boundaries, regex_flags)
-
-
 class FrameEncoder(object):
     """Class to handle converting frames in to a format acceptable to Azure Cognitive Services."""
 
     # These constraints are from Azure Cognitive Services
-    # (https://westus.dev.cognitive.microsoft.com/docs/services/56f91f2d778daf23d8ec6739/operations/56f91f2e778daf14a499e1fc)
-    MAX_PIXELS = 10000000
+    # (https://westus2.dev.cognitive.microsoft.com/docs/services/form-recognizer-api-v2/operations/AnalyzeLayoutAsync)
+
     MIN_DIMENSION_LENGTH = 50  # pixels
-    MAX_DIMENSION_LENGTH = 4200  # pixels
-    MAX_FILE_SIZE = 4 * 1024 * 1024  # bytes
+    MAX_DIMENSION_LENGTH = 10000  # pixels
+    MAX_FILE_SIZE = 20 * 1024 * 1024  # bytes
 
     def __init__(self):
         self._encode = self._default_encode
@@ -364,7 +232,6 @@ class FrameEncoder(object):
 
         return self._resize_for_file_size(frame, corrected_frame_size, len(encoded_frame))
 
-
     def _default_encode(self, frame):
         """Encode the given frame using the default OpenCV settings. This is faster than _encode_max_compression,
            but will result in a larger file."""
@@ -387,7 +254,6 @@ class FrameEncoder(object):
         if not success:
             raise mpf.DetectionException('Failed to encode frame.')
         return encoded_frame
-
 
     @classmethod
     def _resize_for_file_size(cls, frame, corrected_frame_size, previous_encode_length):
@@ -416,7 +282,6 @@ class FrameEncoder(object):
         # Recurse to retry with smaller size. This should almost never happen.
         # It was only observed with specific test images that were designed to be hard to compress.
         return cls._resize_for_file_size(frame, corrected_frame_size, len(encoded_frame))
-
 
     @classmethod
     def _resize_for_dimensions(cls, frame):
@@ -473,12 +338,6 @@ class FrameEncoder(object):
                 cls.MAX_DIMENSION_LENGTH, original_frame_size.width, original_frame_size.height)
 
         new_pixel_count = new_frame_size.width * new_frame_size.height
-        if new_pixel_count > cls.MAX_PIXELS:
-            new_frame_size = scale_size(new_frame_size, math.sqrt(cls.MAX_PIXELS / new_pixel_count))
-            logger.warning(
-                'Downsampling frame because Azure Cognitive Services requires the frame to contain at most %s pixels, '
-                'but the frame contained %s pixels.',
-                cls.MAX_PIXELS, original_frame_size.width * original_frame_size.height)
 
         return new_frame_size
 
@@ -489,3 +348,117 @@ def scale_size(size, scale_factor):
     return mpf_util.Size(int(size.width * scale_factor), int(size.height * scale_factor))
 
 
+class FormResultsProcessor(object):
+    """
+    Class to convert results from Azure Cognitive Services in to the format used by MPF.
+    This involves extracting information from the JSON and converting the bounding boxes in to the format used by MPF.
+    """
+    def __init__(self, is_image, resize_scale_factor, merge_lines):
+        self._is_image = is_image
+        self._resize_scale_factor = resize_scale_factor
+        self._merge_lines = merge_lines
+    
+    
+    def _create_detection(self, detection_properties, bounding_box):
+        if self._is_image:
+            corrected_bounding_box = self._correct_region_bounding_box(bounding_box)
+            return mpf.ImageLocation(int(corrected_bounding_box.x), int(corrected_bounding_box.y),
+                                     int(corrected_bounding_box.width), int(corrected_bounding_box.height),
+                                     -1, detection_properties)
+        else:
+            return mpf.GenericTrack(-1, detection_properties)
+
+    def _correct_region_bounding_box(self, bounding_box):
+        """
+        Convert ACS representation of bounding box to MPF's bounding box and rotation.
+
+        :param bounding_box: ACS formatted bounding box
+        :return: A tuple containing the MPF representation of bounding box and the box's rotation angle in degrees.
+        """
+        # Map coordinates from resized frame back to the original frame
+        x = bounding_box.x * self._resize_scale_factor
+        y = bounding_box.y * self._resize_scale_factor
+        width = bounding_box.width * self._resize_scale_factor
+        height = bounding_box.height * self._resize_scale_factor
+
+        # Map ACS orientation info to MPF rotation info
+        #corrected_top_left, corrected_angle = self._orientation_correction(x, y)'
+        top_left = (x,y)
+        corrected_box = mpf_util.Rect.from_corner_and_size(top_left, (width, height))
+        return corrected_box #, mpf_util.normalize_angle(corrected_angle)
+
+    def _convert_to_rect(self, bonding_box):
+        p1 = (bonding_box[0], bonding_box[1])
+        p2 = (bonding_box[4], bonding_box[5])
+        return mpf_util.Rect.from_corners(p1, p2)
+
+
+    def process_form_results(self, form_results_json):
+        # Extract text results.
+        detections = []
+
+        for page in form_results_json['analyzeResult']['readResults']:
+            page_num = page['page'] - 1
+            line_num = 0
+            lines = []
+            bounding_box = []
+
+            for line in page['lines']:
+                if not self._merge_lines:
+                    detection_properties = dict(OUTPUT_TYPE='LINE',
+                                                PAGE_NUM=str(page_num),
+                                                LINE_NUM=str(line_num),
+                                                TEXT=line['text'])
+                    if self._is_image:
+                        bounding_box = self._convert_to_rect(line['boundingBox'])
+                    detections.append(self._create_detection(detection_properties, bounding_box))
+                    line_num += 1
+                else:
+                    lines.append(line['text'])
+
+                    if self._is_image:
+                        if len(bounding_box) == 0:
+                            bounding_box = self._convert_to_rect(line['boundingBox'])
+                        else:
+                            second_bounding_box = self._convert_to_rect(line['boundingBox'])
+                            bounding_box = bounding_box.union(second_bounding_box)
+
+            if self._merge_lines and len(lines) > 0:
+                detection_properties = dict(OUTPUT_TYPE='MERGED_LINES',
+                                            PAGE_NUM=str(page_num),
+                                            TEXT='\n'.join(lines))
+                detections.append(self._create_detection(detection_properties, bounding_box))
+
+        # Extract table results.
+        for page in form_results_json['analyzeResult']['pageResults']:
+            page_num = page['page'] - 1
+            table_num = 0
+            for table in page['tables']:
+                row = table['rows']
+                col = table['columns']
+                table_array = np.full([row, col], None)
+                bounding_box = []
+
+                for cell in table['cells']:
+                    table_array[cell['rowIndex']][cell['columnIndex']] = cell['text']
+                    if self._is_image:
+                        if len(bounding_box) == 0:
+                            bounding_box = self._convert_to_rect(cell['boundingBox'])
+                        else:
+                            second_bounding_box = self._convert_to_rect(cell['boundingBox'])
+                            bounding_box = bounding_box.union(second_bounding_box)
+
+                output = io.StringIO()
+                writer = csv.writer(output)
+                for row in table_array:
+                    writer.writerow(row)
+                cs_output = output.getvalue()
+                output.close()
+                detection_properties = dict(OUTPUT_TYPE='TABLE',
+                                            PAGE_NUM=str(page_num),
+                                            TABLE_NUM=str(table_num),
+                                            TABLE_CSV_OUTPUT=cs_output)
+                detections.append(self._create_detection(detection_properties, bounding_box))
+                table_num += 1
+
+        return detections

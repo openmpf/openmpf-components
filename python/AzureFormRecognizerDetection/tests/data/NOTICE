@@ -8,3 +8,10 @@ Custom generated image, contains beginning of "A Tale of Two Cities" by Charles 
 # no-results/black.png
 Custom generated image, just black pixels.
 
+# regular-forms/contoso-invoice.png
+Demo PNG image from Microsoft Azure Cognitive Services.
+URL: "https://docs.microsoft.com/en-us/azure/cognitive-services/form-recognizer/media/contoso-invoice.png"
+
+# regular-forms/form-recognizer-demo-sample1.pdf
+Demo PDF file from Microsoft Azure Cognitive Services.
+URL: "https://azure.microsoft.com/en-us/services/cognitive-services/form-recognizer/#overview"
