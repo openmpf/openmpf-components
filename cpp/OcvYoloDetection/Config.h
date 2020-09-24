@@ -29,8 +29,10 @@
 
 #include <log4cxx/logger.h>
 #include <opencv2/opencv.hpp>
+#include <thread>
+#include <mutex>
+#include <atomic>
 
-#include "detectionComponentUtils.h"
 #include "adapters/MPFImageAndVideoDetectionComponentAdapter.h"
 #include "MPFImageReader.h"
 #include "MPFVideoCapture.h"
@@ -41,59 +43,6 @@ namespace MPF{
  namespace COMPONENT{
 
   using namespace std;
-
-  /** ****************************************************************************
-  *   get MPF properties of various types
-  *
-  * \param T   data type to cast the result to
-  * \param p   properties map to get property from
-  * \param k   string key to use to retrieve property
-  * \param def default value to return if key is not found
-  *
-  * \return  type converted value of property retrived with key or the default
-  *
-  ***************************************************************************** */
-  template<typename T>
-  T get(const Properties &p, const string &k, const T def){
-    return DetectionComponentUtils::GetProperty<T>(p,k,def);
-  }
-
-  /** ****************************************************************************
-  *   get configuration from environment variables if not
-  *   provided by job configuration
-  *
-  * \param T   data type to cast the result to
-  * \param p   properties map to get property from
-  * \param k   string key to use to retrieve property
-  * \param def default value to return if key is not found
-  *
-  * \return  type converted value of property retrived with key or the default
-  *
-  ***************************************************************************** */
-  template<typename T>
-  T getEnv(const Properties &p, const string &k, const T def){
-    auto iter = p.find(k);
-    if (iter == p.end()){
-      const char* env_p = getenv(k.c_str());
-      if(env_p != NULL){
-        map<string,string> envp;
-        envp.insert(pair<string,string>(k,string(env_p)));
-        return DetectionComponentUtils::GetProperty<T>(envp,k,def);
-      }else{
-        return def;
-      }
-    }
-    return DetectionComponentUtils::GetProperty<T>(p,k,def);
-  }
-
-  /** ****************************************************************************
-  *   exception macro so we can see where in the code it happened
-  ****************************************************************************** */
-  #define THROW_EXCEPTION(MSG){                                  \
-  string path(__FILE__);                                         \
-  string f(path.substr(path.find_last_of("/\\") + 1));           \
-  throw runtime_error(f + "[" + to_string(__LINE__)+"] " + MSG); \
-  }
 
   /** ****************************************************************************
   * logging shorthand macros
@@ -152,12 +101,17 @@ namespace MPF{
       void  ReverseTransform(MPFImageLocation loc) const {_imreaderPtr->ReverseTransform(loc);  }
       void  ReverseTransform(MPFVideoTrack  track) const {_videocapPtr->ReverseTransform(track);}
 
-      Frame    getImageFrame() const;
-      FrameVec getVideoFrames(int numFrames) const;
+      Frame    getImageFrame() const;           ///< get an image as a frame
+      FrameVec getVideoFrames(int numFrames);   ///< get a batch of frames from frameQ
+      void     frameReaderThread();             ///< async thread to keep frameQ filled
 
     private:
       unique_ptr<MPFImageReader>  _imreaderPtr;
       unique_ptr<MPFVideoCapture> _videocapPtr;
+      unique_ptr<thread>          _captureThreadPtr;
+      atomic<bool>                _capturing;
+      mutex                       _captureMtx;
+      FrameQ                      _frameQ;
 
       static cv::Mat1f      _defaultHanningWindow;  ///< default hannning window matching _dftSize
 
@@ -165,10 +119,6 @@ namespace MPF{
       string                      _strQN;                 ///< kalman filter process noise matrix serialized to string
 
       void    _parse(const MPFJob &job);
-      cv::Mat _fromString(const string data,
-                          const int    rows,
-                          const int    cols,
-                          const string dt);
 
   };
 

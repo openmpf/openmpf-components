@@ -76,14 +76,14 @@ namespace MPF{
                                       const float              maxKFResidual,
                                       const float              edgeSnap); ///< determine assign detections to tracks
 
-        template<typename TrackClusterListType, typename DetectionClusterListType, assignmentCostFunc COST_FUNC>
-        static void  assignDetections(TrackClusterListType       &trkClusterList,
-                                    DetectionClusterListType     &detClusterList,
-                                    TrackList                    &assignedTracks,
-                                    const float                   maxCost,
-                                    const float                   maxClassDist,
-                                    const float                   maxKFResidual,
-                                    const float                   edgeSnap);  ///< determine assign detections in cluster to tracks in clusters
+        template<assignmentCostFunc COST_FUNC, typename TrackClusterListType, typename DetectionClusterListType>
+        static void  assignDetections(TrackClusterListType     &trkClusterList,
+                                      DetectionClusterListType &detClusterList,
+                                      TrackList                &assignedTracks,
+                                      const float               maxCost,
+                                      const float               maxClassDist,
+                                      const float               maxKFResidual,
+                                      const float               edgeSnap);  ///< determine assign detections in cluster to tracks in clusters
         #ifdef KFDUMP_STATE
           void             kalmanDump(string filename){if(_kfPtr) _kfPtr->dump(filename);}
         #endif
@@ -112,6 +112,7 @@ namespace MPF{
     using DetectionCluster      = Cluster<DetectionLocation, &DetectionLocation::getClassFeature, &cosDist>;
     using TrackClusterList      = list<TrackCluster>;
     using DetectionClusterList  = list<DetectionCluster>;
+
   }
 }
 

@@ -118,6 +118,81 @@ namespace MPF{
     // Some explicit template instantiations used elsewhere in project
     template string dformat<long>(dlib::matrix<long> m);
 
+
+    /** **************************************************************************
+    *   Parse a string into a opencv matrix
+    *   e.g. [1,2,3,4, 5,6,7,8]
+    *************************************************************************** */
+    cv::Mat fromString(const string data,const int rows,const int cols,const string dt="f"){
+      stringstream ss;
+      ss << "{\"mat\":{\"type_id\":\"opencv-matrix\""
+        << ",\"rows\":" << rows
+        << ",\"cols\":" << cols
+        << ",\"dt\":\"" << dt << '"'
+        << ",\"data\":" << data << "}}";
+      cv::FileStorage fs(ss.str(), cv::FileStorage::READ | cv::FileStorage::MEMORY | cv::FileStorage::FORMAT_JSON);
+      cv::Mat mat;
+      fs["mat"] >> mat;
+      return mat;
+    }
+
+    /** ****************************************************************************
+    *   get MPF properties of various types
+    *
+    * \param T   data type to cast the result to
+    * \param p   properties map to get property from
+    * \param k   string key to use to retrieve property
+    * \param def default value to return if key is not found
+    *
+    * \return  type converted value of property retrived with key or the default
+    *
+    ***************************************************************************** */
+    template<typename T>
+    T get(const Properties &p, const string &k, const T def){
+      return DetectionComponentUtils::GetProperty<T>(p,k,def);
+    }
+
+    template int    get<int>   (const Properties&, const string&, const int);
+    template bool   get<bool>  (const Properties&, const string&, const bool);
+    template float  get<float> (const Properties&, const string&, const float);
+    template string get<string>(const Properties&, const string&, const string);
+
+
+
+    /** ****************************************************************************
+    *   get configuration from environment variables if not
+    *   provided by job configuration
+    *
+    * \param T   data type to cast the result to
+    * \param p   properties map to get property from
+    * \param k   string key to use to retrieve property
+    * \param def default value to return if key is not found
+    *
+    * \return  type converted value of property retrived with key or the default
+    *
+    ***************************************************************************** */
+    template<typename T>
+    T getEnv(const Properties &p, const string &k, const T def){
+      auto iter = p.find(k);
+      if (iter == p.end()){
+        const char* env_p = getenv(k.c_str());
+        if(env_p != NULL){
+          map<string,string> envp;
+          envp.insert(pair<string,string>(k,string(env_p)));
+          return DetectionComponentUtils::GetProperty<T>(envp,k,def);
+        }else{
+          return def;
+        }
+      }
+      return DetectionComponentUtils::GetProperty<T>(p,k,def);
+    }
+
+    template int    getEnv<int>   (const Properties&, const string&, const int);
+    template bool   getEnv<bool>  (const Properties&, const string&, const bool);
+    template float  getEnv<float> (const Properties&, const string&, const float);
+    template string getEnv<string>(const Properties&, const string&, const string);
+
+
     /** **************************************************************************
     *   Dump MPFLocation to a stream
     *************************************************************************** */

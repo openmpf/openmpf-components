@@ -24,6 +24,9 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include <chrono>
+#include <thread>
+
 #include "types.h"
 #include "util.h"
 #include "Frame.h"
@@ -35,23 +38,6 @@ using namespace MPF::COMPONENT;
 log4cxx::LoggerPtr                Config::log        = log4cxx::Logger::getRootLogger();
 string                            Config::pluginPath;
 string                            Config::configPath;
-
-/** **************************************************************************
-*   Parse a string into a opencv matrix
-*   e.g. [1,2,3,4, 5,6,7,8]
-*************************************************************************** */
-cv::Mat Config::_fromString(const string data,const int rows,const int cols,const string dt="f"){
-  stringstream ss;
-  ss << "{\"mat\":{\"type_id\":\"opencv-matrix\""
-     << ",\"rows\":" << rows
-     << ",\"cols\":" << cols
-     << ",\"dt\":\"" << dt << '"'
-     << ",\"data\":" << data << "}}";
-  cv::FileStorage fs(ss.str(), cv::FileStorage::READ | cv::FileStorage::MEMORY | cv::FileStorage::FORMAT_JSON);
-  cv::Mat mat;
-  fs["mat"] >> mat;
-  return mat;
-}
 
 /** **************************************************************************
 *   Parse argument fromMPFJob structure to our job objects
@@ -80,8 +66,8 @@ void Config::_parse(const MPFJob &job){
   kfDisabled = getEnv<bool>(jpr,"KF_DISABLED", kfDisabled);                                        LOG_TRACE( "KF_DISABLED: " << kfDisabled);
   _strRN = getEnv<string>(jpr,"KF_RN",_strRN);                                                     LOG_TRACE( "KF_RN: "       << _strRN);
   _strQN = getEnv<string>(jpr,"KF_QN",_strQN);                                                     LOG_TRACE( "KF_QN: "       << _strQN);
-  RN = _fromString(_strRN, 4, 1, "f");
-  QN = _fromString(_strQN, 4, 1, "f");
+  RN = fromString(_strRN, 4, 1, "f");
+  QN = fromString(_strQN, 4, 1, "f");
   //convert stddev to variances
   RN = RN.mul(RN);
   QN = QN.mul(QN);
@@ -148,11 +134,11 @@ Config::Config():
 
     // Kalman filter motion model noise / acceleration stddev for covariance matrix Q
     _strQN = "[100.0,100.0,100.0,100.0]";
-    QN = _fromString(_strQN, 4, 1, "f");
+    QN = fromString(_strQN, 4, 1, "f");
 
     // Kalman Bounding Box Measurement noise sdtdev for covariance Matrix R
     _strRN = "[6.0, 6.0, 6.0, 6.0]";
-    RN = _fromString(_strRN, 4, 1, "f");
+    RN = fromString(_strRN, 4, 1, "f");
 
   }
 
@@ -188,6 +174,32 @@ Frame Config::getImageFrame() const{
 }
 
 /** **************************************************************************
+*  Asyncronous thread to keep frameQ filled with frames
+*************************************************************************** */
+void Config::frameReaderThread(){
+  while(_capturing){
+    if(_frameQ.size() < 2 * frameBatchSize){
+      Frame frame(_videocapPtr->GetCurrentFramePosition(),
+                  _videocapPtr->GetCurrentTimeInMillis() * 0.001,
+                  1.0   / _videocapPtr->GetFrameRate(),
+                  cv::Mat());
+      try{
+        if(_videocapPtr->Read(frame.bgr)){
+          lock_guard<mutex> guard(_captureMtx);
+          _frameQ.push(frame);
+        }else{
+          _capturing = false;
+        }
+      }catch(...){
+        lock_guard<mutex> guard(_captureMtx);
+        _capturing = false;
+        lastError = MPF_COULD_NOT_READ_DATAFILE;
+      }
+    }
+  }
+}
+
+/** **************************************************************************
 *  Constructor that parses parameters from MPFVideoJob and initializes
 *  video capture / reader
 *************************************************************************** */
@@ -201,6 +213,9 @@ Config::Config(const MPFVideoJob &job):
     _videocapPtr = unique_ptr<MPFVideoCapture>(new MPFVideoCapture(job, true, true));
     if(!_videocapPtr->IsOpened()){                                             LOG_ERROR( "[" << job.job_name << "] Could not initialize capturing");
       lastError = MPF_COULD_NOT_OPEN_DATAFILE;
+    }else{
+      _capturing = true;
+      _captureThreadPtr = unique_ptr<thread>(new thread([this](){frameReaderThread();}));
     }
   }
 }
@@ -213,19 +228,22 @@ Config::Config(const MPFVideoJob &job):
 * \returns all frames read in a vector of pointers
 *
 *************************************************************************** */
-FrameVec Config::getVideoFrames(int numFrames = 1) const {
+FrameVec Config::getVideoFrames(int numFrames = 1) {
+
   FrameVec frames;
-  frames.reserve(numFrames);
-  for(int i=0; i<numFrames;i++){
-    frames.push_back(Frame(_videocapPtr->GetCurrentFramePosition(),
-                           _videocapPtr->GetCurrentTimeInMillis() * 0.001,
-                            1.0   / _videocapPtr->GetFrameRate(),
-                            cv::Mat()));
-    if(!_videocapPtr->Read(frames.back().bgr)){
-      frames.pop_back();
+  while(frames.size() < numFrames){
+    if(!_frameQ.empty()){
+      lock_guard<mutex> guard(_captureMtx);
+      frames.push_back(move(_frameQ.front()));
+      _frameQ.pop();
+    }else if(!_capturing){
       break;
     }
   }
+
+  lock_guard<mutex> guard(_captureMtx);
+  if(lastError != MPF_DETECTION_SUCCESS) throw lastError;
+
   return frames;
 }
 
@@ -239,5 +257,9 @@ Config::~Config(){
   if(_videocapPtr){
     _videocapPtr->Release();
     _videocapPtr.reset();
+  }
+  if(_captureThreadPtr){
+    _capturing = false;
+    _captureThreadPtr->join();
   }
 }

@@ -239,7 +239,7 @@ template void Track::assignDetections<&DetectionLocation::center2CenterDist>(Tra
 *          if am[x,y]==0 then detection[y] should be assigned to track[x]
 *
 ***************************************************************************** */
-template<typename TrackClusterListType, typename DetectionClusterListType, assignmentCostFunc COST_FUNC>
+template<assignmentCostFunc COST_FUNC, typename TrackClusterListType, typename DetectionClusterListType>
 void Track::assignDetections(TrackClusterListType         &trkClusterList,
                              DetectionClusterListType     &detClusterList,
                              TrackList                    &assignedTracks,
@@ -261,6 +261,6 @@ void Track::assignDetections(TrackClusterListType         &trkClusterList,
 /** ***************************************************************************
 * Some explicit template instantiations used elsewhere in project
 * **************************************************************************** */
-template void Track::assignDetections<TrackClusterList, DetectionClusterList, &DetectionLocation::featureDist>      (TrackClusterList&, DetectionClusterList&, TrackList&, const float, const float, const float, const float);
-template void Track::assignDetections<TrackClusterList, DetectionClusterList, &DetectionLocation::iouDist>          (TrackClusterList&, DetectionClusterList&, TrackList&, const float, const float, const float, const float);
-template void Track::assignDetections<TrackClusterList, DetectionClusterList, &DetectionLocation::center2CenterDist>(TrackClusterList&, DetectionClusterList&, TrackList&, const float, const float, const float, const float);
+template void Track::assignDetections<&DetectionLocation::featureDist,       TrackClusterList, DetectionClusterList>(TrackClusterList&, DetectionClusterList&, TrackList&, const float, const float, const float, const float);
+template void Track::assignDetections<&DetectionLocation::iouDist,           TrackClusterList, DetectionClusterList>(TrackClusterList&, DetectionClusterList&, TrackList&, const float, const float, const float, const float);
+template void Track::assignDetections<&DetectionLocation::center2CenterDist, TrackClusterList, DetectionClusterList>(TrackClusterList&, DetectionClusterList&, TrackList&, const float, const float, const float, const float);

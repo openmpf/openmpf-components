@@ -29,12 +29,20 @@
 #include <opencv2/opencv.hpp>
 #include <dlib/matrix.h>
 
+#include "detectionComponentUtils.h"
+
 #include "types.h"
 
 namespace MPF{
   namespace COMPONENT{
 
     using namespace std;
+
+    #define THROW_EXCEPTION(MSG){                                    \
+      string path(__FILE__);                                         \
+      string f(path.substr(path.find_last_of("/\\") + 1));           \
+      throw runtime_error(f + "[" + to_string(__LINE__)+"] " + MSG); \
+    }                                                                          ///< exception macro so we can see where in the code it happened
 
     cv::Rect2i snapToEdges(const cv::Rect2i& rt,
                            const cv::Rect2i& rm,
@@ -50,6 +58,17 @@ namespace MPF{
 
     template<typename T>
     string dformat(dlib::matrix<T> m);                                         ///< output dlib matrix on single line
+
+    cv::Mat fromString(const string data,
+                       const int    rows,
+                       const int    cols,
+                       const string dt);                                       ///< read opencv matrix from string
+
+    template<typename T>
+    T get(const Properties &p, const string &k, const T def);                  ///< get MPF properties of various types
+
+    template<typename T>
+    T getEnv(const Properties &p, const string &k, const T def);               ///< get MPF properties of various types with fallback to environment variables
 
     template<typename T>
     ostream& operator<< (ostream& os, const vector<T>& v);                     ///< output vector to stream

@@ -244,18 +244,15 @@ MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
         assert(tracks.empty());
 
         // intersection over union tracking and assignment
-        Track::assignDetections<decltype(trackClusterList), decltype(detClusterList),
-                                &DetectionLocation::iouDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxIOUDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
+        Track::assignDetections<&DetectionLocation::iouDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxIOUDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
         LOG_TRACE("IOU assignment complete");
 
         // feature-based tracking tracking and assignment
-        Track::assignDetections<decltype(trackClusterList), decltype(detClusterList),
-                                &DetectionLocation::featureDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxFeatureDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
+        Track::assignDetections<&DetectionLocation::featureDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxFeatureDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
         LOG_TRACE("Feature assignment complete");
 
         // center-to-center distance tracking and assignment
-        Track::assignDetections<decltype(trackClusterList), decltype(detClusterList),
-                                &DetectionLocation::center2CenterDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxCenterDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
+        Track::assignDetections<&DetectionLocation::center2CenterDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxCenterDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
         LOG_TRACE("Center2Center assignment complete");
 
                                                                                     // LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");

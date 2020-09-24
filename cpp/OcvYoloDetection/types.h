@@ -30,6 +30,7 @@
 #include <type_traits>
 #include <memory>
 #include <list>
+#include <queue>
 #include <iomanip>
 #include <opencv2/dnn.hpp>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
@@ -68,6 +69,7 @@ namespace MPF{
     using cvPoint2fVecVec          = vector<cvPoint2fVec>;               ///< vector of vectors of OpenCV 2D float points
 
     using FrameVec                 = vector<Frame>;                      ///< vector for Frames
+    using FrameQ                   = queue<Frame>;                       ///< queue for Frames
     using DetectionLocationList    = list<DetectionLocation>;            ///< list of detection locations
     using DetectionLocationListVec = vector<DetectionLocationList>;      ///< vector of DetectionLocation Lists
     using DetectionLocationVec     = vector<DetectionLocation>;          ///< vector of DetectionLocations
