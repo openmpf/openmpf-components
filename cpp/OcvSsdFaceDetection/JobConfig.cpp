@@ -25,26 +25,10 @@
  ******************************************************************************/
 
 #include "types.h"
+#include "util.h"
 #include "JobConfig.h"
 
 using namespace MPF::COMPONENT;
-
-/** **************************************************************************
-*   Parse a string into a opencv matrix
-*   e.g. [1,2,3,4, 5,6,7,8]
-*************************************************************************** */
-cv::Mat _fromString(const string data,const int rows,const int cols,const string dt="f"){
-  stringstream ss;
-  ss << "{\"mat\":{\"type_id\":\"opencv-matrix\""
-     << ",\"rows\":" << rows
-     << ",\"cols\":" << cols
-     << ",\"dt\":\"" << dt << '"'
-     << ",\"data\":" << data << "}}";
-  cv::FileStorage fs(ss.str(), cv::FileStorage::READ | cv::FileStorage::MEMORY | cv::FileStorage::FORMAT_JSON);
-  cv::Mat mat;
-  fs["mat"] >> mat;
-  return mat;
-}
 
 /** **************************************************************************
 *   Parse a string into a vector
@@ -87,8 +71,8 @@ void JobConfig::_parse(const MPFJob &job){
 
   _strRN = getEnv<string>(jpr,"KF_RN",_strRN);                                                      LOG4CXX_TRACE(_log, "KF_RN: "       << _strRN);
   _strQN = getEnv<string>(jpr,"KF_QN",_strQN);                                                      LOG4CXX_TRACE(_log, "KF_QN: "       << _strQN);
-  RN = _fromString(_strRN, 4, 1, "f");
-  QN = _fromString(_strQN, 4, 1, "f");
+  RN = fromString(_strRN, 4, 1, "f");
+  QN = fromString(_strQN, 4, 1, "f");
   //convert stddev to variances
   RN = RN.mul(RN);
   QN = QN.mul(QN);
@@ -155,15 +139,15 @@ JobConfig::JobConfig():
 
     // Kalman filter motion model noise / acceleration stddev for covariance matrix Q
     _strQN = "[100.0,100.0,100.0,100.0]";
-    QN = _fromString(_strQN, 4, 1, "f");
+    QN = fromString(_strQN, 4, 1, "f");
 
     // Kalman Bounding Box Measurement noise sdtdev for covariance Matrix R
     _strRN = "[6.0, 6.0, 6.0, 6.0]";
-    RN = _fromString(_strRN, 4, 1, "f");
+    RN = fromString(_strRN, 4, 1, "f");
 
     // Inference rotations
     _strOrientations = "[0, 90, 180, 270]";
-    inferenceOrientations = _fromString<OrientationType>(_strOrientations);
+    inferenceOrientations = fromString<OrientationType>(_strOrientations);
 
   }
 

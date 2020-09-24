@@ -111,8 +111,8 @@ void KFTracker::_setTimeStep(float dt){
  * \returns measurement vector
  *
 *************************************************************************** */
-cv::Mat_<float> KFTracker::measurementFromBBox(const cv::Rect2i& r){
-  cv::Mat_<float> z(KF_MEAS_DIM,1);
+cv::Mat1f KFTracker::measurementFromBBox(const cv::Rect2i& r){
+  cv::Mat1f z(KF_MEAS_DIM,1);
   z.at<float>(0) = r.x + r.width  / 2.0f;
   z.at<float>(1) = r.y + r.height / 2.0f;
   z.at<float>(2) = r.width;
@@ -129,7 +129,7 @@ cv::Mat_<float> KFTracker::measurementFromBBox(const cv::Rect2i& r){
  * \returns bounding box corresponding to state
  *
 *************************************************************************** */
-cv::Rect2i KFTracker::bboxFromState(const cv::Mat_<float> state){
+cv::Rect2i KFTracker::bboxFromState(const cv::Mat1f state){
   return cv::Rect2i(static_cast<int>(state.at<float>(0) - state.at<float>(6)/2.0f + 0.5f),
                     static_cast<int>(state.at<float>(3) - state.at<float>(9)/2.0f + 0.5f),
                     static_cast<int>(state.at<float>(6)                 + 0.5f),
@@ -147,6 +147,8 @@ void KFTracker::predict(float t){
   _setTimeStep(t - _t);
   _t = t;
   _kf.predict();
+  _kf.errorCovPre += _kf.errorCovPre.t();   // guarantee cov symmetry to help stability
+  _kf.errorCovPre /= 2.0f;
 }
 
 /** **************************************************************************
@@ -161,6 +163,8 @@ void KFTracker::predict(float t){
 *************************************************************************** */
 void KFTracker::correct(const cv::Rect2i &rec){
   _kf.correct(measurementFromBBox(rec));
+  _kf.errorCovPost += _kf.errorCovPost.t();   // guarantee cov symmetry to help stability
+  _kf.errorCovPost /= 2.0f;
   #ifdef DIAGNOSTIC_FILES
     _state_trace << (*this) << endl;
   #endif
@@ -181,8 +185,8 @@ KFTracker::KFTracker(const float t,
                      const float dt,
                      const cv::Rect2i &rec0,
                      const cv::Rect2i &roi,
-                     const cv::Mat_<float> &rn,
-                     const cv::Mat_<float> &qn):
+                     const cv::Mat1f  &rn,
+                     const cv::Mat1f  &qn):
   _t(t),
   _dt(-1.0f),
   _roi(roi),
@@ -242,7 +246,7 @@ KFTracker::KFTracker(const float t,
     _setTimeStep(dt);
 
     //initialize filter state
-    cv::Mat_<float> z0 = measurementFromBBox(rec0);
+    cv::Mat1f z0 = measurementFromBBox(rec0);
     _kf.statePost.at<float>(0) = z0.at<float>(0);
     _kf.statePost.at<float>(3) = z0.at<float>(1);
     _kf.statePost.at<float>(6) = z0.at<float>(2);

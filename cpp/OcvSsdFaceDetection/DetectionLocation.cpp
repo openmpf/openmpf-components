@@ -29,6 +29,7 @@
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/cvconfig.h>
 
+#include "util.h"
 #include "DetectionLocation.h"
 #include "Track.h"
 
@@ -248,12 +249,12 @@ const cv::Mat& DetectionLocation::getThumbnail() const {
 
     // Landmark indices for OpenFace nn4.v2, nn4.small1.v1, nn4.small2.v1
     const size_t lmIdx[] = {2,0,4};       // if using 5 pt landmarks
-    const cv::Mat dst =  (cv::Mat_<float>(3,2)
+    const cv::Mat dst =  (cv::Mat1f(3,2)
                           << 0.1941570 * THUMBNAIL_SIZE_X, 0.16926692 * THUMBNAIL_SIZE_Y,
                              0.7888591 * THUMBNAIL_SIZE_X, 0.15817115 * THUMBNAIL_SIZE_Y,
                              0.4949509 * THUMBNAIL_SIZE_X, 0.51444140 * THUMBNAIL_SIZE_Y);
 
-    cv::Mat src = cv::Mat_<float>(3,2);
+    cv::Mat src = cv::Mat1f(3,2);
     for(size_t r=0; r<3; r++){
       float* rowPtr = src.ptr<float>(r);
       rowPtr[0] = getLandmarks()[lmIdx[r]].x;
@@ -587,8 +588,6 @@ bool DetectionLocation::Init(log4cxx::LoggerPtr log, string plugin_path){
 }
 
 
-
-
 /** **************************************************************************
 *  Private constructor for a detection object
 *
@@ -619,4 +618,14 @@ DetectionLocation::DetectionLocation(int x,int y,int width,int height,float conf
         _angle(degCCWfromVertical(detectionOrientation)){
         _bgrFrame = bgrFrame; //.clone();
         _bgrFrameRot = bgrFrameRot;
+}
+
+/** **************************************************************************
+*   Dump MPFLocation to a stream
+*************************************************************************** */
+ostream& MPF::COMPONENT::operator<< (ostream& out, const DetectionLocation& d) {
+  out  << "[" << (MPFImageLocation)d
+              << " F[" << d.getFeature().size() << "] T["
+              << d.getThumbnail().rows << "," << d.getThumbnail().cols << "]";
+  return out;
 }

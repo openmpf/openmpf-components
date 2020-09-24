@@ -77,6 +77,7 @@ if (${GTEST_FOUND})
 endif()
 
 set(OCV_SSD_FACE_DETECTION_SOURCE_FILES
+        util.cpp
         JobConfig.cpp
         DetectionLocation.cpp
         Track.cpp

@@ -38,10 +38,10 @@ namespace MPF{
                           ROTATE_90_COUNTERCLOCKWISE = cv::ROTATE_90_COUNTERCLOCKWISE,
                           ROTATE_0};
 
-    typedef vector<OrientationType>       OrientVec;                ///< vector of 90 Orientations
+    using OrientVec = vector<OrientationType>;                ///< vector of 90 Orientations
 
     /** ****************************************************************************
-     *   Write OrientationType to ints
+     *   Write OrientationType to stream
      ****************************************************************************** */
     inline
     ostream& operator<< (ostream& os, const OrientationType& t) {

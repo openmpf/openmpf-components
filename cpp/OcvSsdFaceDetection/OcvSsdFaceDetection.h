@@ -58,22 +58,20 @@ namespace MPF{
       log4cxx::LoggerPtr             _log;              ///< log object
       cv::Ptr<cv::CLAHE>             _equalizerPtr;     ///< adaptive histogram equalizer
 
-      typedef float (DetectionLocation::*DetectionLocationCostFunc)(const Track &tr) const; ///< cost member-function pointer type
-
       template<DetectionLocationCostFunc COST_FUNC>
       vector<long> _calcAssignmentVector(const TrackPtrList            &tracks,
                                          const DetectionLocationPtrVec &detections,
                                          const float                    maxCost); ///< determine costs of assigning detections to tracks
 
-      void _assignDetections2Tracks(TrackPtrList            &tracks,
-                                    DetectionLocationPtrVec &detections,
-                                    const vector<long>      &assignmentVector,
-                                    TrackPtrList            &assignedTracks);  ///< assign detections to tracks
-
       MPFVideoTrack _convert_track(Track &track);  ///< convert to MFVideoTrack and release
 
       void _equalizeHistogram(JobConfig &cfg);     ///< perform histogram equalization on the frame
       void _normalizeFrame(JobConfig &cfg);        ///< perform image normalization
+
+      void _assignDetections2Tracks(TrackPtrList            &tracks,
+                                    DetectionLocationPtrVec &detections,
+                                    const vector<long>      &assignmentVector,
+                                    TrackPtrList            &assignedTracks);  ///< assign detections to tracks
 
   };
  }

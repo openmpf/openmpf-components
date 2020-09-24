@@ -36,6 +36,7 @@
 #include <dlib/opencv.h>
 
 #include "types.h"
+#include "util.h"
 #include "JobConfig.h"
 
 #define CALL_MEMBER_FUNC(object,ptrToMember)  ((object).*(ptrToMember))
@@ -45,11 +46,9 @@ namespace MPF{
 
   using namespace std;
 
-  typedef float (DetectionLocation::*DetectionLocationCostFunc)(const Track &tr) const; ///< cost member-function pointer type
+  using DetectionLocationCostFunc = float (DetectionLocation::*)(const Track &tr) const; ///< cost member-function pointer type
 
   class DetectionLocation: public MPFImageLocation{ // extend MPFImageLocation
-
-
 
     public:
       using MPFImageLocation::MPFImageLocation;  // C++11 inherit all constructors for MPFImageLocation
@@ -106,18 +105,10 @@ namespace MPF{
       cv::Mat                 _bgrFrame;                  ///< frame associated with detection (openCV memory managed :( )
       cv::Mat                 _bgrFrameRot;               ///< rotated version of _bgrFrame
       static void _loadNets(const bool enabled);          ///< turn on or off cuda backend for inferencing
+
   };
 
-  /** **************************************************************************
-  *   Dump MPFLocation to a stream
-  *************************************************************************** */
-  inline
-  ostream& operator<< (ostream& out, const DetectionLocation& d) {
-    out  << "[" << (MPFImageLocation)d
-                << " F[" << d.getFeature().size() << "] T["
-                << d.getThumbnail().rows << "," << d.getThumbnail().cols << "]";
-    return out;
-  }
+  ostream& operator<< (ostream& out, const DetectionLocation& d);
 
  }
 }

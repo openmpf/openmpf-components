@@ -148,3 +148,13 @@ bool Track::Init(log4cxx::LoggerPtr log, string plugin_path=""){
   _log = log;
   return true;
 }
+
+/** **************************************************************************
+*   Dump MPF::COMPONENT::Track to a stream
+*************************************************************************** */
+ostream& MPF::COMPONENT::operator<< (ostream& out, const Track& t) {
+  out << "<f"   << t.front()->frameIdx << (MPFImageLocation)(*t.front())
+      << "...f" << t.back()->frameIdx  << (MPFImageLocation)(*t.back())
+      << ">("<<t.size()<<")";
+  return out;
+}

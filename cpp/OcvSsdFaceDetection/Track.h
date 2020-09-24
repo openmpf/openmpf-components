@@ -81,16 +81,8 @@ namespace MPF{
 
     };
 
-    /** **************************************************************************
-    *   Dump MPF::COMPONENT::Track to a stream
-    *************************************************************************** */
-    inline
-    ostream& operator<< (ostream& out, const Track& t) {
-      out << "<f"   << t.front()->frameIdx << (MPFImageLocation)(*t.front())
-          << "...f" << t.back()->frameIdx  << (MPFImageLocation)(*t.back())
-          << ">("<<t.size()<<")";
-      return out;
-    }
+    ostream& operator<< (ostream& out, const Track& t);
+
   }
 }
 

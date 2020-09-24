@@ -44,88 +44,18 @@ namespace MPF{
   class DetectionLocation;
   class Track;
 
-  typedef vector<MPFVideoTrack>         MPFVideoTrackVec;         ///< vector of MPFVideoTracks
-  typedef vector<MPFImageLocation>      MPFImageLocationVec;      ///< vector of MPFImageLocations
-  typedef vector<cv::Mat>               cvMatVec;                 ///< vector of OpenCV matrices/images
-  typedef vector<cv::Rect>              cvRectVec;                ///< vector of OpenCV rectangles
-  typedef vector<cv::Point>             cvPointVec;               ///< vector of OpenCV points
-  typedef vector<cv::Point2f>           cvPoint2fVec;             ///< vector of OpenCV 2D float points
-  typedef vector<cvPoint2fVec>          cvPoint2fVecVec;          ///< vector of vectors of OpenCV 2D float points
-  typedef unique_ptr<DetectionLocation> DetectionLocationPtr;     ///< DetectionLocation pointers
-  typedef vector<DetectionLocationPtr>  DetectionLocationPtrVec;  ///< vector of DetectionLocation pointers
-  typedef unique_ptr<Track>             TrackPtr;                 ///< pointer to a track
-  typedef list<TrackPtr>                TrackPtrList;             ///< list of track pointers
+  using MPFVideoTrackVec        = vector<MPFVideoTrack>;           ///< vector of MPFVideoTracks
+  using MPFImageLocationVec     = vector<MPFImageLocation>;        ///< vector of MPFImageLocations
+  using cvMatVec                = vector<cv::Mat>;                 ///< vector of OpenCV matrices/images
+  using cvRectVec               = vector<cv::Rect>;                ///< vector of OpenCV rectangles
+  using cvPointVec              = vector<cv::Point>;               ///< vector of OpenCV points
+  using cvPoint2fVec            = vector<cv::Point2f>;             ///< vector of OpenCV 2D float points
+  using cvPoint2fVecVec         = vector<cvPoint2fVec>;            ///< vector of vectors of OpenCV 2D float points
+  using DetectionLocationPtr    = unique_ptr<DetectionLocation>;   ///< DetectionLocation pointers
+  using DetectionLocationPtrVec = vector<DetectionLocationPtr>;    ///< vector of DetectionLocation pointers
+  using TrackPtr                = unique_ptr<Track>;               ///< pointer to a track
+  using TrackPtrList            = list<TrackPtr>;                  ///< list of track pointers
 
-  /** ****************************************************************************
-   *  print out opencv matrix on a single line
-   *
-   * \param   m matrix to serialize to single line string
-   *
-   * \returns single line string representation of matrix
-   *
-  ***************************************************************************** */
-  inline
-  string format(cv::Mat_<float> m){
-    stringstream ss;
-
-    ss << "[";
-    for(int r=0; r<m.rows; r++){
-      for(int c=0; c<m.cols; c++){
-        ss << setfill('0') << setw(6) << fixed << setprecision(3) << m.at<float>(r,c);
-        if(c!=m.cols-1){
-          ss << ", ";
-        }else if(r!=m.rows-1){
-          ss << "; ";
-        }
-      }
-    }
-    ss << "]";
-    //   << m;
-    string str = ss.str();
-    //str.erase(remove(str.begin(),str.end(),'\n'),str.end());
-
-    return str;
-  }
-
-  /** **************************************************************************
-  *   Dump MPFLocation to a stream
-  *************************************************************************** */
-  inline
-  ostream& operator<< (ostream& os, const MPFImageLocation& l) {
-    os << "[" << l.x_left_upper << "," << l.y_left_upper << "]-("
-               << l.width        << "," << l.height       << "):"
-               << l.confidence;
-    return os;
-  }
-
-  /** **************************************************************************
-  *   Dump MPFTrack to a stream
-  *************************************************************************** */
-  inline
-  ostream& operator<< (ostream& os, const MPFVideoTrack& t) {
-    os << t.start_frame << endl;
-    os << t.stop_frame  << endl;
-    for(auto& p:t.frame_locations){
-      os << p.second.x_left_upper << "," << p.second.y_left_upper << ","
-          << p.second.width << "," << p.second.height << endl;
-    }
-    return os;
-  }
-
-  /** ****************************************************************************
-  *   Dump vectors to a stream
-  ***************************************************************************** */
-  template<typename T> inline
-  ostream& operator<< (ostream& os, const vector<T>& v) {
-    os << "{";
-    size_t last = v.size() - 1;
-    for(size_t i = 0; i < v.size(); ++i){
-      os << v[i];
-      if(i != last) os << ", ";
-    }
-    os << "}";
-    return os;
-  }
  }
 }
 
