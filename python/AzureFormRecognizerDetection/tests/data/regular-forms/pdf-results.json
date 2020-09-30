@@ -2770,6 +2770,42 @@
       "confidence": 0.6,
       "state": "selected"}]}],
   "pageResults": [{"page": 1,
+    "keyValuePairs": [
+          {
+            "key": {
+              "text": "Date:",
+              "boundingBox": [
+                6.9833,
+                1.0615,
+                7.3333,
+                1.0615,
+                7.3333,
+                1.1649,
+                6.9833,
+                1.1649
+              ],
+              "elements": [
+                "#/readResults/0/lines/2/words/0"
+              ]
+            },
+            "value": {
+              "text": "9/10/2020",
+              "boundingBox": [
+                7.3833,
+                1.0802,
+                7.925,
+                1.0802,
+                7.925,
+                1.174,
+                7.3833,
+                1.174
+              ],
+              "elements": [
+                "#/readResults/0/lines/3/words/0"
+              ]
+            },
+            "confidence": 1
+          }],
     "tables": [{"rows": 13,
       "columns": 6,
       "cells": [{"rowIndex": 0,

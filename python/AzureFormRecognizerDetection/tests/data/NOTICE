@@ -8,6 +8,12 @@ Custom generated image, contains beginning of "A Tale of Two Cities" by Charles 
 # no-results/black.png
 Custom generated image, just black pixels.
 
+# regular-forms/multi-language.pdf
+Contains Chinese text from the Universal Declaration of Human Rights:
+http://www.un.org/en/universal-declaration-human-rights/
+Contains English text from the Microsoft Azure Cognitive Services documentation:
+https://westcentralus.dev.cognitive.microsoft.com/docs/services/form-recognizer-api-v2-1-preview-1/operations/AnalyzeWithCustomForm
+
 # regular-forms/contoso-invoice.png
 Demo PNG image from Microsoft Azure Cognitive Services.
 URL: "https://docs.microsoft.com/en-us/azure/cognitive-services/form-recognizer/media/contoso-invoice.png"

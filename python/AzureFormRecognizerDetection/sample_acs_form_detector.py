@@ -32,7 +32,7 @@ import sys
 
 import mpf_component_api as mpf
 
-from acs_form_recognizer_component import AcsFormRecognizerComponent
+from acs_form_detection_component import AcsFormDetectionComponent
 
 
 def main():
@@ -45,11 +45,11 @@ def main():
         job = mpf.GenericJob('Sample Job', img_path,
                              dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key), {},
                              None)
-        detections = list(AcsFormRecognizerComponent().get_detections_from_generic(job))
+        detections = list(AcsFormDetectionComponent().get_detections_from_generic(job))
     else:
         job = mpf.ImageJob('Sample Job', img_path, dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key), {},
                            None)
-        detections = list(AcsFormRecognizerComponent().get_detections_from_image(job))
+        detections = list(AcsFormDetectionComponent().get_detections_from_image(job))
 
     print('Found', len(detections), 'detections.')
     if len(detections) == 0:

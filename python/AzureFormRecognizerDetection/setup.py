@@ -28,7 +28,7 @@
 import setuptools
 
 setuptools.setup(
-    name='AzureFormRecognizerDetection',
+    name='AzureFormDetection',
     version='5.0',
     packages=setuptools.find_packages(exclude=('*test*',)),
     package_data={'': ['text-tags.json']},
@@ -39,6 +39,6 @@ setuptools.setup(
         'numpy>=1.11'
     ),
     entry_points={
-        'mpf.exported_component': 'component = acs_form_recognizer_component.acs_form_recognizer_component:AcsFormRecognizerComponent'
+        'mpf.exported_component': 'component = acs_form_detection_component.acs_form_detection_component:AcsFormDetectionComponent'
     }
 )

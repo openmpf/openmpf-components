@@ -39,10 +39,10 @@ import numpy as np
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../acs_form_recognizer_component'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../acs_form_detection_component'))
 
-import acs_form_recognizer_component
-from acs_form_recognizer_component import AcsFormRecognizerComponent, FrameEncoder
+import acs_form_detection_component
+from acs_form_detection_component import AcsFormDetectionComponent, FrameEncoder
 
 
 class TestAcs(unittest.TestCase):
@@ -129,9 +129,9 @@ class TestAcs(unittest.TestCase):
         self.set_results_path(get_test_file('regular-forms/pdf-results.json'))
         job = mpf.GenericJob('Test', get_test_file('regular-forms/form-recognizer-demo-sample1.pdf'),
                              get_test_properties(), {}, None)
-        detections = list(AcsFormRecognizerComponent().get_detections_from_generic(job))
+        detections = list(AcsFormDetectionComponent().get_detections_from_generic(job))
 
-        self.assertEqual(3, len(detections))
+        self.assertEqual(4, len(detections))
 
         line_detection = detections[0]
         self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
@@ -140,6 +140,11 @@ class TestAcs(unittest.TestCase):
         self.assertTrue('Invoice Date:\n4/14/2019' in line_detection.detection_properties['TEXT'])
 
         table_detection = detections[1]
+        self.assertEqual('KEY_VALUE_PAIRS', table_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertTrue('Date[:]:9/10/2020' in
+                        table_detection.detection_properties['TEXT'])
+
+        table_detection = detections[2]
         self.assertEqual('TABLE', table_detection.detection_properties['OUTPUT_TYPE'])
         self.assertTrue('Item #,Description,Qty,Unit Price,Discount,Price' in
                         table_detection.detection_properties['TABLE_CSV_OUTPUT'])
@@ -149,7 +154,7 @@ class TestAcs(unittest.TestCase):
     def test_png_form(self):
         self.set_results_path(get_test_file('regular-forms/png-results.json'))
         job = mpf.ImageJob('Test', get_test_file('regular-forms/contoso-invoice.png'), get_test_properties(), {}, None)
-        detections = list(AcsFormRecognizerComponent().get_detections_from_image(job))
+        detections = list(AcsFormDetectionComponent().get_detections_from_image(job))
 
         self.assertEqual(1, len(detections))
 
@@ -159,10 +164,24 @@ class TestAcs(unittest.TestCase):
         self.assertTrue('554 Magnolia Way\nWalnut, WY, 98432' in line_detection.detection_properties['TEXT'])
         self.assertTrue('Thank you for your business!' in line_detection.detection_properties['TEXT'])
 
+    def test_multilanguage(self):
+        self.set_results_path(get_test_file('regular-forms/multilanguage-results.json'))
+        job = mpf.GenericJob('Test', get_test_file('regular-forms/multi-language.pdf'),
+                             get_test_properties(), {}, None)
+        detections = list(AcsFormDetectionComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(detections))
+
+        line_detection = detections[0]
+        self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertTrue('不分国家或领土的政治地' in line_detection.detection_properties['TEXT'])
+        self.assertTrue('our business card model, enabling you to easily extract' in
+                        line_detection.detection_properties['TEXT'])
+
     def test_upsampling(self):
         self.set_results_path(get_test_file('upsampling/tiny-image-results.json'))
         job = mpf.ImageJob('Test', get_test_file('upsampling/tiny-image.png'), get_test_properties(), {}, None)
-        detections = list(AcsFormRecognizerComponent().get_detections_from_image(job))
+        detections = list(AcsFormDetectionComponent().get_detections_from_image(job))
 
         self.assertEqual(1, len(detections))
         detection = detections[0]
@@ -171,18 +190,18 @@ class TestAcs(unittest.TestCase):
     def test_no_results_img(self):
         self.set_results_path(get_test_file('no-results/black-results.json'))
         job = mpf.ImageJob('Test', get_test_file('no-results/black.png'), get_test_properties(), {}, None)
-        detections = list(AcsFormRecognizerComponent().get_detections_from_image(job))
+        detections = list(AcsFormDetectionComponent().get_detections_from_image(job))
         self.assertEqual(0, len(detections))
 
     def test_get_acs_url_default_options(self):
         acs_url = 'http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze'
         self.assertEqual('http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?includeTextDetails=true',
-                         acs_form_recognizer_component.JobRunner.get_acs_url(dict(ACS_URL=acs_url)))
+                         acs_form_detection_component.JobRunner.get_acs_url(dict(ACS_URL=acs_url)))
 
     def test_get_acs_url_preserves_existing_query_params(self):
         acs_url = 'http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze?hello=world'
         properties = dict(ACS_URL=acs_url)
-        url = acs_form_recognizer_component.JobRunner.get_acs_url(properties)
+        url = acs_form_detection_component.JobRunner.get_acs_url(properties)
 
         if '?d' in url:
             self.assertEqual('http://localhost:10669/formrecognizer/'
@@ -195,7 +214,7 @@ class TestAcs(unittest.TestCase):
         acs_url = 'http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze'
         properties = dict(ACS_URL=acs_url, INCLUDE_TEXT_DETAILS='false')
 
-        url = acs_form_recognizer_component.JobRunner.get_acs_url(properties)
+        url = acs_form_detection_component.JobRunner.get_acs_url(properties)
         self.assertEqual('http://localhost:10669/formrecognizer/'
                          'v2.1-preview.1/Layout/analyze?includeTextDetails=false', url)
 
@@ -248,8 +267,7 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
         content_len = int(self.headers['Content-Length'])
         post_body = self.rfile.read(content_len)
 
-        if self.headers['Content-Type'] == 'application/octet-stream':
-            self._validate_frame(post_body)
+        self._validate_body(post_body)
 
         self.send_response(200)
         self.send_header("Operation-Location", "http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze")
@@ -262,14 +280,22 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
         with open(results_path, 'rb') as f:
             shutil.copyfileobj(f, self.wfile)
 
-    def _validate_frame(self, post_body):
+    def _validate_body(self, post_body):
         if len(post_body) > FrameEncoder.MAX_FILE_SIZE:
             msg = 'Posted file was too large'
             self.send_error(400, msg)
             raise Exception(msg)
 
-        if not post_body.startswith(b'\x89PNG\x0d\x0a\x1a\x0a') and not post_body.startswith(b'%PDF'):
-            msg = 'Expected a png or pdf file, but magic bytes were wrong.'
+        if self.headers['Content-Type'] == 'application/pdf':
+            if post_body.startswith(b'%PDF'):
+                return True
+            else:
+                msg = 'Expected a PDF file, but magic bytes were wrong.'
+                self.send_error(400, msg)
+                raise Exception(msg)
+
+        if not post_body.startswith(b'\x89PNG\x0d\x0a\x1a\x0a'):
+            msg = 'Expected a png file, but magic bytes were wrong.'
             self.send_error(400, msg)
             raise Exception(msg)
 

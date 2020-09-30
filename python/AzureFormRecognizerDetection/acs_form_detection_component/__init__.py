@@ -24,5 +24,5 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from .acs_form_recognizer_component import AcsFormRecognizerComponent
+from .acs_form_detection_component import AcsFormDetectionComponent
 

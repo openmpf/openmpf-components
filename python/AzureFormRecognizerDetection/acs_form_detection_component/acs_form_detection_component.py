@@ -41,10 +41,10 @@ import numpy as np
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-logger = mpf.configure_logging('acs-form-recognizer-detection.log', __name__ == '__main__')
+logger = mpf.configure_logging('acs-form-detection.log', __name__ == '__main__')
 
 
-class AcsFormRecognizerComponent(mpf_util.ImageReaderMixin, object):
+class AcsFormDetectionComponent(mpf_util.ImageReaderMixin, object):
     detection_type = 'TEXT'
 
     def get_detections_from_generic(self, generic_job):
@@ -70,7 +70,6 @@ class AcsFormRecognizerComponent(mpf_util.ImageReaderMixin, object):
             image = image_reader.get_image()
             detections = JobRunner(image_job.job_name, image_job.job_properties, True).get_image_detections(image)
             for detection in detections:
-                # We don't need to anything with the index for a image jobs.
                 yield detection
                 num_detections += 1
             logger.info('[%s] Processing complete. Found %s detections.', image_job.job_name, num_detections)
@@ -86,7 +85,8 @@ class JobRunner(object):
         self._job_name = job_name
         self._acs_url = self.get_acs_url(job_properties)
         self._is_image = is_image
-        self._merge_lines = json.loads(job_properties.get('MERGE_LINES', 'true').lower())
+        self._merge_lines = mpf_util.get_property(job_properties, 'MERGE_LINES', True)
+        self._max_attempts = mpf_util.get_property(job_properties, 'MAX_GET_FORM_RESULT_ATTEMPTS', -1)
         subscription_key = self._get_acs_property_or_env_value('ACS_SUBSCRIPTION_KEY', job_properties)
 
         if self._is_image:
@@ -115,8 +115,7 @@ class JobRunner(object):
         detections = FormResultsProcessor(self._is_image,
                                           resize_scale_factor,
                                           self._merge_lines).process_form_results(form_results_json)
-        for detection in detections:
-            yield detection
+        return detections
             
     def get_pdf_detections(self, data_uri):
         with open(data_uri, 'rb') as f:
@@ -128,27 +127,30 @@ class JobRunner(object):
 
     def _get_acs_result(self, result_request):
         logger.info('[%s] Contacting ACS server for form results.', self._job_name)
-        max_attempts = 10
         attempt_num = 0
         wait_sec = 5
-        while attempt_num < max_attempts:
-            logger.info('[%s] Sending GET request.', self._job_name)
+        while attempt_num < self._max_attempts or self._max_attempts <= 0:
+            logger.info('[%s] Attempting to retrieve layout Analysis results from %s',
+                        self._job_name, result_request.get_full_url())
+
             try:
                 results = urllib.request.urlopen(result_request)
                 json_results = json.load(results)
                 if results.status != 200:
-                    logger.warning("GET Layout results failed:\n{}".format(json_results))
-                    raise mpf.DetectionException('GET Request failed with HTTP status {}'.format(results.status))
+                    raise mpf.DetectionError.DETECTION_FAILED.exception('GET request failed with HTTP status {}\n'
+                                                                        .format(results.status) +
+                                                                        'HTTP request body:\n{}'.format(json_results))
                 status = json_results["status"]
                 if status == "succeeded":
                     logger.info('[%s] Layout Analysis succeeded. Processing form results.', self._job_name)
                     return json_results
                 if status == "failed":
-                    logger.warning("Layout Analysis failed:\n{}".format(json_results))
-                    raise mpf.DetectionException('GET Request failed.')
+                    raise mpf.DetectionError.DETECTION_FAILED.exception('GET request failed. HTTP request body:\n{}'
+                                                                        .format(json_results))
                 # Analysis still running. Wait and then retry GET request.
-                logger.info('[%s] Form results not available yet. Recontacting server in [%d] seconds.', self._job_name,
-                            wait_sec)
+                logger.info('[%s] Layout Analysis results not available yet. Recontacting server in %s seconds.',
+                            self._job_name, wait_sec)
+
                 time.sleep(wait_sec)
                 attempt_num += 1
             except urllib.error.HTTPError as e:
@@ -159,7 +161,7 @@ class JobRunner(object):
         raise mpf.DetectionException('Unable to retrieve results from ACS server.')
 
     def _post_to_acs(self, encoded_frame):
-        logger.info('[%s] Sending POST request to ACS server.', self._job_name)
+        logger.info('[%s] Sending POST request to %s', self._job_name, self._acs_url)
         request = urllib.request.Request(self._acs_url, bytes(encoded_frame), self._acs_headers)
         try:
             response = urllib.request.urlopen(request)
@@ -177,10 +179,13 @@ class JobRunner(object):
         """ Adds query string parameters to the ACS URL if needed. """
         url = cls._get_acs_property_or_env_value('ACS_URL', job_properties)
         include_text_details = job_properties.get('INCLUDE_TEXT_DETAILS', 'true')
+        language = job_properties.get('LANGUAGE')
         url_parts = urllib.parse.urlparse(url)
         query_dict = urllib.parse.parse_qs(url_parts.query)
         query_dict['includeTextDetails'] = include_text_details
         query_string = urllib.parse.urlencode(query_dict, doseq=True)
+        if language:
+            query_dict['language'] = language
 
         return urllib.parse.urlunparse(url_parts._replace(query=query_string))
 
@@ -389,71 +394,115 @@ class FormResultsProcessor(object):
         return mpf_util.Rect.from_corners(p1, p2)
 
     def process_form_results(self, form_results_json):
-        # Extract text results.
         detections = []
-
-        for page in form_results_json['analyzeResult']['readResults']:
-            page_num = page['page'] - 1
-            line_num = 0
-            lines = []
-            bounding_box = []
-
-            for line in page['lines']:
-                if not self._merge_lines:
-                    detection_properties = dict(OUTPUT_TYPE='LINE',
-                                                PAGE_NUM=str(page_num),
-                                                LINE_NUM=str(line_num),
-                                                TEXT=line['text'])
-                    if self._is_image:
-                        bounding_box = self._convert_to_rect(line['boundingBox'])
-                    detections.append(self._create_detection(detection_properties, bounding_box))
-                    line_num += 1
-                else:
-                    lines.append(line['text'])
-
-                    if self._is_image:
-                        if len(bounding_box) == 0:
-                            bounding_box = self._convert_to_rect(line['boundingBox'])
-                        else:
-                            second_bounding_box = self._convert_to_rect(line['boundingBox'])
-                            bounding_box = bounding_box.union(second_bounding_box)
-
-            if self._merge_lines and len(lines) > 0:
-                detection_properties = dict(OUTPUT_TYPE='MERGED_LINES',
-                                            PAGE_NUM=str(page_num),
-                                            TEXT='\n'.join(lines))
-                detections.append(self._create_detection(detection_properties, bounding_box))
-
-        # Extract table results.
-        for page in form_results_json['analyzeResult']['pageResults']:
-            page_num = page['page'] - 1
-            table_num = 0
-            for table in page['tables']:
-                row = table['rows']
-                col = table['columns']
-                table_array = np.full([row, col], None)
+        # Extract text results.
+        if 'readResults' in form_results_json['analyzeResult']:
+            for page in form_results_json['analyzeResult']['readResults']:
+                page_num = page['page'] - 1
+                line_num = 0
+                lines = []
                 bounding_box = []
 
-                for cell in table['cells']:
-                    table_array[cell['rowIndex']][cell['columnIndex']] = cell['text']
-                    if self._is_image:
+                for line in page['lines']:
+                    if not self._merge_lines:
+                        detection_properties = dict(OUTPUT_TYPE='LINE',
+                                                    PAGE_NUM=str(page_num),
+                                                    LINE_NUM=str(line_num),
+                                                    TEXT=line['text'])
+                        if self._is_image:
+                            bounding_box = self._convert_to_rect(line['boundingBox'])
+                        detections.append(self._create_detection(detection_properties, bounding_box))
+                        line_num += 1
+                    else:
+                        lines.append(line['text'])
+
+                        if self._is_image:
+                            if len(bounding_box) == 0:
+                                bounding_box = self._convert_to_rect(line['boundingBox'])
+                            else:
+                                second_bounding_box = self._convert_to_rect(line['boundingBox'])
+                                bounding_box = bounding_box.union(second_bounding_box)
+
+                if self._merge_lines and len(lines) > 0:
+                    detection_properties = dict(OUTPUT_TYPE='MERGED_LINES',
+                                                PAGE_NUM=str(page_num),
+                                                TEXT='\n'.join(lines))
+                    detections.append(self._create_detection(detection_properties, bounding_box))
+
+        # Extract table and key-value pair results.
+        if 'pageResults' in form_results_json['analyzeResult']:
+            for page in form_results_json['analyzeResult']['pageResults']:
+                page_num = page['page'] - 1
+                # Add key-value pairs as one detection per page.
+                if 'keyValuePairs' in page:
+                    bounding_box = []
+                    key_val_list = []
+                    for kv_pair in page['keyValuePairs']:
+                        # Two bounding boxes exist, one for keys and one for values.
                         if len(bounding_box) == 0:
-                            bounding_box = self._convert_to_rect(cell['boundingBox'])
+                            bounding_box = self._convert_to_rect(kv_pair['key']['boundingBox'])
                         else:
-                            second_bounding_box = self._convert_to_rect(cell['boundingBox'])
+                            second_bounding_box = self._convert_to_rect(kv_pair['key']['boundingBox'])
                             bounding_box = bounding_box.union(second_bounding_box)
 
-                output = io.StringIO()
-                writer = csv.writer(output)
-                for row in table_array:
-                    writer.writerow(row)
-                cs_output = output.getvalue()
-                output.close()
-                detection_properties = dict(OUTPUT_TYPE='TABLE',
-                                            PAGE_NUM=str(page_num),
-                                            TABLE_NUM=str(table_num),
-                                            TABLE_CSV_OUTPUT=cs_output)
-                detections.append(self._create_detection(detection_properties, bounding_box))
-                table_num += 1
+                        second_bounding_box = self._convert_to_rect(kv_pair['value']['boundingBox'])
+                        bounding_box = bounding_box.union(second_bounding_box)
 
+                        # Escape commas and colons with brackets as they are used as key-value delimiters.
+                        key_str = kv_pair['key']['text'].replace(':', '[:]').replace(',', '[,]')
+                        val_str = kv_pair['value']['text'].replace(':', '[:]').replace(',', '[,]')
+
+                        key_val_pair = '{}:{}'.format(key_str, val_str)
+                        key_val_list.append(key_val_pair)
+
+                    detection_properties = dict(OUTPUT_TYPE='KEY_VALUE_PAIRS',
+                                                PAGE_NUM=str(page_num),
+                                                TEXT=', '.join(key_val_list))
+                    detections.append(self._create_detection(detection_properties, bounding_box))
+
+                # Add table CSVs as one detection per table.
+                if 'tables' in page:
+                    table_num = 0
+                    for table in page['tables']:
+                        row = table['rows']
+                        col = table['columns']
+                        table_array = np.full([row, col], None)
+                        bounding_box = []
+
+                        for cell in table['cells']:
+                            table_array[cell['rowIndex']][cell['columnIndex']] = cell['text']
+                            if self._is_image:
+                                if len(bounding_box) == 0:
+                                    bounding_box = self._convert_to_rect(cell['boundingBox'])
+                                else:
+                                    second_bounding_box = self._convert_to_rect(cell['boundingBox'])
+                                    bounding_box = bounding_box.union(second_bounding_box)
+
+                        output = io.StringIO()
+                        writer = csv.writer(output)
+                        for row in table_array:
+                            writer.writerow(row)
+                        cs_output = output.getvalue()
+                        output.close()
+                        detection_properties = dict(OUTPUT_TYPE='TABLE',
+                                                    PAGE_NUM=str(page_num),
+                                                    TABLE_NUM=str(table_num),
+                                                    TABLE_CSV_OUTPUT=cs_output)
+                        detections.append(self._create_detection(detection_properties, bounding_box))
+                        table_num += 1
+
+        # Extract custom model results and store JSON field results.
+        if 'documentResults' in form_results_json['analyzeResult']:
+            doc_result_index = 0
+            for doc_result in form_results_json['analyzeResult']['documentResults']:
+                page_range = "{}-{}".format(doc_result['pageRange'][0] - 1, doc_result['pageRange'][1] - 1)
+                fields = str(doc_result['fields'])
+                doc_type = doc_result['docType']
+                detection_properties = dict(OUTPUT_TYPE='DOCUMENT_RESULT',
+                                            DOCUMENT_TYPE=doc_type,
+                                            PAGE_RANGE=page_range,
+                                            DOCUMENT_JSON_FIELDS=fields,
+                                            DOCUMENT_RESULT_INDEX=str(doc_result_index))
+                doc_result_index += 1
+                detections.append(mpf.ImageLocation(0, 0, 0, 0, -1, detection_properties))
         return detections
