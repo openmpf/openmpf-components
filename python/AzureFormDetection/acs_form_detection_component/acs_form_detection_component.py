@@ -139,7 +139,7 @@ class JobRunner(object):
                 if results.status != 200:
                     raise mpf.DetectionError.DETECTION_FAILED.exception('GET request failed with HTTP status {}\n'
                                                                         .format(results.status) +
-                                                                        'HTTP request body:\n{}'.format(json_results))
+                                                                        '\nHTTP request body:\n{}'.format(json_results))
                 status = json_results["status"]
                 if status == "succeeded":
                     logger.info('[%s] Layout Analysis succeeded. Processing form results.', self._job_name)
