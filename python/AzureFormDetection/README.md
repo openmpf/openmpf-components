@@ -35,8 +35,8 @@ Optional job properties include:
 - `INCLUDE_TEXT_DETAILS`: A boolean toggle to specify whether text output should also be provided alongside tables
    and key-value pairings produced by form detection models. Set to true by default.
 - `LANGUAGE`:  When provided, disables automatic language detection and processes document based on provided language.
-   The language code must be in case-sensitive BCP-47.  Currently, only English (`en`), Dutch (‘nl’),
-   French (‘fr’), German (‘de’), Italian (‘it’), Portuguese (‘pt`), simplified Chinese (`zh-Hans`) and Spanish (`es`)
+   The language code must be in case-sensitive BCP-47.  Currently, only English (`en`), Dutch (`nl`),
+   French (`fr`), German (`de`), Italian (`it`), Portuguese (`pt`), simplified Chinese (`zh-Hans`) and Spanish (`es`)
    are supported. English is the only language that supports handwritten characters in addition to printed characters.
 
 # Job Outputs

@@ -183,10 +183,10 @@ class JobRunner(object):
         url_parts = urllib.parse.urlparse(url)
         query_dict = urllib.parse.parse_qs(url_parts.query)
         query_dict['includeTextDetails'] = include_text_details
-        query_string = urllib.parse.urlencode(query_dict, doseq=True)
         if language:
             query_dict['language'] = language
 
+        query_string = urllib.parse.urlencode(query_dict, doseq=True)
         return urllib.parse.urlunparse(url_parts._replace(query=query_string))
 
     @staticmethod
