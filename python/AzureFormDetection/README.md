@@ -16,11 +16,11 @@ the job property will be used.
 - `ACS_URL`: URL for the Azure Cognitive Services Endpoint. Multiple model processing options exist for form detection
    and can be specified through the URL as follows:
 
-   `https://{endpoint}/formrecognizer/v2.0/layout/analyze` - v2.0 layout analysis.
-   `https://{endpoint}/formrecognizer/v2.1-preview.1/Layout/analyze` - v2.1 layout analysis.
-   `https://{endpoint}/formrecognizer/v2.1-preview.1/prebuilt/businessCard/analyze` - v2.1 business card model.
-   `https://{endpoint}/formrecognizer/v2.1-preview.1/prebuilt/receipt/analyze` - v2.1 receipt model.
-   `https://{endpoint}/formrecognizer/v2.1-preview.1/custom/models/{modelId}/analyze` - v2.1 custom model.
+   - `https://{endpoint}/formrecognizer/v2.0/layout/analyze` - v2.0 layout analysis.
+   - `https://{endpoint}/formrecognizer/v2.1-preview.1/Layout/analyze` - v2.1 layout analysis.
+   - `https://{endpoint}/formrecognizer/v2.1-preview.1/prebuilt/businessCard/analyze` - v2.1 business card model.
+   - `https://{endpoint}/formrecognizer/v2.1-preview.1/prebuilt/receipt/analyze` - v2.1 receipt model.
+   - `https://{endpoint}/formrecognizer/v2.1-preview.1/custom/models/{modelId}/analyze` - v2.1 custom model.
 
    This component has only been tested against v2.0 and v2.1 of the API.
    
