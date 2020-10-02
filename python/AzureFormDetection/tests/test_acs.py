@@ -131,7 +131,7 @@ class TestAcs(unittest.TestCase):
                              get_test_properties(), {}, None)
         detections = list(AcsFormDetectionComponent().get_detections_from_generic(job))
 
-        self.assertEqual(4, len(detections))
+        self.assertEqual(3, len(detections))
 
         line_detection = detections[0]
         self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
@@ -140,11 +140,6 @@ class TestAcs(unittest.TestCase):
         self.assertTrue('Invoice Date:\n4/14/2019' in line_detection.detection_properties['TEXT'])
 
         table_detection = detections[1]
-        self.assertEqual('KEY_VALUE_PAIRS', table_detection.detection_properties['OUTPUT_TYPE'])
-        self.assertTrue('Date[:]:9/10/2020' in
-                        table_detection.detection_properties['TEXT'])
-
-        table_detection = detections[2]
         self.assertEqual('TABLE', table_detection.detection_properties['OUTPUT_TYPE'])
         self.assertTrue('Item #,Description,Qty,Unit Price,Discount,Price' in
                         table_detection.detection_properties['TABLE_CSV_OUTPUT'])
@@ -163,6 +158,31 @@ class TestAcs(unittest.TestCase):
         self.assertTrue('Contoso, Ltd.' in line_detection.detection_properties['TEXT'])
         self.assertTrue('554 Magnolia Way\nWalnut, WY, 98432' in line_detection.detection_properties['TEXT'])
         self.assertTrue('Thank you for your business!' in line_detection.detection_properties['TEXT'])
+
+
+    def test_mock_custom_model(self):
+        self.set_results_path(get_test_file('regular-forms/mock-custom-results.json'))
+        job_properties = get_test_properties()
+        job_properties['ACS_URL'] = job_properties['ACS_URL'].replace('Layout/analyze', 'custom/models/<model_id>/analyze')
+
+        job = mpf.ImageJob('Test', get_test_file('regular-forms/contoso-invoice.png'), job_properties, {}, None)
+        detections = list(AcsFormDetectionComponent().get_detections_from_image(job))
+
+        self.assertEqual(2, len(detections))
+
+        line_detection = detections[0]
+        self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertTrue('Contoso, Ltd.' in line_detection.detection_properties['TEXT'])
+        self.assertTrue('554 Magnolia Way\nWalnut, WY, 98432' in line_detection.detection_properties['TEXT'])
+        self.assertTrue('Thank you for your business!' in line_detection.detection_properties['TEXT'])
+
+        table_detection = detections[1]
+        self.assertEqual('KEY_VALUE_PAIRS', table_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertTrue('Date[:]:9/10/2020' in
+                        table_detection.detection_properties['TEXT'])
+
+
+
 
     def test_multilanguage(self):
         self.set_results_path(get_test_file('regular-forms/multilanguage-results.json'))
@@ -212,12 +232,15 @@ class TestAcs(unittest.TestCase):
 
     def test_get_acs_url_modified_parameter(self):
         acs_url = 'http://localhost:10669/formrecognizer/v2.1-preview.1/Layout/analyze'
-        properties = dict(ACS_URL=acs_url, INCLUDE_TEXT_DETAILS='false')
+        properties = dict(ACS_URL=acs_url, INCLUDE_TEXT_DETAILS='false', LANGUAGE='en')
 
         url = acs_form_detection_component.JobRunner.get_acs_url(properties)
-        self.assertEqual('http://localhost:10669/formrecognizer/'
-                         'v2.1-preview.1/Layout/analyze?includeTextDetails=false', url)
-
+        if '?i' in url:
+            self.assertEqual('http://localhost:10669/formrecognizer/'
+                             'v2.1-preview.1/Layout/analyze?includeTextDetails=false&language=en', url)
+        else:
+            self.assertEqual('http://localhost:10669/formrecognizer/'
+                             'v2.1-preview.1/Layout/analyze?language=en&includeTextDetails=false', url)
 
 def get_test_properties(**extra_properties):
     return {

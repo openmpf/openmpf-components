@@ -399,35 +399,36 @@ class FormResultsProcessor(object):
         if 'readResults' in form_results_json['analyzeResult']:
             for page in form_results_json['analyzeResult']['readResults']:
                 page_num = page['page'] - 1
-                line_num = 0
-                lines = []
-                bounding_box = []
+                if 'lines' in page:
+                    line_num = 0
+                    lines = []
+                    bounding_box = []
 
-                for line in page['lines']:
-                    if not self._merge_lines:
-                        detection_properties = dict(OUTPUT_TYPE='LINE',
-                                                    PAGE_NUM=str(page_num),
-                                                    LINE_NUM=str(line_num),
-                                                    TEXT=line['text'])
-                        if self._is_image:
-                            bounding_box = self._convert_to_rect(line['boundingBox'])
-                        detections.append(self._create_detection(detection_properties, bounding_box))
-                        line_num += 1
-                    else:
-                        lines.append(line['text'])
-
-                        if self._is_image:
-                            if len(bounding_box) == 0:
+                    for line in page['lines']:
+                        if not self._merge_lines:
+                            detection_properties = dict(OUTPUT_TYPE='LINE',
+                                                        PAGE_NUM=str(page_num),
+                                                        LINE_NUM=str(line_num),
+                                                        TEXT=line['text'])
+                            if self._is_image:
                                 bounding_box = self._convert_to_rect(line['boundingBox'])
-                            else:
-                                second_bounding_box = self._convert_to_rect(line['boundingBox'])
-                                bounding_box = bounding_box.union(second_bounding_box)
+                            detections.append(self._create_detection(detection_properties, bounding_box))
+                            line_num += 1
+                        else:
+                            lines.append(line['text'])
 
-                if self._merge_lines and len(lines) > 0:
-                    detection_properties = dict(OUTPUT_TYPE='MERGED_LINES',
-                                                PAGE_NUM=str(page_num),
-                                                TEXT='\n'.join(lines))
-                    detections.append(self._create_detection(detection_properties, bounding_box))
+                            if self._is_image:
+                                if len(bounding_box) == 0:
+                                    bounding_box = self._convert_to_rect(line['boundingBox'])
+                                else:
+                                    second_bounding_box = self._convert_to_rect(line['boundingBox'])
+                                    bounding_box = bounding_box.union(second_bounding_box)
+
+                    if self._merge_lines and len(lines) > 0:
+                        detection_properties = dict(OUTPUT_TYPE='MERGED_LINES',
+                                                    PAGE_NUM=str(page_num),
+                                                    TEXT='\n'.join(lines))
+                        detections.append(self._create_detection(detection_properties, bounding_box))
 
         # Extract table and key-value pair results.
         if 'pageResults' in form_results_json['analyzeResult']:
