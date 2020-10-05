@@ -507,7 +507,7 @@ class FormResultsProcessor(object):
             table_num += 1
 
     def _process_document_results(self, doc_results, detections):
-        doc_result_index = 1
+        doc_num = 1
         for doc_result in doc_results:
             bbox_list = []
             # Cleanup JSON fields. Bounding box information needs to be converted  OpenMPF detection format.
@@ -527,8 +527,8 @@ class FormResultsProcessor(object):
                                         DOCUMENT_TYPE=doc_type,
                                         PAGE_RANGE=json.dumps(doc_result['pageRange']),
                                         DOCUMENT_JSON_FIELDS=fields,
-                                        DOCUMENT_RESULT_INDEX=str(doc_result_index))
-            doc_result_index += 1
+                                        DOCUMENT_RESULT_NUM=str(doc_num))
+            doc_num += 1
             detections.append(self._create_detection(detection_properties, bounding_box))
 
     def _remove_elements(self, json_object, bounding_box_list):

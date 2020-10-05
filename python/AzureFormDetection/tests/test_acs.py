@@ -214,7 +214,7 @@ class TestAcs(unittest.TestCase):
         self.assertEqual('DOCUMENT_RESULT', doc_detection.detection_properties['OUTPUT_TYPE'])
         self.assertEqual('prebuilt:receipt', doc_detection.detection_properties['DOCUMENT_TYPE'])
         self.assertEqual('[1, 1]', doc_detection.detection_properties['PAGE_RANGE'])
-        self.assertEqual('1', doc_detection.detection_properties['DOCUMENT_RESULT_INDEX'])
+        self.assertEqual('1', doc_detection.detection_properties['DOCUMENT_RESULT_NUM'])
         self.assertTrue('MerchantPhoneNumber' in
                         doc_detection.detection_properties['DOCUMENT_JSON_FIELDS'])
         self.assertTrue('"MerchantAddress": {"type": "string", "valueString": "123 Main Street Redmond, WA 98052"' in
@@ -224,7 +224,7 @@ class TestAcs(unittest.TestCase):
         self.assertEqual('DOCUMENT_RESULT', doc_detection.detection_properties['OUTPUT_TYPE'])
         self.assertEqual('prebuilt:receipt', doc_detection.detection_properties['DOCUMENT_TYPE'])
         self.assertEqual('[2, 2]', doc_detection.detection_properties['PAGE_RANGE'])
-        self.assertEqual('2', doc_detection.detection_properties['DOCUMENT_RESULT_INDEX'])
+        self.assertEqual('2', doc_detection.detection_properties['DOCUMENT_RESULT_NUM'])
         self.assertTrue('MerchantPhoneNumber' in
                         doc_detection.detection_properties['DOCUMENT_JSON_FIELDS'])
         self.assertTrue('"MerchantAddress": {"type": "string", "valueString": "123 Main Street Redmond, WA 98052"' in

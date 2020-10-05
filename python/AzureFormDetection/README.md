@@ -1,8 +1,7 @@
 # Overview
 
 This repository contains source code for the OpenMPF Azure Cognitive Services
-Form Recognition Text Detection Component. This component utilizes
-the [Azure Cognitive Services Form Detection REST
+Form Detection Component. This component utilizes the [Azure Cognitive Services Form Detection REST
 endpoint](https://westus2.dev.cognitive.microsoft.com/docs/services/form-recognizer-api-v2/operations/AnalyzeLayoutAsync)
 to extract formatted text from documents (PDFs) and images.
 
@@ -40,41 +39,54 @@ Optional job properties include:
    are supported. English is the only language that supports handwritten characters in addition to printed characters.
 
 # Job Outputs
-Currently the component provides line-based outputs and csv table outputs in separate detection tracks.
-Detection tracks with `OUTPUT_TYPE` set to `LINE` or `MERGED_LINES` will include `TEXT` results,
-whereas tracks with `OUTPUT_TYPE` set to `TABLE` will contain `TABLE_CSV_OUTPUT` instead of `TEXT`,
-and tracks with 'OUTPUT_TYPE' set to `KEY_VALUE_PAIRS` will contain `KEY_VALUE_PAIRS_JSON` instead of `TEXT`.
+Currently the component provides line-based outputs, key-value pairs, csv table outputs, and custom forms in separate detection tracks.
 
+- Detection tracks with `OUTPUT_TYPE` set to `LINE` or `MERGED_LINES` will include `TEXT` results. `MERGED_LINES`
+  contains `TEXT` output where each line is separated by a newline character.
 
-`MERGED_LINES` contains `TEXT` output where each line is separated by a newline character.
+- Detection tracks with `OUTPUT_TYPE` set to `TABLE` will contain `TABLE_CSV_OUTPUT`, a CSV formatted table,
+  instead of `TEXT`.
 
-For `KEY_VALUE_PAIRS`, each key-value pair in `KEY_VALUE_PAIRS_JSON` follows the JSON object format:
+- Detection tracks with `OUTPUT_TYPE` set to `KEY_VALUE_PAIRS` will contain `KEY_VALUE_PAIRS_JSON` instead of `TEXT`.
+  Each key-value pair in `KEY_VALUE_PAIRS_JSON` follows the JSON object format:
+  `{"<key_1>": "<val_1>", "<key_2>": "<val_2>", ...}`
 
-`{"<key_1>": "<val_1>", "<key_2>": "<val_2>", ...}`
+  Please note that `KEY_VALUE_PAIRS` are produced by models trained on unlabeled documents.
+  For more information on custom model outputs, please see [below](#custom-models).
 
+- Detection tracks with `OUTPUT_TYPE` set to `DOCUMENT_RESULT` are produced by pretrained receipt/business card models
+  as well as custom models trained on labeled data. For more information on custom model outputs, please see [below](#custom-models).
 
-Results are organized by `PAGE_NUM` and output indexes (`LINE_NUM`, `TABLE_NUM`) with 1 as the starting index.
-For images, the bounding box information (for lines, merged lines, and whole tables) is also provided in the detection
+Results are organized by `PAGE_NUM` and output indexes (`LINE_NUM`, `TABLE_NUM`, `DOCUMENT_RESULT_NUM`) with 1 as the starting index.
+For images, the bounding box information for lines, merged lines, whole tables, and custom forms is also provided in the detection
 track.
-
 
 ## Custom Models
 ACS form recognizer also supports training and deployment of custom form detection models, as well as providing
-pretrained models for business cards and receipts.
+pretrained models for detecting business cards and receipts.
+
+Two types of custom model outputs exist, depending on whether the custom model was trained on unlabeled or labeled form data.
+
+- Unlabeled data training example: https://docs.microsoft.com/en-us/azure/cognitive-services/form-recognizer/quickstarts/python-train-extract?tabs=v2-0
+
+- Labeled data training example: https://docs.microsoft.com/en-us/azure/cognitive-services/form-recognizer/quickstarts/python-labeled-data?tabs=v2-0
 
 For custom models trained without labeled data, additional results will be provided and stored as `KEY_VALUE_PAIRS`
 output tracks, with one detection track per page.
 
-For custom models (trained using labeled data), pretrained receipt and business card models, additional custom form
-output is stored in separate detection tracks with the output type set to `DOCUMENT_RESULT`.
-Each output track stores a separate form, receipt, or business card detected in the document and has the following
+For custom models trained using labeled data, additional custom form output is stored in
+separate detection tracks with the output type set to `DOCUMENT_RESULT`. The pretrained models for business cards and receipts
+were also trained on labeled data and will generate `DOCUMENT_RESULT` tracks.
+
+For labeled `DOCUMENT_RESULT` tracks, each output track stores a separate document form, receipt, or business card detected in the image or pdf and has the following
 unique detection properties:
+
 -  `DOCUMENT_TYPE`: Type of document form detected in the current track (receipt, business card, etc.).
 -  `PAGE_RANGE` : Species the page range for the detected custom form. Currently, business cards
     and receipts must be restricted to single-pages (i.e. each receipt or card must appear in one page, not across
     multiple pages).
--  `DOCUMENT_RESULT_INDEX`: Each detected form track will be organized based on its index from the ACS `documentResults` output, starting from 1.
--  `DOCUMENT_JSON_FIELDS`: Contains a JSON-formatted dictionary of various custom form fields. Details on custom form,
+-  `DOCUMENT_RESULT_NUM`: Each document form track will be organized based on its index from the ACS `documentResults` output, starting from 1.
+-  `DOCUMENT_JSON_FIELDS`: Contains a JSON-formatted object of various custom form fields detected in the document. Details on custom form,
     business card, and receipt fields can be found at https://westcentralus.dev.cognitive.microsoft.com/docs/services/form-recognizer-api-v2-1-preview-1/operations/GetAnalyzeFormResult.
 
 # Sample Program
