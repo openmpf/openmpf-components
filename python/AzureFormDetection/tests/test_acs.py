@@ -159,11 +159,11 @@ class TestAcs(unittest.TestCase):
         self.assertTrue('554 Magnolia Way\nWalnut, WY, 98432' in line_detection.detection_properties['TEXT'])
         self.assertTrue('Thank you for your business!' in line_detection.detection_properties['TEXT'])
 
-
     def test_mock_custom_model(self):
         self.set_results_path(get_test_file('regular-forms/mock-custom-results.json'))
         job_properties = get_test_properties()
-        job_properties['ACS_URL'] = job_properties['ACS_URL'].replace('Layout/analyze', 'custom/models/<model_id>/analyze')
+        job_properties['ACS_URL'] = job_properties['ACS_URL'].replace('Layout/analyze',
+                                                                      'custom/models/<model_id>/analyze')
 
         job = mpf.ImageJob('Test', get_test_file('regular-forms/contoso-invoice.png'), job_properties, {}, None)
         detections = list(AcsFormDetectionComponent().get_detections_from_image(job))
@@ -180,9 +180,6 @@ class TestAcs(unittest.TestCase):
         self.assertEqual('KEY_VALUE_PAIRS', table_detection.detection_properties['OUTPUT_TYPE'])
         self.assertTrue('Date[:]:9/10/2020' in
                         table_detection.detection_properties['TEXT'])
-
-
-
 
     def test_multilanguage(self):
         self.set_results_path(get_test_file('regular-forms/multilanguage-results.json'))
@@ -241,6 +238,7 @@ class TestAcs(unittest.TestCase):
         else:
             self.assertEqual('http://localhost:10669/formrecognizer/'
                              'v2.1-preview.1/Layout/analyze?language=en&includeTextDetails=false', url)
+
 
 def get_test_properties(**extra_properties):
     return {

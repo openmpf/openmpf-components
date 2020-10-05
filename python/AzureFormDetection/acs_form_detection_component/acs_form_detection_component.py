@@ -363,10 +363,13 @@ class FormResultsProcessor(object):
 
     def _create_detection(self, detection_properties, bounding_box):
         if self._is_image:
-            corrected_bounding_box = self._correct_region_bounding_box(bounding_box)
-            return mpf.ImageLocation(int(corrected_bounding_box.x), int(corrected_bounding_box.y),
-                                     int(corrected_bounding_box.width), int(corrected_bounding_box.height),
-                                     -1, detection_properties)
+            if len(bounding_box) > 0:
+                corrected_bounding_box = self._correct_region_bounding_box(bounding_box)
+                return mpf.ImageLocation(int(corrected_bounding_box.x), int(corrected_bounding_box.y),
+                                         int(corrected_bounding_box.width), int(corrected_bounding_box.height),
+                                         -1, detection_properties)
+            else:
+                return mpf.ImageLocation(0, 0, 0, 0, -1, detection_properties)
         else:
             return mpf.GenericTrack(-1, detection_properties)
 
@@ -397,113 +400,161 @@ class FormResultsProcessor(object):
         detections = []
         # Extract text results.
         if 'readResults' in form_results_json['analyzeResult']:
-            for page in form_results_json['analyzeResult']['readResults']:
-                page_num = page['page'] - 1
-                if 'lines' in page:
-                    line_num = 0
-                    lines = []
-                    bounding_box = []
-
-                    for line in page['lines']:
-                        if not self._merge_lines:
-                            detection_properties = dict(OUTPUT_TYPE='LINE',
-                                                        PAGE_NUM=str(page_num),
-                                                        LINE_NUM=str(line_num),
-                                                        TEXT=line['text'])
-                            if self._is_image:
-                                bounding_box = self._convert_to_rect(line['boundingBox'])
-                            detections.append(self._create_detection(detection_properties, bounding_box))
-                            line_num += 1
-                        else:
-                            lines.append(line['text'])
-
-                            if self._is_image:
-                                if len(bounding_box) == 0:
-                                    bounding_box = self._convert_to_rect(line['boundingBox'])
-                                else:
-                                    second_bounding_box = self._convert_to_rect(line['boundingBox'])
-                                    bounding_box = bounding_box.union(second_bounding_box)
-
-                    if self._merge_lines and len(lines) > 0:
-                        detection_properties = dict(OUTPUT_TYPE='MERGED_LINES',
-                                                    PAGE_NUM=str(page_num),
-                                                    TEXT='\n'.join(lines))
-                        detections.append(self._create_detection(detection_properties, bounding_box))
+            self._process_read_results(form_results_json['analyzeResult']['readResults'], detections)
 
         # Extract table and key-value pair results.
         if 'pageResults' in form_results_json['analyzeResult']:
-            for page in form_results_json['analyzeResult']['pageResults']:
-                page_num = page['page'] - 1
-                # Add key-value pairs as one detection per page.
-                if 'keyValuePairs' in page:
-                    bounding_box = []
-                    key_val_list = []
-                    for kv_pair in page['keyValuePairs']:
-                        # Two bounding boxes exist, one for keys and one for values.
-                        if len(bounding_box) == 0:
-                            bounding_box = self._convert_to_rect(kv_pair['key']['boundingBox'])
-                        else:
-                            second_bounding_box = self._convert_to_rect(kv_pair['key']['boundingBox'])
-                            bounding_box = bounding_box.union(second_bounding_box)
-
-                        second_bounding_box = self._convert_to_rect(kv_pair['value']['boundingBox'])
-                        bounding_box = bounding_box.union(second_bounding_box)
-
-                        # Escape commas and colons with brackets as they are used as key-value delimiters.
-                        key_str = kv_pair['key']['text'].replace(':', '[:]').replace(',', '[,]')
-                        val_str = kv_pair['value']['text'].replace(':', '[:]').replace(',', '[,]')
-
-                        key_val_pair = '{}:{}'.format(key_str, val_str)
-                        key_val_list.append(key_val_pair)
-
-                    detection_properties = dict(OUTPUT_TYPE='KEY_VALUE_PAIRS',
-                                                PAGE_NUM=str(page_num),
-                                                TEXT=', '.join(key_val_list))
-                    detections.append(self._create_detection(detection_properties, bounding_box))
-
-                # Add table CSVs as one detection per table.
-                if 'tables' in page:
-                    table_num = 0
-                    for table in page['tables']:
-                        row = table['rows']
-                        col = table['columns']
-                        table_array = np.full([row, col], None)
-                        bounding_box = []
-
-                        for cell in table['cells']:
-                            table_array[cell['rowIndex']][cell['columnIndex']] = cell['text']
-                            if self._is_image:
-                                if len(bounding_box) == 0:
-                                    bounding_box = self._convert_to_rect(cell['boundingBox'])
-                                else:
-                                    second_bounding_box = self._convert_to_rect(cell['boundingBox'])
-                                    bounding_box = bounding_box.union(second_bounding_box)
-
-                        output = io.StringIO()
-                        writer = csv.writer(output)
-                        for row in table_array:
-                            writer.writerow(row)
-                        cs_output = output.getvalue()
-                        output.close()
-                        detection_properties = dict(OUTPUT_TYPE='TABLE',
-                                                    PAGE_NUM=str(page_num),
-                                                    TABLE_NUM=str(table_num),
-                                                    TABLE_CSV_OUTPUT=cs_output)
-                        detections.append(self._create_detection(detection_properties, bounding_box))
-                        table_num += 1
+            self._process_page_results(form_results_json['analyzeResult']['pageResults'], detections)
 
         # Extract custom model results and store JSON field results.
         if 'documentResults' in form_results_json['analyzeResult']:
-            doc_result_index = 0
-            for doc_result in form_results_json['analyzeResult']['documentResults']:
-                page_range = "{}-{}".format(doc_result['pageRange'][0] - 1, doc_result['pageRange'][1] - 1)
-                fields = str(doc_result['fields'])
-                doc_type = doc_result['docType']
-                detection_properties = dict(OUTPUT_TYPE='DOCUMENT_RESULT',
-                                            DOCUMENT_TYPE=doc_type,
-                                            PAGE_RANGE=page_range,
-                                            DOCUMENT_JSON_FIELDS=fields,
-                                            DOCUMENT_RESULT_INDEX=str(doc_result_index))
-                doc_result_index += 1
-                detections.append(mpf.ImageLocation(0, 0, 0, 0, -1, detection_properties))
+            self._process_document_results(form_results_json['analyzeResult']['documentResults'], detections)
         return detections
+
+    def _process_read_results(self, read_results, detections):
+        for page in read_results:
+            page_num = page['page'] - 1
+            if 'lines' in page:
+                line_num = 0
+                lines = []
+                bounding_box = []
+
+                for line in page['lines']:
+                    if not self._merge_lines:
+                        detection_properties = dict(OUTPUT_TYPE='LINE',
+                                                    PAGE_NUM=str(page_num),
+                                                    LINE_NUM=str(line_num),
+                                                    TEXT=line['text'])
+                        if self._is_image:
+                            bounding_box = self._convert_to_rect(line['boundingBox'])
+                        detections.append(self._create_detection(detection_properties, bounding_box))
+                        line_num += 1
+                    else:
+                        lines.append(line['text'])
+
+                        if self._is_image:
+                            if len(bounding_box) == 0:
+                                bounding_box = self._convert_to_rect(line['boundingBox'])
+                            else:
+                                second_bounding_box = self._convert_to_rect(line['boundingBox'])
+                                bounding_box = bounding_box.union(second_bounding_box)
+
+                if self._merge_lines and len(lines) > 0:
+                    detection_properties = dict(OUTPUT_TYPE='MERGED_LINES',
+                                                PAGE_NUM=str(page_num),
+                                                TEXT='\n'.join(lines))
+                    detections.append(self._create_detection(detection_properties, bounding_box))
+
+    def _process_page_results(self, page_results, detections):
+        for page in page_results:
+            page_num = page['page'] - 1
+            # Add key-value pairs as one detection per page.
+            if 'keyValuePairs' in page:
+                self._process_page_result_kv_pairs(page, page_num, detections)
+
+            # Add table CSVs as one detection per table.
+            if 'tables' in page:
+                self._process_page_result_tables(page, page_num, detections)
+
+    def _process_page_result_kv_pairs(self, page, page_num, detections):
+        bounding_box = []
+        key_val_list = []
+        for kv_pair in page['keyValuePairs']:
+            # Two bounding boxes exist, one for keys and one for values.
+            if len(bounding_box) == 0:
+                bounding_box = self._convert_to_rect(kv_pair['key']['boundingBox'])
+            else:
+                second_bounding_box = self._convert_to_rect(kv_pair['key']['boundingBox'])
+                bounding_box = bounding_box.union(second_bounding_box)
+
+            second_bounding_box = self._convert_to_rect(kv_pair['value']['boundingBox'])
+            bounding_box = bounding_box.union(second_bounding_box)
+
+            # Escape commas and colons with brackets as they are used as key-value delimiters.
+            key_str = kv_pair['key']['text'].replace(':', '[:]').replace(',', '[,]')
+            val_str = kv_pair['value']['text'].replace(':', '[:]').replace(',', '[,]')
+
+            key_val_pair = '{}:{}'.format(key_str, val_str)
+            key_val_list.append(key_val_pair)
+
+        detection_properties = dict(OUTPUT_TYPE='KEY_VALUE_PAIRS',
+                                    PAGE_NUM=str(page_num),
+                                    TEXT=', '.join(key_val_list))
+        detections.append(self._create_detection(detection_properties, bounding_box))
+
+    def _process_page_result_tables(self, page, page_num, detections):
+        table_num = 0
+        for table in page['tables']:
+            row = table['rows']
+            col = table['columns']
+            table_array = np.full([row, col], None)
+            bounding_box = []
+
+            for cell in table['cells']:
+                table_array[cell['rowIndex']][cell['columnIndex']] = cell['text']
+                if self._is_image:
+                    if len(bounding_box) == 0:
+                        bounding_box = self._convert_to_rect(cell['boundingBox'])
+                    else:
+                        second_bounding_box = self._convert_to_rect(cell['boundingBox'])
+                        bounding_box = bounding_box.union(second_bounding_box)
+
+            output = io.StringIO()
+            writer = csv.writer(output)
+            for row in table_array:
+                writer.writerow(row)
+            cs_output = output.getvalue()
+            output.close()
+            detection_properties = dict(OUTPUT_TYPE='TABLE',
+                                        PAGE_NUM=str(page_num),
+                                        TABLE_NUM=str(table_num),
+                                        TABLE_CSV_OUTPUT=cs_output)
+            detections.append(self._create_detection(detection_properties, bounding_box))
+            table_num += 1
+
+    def _process_document_results(self, doc_results, detections):
+        doc_result_index = 0
+        for doc_result in doc_results:
+            page_range = "{}-{}".format(doc_result['pageRange'][0] - 1, doc_result['pageRange'][1] - 1)
+
+            bbox_list = []
+            # Cleanup JSON fields. Bounding box information needs to be converted  OpenMPF detection format.
+            # ACS bounding box and elements are then filtered out.
+            self._remove_elements(doc_result, bbox_list)
+            fields = str(doc_result['fields'])
+            bounding_box = []
+            for bbox in bbox_list:
+                if len(bounding_box) == 0:
+                    bounding_box = self._convert_to_rect(bbox)
+                else:
+                    second_bounding_box = self._convert_to_rect(bbox)
+                    bounding_box = bounding_box.union(second_bounding_box)
+
+            doc_type = doc_result['docType']
+            detection_properties = dict(OUTPUT_TYPE='DOCUMENT_RESULT',
+                                        DOCUMENT_TYPE=doc_type,
+                                        PAGE_RANGE=page_range,
+                                        DOCUMENT_JSON_FIELDS=fields,
+                                        DOCUMENT_RESULT_INDEX=str(doc_result_index))
+            doc_result_index += 1
+            detections.append(self._create_detection(detection_properties, bounding_box))
+
+    def _remove_elements(self, json_object, bounding_box_list):
+        if 'fields' in json_object:
+            for key in json_object['fields']:
+                self._remove_elements(json_object['fields'][key], bounding_box_list)
+        if 'type' in json_object:
+            if json_object['type'] == 'array':
+                for obj in json_object['valueArray']:
+                    self._remove_elements(obj, bounding_box_list)
+            if json_object['type'] == 'object':
+                for key in json_object['valueObject']:
+                    self._remove_elements((json_object['valueObject'][key]), bounding_box_list)
+
+        box = json_object.pop('boundingBox', None)
+        json_object.pop('elements', None)
+        print(box)
+        if box is not None:
+            bounding_box_list.append(box)
+
+
