@@ -413,9 +413,9 @@ class FormResultsProcessor(object):
 
     def _process_read_results(self, read_results, detections):
         for page in read_results:
-            page_num = page['page'] - 1
+            page_num = page['page']
             if 'lines' in page:
-                line_num = 0
+                line_num = 1
                 lines = []
                 bounding_box = []
 
@@ -447,7 +447,7 @@ class FormResultsProcessor(object):
 
     def _process_page_results(self, page_results, detections):
         for page in page_results:
-            page_num = page['page'] - 1
+            page_num = page['page']
             # Add key-value pairs as one detection per page.
             if 'keyValuePairs' in page:
                 self._process_page_result_kv_pairs(page, page_num, detections)
@@ -458,7 +458,7 @@ class FormResultsProcessor(object):
 
     def _process_page_result_kv_pairs(self, page, page_num, detections):
         bounding_box = []
-        key_val_list = []
+        key_val_dict = {}
         for kv_pair in page['keyValuePairs']:
             # Two bounding boxes exist, one for keys and one for values.
             if len(bounding_box) == 0:
@@ -469,21 +469,15 @@ class FormResultsProcessor(object):
 
             second_bounding_box = self._convert_to_rect(kv_pair['value']['boundingBox'])
             bounding_box = bounding_box.union(second_bounding_box)
-
-            # Escape commas and colons with brackets as they are used as key-value delimiters.
-            key_str = kv_pair['key']['text'].replace(':', '[:]').replace(',', '[,]')
-            val_str = kv_pair['value']['text'].replace(':', '[:]').replace(',', '[,]')
-
-            key_val_pair = '{}:{}'.format(key_str, val_str)
-            key_val_list.append(key_val_pair)
+            key_val_dict[kv_pair['key']['text']] = kv_pair['value']['text']
 
         detection_properties = dict(OUTPUT_TYPE='KEY_VALUE_PAIRS',
                                     PAGE_NUM=str(page_num),
-                                    TEXT=', '.join(key_val_list))
+                                    KEY_VALUE_PAIRS_JSON=json.dumps(key_val_dict))
         detections.append(self._create_detection(detection_properties, bounding_box))
 
     def _process_page_result_tables(self, page, page_num, detections):
-        table_num = 0
+        table_num = 1
         for table in page['tables']:
             row = table['rows']
             col = table['columns']
@@ -513,15 +507,13 @@ class FormResultsProcessor(object):
             table_num += 1
 
     def _process_document_results(self, doc_results, detections):
-        doc_result_index = 0
+        doc_result_index = 1
         for doc_result in doc_results:
-            page_range = "{}-{}".format(doc_result['pageRange'][0] - 1, doc_result['pageRange'][1] - 1)
-
             bbox_list = []
             # Cleanup JSON fields. Bounding box information needs to be converted  OpenMPF detection format.
             # ACS bounding box and elements are then filtered out.
             self._remove_elements(doc_result, bbox_list)
-            fields = str(doc_result['fields'])
+            fields = json.dumps(doc_result['fields'])
             bounding_box = []
             for bbox in bbox_list:
                 if len(bounding_box) == 0:
@@ -533,7 +525,7 @@ class FormResultsProcessor(object):
             doc_type = doc_result['docType']
             detection_properties = dict(OUTPUT_TYPE='DOCUMENT_RESULT',
                                         DOCUMENT_TYPE=doc_type,
-                                        PAGE_RANGE=page_range,
+                                        PAGE_RANGE=json.dumps(doc_result['pageRange']),
                                         DOCUMENT_JSON_FIELDS=fields,
                                         DOCUMENT_RESULT_INDEX=str(doc_result_index))
             doc_result_index += 1
@@ -553,7 +545,6 @@ class FormResultsProcessor(object):
 
         box = json_object.pop('boundingBox', None)
         json_object.pop('elements', None)
-        print(box)
         if box is not None:
             bounding_box_list.append(box)
 

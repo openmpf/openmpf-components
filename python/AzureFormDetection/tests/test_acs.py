@@ -135,12 +135,15 @@ class TestAcs(unittest.TestCase):
 
         line_detection = detections[0]
         self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertEqual('1', line_detection.detection_properties['PAGE_NUM'])
         self.assertTrue('Phone: 432-555-0189' in line_detection.detection_properties['TEXT'])
         self.assertTrue('Email: contoso@example.com' in line_detection.detection_properties['TEXT'])
         self.assertTrue('Invoice Date:\n4/14/2019' in line_detection.detection_properties['TEXT'])
 
         table_detection = detections[1]
         self.assertEqual('TABLE', table_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertEqual('1', table_detection.detection_properties['PAGE_NUM'])
+        self.assertEqual('1', table_detection.detection_properties['TABLE_NUM'])
         self.assertTrue('Item #,Description,Qty,Unit Price,Discount,Price' in
                         table_detection.detection_properties['TABLE_CSV_OUTPUT'])
         self.assertTrue('Z4567,Invoice 3-456-2 Data 1,39,$ 5.00,$ -,$ 195.00' in
@@ -155,6 +158,7 @@ class TestAcs(unittest.TestCase):
 
         line_detection = detections[0]
         self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertEqual('1', line_detection.detection_properties['PAGE_NUM'])
         self.assertTrue('Contoso, Ltd.' in line_detection.detection_properties['TEXT'])
         self.assertTrue('554 Magnolia Way\nWalnut, WY, 98432' in line_detection.detection_properties['TEXT'])
         self.assertTrue('Thank you for your business!' in line_detection.detection_properties['TEXT'])
@@ -172,14 +176,59 @@ class TestAcs(unittest.TestCase):
 
         line_detection = detections[0]
         self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertEqual('1', line_detection.detection_properties['PAGE_NUM'])
         self.assertTrue('Contoso, Ltd.' in line_detection.detection_properties['TEXT'])
         self.assertTrue('554 Magnolia Way\nWalnut, WY, 98432' in line_detection.detection_properties['TEXT'])
         self.assertTrue('Thank you for your business!' in line_detection.detection_properties['TEXT'])
 
-        table_detection = detections[1]
-        self.assertEqual('KEY_VALUE_PAIRS', table_detection.detection_properties['OUTPUT_TYPE'])
-        self.assertTrue('Date[:]:9/10/2020' in
-                        table_detection.detection_properties['TEXT'])
+        kv_detection = detections[1]
+        self.assertEqual('KEY_VALUE_PAIRS', kv_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertEqual('1', kv_detection.detection_properties['PAGE_NUM'])
+        self.assertTrue('"Date:": "9/10/2020"' in
+                        kv_detection.detection_properties['KEY_VALUE_PAIRS_JSON'])
+
+    def test_custom_receipt_document_result(self):
+        self.set_results_path(get_test_file('regular-forms/receipt-results.json'))
+        job_properties = get_test_properties()
+        job_properties['ACS_URL'] = job_properties['ACS_URL'].replace('Layout/analyze',
+                                                                      'prebuilt/receipt/analyze')
+
+        job = mpf.GenericJob('Test', get_test_file('regular-forms/receipt.pdf'), job_properties, {}, None)
+        detections = list(AcsFormDetectionComponent().get_detections_from_generic(job))
+
+        self.assertEqual(4, len(detections))
+
+        line_detection = detections[0]
+        self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertEqual('1', line_detection.detection_properties['PAGE_NUM'])
+        self.assertTrue('Contoso' in line_detection.detection_properties['TEXT'])
+        self.assertTrue('123 Main Street' in line_detection.detection_properties['TEXT'])
+
+        line_detection = detections[1]
+        self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertEqual('2', line_detection.detection_properties['PAGE_NUM'])
+        self.assertTrue('Contoso' in line_detection.detection_properties['TEXT'])
+        self.assertTrue('123 Main Street' in line_detection.detection_properties['TEXT'])
+
+        doc_detection = detections[2]
+        self.assertEqual('DOCUMENT_RESULT', doc_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertEqual('prebuilt:receipt', doc_detection.detection_properties['DOCUMENT_TYPE'])
+        self.assertEqual('[1, 1]', doc_detection.detection_properties['PAGE_RANGE'])
+        self.assertEqual('1', doc_detection.detection_properties['DOCUMENT_RESULT_INDEX'])
+        self.assertTrue('MerchantPhoneNumber' in
+                        doc_detection.detection_properties['DOCUMENT_JSON_FIELDS'])
+        self.assertTrue('"MerchantAddress": {"type": "string", "valueString": "123 Main Street Redmond, WA 98052"' in
+                        doc_detection.detection_properties['DOCUMENT_JSON_FIELDS'])
+
+        doc_detection = detections[3]
+        self.assertEqual('DOCUMENT_RESULT', doc_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertEqual('prebuilt:receipt', doc_detection.detection_properties['DOCUMENT_TYPE'])
+        self.assertEqual('[2, 2]', doc_detection.detection_properties['PAGE_RANGE'])
+        self.assertEqual('2', doc_detection.detection_properties['DOCUMENT_RESULT_INDEX'])
+        self.assertTrue('MerchantPhoneNumber' in
+                        doc_detection.detection_properties['DOCUMENT_JSON_FIELDS'])
+        self.assertTrue('"MerchantAddress": {"type": "string", "valueString": "123 Main Street Redmond, WA 98052"' in
+                        doc_detection.detection_properties['DOCUMENT_JSON_FIELDS'])
 
     def test_multilanguage(self):
         self.set_results_path(get_test_file('regular-forms/multilanguage-results.json'))
@@ -191,6 +240,7 @@ class TestAcs(unittest.TestCase):
 
         line_detection = detections[0]
         self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
+        self.assertEqual('1', line_detection.detection_properties['PAGE_NUM'])
         self.assertTrue('不分国家或领土的政治地' in line_detection.detection_properties['TEXT'])
         self.assertTrue('our business card model, enabling you to easily extract' in
                         line_detection.detection_properties['TEXT'])

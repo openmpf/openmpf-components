@@ -41,21 +41,19 @@ Optional job properties include:
 
 # Job Outputs
 Currently the component provides line-based outputs and csv table outputs in separate detection tracks.
-Detection tracks with `OUTPUT_TYPE` set to `KEY_VALUE_PAIRS`, `LINE` or `MERGED_LINES` will include `TEXT` results,
-whereas tracks with `OUTPUT_TYPE` set to `TABLE` will contain `TABLE_CSV_OUTPUT` instead of `TEXT`.
+Detection tracks with `OUTPUT_TYPE` set to `LINE` or `MERGED_LINES` will include `TEXT` results,
+whereas tracks with `OUTPUT_TYPE` set to `TABLE` will contain `TABLE_CSV_OUTPUT` instead of `TEXT`,
+and tracks with 'OUTPUT_TYPE' set to `KEY_VALUE_PAIRS` will contain `KEY_VALUE_PAIRS_JSON` instead of `TEXT`.
+
 
 `MERGED_LINES` contains `TEXT` output where each line is separated by a newline character.
 
-For `KEY_VALUE_PAIRS`, each key-value pair in `TEXT` follows the format `<key>:<value>`, with each pair separated by a comma.
+For `KEY_VALUE_PAIRS`, each key-value pair in `KEY_VALUE_PAIRS_JSON` follows the JSON object format:
 
-Example:
-`<key_1>:<val_1>, <key_2>:<val_2>`
+`{"<key_1>": "<val_1>", "<key_2>": "<val_2>", ...}`
 
-As a result both commas and colons within key or value strings are escaped by brackets.
-Example:
-    `time:12[:]30, next[,] location:home` corresponds to key-value pairs `time`-`12:30`, `next,location`-`home`.
 
-Results are organized by `PAGE_NUM` and output indexes (`LINE_NUM`, `TABLE_NUM`) with 0 as the starting index.
+Results are organized by `PAGE_NUM` and output indexes (`LINE_NUM`, `TABLE_NUM`) with 1 as the starting index.
 For images, the bounding box information (for lines, merged lines, and whole tables) is also provided in the detection
 track.
 
@@ -75,7 +73,7 @@ unique detection properties:
 -  `PAGE_RANGE` : Species the page range for the detected custom form. Currently, business cards
     and receipts must be restricted to single-pages (i.e. each receipt or card must appear in one page, not across
     multiple pages).
--  `DOCUMENT_RESULT_INDEX`: Each detected form track will be organized based on its index from the ACS `documentResults` output.
+-  `DOCUMENT_RESULT_INDEX`: Each detected form track will be organized based on its index from the ACS `documentResults` output, starting from 1.
 -  `DOCUMENT_JSON_FIELDS`: Contains a JSON-formatted dictionary of various custom form fields. Details on custom form,
     business card, and receipt fields can be found at https://westcentralus.dev.cognitive.microsoft.com/docs/services/form-recognizer-api-v2-1-preview-1/operations/GetAnalyzeFormResult.
 
