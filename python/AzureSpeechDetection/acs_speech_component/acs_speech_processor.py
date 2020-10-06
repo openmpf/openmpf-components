@@ -77,7 +77,7 @@ class AcsSpeechDetectionProcessor(object):
             )
         except Exception as e:
             raise mpf.DetectionException(
-                'Failed to upload file to blob: {:s}'.format(e),
+                'Failed to upload file to blob: {}'.format(e),
                 mpf.DetectionError.DETECTION_FAILED
             )
 
