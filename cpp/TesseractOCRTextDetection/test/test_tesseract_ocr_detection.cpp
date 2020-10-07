@@ -248,7 +248,7 @@ TEST(TESSERACTOCR, ModelTest) {
     boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/custom_tessdata");
 
     std::string model = boost::filesystem::absolute(
-            "../plugin/TesseractOCRTextDetection/custom_tessdata/eng.traineddata").string();
+            "../plugin/TesseractOCRTextDetection/tessdata/eng.traineddata").string();
     symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/custom_tessdata/custom.traineddata");
 
     TesseractOCRTextDetection ocr;
