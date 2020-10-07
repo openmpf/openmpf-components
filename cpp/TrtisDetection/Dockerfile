@@ -128,7 +128,7 @@ ENV request_DIR=/root/trtis
 
 WORKDIR /home/mpf/component_src
 
-COPY --from=models models/model.graphdef \
+COPY --from=models /models/model.graphdef \
         $BUILD_DIR/plugin/TrtisDetection/models/ip_irv2_coco/1/model.graphdef
 
 COPY . .
