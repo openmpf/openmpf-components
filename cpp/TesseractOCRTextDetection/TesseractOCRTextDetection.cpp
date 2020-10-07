@@ -174,6 +174,8 @@ void TesseractOCRTextDetection::set_default_parameters() {
     default_ocr_fset.adaptive_hist_clip_limit = 2.0;
 
     default_ocr_fset.processing_wild_text = false;
+
+    default_ocr_fset.tessdata_models_subdir = "TesseractOCRTextDetection/tessdata";
 }
 
 /*
@@ -797,7 +799,7 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
                                           "associated *.traineddata files to your tessdata directory " +
                                           "($MPF_HOME/plugins/TesseractOCRTextDetection/tessdata) " +
                                           "or shared models directory " +
-                                          "($MPF_HOME/share/models/TesseractOCRTextDetection/tessdata).");
+                                          "($MPF_HOME/share/models/" + ocr_fset.tessdata_models_subdir + ").");
                 job_status = MPF_COULD_NOT_OPEN_DATAFILE;
                 return false;
             }
@@ -855,6 +857,7 @@ string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &job, c
         run_dir = ".";
     }
 
+    // If user specified tessdata directory fails, revert to default plugin directory and tessdata models.
     string local_plugin_directory = run_dir + "/TesseractOCRTextDetection/tessdata";
     LOG4CXX_DEBUG(hw_logger_,
                   "[" + job.job_name + "] Not all models found in " + directory + ". Checking local plugin directory "
@@ -1426,6 +1429,7 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
 
     // Tessdata setup
     ocr_fset.model_dir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODELS_DIR_PATH", default_ocr_fset.model_dir);
+    ocr_fset.tessdata_models_subdir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "TESSDATA_MODELS_SUBDIRECTORY", default_ocr_fset.tessdata_models_subdir);
     if (ocr_fset.model_dir != "") {
         ocr_fset.model_dir = ocr_fset.model_dir + "/TesseractOCRTextDetection/tessdata";
     } else {

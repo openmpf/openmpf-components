@@ -245,11 +245,11 @@ TEST(TESSERACTOCR, ModelTest) {
     // Ensure user can specify custom model directory locations.
 
     boost::filesystem::remove_all("data/model_dir");
-    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/tessdata");
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/custom_tessdata");
 
     std::string model = boost::filesystem::absolute(
-            "../plugin/TesseractOCRTextDetection/tessdata/eng.traineddata").string();
-    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/tessdata/custom.traineddata");
+            "../plugin/TesseractOCRTextDetection/custom_tessdata/eng.traineddata").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/custom_tessdata/custom.traineddata");
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
@@ -257,14 +257,16 @@ TEST(TESSERACTOCR, ModelTest) {
     ASSERT_TRUE(ocr.Init());
     std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "custom,eng"},
                                                             {"MODELS_DIR_PATH",       "data/model_dir"},
+                                                            {"TESSDATA_MODELS_SUBDIRECTORY",
+                                                             "TesseractOCRTextDetection/custom_tessdata"},             },
                                                             {"ENABLE_OSD_AUTOMATION", "false"}};
 
     runImageDetection("data/eng.png", ocr, results, custom_properties);
 
     boost::filesystem::remove_all("data/model_dir");
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "custom")
-                                << "Shared models directory not loaded.";
-    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Tessdata directory not loaded.";
+                                << "Shared custom tessdata models directory not loaded.";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Default tessdata directory not loaded.";
     ASSERT_TRUE(results.size() == 2) << "Expected two models to be properly loaded into component.";
 
     ASSERT_TRUE(ocr.Close());

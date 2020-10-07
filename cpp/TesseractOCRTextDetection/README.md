@@ -28,9 +28,9 @@ English and foreign text tags following UTF-8 encoding are supported.
 
 Language models supported by Tesseract are stored by default in
 `$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata` directory and script models
-are stored in `tessdata/script`. Users can set a new tessdata directory by
-modifying the MODELS_DIR_PATH job property. Once set, the component will look for tessdata files in
-`[MODELS_DIR_PATH]/TesseractOCRTextDetection/tessdata`.
+are stored in `tessdata/script` subdirectory. Users can set a new tessdata directory by
+modifying the MODELS_DIR_PATH and TESSDATA_MODELS_SUBDIRECTORY job properties. Once set, the component will look for tessdata files in
+`[MODELS_DIR_PATH]/[TESSDATA_MODELS_SUBDIRECTORY]`.
 
 By default, the component will first check for models in the MODELS_DIR_PATH followed
 by the default tessdata path. Please ensure that any language models that run together are stored together in the same
