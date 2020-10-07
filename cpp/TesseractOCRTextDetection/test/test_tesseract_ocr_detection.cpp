@@ -258,7 +258,7 @@ TEST(TESSERACTOCR, ModelTest) {
     std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "custom,eng"},
                                                             {"MODELS_DIR_PATH",       "data/model_dir"},
                                                             {"TESSDATA_MODELS_SUBDIRECTORY",
-                                                             "TesseractOCRTextDetection/custom_tessdata"},             },
+                                                             "TesseractOCRTextDetection/custom_tessdata"},
                                                             {"ENABLE_OSD_AUTOMATION", "false"}};
 
     runImageDetection("data/eng.png", ocr, results, custom_properties);
