@@ -24,20 +24,18 @@
 # limitations under the License.                                            #
 #############################################################################
 
+ARG MODELS_REGISTRY=openmpf/
+
+FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:5.0 as models
+
+
 FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_server
 
-# Specify custom models here.
-# ADD <Path_to_custom_models>/models /models/
-ADD ./models /models
+COPY --from=models /models/model.graphdef /models/ip_irv2_coco/1/model.graphdef
 
-RUN mkdir -p /models/ip_irv2_coco/1/ \
-&& wget --load-cookies /tmp/cookies.txt \
-"https://docs.google.com/uc?export=download&confirm=$(\
-wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate \
-'https://docs.google.com/uc?export=download&id=1EVYe2RHs7g2A8E2KLjVUXp-TV_ndjdtn' -O- \
-| sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1EVYe2RHs7g2A8E2KLjVUXp-TV_ndjdtn" \
--O /models/ip_irv2_coco/1/model.graphdef \
-&& rm -rf /tmp/cookies.txt
+# Specify custom models here.
+# COPY <Path_to_custom_models>/models /models/
+COPY models /models
 
 COPY docker-entrypoint.sh /opt/tensorrtserver
 
