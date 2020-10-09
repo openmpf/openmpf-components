@@ -269,6 +269,22 @@ TEST(TESSERACTOCR, ModelTest) {
     ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Default tessdata directory not loaded.";
     ASSERT_TRUE(results.size() == 2) << "Expected two models to be properly loaded into component.";
 
+    // Ensure model caching works as expected with tessdata directory removed.
+    results.clear();
+    runImageDetection("data/eng.png", ocr, results, custom_properties);
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "custom")
+                                << "Failed to cache shared custom tessdata model.";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Failed to cache eng tessdata model.";
+    ASSERT_TRUE(results.size() == 2) << "Expected two models to be properly loaded into component.";
+
+    results.clear();
+
+    // When the tessdata subdirectory is updated, ensure that model reload occurs and fails due to missing model files.
+    custom_properties["TESSDATA_MODELS_SUBDIRECTORY"] = "TesseractOCRTextDetection/DoesNotExist";
+    MPFImageJob job = createImageJob("data/eng.png", custom_properties, false);
+    MPFDetectionError rc = ocr.GetDetections(job, results);
+    ASSERT_TRUE(rc == MPF_COULD_NOT_OPEN_DATAFILE) << "Expected model to not exist.";
+
     ASSERT_TRUE(ocr.Close());
 }
 

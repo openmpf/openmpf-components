@@ -32,6 +32,10 @@ are stored in `tessdata/script` subdirectory. Users can set a new tessdata direc
 modifying the MODELS_DIR_PATH and TESSDATA_MODELS_SUBDIRECTORY job properties. Once set, the component will look for tessdata files in
 `[MODELS_DIR_PATH]/[TESSDATA_MODELS_SUBDIRECTORY]`.
 
+Please note that existing models will be cached by the component using the model's language and TESSDATA_MODELS_SUBDIRECTORY
+as the identifier. Updating TESSDATA_MODELS_SUBDIRECTORY in a subsequent job run will result in new language models placed
+into the cache.
+
 By default, the component will first check for models in the MODELS_DIR_PATH followed
 by the default tessdata path. Please ensure that any language models that run together are stored together in the same
 directory (i.e. while running "eng+bul", both eng.traineddata and bul.traineddata should be stored together in at least
