@@ -278,12 +278,24 @@ TEST(TESSERACTOCR, ModelTest) {
     ASSERT_TRUE(results.size() == 2) << "Expected two models to be properly loaded into component.";
 
     results.clear();
+    {
+        auto custom_properties_copy = custom_properties;
+        // When TESSDATA_MODELS_SUBDIRECTORY is updated, ensure that model reload occurs and fails due to missing model files.
+        custom_properties_copy["TESSDATA_MODELS_SUBDIRECTORY"] = "TesseractOCRTextDetection/DoesNotExist";
+        MPFImageJob job = createImageJob("data/eng.png", custom_properties_copy, false);
+        MPFDetectionError rc = ocr.GetDetections(job, results);
+        ASSERT_TRUE(rc == MPF_COULD_NOT_OPEN_DATAFILE) << "Expected model to not exist.";
+    }
 
-    // When the tessdata subdirectory is updated, ensure that model reload occurs and fails due to missing model files.
-    custom_properties["TESSDATA_MODELS_SUBDIRECTORY"] = "TesseractOCRTextDetection/DoesNotExist";
-    MPFImageJob job = createImageJob("data/eng.png", custom_properties, false);
-    MPFDetectionError rc = ocr.GetDetections(job, results);
-    ASSERT_TRUE(rc == MPF_COULD_NOT_OPEN_DATAFILE) << "Expected model to not exist.";
+    results.clear();
+    {
+        auto custom_properties_copy = custom_properties;
+        // When MODELS_DIR_PATH is updated, ensure that model reload occurs and fails due to missing model files.
+        custom_properties_copy["MODELS_DIR_PATH"] = "asdf";
+        MPFImageJob job = createImageJob("data/eng.png", custom_properties_copy, false);
+        MPFDetectionError rc = ocr.GetDetections(job, results);
+        ASSERT_TRUE(rc == MPF_COULD_NOT_OPEN_DATAFILE) << "Expected model to not exist.";
+    }
 
     ASSERT_TRUE(ocr.Close());
 }

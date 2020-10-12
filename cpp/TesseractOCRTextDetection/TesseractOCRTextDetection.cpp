@@ -778,7 +778,7 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     for (string lang: lang_tracks) {
         // Process each language specified by user.
         lang = clean_lang(lang);
-        pair<int, string> tess_api_key = make_pair(ocr_fset.oem, ocr_fset.tessdata_models_subdir + "/" + lang);
+        pair<int, string> tess_api_key = make_pair(ocr_fset.oem, ocr_fset.model_dir + "/" + lang);
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Running Tesseract with specified language: " + lang);
 
         // Confirm each language model is present in tessdata or shared model directory.
@@ -866,7 +866,7 @@ string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &job, c
 
     // If user specified tessdata directory fails, revert to default plugin directory and tessdata models.
     string local_plugin_directory = run_dir + "/TesseractOCRTextDetection/tessdata";
-    LOG4CXX_DEBUG(hw_logger_,
+    LOG4CXX_INFO(hw_logger_,
                   "[" + job.job_name + "] Not all models found in " + directory + ". Checking local plugin directory "
                   + local_plugin_directory + ".");
 
@@ -913,7 +913,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Running Tesseract OSD.");
 
     int oem = 3;
-    pair<int, string> tess_api_key = make_pair(oem, ocr_fset.tessdata_models_subdir + "/" + "osd");
+    pair<int, string> tess_api_key = make_pair(oem, ocr_fset.model_dir + "/" + "osd");
 
     // Preserve a copy for images that may swap width and height. Rescaling will be performed based on new dimensions.
     cv::Mat imi_copy = imi.clone();
