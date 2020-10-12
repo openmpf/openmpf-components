@@ -174,6 +174,8 @@ void TesseractOCRTextDetection::set_default_parameters() {
     default_ocr_fset.adaptive_hist_clip_limit = 2.0;
 
     default_ocr_fset.processing_wild_text = false;
+
+    default_ocr_fset.tessdata_models_subdir = "TesseractOCRTextDetection/tessdata";
 }
 
 /*
@@ -776,32 +778,39 @@ bool TesseractOCRTextDetection::get_tesseract_detections(const MPFImageJob &job,
     for (string lang: lang_tracks) {
         // Process each language specified by user.
         lang = clean_lang(lang);
-        pair<int, string> tess_api_key = make_pair(ocr_fset.oem, lang);
+        pair<int, string> tess_api_key = make_pair(ocr_fset.oem, ocr_fset.model_dir + "/" + lang);
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Running Tesseract with specified language: " + lang);
 
-        if (tess_api_map.find(tess_api_key) == tess_api_map.end()) {
+        // Confirm each language model is present in tessdata or shared model directory.
+        // Language models that run together must be present in the same directory.
+        string tessdata_dir = "";
+        if (tessdata_script_dir == "") {
+            // Left blank when OSD is not run or scripts not found and reverted to default language.
+            // Check default language model is present.
+            tessdata_dir = return_valid_tessdir(job, lang, ocr_fset.model_dir);
+        } else {
+            tessdata_dir = tessdata_script_dir;
+        }
 
-            // Confirm each language model is present in tessdata or shared model directory.
-            // Language models that run together must be present in the same directory.
-            string tessdata_dir = "";
-            if (tessdata_script_dir == "") {
-                // Left blank when OSD is not run or scripts not found and reverted to default language.
-                // Check default language model is present.
-                tessdata_dir = return_valid_tessdir(job, lang, ocr_fset.model_dir);
-            } else {
-                tessdata_dir = tessdata_script_dir;
-            }
-
-            if (tessdata_dir == "") {
+        if (tessdata_dir == "") {
+            if (tess_api_map.find(tess_api_key) == tess_api_map.end()) {
                 LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Tesseract language models not found. Please add the " +
                                           "associated *.traineddata files to your tessdata directory " +
                                           "($MPF_HOME/plugins/TesseractOCRTextDetection/tessdata) " +
                                           "or shared models directory " +
-                                          "($MPF_HOME/share/models/TesseractOCRTextDetection/tessdata).");
+                                          "($MPF_HOME/share/models/" + ocr_fset.tessdata_models_subdir + ").");
                 job_status = MPF_COULD_NOT_OPEN_DATAFILE;
                 return false;
+            } else {
+                LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] Tesseract language models no longer found in tessdata directory " +
+                                          "($MPF_HOME/plugins/TesseractOCRTextDetection/tessdata) " +
+                                          "or shared models directory " +
+                                          "($MPF_HOME/share/models/" + ocr_fset.tessdata_models_subdir +
+                                          ")." + " Reverting to cached models.");
             }
+        }
 
+        if (tess_api_map.find(tess_api_key) == tess_api_map.end()) {
             tesseract::TessBaseAPI *tess_api = new tesseract::TessBaseAPI();
             int init_rc = tess_api->Init(tessdata_dir.c_str(), lang.c_str(), (tesseract::OcrEngineMode) ocr_fset.oem);
 
@@ -855,8 +864,9 @@ string TesseractOCRTextDetection::return_valid_tessdir(const MPFImageJob &job, c
         run_dir = ".";
     }
 
+    // If user specified tessdata directory fails, revert to default plugin directory and tessdata models.
     string local_plugin_directory = run_dir + "/TesseractOCRTextDetection/tessdata";
-    LOG4CXX_DEBUG(hw_logger_,
+    LOG4CXX_INFO(hw_logger_,
                   "[" + job.job_name + "] Not all models found in " + directory + ". Checking local plugin directory "
                   + local_plugin_directory + ".");
 
@@ -903,7 +913,7 @@ void TesseractOCRTextDetection::get_OSD(OSResults &results, cv::Mat &imi, const 
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Running Tesseract OSD.");
 
     int oem = 3;
-    pair<int, string> tess_api_key = make_pair(oem, "osd");
+    pair<int, string> tess_api_key = make_pair(oem, ocr_fset.model_dir + "/" + "osd");
 
     // Preserve a copy for images that may swap width and height. Rescaling will be performed based on new dimensions.
     cv::Mat imi_copy = imi.clone();
@@ -1426,16 +1436,16 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, TesseractOCRTextDete
 
     // Tessdata setup
     ocr_fset.model_dir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODELS_DIR_PATH", default_ocr_fset.model_dir);
+    ocr_fset.tessdata_models_subdir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "TESSDATA_MODELS_SUBDIRECTORY", default_ocr_fset.tessdata_models_subdir);
     if (ocr_fset.model_dir != "") {
-        ocr_fset.model_dir = ocr_fset.model_dir + "/TesseractOCRTextDetection/tessdata";
+        ocr_fset.model_dir = ocr_fset.model_dir + "/" + ocr_fset.tessdata_models_subdir;
     } else {
         string run_dir = GetRunDirectory();
         if (run_dir.empty()) {
             run_dir = ".";
         }
-        string plugin_path = run_dir + "/TesseractOCRTextDetection";
         // If not specified, set model dir to local plugin dir.
-        ocr_fset.model_dir = plugin_path + "/tessdata";
+        ocr_fset.model_dir = run_dir + "/" + ocr_fset.tessdata_models_subdir;
     }
     Utils::expandFileName(ocr_fset.model_dir, ocr_fset.model_dir);
 }

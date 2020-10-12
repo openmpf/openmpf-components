@@ -99,6 +99,7 @@ namespace MPF {
                 double rotate_and_detect_min_confidence;
                 std::string tesseract_lang;
                 std::string model_dir;
+                std::string tessdata_models_subdir;
             };
 
             struct OCR_output {
