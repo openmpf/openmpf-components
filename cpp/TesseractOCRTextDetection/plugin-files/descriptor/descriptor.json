@@ -38,6 +38,12 @@
           "propertiesKey": "detection.models.dir.path"
         },
         {
+          "name": "TESSDATA_MODELS_SUBDIRECTORY",
+          "description": "Specifies location of tessdata models under the MODELS_DIR_PATH.",
+          "type": "STRING",
+          "defaultValue": "TesseractOCRTextDetection/tessdata"
+        },
+        {
           "name": "TAGGING_FILE",
           "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
           "type": "STRING",
