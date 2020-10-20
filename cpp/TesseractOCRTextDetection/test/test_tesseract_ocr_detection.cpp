@@ -291,7 +291,8 @@ TEST(TESSERACTOCR, ModelTest) {
     results.clear();
     {
         auto custom_properties_copy = custom_properties;
-        // When TESSDATA_MODELS_SUBDIRECTORY is updated, ensure that model reload occurs and fails due to missing model files.
+        // When TESSDATA_MODELS_SUBDIRECTORY is updated,
+        // ensure that model reload occurs and fails due to missing model files.
         custom_properties_copy["TESSDATA_MODELS_SUBDIRECTORY"] = "TesseractOCRTextDetection/DoesNotExist";
 
         ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/eng.png", ocr, results, custom_properties_copy,
