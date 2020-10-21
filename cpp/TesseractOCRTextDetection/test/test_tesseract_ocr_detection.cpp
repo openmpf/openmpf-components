@@ -99,11 +99,12 @@ void runDocumentDetection(const std::string &image_path, TesseractOCRTextDetecti
 void assertEmptyDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
                           std::vector<MPFImageLocation> &image_locations,
                           const std::map<std::string, std::string> &custom = {},
-                          bool wild_mode = false) {
+                          bool wild_mode = false,
+                          MPFDetectionError error = MPF_DETECTION_SUCCESS) {
     MPFImageJob job = createImageJob(image_path, custom, wild_mode);
     MPFDetectionError rc = ocr.GetDetections(job, image_locations);
 
-    ASSERT_EQ(rc, MPF_DETECTION_SUCCESS);
+    ASSERT_EQ(rc, error);
     ASSERT_TRUE(image_locations.empty());
 }
 
@@ -280,7 +281,8 @@ TEST(TESSERACTOCR, ModelTest) {
     results.clear();
     {
         auto custom_properties_copy = custom_properties;
-        // When TESSDATA_MODELS_SUBDIRECTORY is updated, ensure that model reload occurs and fails due to missing model files.
+        // When TESSDATA_MODELS_SUBDIRECTORY is updated,
+        // ensure that model reload occurs and fails due to missing model files.
         custom_properties_copy["TESSDATA_MODELS_SUBDIRECTORY"] = "TesseractOCRTextDetection/DoesNotExist";
         MPFImageJob job = createImageJob("data/eng.png", custom_properties_copy, false);
         MPFDetectionError rc = ocr.GetDetections(job, results);
@@ -339,6 +341,16 @@ TEST(TESSERACTOCR, RescaleTest){
     assertEmptyDetection("data/blank_within_tesseract_limit.png", ocr, results,  custom_properties);
     results.clear();
 
+    // Image should be rescaled to fit pixel constraints.
+    custom_properties = {{"MAX_PIXELS", "120000"}, {"STRUCTURED_TEXT_SCALE", "100000000"}};
+    assertEmptyDetection("data/blank.png", ocr, results, custom_properties);
+    results.clear();
+
+    // Image should be rescaled to fit pixel constraints.
+    custom_properties = {{"MAX_PIXELS", "120000"}, {"STRUCTURED_TEXT_SCALE", "0.00000001"}};
+    assertEmptyDetection("data/blank.png", ocr, results, custom_properties);
+    results.clear();
+
     // Sanity check that rescaling is called outside of OSD processing when OSD is disabled.
     // Image should be rescaled to fit.
     custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
@@ -353,6 +365,18 @@ TEST(TESSERACTOCR, RescaleTest){
     // Ensure image scaling is capped at a certain point.
     custom_properties = {{"STRUCTURED_TEXT_SCALE", "0.00000001"}, {"ENABLE_OSD_AUTOMATION", "false"}};
     assertEmptyDetection("data/blank_within_tesseract_limit.png", ocr, results,  custom_properties);
+    results.clear();
+
+    // Expected rescale failure due to min image size constraint.
+    custom_properties = {{"INVALID_MIN_IMAGE_SIZE", "60"}};
+    assertEmptyDetection("data/blank_tesseract_rescalable.png", ocr, results,
+                         custom_properties, false, MPF_BAD_FRAME_SIZE);
+    results.clear();
+
+    // Expected rescale failure due to max pixels and min image size conflict.
+    custom_properties = {{"MAX_PIXELS", "10"}};
+    assertEmptyDetection("data/blank_within_tesseract_limit.png", ocr, results,
+                         custom_properties, false, MPF_BAD_FRAME_SIZE);
     results.clear();
 }
 

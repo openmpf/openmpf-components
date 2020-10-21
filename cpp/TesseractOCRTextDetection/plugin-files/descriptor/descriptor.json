@@ -182,6 +182,12 @@
           "defaultValue": "0"
         },
         {
+          "name": "MAX_PIXELS",
+          "description": "Specifies maximum pixel limit. Images that exceed this pixel limit will be rescaled to fit, if possible.  When set to 0 or below, allow images up to Teseract's internal limit of 32767 x 32767 pixels.",
+          "type": "INT",
+          "defaultValue": "10000000"
+        },
+        {
           "name": "MIN_HEIGHT",
           "description": "If set to a positive value, rescales all images to specified pixel height if smaller than provided limit, up to Tesseract's maximum image dimensions. Preserves image aspect ratio.",
           "type": "INT",
