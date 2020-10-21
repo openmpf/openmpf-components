@@ -131,11 +131,11 @@ Tesseract Component has been started, a cached model based on the previous conte
 To get the Tesseract Component to recognize the changed files, it must be restarted.
 
 By default, the component will first check for models in the `MODELS_DIR_PATH`
-followed by the default tessdata path. Please ensure that any language models
-that run together are stored together in the same directory (i.e. while running
-`eng+bul`, both `eng.traineddata` and `bul.traineddata` should be stored
-together in at least one specified directory, while running `eng,bul` the models
-can be stored separately).
+followed by the default tessdata `TESSDATA_MODELS_SUBDIRECTORY` path. Please ensure
+that any language models that run together are stored together in the same directory
+(i.e. while running `eng+bul`, both `eng.traineddata` and `bul.traineddata` should
+be stored together in at least one specified directory, while running `eng,bul`
+the models can be stored separately).
 
 Additional tessdata models can then be added to the specified tessdata folder to
 expand supported languages and scripts.
@@ -193,7 +193,7 @@ As well as the script model file for:
 * Latin (`script/Latin`)
 
 Note the OSD language file (`osd.traindata`) is for extraction of script orientation rather than language.
-Users may download additional language/script models from https://github.com/tesseract-ocr/tessdata and place them in the component's `tessdata` directory or `[MODELS_DIR_PATH]/TesseractOCRTextDetection/tessdata`.
+Users may download additional language/script models from https://github.com/tesseract-ocr/tessdata and place them in the component's `tessdata` directory or `[MODELS_DIR_PATH]/[TESSDATA_MODELS_SUBDIRECTORY]`.
 During processing, if the OSD model detects a certain language but the corresponding language model is missing from the component's `tessdata` directory, then that language will be reported in the `MISSING_LANGUAGE_MODELS` output parameter.
 When all OSD-detected language models are missing in the `tessdata` directory, the component will default to running the `TESSERACT_LANGUAGE` model instead.
 Please note that the job will fail instead if any models specified in `TESSERACT_LANGUAGE` are missing.
