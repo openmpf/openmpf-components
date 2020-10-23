@@ -759,10 +759,9 @@ void TesseractOCRTextDetection::rescale_image(const MPFImageJob &job, cv::Mat &i
 
         // Warn user that down-sampling is occurring to meet Tesseract requirements.
         string warning_msg = "[" + job.job_name + "] Warning, resampling (" + to_string(im_width) + ", "
-                            + to_string(im_height) + ") sized image by recommended scaling factor would put image"
-                            + " dimensions above Tesseract limits of " + to_string(max_pixels)
-                            + " pixels. Capping upsampling to meet Tesseract limits.";
-        LOG4CXX_WARN(hw_logger_, warning_msg);
+                             + to_string(im_height) + ") sized image by recommended scaling factor would put image"
+                             + " dimensions above Tesseract internal limits of " + to_string(max_size)
+                             + " pixels in length or width. Capping upsampling to meet Tesseract limits.";
         need_rescale = true;
 
         default_rescale = (double)max_size / (double)max_dim;
@@ -771,7 +770,13 @@ void TesseractOCRTextDetection::rescale_image(const MPFImageJob &job, cv::Mat &i
         if (ocr_fset.max_pixels > 0 &&
             (default_rescale * im_width) * (im_height * default_rescale) > ocr_fset.max_pixels) {
             default_rescale = std::sqrt((double)ocr_fset.max_pixels / (double)(im_height * im_width));
+            // Update log message to resize based on max pixel limits.
+            warning_msg = "[" + job.job_name + "] Warning, resampling (" + to_string(im_width) + ", "
+                          + to_string(im_height) + ") sized image by recommended scaling factor would put image"
+                          + " dimensions above Tesseract MAX_PIXELS limit of " + to_string(ocr_fset.max_pixels)
+                          + " total pixels. Capping upsampling to meet Tesseract limits.";
         }
+        LOG4CXX_WARN(hw_logger_, warning_msg);
 
         if (min_dim * default_rescale < ocr_fset.invalid_min_image_size) {
             string error_msg = "Unable to rescale image as one image dimension ({"
