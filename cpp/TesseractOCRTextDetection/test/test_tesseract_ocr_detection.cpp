@@ -282,6 +282,7 @@ TEST(TESSERACTOCR, ModelTest) {
     {
         auto custom_properties_copy = custom_properties;
         // When set to parallel processing, ensure that model reload occurs and fails due to missing model files.
+        // Model caching is disabled during parallel processing.
         custom_properties_copy["MAX_PARALLEL_SCRIPT_THREADS"] = "2";
 
         ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/eng.png", ocr, results, custom_properties_copy,
