@@ -760,7 +760,7 @@ void TesseractOCRTextDetection::rescale_image(const MPFImageJob &job, cv::Mat &i
         // Warn user that down-sampling is occurring to meet Tesseract requirements.
         string warning_msg = "[" + job.job_name + "] Warning, resampling (" + to_string(im_width) + ", "
                             + to_string(im_height) + ") sized image by recommended scaling factor would put image"
-                            + " dimensions above Tesseract limits of " + to_string(max_size)
+                            + " dimensions above Tesseract limits of " + to_string(max_pixels)
                             + " pixels. Capping upsampling to meet Tesseract limits.";
         LOG4CXX_WARN(hw_logger_, warning_msg);
         need_rescale = true;
