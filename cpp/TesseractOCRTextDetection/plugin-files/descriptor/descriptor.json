@@ -357,10 +357,10 @@
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION WITH KEYWORD TAGGING PIPELINE",
-      "description": "Performs Tesseract OCR with keyword tagging.",
+      "description": "Performs Tesseract OCR and keyword tagging.",
       "tasks" : [
         "TESSERACT OCR TEXT DETECTION TASK",
-        "KEYWORD TAGGING TASK"
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
     }
   ]

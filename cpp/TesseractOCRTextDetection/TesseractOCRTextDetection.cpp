@@ -144,7 +144,6 @@ string TesseractOCRTextDetection::GetDetectionType() {
 }
 
 bool TesseractOCRTextDetection::Supports(MPFDetectionDataType data_type) {
-
     // Supports images and documents, no audio or video data types.
     return data_type == MPFDetectionDataType::IMAGE || data_type == MPFDetectionDataType::UNKNOWN;
 }

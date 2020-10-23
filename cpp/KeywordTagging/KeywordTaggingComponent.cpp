@@ -407,7 +407,7 @@ bool KeywordTagger::Close() {
 }
 
 string KeywordTagger::GetDetectionType() {
-    return "TEXT";
+    return "KEYWORD";
 }
 
 vector<MPFGenericTrack> KeywordTagger::GetDetections(const MPFGenericJob &job) {
@@ -427,18 +427,18 @@ vector<MPFGenericTrack> KeywordTagger::GetDetections(const MPFGenericJob &job) {
         LOG4CXX_INFO(hw_logger_, "Generic job is feed forward");
         Properties properties = job.feed_forward_track.detection_properties;
         if (properties.count("TEXT")) {
-            LOG4CXX_INFO(hw_logger_, "Running tagger on text property.");
+            LOG4CXX_INFO(hw_logger_, "Running tagger on TEXT property.");
             temp = properties.at("TEXT");
         } else if (properties.count("TRANSCRIPT")) {
-            LOG4CXX_INFO(hw_logger_, "Running tagger on transcript property.");
+            LOG4CXX_INFO(hw_logger_, "Running tagger on TRANSCRIPT property.");
             temp = properties.at("TRANSCRIPT");
         } else {
-            LOG4CXX_DEBUG(hw_logger_, "Previous detection is missing text or transcript property");
-            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Previous detection is missing text or transcript property");
+            LOG4CXX_DEBUG(hw_logger_, "Feed forward track missing TEXT or TRANSCRIPT property");
+            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Feed forward track missing TEXT or TRANSCRIPT property");
         }
 
         text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
-        LOG4CXX_DEBUG(hw_logger_, "Copying properties over from previous detections");
+        LOG4CXX_DEBUG(hw_logger_, "Copying properties over from feed forward track");
         text_tags.detection_properties = properties;
     } else {
         LOG4CXX_INFO(hw_logger_, "Generic job is not feed forward. Running tagger on text file.");
@@ -455,7 +455,6 @@ vector<MPFGenericTrack> KeywordTagger::GetDetections(const MPFGenericJob &job) {
         tags.push_back(text_tags);
     }
 
-
     return tags;
 }
 
@@ -471,16 +470,16 @@ vector<MPFAudioTrack> KeywordTagger::GetDetections(const MPFAudioJob &job) {
 
     wstring text;
 
-    LOG4CXX_INFO(hw_logger_, "Checking audio job is feed forward and the detection has a text property");
+    LOG4CXX_INFO(hw_logger_, "Checking audio job is feed forward and the detection has a TRANSCRIPT property");
     if (job.has_feed_forward_track) {
         if (job.feed_forward_track.detection_properties.count("TRANSCRIPT")) {
             string temp = job.feed_forward_track.detection_properties.at("TRANSCRIPT");
             text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
-            LOG4CXX_DEBUG(hw_logger_, "Copying properties over from previous detections");
+            LOG4CXX_DEBUG(hw_logger_, "Copying properties over from feed forward track");
             text_tags.detection_properties = job.feed_forward_track.detection_properties;
         } else {
-            LOG4CXX_DEBUG(hw_logger_, "Detection from previous component is missing transcript property");
-            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Detection from previous component is missing transcript property");
+            LOG4CXX_DEBUG(hw_logger_, "Feed forward track missing TRANSCRIPT property");
+            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Feed forward track missing TRANSCRIPT property");
         }
     } else {
         LOG4CXX_DEBUG(hw_logger_, "Job is not feed forward");
@@ -493,7 +492,6 @@ vector<MPFAudioTrack> KeywordTagger::GetDetections(const MPFAudioJob &job) {
     if (process_text) {
         tags.push_back(text_tags);
     }
-
 
     return tags;
 }
@@ -510,16 +508,21 @@ vector<MPFVideoTrack> KeywordTagger::GetDetections(const MPFVideoJob &job) {
 
     wstring text;
 
-    LOG4CXX_INFO(hw_logger_, "Checking video job is feed forward and the detection has a text property");
+    LOG4CXX_INFO(hw_logger_, "Checking video job is feed forward and the detection has a TEXT or TRANSCRIPT property");
     if (job.has_feed_forward_track) {
         if (job.feed_forward_track.detection_properties.count("TEXT")) {
             string temp = job.feed_forward_track.detection_properties.at("TEXT");
             text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
-            LOG4CXX_DEBUG(hw_logger_, "Copying properties over from previous detections");
+            LOG4CXX_DEBUG(hw_logger_, "Copying properties over from feed forward track");
+            text_tags.detection_properties = job.feed_forward_track.detection_properties;
+        } else if (job.feed_forward_track.detection_properties.count("TRANSCRIPT")) {
+            string temp = job.feed_forward_track.detection_properties.at("TRANSCRIPT");
+            text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
+            LOG4CXX_DEBUG(hw_logger_, "Copying properties over from feed forward track");
             text_tags.detection_properties = job.feed_forward_track.detection_properties;
         } else {
-            LOG4CXX_DEBUG(hw_logger_, "Detection from previous component is missing text property");
-            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Detection from previous component is missing text property");
+            LOG4CXX_DEBUG(hw_logger_, "Feed forward track missing a TEXT or TRANSCRIPT property");
+            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Feed forward track missing TEXT or TRANSCRIPT property");
         }
     } else {
         LOG4CXX_DEBUG(hw_logger_, "Job is not feed forward");
@@ -532,7 +535,6 @@ vector<MPFVideoTrack> KeywordTagger::GetDetections(const MPFVideoJob &job) {
     if (process_text) {
         tags.push_back(text_tags);
     }
-
 
     return tags;
 }
@@ -551,20 +553,18 @@ vector<MPFImageLocation> KeywordTagger::GetDetections(const MPFImageJob &job) {
 
     wstring text;
 
-    LOG4CXX_DEBUG(hw_logger_, "Checking image job is feed forward and the detection has a text property");
+    LOG4CXX_DEBUG(hw_logger_, "Checking image job is feed forward and the detection has a TEXT property");
     if (job.has_feed_forward_location) {
         if (job.feed_forward_location.detection_properties.count("TEXT")) {
-
-
             string temp = job.feed_forward_location.detection_properties.at("TEXT");
             text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
-            LOG4CXX_DEBUG(hw_logger_, "Copying properties over from previous detections");
+            LOG4CXX_DEBUG(hw_logger_, "Copying properties over from feed forward detection");
             text_tags.detection_properties = job.feed_forward_location.detection_properties;
 
         } else {
-            LOG4CXX_DEBUG(hw_logger_, "Detection from previous component is missing text property");
+            LOG4CXX_DEBUG(hw_logger_, "Feed forward detection missing TEXT property");
             throw MPFDetectionException(
-                    MPF_MISSING_PROPERTY, "Detection from previous component is missing text property");
+                    MPF_MISSING_PROPERTY, "Feed forward detection missing TEXT property");
         }
     } else {
         LOG4CXX_DEBUG(hw_logger_, "Job is not feed forward.");
@@ -585,7 +585,6 @@ bool KeywordTagger::Supports(MPFDetectionDataType data_type) {
     return data_type == MPFDetectionDataType::IMAGE || data_type == MPFDetectionDataType::UNKNOWN
         || data_type == MPFDetectionDataType::AUDIO || data_type == MPFDetectionDataType::VIDEO;
 }
-
 
 bool KeywordTagger::process_text_tagging(Properties &detection_properties, const MPFJob &job,
                                          wstring text,
