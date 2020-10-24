@@ -68,8 +68,7 @@
 			{"pattern": "(\\b)surname(\\b)"},
 			{"pattern": "(\\b)name(\\b)"},
 			{"pattern": "(\\b)address(\\b)"},
-			{"pattern": "(\\b)nationality(\\b)"},
-			{"pattern": "(\\b)green(\\b)"}
+			{"pattern": "(\\b)nationality(\\b)"}
 		],
 		"travel": [
 			{"pattern": "(\\b)airline(\\b)"},
