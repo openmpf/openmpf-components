@@ -748,20 +748,23 @@ void TesseractOCRTextDetection::rescale_image(const MPFImageJob &job, cv::Mat &i
 
     }
 
-
-    if (max_dim * default_rescale > max_size ||
-        (ocr_fset.max_pixels > 0 &&
-        (default_rescale * im_width) * (im_height * default_rescale) > ocr_fset.max_pixels)) {
-
+    bool max_dim_exceeded = max_dim * default_rescale > max_size;
+    bool max_pix_exceeded = ocr_fset.max_pixels > 0 &&
+        (default_rescale * im_width) * (im_height * default_rescale) > ocr_fset.max_pixels;
+    if (max_dim_exceeded || max_pix_exceeded) {
         // Users will most likely to request image upsampling.
         // If image size reaches tesseract limits or user sets pixel limits,
         // cap image upsampling to maximum allowed dimensions and pixels.
 
         // Warn user that down-sampling is occurring to meet Tesseract requirements.
         string warning_msg = "[" + job.job_name + "] Warning, resampling (" + to_string(im_width) + ", "
-                            + to_string(im_height) + ") sized image by recommended scaling factor would put image"
-                            + " dimensions above Tesseract limits of " + to_string(max_size)
-                            + " pixels. Capping upsampling to meet Tesseract limits.";
+            + to_string(im_height) + ") sized image by recommended scaling factor would put";
+        if (max_dim_exceeded) {
+            warning_msg += " an image dimension above Tesseract limit of " + to_string(max_size) + " pixels.";
+        } else if (max_pix_exceeded) {
+            warning_msg += " image above limit of " + to_string(ocr_fset.max_pixels) + " max pixels.";
+        }
+        warning_msg += " Capping upsampling to meet Tesseract limits.";
         LOG4CXX_WARN(hw_logger_, warning_msg);
         need_rescale = true;
 
@@ -774,9 +777,9 @@ void TesseractOCRTextDetection::rescale_image(const MPFImageJob &job, cv::Mat &i
         }
 
         if (min_dim * default_rescale < ocr_fset.invalid_min_image_size) {
-            string error_msg = "Unable to rescale image as one image dimension ({"
-                    + to_string(max_dim) + "}) would exceed maximum tesseract limits while the other dimension ({"
-                    + to_string(min_dim) + "}) would fall below minimum OCR-readable limits if rescaled to fit.";
+            string error_msg =  "[" + job.job_name + "] Unable to rescale image as one image dimension ({"
+                + to_string(max_dim) + "}) would exceed maximum tesseract limits while the other dimension ({"
+                + to_string(min_dim) + "}) would fall below minimum OCR-readable limits if rescaled to fit.";
             throw MPFDetectionException(MPF_BAD_FRAME_SIZE, error_msg);
         }
     } else if (min_dim * default_rescale < ocr_fset.invalid_min_image_size) {
@@ -784,22 +787,27 @@ void TesseractOCRTextDetection::rescale_image(const MPFImageJob &job, cv::Mat &i
         // notify if downsampling would fall below minimum image limits.
 
         string warning_msg =  "[" + job.job_name + "] Warning, downsampling (" + to_string(im_width) + ", "
-                             + to_string(im_height) + ") sized image by requested scaling factor would put image"
-                             + " dimensions below minimum limits of " + to_string(ocr_fset.invalid_min_image_size)
-                             + " pixels. Rescaling to fit minimum OCR-readable limit.";
+            + to_string(im_height) + ") sized image by requested scaling factor would put an image"
+            + " dimension below minimum limit of " + to_string(ocr_fset.invalid_min_image_size)
+            + " pixels. Rescaling to fit minimum OCR-readable limit.";
         LOG4CXX_WARN(hw_logger_, warning_msg);
         need_rescale = true;
 
-
         default_rescale = (double)ocr_fset.invalid_min_image_size / (double)min_dim;
 
-        if (max_dim * default_rescale > max_size ||
-            (ocr_fset.max_pixels > 0 &&
-            (default_rescale * im_width) * (im_height * default_rescale) > ocr_fset.max_pixels)) {
-
-            string error_msg = "Unable to rescale image as one image dimension ({"
-                     + to_string(max_dim) + "}) would exceed maximum tesseract limits while the other dimension ({"
-                     + to_string(min_dim) + "}) would fall below minimum OCR-readable limits if rescaled to fit.";
+        bool max_dim_exceeded = max_dim * default_rescale > max_size;
+        bool max_pix_exceeded = ocr_fset.max_pixels > 0 &&
+            (default_rescale * im_width) * (im_height * default_rescale) > ocr_fset.max_pixels;
+        if (max_dim_exceeded || max_pix_exceeded) {
+            string error_msg;
+            if (max_dim_exceeded) {
+                error_msg =  "[" + job.job_name + "] Unable to rescale image as one image dimension ({"
+                    + to_string(max_dim) + "}) would exceed maximum tesseract limits while the other dimension ({"
+                    + to_string(min_dim) + "}) would fall below minimum OCR-readable limits if rescaled to fit.";
+            } else if (max_pix_exceeded) {
+                error_msg =  "[" + job.job_name + "] Unable to rescale image within limit of "
+                    + to_string(ocr_fset.max_pixels) + " max pixels.";
+            }
             throw MPFDetectionException(MPF_BAD_FRAME_SIZE, error_msg);
         }
     }
