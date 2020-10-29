@@ -212,11 +212,46 @@ class TestEast(unittest.TestCase):
         comp = EastComponent()
 
         job = mpf.ImageJob(
+            job_name='test-low-x-padding',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                TEMPORARY_PADDING_X='0.0',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        detections = list(comp.get_detections_from_image(job))
+        low_padding_x_area = sum(d.width * d.height for d in detections)
+        low_padding_x = len(detections)
+
+        # Check that no x padding results in less merging
+        self.assertGreater(low_padding_x, 9)
+
+        job = mpf.ImageJob(
+            job_name='test-low-y-padding',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                TEMPORARY_PADDING_Y='0.0',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        detections = list(comp.get_detections_from_image(job))
+        low_padding_y_area = sum(d.width * d.height for d in detections)
+        low_padding_y = len(detections)
+
+        # Check that no y padding results in even less merging
+        self.assertGreater(low_padding_y, low_padding_x)
+
+        job = mpf.ImageJob(
             job_name='test-low-padding',
             data_uri=self._get_test_file('thresholds.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                TEMPORARY_PADDING='0.0',
+                TEMPORARY_PADDING_X='0.0',
+                TEMPORARY_PADDING_Y='0.0',
             ),
             media_properties={},
             feed_forward_location=None
@@ -225,15 +260,16 @@ class TestEast(unittest.TestCase):
         low_padding_area = sum(d.width * d.height for d in detections)
         low_padding = len(detections)
 
-        # Check that no padding results in less merging
-        self.assertGreater(low_padding, 9)
+        # Check that no padding results in the least merging
+        self.assertGreater(low_padding, low_padding_y)
 
         job = mpf.ImageJob(
-            job_name='test-low-padding',
+            job_name='test-final-padding',
             data_uri=self._get_test_file('thresholds.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                TEMPORARY_PADDING='0.0',
+                TEMPORARY_PADDING_X='0.0',
+                TEMPORARY_PADDING_Y='0.0',
                 FINAL_PADDING='0.1'
             ),
             media_properties={},
