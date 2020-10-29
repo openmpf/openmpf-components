@@ -60,12 +60,9 @@ namespace MPF{
       void                 setRect(const cv::Rect2i& rec); ///< set location from an opencv rectangle
 
       float           iouDist(const Track &tr) const;   ///< 1 - compute intersection over union
-      float         frameDist(const Track &tr) const;   ///< compute temporal frame gap
       float center2CenterDist(const Track &tr) const;   ///< compute normalized center to center distance
       float       featureDist(const Track &tr) const;   ///< compute deep feature similarity distance
-      float         classDist(const Track &tr) const;   ///< compute class similarity distance
-      float         classDist(const DetectionLocation &d) const;
-      float    kfResidualDist(const Track &tr) const;   ///< comput kalman filter residual distance
+      float    kfResidualDist(const Track &tr) const;   ///< compute kalman filter residual distance
 
       static bool                       Init();                                                                ///< setup class shared members
       static DetectionLocationListVec   createDetections(const Config &cfg,const FrameVec &frames);            ///< created detection objects from image frame

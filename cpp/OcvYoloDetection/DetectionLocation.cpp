@@ -68,18 +68,6 @@ float DetectionLocation::iouDist(const Track &tr) const {
 }
 
 /** **************************************************************************
-* Compute the temporal distance (frame count) between track tail and detection
-*
-* \param   tr track
-* \returns   absolute difference in frame indices
-*
-*************************************************************************** */
-float DetectionLocation::frameDist(const Track &tr) const {
-  int trIdx = tr.locations.back().frame.idx;
-  return (frame.idx > trIdx) ? frame.idx - trIdx : trIdx - frame.idx;  // unsigned long diff...
-}
-
-/** **************************************************************************
 * Compute euclidean center to distance center distance from normalized centers
 *
 * \param   tr track
@@ -93,15 +81,6 @@ float  DetectionLocation::center2CenterDist(const Track &tr) const {
   d.x /= static_cast<float>(frame.bgr.cols);
   d.y /= static_cast<float>(frame.bgr.rows);
   float dist = sqrt( d.x*d.x + d.y*d.y );                                          LOG_TRACE("center-2-center dist: " << dist << " between " << *this << " and " << tr);
-  return dist;
-}
-
-/** **************************************************************************
-* Class distance
-*
-*************************************************************************** */
-float DetectionLocation::classDist(const Track& tr) const {
-  float dist = cosDist(_classFeature,tr.locations.back().getClassFeature());      LOG_TRACE("class dist = " << dist << " between " << *this << " and " << tr);
   return dist;
 }
 

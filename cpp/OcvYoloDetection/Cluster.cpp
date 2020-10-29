@@ -93,7 +93,7 @@ namespace MPF{
     }
 
     /** ***************************************************************************
-    *  very naive agglomerative clustering,
+    *  very naive agglomerative clustering (not suitable for lots of items),
     *  move items from a list list of clusters that is returned
     *
     * @tparam T     type of objects in cluster

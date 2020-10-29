@@ -192,7 +192,7 @@ void KFTracker::predict(float t){
   _setTimeStep(t - _t);
   _t = t;
   _kf.predict();
-  _kf.errorCovPre += _kf.errorCovPre.t();   // guarantee cov symetry to help stability
+  _kf.errorCovPre += _kf.errorCovPre.t();   // guarantee cov symmetry to help stability
   _kf.errorCovPre /= 2.0f;
   /*_kf.statePre.at<float>(8) =
   _kf.statePre.at<float>(11) = 0.0;  // kill width & height acceleration
@@ -212,7 +212,7 @@ void KFTracker::predict(float t){
 *************************************************************************** */
 void KFTracker::correct(const cv::Rect2i &rec){
   _kf.correct(_measurementFromBBox(rec));
-   _kf.errorCovPost += _kf.errorCovPost.t();   // guarantee cov symetry to help stability
+   _kf.errorCovPost += _kf.errorCovPost.t();   // guarantee cov symmetry to help stability
    _kf.errorCovPost /= 2.0f;
   /*_kf.statePost.at<float>(8) =
   _kf.statePost.at<float>(11) = 0.0;  // kill width & height acceleration

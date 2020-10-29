@@ -88,7 +88,7 @@ namespace MPF{
           void             kalmanDump(string filename){if(_kfPtr) _kfPtr->dump(filename);}
         #endif
 
-        const cv::Mat&       getClassFeature() const {return locations.back().getClassFeature();}      ///< get class feature vecotor fo last detection
+        const cv::Mat&       getClassFeature() const {return locations.back().getClassFeature();}      ///< get class feature vector for last detection
 
         Track(){};
         Track(Track &&t):locations(move(t.locations)),
