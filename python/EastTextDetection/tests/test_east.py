@@ -222,7 +222,6 @@ class TestEast(unittest.TestCase):
             feed_forward_location=None
         )
         detections = list(comp.get_detections_from_image(job))
-        low_padding_x_area = sum(d.width * d.height for d in detections)
         low_padding_x = len(detections)
 
         # Check that no x padding results in less merging
@@ -239,7 +238,6 @@ class TestEast(unittest.TestCase):
             feed_forward_location=None
         )
         detections = list(comp.get_detections_from_image(job))
-        low_padding_y_area = sum(d.width * d.height for d in detections)
         low_padding_y = len(detections)
 
         # Check that no y padding results in even less merging

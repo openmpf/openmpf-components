@@ -210,14 +210,14 @@ class EastProcessor(object):
         :param temp_padding_x: Temporary padding to symmetrically add to the
                 width of bounding boxes during non-maximum suppression or
                 merging. The right and left side of bounding boxes are both
-                extended by 0.5 * temp_padding_x * box_height.
+                extended by temp_padding_x * box_height.
         :param temp_padding_y: Temporary padding to symmetrically add to the
                 height of bounding boxes during non-maximum suppression or
                 merging. The top and bottom of the bounding boxes are both
-                extended by 0.5 * temp_padding_y * box_height.
+                extended by temp_padding_y * box_height.
         :param final_padding: Padding to symmetrically add to output bounding
                 boxes after non-maximum suppression or merging. Each side is
-                extended by 0.5 * padding * box_height.
+                extended by final_padding * box_height.
         :param merge_on: Whether to merge regions according to the provided
                 thresholds.
         :param suppress_vertical: Whether to suppress vertical detections.
