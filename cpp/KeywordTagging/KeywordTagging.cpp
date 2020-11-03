@@ -446,6 +446,7 @@ vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) 
         wstring file_contents((istreambuf_iterator<wchar_t>(file)),
                               (istreambuf_iterator<wchar_t>()));
         text = file_contents;
+        text_tags.detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(text);
     }
 
     bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
@@ -482,8 +483,8 @@ vector<MPFAudioTrack> KeywordTagging::GetDetections(const MPFAudioJob &job) {
             throw MPFDetectionException(MPF_MISSING_PROPERTY, "Feed forward track missing TRANSCRIPT property");
         }
     } else {
-        LOG4CXX_DEBUG(hw_logger_, "Job is not feed forward");
-        throw MPFDetectionException(MPF_MISSING_PROPERTY, "Job is not feed forward");
+        LOG4CXX_DEBUG(hw_logger_, "Can only process audio files in feed forward jobs.");
+        throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE, "Can only process audio files in feed forward jobs.");
     }
 
     bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
@@ -525,8 +526,8 @@ vector<MPFVideoTrack> KeywordTagging::GetDetections(const MPFVideoJob &job) {
             throw MPFDetectionException(MPF_MISSING_PROPERTY, "Feed forward track missing TEXT or TRANSCRIPT property");
         }
     } else {
-        LOG4CXX_DEBUG(hw_logger_, "Job is not feed forward");
-        throw MPFDetectionException(MPF_MISSING_PROPERTY, "Job is not feed forward");
+        LOG4CXX_DEBUG(hw_logger_, "Can only process video files in feed forward jobs.");
+        throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE, "Can only process video files in feed forward jobs.");
     }
 
     bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
@@ -567,8 +568,8 @@ vector<MPFImageLocation> KeywordTagging::GetDetections(const MPFImageJob &job) {
                     MPF_MISSING_PROPERTY, "Feed forward detection missing TEXT property");
         }
     } else {
-        LOG4CXX_DEBUG(hw_logger_, "Job is not feed forward.");
-        throw MPFDetectionException(MPF_DETECTION_FAILED, "Job is not feed forward");
+        LOG4CXX_DEBUG(hw_logger_, "Can only process image files in feed forward jobs.");
+        throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE, "Can only process image files in feed forward jobs.");
     }
 
     bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
@@ -632,7 +633,6 @@ bool KeywordTagging::process_text_tagging(Properties &detection_properties, cons
     detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
     detection_properties["TRIGGER_WORDS"] = boost::locale::conv::utf_to_utf<char>(tag_trigger);
     detection_properties["TRIGGER_WORDS_OFFSET"] = tag_offset;
-    detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(text);
 
     return true;
 }

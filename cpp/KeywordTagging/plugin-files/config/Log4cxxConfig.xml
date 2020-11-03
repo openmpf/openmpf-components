@@ -36,7 +36,7 @@
     </appender>
 
     <logger name="KeywordTagging" additivity="false">
-        <level value="DEBUG"/>
+        <level value="INFO"/>
         <appender-ref ref="KEYWORD-TAGGING-FILE"/>
     </logger>
 
