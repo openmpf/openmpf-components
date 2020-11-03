@@ -154,13 +154,16 @@ def iloc_to_quad(ilocs):
 
     return quads
 
-def nms(rboxes, scores, temp_padding, final_padding, min_nms_overlap):
+def nms(rboxes, scores, temp_padding_x, temp_padding_y, final_padding,
+        min_nms_overlap):
     """ Perform Non-Maximum Suppression (NMS) on the given QUAD-formatted
         bounding boxes.
     """
     # Add temporary padding
     padded_rboxes = rboxes.copy()
-    padded_rboxes[:,2:6] += temp_padding * (rboxes[:,[2]] + rboxes[:,[4]])
+    rbox_heights = rboxes[:,[2]] + rboxes[:,[4]]
+    padded_rboxes[:,[2,4]] += temp_padding_y * rbox_heights
+    padded_rboxes[:,[3,5]] += temp_padding_x * rbox_heights
 
     # Perform NMS
     quads = rbox_to_quad(padded_rboxes)
@@ -342,7 +345,7 @@ def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
 
     return merged_any
 
-def merge_regions(rboxes, scores, temp_padding, final_padding,
+def merge_regions(rboxes, scores, temp_padding_x, temp_padding_y, final_padding,
                   min_merge_overlap, max_height_delta, max_rot_delta):
     """ An approximate locality-aware variant of non-maximum suppression, which
         merges together overlapping boxes rather than suppressing them.
@@ -400,7 +403,9 @@ def merge_regions(rboxes, scores, temp_padding, final_padding,
 
     # Add temporary padding
     padded_rboxes = rboxes.copy()
-    padded_rboxes[:,2:6] += temp_padding * (rboxes[:,[2]] + rboxes[:,[4]])
+    rbox_heights = rboxes[:,[2]] + rboxes[:,[4]]
+    padded_rboxes[:,[2,4]] += temp_padding_y * rbox_heights
+    padded_rboxes[:,[3,5]] += temp_padding_x * rbox_heights
     regions = MergedRegions(padded_rboxes, scores)
 
     # Do the initial locality-aware pass
