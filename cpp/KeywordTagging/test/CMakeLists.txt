@@ -25,7 +25,7 @@
 #############################################################################
 
 cmake_minimum_required(VERSION 3.6)
-project(keyword-tagger-tests)
+project(keyword-tagging-tests)
 
 set(CMAKE_CXX_STANDARD 11)
 
@@ -38,7 +38,7 @@ if (${GTEST_FOUND})
 
     include_directories(..)
     add_executable(KeywordTaggingTest test_keyword_tagging.cpp)
-    target_link_libraries(KeywordTaggingTest mpfKeywordTaggingComponent mpfComponentTestUtils GTest::GTest GTest::Main)
+    target_link_libraries(KeywordTaggingTest mpfKeywordTagging mpfComponentTestUtils GTest::GTest GTest::Main)
 
     add_test(NAME KeywordTaggingTest COMMAND KeywordTaggingTest)
 

@@ -24,8 +24,8 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef OPENMPF_COMPONENTS_KEYWORDTAGGINGCOMPONENT_H
-#define OPENMPF_COMPONENTS_KEYWORDTAGGINGCOMPONENT_H
+#ifndef OPENMPF_COMPONENTS_KEYWORDTAGGING_H
+#define OPENMPF_COMPONENTS_KEYWORDTAGGING_H
 
 #include <set>
 #include "adapters/MPFGenericDetectionComponentAdapter.h"
@@ -36,7 +36,7 @@
 using namespace MPF;
 using namespace COMPONENT;
 
-class KeywordTagger : public MPFDetectionComponent {
+class KeywordTagging : public MPFDetectionComponent {
 public:
     bool Init() override;
 
@@ -85,4 +85,4 @@ private:
     std::string parse_regex_code(boost::regex_constants::error_type etype);
 };
 
-#endif //OPENMPF_COMPONENTS_KEYWORDTAGGINGCOMPONENT_H
+#endif //OPENMPF_COMPONENTS_KEYWORDTAGGING_H

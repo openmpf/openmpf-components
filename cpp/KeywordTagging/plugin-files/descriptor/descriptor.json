@@ -1,13 +1,13 @@
 {
-  "componentName": "KeywordTaggingComponent",
+  "componentName": "KeywordTagging",
   "componentVersion": "5.0",
   "middlewareVersion": "5.0",
   "sourceLanguage": "c++",
-  "batchLibrary": "${MPF_HOME}/plugins/KeywordTaggingComponent/lib/libmpfKeywordTaggingComponent.so",
+  "batchLibrary": "${MPF_HOME}/plugins/KeywordTagging/lib/libmpfKeywordTagging.so",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",
-      "value": "${MPF_HOME}/plugins/KeywordTaggingComponent/lib:${LD_LIBRARY_PATH}",
+      "value": "${MPF_HOME}/plugins/KeywordTagging/lib:${LD_LIBRARY_PATH}",
       "sep": ":"
     }
   ],

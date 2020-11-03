@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 #include <gtest/gtest.h>
-#include "KeywordTaggingComponent.h"
+#include "KeywordTagging.h"
 
 using namespace MPF::COMPONENT;
 
@@ -96,7 +96,7 @@ void assertNotInText(const std::string &file_path, const std::string &expected_t
 }
 
 
-void runKeywordTagging(const std::string &uri_path, KeywordTagger &tagger,
+void runKeywordTagging(const std::string &uri_path, KeywordTagging &tagger,
                        std::vector<MPFGenericTrack> &text_tags,
                        const std::map<std::string, std::string> &custom = {}) {
     MPFGenericJob job = createGenericJob(uri_path, custom);
@@ -106,7 +106,7 @@ void runKeywordTagging(const std::string &uri_path, KeywordTagger &tagger,
 }
 
 TEST(KEYWORDTAGGING, TaggingTest) {
-    KeywordTagger tagger;
+    KeywordTagging tagger;
     std::vector<MPFGenericTrack> results;
     std::map<std::string, std::string> custom_properties_disabled = {{"FULL_REGEX_SEARCH", "false"}};
     std::map<std::string, std::string> custom_properties = {{}};
@@ -136,7 +136,7 @@ TEST(KEYWORDTAGGING, TaggingTest) {
 }
 
 TEST(KEYWORDTAGGING, MulitpleTagsTest) {
-    KeywordTagger tagger;
+    KeywordTagging tagger;
     std::vector<MPFGenericTrack> results;
     std::map<std::string, std::string> custom_properties_disabled = {{"FULL_REGEX_SEARCH", "false"}};
     std::map<std::string, std::string> custom_properties = {{}};
@@ -169,7 +169,7 @@ TEST(KEYWORDTAGGING, MulitpleTagsTest) {
 }
 
 TEST(KEYWORDTAGGING, FullSearch) {
-    KeywordTagger tagger;
+    KeywordTagging tagger;
     std::vector<MPFGenericTrack> results;
     std::map<std::string, std::string> custom_properties_disabled = {{"FULL_REGEX_SEARCH", "false"}};
     std::map<std::string, std::string> custom_properties = {{}};
@@ -196,7 +196,7 @@ TEST(KEYWORDTAGGING, FullSearch) {
 }
 
 TEST(KEYWORDTAGGING, LanguageTest) {
-    KeywordTagger tagger;
+    KeywordTagging tagger;
     std::vector<MPFGenericTrack> results;
     std::map<std::string, std::string> custom_properties_disabled = {{"FULL_REGEX_SEARCH", "false"}};
     std::map<std::string, std::string> custom_properties = {{}};
