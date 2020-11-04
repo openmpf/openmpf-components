@@ -60,27 +60,24 @@ private:
     std::set<std::wstring> search_regex(const MPFJob &job, const std::wstring &full_text,
                                         const std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex,
                                         std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
-                                        bool full_regex, MPFDetectionError &job_status);
+                                        bool full_regex);
 
     void process_regex_match(const boost::wsmatch &match, const std::wstring &full_text,
                              std::map<std::wstring, std::vector<std::string>> &trigger_words_offset);
 
     bool process_text_tagging(Properties &detection_properties, const MPFJob &job,
             std::wstring text,
-            MPFDetectionError &job_status,
             const std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex);
 
-    void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
+    void load_tags_json(const MPFJob &job,
                         std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex);
 
     std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> parse_json(const MPFJob &job,
-            const std::string &jsonfile_path,
-            MPFDetectionError &job_status);
+                                                                                  const std::string &jsonfile_path);
 
     bool comp_regex(const MPFJob &job, const std::wstring &full_text, const std::wstring &regstr,
                     std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
-                    bool full_regex, bool case_sensitive,
-                    MPFDetectionError &job_status);
+                    bool full_regex, bool case_sensitive);
 
     std::string parse_regex_code(boost::regex_constants::error_type etype);
 };

@@ -50,17 +50,14 @@ using log4cxx::xml::DOMConfigurator;
 using namespace std;
 
 map<wstring, vector<pair<wstring, bool>>>
-KeywordTagging::parse_json(const MPFJob &job, const string &jsonfile_path, MPFDetectionError &job_status) {
+KeywordTagging::parse_json(const MPFJob &job, const string &jsonfile_path) {
 
     map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
     ifstream ifs(jsonfile_path);
 
     if (!ifs.is_open()) {
-        LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Error reading JSON file at " + jsonfile_path);
-
-        job_status = MPF_COULD_NOT_READ_DATAFILE;
-
-        return json_kvs_regex;
+        throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE,
+                                    "Could not open tagging file: " + jsonfile_path);
     }
 
     string j;
@@ -75,12 +72,8 @@ KeywordTagging::parse_json(const MPFJob &job, const string &jsonfile_path, MPFDe
     JSONValue *value = JSON::Parse(x.c_str());
 
     if (value == NULL) {
-        LOG4CXX_ERROR(hw_logger_,
-                      "[" + job.job_name + "] JSON is corrupted. File location: " + jsonfile_path);
-
-        job_status = MPF_COULD_NOT_READ_DATAFILE;
-
-        return json_kvs_regex;
+        throw MPFDetectionException(MPF_COULD_NOT_READ_DATAFILE,
+                                    "Could not parse tagging file: " + jsonfile_path);
     }
 
     JSONObject root;
@@ -99,12 +92,11 @@ KeywordTagging::parse_json(const MPFJob &job, const string &jsonfile_path, MPFDe
             wstring term_temp(term);
 
             if (!key_tags[term]->IsArray()) {
-                LOG4CXX_ERROR(hw_logger_, "[" + job.job_name + "] Invalid JSON Array in TAGS_BY_REGEX!");
-                job_status = MPF_COULD_NOT_READ_DATAFILE;
-
-                // There was a processing error, but continue checking the remaining terms.
-                iter++;
-                continue;
+                throw MPFDetectionException(MPF_COULD_NOT_READ_DATAFILE,
+                                            "Could not parse tagging file: " + jsonfile_path +
+                                            ". In TAGS_BY_REGEX the entry for \"" +
+                                            boost::locale::conv::utf_to_utf<char>(term) +
+                                            "\" is not a valid JSON array.");
             }
 
             JSONArray regex_array = key_tags[term]->AsArray();
@@ -249,8 +241,7 @@ string KeywordTagging::parse_regex_code(boost::regex_constants::error_type etype
 bool KeywordTagging::comp_regex(const MPFJob &job, const wstring &full_text,
                                            const wstring &regstr, map<wstring, vector<string>> &trigger_words_offset,
                                            bool full_regex,
-                                           bool case_sensitive, MPFDetectionError &job_status) {
-
+                                           bool case_sensitive) {
     bool found = false;
     try {
         boost::wregex reg_matcher;
@@ -267,12 +258,11 @@ bool KeywordTagging::comp_regex(const MPFJob &job, const wstring &full_text,
             boost::wsregex_iterator iter(full_text.begin(), full_text.end(), reg_matcher);
             boost::wsregex_iterator end;
 
-            for( iter; iter != end; ++iter ) {
+            for(iter; iter != end; ++iter ) {
                 process_regex_match(*iter, full_text, trigger_words_offset);
                 found = true;
             }
         }
-
         else if (boost::regex_search(full_text, m, reg_matcher)) {
             process_regex_match(m, full_text, trigger_words_offset);
             found = true;
@@ -280,9 +270,8 @@ bool KeywordTagging::comp_regex(const MPFJob &job, const wstring &full_text,
 
     } catch (const boost::regex_error &e) {
         stringstream ss;
-        ss << "[" + job.job_name + "] regex_error caught: " << parse_regex_code(e.code()) << ": " << e.what() << '\n';
-        LOG4CXX_ERROR(hw_logger_, ss.str());
-        job_status = MPF_COULD_NOT_READ_DATAFILE;
+        ss << "regex_error caught: " << parse_regex_code(e.code()) << ": " << e.what() << '\n';
+        throw MPFDetectionException(MPF_COULD_NOT_READ_DATAFILE, ss.str());
     }
 
     return found;
@@ -291,7 +280,7 @@ bool KeywordTagging::comp_regex(const MPFJob &job, const wstring &full_text,
 set<wstring> KeywordTagging::search_regex(const MPFJob &job, const wstring &full_text,
                                     const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex,
                                     map<wstring, vector<string>>  &trigger_words_offset,
-                                    bool full_regex, MPFDetectionError &job_status) {
+                                    bool full_regex) {
     wstring found_tags_regex = L"";
     set<wstring> found_keys_regex;
 
@@ -306,8 +295,7 @@ set<wstring> KeywordTagging::search_regex(const MPFJob &job, const wstring &full
             wstring regex_pattern = value.first;
             bool case_sens = value.second;
 
-            if (comp_regex(job, full_text, regex_pattern, trigger_words_offset,
-                           full_regex, case_sens, job_status)) {
+            if (comp_regex(job, full_text, regex_pattern, trigger_words_offset, full_regex, case_sens)) {
                 found_keys_regex.insert(key);
                 // Discontinue searching unless full regex search is enabled.
                 if (!full_regex) {
@@ -326,8 +314,7 @@ set<wstring> KeywordTagging::search_regex(const MPFJob &job, const wstring &full
     return found_keys_regex;
 }
 
-void KeywordTagging::load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
-                                               map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex) {
+void KeywordTagging::load_tags_json(const MPFJob &job, map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex) {
 
     string run_dir = GetRunDirectory();
 
@@ -351,7 +338,7 @@ void KeywordTagging::load_tags_json(const MPFJob &job, MPFDetectionError &job_st
     }
 
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to read JSON from: " + jsonfile_path)
-    json_kvs_regex = parse_json(job, jsonfile_path, job_status);
+    json_kvs_regex = parse_json(job, jsonfile_path);
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Read JSON")
 }
 
@@ -412,10 +399,9 @@ string KeywordTagging::GetDetectionType() {
 
 vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
-    MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
     map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
 
-    load_tags_json(job, job_status, json_kvs_regex);
+    load_tags_json(job, json_kvs_regex);
 
     MPFGenericTrack text_tags;
 
@@ -449,8 +435,7 @@ vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) 
         text_tags.detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(text);
     }
 
-    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
-                                             json_kvs_regex);
+    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
 
     if (process_text) {
         tags.push_back(text_tags);
@@ -461,10 +446,9 @@ vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) 
 
 vector<MPFAudioTrack> KeywordTagging::GetDetections(const MPFAudioJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
-    MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
     map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
 
-    load_tags_json(job, job_status, json_kvs_regex);
+    load_tags_json(job, json_kvs_regex);
 
     MPFAudioTrack text_tags;
     vector<MPFAudioTrack> tags;
@@ -487,8 +471,7 @@ vector<MPFAudioTrack> KeywordTagging::GetDetections(const MPFAudioJob &job) {
         throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE, "Can only process audio files in feed forward jobs.");
     }
 
-    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
-                                             json_kvs_regex);
+    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
 
     if (process_text) {
         tags.push_back(text_tags);
@@ -499,10 +482,9 @@ vector<MPFAudioTrack> KeywordTagging::GetDetections(const MPFAudioJob &job) {
 
 vector<MPFVideoTrack> KeywordTagging::GetDetections(const MPFVideoJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
-    MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
     map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
 
-    load_tags_json(job, job_status, json_kvs_regex);
+    load_tags_json(job, json_kvs_regex);
 
     MPFVideoTrack text_tags;
     vector<MPFVideoTrack> tags;
@@ -530,8 +512,7 @@ vector<MPFVideoTrack> KeywordTagging::GetDetections(const MPFVideoJob &job) {
         throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE, "Can only process video files in feed forward jobs.");
     }
 
-    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
-                                             json_kvs_regex);
+    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
 
     if (process_text) {
         tags.push_back(text_tags);
@@ -543,11 +524,9 @@ vector<MPFVideoTrack> KeywordTagging::GetDetections(const MPFVideoJob &job) {
 vector<MPFImageLocation> KeywordTagging::GetDetections(const MPFImageJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
 
-
-    MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
     map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
 
-    load_tags_json(job, job_status, json_kvs_regex);
+    load_tags_json(job, json_kvs_regex);
 
     MPFImageLocation text_tags;
     vector<MPFImageLocation> tags;
@@ -572,8 +551,7 @@ vector<MPFImageLocation> KeywordTagging::GetDetections(const MPFImageJob &job) {
         throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE, "Can only process image files in feed forward jobs.");
     }
 
-    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, job_status,
-                                             json_kvs_regex);
+    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
 
     if (process_text) {
         tags.push_back(text_tags);
@@ -589,7 +567,6 @@ bool KeywordTagging::Supports(MPFDetectionDataType data_type) {
 
 bool KeywordTagging::process_text_tagging(Properties &detection_properties, const MPFJob &job,
                                          wstring text,
-                                         MPFDetectionError &job_status,
                                          const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex) {
 
     text = clean_whitespace(text);
@@ -612,7 +589,7 @@ bool KeywordTagging::process_text_tagging(Properties &detection_properties, cons
 
     set<wstring> trigger_words;
     map<wstring, vector<string>> trigger_words_offset;
-    set<wstring> found_tags_regex = search_regex(job, text, json_kvs_regex, trigger_words_offset, full_regex, job_status);
+    set<wstring> found_tags_regex = search_regex(job, text, json_kvs_regex, trigger_words_offset, full_regex);
 
     wstring tag_string = boost::algorithm::join(found_tags_regex, L"; ");
 
