@@ -79,7 +79,6 @@ KeywordTagging::parse_json(const MPFJob &job, const string &jsonfile_path) {
     JSONObject root;
     root = value->AsObject();
 
-    // REGEX TAG LOADING
     if (root.find(L"TAGS_BY_REGEX") != root.end() && root[L"TAGS_BY_REGEX"]->IsObject()) {
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Regex tags found.");
 
@@ -142,7 +141,9 @@ KeywordTagging::parse_json(const MPFJob &job, const string &jsonfile_path) {
         }
 
     } else {
-        LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] TAGS_BY_REGEX NOT FOUND.");
+        throw MPFDetectionException(MPF_COULD_NOT_READ_DATAFILE,
+                                    "Could not parse tagging file: " + jsonfile_path +
+                                    ". TAGS_BY_REGEX not found.");
     }
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] successfully read JSON.");
 
@@ -150,7 +151,7 @@ KeywordTagging::parse_json(const MPFJob &job, const string &jsonfile_path) {
 }
 
 void KeywordTagging::process_regex_match(const boost::wsmatch &match, const wstring &full_text,
-                                                    map<wstring, vector<string>> &trigger_words_offset) {
+                                         map<wstring, vector<string>> &trigger_words_offset) {
 
     // Find and return matching pattern.
     int start = match.position(0Lu);
@@ -205,7 +206,7 @@ void KeywordTagging::process_regex_match(const boost::wsmatch &match, const wstr
 
 }
 
-string KeywordTagging::parse_regex_code(boost::regex_constants::error_type etype) {
+string KeywordTagging::parse_regex_code(const boost::regex_constants::error_type &etype) {
     switch (etype) {
         case boost::regex_constants::error_collate:
             return "error_collate: invalid collating element request";
@@ -239,9 +240,9 @@ string KeywordTagging::parse_regex_code(boost::regex_constants::error_type etype
 }
 
 bool KeywordTagging::comp_regex(const MPFJob &job, const wstring &full_text,
-                                           const wstring &regstr, map<wstring, vector<string>> &trigger_words_offset,
-                                           bool full_regex,
-                                           bool case_sensitive) {
+                                const wstring &regstr, map<wstring, vector<string>> &trigger_words_offset,
+                                bool full_regex,
+                                bool case_sensitive) {
     bool found = false;
     try {
         boost::wregex reg_matcher;
@@ -278,9 +279,9 @@ bool KeywordTagging::comp_regex(const MPFJob &job, const wstring &full_text,
 }
 
 set<wstring> KeywordTagging::search_regex(const MPFJob &job, const wstring &full_text,
-                                    const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex,
-                                    map<wstring, vector<string>>  &trigger_words_offset,
-                                    bool full_regex) {
+                                          const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex,
+                                          map<wstring, vector<string>>  &trigger_words_offset,
+                                          bool full_regex) {
     wstring found_tags_regex = L"";
     set<wstring> found_keys_regex;
 
@@ -404,9 +405,7 @@ vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) 
     load_tags_json(job, json_kvs_regex);
 
     MPFGenericTrack text_tags;
-
     wstring text;
-    vector<MPFGenericTrack> tags;
 
     if (job.has_feed_forward_track) {
         string temp = "";
@@ -438,10 +437,10 @@ vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) 
     bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
 
     if (process_text) {
-        tags.push_back(text_tags);
+        return {text_tags};
     }
 
-    return tags;
+    return {};
 }
 
 vector<MPFAudioTrack> KeywordTagging::GetDetections(const MPFAudioJob &job) {
@@ -451,8 +450,6 @@ vector<MPFAudioTrack> KeywordTagging::GetDetections(const MPFAudioJob &job) {
     load_tags_json(job, json_kvs_regex);
 
     MPFAudioTrack text_tags;
-    vector<MPFAudioTrack> tags;
-
     wstring text;
 
     LOG4CXX_INFO(hw_logger_, "Checking audio job is feed forward and the detection has a TRANSCRIPT property");
@@ -474,10 +471,10 @@ vector<MPFAudioTrack> KeywordTagging::GetDetections(const MPFAudioJob &job) {
     bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
 
     if (process_text) {
-        tags.push_back(text_tags);
+        return {text_tags};
     }
 
-    return tags;
+    return {};
 }
 
 vector<MPFVideoTrack> KeywordTagging::GetDetections(const MPFVideoJob &job) {
@@ -487,8 +484,6 @@ vector<MPFVideoTrack> KeywordTagging::GetDetections(const MPFVideoJob &job) {
     load_tags_json(job, json_kvs_regex);
 
     MPFVideoTrack text_tags;
-    vector<MPFVideoTrack> tags;
-
     wstring text;
 
     LOG4CXX_INFO(hw_logger_, "Checking video job is feed forward and the detection has a TEXT or TRANSCRIPT property");
@@ -515,10 +510,10 @@ vector<MPFVideoTrack> KeywordTagging::GetDetections(const MPFVideoJob &job) {
     bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
 
     if (process_text) {
-        tags.push_back(text_tags);
+        return {text_tags};
     }
 
-    return tags;
+    return {};
 }
 
 vector<MPFImageLocation> KeywordTagging::GetDetections(const MPFImageJob &job) {
@@ -529,8 +524,6 @@ vector<MPFImageLocation> KeywordTagging::GetDetections(const MPFImageJob &job) {
     load_tags_json(job, json_kvs_regex);
 
     MPFImageLocation text_tags;
-    vector<MPFImageLocation> tags;
-
     wstring text;
 
     LOG4CXX_DEBUG(hw_logger_, "Checking image job is feed forward and the detection has a TEXT property");
@@ -554,10 +547,10 @@ vector<MPFImageLocation> KeywordTagging::GetDetections(const MPFImageJob &job) {
     bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
 
     if (process_text) {
-        tags.push_back(text_tags);
+        return {text_tags};
     }
 
-    return tags;
+    return {};
 }
 
 bool KeywordTagging::Supports(MPFDetectionDataType data_type) {
@@ -565,25 +558,19 @@ bool KeywordTagging::Supports(MPFDetectionDataType data_type) {
         || data_type == MPFDetectionDataType::AUDIO || data_type == MPFDetectionDataType::VIDEO;
 }
 
-bool KeywordTagging::process_text_tagging(Properties &detection_properties, const MPFJob &job,
-                                         wstring text,
-                                         const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex) {
+bool KeywordTagging::process_text_tagging(Properties &detection_properties, const MPFJob &job, const wstring &full_text,
+                                          const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex) {
 
-    text = clean_whitespace(text);
+    wstring text = clean_whitespace(full_text);
 
-    bool full_regex = false;
-
-    if (DetectionComponentUtils::GetProperty<string>(job.job_properties, "FULL_REGEX_SEARCH",
-                                                     "true") == "true") {
-        full_regex = true;
-    }
+    bool full_regex = DetectionComponentUtils::GetProperty(job.job_properties, "FULL_REGEX_SEARCH", true);
 
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing tags: ");
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Text was: " +
                               boost::locale::conv::utf_to_utf<char>(text));
 
     if (is_only_ascii_whitespace(text)) {
-        LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] No text in file!");
+        LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] No text to process!");
         return false;
     }
 
