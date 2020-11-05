@@ -304,20 +304,35 @@ class TestEast(unittest.TestCase):
         comp = EastComponent()
 
         job = mpf.ImageJob(
-            job_name='test-low-overlap-threshold',
+            job_name='test-high-overlap-threshold',
             data_uri=self._get_test_file('thresholds.jpg'),
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
-                MERGE_MIN_OVERLAP='0.0',
+                MERGE_OVERLAP_THRESHOLD='0.1',
             ),
             media_properties={},
             feed_forward_location=None
         )
-        low_threshold = len(list(comp.get_detections_from_image(job)))
+        high_threshold = len(list(comp.get_detections_from_image(job)))
 
-        # The zero threshold should merge the two axis-aligned pieces of small
-        # text, and the two rotated pieces of small text.
-        self.assertEqual(7, low_threshold)
+        # A higher threshold should result in less merging (more detections)
+        self.assertLess(9, high_threshold)
+
+        job = mpf.ImageJob(
+            job_name='test-negative-overlap-threshold',
+            data_uri=self._get_test_file('thresholds.jpg'),
+            job_properties=dict(
+                MAX_SIDE_LENGTH='1280',
+                MERGE_OVERLAP_THRESHOLD='-1.0',
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        neg_threshold = len(list(comp.get_detections_from_image(job)))
+
+        # The negative threshold should merge the two axis-aligned pieces of
+        #  small text, and the two rotated pieces of small text.
+        self.assertEqual(7, neg_threshold)
 
     def test_rotation_threshold(self):
         comp = EastComponent()

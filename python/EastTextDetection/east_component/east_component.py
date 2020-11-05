@@ -55,7 +55,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
 
         # Get the threshold values for filtering bounding boxes
         min_confidence = float(props.get('CONFIDENCE_THRESHOLD','0.8'))
-        min_merge_overlap = float(props.get('MERGE_MIN_OVERLAP','0.01'))
+        overlap_threshold = float(props.get('MERGE_OVERLAP_THRESHOLD','0.01'))
         min_nms_overlap = float(props.get('NMS_MIN_OVERLAP','0.1'))
         max_height_delta = float(props.get('MERGE_MAX_TEXT_HEIGHT_DIFFERENCE','0.3'))
         max_rot_delta = float(props.get('MERGE_MAX_ROTATION_DIFFERENCE','10.0'))
@@ -80,7 +80,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             merge_on=merge_on,
             suppress_vertical=vsupp_on,
             min_confidence=min_confidence,
-            min_merge_overlap=min_merge_overlap,
+            overlap_threshold=overlap_threshold,
             min_nms_overlap=min_nms_overlap,
             max_height_delta=max_height_delta,
             max_rot_delta=max_rot_delta,

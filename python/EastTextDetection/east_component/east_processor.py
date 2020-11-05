@@ -201,7 +201,7 @@ class EastProcessor(object):
 
     def process_image(self, image, temp_padding_x, temp_padding_y,
                       final_padding, merge_on, suppress_vertical,
-                      min_confidence, min_merge_overlap, min_nms_overlap,
+                      min_confidence, overlap_threshold, min_nms_overlap,
                       max_height_delta, max_rot_delta, min_structured_score,
                       **kwargs):
         """ Process a single image using the given arguments
@@ -223,7 +223,7 @@ class EastProcessor(object):
         :param suppress_vertical: Whether to suppress vertical detections.
         :param min_confidence: Threshold to use for filtering detections
                 by bounding box confidence.
-        :param min_merge_overlap: Threshold value for deciding whether
+        :param overlap_threshold: Threshold value for deciding whether
                 regions overlap enough to be merged.
         :param min_nms_overlap: Threshold value for non-maximum suppression.
         :param max_height_delta: Threshold value for deciding whether
@@ -264,7 +264,7 @@ class EastProcessor(object):
                 temp_padding_x=temp_padding_x,
                 temp_padding_y=temp_padding_y,
                 final_padding=final_padding,
-                min_merge_overlap=min_merge_overlap,
+                overlap_threshold=overlap_threshold,
                 max_height_delta=max_height_delta,
                 max_rot_delta=max_rot_delta
             )
@@ -295,7 +295,7 @@ class EastProcessor(object):
 
     def process_frames(self, frames, temp_padding_x, temp_padding_y,
                        final_padding, merge_on, suppress_vertical,
-                       min_confidence, min_merge_overlap, min_nms_overlap,
+                       min_confidence, overlap_threshold, min_nms_overlap,
                        max_height_delta, max_rot_delta, min_structured_score,
                        **kwargs):
         """ Process a volume of images using the given arguments
@@ -317,7 +317,7 @@ class EastProcessor(object):
         :param suppress_vertical: Whether to suppress vertical detections.
         :param min_confidence: Threshold to use for filtering detections
                 by bounding box confidence.
-        :param min_merge_overlap: Threshold value for deciding whether
+        :param overlap_threshold: Threshold value for deciding whether
                 regions overlap enough to be merged.
         :param min_nms_overlap: Threshold value for non-maximum suppression.
         :param max_height_delta: Threshold value for deciding whether
@@ -369,7 +369,7 @@ class EastProcessor(object):
                         temp_padding_x=temp_padding_x,
                         temp_padding_y=temp_padding_y,
                         final_padding=final_padding,
-                        min_merge_overlap=min_merge_overlap,
+                        overlap_threshold=overlap_threshold,
                         max_height_delta=max_height_delta,
                         max_rot_delta=max_rot_delta
                     )

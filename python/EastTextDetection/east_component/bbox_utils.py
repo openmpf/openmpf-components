@@ -287,7 +287,7 @@ class MergedRegions(object):
         self.scores = np.array(post_merge_scores)
         self.constituents = post_merge_constituents
 
-def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
+def merge_pass(regions, overlap_threshold, max_height_delta, max_rot_delta):
     """ Complete one merge pass. This takes one box at a time (largest area
         first) and merges it with all eligible boxes. This merged box is added
         to a list, and all constituent boxes removed from the original list.
@@ -315,7 +315,7 @@ def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
             regions.quads[head].astype(np.float32),
             regions.quads[order].astype(np.float32)
         )
-        overlaps = (inter / regions.areas[order]) >= min_merge_overlap
+        overlaps = (inter / regions.areas[order]) > overlap_threshold
 
         # Filter out boxes whose text height does not match
         diff = np.abs(regions.heights[head] - regions.heights[order])
@@ -346,7 +346,7 @@ def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
     return merged_any
 
 def merge_regions(rboxes, scores, temp_padding_x, temp_padding_y, final_padding,
-                  min_merge_overlap, max_height_delta, max_rot_delta):
+                  overlap_threshold, max_height_delta, max_rot_delta):
     """ An approximate locality-aware variant of non-maximum suppression, which
         merges together overlapping boxes rather than suppressing them.
 
@@ -417,7 +417,7 @@ def merge_regions(rboxes, scores, temp_padding_x, temp_padding_y, final_padding,
         regions.quads[1:].astype(np.float32)
     )
     smaller_area = np.minimum(regions.areas[:-1], regions.areas[1:])
-    overlaps = (inter / smaller_area) >= min_merge_overlap
+    overlaps = (inter / smaller_area) > overlap_threshold
 
     # Filter out boxes whose text height does not match
     diff = np.abs(regions.heights[:-1] - regions.heights[1:])
@@ -466,7 +466,7 @@ def merge_regions(rboxes, scores, temp_padding_x, temp_padding_y, final_padding,
     while True:
         merged_any = merge_pass(
             regions,
-            min_merge_overlap=min_merge_overlap,
+            overlap_threshold=overlap_threshold,
             max_height_delta=max_height_delta,
             max_rot_delta=max_rot_delta
         )
