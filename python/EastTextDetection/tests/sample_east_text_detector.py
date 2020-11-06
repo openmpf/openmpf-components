@@ -58,25 +58,26 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description=(
             'Test EAST component with one or files. Both video and images are '
-            'supported. If --out argument provided, marked-up images (but not '
-            'video) will be saved in the specified directory.'
+            'supported. If --out-dir argument provided, marked-up images (but '
+            'not video) will be saved in the specified directory.'
         )
     )
-    parser.add_argument('--max_side_length', type=int, default=-1)
-    parser.add_argument('--confidence_threshold', type=float, default=0.8)
-    parser.add_argument('--merge_min_overlap', type=float, default=0.01)
-    parser.add_argument('--nms_min_overlap', type=float, default=0.1)
-    parser.add_argument('--merge_max_text_height_difference', type=float, default=0.3)
-    parser.add_argument('--merge_max_rotation_difference', type=float, default=10.0)
-    parser.add_argument('--min_structured_text_threshold', type=float, default=0.01)
-    parser.add_argument('--rotate_and_detect', action='store_true')
-    parser.add_argument('--merge_regions', action='store_true')
-    parser.add_argument('--suppress_vertical', action='store_true')
-    parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--temporary_padding', type=float, default=0.1)
-    parser.add_argument('--final_padding', type=float, default=0.0)
+    parser.add_argument('--max-side-length', type=int, default=-1)
+    parser.add_argument('--confidence-threshold', type=float, default=0.8)
+    parser.add_argument('--merge-min-overlap', type=float, default=0.01)
+    parser.add_argument('--nms-min-overlap', type=float, default=0.1)
+    parser.add_argument('--merge-max-text-height-difference', type=float, default=0.3)
+    parser.add_argument('--merge-max-rotation-difference', type=float, default=10.0)
+    parser.add_argument('--min-structured-text-threshold', type=float, default=0.01)
+    parser.add_argument('--rotate-and-detect', action='store_true')
+    parser.add_argument('--merge-regions', action='store_true')
+    parser.add_argument('--suppress-vertical', action='store_true')
+    parser.add_argument('--batch-size', type=int, default=1)
+    parser.add_argument('--temporary-padding-x', type=float, default=0.1)
+    parser.add_argument('--temporary-padding-y', type=float, default=0.1)
+    parser.add_argument('--final-padding', type=float, default=0.0)
     parser.add_argument(
-        '--out_dir',
+        '--out-dir',
         nargs='?',
         help='directory to store marked-up images'
     )
@@ -106,7 +107,8 @@ if __name__ == '__main__':
         MERGE_REGIONS=str(args.merge_regions),
         SUPPRESS_VERTICAL=str(args.suppress_vertical),
         BATCH_SIZE=str(args.batch_size),
-        TEMPORARY_PADDING=str(args.temporary_padding),
+        TEMPORARY_PADDING_X=str(args.temporary_padding_x),
+        TEMPORARY_PADDING_Y=str(args.temporary_padding_y),
         FINAL_PADDING=str(args.final_padding)
     )
 

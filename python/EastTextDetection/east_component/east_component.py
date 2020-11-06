@@ -66,13 +66,15 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         merge_on = (props.get('MERGE_REGIONS','TRUE').lower() == 'true')
         vsupp_on = (props.get('SUPPRESS_VERTICAL','TRUE').lower() == 'true')
 
-        temp_padding = float(props.get('TEMPORARY_PADDING','0.1'))
+        temp_padding_x = float(props.get('TEMPORARY_PADDING_X','0.1'))
+        temp_padding_y = float(props.get('TEMPORARY_PADDING_Y','0.1'))
         final_padding = float(props.get('FINAL_PADDING','0.0'))
 
         return dict(
             max_side_len=max_side_len,
             batch_size=batch_size,
-            temp_padding=temp_padding,
+            temp_padding_x=temp_padding_x,
+            temp_padding_y=temp_padding_y,
             final_padding=final_padding,
             rotate_on=rotate_on,
             merge_on=merge_on,

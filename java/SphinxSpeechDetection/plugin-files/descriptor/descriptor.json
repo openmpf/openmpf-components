@@ -61,11 +61,11 @@
       ]
     },
     {
-      "name": "SPHINX SPEECH DETECTION WITH TAGGING PIPELINE",
-      "description": "Performs Sphinx speech detection and tags the results.",
+      "name": "SPHINX SPEECH DETECTION WITH KEYWORD TAGGING PIPELINE",
+      "description": "Performs Sphinx speech detection and keyword tagging.",
       "tasks": [
         "SPHINX SPEECH DETECTION TASK",
-        "KEYWORD TAGGING TASK"
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
     }
   ]

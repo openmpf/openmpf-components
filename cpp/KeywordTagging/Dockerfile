@@ -38,13 +38,13 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./KeywordTagging
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-ENV COMPONENT_LOG_NAME keyword-tagger.log
+ENV COMPONENT_LOG_NAME keyword-tagging.log
 
-COPY --from=build_component $BUILD_DIR/plugin/KeywordTaggingComponent \
-                            $PLUGINS_DIR/KeywordTaggingComponent
+COPY --from=build_component $BUILD_DIR/plugin/KeywordTagging \
+                            $PLUGINS_DIR/KeywordTagging
 
-COPY --from=build_component $BUILD_DIR/libmpfKeywordTaggingComponent.so \
-                            $PLUGINS_DIR/KeywordTaggingComponent/lib/
+COPY --from=build_component $BUILD_DIR/libmpfKeywordTagging.so \
+                            $PLUGINS_DIR/KeywordTagging/lib/
 
 
 LABEL org.label-schema.license="Apache 2.0" \

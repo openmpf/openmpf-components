@@ -1,13 +1,13 @@
 {
-  "componentName": "KeywordTaggingComponent",
+  "componentName": "KeywordTagging",
   "componentVersion": "5.0",
   "middlewareVersion": "5.0",
   "sourceLanguage": "c++",
-  "batchLibrary": "${MPF_HOME}/plugins/KeywordTaggingComponent/lib/libmpfKeywordTaggingComponent.so",
+  "batchLibrary": "${MPF_HOME}/plugins/KeywordTagging/lib/libmpfKeywordTagging.so",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",
-      "value": "${MPF_HOME}/plugins/KeywordTaggingComponent/lib:${LD_LIBRARY_PATH}",
+      "value": "${MPF_HOME}/plugins/KeywordTagging/lib:${LD_LIBRARY_PATH}",
       "sep": ":"
     }
   ],
@@ -33,7 +33,7 @@
         },
         {
           "name": "TAGGING_FILE",
-          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used for keyword tagging. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
           "type": "STRING",
           "defaultValue": "text-tags.json"
         }
@@ -42,8 +42,14 @@
   },
   "actions": [
     {
-      "name": "KEYWORD TAGGING WITH FEED FORWARD",
-      "description": "Executes the keyword tagger on text extracted by previous component",
+      "name": "KEYWORD TAGGING ACTION",
+      "description": "Performs keyword tagging on text files.",
+      "algorithm": "KEYWORDTAGGING",
+      "properties": []
+    },
+    {
+      "name": "KEYWORD TAGGING (WITH FF REGION) ACTION",
+      "description": "Performs keyword tagging on detections with TEXT and TRANSCRIPT properties.",
       "algorithm": "KEYWORDTAGGING",
       "properties": [
         {
@@ -56,9 +62,25 @@
   "tasks": [
     {
       "name": "KEYWORD TAGGING TASK",
-      "description": "Performs keyword tagging on text",
+      "description": "Performs keyword tagging on text files.",
       "actions": [
-        "KEYWORD TAGGING WITH FEED FORWARD"
+        "KEYWORD TAGGING ACTION"
+      ]
+    },
+    {
+      "name": "KEYWORD TAGGING (WITH FF REGION) TASK",
+      "description": "Performs keyword tagging on detections with TEXT and TRANSCRIPT properties.",
+      "actions": [
+        "KEYWORD TAGGING (WITH FF REGION) ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "KEYWORD TAGGING PIPELINE",
+      "description": "Performs keyword tagging on text files.",
+      "tasks": [
+        "KEYWORD TAGGING TASK"
       ]
     }
   ]

@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 #include <iostream>
-#include "KeywordTaggingComponent.h"
+#include "KeywordTagging.h"
 
 using namespace MPF::COMPONENT;
 
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
         text_tags.detection_properties["EXTRA"] = "extra property";
 
 
-        KeywordTagger tagger;
+        KeywordTagging tagger;
 
         tagger.SetRunDirectory("./plugin");
         tagger.Init();

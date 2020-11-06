@@ -123,7 +123,7 @@
       "description": "Uses Azure Cognitive Services to perform optical character recognition and performs keyword tagging.",
       "tasks": [
         "AZURE OCR TEXT DETECTION (WITH REGION MERGING) TASK",
-        "KEYWORD TAGGING TASK"
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
     }
   ]

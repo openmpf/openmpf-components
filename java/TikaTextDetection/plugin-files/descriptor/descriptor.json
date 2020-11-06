@@ -75,10 +75,10 @@
     },
     {
       "name": "TIKA TEXT DETECTION WITH KEYWORD TAGGING PIPELINE",
-      "description": "Performs Tika text detection with keyword tagging.",
+      "description": "Performs Tika text detection and keyword tagging.",
       "tasks": [
         "TIKA TEXT DETECTION TASK",
-        "KEYWORD TAGGING TASK"
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
     }
   ]

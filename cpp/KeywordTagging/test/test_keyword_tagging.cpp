@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 #include <gtest/gtest.h>
-#include "KeywordTaggingComponent.h"
+#include "KeywordTagging.h"
 
 using namespace MPF::COMPONENT;
 
@@ -79,7 +79,7 @@ bool containsProp(const std::string &exp_text, const std::vector<MPFGenericTrack
 }
 
 void assertInText(const std::string &image_path, const std::string &expected_value,
-                   const std::vector<MPFGenericTrack> &tracks, const std::string &prop, int index = -1) {
+                  const std::vector<MPFGenericTrack> &tracks, const std::string &prop, int index = -1) {
     ASSERT_TRUE(containsProp(expected_value, tracks, prop, index))
                                 << "Expected tagger to detect " << prop << " \"" << expected_value << "\" in " << image_path;
 
@@ -88,15 +88,14 @@ void assertInText(const std::string &image_path, const std::string &expected_val
 
 
 void assertNotInText(const std::string &file_path, const std::string &expected_text,
-                      const std::vector<MPFGenericTrack> &tracks, const std::string &prop, int index = -1) {
-
+                     const std::vector<MPFGenericTrack> &tracks, const std::string &prop, int index = -1) {
     ASSERT_FALSE(containsProp(expected_text, tracks, prop, index))
                                 << "Expected tagger to NOT detect "<< prop << " \""  << expected_text << "\" in "
                                 << file_path;
 }
 
 
-void runKeywordTagging(const std::string &uri_path, KeywordTagger &tagger,
+void runKeywordTagging(const std::string &uri_path, KeywordTagging &tagger,
                        std::vector<MPFGenericTrack> &text_tags,
                        const std::map<std::string, std::string> &custom = {}) {
     MPFGenericJob job = createGenericJob(uri_path, custom);
@@ -106,7 +105,7 @@ void runKeywordTagging(const std::string &uri_path, KeywordTagger &tagger,
 }
 
 TEST(KEYWORDTAGGING, TaggingTest) {
-    KeywordTagger tagger;
+    KeywordTagging tagger;
     std::vector<MPFGenericTrack> results;
     std::map<std::string, std::string> custom_properties_disabled = {{"FULL_REGEX_SEARCH", "false"}};
     std::map<std::string, std::string> custom_properties = {{}};
@@ -130,13 +129,10 @@ TEST(KEYWORDTAGGING, TaggingTest) {
     assertInText("data/test-backslash.txt", "7-10; 0, 12, 15, 16, 18, 19", results, "TRIGGER_WORDS_OFFSET");
 
     ASSERT_TRUE(tagger.Close());
-
-
-
 }
 
 TEST(KEYWORDTAGGING, MulitpleTagsTest) {
-    KeywordTagger tagger;
+    KeywordTagging tagger;
     std::vector<MPFGenericTrack> results;
     std::map<std::string, std::string> custom_properties_disabled = {{"FULL_REGEX_SEARCH", "false"}};
     std::map<std::string, std::string> custom_properties = {{}};
@@ -169,7 +165,7 @@ TEST(KEYWORDTAGGING, MulitpleTagsTest) {
 }
 
 TEST(KEYWORDTAGGING, FullSearch) {
-    KeywordTagger tagger;
+    KeywordTagging tagger;
     std::vector<MPFGenericTrack> results;
     std::map<std::string, std::string> custom_properties_disabled = {{"FULL_REGEX_SEARCH", "false"}};
     std::map<std::string, std::string> custom_properties = {{}};
@@ -196,7 +192,7 @@ TEST(KEYWORDTAGGING, FullSearch) {
 }
 
 TEST(KEYWORDTAGGING, LanguageTest) {
-    KeywordTagger tagger;
+    KeywordTagging tagger;
     std::vector<MPFGenericTrack> results;
     std::map<std::string, std::string> custom_properties_disabled = {{"FULL_REGEX_SEARCH", "false"}};
     std::map<std::string, std::string> custom_properties = {{}};

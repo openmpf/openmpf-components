@@ -270,11 +270,11 @@ TEST(TESSERACTOCR, ModelTest) {
 
     // Ensure user can specify custom model directory locations.
     boost::filesystem::remove_all("data/model_dir");
-    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/tessdata");
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/custom_tessdata");
 
     std::string model = boost::filesystem::absolute(
             "../plugin/TesseractOCRTextDetection/tessdata/eng.traineddata").string();
-    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/tessdata/custom.traineddata");
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/custom_tessdata/custom.traineddata");
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
@@ -282,15 +282,62 @@ TEST(TESSERACTOCR, ModelTest) {
     ASSERT_TRUE(ocr.Init());
     std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "custom,eng"},
                                                             {"MODELS_DIR_PATH",       "data/model_dir"},
-                                                            {"ENABLE_OSD_AUTOMATION", "false"}};
+                                                            {"TESSDATA_MODELS_SUBDIRECTORY",
+                                                             "TesseractOCRTextDetection/custom_tessdata"},
+                                                            {"ENABLE_OSD_AUTOMATION", "false"},
+                                                            {"MAX_PARALLEL_PAGE_THREADS",   "0"},
+                                                            {"MAX_PARALLEL_SCRIPT_THREADS", "0"}};
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
 
     boost::filesystem::remove_all("data/model_dir");
     ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "custom")
-                                << "Shared models directory not loaded.";
-    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Tessdata directory not loaded.";
+                                << "Shared custom tessdata models directory not loaded.";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Default tessdata directory not loaded.";
     ASSERT_TRUE(results.size() == 2) << "Expected two models to be properly loaded into component.";
+
+    // Ensure model caching works as expected with tessdata directory removed.
+    results.clear();
+
+    // When parallel processing is disabled, check that cached languages are retrieved.
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/eng.png", ocr, results, custom_properties));
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "custom")
+                                << "Failed to cache shared custom tessdata model.";
+    ASSERT_TRUE(results[1].detection_properties.at("TEXT_LANGUAGE") == "eng")
+                                << "Failed to cache eng tessdata model.";
+    ASSERT_TRUE(results.size() == 2) << "Expected two models to be properly loaded into component.";
+
+    results.clear();
+    {
+        auto custom_properties_copy = custom_properties;
+        // When set to parallel processing, ensure that model reload occurs and fails due to missing model files.
+        // Model caching is disabled during parallel processing.
+        custom_properties_copy["MAX_PARALLEL_SCRIPT_THREADS"] = "2";
+
+        ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/eng.png", ocr, results, custom_properties_copy,
+                                                          false, MPF_COULD_NOT_OPEN_DATAFILE));
+    }
+
+    results.clear();
+    {
+        auto custom_properties_copy = custom_properties;
+        // When TESSDATA_MODELS_SUBDIRECTORY is updated,
+        // ensure that model reload occurs and fails due to missing model files.
+        custom_properties_copy["TESSDATA_MODELS_SUBDIRECTORY"] = "TesseractOCRTextDetection/DoesNotExist";
+
+        ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/eng.png", ocr, results, custom_properties_copy,
+                                                          false, MPF_COULD_NOT_OPEN_DATAFILE));
+    }
+
+    results.clear();
+    {
+        auto custom_properties_copy = custom_properties;
+        // When MODELS_DIR_PATH is updated, ensure that model reload occurs and fails due to missing model files.
+        custom_properties_copy["MODELS_DIR_PATH"] = "asdf";
+        ASSERT_NO_FATAL_FAILURE(assertEmptyImageDetection("data/eng.png", ocr, results, custom_properties_copy,
+                                                          false, MPF_COULD_NOT_OPEN_DATAFILE));
+
+    }
 
     ASSERT_TRUE(ocr.Close());
 }

@@ -41,18 +41,18 @@ find_package(Qt4 REQUIRED)
 find_package(Boost 1.53.0 COMPONENTS regex locale filesystem)
 include_directories(${Boost_INCLUDE_DIRS})
 
-set(KEYWORD_TAGGING_SOURCES KeywordTaggingComponent.cpp KeywordTaggingComponent.h JSON.cpp JSONValue.cpp JSON.h JSONValue.h)
+set(KEYWORD_TAGGING_SOURCES KeywordTagging.cpp KeywordTagging.h JSON.cpp JSONValue.cpp JSON.h JSONValue.h)
 
 
 # Build library
-add_library(mpfKeywordTaggingComponent SHARED ${KEYWORD_TAGGING_SOURCES})
+add_library(mpfKeywordTagging SHARED ${KEYWORD_TAGGING_SOURCES})
 
 
-target_link_libraries(mpfKeywordTaggingComponent mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${Boost_LIBRARIES} ${LOG4CXX_LIBRARIES})
-configure_mpf_component(KeywordTaggingComponent TARGETS  mpfKeywordTaggingComponent EXTRA_LIB_PATHS "${extra_lib_dirs}")
+target_link_libraries(mpfKeywordTagging mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${Boost_LIBRARIES} ${LOG4CXX_LIBRARIES})
+configure_mpf_component(KeywordTagging TARGETS mpfKeywordTagging EXTRA_LIB_PATHS "${extra_lib_dirs}")
 
 add_subdirectory(test)
 
 # Build executable
 add_executable(sample_keyword_tagger sample_keyword_tagger.cpp)
-target_link_libraries(sample_keyword_tagger mpfKeywordTaggingComponent)
+target_link_libraries(sample_keyword_tagger mpfKeywordTagging)
