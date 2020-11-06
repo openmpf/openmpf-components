@@ -41,7 +41,6 @@
 #include "include/DarknetInterface.h"
 #include "Trackers.h"
 
-
 class DarknetDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
 public:
@@ -70,7 +69,6 @@ private:
     std::string gpu_darknet_lib_path_;
 
     MPF::COMPONENT::ModelsIniParser<ModelSettings> models_parser_;
-
 
     DarknetAsyncDl GetDarknetImpl(const MPF::COMPONENT::MPFVideoJob &job);
 
