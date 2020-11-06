@@ -158,24 +158,30 @@ bool containsProp(const std::string &exp_text, const std::vector<MPFImageLocatio
     return false;
 }
 
-bool assertSameText(const std::string &expected, const std::string &actual, log4cxx::LoggerPtr hw_logger_) {
+void assertSameText(const std::string &expected, const std::string &actual, log4cxx::LoggerPtr hw_logger_) {
 
+    bool sameLength = true;
     if (expected.length() != actual.length()) {
         std::string error_msg = "Expected and detected text are not the same. The expected text has a length of " +
                                 std::to_string(expected.length()) +
                                 ", but the actual text has a length of " +
                                 std::to_string(actual.length()) + " ." ;
         LOG4CXX_DEBUG(hw_logger_, error_msg);
-        return false;
+        sameLength = false;
     }
 
+    int first_diff = 0;
     for (int i = 0; i < actual.length(); i++) {
         if (expected[i] != actual[i]) {
             LOG4CXX_DEBUG(hw_logger_, "Expected and detected text are not the same. First differed at index " << i);
-            return false;
+            sameLength = false;
+            first_diff = i;
+            break;
         }
     }
-    return true;
+
+    ASSERT_TRUE(sameLength) << "Expected OCR to detect text: " << expected << "but detected: " << actual <<
+        "text first differs at index" << first_diff;
 }
 
 void assertInImage(const std::string &image_path, const std::string &expected_value,
@@ -560,7 +566,6 @@ TEST(TESSERACTOCR, OCRTest) {
 
     // Test basic text detection.
     // Ensure each test case produces expected text result.
-    // Originally used to test tag results, which have been transferred to the keyword tagging component.
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/text-demo.png", ocr, results, custom_properties));
     assertInImage("data/text-demo.png", "TESTING 123", results, "TEXT");
     assertNotInImage("data/text-demo.png", "Ponies", results, "TEXT");
@@ -572,44 +577,44 @@ TEST(TESSERACTOCR, OCRTest) {
                            "maintainer is Zdenko Podobny. For a\n"
                            "list of contributors see AUTHORS and\n"
                            "GitHub's log of contributors.";
-    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
     results.clear();
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-keyword.png", ocr, results, custom_properties));
     assertInImage("data/tags-keyword.png", "Passenger Passport", results, "TEXT");
     expected = "Passenger Passport";
-    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
     results.clear();
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-regex.png", ocr, results, custom_properties));
 
     expected = "financial code : 122-123-1234";
-    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
     results.clear();
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties));
     expected = "End Slide Text Text\n"
                "01/01/20\n"
                "Vehicle Finance-Panel";
-    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
     results.clear();
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties_disabled));
     expected = "End Slide Text Text\n"
                "01/01/20\n"
                "Vehicle Finance-Panel";
-    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
     results.clear();
 
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-regex-delimiter.png", ocr, results, custom_properties));
     expected = "financial code a[; ]b 122-123-1234";
-    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
     results.clear();
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/test-backslash.png", ocr, results, custom_properties));
     expected = "\\ SOME TEXT \\ a\\\\ \\\\b";
-    ASSERT_TRUE(assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_));
+    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
     results.clear();
 
     ASSERT_TRUE(ocr.Close());
