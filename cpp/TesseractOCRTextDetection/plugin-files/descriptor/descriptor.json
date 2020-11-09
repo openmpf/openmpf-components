@@ -290,6 +290,10 @@
         {
           "name": "TAGGING_FILE",
           "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
+        },
+        {
+          "name": "ROTATION_FILL_COLOR",
+          "value": "WHITE"
         }
       ]
     },
@@ -305,6 +309,10 @@
         {
           "name": "TESSERACT_PSM",
           "value": "11"
+        },
+        {
+          "name": "ROTATION_FILL_COLOR",
+          "value": "WHITE"
         }
       ]
     },
@@ -344,6 +352,10 @@
         {
           "name": "UNSTRUCTURED_TEXT_SCALE",
           "value": "3.2"
+        },
+        {
+          "name": "ROTATION_FILL_COLOR",
+          "value": "WHITE"
         }
       ]
     }
