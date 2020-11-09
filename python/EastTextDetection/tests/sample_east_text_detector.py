@@ -64,7 +64,7 @@ if __name__ == '__main__':
     )
     parser.add_argument('--max-side-length', type=int, default=-1)
     parser.add_argument('--confidence-threshold', type=float, default=0.8)
-    parser.add_argument('--merge-overlap-threshold', type=float, default=0.01)
+    parser.add_argument('--merge-overlap-threshold', type=float, default=0.0)
     parser.add_argument('--nms-min-overlap', type=float, default=0.1)
     parser.add_argument('--merge-max-text-height-difference', type=float, default=0.3)
     parser.add_argument('--merge-max-rotation-difference', type=float, default=10.0)
