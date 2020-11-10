@@ -362,6 +362,7 @@ class TestEast(unittest.TestCase):
             job_properties=dict(
                 MAX_SIDE_LENGTH='1280',
                 MERGE_MAX_TEXT_HEIGHT_DIFFERENCE='10',
+                MERGE_OVERLAP_THRESHOLD='0.01'
             ),
             media_properties={},
             feed_forward_location=None
