@@ -32,10 +32,10 @@
           "defaultValue": "-1"
         },
         {
-          "name": "MERGE_MIN_OVERLAP",
-          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the ratio between the area of intersection of two regions and the area of the smaller region is greater than or equal to this value, the boxes may be merged.",
+          "name": "MERGE_OVERLAP_THRESHOLD",
+          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the ratio between the area of intersection of two regions and the area of the smaller region is greater than this value, the boxes may be merged.",
           "type": "FLOAT",
-          "defaultValue": "0.01"
+          "defaultValue": "0.0"
         },
         {
           "name": "NMS_MIN_OVERLAP",
