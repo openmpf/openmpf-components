@@ -147,41 +147,27 @@ bool containsProp(const std::string &exp_text, const std::vector<MPFImageLocatio
         std::string text = locations[index].detection_properties.at(property);
         return text.find(exp_text) != std::string::npos;
     }
-    for (int i = 0; i < locations.size(); i++) {
-        if (locations[i].detection_properties.count(property) == 0) {
+    for (const auto & location : locations) {
+        if (location.detection_properties.count(property) == 0) {
             continue;
         }
-        std::string text = locations[i].detection_properties.at(property);
+        std::string text = location.detection_properties.at(property);
         if (text.find(exp_text) != std::string::npos)
             return true;
     }
     return false;
 }
 
-void assertSameText(const std::string &expected, const std::string &actual, log4cxx::LoggerPtr hw_logger_) {
-
-    bool sameLength = true;
-    if (expected.length() != actual.length()) {
-        std::string error_msg = "Expected and detected text are not the same. The expected text has a length of " +
-                                std::to_string(expected.length()) +
-                                ", but the actual text has a length of " +
-                                std::to_string(actual.length()) + " ." ;
-        LOG4CXX_DEBUG(hw_logger_, error_msg);
-        sameLength = false;
-    }
-
-    int first_diff = 0;
+void assertSameText(const std::string &expected, const std::string &actual) {
+    ASSERT_EQ(expected.length(), actual.length()) << "Expected and detected text are not the same."
+                            << " The expected text has a length of " << expected.length()
+                            << ", but the actual text has a length of " << actual.length() << ".";
     for (int i = 0; i < actual.length(); i++) {
         if (expected[i] != actual[i]) {
-            LOG4CXX_DEBUG(hw_logger_, "Expected and detected text are not the same. First differed at index " << i);
-            sameLength = false;
-            first_diff = i;
-            break;
+            FAIL() << "Expected OCR to detect \"" << expected << "\" text, but detected \"" << actual << "\" text."
+                   << " First differs at index " << i << ".";
         }
     }
-
-    ASSERT_TRUE(sameLength) << "Expected OCR to detect text: " << expected << "but detected: " << actual <<
-        "text first differs at index" << first_diff;
 }
 
 void assertInImage(const std::string &image_path, const std::string &expected_value,
@@ -198,9 +184,9 @@ void assertNotInImage(const std::string &image_path, const std::string &expected
 }
 
 void convert_results(std::vector<MPFImageLocation> &im_track, const std::vector<MPFGenericTrack> &gen_track) {
-    for (int i = 0; i < gen_track.size(); i++) {
+    for (const auto & i : gen_track) {
         MPFImageLocation image_location(0, 0, 1, 1);
-        image_location.detection_properties = gen_track[i].detection_properties;
+        image_location.detection_properties = i.detection_properties;
         im_track.push_back(image_location);
     }
 }
@@ -598,15 +584,6 @@ TEST(TESSERACTOCR, OCRTest) {
     std::vector<MPFImageLocation> results;
     ASSERT_TRUE(ocr.Init());
 
-    std::string run_dir = ocr.GetRunDirectory();
-    if (run_dir.empty()) {
-        run_dir = ".";
-    }
-    std::string plugin_path = run_dir + "/TesseractOCRTextDetection";
-
-    log4cxx::xml::DOMConfigurator::configure(plugin_path + "/config/Log4cxxConfig.xml");
-    log4cxx::LoggerPtr hw_logger_ = log4cxx::Logger::getLogger("TesseractOCRTextDetection");
-
     std::map<std::string, std::string> custom_properties = {{"ENABLE_OSD_AUTOMATION", "false"}};
     std::map<std::string, std::string> custom_properties_disabled = {{"ENABLE_OSD_AUTOMATION", "false"},
                                                                      {"FULL_REGEX_SEARCH", "false"}};
@@ -624,44 +601,44 @@ TEST(TESSERACTOCR, OCRTest) {
                            "maintainer is Zdenko Podobny. For a\n"
                            "list of contributors see AUTHORS and\n"
                            "GitHub's log of contributors.";
-    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
+    assertSameText(expected, results[0].detection_properties.at("TEXT"));
     results.clear();
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-keyword.png", ocr, results, custom_properties));
     assertInImage("data/tags-keyword.png", "Passenger Passport", results, "TEXT");
     expected = "Passenger Passport";
-    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
+    assertSameText(expected, results[0].detection_properties.at("TEXT"));
     results.clear();
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-regex.png", ocr, results, custom_properties));
 
     expected = "financial code : 122-123-1234";
-    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
+    assertSameText(expected, results[0].detection_properties.at("TEXT"));
     results.clear();
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties));
     expected = "End Slide Text Text\n"
                "01/01/20\n"
                "Vehicle Finance-Panel";
-    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
+    assertSameText(expected, results[0].detection_properties.at("TEXT"));
     results.clear();
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-keywordregex.png", ocr, results, custom_properties_disabled));
     expected = "End Slide Text Text\n"
                "01/01/20\n"
                "Vehicle Finance-Panel";
-    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
+    assertSameText(expected, results[0].detection_properties.at("TEXT"));
     results.clear();
 
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/tags-regex-delimiter.png", ocr, results, custom_properties));
     expected = "financial code a[; ]b 122-123-1234";
-    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
+    assertSameText(expected, results[0].detection_properties.at("TEXT"));
     results.clear();
 
     ASSERT_NO_FATAL_FAILURE(runImageDetection("data/test-backslash.png", ocr, results, custom_properties));
     expected = "\\ SOME TEXT \\ a\\\\ \\\\b";
-    assertSameText(expected, results[0].detection_properties.at("TEXT"), hw_logger_);
+    assertSameText(expected, results[0].detection_properties.at("TEXT"));
     results.clear();
 
     ASSERT_TRUE(ocr.Close());
