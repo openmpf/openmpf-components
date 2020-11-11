@@ -265,6 +265,12 @@
           "description": "Specifies minimum text confidence required to skip second OCR pass with 180 degree rotation. Negative values will result in ROTATE_AND_DETECT performing two pass OCR regardless of text confidence from the initial pass.",
           "type": "DOUBLE",
           "defaultValue": "95.0"
+        },
+        {
+          "name": "ROTATION_FILL_COLOR",
+          "description": "The fill color to use when doing non-orthogonal rotation. Must either be BLACK or WHITE. When doing a non-orthogonal rotation, some pixels will need to be included that were not in the original image. This property controls the color of those undefined pixels.",
+          "type": "STRING",
+          "defaultValue": "WHITE"
         }
       ]
     }

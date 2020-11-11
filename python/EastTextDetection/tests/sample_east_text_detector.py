@@ -64,7 +64,7 @@ if __name__ == '__main__':
     )
     parser.add_argument('--max-side-length', type=int, default=-1)
     parser.add_argument('--confidence-threshold', type=float, default=0.8)
-    parser.add_argument('--merge-min-overlap', type=float, default=0.01)
+    parser.add_argument('--merge-overlap-threshold', type=float, default=0.0)
     parser.add_argument('--nms-min-overlap', type=float, default=0.1)
     parser.add_argument('--merge-max-text-height-difference', type=float, default=0.3)
     parser.add_argument('--merge-max-rotation-difference', type=float, default=10.0)
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     properties = dict(
         MAX_SIDE_LENGTH=str(args.max_side_length),
         CONFIDENCE_THRESHOLD=str(args.confidence_threshold),
-        MERGE_MIN_OVERLAP=str(args.merge_min_overlap),
+        MERGE_OVERLAP_THRESHOLD=str(args.merge_overlap_threshold),
         NMS_MIN_OVERLAP=str(args.nms_min_overlap),
         MERGE_MAX_TEXT_HEIGHT_DIFFERENCE=str(args.merge_max_text_height_difference),
         MERGE_MAX_ROTATION_DIFFERENCE=str(args.merge_max_rotation_difference),
