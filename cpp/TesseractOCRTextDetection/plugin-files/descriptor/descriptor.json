@@ -277,6 +277,12 @@
           "description": "Toggles REGEX search to include all matching trigger words associated with the regex patterns for each tag. When disabled, only the first instance of the first matching trigger word for each tag category is included.",
           "type": "BOOLEAN",
           "defaultValue": "true"
+        },
+        {
+          "name": "ROTATION_FILL_COLOR",
+          "description": "The fill color to use when doing non-orthogonal rotation. Must either be BLACK or WHITE. When doing a non-orthogonal rotation, some pixels will need to be included that were not in the original image. This property controls the color of those undefined pixels.",
+          "type": "STRING",
+          "defaultValue": "WHITE"
         }
       ]
     }
