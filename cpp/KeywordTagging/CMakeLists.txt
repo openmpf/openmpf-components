@@ -24,20 +24,35 @@
 # limitations under the License.                                            #
 #############################################################################
 
+cmake_minimum_required(VERSION 3.6)
+project(KeywordTagging)
+set(CMAKE_CXX_STANDARD 11)
+include(../ComponentSetup.cmake)
 
-import setuptools
+set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
+message("Package in ${PACKAGE_DIR}")
 
-setuptools.setup(
-    name='AzureOcrTextDetection',
-    version='5.0',
-    packages=setuptools.find_packages(exclude=('*test*',)),
-    install_requires=(
-        'mpf_component_api>=5.0',
-        'mpf_component_util>=5.0',
-        'opencv-python>=3.3',
-        'numpy>=1.11'
-    ),
-    entry_points={
-        'mpf.exported_component': 'component = acs_ocr_component.acs_ocr_component:AcsOcrComponent'
-    }
-)
+find_package(mpfComponentInterface REQUIRED)
+find_package(mpfDetectionComponentApi REQUIRED)
+find_package(mpfComponentUtils REQUIRED)
+find_package(OpenCV 3.4.7 EXACT REQUIRED PATHS /opt/opencv-3.4.7 COMPONENTS opencv_core)
+find_package(Qt4 REQUIRED)
+
+find_package(Boost 1.53.0 COMPONENTS regex locale filesystem)
+include_directories(${Boost_INCLUDE_DIRS})
+
+set(KEYWORD_TAGGING_SOURCES KeywordTagging.cpp KeywordTagging.h JSON.cpp JSONValue.cpp JSON.h JSONValue.h)
+
+
+# Build library
+add_library(mpfKeywordTagging SHARED ${KEYWORD_TAGGING_SOURCES})
+
+
+target_link_libraries(mpfKeywordTagging mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${Boost_LIBRARIES} ${LOG4CXX_LIBRARIES})
+configure_mpf_component(KeywordTagging TARGETS mpfKeywordTagging EXTRA_LIB_PATHS "${extra_lib_dirs}")
+
+add_subdirectory(test)
+
+# Build executable
+add_executable(sample_keyword_tagger sample_keyword_tagger.cpp)
+target_link_libraries(sample_keyword_tagger mpfKeywordTagging)

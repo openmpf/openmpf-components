@@ -24,20 +24,32 @@
 # limitations under the License.                                            #
 #############################################################################
 
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-import setuptools
+COPY . .
 
-setuptools.setup(
-    name='AzureOcrTextDetection',
-    version='5.0',
-    packages=setuptools.find_packages(exclude=('*test*',)),
-    install_requires=(
-        'mpf_component_api>=5.0',
-        'mpf_component_util>=5.0',
-        'opencv-python>=3.3',
-        'numpy>=1.11'
-    ),
-    entry_points={
-        'mpf.exported_component': 'component = acs_ocr_component.acs_ocr_component:AcsOcrComponent'
-    }
-)
+RUN build-component.sh
+
+ARG RUN_TESTS=false
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./KeywordTaggingTest; fi
+
+
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
+
+ENV COMPONENT_LOG_NAME keyword-tagging.log
+
+COPY --from=build_component $BUILD_DIR/plugin/KeywordTagging \
+                            $PLUGINS_DIR/KeywordTagging
+
+COPY --from=build_component $BUILD_DIR/libmpfKeywordTagging.so \
+                            $PLUGINS_DIR/KeywordTagging/lib/
+
+
+LABEL org.label-schema.license="Apache 2.0" \
+      org.label-schema.name="OpenMPF Keyword Tagging" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
+      org.label-schema.vendor="MITRE"

@@ -24,20 +24,25 @@
 # limitations under the License.                                            #
 #############################################################################
 
+cmake_minimum_required(VERSION 3.6)
+project(keyword-tagging-tests)
 
-import setuptools
+set(CMAKE_CXX_STANDARD 11)
 
-setuptools.setup(
-    name='AzureOcrTextDetection',
-    version='5.0',
-    packages=setuptools.find_packages(exclude=('*test*',)),
-    install_requires=(
-        'mpf_component_api>=5.0',
-        'mpf_component_util>=5.0',
-        'opencv-python>=3.3',
-        'numpy>=1.11'
-    ),
-    entry_points={
-        'mpf.exported_component': 'component = acs_ocr_component.acs_ocr_component:AcsOcrComponent'
-    }
-)
+find_package(GTest)
+if (${GTEST_FOUND})
+    enable_testing()
+    find_package(GTest REQUIRED)
+    find_package(mpfComponentTestUtils REQUIRED)
+
+
+    include_directories(..)
+    add_executable(KeywordTaggingTest test_keyword_tagging.cpp)
+    target_link_libraries(KeywordTaggingTest mpfKeywordTagging mpfComponentTestUtils GTest::GTest GTest::Main)
+
+    add_test(NAME KeywordTaggingTest COMMAND KeywordTaggingTest)
+
+    # Install test images and videos.
+    file(COPY data/ DESTINATION data)
+    file(COPY config/ DESTINATION config)
+endif()
