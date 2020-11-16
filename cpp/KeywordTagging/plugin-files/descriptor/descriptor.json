@@ -13,8 +13,7 @@
   ],
   "algorithm": {
     "name": "KEYWORDTAGGING",
-    "description": "Performs keyword tagging on text.",
-    "detectionType": "TEXT",
+    "description": "Performs keyword tagging on text and transcripts.",
     "actionType": "DETECTION",
     "requiresCollection": {
       "states": []

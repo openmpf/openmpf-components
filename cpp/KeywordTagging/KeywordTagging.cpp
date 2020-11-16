@@ -395,7 +395,7 @@ bool KeywordTagging::Close() {
 }
 
 string KeywordTagging::GetDetectionType() {
-    return "KEYWORD";
+    return "TEXT";
 }
 
 vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) {
