@@ -1,0 +1,10 @@
+Testing 123:
+
+This package contains an OCR engine -
+libtesseract and a command line
+program - tesseract.
+
+The lead developer is Ray Smith. The
+maintainer is Zdenko Podobny. For a
+lsit of contributors see AUTHORS and
+GitHub's log of contributors.

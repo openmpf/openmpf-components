@@ -55,7 +55,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
 
         # Get the threshold values for filtering bounding boxes
         min_confidence = float(props.get('CONFIDENCE_THRESHOLD','0.8'))
-        min_merge_overlap = float(props.get('MERGE_MIN_OVERLAP','0.01'))
+        overlap_threshold = float(props.get('MERGE_OVERLAP_THRESHOLD','0.0'))
         min_nms_overlap = float(props.get('NMS_MIN_OVERLAP','0.1'))
         max_height_delta = float(props.get('MERGE_MAX_TEXT_HEIGHT_DIFFERENCE','0.3'))
         max_rot_delta = float(props.get('MERGE_MAX_ROTATION_DIFFERENCE','10.0'))
@@ -66,19 +66,21 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         merge_on = (props.get('MERGE_REGIONS','TRUE').lower() == 'true')
         vsupp_on = (props.get('SUPPRESS_VERTICAL','TRUE').lower() == 'true')
 
-        temp_padding = float(props.get('TEMPORARY_PADDING','0.1'))
+        temp_padding_x = float(props.get('TEMPORARY_PADDING_X','0.1'))
+        temp_padding_y = float(props.get('TEMPORARY_PADDING_Y','0.1'))
         final_padding = float(props.get('FINAL_PADDING','0.0'))
 
         return dict(
             max_side_len=max_side_len,
             batch_size=batch_size,
-            temp_padding=temp_padding,
+            temp_padding_x=temp_padding_x,
+            temp_padding_y=temp_padding_y,
             final_padding=final_padding,
             rotate_on=rotate_on,
             merge_on=merge_on,
             suppress_vertical=vsupp_on,
             min_confidence=min_confidence,
-            min_merge_overlap=min_merge_overlap,
+            overlap_threshold=overlap_threshold,
             min_nms_overlap=min_nms_overlap,
             max_height_delta=max_height_delta,
             max_rot_delta=max_rot_delta,
