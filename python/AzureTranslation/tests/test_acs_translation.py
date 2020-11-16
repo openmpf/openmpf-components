@@ -187,14 +187,16 @@ class TestAcsTranslation(unittest.TestCase):
 
     def test_no_feed_forward_location(self):
         job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {})
-        results = list(AcsTranslationComponent.get_detections_from_image(job))
-        self.assertEqual(0, len(results))
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(AcsTranslationComponent.get_detections_from_image(job))
+        self.assertEqual(mpf.DetectionError.UNSUPPORTED_DATA_TYPE, cm.exception.error_code)
 
 
     def test_no_feed_forward_track(self):
         job = mpf.VideoJob('test', 'test.jpg', 0, 1, get_test_properties(), {})
-        results = list(AcsTranslationComponent.get_detections_from_video(job))
-        self.assertEqual(0, len(results))
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(AcsTranslationComponent.get_detections_from_video(job))
+        self.assertEqual(mpf.DetectionError.UNSUPPORTED_DATA_TYPE, cm.exception.error_code)
 
 
     def test_reports_error_when_server_error(self):

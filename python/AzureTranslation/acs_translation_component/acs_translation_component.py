@@ -50,9 +50,9 @@ class AcsTranslationComponent:
             log.info(f'[{job.job_name}] Received video job: {job}')
             ff_track = job.feed_forward_track
             if ff_track is None:
-                log.warning(f'[{job.job_name}] No feed forward track provided. '
-                            f'Returning no detections.')
-                return ()
+                raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
+                    f'[{job.job_name}] Component can only process feed forward jobs, '
+                    'but no feed forward track provided. ')
 
             tc = TranslationClient(job.job_properties)
             tc.add_translations(ff_track.detection_properties)
@@ -89,9 +89,9 @@ def get_detections_from_non_composite(
     try:
         log.info(f'[{job.job_name}] Received job: {job}')
         if ff_track is None:
-            log.warning(f'[{job.job_name}] No feed forward track provided. '
-                        f'Returning no detections.')
-            return ()
+            raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
+                f'[{job.job_name}] Component can only process feed forward jobs, '
+                'but no feed forward track provided. ')
 
         tc = TranslationClient(job.job_properties)
         tc.add_translations(ff_track.detection_properties)
