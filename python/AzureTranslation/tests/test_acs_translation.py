@@ -93,7 +93,8 @@ class TestAcsTranslation(unittest.TestCase):
                 self.assertEqual(CHINESE_SAMPLE_TEXT, result.detection_properties['TEXT'])
 
                 self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
-                                 result.detection_properties['TEXT (TRANSLATED TO EN)'])
+                                 result.detection_properties['TEXT TRANSLATION'])
+                self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
 
                 self.assertEqual('zh-Hans', result.detection_properties['TEXT (SOURCE LANG)'])
                 self.assertAlmostEqual(
@@ -145,7 +146,8 @@ class TestAcsTranslation(unittest.TestCase):
 
         self.assertEqual(CHINESE_SAMPLE_TEXT, result.detection_properties['TEXT'])
         self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.detection_properties['TEXT (TRANSLATED TO EN)'])
+                         result.detection_properties['TEXT TRANSLATION'])
+        self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
         self.assertEqual('zh-Hans', result.detection_properties['TEXT (SOURCE LANG)'])
         self.assertAlmostEqual(
             1.0, float(result.detection_properties['TEXT (SOURCE LANG CONFIDENCE)']))
@@ -154,7 +156,9 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(CHINESE_SAMPLE_TEXT,
                          result.frame_locations[0].detection_properties['TEXT'])
         self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.frame_locations[0].detection_properties['TEXT (TRANSLATED TO EN)'])
+                         result.frame_locations[0].detection_properties['TEXT TRANSLATION'])
+        self.assertEqual('EN',
+                         result.frame_locations[0].detection_properties['TRANSLATION TO LANGUAGE'])
         self.assertEqual('zh-Hans',
                          result.frame_locations[0].detection_properties['TEXT (SOURCE LANG)'])
         self.assertAlmostEqual(
@@ -165,7 +169,9 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(SPANISH_SAMPLE_TEXT,
                          result.frame_locations[1].detection_properties['TEXT'])
         self.assertEqual(SPANISH_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.frame_locations[1].detection_properties['TEXT (TRANSLATED TO EN)'])
+                         result.frame_locations[1].detection_properties['TEXT TRANSLATION'])
+        self.assertEqual('EN',
+                         result.frame_locations[1].detection_properties['TRANSLATION TO LANGUAGE'])
         self.assertEqual('es',
                          result.frame_locations[1].detection_properties['TEXT (SOURCE LANG)'])
         self.assertAlmostEqual(
@@ -243,7 +249,8 @@ class TestAcsTranslation(unittest.TestCase):
             result = AcsTranslationComponent.get_detections_from_image(job)[0]
 
         self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.detection_properties['TEXT (TRANSLATED TO EN)'])
+                         result.detection_properties['TEXT TRANSLATION'])
+        self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
 
         self.assertIsNotNone(self.get_request_body())
 
@@ -266,12 +273,13 @@ class TestAcsTranslation(unittest.TestCase):
 
         self.assertEqual(CHINESE_SAMPLE_TEXT, result.detection_properties['TEXT'])
         self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.detection_properties['TEXT (TRANSLATED TO EN)'])
+                         result.detection_properties['TEXT TRANSLATION'])
+        self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
 
 
         self.assertEqual(SPANISH_SAMPLE_TEXT, result.detection_properties['MORE_TEXT'])
         self.assertEqual(SPANISH_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.detection_properties['MORE_TEXT (TRANSLATED TO EN)'])
+                         result.detection_properties['MORE_TEXT TRANSLATION'])
 
         request_body1 = self.get_request_body()
         self.assertEqual(1, len(request_body1))
@@ -303,12 +311,13 @@ class TestAcsTranslation(unittest.TestCase):
 
         self.assertEqual(CHINESE_SAMPLE_TEXT, result.detection_properties['TEXT'])
         self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.detection_properties['TEXT (TRANSLATED TO EN)'])
+                         result.detection_properties['TEXT TRANSLATION'])
+        self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
 
 
         self.assertEqual(CHINESE_SAMPLE_TEXT, result.detection_properties['MORE_TEXT'])
         self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.detection_properties['MORE_TEXT (TRANSLATED TO EN)'])
+                         result.detection_properties['MORE_TEXT TRANSLATION'])
 
         request_body = self.get_request_body()
         self.assertEqual(1, len(request_body))
@@ -328,10 +337,10 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(1, len(results))
 
         result = results[0]
-        self.assertEqual(eng_text,
-                         result.detection_properties['TEXT'])
+        self.assertEqual(eng_text, result.detection_properties['TEXT'])
         self.assertEqual('Вы говорите по-англиский?',
-                         result.detection_properties['TEXT (TRANSLATED TO RU)'])
+                         result.detection_properties['TEXT TRANSLATION'])
+        self.assertEqual('RU', result.detection_properties['TRANSLATION TO LANGUAGE'])
 
         request_body = self.get_request_body()
         self.assertEqual(1, len(request_body))
@@ -435,12 +444,13 @@ class TestAcsTranslation(unittest.TestCase):
         detection_props = dict(TEXT=text)
         TranslationClient(get_test_properties()).add_translations(detection_props)
 
-        self.assertEqual(4, len(detection_props))
+        self.assertEqual(5, len(detection_props))
         self.assertEqual(text, detection_props['TEXT'])
 
         expected_translation = (TEST_DATA / 'break-sentence/art-war-translation.txt') \
             .read_text().strip()
-        self.assertEqual(expected_translation, detection_props['TEXT (TRANSLATED TO EN)'])
+        self.assertEqual(expected_translation, detection_props['TEXT TRANSLATION'])
+        self.assertEqual('EN', detection_props['TRANSLATION TO LANGUAGE'])
 
         self.assertEqual('zh-Hant', detection_props['TEXT (SOURCE LANG)'])
         self.assertAlmostEqual(1.0, float(detection_props['TEXT (SOURCE LANG CONFIDENCE)']))
@@ -632,10 +642,11 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(1, len(results))
         result = results[0]
 
-        self.assertEqual(2, len(result.detection_properties))
+        self.assertEqual(3, len(result.detection_properties))
         self.assertEqual(CHINESE_SAMPLE_TEXT, result.detection_properties['TEXT'])
         self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.detection_properties['TEXT (TRANSLATED TO EN)'])
+                         result.detection_properties['TEXT TRANSLATION'])
+        self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
 
         request_url, request_body = self.get_request()
         self.assertEqual(1, len(request_body))
@@ -663,7 +674,8 @@ class TestAcsTranslation(unittest.TestCase):
         result = results[0]
 
         self.assertEqual(input_text, result.detection_properties['TEXT'])
-        self.assertEqual(input_text, result.detection_properties['TEXT (TRANSLATED TO EN)'])
+        self.assertEqual(input_text, result.detection_properties['TEXT TRANSLATION'])
+        self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
 
         self.assertEqual('ja', result.detection_properties['TEXT (SOURCE LANG)'])
         self.assertAlmostEqual(
