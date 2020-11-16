@@ -16,117 +16,29 @@ document file formats.
 Users may set the language of each track using the `TESSERACT_LANGUAGE` parameter
 as well as adjust image preprocessing settings for text extraction.
 
-# Text Tagging
-
-All text extracted from an image can also be tagged using regular expression (regex) patterns
-specified in a JSON tagging file. By default this file is located in the
-`config` folder as `text-tags.json`. Users can provide an alternate path to a
-tagging file of their choice. English and foreign regex patterns following UTF-8
-encoding are supported. Regex searches are case-insensitive.
-
-In the tagging file, users can specify regex patterns using the [Boost library
-regex operators](https://cs.brown.edu/~jwicks/boost/libs/regex/doc/syntax.html).
-Of note, the `\W` non-word operator and `\b` word-break operator may prove useful.
-Note that these must be escaped as `\\W` and `\\b` in JSON.
-
-Regex tags in the JSON tagging file can be entered as follows:
-
-```
-    "TAGS_BY_REGEX": {
-        "vehicle": [
-            {"pattern": "auto"},
-            {"pattern": "(\\b)bike(\\b)"},
-            {"pattern": "(\\b)bus(\\b)", "caseSensitive": true}
-        ]
-        "next-tag-category" : [
-            ...
-        ]
-    }
-```
-
-Where each `"pattern"` specifies the regex used for tagging.
-To enable case-sensitive regex tag search, set the `"caseSensitive"` flag to true for each
-regex pattern that requires case sensitivity. For example:
-
-```
-    {"pattern": "Financial", "caseSensitive": true}
-```
-
-Will search for words containing "Financial" with the first letter capitalized.
-On the other hand the following patterns:
-
-```
-    {"pattern" :"Financial", "caseSensitive": false}
-    {"pattern" :"Financial"}
-```
-
-Will search for "financial", "Financial", "FINANCIAL", and any other variation
-of "financial" in terms of capitalization.
-
-Phrases containing words separated by **zero** or more whitespace and/or
-punctuation characters can be represented using `\\W*`. For example, the
-`Hello(\\W*)World` regex pattern will match:
-
-* "Hello World"
-* "HelloWorld"
-* "Hello.World"
-* "Hello. &$#World"
-
-Phrases containing words separated by **one** or more whitespace and/or
-punctuation characters can be represented using `\\W+`.
-
-For example, the `Hello(\\W+)World` regex pattern will match:
-
-* "Hello World"
-* "Hello.World"
-* "Hello. &$#World"
-
-But not:
-
-* "HelloWorld"
-
-Adding `\\b` to the start or end of a regex pattern will reject any word
-characters attached to the start or end of the pattern being searched. For
-example, `(\\b)search(\\W+)this(\\W+)phrase(\\b)` will match:
-
-* "search this phrase"
-* "search  this, phrase"
-
-But not:
-
-* "research this phrase"
-* "search this phrasejunk"
-
-Removing the leading and trailing `\\b` will allow these phrases to be matched, excluding the extraneous leading/trailing characters.
-
-To escape and search for special regex characters use double slashes `\\` in front of each special character.
-To escape and search for a single backslash in text, users have to specify `\\\\` as the regex pattern.
-
-For example, to search for periods we use `\\.` rather than `.`, so the regex pattern becomes `(\\b)end(\\W+)of(\\W+)a(\\W+)sentence\\.`. Note that the `.` symbol is typically used in regex to match any character, which is why we use `\\.` instead.
-
-The OCR'ed text will be stored in the `TEXT` output property. Each detected tag will be stored in `TAGS`, separated by semicolons. The substring(s) that triggered each tag will be stored in `TRIGGER_WORDS`. For each trigger word the substring index range relative to the `TEXT` output will be stored in `TRIGGER_WORDS_OFFSET`. Because the same trigger word can be encountered multiple times in the `TEXT` output, the results are organized as follows:
-
-* `TRIGGER_WORDS`: Each distinct trigger word is separated by a semicolon followed by a space. For example: `TRIGGER_WORDS=trigger1; trigger2`
-    * Because semicolons can be part of the trigger word itself, those semicolons will be encapsulated in brackets. For example, `detected trigger with a ;` in the OCR'ed `TEXT` is reported as `TRIGGER_WORDS=detected trigger with a [;]; some other trigger`.
-* `TRIGGER_WORDS_OFFSET`: Each group of indexes, referring to the same trigger word reported in sequence, is separated by a semicolon followed by a space. Indexes within a single group are separated by commas.
-    * Example `TRIGGER_WORDS=trigger1; trigger2`, `TRIGGER_WORDS_OFFSET=0-5, 6-10; 12-15`, means that `trigger1` occurs twice in the text at the index ranges 0-5 and 6-10, and `trigger2` occurs at index range 12-15.
-
-Note that all `TRIGGER_WORD` results are trimmed of leading and trailing whitespace, regardless of the regex pattern used. The respective `TRIGGER_WORDS_OFFSET` indexes refer to the trimmed substrings.
-
 # Tessdata Models
 
 Language models supported by Tesseract are stored by default in
-`$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata` directory and script
-models are stored in `tessdata/script`. Users can set a new tessdata directory
-by modifying the `MODELS_DIR_PATH` job property. Once set, the component will look
-for tessdata files in `[MODELS_DIR_PATH]/TesseractOCRTextDetection/tessdata`.
+`$MPF_HOME/plugins/TesseractOCRTextDetection/tessdata` directory and script models
+are stored in `tessdata/script` subdirectory. Users can set a new tessdata directory by
+modifying the `MODELS_DIR_PATH` and `TESSDATA_MODELS_SUBDIRECTORY` job properties. Once set, 
+the component will look for tessdata files in `<MODELS_DIR_PATH>/<TESSDATA_MODELS_SUBDIRECTORY>`.
+
+Please note that existing models will be cached by the component using the model's language, 
+`MODELS_DIR_PATH`, and `TESSDATA_MODELS_SUBDIRECTORY` as the identifier. Updating `MODELS_DIR_PATH` 
+or `TESSDATA_MODELS_SUBDIRECTORY` in a subsequent job run will result in new language models placed 
+into the cache.
+
+If the contents of `<MODELS_DIR_PATH>/<TESSDATA_MODELS_SUBDIRECTORY>` are modified after the
+Tesseract Component has been started, a cached model based on the previous contents will be used. 
+To get the Tesseract Component to recognize the changed files, it must be restarted.
 
 By default, the component will first check for models in the `MODELS_DIR_PATH`
-followed by the default tessdata path. Please ensure that any language models
-that run together are stored together in the same directory (i.e. while running
-`eng+bul`, both `eng.traineddata` and `bul.traineddata` should be stored
-together in at least one specified directory, while running `eng,bul` the models
-can be stored separately).
+followed by the default tessdata `TESSDATA_MODELS_SUBDIRECTORY` path. Please ensure
+that any language models that run together are stored together in the same directory
+(i.e. while running `eng+bul`, both `eng.traineddata` and `bul.traineddata` should
+be stored together in at least one specified directory, while running `eng,bul`
+the models can be stored separately).
 
 Additional tessdata models can then be added to the specified tessdata folder to
 expand supported languages and scripts.
@@ -184,7 +96,7 @@ As well as the script model file for:
 * Latin (`script/Latin`)
 
 Note the OSD language file (`osd.traindata`) is for extraction of script orientation rather than language.
-Users may download additional language/script models from https://github.com/tesseract-ocr/tessdata and place them in the component's `tessdata` directory or `[MODELS_DIR_PATH]/TesseractOCRTextDetection/tessdata`.
+Users may download additional language/script models from https://github.com/tesseract-ocr/tessdata and place them in the component's `tessdata` directory or `[MODELS_DIR_PATH]/[TESSDATA_MODELS_SUBDIRECTORY]`.
 During processing, if the OSD model detects a certain language but the corresponding language model is missing from the component's `tessdata` directory, then that language will be reported in the `MISSING_LANGUAGE_MODELS` output parameter.
 When all OSD-detected language models are missing in the `tessdata` directory, the component will default to running the `TESSERACT_LANGUAGE` model instead.
 Please note that the job will fail instead if any models specified in `TESSERACT_LANGUAGE` are missing.

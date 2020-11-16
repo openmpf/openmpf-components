@@ -26,23 +26,12 @@
           "defaultValue": "-2"
         },
         {
-          "name": "TAGGING_FILE",
-          "description": "Name of a JSON file (in the plugin's config folder) that describes a tag hierarchy to be used on the full text returned from Tika text detection.",
-          "type": "STRING",
-          "defaultValue": "$MPF_HOME/plugins/TikaTextDetection/config/text-tags.json"
-        },
-        {
           "name": "STORE_METADATA",
           "description": "Specifies whether or not to store metadata as a separate track detection.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
-        {
-          "name": "FULL_REGEX_SEARCH",
-          "description": "Toggles REGEX search to include all matching trigger words associated with the regex patterns for each tag. When disabled, only the first instance of the first matching trigger word for each tag category is included.",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
-        },
+
         {
           "name": "LIST_ALL_PAGES",
           "description": "Specifies whether or not to store each page as a track, even if no text is extracted.",
@@ -82,6 +71,14 @@
       "description": "Performs Tika text detection.",
       "tasks": [
         "TIKA TEXT DETECTION TASK"
+      ]
+    },
+    {
+      "name": "TIKA TEXT DETECTION WITH KEYWORD TAGGING PIPELINE",
+      "description": "Performs Tika text detection and keyword tagging.",
+      "tasks": [
+        "TIKA TEXT DETECTION TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
     }
   ]

@@ -26,17 +26,16 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
+ARG MODELS_REGISTRY=openmpf/
+
+FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:5.0 as models
+
+
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-RUN yum -y install vim mlocate git openssl-devel wget curl-devel \
-&& mkdir -p /home/mpf/component_build/plugin/TrtisDetection/models/ip_irv2_coco/1 \
-&& wget --load-cookies /tmp/cookies.txt \
-"https://docs.google.com/uc?export=download&confirm=$(\
-wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate \
-'https://docs.google.com/uc?export=download&id=1EVYe2RHs7g2A8E2KLjVUXp-TV_ndjdtn' -O- \
-| sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1EVYe2RHs7g2A8E2KLjVUXp-TV_ndjdtn" \
--O /home/mpf/component_build/plugin/TrtisDetection/models/ip_irv2_coco/1/model.graphdef \
-&& rm -rf /tmp/cookies.txt
+RUN yum -y install git openssl-devel curl-devel \
+    && yum clean all \
+    && rm -rf /var/cache/yum/*
 
 # Install cares, protobuf, zlib, gRPC
 WORKDIR /tmp
@@ -76,19 +75,19 @@ RUN git clone -b v1.20.0 https://github.com/grpc/grpc  && cd grpc && git submodu
 
 # Install AWS SDK for C++ so we can use S3 storage.
 # Do this before installing newer curl.
-RUN cd /tmp/ \
-&& git clone https://github.com/aws/aws-sdk-cpp.git aws-sdk-cpp \
-&& mkdir -p /tmp/aws-sdk-cpp/build \
-&& cd /tmp/aws-sdk-cpp/build \
-&& cmake3 -DCMAKE_BUILD_TYPE=Release \
-         -DBUILD_ONLY="s3" \
-         -DCURL_DIR=/usr/lib64/ \
-         -DCMAKE_C_FLAGS="-Wno-unused-variable -Wno-unused-parameter" \
-         -DCMAKE_CXX_FLAGS="-Wno-unused-variable -Wno-unused-parameter" .. \
-&& make -j`nproc` \
-&& make install \
-&& cd /tmp/ \
-&& rm -fr /tmp/aws-sdk-cpp
+RUN mkdir /tmp/aws-sdk-cpp \
+    && curl --location 'https://github.com/aws/aws-sdk-cpp/archive/1.8.48.tar.gz' \
+        | tar --extract --gzip \
+    && cd aws-sdk-cpp-1.8.48 \
+    && mkdir build \
+    && cd build \
+    && cmake3 -DCMAKE_BUILD_TYPE=Release \
+             -DBUILD_ONLY="s3" \
+             -DCURL_DIR=/usr/lib64/ \
+             -DCMAKE_C_FLAGS="-Wno-unused-variable -Wno-unused-parameter" \
+             -DCMAKE_CXX_FLAGS="-Wno-unused-variable -Wno-unused-parameter" .. \
+    && make --jobs "$(nproc)" install \
+    && rm --recursive /tmp/aws-sdk-cpp
 
 # Install curl
 # Newer version needed for TRTIS.
@@ -128,6 +127,9 @@ RUN cd /tmp/ \
 ENV request_DIR=/root/trtis
 
 WORKDIR /home/mpf/component_src
+
+COPY --from=models /models/model.graphdef \
+        $BUILD_DIR/plugin/TrtisDetection/models/ip_irv2_coco/1/model.graphdef
 
 COPY . .
 

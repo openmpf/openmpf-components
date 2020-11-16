@@ -59,6 +59,14 @@
         "SPHINX SPEECH DETECTION TASK",
         "OCV GENERIC MARKUP TASK"
       ]
+    },
+    {
+      "name": "SPHINX SPEECH DETECTION WITH KEYWORD TAGGING PIPELINE",
+      "description": "Performs Sphinx speech detection and keyword tagging.",
+      "tasks": [
+        "SPHINX SPEECH DETECTION TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
+      ]
     }
   ]
 }

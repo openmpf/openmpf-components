@@ -31,7 +31,6 @@ setuptools.setup(
     name='AzureOcrTextDetection',
     version='5.1',
     packages=setuptools.find_packages(exclude=('*test*',)),
-    package_data={'': ['text-tags.json']},
     install_requires=(
         'mpf_component_api>=5.1',
         'mpf_component_util>=5.1',

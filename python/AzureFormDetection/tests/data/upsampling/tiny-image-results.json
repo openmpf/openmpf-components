@@ -1,0 +1,28 @@
+{
+    "status": "succeeded",
+    "createdDateTime": "2020-09-04T20:37:01Z",
+    "lastUpdatedDateTime": "2020-09-04T20:37:06Z", 
+    "analyzeResult": 
+    {"version": "2.0.0",
+        "readResults": [
+            {"page": 1,
+            "language": "en", "angle": 0, "width": 1020, "height": 50, "unit": "pixel",
+            "lines": [
+                {"boundingBox": [28, 5, 629, 5, 629, 32, 28, 32],
+                    "text": "It was the best of times, it was the worst of times",
+                    "words": [
+                        {"boundingBox": [28, 6, 44, 6, 45, 33, 29, 33], "text": "It", "confidence": 0.908},
+                        {"boundingBox": [50, 6, 103, 6, 103, 33, 50, 33], "text": "was", "confidence": 0.953},
+                        {"boundingBox": [108, 6, 149, 6, 150, 33, 108, 33], "text": "the", "confidence": 0.958},
+                        {"boundingBox": [154, 6, 211, 6, 212, 33, 155, 33], "text": "best", "confidence": 0.958},
+                        {"boundingBox": [216, 6, 240, 6, 241, 33, 217, 33], "text": "of", "confidence": 0.958},
+                        {"boundingBox": [246, 6, 323, 6, 323, 33, 246, 33], "text": "times,", "confidence": 0.958},
+                        {"boundingBox": [328, 6, 345, 6, 346, 33, 329, 33], "text": "it", "confidence": 0.959},
+                        {"boundingBox": [351, 6, 404, 6, 404, 33, 351, 33], "text": "was", "confidence": 0.958},
+                        {"boundingBox": [409, 6, 450, 6, 451, 33, 409, 33], "text": "the", "confidence": 0.849},
+                        {"boundingBox": [455, 6, 526, 6, 526, 33, 456, 33], "text": "worst", "confidence": 0.958},
+                        {"boundingBox": [531, 6, 555, 6, 556, 33, 532, 33], "text": "of", "confidence": 0.958},
+                        {"boundingBox": [560, 5, 628, 5, 629, 32, 561, 33], "text": "times", "confidence": 0.959}]}]}],
+        "pageResults": [{"page": 1, "tables": []}]
+    }
+}

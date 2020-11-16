@@ -154,13 +154,16 @@ def iloc_to_quad(ilocs):
 
     return quads
 
-def nms(rboxes, scores, temp_padding, final_padding, min_nms_overlap):
+def nms(rboxes, scores, temp_padding_x, temp_padding_y, final_padding,
+        min_nms_overlap):
     """ Perform Non-Maximum Suppression (NMS) on the given QUAD-formatted
         bounding boxes.
     """
     # Add temporary padding
     padded_rboxes = rboxes.copy()
-    padded_rboxes[:,2:6] += temp_padding * (rboxes[:,[2]] + rboxes[:,[4]])
+    rbox_heights = rboxes[:,[2]] + rboxes[:,[4]]
+    padded_rboxes[:,[2,4]] += temp_padding_y * rbox_heights
+    padded_rboxes[:,[3,5]] += temp_padding_x * rbox_heights
 
     # Perform NMS
     quads = rbox_to_quad(padded_rboxes)
@@ -284,7 +287,7 @@ class MergedRegions(object):
         self.scores = np.array(post_merge_scores)
         self.constituents = post_merge_constituents
 
-def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
+def merge_pass(regions, overlap_threshold, max_height_delta, max_rot_delta):
     """ Complete one merge pass. This takes one box at a time (largest area
         first) and merges it with all eligible boxes. This merged box is added
         to a list, and all constituent boxes removed from the original list.
@@ -312,7 +315,7 @@ def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
             regions.quads[head].astype(np.float32),
             regions.quads[order].astype(np.float32)
         )
-        overlaps = (inter / regions.areas[order]) >= min_merge_overlap
+        overlaps = (inter / regions.areas[order]) > overlap_threshold
 
         # Filter out boxes whose text height does not match
         diff = np.abs(regions.heights[head] - regions.heights[order])
@@ -342,8 +345,8 @@ def merge_pass(regions, min_merge_overlap, max_height_delta, max_rot_delta):
 
     return merged_any
 
-def merge_regions(rboxes, scores, temp_padding, final_padding,
-                  min_merge_overlap, max_height_delta, max_rot_delta):
+def merge_regions(rboxes, scores, temp_padding_x, temp_padding_y, final_padding,
+                  overlap_threshold, max_height_delta, max_rot_delta):
     """ An approximate locality-aware variant of non-maximum suppression, which
         merges together overlapping boxes rather than suppressing them.
 
@@ -400,7 +403,9 @@ def merge_regions(rboxes, scores, temp_padding, final_padding,
 
     # Add temporary padding
     padded_rboxes = rboxes.copy()
-    padded_rboxes[:,2:6] += temp_padding * (rboxes[:,[2]] + rboxes[:,[4]])
+    rbox_heights = rboxes[:,[2]] + rboxes[:,[4]]
+    padded_rboxes[:,[2,4]] += temp_padding_y * rbox_heights
+    padded_rboxes[:,[3,5]] += temp_padding_x * rbox_heights
     regions = MergedRegions(padded_rboxes, scores)
 
     # Do the initial locality-aware pass
@@ -412,7 +417,7 @@ def merge_regions(rboxes, scores, temp_padding, final_padding,
         regions.quads[1:].astype(np.float32)
     )
     smaller_area = np.minimum(regions.areas[:-1], regions.areas[1:])
-    overlaps = (inter / smaller_area) >= min_merge_overlap
+    overlaps = (inter / smaller_area) > overlap_threshold
 
     # Filter out boxes whose text height does not match
     diff = np.abs(regions.heights[:-1] - regions.heights[1:])
@@ -461,7 +466,7 @@ def merge_regions(rboxes, scores, temp_padding, final_padding,
     while True:
         merged_any = merge_pass(
             regions,
-            min_merge_overlap=min_merge_overlap,
+            overlap_threshold=overlap_threshold,
             max_height_delta=max_height_delta,
             max_rot_delta=max_rot_delta
         )
