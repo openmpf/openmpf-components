@@ -12,8 +12,8 @@ so it only makes sense to use it with
 when it isn't the first element of a pipeline.
  
 When a detection property is translated, the translation is put in to a new 
-detection property named using this pattern: `<prop_name> TRANSLATION` 
-(e.g. `TRANSCRIPT TRANSLATION`). The original detection property is not 
+detection property named using this pattern: `<prop_name> (TRANSLATION)` 
+(e.g. `TRANSCRIPT (TRANSLATION)`). The original detection property is not 
 modified. A property named `TRANSLATION TO LANGUAGE` containing the BCP-47 
 language code of the translated text will also be added.
 

@@ -28,6 +28,7 @@ import bisect
 import io
 import json
 import os
+import pathlib
 import re
 import urllib.error
 import urllib.parse
@@ -73,12 +74,21 @@ class AcsTranslationComponent:
         return get_detections_from_non_composite(job, job.feed_forward_location)
 
     @staticmethod
-    def get_detections_from_generic(job: mpf.GenericJob) -> Sequence[mpf.GenericTrack]:
+    def get_detections_from_audio(job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
         return get_detections_from_non_composite(job, job.feed_forward_track)
 
     @staticmethod
-    def get_detections_from_audio(job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
-        return get_detections_from_non_composite(job, job.feed_forward_track)
+    def get_detections_from_generic(job: mpf.GenericJob) -> Sequence[mpf.GenericTrack]:
+        if job.feed_forward_track:
+            return get_detections_from_non_composite(job, job.feed_forward_track)
+        else:
+            log.info(f'[{job.job_name}] Job did not contain a feed forward track. Assuming media '
+                     'file is a plain text file containing the text to be translated.')
+            text = pathlib.Path(job.data_uri).read_text().strip()
+            track = mpf.GenericTrack(detection_properties=dict(TEXT=text))
+            modified_job_props = {**job.job_properties, 'TRANSLATE_PROPERTIES': 'TEXT'}
+            modified_job = job._replace(job_properties=modified_job_props)
+            return get_detections_from_non_composite(modified_job, track)
 
 
 T_FF_OBJ = TypeVar('T_FF_OBJ', mpf.AudioTrack, mpf.GenericTrack, mpf.ImageLocation)
@@ -160,7 +170,7 @@ class TranslationClient:
 
             log.info(f'Attempting to translate the "{prop_name}" property...')
             translation_results = self._translate_text(text_to_translate)
-            detection_properties[f'{prop_name} TRANSLATION'] = translation_results.translated_text
+            detection_properties[f'{prop_name} (TRANSLATION)'] = translation_results.translated_text
             detection_properties['TRANSLATION TO LANGUAGE'] = self._to_language
 
             if translation_results.detected_language:

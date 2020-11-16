@@ -81,6 +81,13 @@
           "value": "REGION"
         }
       ]
+    },
+    {
+      "name": "AZURE TRANSLATION TEXT FILE ACTION",
+      "description": "Uses Azure Cognitive Services to perform translation on a plain text file.",
+      "algorithm": "AZURE_TRANSLATION",
+      "properties": [
+      ]
     }
   ],
   "tasks": [
@@ -90,8 +97,22 @@
       "actions": [
         "AZURE TRANSLATION ACTION"
       ]
+    },
+    {
+      "name": "AZURE TRANSLATION TEXT FILE TASK",
+      "description": "Uses Azure Cognitive Services to perform translation on a plain text file.",
+      "actions": [
+        "AZURE TRANSLATION TEXT FILE ACTION"
+      ]
     }
   ],
   "pipelines": [
+    {
+      "name": "AZURE TRANSLATION TEXT FILE PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform translation on a plain text file.",
+      "tasks": [
+        "AZURE TRANSLATION TEXT FILE TASK"
+      ]
+    }
   ]
 }
