@@ -92,7 +92,7 @@
         },
         {
           "name": "SUBTRACT_BLUE_VALUE",
-          "description": "After the input image is resized and cropped, subtract this value from the blue color channel for all of the pixels. The range is [0.0, 255.1].",
+          "description": "After the input image is resized and cropped, subtract this value from the blue color channel for all of the pixels. The range is [0.0, 255.0].",
           "type": "FLOAT",
           "defaultValue": "0.0"
         },
