@@ -29,7 +29,6 @@
 
 using namespace MPF::COMPONENT;
 
-
 void setAlgorithmProperties(Properties &algorithm_properties, const std::map<std::string, std::string> &custom) {
 
     algorithm_properties["TAGGING_FILE"] = "config/test-text-tags-foreign.json";
@@ -82,10 +81,7 @@ void assertInText(const std::string &image_path, const std::string &expected_val
                   const std::vector<MPFGenericTrack> &tracks, const std::string &prop, int index = -1) {
     ASSERT_TRUE(containsProp(expected_value, tracks, prop, index))
                                 << "Expected tagger to detect " << prop << " \"" << expected_value << "\" in " << image_path;
-
 }
-
-
 
 void assertNotInText(const std::string &file_path, const std::string &expected_text,
                      const std::vector<MPFGenericTrack> &tracks, const std::string &prop, int index = -1) {
@@ -93,7 +89,6 @@ void assertNotInText(const std::string &file_path, const std::string &expected_t
                                 << "Expected tagger to NOT detect "<< prop << " \""  << expected_text << "\" in "
                                 << file_path;
 }
-
 
 void runKeywordTagging(const std::string &uri_path, KeywordTagging &tagger,
                        std::vector<MPFGenericTrack> &text_tags,
@@ -207,8 +202,247 @@ TEST(KEYWORDTAGGING, LanguageTest) {
     assertInText("data/eng-bul.txt", "106-113", results, "TRIGGER_WORDS_OFFSET", 0);
     assertInText("data/eng-bul.txt", "Всички хора се раждат свободни", results, "TEXT", 0);
 
-
     ASSERT_TRUE(tagger.Close());
-
 }
 
+
+TEST(KEYWORDTAGGING, MissingPropertyToProcessTest) {
+    KeywordTagging tagger;
+    tagger.SetRunDirectory("../plugin");
+    ASSERT_TRUE(tagger.Init());
+
+    MPFImageLocation location(1, 2, 3, 4, 5,
+                              {{"SOME_PROP_1", "SOME_VAL_1"},
+                               {"SOME_PROP_2", "SOME_VAL_2"}}); // no TEXT or TRANSCRIPT provided
+    MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
+
+    std::vector<MPFImageLocation> results = tagger.GetDetections(job);
+
+    // detection is unchanged
+    ASSERT_EQ(1, results.size());
+    ASSERT_EQ(location.x_left_upper, results.at(0).x_left_upper);
+    ASSERT_EQ(location.y_left_upper, results.at(0).y_left_upper);
+    ASSERT_EQ(location.width, results.at(0).width);
+    ASSERT_EQ(location.height, results.at(0).height);
+    ASSERT_EQ(location.confidence, results.at(0).confidence);
+    ASSERT_EQ(location.detection_properties, results.at(0).detection_properties);
+
+    ASSERT_TRUE(tagger.Close());
+}
+
+TEST(KEYWORDTAGGING, MissingTextToProcessTest) {
+    KeywordTagging tagger;
+    tagger.SetRunDirectory("../plugin");
+    ASSERT_TRUE(tagger.Init());
+
+    MPFImageLocation location(1, 2, 3, 4, 5,
+                              {{"TEXT", ""},
+                               {"SOME_PROP_2", "SOME_VAL_2"}});
+    MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
+
+    std::vector<MPFImageLocation> results = tagger.GetDetections(job);
+
+    // detection is unchanged
+    ASSERT_EQ(1, results.size());
+    ASSERT_EQ(location.x_left_upper, results.at(0).x_left_upper);
+    ASSERT_EQ(location.y_left_upper, results.at(0).y_left_upper);
+    ASSERT_EQ(location.width, results.at(0).width);
+    ASSERT_EQ(location.height, results.at(0).height);
+    ASSERT_EQ(location.confidence, results.at(0).confidence);
+    ASSERT_EQ(location.detection_properties, results.at(0).detection_properties);
+
+    ASSERT_TRUE(tagger.Close());
+}
+
+TEST(KEYWORDTAGGING, ProcessFirstPropertyOnlyTest) {
+    KeywordTagging tagger;
+    tagger.SetRunDirectory("../plugin");
+    ASSERT_TRUE(tagger.Init());
+
+    {
+        MPFImageLocation location(1, 2, 3, 4, 5,
+                                  {{"TRANSCRIPT", "cash"},
+                                   {"TEXT", "car"}}); // TEXT should be considered before TRANSCRIPT
+        MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
+
+        std::vector<MPFImageLocation> results = tagger.GetDetections(job);
+        ASSERT_EQ(1, results.size());
+        ASSERT_EQ(location.x_left_upper, results.at(0).x_left_upper);
+        ASSERT_EQ(location.y_left_upper, results.at(0).y_left_upper);
+        ASSERT_EQ(location.width, results.at(0).width);
+        ASSERT_EQ(location.height, results.at(0).height);
+        ASSERT_EQ(location.confidence, results.at(0).confidence);
+
+        Properties props = results.at(0).detection_properties;
+        ASSERT_EQ(5, props.size());
+        ASSERT_EQ("cash", props["TRANSCRIPT"]);
+        ASSERT_EQ("car", props["TEXT"]);
+        ASSERT_EQ("vehicle", props["TAGS"]);
+        ASSERT_EQ("car", props["TRIGGER_WORDS"]);
+        ASSERT_EQ("0-2", props["TRIGGER_WORDS_OFFSET"]);
+    }
+
+    {
+        MPFAudioTrack track(1000, 5000, 0.9,
+                            {{"TRANSCRIPT", "cash"},
+                             {"TEXT", "car"}});
+        MPFAudioJob job("JOB NAME", "/some/path", 100, 100000, track,
+                        { { "PROPERTIES_TO_PROCESS", "TRANSCRIPT,TEXT" } }, {}); // TRANSCRIPT should be considered before TEXT
+
+        std::vector<MPFAudioTrack> results = tagger.GetDetections(job);
+        ASSERT_EQ(1, results.size());
+        ASSERT_EQ(track.start_time, results.at(0).start_time);
+        ASSERT_EQ(track.stop_time, results.at(0).stop_time);
+        ASSERT_EQ(track.confidence, results.at(0).confidence);
+
+        Properties props = results.at(0).detection_properties;
+        ASSERT_EQ(5, props.size());
+        ASSERT_EQ("cash", props["TRANSCRIPT"]);
+        ASSERT_EQ("car", props["TEXT"]);
+        ASSERT_EQ("financial", props["TAGS"]);
+        ASSERT_EQ("cash", props["TRIGGER_WORDS"]);
+        ASSERT_EQ("0-3", props["TRIGGER_WORDS_OFFSET"]);
+    }
+
+    {
+        MPFGenericTrack track(0.9,
+                              {{"BAR", "cash"},
+                               {"FOO", "car"}});
+        MPFGenericJob job("JOB NAME", "/some/path", track,
+                          { { "PROPERTIES_TO_PROCESS", "FOO,BAR" } }, {}); // user-specified properties
+
+        std::vector<MPFGenericTrack> results = tagger.GetDetections(job);
+        ASSERT_EQ(1, results.size());
+        ASSERT_EQ(track.confidence, results.at(0).confidence);
+
+        Properties props = results.at(0).detection_properties;
+        ASSERT_EQ(5, props.size());
+        ASSERT_EQ("cash", props["BAR"]);
+        ASSERT_EQ("car", props["FOO"]);
+        ASSERT_EQ("vehicle", props["TAGS"]);
+        ASSERT_EQ("car", props["TRIGGER_WORDS"]);
+        ASSERT_EQ("0-2", props["TRIGGER_WORDS_OFFSET"]);
+    }
+
+    ASSERT_TRUE(tagger.Close());
+}
+
+TEST(KEYWORDTAGGING, ProcessTrackAndDetectionProperties) {
+    KeywordTagging tagger;
+    tagger.SetRunDirectory("../plugin");
+    ASSERT_TRUE(tagger.Init());
+
+    {
+        MPFImageLocation location1(1, 2, 3, 4, 5,
+                                   {{"TEXT", "car"},
+                                    {"SOME_PROP_1", "SOME_VAL_1"}});
+
+        MPFImageLocation location2(11, 12, 13, 14, 15,
+                                   {{"TEXT", "username"},
+                                    {"SOME_PROP_2", "SOME_VAL_2"}});
+
+        MPFVideoTrack track(10, 12, 0.5,
+                            {{"TEXT", "airport"},
+                             {"SOME_PROP_3", "SOME_VAL_3"}});
+        track.frame_locations.emplace(10, location1);
+        track.frame_locations.emplace(12, location2);
+
+        MPFVideoJob job("JOB NAME", "/some/path", 0, 100, track, {}, {});
+
+        std::vector<MPFVideoTrack> results = tagger.GetDetections(job);
+
+        ASSERT_EQ(1, results.size());
+        ASSERT_EQ(track.start_frame, results.at(0).start_frame);
+        ASSERT_EQ(track.stop_frame, results.at(0).stop_frame);
+        ASSERT_EQ(track.confidence, results.at(0).confidence);
+        ASSERT_EQ(2, results.at(0).frame_locations.size());
+
+        Properties props = results.at(0).detection_properties;
+        ASSERT_EQ(5, props.size());
+        ASSERT_EQ("airport", props["TEXT"]);
+        ASSERT_EQ("SOME_VAL_3", props["SOME_PROP_3"]);
+        ASSERT_EQ("travel", props["TAGS"]);
+        ASSERT_EQ("airport", props["TRIGGER_WORDS"]);
+        ASSERT_EQ("0-6", props["TRIGGER_WORDS_OFFSET"]);
+
+        MPFImageLocation location = results.at(0).frame_locations.at(10);
+        ASSERT_EQ(location1.x_left_upper, location.x_left_upper);
+        ASSERT_EQ(location1.y_left_upper, location.y_left_upper);
+        ASSERT_EQ(location1.width, location.width);
+        ASSERT_EQ(location1.height, location.height);
+        ASSERT_EQ(location1.confidence, location.confidence);
+
+        props = location.detection_properties;
+        ASSERT_EQ(5, props.size());
+        ASSERT_EQ("SOME_VAL_1", props["SOME_PROP_1"]);
+        ASSERT_EQ("car", props["TEXT"]);
+        ASSERT_EQ("vehicle", props["TAGS"]);
+        ASSERT_EQ("car", props["TRIGGER_WORDS"]);
+        ASSERT_EQ("0-2", props["TRIGGER_WORDS_OFFSET"]);
+
+        location = results.at(0).frame_locations.at(12);
+        ASSERT_EQ(location2.x_left_upper, location.x_left_upper);
+        ASSERT_EQ(location2.y_left_upper, location.y_left_upper);
+        ASSERT_EQ(location2.width, location.width);
+        ASSERT_EQ(location2.height, location.height);
+        ASSERT_EQ(location2.confidence, location.confidence);
+
+        props = location.detection_properties;
+        ASSERT_EQ(5, props.size());
+        ASSERT_EQ("SOME_VAL_2", props["SOME_PROP_2"]);
+        ASSERT_EQ("username", props["TEXT"]);
+        ASSERT_EQ("personal", props["TAGS"]);
+        ASSERT_EQ("username", props["TRIGGER_WORDS"]);
+        ASSERT_EQ("0-7", props["TRIGGER_WORDS_OFFSET"]);
+    }
+
+    {
+        MPFImageLocation location1(1, 2, 3, 4, 5,
+                                   {{"SOME_PROP_1", "SOME_VAL_1"}}); // no property to process
+
+        MPFImageLocation location2(11, 12, 13, 14, 15,
+                                   {{"TRANSCRIPT", "username"}});
+
+        MPFVideoTrack track(10, 12, 0.5,
+                            {{"SOME_PROP_3", "SOME_VAL_3"}}); // no property to process
+        track.frame_locations.emplace(10, location1);
+        track.frame_locations.emplace(12, location2);
+
+        MPFVideoJob job("JOB NAME", "/some/path", 0, 100, track, {}, {});
+
+        std::vector<MPFVideoTrack> results = tagger.GetDetections(job);
+
+        // track fields are unchanged, except for the content of frame_locations
+        ASSERT_EQ(1, results.size());
+        ASSERT_EQ(track.start_frame, results.at(0).start_frame);
+        ASSERT_EQ(track.stop_frame, results.at(0).stop_frame);
+        ASSERT_EQ(track.confidence, results.at(0).confidence);
+        ASSERT_EQ(track.detection_properties, results.at(0).detection_properties);
+        ASSERT_EQ(2, results.at(0).frame_locations.size());
+
+        // detection is unchanged
+        MPFImageLocation location = results.at(0).frame_locations.at(10);
+        ASSERT_EQ(location1.x_left_upper, location.x_left_upper);
+        ASSERT_EQ(location1.y_left_upper, location.y_left_upper);
+        ASSERT_EQ(location1.width, location.width);
+        ASSERT_EQ(location1.height, location.height);
+        ASSERT_EQ(location1.confidence, location.confidence);
+        ASSERT_EQ(location1.detection_properties, location.detection_properties);
+
+        location = results.at(0).frame_locations.at(12);
+        ASSERT_EQ(location2.x_left_upper, location.x_left_upper);
+        ASSERT_EQ(location2.y_left_upper, location.y_left_upper);
+        ASSERT_EQ(location2.width, location.width);
+        ASSERT_EQ(location2.height, location.height);
+        ASSERT_EQ(location2.confidence, location.confidence);
+
+        Properties props = location.detection_properties;
+        ASSERT_EQ(4, props.size());
+        ASSERT_EQ("username", props["TRANSCRIPT"]);
+        ASSERT_EQ("personal", props["TAGS"]);
+        ASSERT_EQ("username", props["TRIGGER_WORDS"]);
+        ASSERT_EQ("0-7", props["TRIGGER_WORDS_OFFSET"]);
+    }
+
+    ASSERT_TRUE(tagger.Close());
+}

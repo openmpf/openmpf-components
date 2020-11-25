@@ -34,38 +34,47 @@ int main(int argc, char *argv[]) {
     try {
         if ((argc != 2)) {
             std::cout << "Usage: " << argv[0] << " DATA_URI" << std::endl;
+            return 1;
         }
 
         std::string uri(argv[1]);
         std::string job_name("tagger_test");
 
         Properties algorithm_properties;
-        Properties media_properties;
-        MPFDetectionError rc = MPF_DETECTION_SUCCESS;
-
         algorithm_properties["TAGGING_FILE"] = "text-tags.json";
-        MPFGenericTrack text_tags;
-        text_tags.detection_properties["TEXT"] = "Passenger Passport";
-        text_tags.detection_properties["EXTRA"] = "extra property";
-
 
         KeywordTagging tagger;
-
         tagger.SetRunDirectory("./plugin");
         tagger.Init();
 
-        MPFGenericJob job(job_name, uri, text_tags, algorithm_properties, media_properties);
+        MPFGenericJob job(job_name, uri, algorithm_properties, {});
 
         std::vector<MPFGenericTrack> tracks;
-
         tracks = tagger.GetDetections(job);
-        if (rc == MPF_DETECTION_SUCCESS) {
-            std::cout << "Number of generic tracks = " << tracks.size() << std::endl;
 
-            for(int i = 0; i < tracks.size(); i++) {
-                std::cout << "tags: " << tracks[i].detection_properties.at("TAGS") << std::endl;
-                std::cout << "extra property: " << tracks[i].detection_properties.at("EXTRA") << std::endl;
-                std::cout << "text: " << tracks[i].detection_properties.at("TEXT") << std::endl;
+        if (tracks.size() != 1) {
+            std::cerr << "Unexpected number of tracks: " << tracks.size() << std::endl;
+            return 1;
+        }
+
+        Properties props = tracks.at(0).detection_properties;
+        std::string text = props["TEXT"];
+
+        if (text.empty()) {
+            std::cout << "Empty text file." << std::endl;
+        } else {
+            std::cout << "TEXT: " << std::endl;
+            std::cout << text << std::endl;
+            std::cout << std::endl;
+
+            if (props.find("TAGS") != props.end()) {
+                std::cout << "TAGS: " << props["TAGS"] << std::endl;
+            }
+            if (props.find("TRIGGER_WORDS") != props.end()) {
+                std::cout << "TRIGGER_WORDS: " << props["TRIGGER_WORDS"] << std::endl;
+            }
+            if (props.find("TRIGGER_WORDS_OFFSET") != props.end()) {
+                std::cout << "TRIGGER_WORDS_OFFSET: " << props["TRIGGER_WORDS_OFFSET"] << std::endl;
             }
         }
 

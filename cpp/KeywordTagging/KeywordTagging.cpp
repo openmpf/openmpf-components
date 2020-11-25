@@ -175,7 +175,7 @@ void KeywordTagging::process_regex_match(const boost::wsmatch &match, const wstr
     wstring trigger_word = full_text.substr(start , end - start);
     boost::replace_all(trigger_word, ";", "[;]");
 
-    if (!(trigger_words_offset.count(trigger_word))) {
+    if (trigger_words_offset.find(trigger_word) == trigger_words_offset.end()) {
         vector<string> offsets;
 
         if (start != (end - 1)) {
@@ -400,157 +400,102 @@ string KeywordTagging::GetDetectionType() {
 
 vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
-    map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
 
-    load_tags_json(job, json_kvs_regex);
-
-    MPFGenericTrack text_tags;
+    MPFGenericTrack track;
+    bool has_prop = true;
     wstring text;
 
     if (job.has_feed_forward_track) {
-        string temp = "";
-        LOG4CXX_INFO(hw_logger_, "Generic job is feed forward");
-        Properties properties = job.feed_forward_track.detection_properties;
-        if (properties.count("TEXT")) {
-            LOG4CXX_INFO(hw_logger_, "Performing tagging on TEXT property.");
-            temp = properties.at("TEXT");
-        } else if (properties.count("TRANSCRIPT")) {
-            LOG4CXX_INFO(hw_logger_, "Performing tagging on TRANSCRIPT property.");
-            temp = properties.at("TRANSCRIPT");
-        } else {
-            LOG4CXX_DEBUG(hw_logger_, "Feed forward track missing TEXT or TRANSCRIPT property");
-            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Feed forward track missing TEXT or TRANSCRIPT property");
-        }
-
-        text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
-        LOG4CXX_DEBUG(hw_logger_, "Copying properties over from feed forward track");
-        text_tags.detection_properties = properties;
+        track = job.feed_forward_track;
+        has_prop = get_text_to_process(job, track.detection_properties, text);
     } else {
         LOG4CXX_INFO(hw_logger_, "Generic job is not feed forward. Performing tagging on text file.");
         wifstream file {job.data_uri};
-        wstring file_contents((istreambuf_iterator<wchar_t>(file)),
-                              (istreambuf_iterator<wchar_t>()));
-        text = file_contents;
-        text_tags.detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(text);
+        if (!file.is_open()) {
+            throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, "Cannot open: " + job.data_uri);
+        }
+        wstring file_contents((istreambuf_iterator<wchar_t>(file)), (istreambuf_iterator<wchar_t>()));
+        text = move(file_contents);
+        track.detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(text);
+        file.close();
     }
 
-    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
-
-    if (process_text) {
-        return {text_tags};
+    if (has_prop) {
+        map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
+        load_tags_json(job, json_kvs_regex);
+        process_text_tagging(track.detection_properties, job, text, json_kvs_regex);
     }
 
-    return {};
+    return {track};
 }
 
 vector<MPFAudioTrack> KeywordTagging::GetDetections(const MPFAudioJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
-    map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
 
-    load_tags_json(job, json_kvs_regex);
-
-    MPFAudioTrack text_tags;
-    wstring text;
-
-    LOG4CXX_INFO(hw_logger_, "Checking audio job is feed forward and the detection has a TRANSCRIPT property");
-    if (job.has_feed_forward_track) {
-        if (job.feed_forward_track.detection_properties.count("TRANSCRIPT")) {
-            string temp = job.feed_forward_track.detection_properties.at("TRANSCRIPT");
-            text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
-            LOG4CXX_DEBUG(hw_logger_, "Copying properties over from feed forward track");
-            text_tags.detection_properties = job.feed_forward_track.detection_properties;
-        } else {
-            LOG4CXX_DEBUG(hw_logger_, "Feed forward track missing TRANSCRIPT property");
-            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Feed forward track missing TRANSCRIPT property");
-        }
-    } else {
+    if (!job.has_feed_forward_track) {
         LOG4CXX_DEBUG(hw_logger_, "Can only process audio files in feed forward jobs.");
         throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE, "Can only process audio files in feed forward jobs.");
     }
 
-    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
-
-    if (process_text) {
-        return {text_tags};
-    }
-
-    return {};
-}
-
-vector<MPFVideoTrack> KeywordTagging::GetDetections(const MPFVideoJob &job) {
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
-    map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
-
-    load_tags_json(job, json_kvs_regex);
-
-    MPFVideoTrack text_tags;
+    MPFAudioTrack track = job.feed_forward_track;
     wstring text;
 
-    LOG4CXX_INFO(hw_logger_, "Checking video job is feed forward and the detection has a TEXT or TRANSCRIPT property");
-    if (job.has_feed_forward_track) {
-        if (job.feed_forward_track.detection_properties.count("TEXT")) {
-            string temp = job.feed_forward_track.detection_properties.at("TEXT");
-            text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
-            LOG4CXX_DEBUG(hw_logger_, "Copying properties over from feed forward track");
-            text_tags.detection_properties = job.feed_forward_track.detection_properties;
-        } else if (job.feed_forward_track.detection_properties.count("TRANSCRIPT")) {
-            string temp = job.feed_forward_track.detection_properties.at("TRANSCRIPT");
-            text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
-            LOG4CXX_DEBUG(hw_logger_, "Copying properties over from feed forward track");
-            text_tags.detection_properties = job.feed_forward_track.detection_properties;
-        } else {
-            LOG4CXX_DEBUG(hw_logger_, "Feed forward track missing a TEXT or TRANSCRIPT property");
-            throw MPFDetectionException(MPF_MISSING_PROPERTY, "Feed forward track missing TEXT or TRANSCRIPT property");
-        }
-    } else {
-        LOG4CXX_DEBUG(hw_logger_, "Can only process video files in feed forward jobs.");
-        throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE, "Can only process video files in feed forward jobs.");
+    if (get_text_to_process(job, track.detection_properties, text)) {
+        map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
+        load_tags_json(job, json_kvs_regex);
+        process_text_tagging(track.detection_properties, job, text, json_kvs_regex);
     }
 
-    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
-
-    if (process_text) {
-        return {text_tags};
-    }
-
-    return {};
+    return {track};
 }
 
 vector<MPFImageLocation> KeywordTagging::GetDetections(const MPFImageJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
 
-    map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
-
-    load_tags_json(job, json_kvs_regex);
-
-    MPFImageLocation text_tags;
-    wstring text;
-
-    LOG4CXX_DEBUG(hw_logger_, "Checking image job is feed forward and the detection has a TEXT property");
-    if (job.has_feed_forward_location) {
-        if (job.feed_forward_location.detection_properties.count("TEXT")) {
-            string temp = job.feed_forward_location.detection_properties.at("TEXT");
-            text = boost::locale::conv::utf_to_utf<wchar_t>(temp);
-            LOG4CXX_DEBUG(hw_logger_, "Copying properties over from feed forward detection");
-            text_tags.detection_properties = job.feed_forward_location.detection_properties;
-
-        } else {
-            LOG4CXX_DEBUG(hw_logger_, "Feed forward detection missing TEXT property");
-            throw MPFDetectionException(
-                    MPF_MISSING_PROPERTY, "Feed forward detection missing TEXT property");
-        }
-    } else {
+    if (!job.has_feed_forward_location) {
         LOG4CXX_DEBUG(hw_logger_, "Can only process image files in feed forward jobs.");
         throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE, "Can only process image files in feed forward jobs.");
     }
 
-    bool process_text = process_text_tagging(text_tags.detection_properties, job, text, json_kvs_regex);
+    MPFImageLocation location = job.feed_forward_location;
+    wstring text;
 
-    if (process_text) {
-        return {text_tags};
+    if (get_text_to_process(job, location.detection_properties, text)) {
+        map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
+        load_tags_json(job, json_kvs_regex);
+        process_text_tagging(location.detection_properties, job, text, json_kvs_regex);
     }
 
-    return {};
+    return {location};
+}
+
+vector<MPFVideoTrack> KeywordTagging::GetDetections(const MPFVideoJob &job) {
+    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
+
+    if (!job.has_feed_forward_track) {
+        LOG4CXX_DEBUG(hw_logger_, "Can only process video files in feed forward jobs.");
+        throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE, "Can only process video files in feed forward jobs.");
+    }
+
+    map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
+    load_tags_json(job, json_kvs_regex);
+
+    MPFVideoTrack track = job.feed_forward_track;
+    wstring text;
+
+    // process track-level property
+    if (get_text_to_process(job, track.detection_properties, text)) {
+        process_text_tagging(track.detection_properties, job, text, json_kvs_regex);
+    }
+
+    // process each detection-level property
+    for (auto &pair : track.frame_locations) {
+        if (get_text_to_process(job, pair.second.detection_properties, text)) {
+            process_text_tagging(pair.second.detection_properties, job, text, json_kvs_regex);
+        }
+    }
+
+    return {track};
 }
 
 bool KeywordTagging::Supports(MPFDetectionDataType data_type) {
@@ -558,21 +503,40 @@ bool KeywordTagging::Supports(MPFDetectionDataType data_type) {
         || data_type == MPFDetectionDataType::AUDIO || data_type == MPFDetectionDataType::VIDEO;
 }
 
-bool KeywordTagging::process_text_tagging(Properties &detection_properties, const MPFJob &job, const wstring &full_text,
-                                          const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex) {
+bool KeywordTagging::get_text_to_process(const MPFJob &job, const Properties &detection_properties, wstring& text) {
+    string props_to_process =
+        DetectionComponentUtils::GetProperty<string>(job.job_properties, "PROPERTIES_TO_PROCESS", "TEXT,TRANSCRIPT");
 
+    vector<string> split_props_to_process;
+    boost::split(split_props_to_process, props_to_process, boost::is_any_of(","));
+
+    for (string prop_to_process : split_props_to_process) {
+        boost::trim(prop_to_process);
+        if (detection_properties.find(prop_to_process) != detection_properties.end()) {
+            LOG4CXX_INFO(hw_logger_, "Performing tagging on " + prop_to_process + " property.");
+            text = boost::locale::conv::utf_to_utf<wchar_t>(detection_properties.at(prop_to_process));
+            return true;
+        }
+    }
+
+    LOG4CXX_WARN(hw_logger_, "Feed forward element missing one of the following properties: " + props_to_process);
+    return false;
+}
+
+void KeywordTagging::process_text_tagging(Properties &detection_properties, const MPFJob &job, const wstring &full_text,
+                                          const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex) {
     wstring text = clean_whitespace(full_text);
 
-    bool full_regex = DetectionComponentUtils::GetProperty(job.job_properties, "FULL_REGEX_SEARCH", true);
-
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing tags: ");
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Text was: " +
+    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing tags");
+    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Text is: " +
                               boost::locale::conv::utf_to_utf<char>(text));
 
     if (is_only_ascii_whitespace(text)) {
         LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] No text to process!");
-        return false;
+        return;
     }
+
+    bool full_regex = DetectionComponentUtils::GetProperty(job.job_properties, "FULL_REGEX_SEARCH", true);
 
     set<wstring> trigger_words;
     map<wstring, vector<string>> trigger_words_offset;
@@ -597,8 +561,6 @@ bool KeywordTagging::process_text_tagging(Properties &detection_properties, cons
     detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
     detection_properties["TRIGGER_WORDS"] = boost::locale::conv::utf_to_utf<char>(tag_trigger);
     detection_properties["TRIGGER_WORDS_OFFSET"] = tag_offset;
-
-    return true;
 }
 
 MPF_COMPONENT_CREATOR(KeywordTagging);

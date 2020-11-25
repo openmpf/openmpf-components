@@ -35,14 +35,20 @@
           "description": "Name of a JSON file that describes a tag hierarchy to be used for keyword tagging. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
           "type": "STRING",
           "defaultValue": "text-tags.json"
+        },
+        {
+          "name": "PROPERTIES_TO_PROCESS",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to perform keyword tagging on. If the first property listed is present, then keyword tagging is performed on that property. If it's not then the next property in the list is considered. At most, keyword tagging is only performed on one property.",
+          "type": "STRING",
+          "defaultValue": "TEXT,TRANSCRIPT"
         }
       ]
     }
   },
   "actions": [
     {
-      "name": "KEYWORD TAGGING ACTION",
-      "description": "Performs keyword tagging on text files.",
+      "name": "KEYWORD TAGGING TEXT FILE ACTION",
+      "description": "Performs keyword tagging on a plain text file.",
       "algorithm": "KEYWORDTAGGING",
       "properties": []
     },
@@ -60,10 +66,10 @@
   ],
   "tasks": [
     {
-      "name": "KEYWORD TAGGING TASK",
-      "description": "Performs keyword tagging on text files.",
+      "name": "KEYWORD TAGGING TEXT FILE TASK",
+      "description": "Performs keyword tagging on a plain text file.",
       "actions": [
-        "KEYWORD TAGGING ACTION"
+        "KEYWORD TAGGING TEXT FILE ACTION"
       ]
     },
     {
@@ -76,10 +82,10 @@
   ],
   "pipelines": [
     {
-      "name": "KEYWORD TAGGING PIPELINE",
-      "description": "Performs keyword tagging on text files.",
+      "name": "KEYWORD TAGGING TEXT FILE PIPELINE",
+      "description": "Performs keyword tagging on a plain text file.",
       "tasks": [
-        "KEYWORD TAGGING TASK"
+        "KEYWORD TAGGING TEXT FILE TASK"
       ]
     }
   ]
