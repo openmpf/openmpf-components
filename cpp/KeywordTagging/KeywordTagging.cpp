@@ -504,9 +504,9 @@ bool KeywordTagging::Supports(MPFDetectionDataType data_type) {
 }
 
 bool KeywordTagging::get_text_to_process(const MPFJob &job, const Properties &detection_properties, wstring& text) {
-    string props_to_process =
-        DetectionComponentUtils::GetProperty<string>(job.job_properties, "PROPERTIES_TO_PROCESS", "TEXT,TRANSCRIPT");
-
+    string props_to_process = DetectionComponentUtils::GetProperty<string>(job.job_properties,
+                                                                           "FEED_FORWARD_PROPS_TO_PROCESS",
+                                                                           "TEXT,TRANSCRIPT");
     vector<string> split_props_to_process;
     boost::split(split_props_to_process, props_to_process, boost::is_any_of(","));
 

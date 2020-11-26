@@ -287,7 +287,7 @@ TEST(KEYWORDTAGGING, ProcessFirstPropertyOnlyTest) {
                             {{"TRANSCRIPT", "cash"},
                              {"TEXT", "car"}});
         MPFAudioJob job("JOB NAME", "/some/path", 100, 100000, track,
-                        { { "PROPERTIES_TO_PROCESS", "TRANSCRIPT,TEXT" } }, {}); // TRANSCRIPT should be considered before TEXT
+                        { { "FEED_FORWARD_PROPS_TO_PROCESS", "TRANSCRIPT,TEXT" } }, {}); // TRANSCRIPT should be considered before TEXT
 
         std::vector<MPFAudioTrack> results = tagger.GetDetections(job);
         ASSERT_EQ(1, results.size());
@@ -309,7 +309,7 @@ TEST(KEYWORDTAGGING, ProcessFirstPropertyOnlyTest) {
                               {{"BAR", "cash"},
                                {"FOO", "car"}});
         MPFGenericJob job("JOB NAME", "/some/path", track,
-                          { { "PROPERTIES_TO_PROCESS", "FOO,BAR" } }, {}); // user-specified properties
+                          { { "FEED_FORWARD_PROPS_TO_PROCESS", "FOO,BAR" } }, {}); // user-specified properties
 
         std::vector<MPFGenericTrack> results = tagger.GetDetections(job);
         ASSERT_EQ(1, results.size());
