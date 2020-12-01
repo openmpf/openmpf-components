@@ -1,7 +1,7 @@
 {
   "componentName": "KeywordTagging",
-  "componentVersion": "5.0",
-  "middlewareVersion": "5.0",
+  "componentVersion": "5.1",
+  "middlewareVersion": "5.1",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/KeywordTagging/lib/libmpfKeywordTagging.so",
   "environmentVariables": [
@@ -13,8 +13,7 @@
   ],
   "algorithm": {
     "name": "KEYWORDTAGGING",
-    "description": "Performs keyword tagging on text.",
-    "detectionType": "TEXT",
+    "description": "Performs keyword tagging on text and transcripts.",
     "actionType": "DETECTION",
     "requiresCollection": {
       "states": []
