@@ -243,22 +243,19 @@ class TestAcsTranslation(unittest.TestCase):
             AcsTranslationComponent.get_detections_from_image(job)
         self.assertEqual(mpf.DetectionError.MISSING_PROPERTY, cm.exception.error_code)
 
-    def test_get_acs_prop_from_env(self):
-        self.set_results_file('results-chinese.json')
-        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=CHINESE_SAMPLE_TEXT))
 
-        test_props = get_test_properties()
-        acs_url = test_props.pop('ACS_URL')
-        job = mpf.ImageJob('Test', 'test.jpg', test_props, {}, ff_loc)
+    def test_missing_required_properties(self):
+        for required_prop in ('ACS_URL', 'ACS_SUBSCRIPTION_KEY'):
+            test_props = get_test_properties()
+            del test_props[required_prop]
 
-        with mock.patch.dict(os.environ, ACS_URL=acs_url):
-            result = AcsTranslationComponent.get_detections_from_image(job)[0]
+            ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=CHINESE_SAMPLE_TEXT))
+            job = mpf.ImageJob('Test', 'test.jpg', test_props, {}, ff_loc)
 
-        self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.detection_properties['TEXT (TRANSLATION)'])
-        self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
+            with self.assertRaises(mpf.DetectionException) as cm:
+                AcsTranslationComponent.get_detections_from_image(job)
+            self.assertEqual(mpf.DetectionError.MISSING_PROPERTY, cm.exception.error_code)
 
-        self.assertIsNotNone(self.get_request_body())
 
 
     def test_translate_multiple_fields(self):

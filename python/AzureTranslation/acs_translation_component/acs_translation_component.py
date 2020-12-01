@@ -134,7 +134,7 @@ NO_SPACE_LANGS = ('JA',  # Japanese
 
 class TranslationClient:
     def __init__(self, job_properties: Mapping[str, str]):
-        self._subscription_key = get_property_or_env_value('ACS_SUBSCRIPTION_KEY', job_properties)
+        self._subscription_key = get_required_property('ACS_SUBSCRIPTION_KEY', job_properties)
 
         url_builder = AcsTranslateUrlBuilder(job_properties)
         self._translate_url = url_builder.url
@@ -310,7 +310,7 @@ class BreakSentenceClient:
 
     @staticmethod
     def _get_break_sentence_url(job_properties: Mapping[str, str]) -> str:
-        url = get_property_or_env_value('ACS_URL', job_properties)
+        url = get_required_property('ACS_URL', job_properties)
         url_parts = urllib.parse.urlparse(url)
         path = url_parts.path + '/breaksentence'
 
@@ -335,7 +335,7 @@ class AcsTranslateUrlBuilder:
     from_language: Optional[str]
 
     def __init__(self, job_properties: Mapping[str, str]):
-        base_url = get_property_or_env_value('ACS_URL', job_properties)
+        base_url = get_required_property('ACS_URL', job_properties)
         url_parts = urllib.parse.urlparse(base_url)
 
         query_dict: Dict[str, List[str]] = urllib.parse.parse_qs(url_parts.query)
@@ -367,18 +367,12 @@ class AcsTranslateUrlBuilder:
         return query_dict.get(key, (None,))[0]
 
 
-def get_property_or_env_value(property_name: str, job_properties: Mapping[str, str]) -> str:
-    property_value = job_properties.get(property_name)
-    if property_value:
+def get_required_property(property_name: str, job_properties: Mapping[str, str]) -> str:
+    if property_value := job_properties.get(property_name):
         return property_value
-
-    env_value = os.getenv(property_name)
-    if env_value:
-        return env_value
-
-    raise mpf.DetectionError.MISSING_PROPERTY.exception(
-        f'The "{property_name}" property must be provided as a job property or environment '
-        'variable.')
+    else:
+        raise mpf.DetectionError.MISSING_PROPERTY.exception(
+            f'The "{property_name}" property must be provided as a job property.')
 
 
 class NewLineBehavior:
