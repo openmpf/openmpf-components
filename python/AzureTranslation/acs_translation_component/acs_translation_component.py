@@ -52,7 +52,7 @@ class AcsTranslationComponent:
             ff_track = job.feed_forward_track
             if ff_track is None:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                    f'[{job.job_name}] Component can only process feed forward jobs, '
+                    f'Component can only process feed forward jobs, '
                     'but no feed forward track provided. ')
 
             tc = TranslationClient(job.job_properties)

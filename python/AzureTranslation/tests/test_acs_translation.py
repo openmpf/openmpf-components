@@ -117,13 +117,13 @@ class TestAcsTranslation(unittest.TestCase):
         with self.subTest('Audio'):
             self.set_results_file(results_file)
             ff_track = mpf.AudioTrack(0, 1, -1, dict(TEXT=CHINESE_SAMPLE_TEXT))
-            job = mpf.AudioJob('Test', 'test.jpg', 0, 1, get_test_properties(), {}, ff_track)
+            job = mpf.AudioJob('Test', 'test.wav', 0, 1, get_test_properties(), {}, ff_track)
             validate_results(list(AcsTranslationComponent().get_detections_from_audio(job)))
 
         with self.subTest('Generic'):
             self.set_results_file(results_file)
             ff_track = mpf.GenericTrack(-1, dict(TEXT=CHINESE_SAMPLE_TEXT))
-            job = mpf.GenericJob('Test', 'test.jpg', get_test_properties(), {}, ff_track)
+            job = mpf.GenericJob('Test', 'test.pdf', get_test_properties(), {}, ff_track)
             validate_results(list(AcsTranslationComponent().get_detections_from_generic(job)))
 
         with self.subTest('Plain text file'):
