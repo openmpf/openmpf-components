@@ -25,11 +25,11 @@ generate detections with the same `TRANSCRIPT` output.
 
 Keyword tagging will only be performed on one property in the feed-forward
 detection. It will be the first property listed in
-`FEED_FORWARD_PROPS_TO_PROCESS`, if available; otherwise, the next property in
+`FEED_FORWARD_PROP_TO_PROCESS`, if available; otherwise, the next property in
 the list is considered. All of the properties in the list will be considered in
 left-to-right order. If none of the properties are available then keyword
 tagging is not performed and the feed-forward detection is returned unmodified.
-For example, if `FEED_FORWARD_PROPS_TO_PROCESS=TEXT,TRANSCRIPT` then keyword
+For example, if `FEED_FORWARD_PROP_TO_PROCESS=TEXT,TRANSCRIPT` then keyword
 tagging will be performed on the `TEXT` property, and if it's not available then
 it will be performed on the `TRANSCRIPT` property. For the sake of discussion,
 let's assume we need to perform keyword tagging on `TEXT`.
