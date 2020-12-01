@@ -258,8 +258,7 @@ class TestAcsTranslation(unittest.TestCase):
 
 
 
-    def test_translate_multiple_fields(self):
-        self.set_results_file('results-chinese.json')
+    def test_translate_multiple_properties(self):
         self.set_results_file('results-spanish.json')
 
         ff_loc = mpf.ImageLocation(
@@ -267,18 +266,12 @@ class TestAcsTranslation(unittest.TestCase):
             dict(TEXT=CHINESE_SAMPLE_TEXT, MORE_TEXT=SPANISH_SAMPLE_TEXT))
         job = mpf.ImageJob(
             'Test', 'test.jpg',
-            get_test_properties(TRANSLATE_PROPERTIES='TEXT,MORE_TEXT'),
+            get_test_properties(FEED_FORWARD_PROP_TO_PROCESS='MORE_TEXT,TEXT'),
             {}, ff_loc)
 
         results = list(AcsTranslationComponent().get_detections_from_image(job))
         self.assertEqual(1, len(results))
         result = results[0]
-
-        self.assertEqual(CHINESE_SAMPLE_TEXT, result.detection_properties['TEXT'])
-        self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.detection_properties['TEXT (TRANSLATION)'])
-        self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
-
 
         self.assertEqual(SPANISH_SAMPLE_TEXT, result.detection_properties['MORE_TEXT'])
         self.assertEqual(SPANISH_SAMPLE_TEXT_ENG_TRANSLATE,
@@ -286,29 +279,25 @@ class TestAcsTranslation(unittest.TestCase):
 
         request_body1 = self.get_request_body()
         self.assertEqual(1, len(request_body1))
-        self.assertEqual(CHINESE_SAMPLE_TEXT, request_body1[0]['Text'])
-
-        request_body2 = self.get_request_body()
-        self.assertEqual(1, len(request_body2))
-        self.assertEqual(SPANISH_SAMPLE_TEXT, request_body2[0]['Text'])
+        self.assertEqual(SPANISH_SAMPLE_TEXT, request_body1[0]['Text'])
 
         with self.assertRaises(queue.Empty, msg='Only one request should have been sent.'):
             self.get_request_body()
 
 
-
     def test_translation_cache(self):
         self.set_results_file('results-chinese.json')
+        ff_track = mpf.VideoTrack(
+            0, 1, -1,
+            {
+                0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=CHINESE_SAMPLE_TEXT)),
+                1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=CHINESE_SAMPLE_TEXT))
+            },
+            dict(TEXT=CHINESE_SAMPLE_TEXT))
 
-        ff_loc = mpf.ImageLocation(
-            0, 0, 10, 10, -1,
-            dict(TEXT=CHINESE_SAMPLE_TEXT, MORE_TEXT=CHINESE_SAMPLE_TEXT))
-        job = mpf.ImageJob(
-            'Test', 'test.jpg',
-            get_test_properties(TRANSLATE_PROPERTIES='TEXT,MORE_TEXT'),
-            {}, ff_loc)
+        job = mpf.VideoJob('test', 'test.jpg', 0, 1, get_test_properties(), {}, ff_track)
 
-        results = list(AcsTranslationComponent().get_detections_from_image(job))
+        results = list(AcsTranslationComponent.get_detections_from_video(job))
         self.assertEqual(1, len(results))
         result = results[0]
 
@@ -317,10 +306,17 @@ class TestAcsTranslation(unittest.TestCase):
                          result.detection_properties['TEXT (TRANSLATION)'])
         self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
 
-
-        self.assertEqual(CHINESE_SAMPLE_TEXT, result.detection_properties['MORE_TEXT'])
+        detection1 = result.frame_locations[0]
+        self.assertEqual(CHINESE_SAMPLE_TEXT, detection1.detection_properties['TEXT'])
         self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
-                         result.detection_properties['MORE_TEXT (TRANSLATION)'])
+                         detection1.detection_properties['TEXT (TRANSLATION)'])
+        self.assertEqual('EN', detection1.detection_properties['TRANSLATION TO LANGUAGE'])
+
+        detection2 = result.frame_locations[1]
+        self.assertEqual(CHINESE_SAMPLE_TEXT, detection2.detection_properties['TRANSCRIPT'])
+        self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
+                         detection2.detection_properties['TRANSCRIPT (TRANSLATION)'])
+        self.assertEqual('EN', detection2.detection_properties['TRANSLATION TO LANGUAGE'])
 
         request_body = self.get_request_body()
         self.assertEqual(1, len(request_body))

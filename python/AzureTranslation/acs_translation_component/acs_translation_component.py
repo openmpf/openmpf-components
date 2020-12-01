@@ -86,7 +86,7 @@ class AcsTranslationComponent:
                      'file is a plain text file containing the text to be translated.')
             text = pathlib.Path(job.data_uri).read_text().strip()
             track = mpf.GenericTrack(detection_properties=dict(TEXT=text))
-            modified_job_props = {**job.job_properties, 'TRANSLATE_PROPERTIES': 'TEXT'}
+            modified_job_props = {**job.job_properties, 'FEED_FORWARD_PROP_TO_PROCESS': 'TEXT'}
             modified_job = job._replace(job_properties=modified_job_props)
             return get_detections_from_non_composite(modified_job, track)
 
@@ -147,7 +147,7 @@ class TranslationClient:
         self._newline_behavior = NewLineBehavior.get(job_properties, url_builder.from_language)
         self._break_sentence_client = BreakSentenceClient(job_properties, self._subscription_key)
 
-        prop_names = job_properties.get('TRANSLATE_PROPERTIES', 'TEXT,TRANSCRIPT')
+        prop_names = job_properties.get('FEED_FORWARD_PROP_TO_PROCESS', 'TEXT,TRANSCRIPT')
         self._props_to_translate = [p.strip() for p in prop_names.split(',')]
 
         # Certain components that process videos and don't do tracking will create tracks with a
@@ -182,6 +182,7 @@ class TranslationClient:
 
             log.info(f'Successfully translated the "{prop_name}" property.')
             self.translation_count += 1
+            return  # Only process first matched property.
 
 
     def _translate_text(self, text: str) -> TranslationResult:
