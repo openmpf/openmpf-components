@@ -65,7 +65,7 @@ private:
     void process_regex_match(const boost::wsmatch &match, const std::wstring &full_text,
                              std::map<std::wstring, std::vector<std::string>> &trigger_words_offset);
 
-    bool process_text_tagging(Properties &detection_properties, const MPFJob &job, const std::wstring &full_text,
+    void process_text_tagging(Properties &detection_properties, const MPFJob &job, const std::wstring &full_text,
                               const std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex);
 
     void load_tags_json(const MPFJob &job,
@@ -79,6 +79,8 @@ private:
                     bool full_regex, bool case_sensitive);
 
     std::string parse_regex_code(const boost::regex_constants::error_type &etype);
+
+    bool get_text_to_process(const MPFJob &job, const Properties &detection_properties, std::wstring& text);
 };
 
 #endif //OPENMPF_COMPONENTS_KEYWORDTAGGING_H
