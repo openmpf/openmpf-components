@@ -361,6 +361,14 @@
       ]
     },
     {
+      "name": "TESSERACT OCR TEXT DETECTION WITH TRANSLATION TO ENGLISH PIPELINE",
+      "description": "Performs Tesseract OCR.",
+      "tasks": [
+        "TESSERACT OCR TEXT DETECTION TASK",
+        "AZURE TRANSLATION (WITH FF REGION) TASK"
+      ]
+    },
+    {
       "name": "TESSERACT OCR TEXT DETECTION PIPELINE SPARSE TEXT",
       "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "tasks": [

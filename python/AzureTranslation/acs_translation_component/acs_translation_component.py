@@ -170,14 +170,14 @@ class TranslationClient:
 
             log.info(f'Attempting to translate the "{prop_name}" property...')
             translation_results = self._translate_text(text_to_translate)
-            detection_properties[f'{prop_name} (TRANSLATION)'] = translation_results.translated_text
+            detection_properties['TRANSLATION'] = translation_results.translated_text
             detection_properties['TRANSLATION TO LANGUAGE'] = self._to_language
 
             if translation_results.detected_language:
-                detection_properties[f'{prop_name} (SOURCE LANG)'] \
+                detection_properties['SOURCE LANGUAGE'] \
                     = translation_results.detected_language
 
-                detection_properties[f'{prop_name} (SOURCE LANG CONFIDENCE)'] \
+                detection_properties['SOURCE LANGUAGE CONFIDENCE'] \
                     = str(translation_results.detected_language_confidence)
 
             log.info(f'Successfully translated the "{prop_name}" property.')
