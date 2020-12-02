@@ -1,0 +1,95 @@
+{
+  "componentName": "AzureFormDetection",
+  "componentVersion": "5.1",
+  "middlewareVersion": "5.1",
+  "sourceLanguage": "python",
+  "batchLibrary": "AzureFormDetection",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "AZUREFORM",
+    "description": "Uses Azure Cognitive Services to perform form recognition in documents and images.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TEXT",
+        "DETECTION_TEXT_AZURE"
+      ],
+      "properties": [
+        {
+          "name": "ACS_URL",
+          "description": "URL for the Azure Cognitive Services Endpoint. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_SUBSCRIPTION_KEY",
+          "description": "Azure Cognitive Services subscription key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "LANGUAGE",
+          "description": "When provided, this disables automatic language detection. The BCP-47 language code of the text to be detected in the image. This value is case-sensitive.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "MERGE_LINES",
+          "description": "Whether or not to combine detected lines into a single detection. When true, all lines within a given page will be combined into one detection output. Disabling this property can result in an excessive number of detections.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "INCLUDE_TEXT_DETAILS",
+          "description": "Whether or not to include text lines and element references in the result. When false, custom models will not output raw text results.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "MAX_GET_FORM_RESULT_ATTEMPTS",
+          "description": "Maximum number of GET requests to retrieve form detection results. When set to 0 or below, allow unlimited retries until server finishes processing forms.",
+          "type": "INT",
+          "defaultValue": "-1"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "AZURE FORM DETECTION ACTION",
+      "description": "Uses Azure Cognitive Services to perform form detection.",
+      "algorithm": "AZUREFORM",
+      "properties": [ ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "AZURE FORM DETECTION TASK",
+      "description": "Uses Azure Cognitive Services to perform form detection.",
+      "actions": [
+        "AZURE FORM DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "AZURE FORM DETECTION PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform form detection.",
+      "tasks": [
+        "AZURE FORM DETECTION TASK"
+      ]
+    },
+    {
+      "name": "AZURE FORM DETECTION (WITH MARKUP) PIPELINE ",
+      "description": "Uses Azure Cognitive Services to perform form detection and performs markup.",
+      "tasks": [
+        "AZURE FORM DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    }
+  ]
+}

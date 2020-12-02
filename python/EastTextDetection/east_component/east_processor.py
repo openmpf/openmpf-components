@@ -199,25 +199,31 @@ class EastProcessor(object):
 
         return batch_idx, rboxes, scores, structure_score
 
-    def process_image(self, image, temp_padding, final_padding, merge_on,
-                      suppress_vertical, min_confidence, min_merge_overlap,
-                      min_nms_overlap, max_height_delta, max_rot_delta,
-                      min_structured_score, **kwargs):
+    def process_image(self, image, temp_padding_x, temp_padding_y,
+                      final_padding, merge_on, suppress_vertical,
+                      min_confidence, overlap_threshold, min_nms_overlap,
+                      max_height_delta, max_rot_delta, min_structured_score,
+                      **kwargs):
         """ Process a single image using the given arguments
         :param image: The image to be processed. Takes the following shape:
                 (frame_height, frame_width, num_channels)
-        :param temp_padding: Temporary padding to symmetrically add to bounding
-                boxes during non-maximum suppression or merging. Each side is
-                extended by 0.5 * padding * box_height.
+        :param temp_padding_x: Temporary padding to symmetrically add to the
+                width of bounding boxes during non-maximum suppression or
+                merging. The right and left side of bounding boxes are both
+                extended by temp_padding_x * box_height.
+        :param temp_padding_y: Temporary padding to symmetrically add to the
+                height of bounding boxes during non-maximum suppression or
+                merging. The top and bottom of the bounding boxes are both
+                extended by temp_padding_y * box_height.
         :param final_padding: Padding to symmetrically add to output bounding
                 boxes after non-maximum suppression or merging. Each side is
-                extended by 0.5 * padding * box_height.
+                extended by final_padding * box_height.
         :param merge_on: Whether to merge regions according to the provided
                 thresholds.
         :param suppress_vertical: Whether to suppress vertical detections.
         :param min_confidence: Threshold to use for filtering detections
                 by bounding box confidence.
-        :param min_merge_overlap: Threshold value for deciding whether
+        :param overlap_threshold: Threshold value for deciding whether
                 regions overlap enough to be merged.
         :param min_nms_overlap: Threshold value for non-maximum suppression.
         :param max_height_delta: Threshold value for deciding whether
@@ -255,9 +261,10 @@ class EastProcessor(object):
             ilocs = merge_regions(
                 rboxes=rboxes,
                 scores=scores,
-                temp_padding=temp_padding,
+                temp_padding_x=temp_padding_x,
+                temp_padding_y=temp_padding_y,
                 final_padding=final_padding,
-                min_merge_overlap=min_merge_overlap,
+                overlap_threshold=overlap_threshold,
                 max_height_delta=max_height_delta,
                 max_rot_delta=max_rot_delta
             )
@@ -265,7 +272,8 @@ class EastProcessor(object):
             ilocs = nms(
                 rboxes=rboxes,
                 scores=scores,
-                temp_padding=temp_padding,
+                temp_padding_x=temp_padding_x,
+                temp_padding_y=temp_padding_y,
                 final_padding=final_padding,
                 min_nms_overlap=min_nms_overlap
             )
@@ -285,25 +293,31 @@ class EastProcessor(object):
             for x, y, w, h, r, s in ilocs
         ]
 
-    def process_frames(self, frames, temp_padding, final_padding, merge_on,
-                       suppress_vertical, min_confidence, min_merge_overlap,
-                       min_nms_overlap, max_height_delta, max_rot_delta,
-                       min_structured_score, **kwargs):
+    def process_frames(self, frames, temp_padding_x, temp_padding_y,
+                       final_padding, merge_on, suppress_vertical,
+                       min_confidence, overlap_threshold, min_nms_overlap,
+                       max_height_delta, max_rot_delta, min_structured_score,
+                       **kwargs):
         """ Process a volume of images using the given arguments
         :param frames: The images to be processed. Takes the following shape:
                 (batch_size, frame_height, frame_width, num_channels)
-        :param temp_padding: Temporary padding to symmetrically add to bounding
-                boxes during non-maximum suppression or merging. Each side is
-                extended by 0.5 * padding * box_height.
+        :param temp_padding_x: Temporary padding to symmetrically add to the
+                width of bounding boxes during non-maximum suppression or
+                merging. The right and left side of bounding boxes are both
+                extended by temp_padding_x * box_height.
+        :param temp_padding_y: Temporary padding to symmetrically add to the
+                height of bounding boxes during non-maximum suppression or
+                merging. The top and bottom of the bounding boxes are both
+                extended by temp_padding_y * box_height.
         :param final_padding: Padding to symmetrically add to output bounding
                 boxes after non-maximum suppression or merging. Each side is
-                extended by 0.5 * padding * box_height.
+                extended by final_padding * box_height.
         :param merge_on: Whether to merge regions according to the provided
                 thresholds.
         :param suppress_vertical: Whether to suppress vertical detections.
         :param min_confidence: Threshold to use for filtering detections
                 by bounding box confidence.
-        :param min_merge_overlap: Threshold value for deciding whether
+        :param overlap_threshold: Threshold value for deciding whether
                 regions overlap enough to be merged.
         :param min_nms_overlap: Threshold value for non-maximum suppression.
         :param max_height_delta: Threshold value for deciding whether
@@ -352,9 +366,10 @@ class EastProcessor(object):
                     ilocs = merge_regions(
                         rboxes=rboxes[j0:j1],
                         scores=scores[j0:j1],
-                        temp_padding=temp_padding,
+                        temp_padding_x=temp_padding_x,
+                        temp_padding_y=temp_padding_y,
                         final_padding=final_padding,
-                        min_merge_overlap=min_merge_overlap,
+                        overlap_threshold=overlap_threshold,
                         max_height_delta=max_height_delta,
                         max_rot_delta=max_rot_delta
                     )
@@ -362,7 +377,8 @@ class EastProcessor(object):
                     ilocs = nms(
                         rboxes=rboxes[j0:j1],
                         scores=scores[j0:j1],
-                        temp_padding=temp_padding,
+                        temp_padding_x=temp_padding_x,
+                        temp_padding_y=temp_padding_y,
                         final_padding=final_padding,
                         min_nms_overlap=min_nms_overlap
                     )
