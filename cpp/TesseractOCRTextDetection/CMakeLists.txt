@@ -53,7 +53,7 @@ include_directories(${Tesseract_INCLUDE_DIRS})
 include_directories(${Leptonica_INCLUDE_DIRS})
 
 set(OCR_SOURCE_FILES
-        TesseractOCRTextDetection.cpp TesseractOCRTextDetection.h JSON.cpp JSONValue.cpp JSON.h JSONValue.h)
+        TesseractOCRTextDetection.cpp TesseractOCRTextDetection.h)
 
 add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=16 )
 add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )

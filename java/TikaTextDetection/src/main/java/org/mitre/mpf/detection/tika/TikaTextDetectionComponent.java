@@ -27,7 +27,7 @@
 package org.mitre.mpf.detection.tika;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.tika.langdetect.OptimaizeLangDetector;
 import org.apache.tika.language.detect.LanguageResult;
@@ -35,29 +35,20 @@ import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
-import com.fasterxml.jackson.core.type.TypeReference;
-
-
 import org.mitre.mpf.component.api.detection.*;
-import org.mitre.mpf.component.api.detection.util.MPFEnvironmentVariablePathExpander;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 
 public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TikaTextDetectionComponent.class);
     private static final Map<String, String> langMap;
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final ObjectReader objectReader = objectMapper.readerFor(new TypeReference<Map<String, List<JsonNode>>>(){});
 
     static {
          langMap = Collections.unmodifiableMap(initLangMap());
@@ -101,16 +92,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
         Map<String,String> properties = mpfGenericJob.getJobProperties();
 
-        // Acquire tag file.
-        String tagFile = MapUtils.getString(properties, "TAGGING_FILE");
-        if (tagFile == null) {
-            String runDirectory = this.getRunDirectory();
-            if (runDirectory == null || runDirectory.length() < 1) {
-                runDirectory = "../plugins";
-            }
-            tagFile = runDirectory + "/TikaDetection/config/text-tags.json";
-        }
-        tagFile = MPFEnvironmentVariablePathExpander.expand(tagFile);
 
         // Set language filtering limit.
         int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);
@@ -144,7 +125,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         if (pageOutput.size() >= 1) {
             // Load language identifier.
             OptimaizeLangDetector identifier = new OptimaizeLangDetector();
-            Map<String, List<JsonNode>>  regexTags;
+
 
             try {
                 identifier.loadModels();
@@ -154,152 +135,13 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                 throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg, e);
             }
 
-            // Parse Tag File.
-            try{
-                JsonNode jsonRoot = objectMapper.readTree(new File(tagFile));
-                JsonNode regexNode = jsonRoot.get("TAGS_BY_REGEX");
-
-                regexTags = objectReader.readValue(regexNode);
-
-            } catch (FileNotFoundException e) {
-                String errorMsg = String.format("Tag file %s not found!", tagFile);
-                LOG.error(errorMsg, e);
-                throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, errorMsg);
-            } catch (JsonParseException e) {
-                String errorMsg = String.format("Error parsing tag file.");
-                LOG.error(errorMsg, e);
-                throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, errorMsg);
-            } catch (IOException e) {
-                String errorMsg = String.format("I/O Error.");
-                LOG.error(errorMsg, e);
-                throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, errorMsg);
-            }
-
             int pageIDLen = (int) (java.lang.Math.log10(pageOutput.size())) + 1;
             for (int i = 0; i < pageOutput.size(); i++) {
 
                 Map<String, String> genericDetectionProperties = new HashMap<String, String>();
-                List<String> tagsList = new ArrayList<String>();
-                Map<String, Set<String>> triggerWordsMap = new LinkedHashMap<String, Set<String>>();
 
-                // Split out non-alphanumeric characters.
-                String pageText = pageOutput.get(i).toString();
-                String pageTextLower = pageText.toLowerCase();
-                char[] pageTextChar = pageText.toCharArray();
 
                 try {
-
-                    for (Map.Entry<String, List<JsonNode>> entry : regexTags.entrySet()) {
-                        String key = entry.getKey();
-                        List<JsonNode> tagList = entry.getValue();
-                        boolean keyFound = false;
-                        for (JsonNode regexEntry: tagList) {
-                            String regex = "";
-                            boolean caseSensitive = false;
-                            if (regexEntry.isTextual()) {
-                                // Legacy JSON processing.
-                                // Legacy regex patterns in the JSON tags file are listed as follows:
-                                //
-                                // "TAGS_BY_REGEX": {
-                                //    "vehicle-tag-legacy-format": [
-                                //        "auto",
-                                //        "car"
-                                //    ],
-                                //  ...
-                                // }
-
-                                regex = regexEntry.textValue();
-                            } else {
-                                // Standard JSON format processing.
-                                // Standard JSON regex patterns are listed as follows:
-                                //
-                                // "TAGS_BY_REGEX": {
-                                //    "vehicle-tag-standard-format": [
-                                //      {"pattern": "auto"},
-                                //      {"pattern": "car"}
-                                //    ],
-                                //  ...
-                                // }
-
-                                JsonNode pattern = regexEntry.get("pattern");
-                                JsonNode caseSens = regexEntry.get("caseSensitive");
-                                if (pattern != null && pattern.isTextual()) {
-                                    regex = pattern.textValue();
-                                }
-                                if (caseSens != null && caseSens.isBoolean()) {
-                                    caseSensitive = caseSens.asBoolean();
-                                }
-                            }
-                            Matcher m;
-                            Pattern p;
-                            if (caseSensitive) {
-                                p = Pattern.compile(regex);
-                            } else {
-                                p = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-                            }
-                            m = p.matcher(pageText);
-
-                            while (m.find()) {
-                                keyFound = true;
-                                Set<String> triggerWordOffsets;
-                                int start = m.start(), end = m.end();
-
-                                // Trim trigger words of whitespace.
-                                for (int c = start; c < end; c++) {
-                                    if (!Character.isWhitespace(pageTextChar[c])) {
-                                        break;
-                                    } else {
-                                        start++;
-                                    }
-                                }
-                                for (int c = end; c > start; c--) {
-                                    if (!Character.isWhitespace(pageTextChar[c - 1])) {
-                                        break;
-                                    } else {
-                                        end--;
-                                    }
-                                }
-
-                                String triggerWord = pageText.substring(start, end).replaceAll(";", "[;]");
-                                String offset;
-                                if ( start != (end - 1)) {
-                                    // Offset for words and phrases.
-                                    offset = String.format("%d-%d", start, end - 1);
-                                } else {
-                                    // Offset for a single character.
-                                    offset = String.format("%d", start);
-                                }
-
-                                if (triggerWordsMap.containsKey(triggerWord)){
-                                    triggerWordOffsets = triggerWordsMap.get(triggerWord);
-                                } else {
-                                    triggerWordOffsets = new TreeSet<String>();
-                                    triggerWordsMap.put(triggerWord, triggerWordOffsets);
-                                }
-                                triggerWordOffsets.add(offset);
-                                if (!MapUtils.getBooleanValue(properties, "FULL_REGEX_SEARCH", true)) {
-                                    break;
-                                }
-                            }
-                            if (!MapUtils.getBooleanValue(properties, "FULL_REGEX_SEARCH", true) && keyFound) {
-                                break;
-                            }
-                        }
-                        if (keyFound) {
-                            tagsList.add(key);
-                        }
-                    }
-
-                    String tagsListResult = String.join("; ", tagsList);
-                    Set<String> triggerWordsSet = triggerWordsMap.keySet();
-                    String triggerWordsResult = String.join("; ", triggerWordsSet);
-                    
-                    ArrayList<String> offsetsList = new ArrayList();
-                    for (String key: triggerWordsSet) {
-                        offsetsList.add(String.join(", ",triggerWordsMap.get(key)));
-                    }
-
-                    String triggerOffsetsResult = String.join("; ", offsetsList);
                     String textDetect = pageOutput.get(i).toString();
 
                     // By default, trim out detected text.
@@ -315,9 +157,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                         }
                         genericDetectionProperties.put("TEXT", "");
                         genericDetectionProperties.put("TEXT_LANGUAGE",  "Unknown");
-                        genericDetectionProperties.put("TAGS",  "");
-                        genericDetectionProperties.put("TRIGGER_WORDS", "");
-                        genericDetectionProperties.put("TRIGGER_WORDS_OFFSET", "");
                     }
 
                     // Process text languages.
@@ -340,15 +179,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                         genericDetectionProperties.put("TEXT_LANGUAGE",  "Unknown");
                     }
 
-                    if (tagsListResult.length() > 0) {
-                        genericDetectionProperties.put("TAGS", tagsListResult);
-                        genericDetectionProperties.put("TRIGGER_WORDS", triggerWordsResult);
-                        genericDetectionProperties.put("TRIGGER_WORDS_OFFSET", triggerOffsetsResult);
-                    } else {
-                        genericDetectionProperties.put("TAGS", "");
-                        genericDetectionProperties.put("TRIGGER_WORDS", "");
-                        genericDetectionProperties.put("TRIGGER_WORDS_OFFSET", "");
-                    }
+
                 } catch (Exception e) {
                     String errorMsg = String.format("Failed to process text detections.");
                     LOG.error(errorMsg, e);

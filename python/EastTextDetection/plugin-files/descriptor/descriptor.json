@@ -1,7 +1,7 @@
 {
   "componentName": "EastTextDetection",
-  "componentVersion": "5.0",
-  "middlewareVersion": "5.0",
+  "componentVersion": "5.1",
+  "middlewareVersion": "5.1",
   "sourceLanguage": "python",
   "batchLibrary": "EastTextDetection",
   "environmentVariables": [],
@@ -32,10 +32,10 @@
           "defaultValue": "-1"
         },
         {
-          "name": "MERGE_MIN_OVERLAP",
-          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the ratio between the area of intersection of two regions and the area of the smaller region is greater than or equal to this value, the boxes may be merged.",
+          "name": "MERGE_OVERLAP_THRESHOLD",
+          "description": "Threshold value used to determine whether to merge regions, between 0.0 and 1.0. When the ratio between the area of intersection of two regions and the area of the smaller region is greater than this value, the boxes may be merged.",
           "type": "FLOAT",
-          "defaultValue": "0.01"
+          "defaultValue": "0.0"
         },
         {
           "name": "NMS_MIN_OVERLAP",
@@ -56,8 +56,14 @@
           "defaultValue": "10.0"
         },
         {
-          "name": "TEMPORARY_PADDING",
-          "description": "The temporary padding to add around bounding boxes before non-maximum suppression or merging, in order to boost the overlap between adjacent detections. Each bounding box will be symmetrically padded on all sides with space equal to PADDING * <box_height>. This padding does not persist after the NMS/merging step; use the FINAL_PADDING property to increase the size of output regions.",
+          "name": "TEMPORARY_PADDING_X",
+          "description": "The temporary padding to add to the width of bounding boxes before non-maximum suppression or merging, in order to boost the overlap between adjacent detections. Each bounding box will be symmetrically padded on the left and right sides with space equal to TEMPORARY_PADDING_X * <box_height>. This padding does not persist after the NMS/merging step; use the FINAL_PADDING property to increase the size of output regions.",
+          "type": "FLOAT",
+          "defaultValue": "0.1"
+        },
+        {
+          "name": "TEMPORARY_PADDING_Y",
+          "description": "The temporary padding to add to the height bounding boxes before non-maximum suppression or merging, in order to boost the overlap between adjacent detections. Each bounding box will be symmetrically padded on the top and bottom with space equal to TEMPORARY_PADDING_Y * <box_height>. This padding does not persist after the NMS/merging step; use the FINAL_PADDING property to increase the size of output regions.",
           "type": "FLOAT",
           "defaultValue": "0.1"
         },

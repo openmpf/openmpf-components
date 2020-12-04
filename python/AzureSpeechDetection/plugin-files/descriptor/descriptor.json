@@ -1,7 +1,7 @@
 {
   "componentName": "AzureSpeechDetection",
-  "componentVersion": "5.0",
-  "middlewareVersion": "5.0",
+  "componentVersion": "5.1",
+  "middlewareVersion": "5.1",
   "sourceLanguage": "python",
   "batchLibrary": "AzureSpeechDetection",
   "environmentVariables": [],
@@ -104,6 +104,14 @@
       "description": "Uses Azure Cognitive Services to perform speech-to-text in English.",
       "tasks": [
         "AZURE SPEECH DETECTION TASK"
+      ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION WITH KEYWORD TAGGING PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in English and performs keyword tagging.",
+      "tasks": [
+        "AZURE SPEECH DETECTION TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
     }
   ]

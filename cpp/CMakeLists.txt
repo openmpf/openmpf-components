@@ -37,6 +37,7 @@ add_subdirectory(OcvDnnDetection)
 add_subdirectory(DarknetDetection)
 add_subdirectory(TesseractOCRTextDetection)
 add_subdirectory(SceneChangeDetection)
+add_subdirectory(KeywordTagging)
 
 
 
