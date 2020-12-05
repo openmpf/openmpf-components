@@ -41,9 +41,11 @@ def main():
     job_props = dict(TO_LANGUAGE=to_lang, ACS_URL=acs_url,
                      ACS_SUBSCRIPTION_KEY=acs_subscription_key)
     TranslationClient(job_props).add_translations(detection_props)
-    print('Translation: ')
-    print(detection_props[f'TEXT (TRANSLATED TO {to_lang.upper()})'])
 
+    print('TRANSLATION SOURCE LANGUAGE:', detection_props['TRANSLATION SOURCE LANGUAGE'])
+    print('TRANSLATION SOURCE LANGUAGE CONFIDENCE:', detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE'])
+    print('TRANSLATION:')
+    print(detection_props['TRANSLATION'])
 
 if __name__ == '__main__':
     main()

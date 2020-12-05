@@ -13,7 +13,7 @@
   ],
   "algorithm": {
     "name": "KEYWORDTAGGING",
-    "description": "Performs keyword tagging on text and transcripts.",
+    "description": "Performs keyword tagging.",
     "actionType": "DETECTION",
     "requiresCollection": {
       "states": []
@@ -54,7 +54,7 @@
     },
     {
       "name": "KEYWORD TAGGING (WITH FF REGION) ACTION",
-      "description": "Performs keyword tagging on detections with TEXT and TRANSCRIPT properties.",
+      "description": "Performs keyword tagging on feed-forward tracks and detections.",
       "algorithm": "KEYWORDTAGGING",
       "properties": [
         {
@@ -74,7 +74,7 @@
     },
     {
       "name": "KEYWORD TAGGING (WITH FF REGION) TASK",
-      "description": "Performs keyword tagging on detections with TEXT and TRANSCRIPT properties.",
+      "description": "Performs keyword tagging on feed-forward tracks and detections.",
       "actions": [
         "KEYWORD TAGGING (WITH FF REGION) ACTION"
       ]

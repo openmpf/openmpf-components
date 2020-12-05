@@ -73,7 +73,7 @@
   "actions": [
     {
       "name": "AZURE TRANSLATION (WITH FF REGION) ACTION",
-      "description": "Uses Azure Cognitive Services to perform translation.",
+      "description": "Uses Azure Cognitive Services to perform translation on feed-forward tracks and detections.",
       "algorithm": "AZURE_TRANSLATION",
       "properties": [
         {
@@ -93,7 +93,7 @@
   "tasks": [
     {
       "name": "AZURE TRANSLATION (WITH FF REGION) TASK",
-      "description": "Uses Azure Cognitive Services to perform translation.",
+      "description": "Uses Azure Cognitive Services to perform translation on feed-forward tracks and detections.",
       "actions": [
         "AZURE TRANSLATION (WITH FF REGION) ACTION"
       ]

@@ -44,12 +44,11 @@ must be provided. Neither has a default value.
 # Important Job Properties:
 - `TO_LANGUAGE`: The BCP-47 language code for language that the properties 
    should be translated to.
-- `TRANSLATE_PROPERTIES`: Comma-separated list of property names indicating 
+- `FEED_FORWARD_PROP_TO_PROCESS`: Comma-separated list of property names indicating 
   which properties in the feed-forward track or detection to consider 
-  translating. If the first property listed is present, then that property 
-  will be translated. If it's not, then the next property in the list is 
-  considered. At most, one property will be translated.
-   e.g. `TEXT,TRANSCRIPT`
+  translating. For example, `TEXT,TRANSCRIPT`. If the first property listed is
+  present, then that property  will be translated. If it's not, then the next
+  property in the list is considered. At most, one property will be translated.
 - `FROM_LANGUAGE`: In most cases, this property should not be used. It should
   only be used when automatic language detection is detecting the wrong 
   language. Providing this property prevents the translation endpoint from 

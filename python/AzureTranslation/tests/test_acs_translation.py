@@ -96,9 +96,9 @@ class TestAcsTranslation(unittest.TestCase):
                                  result.detection_properties['TRANSLATION'])
                 self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
 
-                self.assertEqual('zh-Hans', result.detection_properties['SOURCE LANGUAGE'])
+                self.assertEqual('zh-Hans', result.detection_properties['TRANSLATION SOURCE LANGUAGE'])
                 self.assertAlmostEqual(
-                    1.0, float(result.detection_properties['SOURCE LANGUAGE CONFIDENCE']))
+                    1.0, float(result.detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
 
                 request_body = self.get_request_body()
                 self.assertEqual(1, len(request_body))
@@ -154,9 +154,9 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
                          result.detection_properties['TRANSLATION'])
         self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
-        self.assertEqual('zh-Hans', result.detection_properties['SOURCE LANGUAGE'])
+        self.assertEqual('zh-Hans', result.detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertAlmostEqual(
-            1.0, float(result.detection_properties['SOURCE LANGUAGE CONFIDENCE']))
+            1.0, float(result.detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
 
 
         self.assertEqual(CHINESE_SAMPLE_TEXT,
@@ -166,10 +166,10 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual('EN',
                          result.frame_locations[0].detection_properties['TRANSLATION TO LANGUAGE'])
         self.assertEqual('zh-Hans',
-                         result.frame_locations[0].detection_properties['SOURCE LANGUAGE'])
+                         result.frame_locations[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertAlmostEqual(
             1.0,
-            float(result.frame_locations[0].detection_properties['SOURCE LANGUAGE CONFIDENCE']))
+            float(result.frame_locations[0].detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
 
 
         self.assertEqual(SPANISH_SAMPLE_TEXT,
@@ -179,10 +179,10 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual('EN',
                          result.frame_locations[1].detection_properties['TRANSLATION TO LANGUAGE'])
         self.assertEqual('es',
-                         result.frame_locations[1].detection_properties['SOURCE LANGUAGE'])
+                         result.frame_locations[1].detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertAlmostEqual(
             1.0,
-            float(result.frame_locations[1].detection_properties['SOURCE LANGUAGE CONFIDENCE']))
+            float(result.frame_locations[1].detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
 
 
         request_body1 = self.get_request_body()
@@ -451,8 +451,8 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(expected_translation, detection_props['TRANSLATION'])
         self.assertEqual('EN', detection_props['TRANSLATION TO LANGUAGE'])
 
-        self.assertEqual('zh-Hant', detection_props['SOURCE LANGUAGE'])
-        self.assertAlmostEqual(1.0, float(detection_props['SOURCE LANGUAGE CONFIDENCE']))
+        self.assertEqual('zh-Hant', detection_props['TRANSLATION SOURCE LANGUAGE'])
+        self.assertAlmostEqual(1.0, float(detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
 
 
         break_sentence_request_text = self.get_request_body()[0]['Text']
@@ -676,9 +676,9 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(input_text, result.detection_properties['TRANSLATION'])
         self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
 
-        self.assertEqual('ja', result.detection_properties['SOURCE LANGUAGE'])
+        self.assertEqual('ja', result.detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertAlmostEqual(
-            0.0, float(result.detection_properties['SOURCE LANGUAGE CONFIDENCE']))
+            0.0, float(result.detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
 
         request_url, request_body = self.get_request()
         self.assertEqual(1, len(request_body))
