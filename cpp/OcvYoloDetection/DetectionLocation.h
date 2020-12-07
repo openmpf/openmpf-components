@@ -28,12 +28,7 @@
 #define OCVYOLODETECTION_DETECTIONLOCATION_H
 
 #include <log4cxx/logger.h>
-
 #include <opencv2/dnn.hpp>
-#include <opencv2/face.hpp>
-
-//#include <dlib/image_processing.h>
-//#include <dlib/opencv.h>
 
 #include "types.h"
 #include "util.h"

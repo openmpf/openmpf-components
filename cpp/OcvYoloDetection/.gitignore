@@ -5,6 +5,8 @@ test_vids/misc/
 .unotes/
 ObjectDetection-YOLO/
 ocv_face_known_tracks_short.txt
+.vscode/
+.devcontainer/
 
 # CMake Files
 CMakeCache.txt
@@ -16,6 +18,9 @@ install_manifest.txt
 CTestTestfile.cmake
 build/
 cmake-build-debug/
+
+# vs-code
+*.code-workspace
 
 # videos
 *.mp4

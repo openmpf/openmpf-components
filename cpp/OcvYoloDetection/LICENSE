@@ -21,12 +21,15 @@
 
  When this software is packaged and/or distributed with the pre-trained model:
 
- opencv_face_detector_uint8.pb
- [https://github.com/opencv/opencv_3rdparty/raw/8033c2bc31b3256f0d461c919ecc01c2428ca03b/opencv_face_detector_uint8.pb],
+ yolov4.cfg
+ [https://github.com/AlexeyAB/darknet/blob/master/cfg/yolov4.cfg]
+
+ yolov4.weights
+ [https://drive.google.com/open?id=1cewMfusmPjYWbrnuJRuKhPMwRe_b9PaT],
 
  the resulting product inherits the license and usage restrictions of that model,
  which are not explicitly stated by the original author. Please contact the author
  before using this component for commercial purposes.
 
-yolov3-confusion-matrix.json adapted from
+ yolov3-confusion-matrix.json adapted from
  https://github.com/whynotw/YOLO_metric

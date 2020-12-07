@@ -26,7 +26,7 @@
 
 
 cmake_minimum_required(VERSION 3.6)
-project(ocv-ssd-face-detection)
+project(ocv-yolo-detection)
 
 set(CMAKE_CXX_STANDARD 11)
 
@@ -53,8 +53,8 @@ find_package(OpenCV
      opencv_videoio
      opencv_tracking
 )
-if(${OpenCV_VERSION} VERSION_LESS 3.4.7)
-  message(FATAL_ERROR "OpenCV ${OpenCV_VERSION} is below minimum 3.4.7")
+if(${OpenCV_VERSION} VERSION_LESS 4.5)
+  message(FATAL_ERROR "OpenCV ${OpenCV_VERSION} is below minimum 4.5")
 endif()
 
 find_package(mpfComponentInterface REQUIRED)

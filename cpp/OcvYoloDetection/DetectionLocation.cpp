@@ -117,20 +117,20 @@ cv::Point2d  DetectionLocation::_phaseCorrelate(const Track &tr) const {
 *************************************************************************** */
 float DetectionLocation::featureDist(const Track &tr) const {
   float dist;
-  cv::Rect2d  trRoi(tr.locations.back().getRect());                                   // roi of track object in tr's frame
+  cv::Rect2d  trRoi(tr.locations.back().getRect());                            // roi of track object in tr's frame
   if(trRoi.area() > 0.0){
 
     cv::Point2d ctr = cv::Point2d(x_left_upper + 0.5 * width,
                                   y_left_upper + 0.5 * height)
                       - _phaseCorrelate(tr);                                   // center of shifted track roi
 
-    if(cv::Rect2d(cv::Point2d(0,0),frame.bgr.size()).contains(ctr)){        // center ok
+    if(cv::Rect2d(cv::Point2d(0,0),frame.bgr.size()).contains(ctr)){           // center ok
       cv::Mat comp;
-      cv::getRectSubPix(frame.bgr,trRoi.size(), ctr, comp);                // grab corresponding region from bgrFrame with border replication
-      cv::absdiff(tr.locations.back().frame.bgr(trRoi), comp, comp);                 // compute pixel wise absolute diff (could do HSV transform 1st?!)
+      cv::getRectSubPix(frame.bgr,trRoi.size(), ctr, comp);                    // grab corresponding region from bgrFrame with border replication
+      cv::absdiff(tr.locations.back().frame.bgr(trRoi), comp, comp);           // compute pixel wise absolute diff (could do HSV transform 1st?!)
       assert(frame.bgr.depth() == CV_8U);
       cv::Scalar mean = cv::mean(comp) / 255.0;                                // get mean normalized BGR pixel difference
-      dist = mean.ddot(mean) / frame.bgr.channels();                       // combine BGR: d = BGR.BGR
+      dist = mean.ddot(mean) / frame.bgr.channels();                           // combine BGR: d = BGR.BGR
     }else{                                                                     LOG_TRACE("ctr " << ctr << " outside bgrFrame");
       dist = 1.0;
     }
@@ -253,12 +253,12 @@ const cv::Mat& DetectionLocation::getDFTFeature() const {
 }
 
 /** ****************************************************************************
-* Detect objects using SSD DNN opencv face detector network
+* Detect objects using opencv yolo detector network
 *
 * \param  cfg       job configuration setting
 * \param  framePtrs frames to process in one inference call
 *
-* \returns found face detections that meet size requirements.
+* \returns found detections that meet size requirements.
 *
 * \note each detection hang on to a reference to the bgrFrame which
 *       should be released once no longer needed (i.e. scoresVectors care computed)

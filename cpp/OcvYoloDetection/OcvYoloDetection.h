@@ -49,7 +49,7 @@ namespace MPF{
     public:
       bool Init()  override;
       bool Close() override;
-      string GetDetectionType(){return "FACE";};
+      string GetDetectionType(){return "CLASS";};
       MPFVideoTrackVec    GetDetections(const MPFVideoJob &job) override;
       MPFImageLocationVec GetDetections(const MPFImageJob &job) override;
 

@@ -90,7 +90,7 @@ void processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[
 }
 
 //-----------------------------------------------------------------------------
-// Main program to run the OCV face detection in standalone mode.
+// Main program to run the OCV yolo detection in standalone mode.
 //-----------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
 

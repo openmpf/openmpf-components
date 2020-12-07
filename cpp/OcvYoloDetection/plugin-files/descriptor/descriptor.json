@@ -31,34 +31,52 @@
           "defaultValue": "0.5"
         },
         {
-          "name": "MIN_DETECTION_SIZE",
-          "description": "Minimum bounding box dimension in pixels to keep detection and start a track.",
-          "type": "INT",
-          "defaultValue": "46"
-        },
-        {
-          "name": "DETECTION_FRAME_INTERVAL",
-          "description": "Number of frames to skip running the detector and rely on just tracking",
-          "type": "INT",
-          "defaultValue": "0"
-        },
-        {
-          "name": "TRACKING_MAX_IOU_DIST",
-          "description": "Maximum intersection over union distance (1.0 - iou) =[0..1] between detections below which detection will be considered part of same track",
+          "name": "DETECTION_NMS_THRESHOLD",
+          "description": "Non maximum suppression threshold [0...1], IoU for duplicate object detection supression.",
           "type": "FLOAT",
-          "defaultValue": "0.5"
+          "defaultValue": "0.3"
         },
         {
-          "name": "TRACKING_MAX_FEATURE_DIST",
-          "description": "Maximum distance in feature space (1.0 - cos similarity) = [0..1] between detections below which detection will be considered part of same track",
-          "type": "FLOAT",
-          "defaultValue": "0.25"
+          "name": "DETECTION_IMAGE_SIZE",
+          "description": "Scaled image width and height for detection network input (e.g. 320,416, or 608).",
+          "type": "INT",
+          "defaultValue": "320"
+        },
+        {
+          "name": "DETECTION_FRAME_BATCH_SIZE",
+          "description": "Number of frames to batch inference when processing video. GPU VRAM dependant",
+          "type": "INT",
+          "defaultValue": "16"
+        },
+        {
+          "name": "NUMBER_OF_CLASSIFICATIONS_PER_REGION",
+          "description": "Number of classification to return per detection",
+          "type": "INT",
+          "defaultValue": "5"
         },
         {
           "name": "TRACKING_MAX_FRAME_GAP",
           "description": "Maximum temporal distance (# of frames) between detection in a track.",
           "type": "INT",
           "defaultValue": "4"
+        },
+        {
+          "name": "TRACKING_MAX_CLASS_DIST",
+          "description": "Threshold class-similarity-distance [0...1] above which detections will not be considered for a track of a particular class.",
+          "type": "FLOAT",
+          "defaultValue": "0.99"
+        },
+        {
+          "name": "TRACKING_MAX_IOU_DIST",
+          "description": "Maximum intersection over union distance (1.0 - iou) =[0..1] between detections below which detection will be considered part of same track",
+          "type": "FLOAT",
+          "defaultValue": "0.3"
+        },
+        {
+          "name": "TRACKING_MAX_FEATURE_DIST",
+          "description": "Maximum distance in nomalized aggregate pixel-difference [0..1] between detections below which detection will be considered part of same track",
+          "type": "FLOAT",
+          "defaultValue": "0.1"
         },
         {
           "name": "TRACKING_EDGE_SNAP_DIST",
@@ -68,9 +86,15 @@
         },
         {
           "name": "TRACKING_DFT_SIZE",
-          "description": "DFT size for bbox alignment via phase correlation",
+          "description": "DFT size for bbox alignment via phase correlation.",
           "type": "INT",
           "defaultValue": "256"
+        },
+        {
+          "name": "TRACKING_DISABLE_MOSSE_TRACKER",
+          "description": "Disable builtin backup OCV MOSSE tracking.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
         },
         {
           "name": "TRACKING_DFT_USE_HANNING_WINDOW",
@@ -82,7 +106,7 @@
           "name": "KF_MAX_ASSIGNMENT_RESIDUAL",
           "description": "Maximim number of standard deviations of a kalman filter state residual that a potential detection assignment is allowed to cause.",
           "type": "FLOAT",
-          "defaultValue": "4.0"
+          "defaultValue": "2.5"
         },
         {
           "name": "KF_DISABLED",
@@ -94,13 +118,13 @@
           "name": "KF_RN",
           "description": "Bounding box detector noise standard deviations (in pixels) [center_x_noise_stdev, center_y_noise_stddev, width_noise_stdev, height_noise_stddev] for Kalman filter R",
           "type": "STRING",
-          "defaultValue": " [ 6.0,6.0,6.0,6.0 ] "
+          "defaultValue": " [ 10.0, 10.0, 100.0, 100.0 ] "
         },
         {
           "name": "KF_QN",
           "description": "Bounding box motion model acceleration inaccuracies/noise (in pixels/sec^2) [center_x_acceleration_noise_stdev, center_y_acceleration_noise_stdev, width_acceleration_noise_stdev, height_acceleration_noise_stdev ] for Kalman filter Q",
           "type": "STRING",
-          "defaultValue": " [10000.0, 10000.0, 1000.0, 1000.0] "
+          "defaultValue": " [ 1000.0, 1000.0, 1000.0, 1000.0 ] "
         },
         {
           "name": "CUDA_DEVICE_ID",

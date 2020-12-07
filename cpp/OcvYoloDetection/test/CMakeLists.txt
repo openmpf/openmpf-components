@@ -25,7 +25,7 @@
 #############################################################################
 
 cmake_minimum_required(VERSION 3.6)
-project(ocv-ssd-face-detection-tests)
+project(ocv-yolo-detection-tests)
 
 set(CMAKE_CXX_STANDARD 11)
 find_package(GTest)
@@ -57,11 +57,11 @@ if (${GTEST_FOUND})
 
 
     # Install test images and videos
-    file(GLOB FACE_TEST_IMAGE_FILES data/test_imgs/*)
-    file(COPY ${FACE_TEST_IMAGE_FILES} DESTINATION test/test_imgs)
+    file(GLOB TEST_IMAGE_FILES data/test_imgs/*)
+    file(COPY ${TEST_IMAGE_FILES} DESTINATION test/test_imgs)
 
-    file(GLOB FACE_TEST_VIDEO_FILES data/test_vids/*)
-    file(COPY ${FACE_TEST_VIDEO_FILES} DESTINATION test/test_vids)
+    file(GLOB TEST_VIDEO_FILES data/test_vids/*)
+    file(COPY ${TEST_VIDEO_FILES} DESTINATION test/test_vids)
 
     # Create directory for test output files
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test/test_output/)

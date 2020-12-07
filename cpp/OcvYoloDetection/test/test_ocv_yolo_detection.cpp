@@ -100,19 +100,12 @@ static string GetCurrentWorkingDirectory() {
 *   Test component opencv version
 **************************************************************************** */
 TEST(OcvYoloDetection, OpenCVVersion) {
-  #if(CV_MAJOR_VERSION > 3)
-    GOUT("OpenCV Version: 4.x");
-  #elif(CV_MAJOR_VERSION > 2)
-    GOUT("OpenCV Version: 3.x");
-  #endif
+  GOUT("OpenCV Version:" << CV_MAJOR_VERSION << "." << CV_MINOR_VERSION);
 
-  cv::FileStorage fs("test.json", cv::FileStorage::WRITE);
+  if(CV_MAJOR_VERSION > 4) return;
+  if(CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >=5) return;
 
-  cv::Mat2f test = cv::Mat2f::eye(4,4);
-  fs << "ident" << test;
-  fs.release();
-
-
+  FAIL() << "YoloV4 requires OpenCV Version 4.5 or higher";
 
 }
 
@@ -238,7 +231,7 @@ TEST(OcvYoloDetection, TestCorrelator) {
     string image_file                = parameters["OCV_CORRELATOR_IMAGE_FILE" ].toStdString();
     string output_image_file         = parameters["OCV_CORRELATOR_OUTPUT_FILE"].toStdString();
 
-    // 	Create an OCV face detection object.
+    // 	Create an OCV detection object.
     OcvYoloDetection *detection = new OcvYoloDetection();
     ASSERT_TRUE(NULL != detection);
 
@@ -307,7 +300,7 @@ TEST(OcvYoloDetection, TestCorrelator) {
 }
 
 /** ***************************************************************************
-*   Test face detection in images
+*   Test detection in images
 **************************************************************************** */
 TEST(OcvYoloDetection, TestOnKnownImage) {
 
@@ -321,7 +314,7 @@ TEST(OcvYoloDetection, TestOnKnownImage) {
     string output_detections_file    = parameters["OCV_IMAGE_FOUND_DETECTIONS" ].toStdString();
     float comparison_score_threshold = parameters["OCV_IMAGE_COMPARISON_SCORE"].toFloat();
 
-    // 	Create an OCV face detection object.
+    // 	Create an OCV detection object.
     OcvYoloDetection *detection = new OcvYoloDetection();
     ASSERT_TRUE(NULL != detection);
 
@@ -365,7 +358,7 @@ TEST(OcvYoloDetection, TestOnKnownImage) {
 
 
 /** ***************************************************************************
-*   Test face detection and tracking in videos
+*   Test detection and tracking in videos
 **************************************************************************** */
 TEST(OcvYoloDetection, TestOnKnownVideo) {
 
@@ -394,25 +387,12 @@ TEST(OcvYoloDetection, TestOnKnownVideo) {
     GOUT("outVideo:\t" << outVideoFile);
     GOUT("comparison threshold:\t" << comparison_score_threshold);
 
-    // 	Create an OCV face detection object.
-    GOUT("\tCreating OCV Face Detection");
+    GOUT("\tCreating OCV Yolo Detection");
     OcvYoloDetection *ocv_yolo_detection = new OcvYoloDetection();
     ASSERT_TRUE(NULL != ocv_yolo_detection);
     ocv_yolo_detection->SetRunDirectory(current_working_dir + "/../plugin");
     ASSERT_TRUE(ocv_yolo_detection->Init());
 
-    // 	Load the known tracks into memory.
-    //GOUT("\tLoading the known tracks into memory: " << inTrackFile);
-    //vector<MPFVideoTrack> known_tracks;
-    //ASSERT_TRUE(ReadDetectionsFromFile::ReadVideoTracks(inTrackFile, known_tracks));
-
-    // create output known video to view ground truth
-    //GOUT("\tWriting ground truth video and test tracks to files.");
-    //VideoGeneration video_generation_gt;
-    //video_generation_gt.WriteTrackOutputVideo(inVideoFile, known_tracks, (test_output_dir + "/ground_truth.avi"));
-    //WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/ground_truth.txt"), known_tracks);
-
-    // 	Evaluate the known video file to generate the test tracks.
     GOUT("\tRunning the tracker on the video: " << inVideoFile);
     MPFVideoJob videoJob("Testing", inVideoFile, start, stop, { }, { });
     auto start_time = chrono::high_resolution_clock::now();
@@ -423,21 +403,11 @@ TEST(OcvYoloDetection, TestOnKnownVideo) {
     time_taken = time_taken * 1e-9;
     GOUT("\tVideoJob processing time: " << fixed << setprecision(5) << time_taken << "[sec]");
 
-    // create output video to view performance
     GOUT("\tWriting detected video and test tracks to files.");
     VideoGeneration video_generation;
     video_generation.WriteTrackOutputVideo(inVideoFile, found_tracks, (test_output_dir + "/" + outVideoFile));
     WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/" + outTrackFile), found_tracks);
 
-    // 	Compare the known and test track output.
-    //GOUT("\tComparing the known and test tracks.");
-    //float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_tracks, known_tracks);
-    //GOUT("Tracker comparison score: " << comparison_score);
-    //ASSERT_TRUE(comparison_score > comparison_score_threshold);
-
-
-
-    // don't forget
     GOUT("\tClosing down detection.");
     EXPECT_TRUE(ocv_yolo_detection->Close());
     delete ocv_yolo_detection;
@@ -445,7 +415,7 @@ TEST(OcvYoloDetection, TestOnKnownVideo) {
 
 
 /** ***************************************************************************
-*   Test face detection and tracking in videos
+*   Test dlib max cost detection
 **************************************************************************** */
 #include <dlib/optimization.h>
 TEST(OcvYoloDetection, DISABLED_MaxCostAssignment) {
