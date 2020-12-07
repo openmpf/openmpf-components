@@ -87,6 +87,21 @@
           "value": "en-US"
         }
       ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION TO SPANISH ACTION",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in Spanish.",
+      "algorithm": "AZURESPEECH",
+      "properties": [
+        {
+          "name": "LANGUAGE",
+          "value": "es-US"
+        },
+        {
+          "name": "DIARIZE",
+          "value": "FALSE"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -95,6 +110,13 @@
       "description": "Uses Azure Cognitive Services to perform speech-to-text in English.",
       "actions": [
         "AZURE SPEECH DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION TO SPANISH TASK",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in Spanish.",
+      "actions": [
+        "AZURE SPEECH DETECTION TO SPANISH ACTION"
       ]
     }
   ],
@@ -112,6 +134,14 @@
       "tasks": [
         "AZURE SPEECH DETECTION TASK",
         "KEYWORD TAGGING (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION TO SPANISH WITH TRANSLATION TO ENGLISH PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in Spanish and translation to English.",
+      "tasks": [
+        "AZURE SPEECH DETECTION TO SPANISH TASK",
+        "AZURE TRANSLATION (WITH FF REGION) TASK"
       ]
     }
   ]

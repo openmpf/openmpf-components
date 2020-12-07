@@ -374,6 +374,14 @@
         "TESSERACT OCR TEXT DETECTION TASK",
         "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION WITH TRANSLATION TO ENGLISH PIPELINE",
+      "description": "Performs Tesseract OCR and translation to English.",
+      "tasks": [
+        "TESSERACT OCR TEXT DETECTION TASK",
+        "AZURE TRANSLATION (WITH FF REGION) TASK"
+      ]
     }
   ]
 }

@@ -1,0 +1,14 @@
+[
+    {
+        "detectedLanguage": {
+            "language": "en",
+            "score": 1.0
+        },
+        "translations": [
+            {
+                "text": "Вы говорите по-англиский?",
+                "to": "ru"
+            }
+        ]
+    }
+]
