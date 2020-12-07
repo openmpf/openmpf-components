@@ -67,7 +67,12 @@ configure_mpf_component(TesseractOCRTextDetection TARGETS  mpfTesseractOCRTextDe
 
 
 add_subdirectory(test)
+add_subdirectory(model_updater_tesseract_src)
 
 # Build executable
 add_executable(sample_tesseract_ocr_detector sample_tesseract_ocr_detector.cpp)
 target_link_libraries(sample_tesseract_ocr_detector mpfTesseractOCRTextDetection)
+
+# Build executable
+add_executable              (mpf_tessdata_model_updater mpf_tessdata_model_updater.cpp)
+target_link_libraries       (mpf_tessdata_model_updater libtesseract ${Tesseract_LIBRARIES} ${Leptonica_LIBRARIES} ${Boost_LIBRARIES})

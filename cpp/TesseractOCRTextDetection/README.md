@@ -56,6 +56,30 @@ Users will need to specify the `script/` path followed by the full name of the
 script being processed. (ex. `TESSERACT_LANGUAGE=script/Latin` will enable Latin
 script text extraction).
 
+# Updating Tessdata Models With Custom Word Dictionaries:
+
+Users may add their own custom words to the Tesseract `*.traineddata` models
+with the mpf_tessdata_model_updater app. After building the mpf_tessdata_model_updater
+executable, users can run the following command:
+
+```
+build_dir/mpf_tessdata_model_updater -u [ORIGINAL_TESSDATA_MODEL_DIR] [UPDATED_DICT_FILES] [UPDATED_MODEL_DIR]
+```
+
+Where:
+   * `ORIGINAL_TESSDATA_MODEL_DIR` - Contains the original `*.traineddata` models.
+
+   * `UPDATED_MODEL_DIR` - Contains the updated `*.traineddata` output models. Users can set this equal to `ORIGINAL_TESSDATA_MODEL_DIR` to update all models directly.
+
+   * `UPDATED_DICT_FILES` - Contains sets of `[LANGUAGE].*-dawg` and other model files to add to existing models.
+
+Each `[LANGUAGE].*-dawg` must contain a text-formatted dictionary of words, separated by newlines.
+The above command will then add these words into the respective `[LANGUAGE].*-dawg` file available in an existing model.
+
+For instance, the `eng.traineddata` model contains an internal `eng.word-dawg` file that specifies its English
+word dictionary. Therefore, adding a wordlist file named `eng.word-dawg` to `[UPDATED_DICT_FILES]`
+will result in new English words being added into the corresponding `eng.traineddata` word dictionary.
+
 # Detecting Multiple Languages
 
 There are two options to run multiple user-specified languages/scripts. Users can separate each
