@@ -6,7 +6,7 @@
   "batchLibrary": "AzureTranslation",
   "environmentVariables": [],
   "algorithm": {
-    "name": "AZURE_TRANSLATION",
+    "name": "AZURETRANSLATION",
     "description": "Uses Azure Cognitive Services to perform translation.",
     "actionType": "DETECTION",
     "requiresCollection": {
