@@ -81,19 +81,27 @@ class AcsSpeechDetectionProcessor(object):
                 mpf.DetectionError.DETECTION_FAILED
             )
 
-        try:
-            self.logger.info('Submitting speech-to-text job to ACS')
-            output_loc = self.acs.submit_batch_transcription(
-                recording_url=recording_url,
-                job_name=job_name,
-                diarize=diarize,
-                language=lang,
-            )
-        except:
-            if cleanup:
-                self.logger.info('Marking file blob for deletion')
-                self.acs.delete_blob(recording_id)
-            raise
+        output_loc = None
+        while output_loc is None:
+            try:
+                self.logger.info('Submitting speech-to-text job to ACS')
+                output_loc = self.acs.submit_batch_transcription(
+                    recording_url=recording_url,
+                    job_name=job_name,
+                    diarize=diarize,
+                    language=lang,
+                )
+            except Exception as e:
+                if 'This locale does not support diarization' in str(e):
+                    self.logger.warning(
+                        f'Locale "{lang}" does not support diarization. '
+                        'Completing job with diarization disabled.')
+                    diarize = False
+                else:
+                    if cleanup:
+                        self.logger.info('Marking file blob for deletion')
+                        self.acs.delete_blob(recording_id)
+                    raise
 
         try:
             self.logger.info('Retrieving transcription')
