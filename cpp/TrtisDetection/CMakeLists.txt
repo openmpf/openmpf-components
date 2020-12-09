@@ -39,7 +39,7 @@ include(../ComponentSetup.cmake)
 set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
 message("Package in ${PACKAGE_DIR}")
 
-find_package(OpenCV 4.3.0 EXACT REQUIRED PATHS /opt/opencv-4.3.0
+find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0
     COMPONENTS opencv_core)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
