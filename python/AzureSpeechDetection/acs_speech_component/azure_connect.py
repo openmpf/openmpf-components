@@ -198,7 +198,14 @@ class AzureConnection(object):
             headers=self.acs_headers,
             method='DELETE'
         )
-        request.urlopen(req)
+        try:
+            request.urlopen(req)
+        except HTTPError:
+            # If the transcription task doesn't exist, ignore
+            #  This is a temporary solution, to be fixed with v3.0
+            self.logger.warning(
+                f'Transcription task deletion failed. This transcription '
+                f'should be deleted manually: {location}')
 
     def delete_blob(self, recording_id):
         self.logger.info('Deleting blob...')
