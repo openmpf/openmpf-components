@@ -25,6 +25,7 @@
 #############################################################################
 
 import os
+import uuid
 
 import mpf_component_api as mpf
 
@@ -67,7 +68,7 @@ class AcsSpeechDetectionProcessor(object):
 
         try:
             self.logger.info('Uploading file to blob')
-            recording_id = os.path.split(target_file)[-1]
+            recording_id = str(uuid.uuid4())
             recording_url = self.acs.upload_file_to_blob(
                 filepath=target_file,
                 recording_id=recording_id,
@@ -119,8 +120,9 @@ class AcsSpeechDetectionProcessor(object):
             if cleanup:
                 self.logger.info('Marking file blob for deletion')
                 self.acs.delete_blob(recording_id)
-            self.logger.info('Deleting transcript')
-            self.acs.delete_transcription(output_loc)
+            if output_loc is not None:
+                self.logger.info('Deleting transcript')
+                self.acs.delete_transcription(output_loc)
 
         self.logger.info('Completed process audio')
         self.logger.info('Creating AudioTracks')
