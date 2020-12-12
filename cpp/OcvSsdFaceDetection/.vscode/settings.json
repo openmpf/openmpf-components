@@ -1,0 +1,36 @@
+{
+    "cmake.ctestPath": "/usr/bin/ctest3",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    "files.exclude": {
+      "**/.git":true,
+      "**/.svn": true,
+      "**/.hg": true,
+      "**/CVS": true,
+      "**/.DS_Store": true,
+      "${workspaceRoot}/build": true,
+      "${workspaceRoot}/.devcontainer/fsroot": true
+    },
+    "files.watcherExclude": {
+      "**/.git/objects/**": true,
+      "**/.git/subtree-cache/**": true,
+      "**/node_modules/*/**": true,
+      "/usr/include/**": true,
+      "/home/mpf/mpf-sdk-install/include/**": true,
+      "${workspaceRoot}/build": true,
+      "${workspaceRoot}/.devcontainer/fsroot": true
+    },
+    "git.ignoreLimitWarning": true,
+    "files.associations": {
+      "*.ipp": "cpp",
+      "array": "cpp",
+      "*.tcc": "cpp",
+      "functional": "cpp",
+      "future": "cpp",
+      "istream": "cpp",
+      "tuple": "cpp",
+      "utility": "cpp",
+      "limits": "cpp"
+    }
+}

@@ -30,7 +30,7 @@ project(darknet-wrapper)
 set(CMAKE_CXX_STANDARD 11)
 
 
-find_package(OpenCV 3.4.7 EXACT REQUIRED PATHS /opt/opencv-3.4.7 COMPONENTS opencv_core opencv_highgui)
+find_package(OpenCV $ENV{OPENCV_VERSION} EXACT REQUIRED PATHS /opt/opencv-$ENV{OPENCV_VERSION} COMPONENTS opencv_core opencv_highgui)
 
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
