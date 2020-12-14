@@ -61,6 +61,7 @@ if __name__ == '__main__':
     parser.add_argument('--acs-blob-container-url', type=str)
     parser.add_argument('--acs-blob-service-key', type=str)
     parser.add_argument('--language', type=str, default="en-US")
+    parser.add_argument('--diarize', action='store_true')
     parser.add_argument('--no-cleanup', action='store_true')
     parser.add_argument('--blob-access-time', type=int, default=120)
     parser.add_argument('--json-file', type=str, default=None)
@@ -74,6 +75,7 @@ if __name__ == '__main__':
 
     properties = dict(
         LANGUAGE=str(args.language),
+        DIARIZE=str(args.diarize),
         CLEANUP=str(not args.no_cleanup),
         BLOB_ACCESS_TIME=str(args.blob_access_time),
         DIARIZE=str(not args.no_diarize)
