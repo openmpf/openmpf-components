@@ -58,6 +58,7 @@ int main(int argc, char* argv[]) {
     if (argc < 3) {
         std::cout << "Usage: " << argv[0] << " <uri> <model_name> [gpu_index]" << std::endl;
         std::cout << "Usage: " << argv[0] << " <uri> <model_name> <start_frame> <end_frame> [gpu_index] [queue_capacity]" << std::endl;
+        std::cout << "Usage: " << argv[0] << " gpu-info" << std::endl;
         return 1;
     }
 

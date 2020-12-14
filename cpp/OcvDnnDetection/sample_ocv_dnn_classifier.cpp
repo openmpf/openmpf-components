@@ -54,6 +54,7 @@ int main(int argc, char* argv[]) {
     try {
         if ((argc < 2) || (argc > 6)) {
             std::cout << "Usage: " << argv[0] << " <uri> [cuda_device_id or -1] [num-classifications] [confidence-threshold] [ROTATE | CROP | FLIP]" << std::endl;
+            std::cout << "Usage: " << argv[0] << " gpu-info" << std::endl;
             return EXIT_SUCCESS;
         }
 
