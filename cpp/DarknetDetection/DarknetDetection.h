@@ -68,6 +68,8 @@ private:
 
     std::string gpu_darknet_lib_path_;
 
+    std::string models_path_;
+
     MPF::COMPONENT::ModelsIniParser<ModelSettings> models_parser_;
 
     DarknetAsyncDl GetDarknetImpl(const MPF::COMPONENT::MPFVideoJob &job);

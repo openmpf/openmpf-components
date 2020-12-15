@@ -494,7 +494,7 @@ void DarknetImpl<ClassFilter>::Detect(const DarknetHelpers::DarknetImageHolder &
     for (const detection& detection : detection_holder) {
         DarknetResult darknet_result(image_holder.frame_number, BoxToRect(detection.bbox, image_holder.original_size));
 
-        for (int name_idx = 0; name_idx < detection.classes; name_idx++) {
+        for (int name_idx = 0; name_idx < num_classes_; name_idx++) {
             float prob = detection.prob[name_idx];
             if (prob >= confidence_threshold_ && class_filter_(names_[name_idx])) {
                 darknet_result.object_type_probs.emplace_back(prob, names_[name_idx]);

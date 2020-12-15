@@ -54,8 +54,16 @@ bool DarknetDetection::Init() {
     cpu_darknet_lib_path_ = plugin_path + "/lib/libdarknet_wrapper.so";
     gpu_darknet_lib_path_ = plugin_path + "/lib/libdarknet_wrapper_cuda.so";
 
+    std::cout << "run_dir = " << run_dir << std::endl;
+    std::cout << "plugin_path = " << plugin_path << std::endl;
+
     log4cxx::xml::DOMConfigurator::configure(plugin_path + "/config/Log4cxxConfig.xml");
+    std::cout << "Configured log4cxx" << std::endl;
+    std::cout << "Getting logger \"DarknetDetection\"" << std::endl;
     logger_ = log4cxx::Logger::getLogger("DarknetDetection");
+    
+    LOG4CXX_INFO(logger_, "Initializing models parser.");
+    models_path_ = plugin_path + "/models";
 
     try {
         models_parser_.Init(plugin_path + "/models")
@@ -105,24 +113,27 @@ std::vector<MPFVideoTrack> DarknetDetection::GetDetections(const MPFVideoJob &jo
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Successfully combined detections in to "
                 << tracks.size() << " tracks.");
 
-        // See if we need to run a color characterizer on these tracks.
-        if (DetectionComponentUtils::GetProperty(job.job_properties, "RUN_COLOR_CHARACTERIZER", false)) {
+        // If we have tracks, see if we need to run a color characterizer function.
+        if (tracks.size() > 0 &&
+            DetectionComponentUtils::GetProperty(job.job_properties, "RUN_COLOR_CHARACTERIZER", false)) {
             const std::string &libname = DetectionComponentUtils::GetProperty<std::string>(
-            job_properties, "COLOR_CHARACTERIZER_LIBRARY_NAME", "");
+            job.job_properties, "COLOR_CHARACTERIZER_LIBRARY_NAME", "");
             if (libname.empty()) {
-                throw std::runtime_error("Could not run A COLOR CHARACTERIZER because no color characterizer library name was provided. Please set the COLOR_CHARACTERIZER_LIBRARY_NAME property.");
+                throw std::runtime_error("Could not run a color characterizer because no color characterizer library name was provided. Please set the COLOR_CHARACTERIZER_LIBRARY_NAME property.");
             }
-            std::unique_ptr<void, decltype(&dlclose)> handle = dlopen(libname, RTLD_NOW);
+            std::unique_ptr<void, decltype(&dlclose)> handle(dlopen(libname.c_str(), RTLD_NOW), dlclose);
             if (NULL == handle) {
                 std::string err(dlerror());
                 throw std::runtime_error("Could not load library named " + libname + "because of " + err);
             }
-            using color_func = void (*func_ptr)(const MPF::COMPONENT::Properties &props,
-                                                MPF::COMPONENT::MPFVideoCapture &video_cap,
-                                                std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks);
+            using color_func_t = void(*)(const MPF::COMPONENT::MPFVideoJob &job,
+                                         const std::string &path,
+                                         MPF::COMPONENT::MPFVideoCapture &video_cap,
+                                         std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks);
             const char *func_name = "runColorCharacterizer";
-            color_func lib_func_ptr = reinterpret_cast<color_func>(dlsym(handle, func_name));
-            color_func(job.job_properties, video_cap, tracks);
+            color_func_t lib_func_ptr = reinterpret_cast<color_func_t>(dlsym(handle.get(), func_name));
+            LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Running color characterizer");
+            lib_func_ptr(job, models_path_, video_cap, tracks);
         }
 
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Attempting to apply reverse transform to tracks...")
