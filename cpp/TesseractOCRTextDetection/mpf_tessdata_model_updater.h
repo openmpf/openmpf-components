@@ -78,13 +78,17 @@ namespace MPF_Model_Updater {
 
     void convertDawgToWordList(const char *unicharset_file, const char *dawg_file, const char *wordlist_file);
 
-    void addToWordList(const char *wordlist_file, std::set<std::string> &output_wordset);
+    void addToWordList(const char *wordlist_file, std::set<std::wstring> &output_wordset);
 
     void combineWordLists(const char *wordlist_file1, const char *wordlist_file2, const char *output_file);
 
     void addWordListToDawg(const std::string &unicharset_file,
                            const std::string &wordlist_file,
                            const std::string &dawg_file);
+
+    void copyWordListOverDawg(const std::string &unicharset_file,
+                              const std::string &wordlist_file,
+                              const std::string &dawg_file);
 
     void checkModels(const char *model_dir, std::set<std::string> &model_set, bool &is_empty);
 
@@ -97,7 +101,8 @@ namespace MPF_Model_Updater {
     std::set<std::string> updateLanguageFiles(const char *model_dir,
                                               const char *dict_dir,
                                               const char *updated_model_dir,
-                                              bool force_update=true);
+                                              bool force_update=true,
+                                              bool replace_dawgs=false);
 
     class WordOutputter {
         public:

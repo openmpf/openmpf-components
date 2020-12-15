@@ -278,9 +278,9 @@ void MPF_Model_Updater::convertWordListToDawg(const char *unicharset_file,
  * @param output_wordset - Output word vector.
  */
 void MPF_Model_Updater::addToWordList(const char *wordlist_file,
-                                      std::set<std::string> &output_wordset) {
-    std::ifstream in(wordlist_file);
-    std::string str;
+                                      std::set<std::wstring> &output_wordset) {
+    std::wifstream in(wordlist_file);
+    std::wstring str;
     while (std::getline(in, str)) {
         boost::trim(str);
         if (str.size() > 0) {
@@ -290,6 +290,9 @@ void MPF_Model_Updater::addToWordList(const char *wordlist_file,
     in.close();
 }
 
+
+//TODO: Update to handle special formatted characters using Tesseract::Trie class.
+//TODO: Alternatively, leave alone and update addWordListToDawg to handle special formatted characters.
 /**
  * Combines two text formatted wordlists together.
  *
@@ -300,15 +303,16 @@ void MPF_Model_Updater::addToWordList(const char *wordlist_file,
 void MPF_Model_Updater::combineWordLists(const char *wordlist_file1,
                                          const char *wordlist_file2,
                                          const char *output_file) {
-    std::set <std::string> output_wordset;
+
+    std::set <std::wstring> output_wordset;
     addToWordList(wordlist_file1, output_wordset);
     addToWordList(wordlist_file2, output_wordset);
-    std::set<std::string>::iterator it = output_wordset.begin();
+    std::set<std::wstring>::iterator it = output_wordset.begin();
 
-    std::ofstream outfile;
+    std::wofstream outfile;
     outfile.open(output_file);
     while(it != output_wordset.end()) {
-        outfile << *it << "\n" ;
+        outfile << *it << L"\n" ;
         it++;
     }
     outfile.close();
@@ -329,9 +333,27 @@ void MPF_Model_Updater::addWordListToDawg(const std::string &unicharset_file,
     TempRandomFile tmp_wordlist(dawg_file + "_translated");
     TempRandomFile tmp_wordlist_cmb(dawg_file + "_combined");
 
+    //TODO: Use Tesseract:Trie to manipulate and update wordlist files instead.
     convertDawgToWordList(unicharset_file.c_str(), dawg_file.c_str(), tmp_wordlist.path.string().c_str());
     combineWordLists(wordlist_file.c_str(), tmp_wordlist.path.string().c_str(), tmp_wordlist_cmb.path.string().c_str());
     convertWordListToDawg(unicharset_file.c_str(),  tmp_wordlist_cmb.path.string().c_str(), dawg_file.c_str());
+}
+
+
+/**
+ * Converts a text formatted wordlist file into a given DAWG file. Replaces original DAWG if it exists.
+ * Note: The correct unicharset file must be provided or results will be gibberish.
+ *
+ * @param unicharset_file - Unicharset file contained within target traineddata model file.
+ * @param wordlist_file - Path to given word list text file.
+ * @param dawg_file  - Path of DAWG output file.
+ */
+void MPF_Model_Updater::copyWordListOverDawg(const std::string &unicharset_file,
+                                          const std::string &wordlist_file,
+                                          const std::string &dawg_file) {
+
+    boost::filesystem::remove_all(dawg_file);
+    convertWordListToDawg(unicharset_file.c_str(),  wordlist_file.c_str(), dawg_file.c_str());
 }
 
 /**
@@ -401,6 +423,8 @@ bool MPF_Model_Updater::checkDictDir(const char *dict_dir,
         if (original_models.find(lang) == original_models.end() ||
             updated_models.find(lang) != updated_models.end()) {
             printf("Skipping lang: %s\n", lang.c_str());
+            dict_dir_iter++;
+            continue;
         }
 
         // Add new language here, skip languages that are missing from original models or present in updated models.
@@ -440,7 +464,8 @@ bool MPF_Model_Updater::checkDictDir(const char *dict_dir,
 std::set<std::string> MPF_Model_Updater::updateLanguageFiles(const char *model_dir,
                                                              const char *dict_dir,
                                                              const char *updated_model_dir,
-                                                             bool force_update) {
+                                                             bool force_update,
+                                                             bool replace_dawgs) {
 
     // First isolate every language present in dict_dir. Bundle up all associated files and DAWGs with each model.
     std::unordered_map<std::string, std::pair<std::vector<std::string>, std::vector<std::string>>> lang_dict_map;
@@ -515,8 +540,12 @@ std::set<std::string> MPF_Model_Updater::updateLanguageFiles(const char *model_d
                 unicharset_file = ".lstm-unicharset";
             }
             boost::filesystem::path unichar_path = temp_dir.path / (it.first + unicharset_file);
-
-            addWordListToDawg(unichar_path.string(), src_wordlist.string(), dst_dawg.string());
+            
+            if (!replace_dawgs) {
+                addWordListToDawg(unichar_path.string(), src_wordlist.string(), dst_dawg.string());
+            } else {
+                copyWordListOverDawg(unichar_path.string(), src_wordlist.string(), dst_dawg.string());
+            }
 
         }
 
@@ -560,6 +589,8 @@ int main(int argc, char **argv) {
         extractLangModel(std::string(argv[2]), std::string(argv[3]));
     } else if (argc >= 4 && (strcmp(argv[1], "-u") == 0 )) {
         updateLanguageFiles(argv[2], argv[3], argv[4]);
+    } else if (argc >= 4 && (strcmp(argv[1], "-ur") == 0 )) {
+        updateLanguageFiles(argv[2], argv[3], argv[4], true, true);
     } else if (argc >= 4 && (strcmp(argv[1], "-c") == 0 )) {
         combineWordLists(argv[2], argv[3], argv[4]);
     } else if (argc >= 4 && strcmp(argv[1], "-o") == 0) {
@@ -579,7 +610,12 @@ int main(int argc, char **argv) {
                "will be added to eng.traineddata's existing word dict.\n"
                "  Example: updated_eng_dawgs_dir/eng.unicharset -> "
                "will replace unicharset file in eng.traineddata.\n"
-               "  It will also replace the original eng.unicharset file when translating and adding new wordlists.\n\n\n",
+               "  It will also replace the original eng.unicharset file when translating and adding new wordlists.\n",
+               argv[0], argv[0]);
+
+        printf(" NOTE: If users wish to replace the entire word dictionary with a new word dictionary: \n"
+               "  %s -ur original_models_dir updated_model_files output_updated_models_dir\n"
+               "  (e.g. %s -u tessdata updated_eng_dawgs_dir tessdata)\n\n\n",
                argv[0], argv[0]);
 
         printf("Usage for combining tessdata components:\n"

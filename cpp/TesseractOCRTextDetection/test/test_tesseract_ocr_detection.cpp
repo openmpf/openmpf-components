@@ -24,6 +24,8 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include <set>
+#include <stdlib.h>
 #include <string>
 #include <MPFDetectionComponent.h>
 #include <unistd.h>
@@ -32,6 +34,7 @@
 #define BOOST_NO_CXX11_SCOPED_ENUMS
 
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <log4cxx/xml/domconfigurator.h>
 
 #undef BOOST_NO_CXX11_SCOPED_ENUMS
@@ -191,6 +194,130 @@ void convert_results(std::vector<MPFImageLocation> &im_track, const std::vector<
     }
 }
 
+/**
+ * Todo: Update documentation on rest of test functions.
+ * Helper function for loading word lists in txt format.
+ * Trims and ignores blank entries.
+ *
+ * @param wordlist_file - Path of word list.
+ * @param output_wordset - Output word vector.
+ */
+void addToWordList(const std::string &wordlist_file,
+                   std::set<std::string> &output_wordset) {
+
+    std::ifstream in(wordlist_file.c_str());
+    std::string str;
+    while (std::getline(in, str)) {
+        boost::trim(str);
+        if (str.size() > 0) {
+           output_wordset.insert(str);
+        }
+    }
+    in.close();
+}
+
+
+TEST(TESSERACTOCR, CustomModelTest) {
+
+    // Ensure custom model generation works as intended.
+
+    boost::filesystem::remove_all("data/model_dir");
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/tessdata");
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/updated_tessdata");
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/extracted_lang");
+
+    std::string model = boost::filesystem::absolute(
+            "../plugin/TesseractOCRTextDetection/tessdata/eng.traineddata").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/tessdata/eng.traineddata");
+
+
+    std::string model_dir = " data/model_dir/TesseractOCRTextDetection/tessdata";
+    std::string dict_dir = " data/tessdata_dict_file";
+    std::string updated_model_dir  = " data/model_dir/TesseractOCRTextDetection/updated_tessdata";
+    std::string out_dir = " data/model_dir/TesseractOCRTextDetection/extracted_lang";
+
+
+    std::string model_command = "../mpf_tessdata_model_updater -u" + model_dir + dict_dir + updated_model_dir;
+
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+
+    // Unpack regular and updated languages.
+    model_command = "../mpf_tessdata_model_updater -e" +
+                                updated_model_dir + "/eng.traineddata" +
+                                out_dir + "/eng_updated";
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+    model_command = "../mpf_tessdata_model_updater -e" +
+                                model_dir + "/eng.traineddata" +
+                                out_dir + "/eng_original";
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+
+    model_command = "../mpf_tessdata_model_updater -dw" +
+                                out_dir + "/eng_updated.unicharset" +
+                                out_dir + "/eng_updated.word-dawg" +
+                                out_dir + "/eng_updated.word-dawg.txt" ;
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+    model_command = "../mpf_tessdata_model_updater -dw" +
+                                out_dir + "/eng_original.unicharset" +
+                                out_dir + "/eng_original.word-dawg" +
+                                out_dir + "/eng_original.word-dawg.txt" ;
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+    std::set<std::string> original_wordset, updated_wordset;
+
+    out_dir = "data/model_dir/TesseractOCRTextDetection/extracted_lang";
+    addToWordList(out_dir + "/eng_original.word-dawg.txt", original_wordset);
+    addToWordList(out_dir + "/eng_updated.word-dawg.txt", updated_wordset);
+
+
+    ASSERT_TRUE(original_wordset.count("Illldyxne") == 0) << "Updated eng word in wrong model.";
+
+    ASSERT_TRUE(updated_wordset.count("Illldyxne") > 0) << "Updated eng word missing.";
+
+    ASSERT_TRUE(original_wordset != updated_wordset) << "Eng model not properly updated. Identical word dawgs.";
+
+    updated_wordset.erase("Illldyxne");
+
+    /* TODO: Update mpf_model_updater to use Tesseract:Trie when updating wordlists.
+    ASSERT_TRUE(original_wordset.size() == updated_wordset.size()) << "Eng model not properly updated. " <<
+                                                                 "Mismatching dawg sizes after removing updated words.";
+                                                                 */
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+    std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "eng"},
+                                                            {"TESSERACT_OEM", "0"},
+                                                            {"MODELS_DIR_PATH",       "data/model_dir"},
+                                                            {"TESSDATA_MODELS_SUBDIRECTORY",
+                                                             "TesseractOCRTextDetection/tessdata"},
+                                                            {"ENABLE_OSD_AUTOMATION", "false"}};
+
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/new-word.png", ocr, results, custom_properties));
+
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected eng tessdata model.";
+
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT") == "IIIIdyxne IIIIdyxne IIIIdyxne IIIIdyxne")
+                    << "Expected default eng OCR output of new words.";
+
+
+    results.clear();
+    {
+        auto custom_properties_copy = custom_properties;
+        custom_properties_copy["TESSDATA_MODELS_SUBDIRECTORY"] = "TesseractOCRTextDetection/updated_tessdata";
+        ASSERT_NO_FATAL_FAILURE(runImageDetection("data/new-word.png", ocr, results, custom_properties_copy));
+        ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected eng tessdata model.";
+        ASSERT_TRUE(results[0].detection_properties.at("TEXT") == "Illldyxne Illldyxne Illldyxne Illldyxne")
+                        << "Expected updated eng model to properly identify new word.";
+    }
+
+    boost::filesystem::remove_all("data/model_dir");
+    ASSERT_TRUE(ocr.Close());
+}
+
 TEST(TESSERACTOCR, ImageProcessingTest) {
 
     // Ensure contrast and unstructured image processing settings are enabled.
@@ -251,6 +378,8 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
 
     ASSERT_TRUE(ocr.Close());
 }
+
+
 
 TEST(TESSERACTOCR, ModelTest) {
 
