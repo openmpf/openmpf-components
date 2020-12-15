@@ -87,7 +87,6 @@ namespace MPF {
                 bool combine_detected_scripts;
                 bool processing_wild_text;
                 bool rotate_and_detect;
-                bool full_regex_search;
                 bool enable_osd_fallback;
                 int adaptive_thrs_pixel;
                 int psm;
@@ -202,6 +201,11 @@ namespace MPF {
                 }
             };
 
+            bool process_ocr_text(Properties &detection_properties, const MPFImageJob &job, const OCR_output &ocr_out,
+                    const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                    int page_num = -1);
+
+
             void process_parallel_pdf_pages(PDF_page_inputs &page_inputs, PDF_page_results &page_results);
             void process_serial_pdf_pages(PDF_page_inputs &page_inputs, PDF_page_results &page_results);
 
@@ -211,9 +215,6 @@ namespace MPF {
 
             // Map of {OCR engine, language} pairs to TessApiWrapper
             std::map<std::pair<int, std::string>, TessApiWrapper> tess_api_map;
-            std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> parse_json(const MPFJob &job,
-                                                                                          const std::string &jsonfile_path,
-                                                                                          MPFDetectionError &job_status);
 
 
             static void get_tesseract_detections(OCR_job_inputs &input, Image_results &result);
@@ -232,32 +233,7 @@ namespace MPF {
 
             void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, const Text_type &text_type = Unknown);
 
-            void load_tags_json(const MPFJob &job, MPFDetectionError &job_status,
-                                std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex);
-
-            bool comp_regex(const MPFImageJob &job, const std::wstring &full_text, const std::wstring &regstr,
-                            std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
-                            const OCR_filter_settings &ocr_fset, bool case_sensitive,
-                            MPFDetectionError &job_status);
-
-            void process_regex_match(const boost::wsmatch &match, const std::wstring &full_text,
-                                     std::map<std::wstring, std::vector<std::string>> &trigger_words_offset);
-
             void sharpen(cv::Mat &image, double weight);
-
-            std::string parse_regex_code(boost::regex_constants::error_type etype);
-
-            std::set<std::wstring> search_regex(const MPFImageJob &job, const std::wstring &full_text,
-                                                const std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex,
-                                                std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
-                                                const OCR_filter_settings &ocr_fset,
-                                                MPFDetectionError &job_status);
-
-            bool process_text_tagging(Properties &detection_properties, const MPFImageJob &job,
-                                      const OCR_output &ocr_out, MPFDetectionError &job_status,
-                                      const OCR_filter_settings &ocr_fset,
-                                      const std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex,
-                                      int page_num = -1);
 
             static std::string process_osd_lang(const std::string &script_type,
                                                 const OCR_filter_settings &ocr_fset);

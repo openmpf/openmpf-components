@@ -23,7 +23,7 @@ The below properties can be optionally provided to alter the behavior of the com
 
 - `LANGUAGE`:  The locale to use for transcription. Defaults to `en-US`. A complete list of available locales can be found in Microsoft's [Speech service documentation](https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support).
 
-- `DIARIZE`: Whether to assign utterances to different speakers. Currently, this component supports only two-speaker diarization. Diarization is enabled by default.
+- `DIARIZE`: Whether to assign utterances to different speakers. Currently, this component supports only two-speaker diarization. Diarization is enabled by default. Note that some locales do not support diarization; in such a case, a warning will be logged and the job will be re-submitted with diarization disabled.
 
 - `CLEANUP`: Whether to delete files from Azure Blob storage container when processing is complete. It is recommended to always keep this enabled, unless it is expected that the same piece of media will be processed multiple times.
 

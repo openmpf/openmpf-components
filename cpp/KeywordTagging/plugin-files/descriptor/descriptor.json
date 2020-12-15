@@ -1,0 +1,96 @@
+{
+  "componentName": "KeywordTagging",
+  "componentVersion": "5.1",
+  "middlewareVersion": "5.1",
+  "sourceLanguage": "c++",
+  "batchLibrary": "${MPF_HOME}/plugins/KeywordTagging/lib/libmpfKeywordTagging.so",
+  "environmentVariables": [
+    {
+      "name": "LD_LIBRARY_PATH",
+      "value": "${MPF_HOME}/plugins/KeywordTagging/lib:${LD_LIBRARY_PATH}",
+      "sep": ":"
+    }
+  ],
+  "algorithm": {
+    "name": "KEYWORDTAGGING",
+    "description": "Performs keyword tagging.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_KEYWORD"
+      ],
+      "properties": [
+        {
+          "name": "FULL_REGEX_SEARCH",
+          "description": "Toggles REGEX search to include all matching trigger words associated with the regex patterns for each tag. When disabled, only the first instance of the first matching trigger word for each tag category is included.",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "TAGGING_FILE",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used for keyword tagging. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
+          "type": "STRING",
+          "defaultValue": "text-tags.json"
+        },
+        {
+          "name": "FEED_FORWARD_PROP_TO_PROCESS",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to consider performing keyword tagging on. If the first property listed is present, then keyword tagging is performed on that property. If it's not then the next property in the list is considered. At most, keyword tagging is only performed on one property.",
+          "type": "STRING",
+          "defaultValue": "TRANSLATION,TEXT,TRANSCRIPT"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "KEYWORD TAGGING TEXT FILE ACTION",
+      "description": "Performs keyword tagging on a plain text file.",
+      "algorithm": "KEYWORDTAGGING",
+      "properties": []
+    },
+    {
+      "name": "KEYWORD TAGGING (WITH FF REGION) ACTION",
+      "description": "Performs keyword tagging on feed-forward tracks and detections.",
+      "algorithm": "KEYWORDTAGGING",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "value": "TRUE"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "KEYWORD TAGGING TEXT FILE TASK",
+      "description": "Performs keyword tagging on a plain text file.",
+      "actions": [
+        "KEYWORD TAGGING TEXT FILE ACTION"
+      ]
+    },
+    {
+      "name": "KEYWORD TAGGING (WITH FF REGION) TASK",
+      "description": "Performs keyword tagging on feed-forward tracks and detections.",
+      "actions": [
+        "KEYWORD TAGGING (WITH FF REGION) ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "KEYWORD TAGGING TEXT FILE PIPELINE",
+      "description": "Performs keyword tagging on a plain text file.",
+      "tasks": [
+        "KEYWORD TAGGING TEXT FILE TASK"
+      ]
+    }
+  ]
+}

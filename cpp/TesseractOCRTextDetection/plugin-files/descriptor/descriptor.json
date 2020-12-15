@@ -1,7 +1,7 @@
 {
   "componentName": "TesseractOCRTextDetection",
-  "componentVersion": "5.0",
-  "middlewareVersion": "5.0",
+  "componentVersion": "5.1",
+  "middlewareVersion": "5.1",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib/libmpfTesseractOCRTextDetection.so",
   "environmentVariables": [
@@ -42,12 +42,6 @@
           "description": "Specifies location of tessdata models under the MODELS_DIR_PATH.",
           "type": "STRING",
           "defaultValue": "TesseractOCRTextDetection/tessdata"
-        },
-        {
-          "name": "TAGGING_FILE",
-          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Tesseract OCR. Will default to the plugin's config folder unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
-          "type": "STRING",
-          "defaultValue": "text-tags.json"
         },
         {
           "name": "TESSERACT_LANGUAGE",
@@ -273,10 +267,10 @@
           "defaultValue": "95.0"
         },
         {
-          "name": "FULL_REGEX_SEARCH",
-          "description": "Toggles REGEX search to include all matching trigger words associated with the regex patterns for each tag. When disabled, only the first instance of the first matching trigger word for each tag category is included.",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
+          "name": "ROTATION_FILL_COLOR",
+          "description": "The fill color to use when doing non-orthogonal rotation. Must either be BLACK or WHITE. When doing a non-orthogonal rotation, some pixels will need to be included that were not in the original image. This property controls the color of those undefined pixels.",
+          "type": "STRING",
+          "defaultValue": "WHITE"
         }
       ]
     }
@@ -286,22 +280,13 @@
       "name": "TESSERACT OCR TEXT DETECTION ACTION",
       "description": "Performs Tesseract OCR.",
       "algorithm": "TESSERACTOCR",
-      "properties": [
-        {
-          "name": "TAGGING_FILE",
-          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
-        }
-      ]
+      "properties": []
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT",
       "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "algorithm": "TESSERACTOCR",
       "properties": [
-        {
-          "name": "TAGGING_FILE",
-          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
-        },
         {
           "name": "TESSERACT_PSM",
           "value": "11"
@@ -313,10 +298,6 @@
       "description": "Performs Tesseract OCR on feed-forward regions.",
       "algorithm": "TESSERACTOCR",
       "properties": [
-        {
-          "name": "TAGGING_FILE",
-          "value": "$MPF_HOME/plugins/TesseractOCRTextDetection/config/text-tags.json"
-        },
         {
           "name": "FEED_FORWARD_TYPE",
           "value": "REGION"
@@ -384,6 +365,22 @@
       "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "tasks": [
         "TESSERACT OCR TEXT DETECTION TASK SPARSE TEXT"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION WITH KEYWORD TAGGING PIPELINE",
+      "description": "Performs Tesseract OCR and keyword tagging.",
+      "tasks" : [
+        "TESSERACT OCR TEXT DETECTION TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION WITH TRANSLATION TO ENGLISH PIPELINE",
+      "description": "Performs Tesseract OCR and translation to English.",
+      "tasks": [
+        "TESSERACT OCR TEXT DETECTION TASK",
+        "AZURE TRANSLATION (WITH FF REGION) TASK"
       ]
     }
   ]
