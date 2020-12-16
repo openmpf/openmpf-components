@@ -32,7 +32,7 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_componen
 RUN yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
     && yum --enablerepo=remi install -y ImageMagick ImageMagick-c++ \
          ImageMagick-c++-devel ImageMagick-devel ImageMagick-libs \
-         libgif libjpeg libpng libtiff zlib ghostscript \
+         libjpeg libpng libtiff zlib ghostscript \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 

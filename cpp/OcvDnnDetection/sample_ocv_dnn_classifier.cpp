@@ -28,14 +28,33 @@
 #include <dlfcn.h>
 #include <string>
 #include <vector>
+#include <opencv2/core/cuda.hpp>
+
 #include "OcvDnnDetection.h"
 
 using namespace MPF::COMPONENT;
 
 int main(int argc, char* argv[]) {
+    if (argc == 2) {
+        std::string arg1 = argv[1];
+        if (arg1 == "gpu-info") {
+            int cuda_device_count = cv::cuda::getCudaEnabledDeviceCount();
+            std::cout << "Cuda device count: " << cuda_device_count << std::endl;
+            if (cuda_device_count > 0) {
+                for (int i = 0; i < cuda_device_count; i++) {
+                    std::cout << "==== Device #" << i << " ====" << std::endl;
+                    cv::cuda::printCudaDeviceInfo(i);
+                    std::cout << "=================================" << std::endl;
+                }
+            }
+            return EXIT_SUCCESS;
+        }
+    }
+
     try {
-        if ((argc < 2) || (argc > 5)) {
-            std::cout << "Usage: " << argv[0] << " <uri> [num-classifications] [confidence-threshold] [ROTATE | CROP | FLIP]" << std::endl;
+        if ((argc < 2) || (argc > 6)) {
+            std::cout << "Usage: " << argv[0] << " <uri> [cuda_device_id or -1] [num-classifications] [confidence-threshold] [ROTATE | CROP | FLIP]" << std::endl;
+            std::cout << "Usage: " << argv[0] << " gpu-info" << std::endl;
             return EXIT_SUCCESS;
         }
 
@@ -78,21 +97,27 @@ int main(int argc, char* argv[]) {
                   << "  URI: " << uri << std::endl;
 
         if (argc > 2) {
+            std::string cuda_device_id(argv[2]);
+            std::cout << "  CUDA device ID: " << cuda_device_id << std::endl;
+            algorithm_properties["CUDA_DEVICE_ID"] = cuda_device_id;
+        }
+
+        if (argc > 3) {
             // read the number of classifications returned
-            std::string num_classes(argv[2]);
+            std::string num_classes(argv[3]);
             algorithm_properties["NUMBER_OF_CLASSIFICATIONS"] = num_classes;
             std::cout << "  Number of classifications: " << num_classes << std::endl;
         }
 
-        if (argc > 3) {
+        if (argc > 4) {
             // read the confidence threshold
-            std::string threshold(argv[3]);
+            std::string threshold(argv[4]);
             algorithm_properties["CONFIDENCE_THRESHOLD"] = threshold;
             std::cout << "  Confidence threshold: " << threshold << std::endl;
         }
 
-        if (argc > 4) {
-            std::string transformation(argv[4]);
+        if (argc > 5) {
+            std::string transformation(argv[5]);
 
             if (transformation == "ROTATE") {
                 // The input image will be rotated 270 degrees
@@ -123,16 +148,16 @@ int main(int argc, char* argv[]) {
         std::vector<MPFImageLocation> detections = ocv_dnn_component.GetDetections(job);
         for (int i = 0; i < detections.size(); i++) {
             std::cout << "Detection " << i << ":"
-                      << std::endl
+                          << std::endl
                       << "  Primary classification: " << detections[i].detection_properties["CLASSIFICATION"]
-                      << std::endl
+                          << std::endl
                       << "  Primary confidence: " << detections[i].confidence
-                      << std::endl
+                          << std::endl
                       << "  Classification list: " << detections[i].detection_properties["CLASSIFICATION LIST"]
-                      << std::endl
+                          << std::endl
                       << "  Confidence list: " << detections[i].detection_properties["CLASSIFICATION CONFIDENCE LIST"]
-                      << std::endl;
-        }
+                          << std::endl;
+            }
         ocv_dnn_component.Close();
         return EXIT_SUCCESS;
     }

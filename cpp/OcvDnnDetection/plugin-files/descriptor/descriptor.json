@@ -125,6 +125,18 @@
           "description": "When FEED_FORWARD_TYPE is provided and not set to NONE, and FEED_FORWARD_WHITELIST_FILE is provided, this value determines what to do with feed-forward detections with class names not contained in the FEED_FORWARD_WHITELIST_FILE. Acceptable values are PASS_THROUGH and DROP.",
           "type": "STRING",
           "defaultValue": "PASS_THROUGH"
+        },
+        {
+          "name": "CUDA_DEVICE_ID",
+          "description": "ID of CUDA device (typically 0) to be used. When less than 0 CUDA will be disabled.",
+          "type": "INT",
+          "propertiesKey": "detection.cuda.device.id"
+        },
+        {
+          "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
+          "description": "Indicates whether or not the CPU only version should run if there is an issue with the GPU. Only used when CUDA_DEVICE_ID >= 0.",
+          "type": "BOOLEAN",
+          "propertiesKey": "detection.use.cpu.when.gpu.problem"
         }
       ]
     }
