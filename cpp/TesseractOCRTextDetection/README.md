@@ -63,7 +63,7 @@ with the tessdata_model_updater app. After building the tessdata_model_updater
 executable, users can run the following command:
 
 ```
-build_dir/tessdata_model_updater -u <ORIGINAL_TESSDATA_MODEL_DIR> <UPDATED_DICT_FILES> <UPDATED_MODEL_DIR>
+build_dir/tessdata_model_updater -u <ORIGINAL_TESSDATA_MODEL_DIR> <UPDATED_DICT_FILES_DIR> <UPDATED_MODEL_DIR>
 ```
 
 Where:
