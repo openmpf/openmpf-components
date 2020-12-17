@@ -133,7 +133,6 @@ int main(int argc, char *argv[]) {
         Properties algorithm_properties;
         Properties media_properties;
         std::string job_name("OCR_test");
-        algorithm_properties["TAGGING_FILE"] = "text-tags.json";
         algorithm_properties["THRS_FILTER"] = "false";
         algorithm_properties["HIST_FILTER"] = "false";
         algorithm_properties["SHARPEN"] = "1.0";

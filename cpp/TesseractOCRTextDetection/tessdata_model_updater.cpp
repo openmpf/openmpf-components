@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 /******************************************************************************
- * File:        mpf_tessdata_model_updater.cpp                                *
+ * File:        tessdata_model_updater.cpp                                *
  * Description: Updates tesseract traineddata files from user provided        *
  *              wordlist and model files.                                     *
  *                                                                            *
@@ -46,7 +46,7 @@
  * Author:      Thomas Kielbus                                                *
  ******************************************************************************/
 
-#include "mpf_tessdata_model_updater.h"
+#include "tessdata_model_updater.h"
 #include "model_updater_tesseract_src/commontraining.h"
 #include "model_updater_tesseract_src/lstmrecognizer.h"
 #include "model_updater_tesseract_src/classify.h"
@@ -103,7 +103,6 @@ TempRandomFile::~TempRandomFile() {
  */
 void MPF_Model_Updater::extractLangModel(std::string path_to_model, std::string output_prefix) {
     tesseract::CheckSharedLibraryVersion();
-    int i;
 
     printf("Extracting tessdata components from %s\n", path_to_model.c_str());
     tesseract::TessdataManager tm;
@@ -115,7 +114,7 @@ void MPF_Model_Updater::extractLangModel(std::string path_to_model, std::string 
     }
 
     // Extract all components.
-    for (i = 0; i < tesseract::TESSDATA_NUM_ENTRIES; ++i) {
+    for (int i = 0; i < tesseract::TESSDATA_NUM_ENTRIES; ++i) {
         std::string filename = output_prefix;
         char last = filename.back();
         if (last != '.')
@@ -278,9 +277,9 @@ void MPF_Model_Updater::convertWordListToDawg(const char *unicharset_file,
  * @param output_wordset - Output word vector.
  */
 void MPF_Model_Updater::addToWordList(const char *wordlist_file,
-                                      std::set<std::wstring> &output_wordset) {
-    std::wifstream in(wordlist_file);
-    std::wstring str;
+                                      std::set<std::string> &output_wordset) {
+    std::ifstream in(wordlist_file);
+    std::string str;
     while (std::getline(in, str)) {
         boost::trim(str);
         if (str.size() > 0) {
@@ -291,8 +290,6 @@ void MPF_Model_Updater::addToWordList(const char *wordlist_file,
 }
 
 
-//TODO: Update to handle special formatted characters using Tesseract::Trie class.
-//TODO: Alternatively, leave alone and update addWordListToDawg to handle special formatted characters.
 /**
  * Combines two text formatted wordlists together.
  *
@@ -304,15 +301,15 @@ void MPF_Model_Updater::combineWordLists(const char *wordlist_file1,
                                          const char *wordlist_file2,
                                          const char *output_file) {
 
-    std::set <std::wstring> output_wordset;
+    std::set <std::string> output_wordset;
     addToWordList(wordlist_file1, output_wordset);
     addToWordList(wordlist_file2, output_wordset);
-    std::set<std::wstring>::iterator it = output_wordset.begin();
+    std::set<std::string>::iterator it = output_wordset.begin();
 
-    std::wofstream outfile;
+    std::ofstream outfile;
     outfile.open(output_file);
     while(it != output_wordset.end()) {
-        outfile << *it << L"\n" ;
+        outfile << *it << "\n" ;
         it++;
     }
     outfile.close();
@@ -324,19 +321,68 @@ void MPF_Model_Updater::combineWordLists(const char *wordlist_file1,
  *
  * @param unicharset_file - Unicharset file contained within target traineddata model file.
  * @param wordlist_file - Path to given word list text file.
- * @param dawg_file  - Path of DAWG output file.
+ * @param dawg_file  - Path to existing DAWG file.
  */
-void MPF_Model_Updater::addWordListToDawg(const std::string &unicharset_file,
-                                          const std::string &wordlist_file,
-                                          const std::string &dawg_file) {
+void MPF_Model_Updater::addWordListToDawg(const char *unicharset_file,
+                                          const char *wordlist_file,
+                                          const char *dawg_file) {
 
-    TempRandomFile tmp_wordlist(dawg_file + "_translated");
-    TempRandomFile tmp_wordlist_cmb(dawg_file + "_combined");
 
-    //TODO: Use Tesseract:Trie to manipulate and update wordlist files instead.
-    convertDawgToWordList(unicharset_file.c_str(), dawg_file.c_str(), tmp_wordlist.path.string().c_str());
-    combineWordLists(wordlist_file.c_str(), tmp_wordlist.path.string().c_str(), tmp_wordlist_cmb.path.string().c_str());
-    convertWordListToDawg(unicharset_file.c_str(),  tmp_wordlist_cmb.path.string().c_str(), dawg_file.c_str());
+    TempRandomFile tmp_wordlist(std::string(dawg_file) + "_translated");
+    convertDawgToWordList(unicharset_file, dawg_file, tmp_wordlist.path.string().c_str());
+
+    // Load both wordlists to tesseract::trie
+
+    tesseract::CheckSharedLibraryVersion();
+    tesseract::Classify *classify = new tesseract::Classify();
+    tprintf("Loading unicharset from '%s'\n", unicharset_file);
+
+    if (!classify->getDict().getUnicharset().load_from_file(unicharset_file)) {
+        tprintf("Failed to load unicharset from '%s'\n", unicharset_file);
+        delete classify;
+        return;
+    }
+
+    // First add original wordlist.
+    const UNICHARSET &unicharset = classify->getDict().getUnicharset();
+    tesseract::Trie::RTLReversePolicy reverse_policy =
+                tesseract::Trie::RRP_DO_NO_REVERSE;
+
+    tesseract::Trie trie(
+            // the first 3 arguments are not used in this case
+            tesseract::DAWG_TYPE_WORD, "", SYSTEM_DAWG_PERM,
+            unicharset.size(), classify->getDict().dawg_debug_level);
+
+    tprintf("Reading word list from '%s'\n", wordlist_file);
+    if (!trie.read_and_add_word_list(wordlist_file, unicharset,
+                                     reverse_policy)) {
+        tprintf("Failed to add word list from '%s'\n", wordlist_file);
+        delete classify;
+        return;
+    }
+
+    // Next add modified wordlist.
+    tprintf("Reading word list from '%s'\n", tmp_wordlist.path.string().c_str());
+    if (!trie.read_and_add_word_list(tmp_wordlist.path.string().c_str(), unicharset,
+                                         reverse_policy)) {
+        tprintf("Failed to add word list from '%s'\n", tmp_wordlist.path.string().c_str());
+        delete classify;
+        return;
+    }
+
+
+    tprintf("Reducing Trie to SquishedDawg\n");
+    tesseract::SquishedDawg *dawg = trie.trie_to_dawg();
+    if (dawg != nullptr && dawg->NumEdges() > 0) {
+        tprintf("Writing squished DAWG to '%s'\n", dawg_file);
+        dawg->write_squished_dawg(dawg_file);
+    } else {
+        tprintf("Dawg is empty, skip producing the output file\n");
+    }
+
+    delete dawg;
+    delete classify;
+
 }
 
 
@@ -348,12 +394,12 @@ void MPF_Model_Updater::addWordListToDawg(const std::string &unicharset_file,
  * @param wordlist_file - Path to given word list text file.
  * @param dawg_file  - Path of DAWG output file.
  */
-void MPF_Model_Updater::copyWordListOverDawg(const std::string &unicharset_file,
-                                          const std::string &wordlist_file,
-                                          const std::string &dawg_file) {
+void MPF_Model_Updater::copyWordListOverDawg(const char *unicharset_file,
+                                             const char *wordlist_file,
+                                             const char *dawg_file) {
 
     boost::filesystem::remove_all(dawg_file);
-    convertWordListToDawg(unicharset_file.c_str(),  wordlist_file.c_str(), dawg_file.c_str());
+    convertWordListToDawg(unicharset_file,  wordlist_file, dawg_file);
 }
 
 /**
@@ -542,9 +588,13 @@ std::set<std::string> MPF_Model_Updater::updateLanguageFiles(const char *model_d
             boost::filesystem::path unichar_path = temp_dir.path / (it.first + unicharset_file);
             
             if (!replace_dawgs) {
-                addWordListToDawg(unichar_path.string(), src_wordlist.string(), dst_dawg.string());
+                addWordListToDawg(unichar_path.string().c_str(),
+                                  src_wordlist.string().c_str(),
+                                  dst_dawg.string().c_str());
             } else {
-                copyWordListOverDawg(unichar_path.string(), src_wordlist.string(), dst_dawg.string());
+                copyWordListOverDawg(unichar_path.string().c_str(),
+                                     src_wordlist.string().c_str(),
+                                     dst_dawg.string().c_str());
             }
 
         }
@@ -600,27 +650,28 @@ int main(int argc, char **argv) {
         printf("\n\nUsage for updating all models in target directory "
                "with a given set of model files/new dictionaries:\n"
                "  %s -u original_models_dir updated_model_files output_updated_models_dir\n"
-               "  (e.g. %s -u tessdata updated_eng_dawgs_dir tessdata)\n\n",
+               "  (e.g. %s -u tessdata updated_eng_model_files_dir tessdata)\n\n",
                argv[0], argv[0]);
 
         printf("  NOTE: When updating model DAWG dictionary files, users can add new words\n"
-               "  to the respective model by naming their text-formatted word list after the target DAWG file\n"
-               "  Other model files will be simply replaced with the newer version.\n\n"
-               "  Example: updated_eng_dawgs_dir/eng.word-dawg -> "
-               "will be added to eng.traineddata's existing word dict.\n"
-               "  Example: updated_eng_dawgs_dir/eng.unicharset -> "
-               "will replace unicharset file in eng.traineddata.\n"
-               "  It will also replace the original eng.unicharset file when translating and adding new wordlists.\n",
-               argv[0], argv[0]);
+               "  to the respective model by naming their text-formatted word list after the target DAWG file.\n"
+               "  Non-DAWG files will be simply replaced with the newer version.\n\n"
+               "  For example, if both eng.word-dawg and eng.unicharset are in the updated_eng_model_files_dir "
+               "  in the above example command:\n"
+               "     Then eng.unicharset will first replace the default unicharset file for eng.traineddata.\n"
+               "     Afterwards eng.word-dawg will be added to the eng.traineddata's existing word dictionary using\n"
+               "     the updated unicharaset file as reference during the wordlist to DAWG conversion.\n\n");
+
 
         printf(" NOTE: If users wish to replace the entire word dictionary with a new word dictionary: \n"
                "  %s -ur original_models_dir updated_model_files output_updated_models_dir\n"
-               "  (e.g. %s -u tessdata updated_eng_dawgs_dir tessdata)\n\n\n",
+               "  (e.g. %s -u tessdata updated_eng_model_files_dir tessdata)\n\n\n",
                argv[0], argv[0]);
 
         printf("Usage for combining tessdata components:\n"
                "  %s language_data_path_prefix\n"
-               "  (e.g. %s tessdata/eng.)\n\n", argv[0], argv[0]);
+               "  For example, to generate eng.traineddata from eng.* files in target directory:"
+               "  (%s tessdata/eng)\n\n", argv[0], argv[0]);
 
         printf("Usage for extracting all tessdata components:\n"
                "  %s -e traineddata_file output_path_prefix\n"
@@ -628,16 +679,18 @@ int main(int argc, char **argv) {
 
         printf("Usage for overwriting tessdata components:\n"
                "  %s -o traineddata_file [input_component_file...]\n"
-               "  (e.g. %s -o eng.traineddata eng.unicharset)\n\n",
+               "  (e.g. %s -o eng.traineddata eng.word-dawg)\n",
                argv[0], argv[0]);
 
+        printf(" NOTE: If more than one file is specified with the same extension (ex. *.word-dawg), then only the"
+               " last one is used.\n\n");
         printf("Usage for converting DAWG model files to word list text files:\n"
                "  %s -dw traineddata_unicharset_file traineddata_dawg_file output_text_file\n"
                "  (e.g. %s -dw eng.unicharset eng.word-dawg eng.word-dawg.txt)\n\n",
                argv[0], argv[0]);
 
         printf("Usage for converting word list text files back to DAWG files:\n"
-               "  %s -dw traineddata_unicharset_file wordlist_text_file traineddata_dawg_file\n"
+               "  %s -wd traineddata_unicharset_file wordlist_text_file traineddata_dawg_file\n"
                "  (e.g. %s -dw eng.unicharset english_wordlist.txt eng.word-dawg)\n\n",
                argv[0], argv[0]);
 
@@ -649,8 +702,7 @@ int main(int argc, char **argv) {
         printf("NOTE: Some language models contain legacy and LSTM unicharset files.\n"
                "Please ensure that DAWGS are paired with the correct unicharset file. \n\n"
                "  Example: eng.lstm-unicharset pairs with eng.lstm-*-dawg files.\n"
-               "  Example: eng.unicharset pairs with eng.*-dawg files.\n\n",
-               argv[0], argv[0]);
+               "  Example: eng.unicharset pairs with eng.*-dawg files.\n\n");
         return 1;
     }
     tm.Directory();

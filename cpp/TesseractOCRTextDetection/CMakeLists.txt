@@ -74,5 +74,5 @@ add_executable(sample_tesseract_ocr_detector sample_tesseract_ocr_detector.cpp)
 target_link_libraries(sample_tesseract_ocr_detector mpfTesseractOCRTextDetection)
 
 # Build executable
-add_executable              (mpf_tessdata_model_updater mpf_tessdata_model_updater.cpp)
-target_link_libraries       (mpf_tessdata_model_updater libtesseract ${Tesseract_LIBRARIES} ${Leptonica_LIBRARIES} ${Boost_LIBRARIES})
+add_executable              (tessdata_model_updater tessdata_model_updater.cpp)
+target_link_libraries       (tessdata_model_updater libtesseract ${Tesseract_LIBRARIES} ${Leptonica_LIBRARIES} ${Boost_LIBRARIES})

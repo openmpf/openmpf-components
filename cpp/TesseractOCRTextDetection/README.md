@@ -59,17 +59,17 @@ script text extraction).
 # Updating Tessdata Models With Custom Word Dictionaries:
 
 Users may add their own custom words to the Tesseract `*.traineddata` models
-with the mpf_tessdata_model_updater app. After building the mpf_tessdata_model_updater
+with the tessdata_model_updater app. After building the tessdata_model_updater
 executable, users can run the following command:
 
 ```
-build_dir/mpf_tessdata_model_updater -u [ORIGINAL_TESSDATA_MODEL_DIR] [UPDATED_DICT_FILES] [UPDATED_MODEL_DIR]
+build_dir/tessdata_model_updater -u <ORIGINAL_TESSDATA_MODEL_DIR> <UPDATED_DICT_FILES> <UPDATED_MODEL_DIR>
 ```
 
 Where:
    * `ORIGINAL_TESSDATA_MODEL_DIR` - Contains the original `*.traineddata` models.
 
-   * `UPDATED_MODEL_DIR` - Contains the updated `*.traineddata` output models. Users can set this equal to `ORIGINAL_TESSDATA_MODEL_DIR` to update all models directly.
+   * `UPDATED_MODEL_DIR` - Will contain the updated `*.traineddata` output models. Users can set this equal to `ORIGINAL_TESSDATA_MODEL_DIR` to update all models directly.
 
    * `UPDATED_DICT_FILES` - Contains sets of `[LANGUAGE].*-dawg` and other model files to add to existing models.
 

@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 /******************************************************************************
- * File:        mpf_tessdata_model_updater.cpp                                *
+ * File:        tessdata_model_updater.cpp                                *
  * Description: Updates tesseract traineddata files from user provided        *
  *              wordlist and model files.                                     *
  *                                                                            *
@@ -46,8 +46,8 @@
  * Author:      Thomas Kielbus                                                *
  ******************************************************************************/
 
-#ifndef MPF_TESSDATA_MODEL_UPDATER_H
-#define MPF_TESSDATA_MODEL_UPDATER_H
+#ifndef TESSDATA_MODEL_UPDATER_H
+#define TESSDATA_MODEL_UPDATER_H
 
 #include <string>
 #include <cstring>
@@ -78,17 +78,17 @@ namespace MPF_Model_Updater {
 
     void convertDawgToWordList(const char *unicharset_file, const char *dawg_file, const char *wordlist_file);
 
-    void addToWordList(const char *wordlist_file, std::set<std::wstring> &output_wordset);
+    void addToWordList(const char *wordlist_file, std::set<std::string> &output_wordset);
 
     void combineWordLists(const char *wordlist_file1, const char *wordlist_file2, const char *output_file);
 
-    void addWordListToDawg(const std::string &unicharset_file,
-                           const std::string &wordlist_file,
-                           const std::string &dawg_file);
+    void addWordListToDawg(const char *unicharset_file,
+                           const char *wordlist_file,
+                           const char *dawg_file);
 
-    void copyWordListOverDawg(const std::string &unicharset_file,
-                              const std::string &wordlist_file,
-                              const std::string &dawg_file);
+    void copyWordListOverDawg(const char *unicharset_file,
+                              const char *wordlist_file,
+                              const char *dawg_file);
 
     void checkModels(const char *model_dir, std::set<std::string> &model_set, bool &is_empty);
 
@@ -135,4 +135,4 @@ namespace MPF_Model_Updater {
 
 
 
-#endif //MPF_TESSDATA_MODEL_UPDATER_H
+#endif //TESSDATA_MODEL_UPDATER_H
