@@ -1,0 +1,14 @@
+[
+    {
+        "detectedLanguage": {
+            "language": "es",
+            "score": 1.0
+        },
+        "translations": [
+            {
+                "text": "Where's the library?",
+                "to": "en"
+            }
+        ]
+    }
+]

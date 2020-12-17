@@ -35,7 +35,7 @@ setuptools.setup(
     install_requires=(
         'mpf_component_api>=5.1',
         'mpf_component_util>=5.1',
-        'opencv-python>=3.3',
+        'opencv-python>=4.4.0',
         'numpy>=1.11'
     ),
     entry_points={

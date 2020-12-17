@@ -231,7 +231,7 @@ bool SceneChangeDetection::DetectChangeHistogram(const cv::Mat &frame, cv::Mat &
              hist, 2, histSize, ranges,
              true, // The histogram is uniform.
              false );
-    double val = compareHist(hist, lastHist, CV_COMP_CORREL);
+    double val = compareHist(hist, lastHist, cv::HISTCMP_CORREL);
     hist.copyTo(lastHist);
     return val < hist_thresh;
 }
