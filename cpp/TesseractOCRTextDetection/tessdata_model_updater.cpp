@@ -683,27 +683,30 @@ int main(int argc, char **argv) {
     } else {
 
         printf("\nUsage for updating all models in target directory:\n"
-               "    %s -u original_models_dir updated_model_files_dir output_updated_models_dir\n\n",  argv[0]);
+               "    %s -u <ORIGINAL_MODELS_DIR> <UPDATED_COMPONENT_FILES_DIR> <OUTPUT_MODELS_DIR>\n\n",  argv[0]);
+
+        printf("Usage for updating all models in target directory via replacement:\n"
+               "    %s -ur <ORIGINAL_MODELS_DIR> <UPDATED_COMPONENT_FILES_DIR> <OUTPUT_MODELS_DIR>\n\n",  argv[0]);
 
         printf("Usage for combining tessdata components into a single model:\n"
-               "    %s language_data_path_prefix\n\n",  argv[0]);
+               "    %s <INPUT_LANGUAGE_PATH_PREFIX>\n\n",  argv[0]);
 
         printf("Usage for extracting all tessdata components:\n"
-               "    %s -e traineddata_file output_path_prefix\n\n",  argv[0]);
+               "    %s -e <TRAINEDDATA_FILE> <OUTPUT_LANGUAGE_PATH_PREFIX>\n\n",  argv[0]);
 
         printf("Usage for overwriting tessdata components:\n"
-               "    %s -o traineddata_file [input_component_file...]\n\n",  argv[0]);
+               "    %s -o <TRAINEDDATA_FILE> [INPUT_COMPONENT_FILE...]\n\n",  argv[0]);
 
         printf("Usage for converting DAWG model files to word list text files:\n"
-               "    %s -dw traineddata_unicharset_file traineddata_dawg_file output_text_file\n\n",  argv[0]);
+               "    %s -dw <TRAINEDDATA_UNICHARSET_FILE> <TRAINEDDATA_DAWG_FILE> <OUTPUT_WORD_LIST_FILE>\n\n",  argv[0]);
 
         printf("Usage for converting word list text files back to DAWG files:\n"
-               "    %s -wd traineddata_unicharset_file wordlist_text_file output_traineddata_dawg_file\n\n",  argv[0]);
+               "    %s -wd <TRAINEDDATA_UNICHARSET_FILE> <WORD_LIST_FILE> <OUTPUT_DAWG_FILE>\n\n",  argv[0]);
 
         printf("Usage for combining two text-formatted word lists together:\n"
-               "    %s -c wordlist_file_1 wordlist_file_2 output_word_list\n\n",  argv[0]);
+               "    %s -c <WORD_LIST_FILE_1> <WORD_LIST_FILE_2> <OUTPUT_WORD_LIST_FILE>\n\n",  argv[0]);
 
-        printf("Please refer to the MPFTesseractOCRTextDetection README for more examples and details.\n\n");
+        printf("Please refer to TesseractOCRTextDetection DICTIONARIES.md for more examples and details.\n\n");
         return 1;
     }
     tm.Directory();

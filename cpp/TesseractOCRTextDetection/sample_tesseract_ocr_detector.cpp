@@ -28,9 +28,6 @@
 #include <vector>
 #include <iostream>
 #include "TesseractOCRTextDetection.h"
-#include "MPFComponentInterface.h"
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string.hpp>
 
 /**
  * NOTE: This main is only intended to serve as a test harness for compiling a
