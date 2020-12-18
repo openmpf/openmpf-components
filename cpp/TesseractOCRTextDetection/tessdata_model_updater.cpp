@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 /******************************************************************************
- * File:        tessdata_model_updater.cpp                                *
+ * File:        tessdata_model_updater.cpp                                    *
  * Description: Updates tesseract traineddata files from user provided        *
  *              wordlist and model files.                                     *
  *                                                                            *
