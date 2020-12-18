@@ -65,7 +65,7 @@ This application is also installed onto the Tesseract Docker component image.
 
 Users can access the app from a running Tesseract Docker container with the following command:
 
-`Docker exec -it <MPF_TESSERACT_CONTAINER> /opt/mpf/tessdata_model_updater <MODEL_UPDATER_COMMANDS>`
+`docker exec -it <MPF_TESSERACT_CONTAINER> /opt/mpf/tessdata_model_updater <MODEL_UPDATER_COMMANDS>`
 
 Below is a summary of the available model updater commands:
 (Please see following sections for a guide on updating models
