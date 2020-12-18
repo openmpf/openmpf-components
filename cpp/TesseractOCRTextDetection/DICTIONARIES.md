@@ -77,7 +77,7 @@ to DAWG conversion step. Subsequent conversation between DAWG and text formats w
 
 ### Overwrite `*.traineddata` Model with New Files
 
-* Overwrite a Tesseract model with new word dictionaries or other model components:
+Overwrite a Tesseract model with new word dictionaries or other model components:
 
 `./tessdata_model_updater -o <TRAINEDDATA_FILE> [INPUT_COMPONENT_FILE...]`
 
@@ -85,7 +85,7 @@ You can replace any components in a model (ex. `eng.word-dawg`, `eng.unicharset`
 
 Example:
 
-`./tessdata_model_updater -o eng.traineddata eng.unicharset eng.word-dawg`
+`./tessdata_model_updater -o eng.traineddata eng.new.unicharset eng.new.word-dawg`
 
 This will replace the existing `eng.unicharset` and `eng.word-dawg` file in the `eng.traineddata` model.
 
@@ -109,13 +109,11 @@ Automatically update all models in target directory with a given set of new mode
 `./tessdata_model_updater -u <ORIGINAL_MODELS_DIR> <UPDATED_COMPONENT_FILES_DIR> <OUTPUT_MODELS_DIR>`
 
 This command is effectively automates many of the previous commands to update all model files in a given target
-directory. 
-
-For ease of use, you may provide dictionary updates in either `*.-dawg` or `*.-dawg.txt` formats. The given wordlists must match the target model component names and file extensions, with text files having an additional `.txt` extension:
+directory.
 
 Each updated file in `UPDATED_COMPONENT_FILES_DIR` must have the exact same name as the target component inside of the `*.traineddata` model. The only exception is when updating word dictionaries two formatting options are allowed:
 
-- You may provide a `<LANGUAGE>.*-dawg` file in the Tesseract DAWG format. (Use the `-dw` conversion command on existing text-based wordlists to generate these files.)
+- You may provide a `<LANGUAGE>.*-dawg` file in the Tesseract DAWG format. (Use the `-dw` conversion command on existing text-based wordlists to generate these files, as explained [here](#convert-word-list-into-dawg-file).)
     - Example: Providing `fra.word-dawg` in `UPDATED_COMPONENT_FILES_DIR` will update the `fra.word-dawg` model component.
   
 - You may provide a `<LANGUAGE>.*-dawg.txt` as a text-formatted newline-separated list of words. The wordlist must match the name of the target `<LANGUAGE>.*-dawg` component with an extra `.txt` extension at the end.
@@ -179,7 +177,7 @@ Place files in `UPDATED_COMPONENT_FILES_DIR` that will be used to update the exi
 
 Each updated file in `UPDATED_COMPONENT_FILES_DIR` must have the exact same name as the target component inside of the `*.traineddata` model. The only exception is when updating word dictionaries two formatting options are allowed:
 
-- You may provide a `<LANGUAGE>.*-dawg` file in the Tesseract DAWG format. (Use the `-dw` conversion command on existing text-based wordlists to generate these files.)
+- You may provide a `<LANGUAGE>.*-dawg` file in the Tesseract DAWG format. (Use the `-wd` conversion command on existing text-based wordlists to generate these files, as explained [here](#convert-word-list-into-dawg-file).)
     - Example: Providing `fra.word-dawg` in `UPDATED_COMPONENT_FILES_DIR` will update the `fra.word-dawg` model component.
 
 - You may provide a `<LANGUAGE>.*-dawg.txt` as a text-formatted newline-separated list of words. The wordlist must match the name of the target `<LANGUAGE>.*-dawg` component with an extra `.txt` extension at the end.
