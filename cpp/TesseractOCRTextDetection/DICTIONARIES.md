@@ -113,7 +113,7 @@ directory.
 
 Each updated file in `UPDATED_COMPONENT_FILES_DIR` must have the exact same name as the target component inside of the `*.traineddata` model. The only exception is when updating word dictionaries two formatting options are allowed:
 
-- You may provide a `<LANGUAGE>.*-dawg` file in the Tesseract DAWG format. (Use the `-dw` conversion command on existing text-based wordlists to generate these files, as explained [here](#convert-word-list-into-dawg-file).)
+- You may provide a `<LANGUAGE>.*-dawg` file in the Tesseract DAWG format. (Use the `-dw` conversion command on existing text-based wordlists to generate these files, as explained [here](#convert-word-list-into--dawg-file).)
     - Example: Providing `fra.word-dawg` in `UPDATED_COMPONENT_FILES_DIR` will update the `fra.word-dawg` model component.
   
 - You may provide a `<LANGUAGE>.*-dawg.txt` as a text-formatted newline-separated list of words. The wordlist must match the name of the target `<LANGUAGE>.*-dawg` component with an extra `.txt` extension at the end.
@@ -177,7 +177,7 @@ Place files in `UPDATED_COMPONENT_FILES_DIR` that will be used to update the exi
 
 Each updated file in `UPDATED_COMPONENT_FILES_DIR` must have the exact same name as the target component inside of the `*.traineddata` model. The only exception is when updating word dictionaries two formatting options are allowed:
 
-- You may provide a `<LANGUAGE>.*-dawg` file in the Tesseract DAWG format. (Use the `-wd` conversion command on existing text-based wordlists to generate these files, as explained [here](#convert-word-list-into-dawg-file).)
+- You may provide a `<LANGUAGE>.*-dawg` file in the Tesseract DAWG format. (Use the `-wd` conversion command on existing text-based wordlists to generate these files, as explained [here](#convert-word-list-into--dawg-file).)
     - Example: Providing `fra.word-dawg` in `UPDATED_COMPONENT_FILES_DIR` will update the `fra.word-dawg` model component.
 
 - You may provide a `<LANGUAGE>.*-dawg.txt` as a text-formatted newline-separated list of words. The wordlist must match the name of the target `<LANGUAGE>.*-dawg` component with an extra `.txt` extension at the end.
