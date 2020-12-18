@@ -4,7 +4,8 @@ You may inspect and update you existing Tesseract `*.traineddata` models with th
 
 `docker exec -it <MPF_TESSERACT_CONTAINER> /opt/mpf/tessdata_model_updater <MODEL_UPDATER_COMMAND>`
 
-Below is a summary of the available model updater commands.
+Below is a summary of the available model updater commands. You may want to skip ahead to the [Automated Walkthrough](#automated-walkthrough) section for an example of a typical use case.
+
 
 ## Extract and Inspect Files
 
@@ -102,14 +103,13 @@ For example, to generate a `eng.traineddata` model from `eng.*` files inside of 
 
 `./tessdata_model_updater tessdata_extracted_files/eng`
 
-### Update All Models with New Files
+### Update Multiple Models with New Files
 
 Automatically update all models in target directory with a given set of new model component files:
 
 `./tessdata_model_updater -u <ORIGINAL_MODELS_DIR> <UPDATED_COMPONENT_FILES_DIR> <OUTPUT_MODELS_DIR>`
 
-This command is effectively automates many of the previous commands to update all model files in a given target
-directory.
+This command automates many of the previous commands to update all model files in a given target directory. **Specifically, DAWG components will be updated by add words to their existing wordlist. Non-DAWG files will be simply replaced with the newer version.**
 
 Each updated file in `UPDATED_COMPONENT_FILES_DIR` must have the exact same name as the target component inside of the `*.traineddata` model. The only exception is when updating word dictionaries two formatting options are allowed:
 
@@ -118,14 +118,12 @@ Each updated file in `UPDATED_COMPONENT_FILES_DIR` must have the exact same name
   
 - You may provide a `<LANGUAGE>.*-dawg.txt` as a text-formatted newline-separated list of words. The wordlist must match the name of the target `<LANGUAGE>.*-dawg` component with an extra `.txt` extension at the end.
     - Example: Providing `eng.word-dawg.txt` in `UPDATED_COMPONENT_FILES_DIR` will update the `eng.word-dawg` model component.
-  
-Non-DAWG files will be simply replaced with the newer version.
 
-To replace all model components (including DAWG files), then run the following command instead:
+### Update Multiple Models with New Files via Replacement
 
-`./tessdata_model_updater -u original_models_dir updated_model_files_dir output_updated_models_dir`
+The `ur` command is similar to the above `-u` command, but instead new DAWG components will be generated rather than adding to the wordlist if the existing ones:
 
-Please see the [Automated Walkthrough](#automated-walkthrough) section for more details.
+`./tessdata_model_updater -ur <ORIGINAL_MODELS_DIR> <UPDATED_COMPONENT_FILES_DIR> <OUTPUT_MODELS_DIR>`
 
 
 # Walkthroughs for Updating Existing Model Dictionaries
