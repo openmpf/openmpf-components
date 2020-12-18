@@ -72,8 +72,8 @@ void WordOutputter::output_word(const char *word) {
  * Utility class for creating temporary random subdirectories.
  * @param directory - Base path for random temporary subdirectory.
  */
-TempRandomDirectory::TempRandomDirectory(const std::string &directory){
-    path = boost::filesystem::path(directory)/boost::filesystem::path("/tmp-%%%%%%%%%%%%%%%%%%%%%%%%%%");
+TempRandomDirectory::TempRandomDirectory(const std::string &directory, const std::string &append = "/tmp-%"){
+    path = boost::filesystem::path(directory)/boost::filesystem::path(append + "%%%%%%%%%%%%%%%%%%%%%%%%%");
     path = boost::filesystem::unique_path(path);
     boost::filesystem::create_directories(path);
 }
@@ -546,8 +546,8 @@ std::set<std::string> MPF_Model_Updater::updateLanguageFiles(const char *model_d
     TempRandomDirectory temp_dir(updated_model_dir);
 
     // Also create a temporary directory to store intermediate dawg files.
-    boost::filesystem::path tmp_dawg_dir_path = boost::filesystem::path(updated_model_dir) / "tmp-dawg-dir";
-    TempRandomDirectory tmp_dawg_dir(tmp_dawg_dir_path.string());
+    boost::filesystem::path tmp_dawg_dir_path = boost::filesystem::path(updated_model_dir);
+    TempRandomDirectory tmp_dawg_dir(tmp_dawg_dir_path.string(), "/tmp-dawg-dir-%");
 
     for (auto &it: lang_dict_map) {
         printf("\nProcessing %s\n", it.first.c_str());
@@ -689,18 +689,20 @@ int main(int argc, char **argv) {
                argv[0], argv[0]);
 
         printf("  NOTE: When updating model DAWG dictionary files, users can add new words\n"
-               "  to the respective model by naming their text-formatted word list after the target DAWG file.\n"
+               "  to the respective model by naming their text-formatted word list after the target DAWG file,"
+               " with an additional .txt extension."
+               "  Example: eng.word-dawg.txt will update eng.word-dawg model file."
                "  Non-DAWG files will be simply replaced with the newer version.\n\n"
-               "  For example, if both eng.word-dawg and eng.unicharset are in the updated_eng_model_files_dir "
+               "  For example, if both eng.word-dawg.txt and eng.unicharset are in the updated_eng_model_files_dir "
                "  in the above example command:\n"
                "     Then eng.unicharset will first replace the default unicharset file for eng.traineddata.\n"
-               "     Afterwards eng.word-dawg will be added to the eng.traineddata's existing word dictionary using\n"
+               "     Afterwards eng.word-dawg.txt will be added to the eng.traineddata's eng.word-dawg dictionary using\n"
                "     the updated unicharaset file as reference during the wordlist to DAWG conversion.\n\n");
 
 
         printf(" NOTE: If users wish to replace the entire word dictionary with a new word dictionary: \n"
                "  %s -ur original_models_dir updated_model_files output_updated_models_dir\n"
-               "  (e.g. %s -u tessdata updated_eng_model_files_dir tessdata)\n\n\n",
+               "  (e.g. %s -ur tessdata updated_eng_model_files_dir tessdata)\n\n\n",
                argv[0], argv[0]);
 
         printf("Usage for combining tessdata components:\n"
@@ -726,7 +728,7 @@ int main(int argc, char **argv) {
 
         printf("Usage for converting word list text files back to DAWG files:\n"
                "  %s -wd traineddata_unicharset_file wordlist_text_file traineddata_dawg_file\n"
-               "  (e.g. %s -dw eng.unicharset english_wordlist.txt eng.word-dawg)\n\n",
+               "  (e.g. %s -wd eng.unicharset english_wordlist.txt eng.word-dawg)\n\n",
                argv[0], argv[0]);
 
         printf("Usage for combining two text-formatted word lists together:\n"
