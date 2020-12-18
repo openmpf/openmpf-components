@@ -345,14 +345,12 @@ TEST(TESSERACTOCR, CustomModelTest) {
                                 out_dir + "/eng";
     ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
 
-    std::string src = " data/model_dir/TesseractOCRTextDetection/extracted_lang/eng.word-dawg";
-    std::string dst = " data/model_dir/TesseractOCRTextDetection/reference_tessdata_dict_file/eng.word-dawg";
 
 
     model_command = "../tessdata_model_updater -dw" +
                     out_dir + "/eng.unicharset" +
                     out_dir + "/eng.word-dawg" +
-                    reference_dict_dir  + "/eng.word-dawg";
+                    reference_dict_dir  + "/eng.word-dawg.txt";
 
     ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
 
@@ -378,21 +376,30 @@ TEST(TESSERACTOCR, CustomModelTest) {
     ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
 
     model_command = "../tessdata_model_updater -dw" +
+                                out_dir + "/eng_updated.lstm-unicharset" +
+                                out_dir + "/eng_updated.lstm-word-dawg" +
+                                out_dir + "/eng_updated.lstm-word-dawg.txt" ;
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+    model_command = "../tessdata_model_updater -dw" +
                                 out_dir + "/eng_original.unicharset" +
                                 out_dir + "/eng_original.word-dawg" +
                                 out_dir + "/eng_original.word-dawg.txt" ;
     ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
 
-    std::set<std::string> reference_wordset, updated_wordset;
+    std::set<std::string> reference_wordset, updated_wordset, updated_wordset_lstm;
 
     out_dir = "data/model_dir/TesseractOCRTextDetection/extracted_lang";
     addToWordList(out_dir + "/eng_original.word-dawg.txt", reference_wordset);
     addToWordList(out_dir + "/eng_updated.word-dawg.txt", updated_wordset);
+    addToWordList(out_dir + "/eng_updated.lstm-word-dawg.txt", updated_wordset_lstm);
 
 
     ASSERT_TRUE(reference_wordset.count("Illldyxne") == 0) << "Updated eng word in wrong model.";
 
-    ASSERT_TRUE(updated_wordset.count("Illldyxne") > 0) << "Updated eng word missing.";
+    ASSERT_TRUE(updated_wordset.count("Illldyxne") > 0) << "Updated eng word missing from eng.word-dawg.";
+
+    ASSERT_TRUE(updated_wordset_lstm.count("Illldyxne") > 0) << "Updated eng word missing from eng.lstm-word-dawg.";
 
     ASSERT_TRUE(reference_wordset != updated_wordset) << "Eng model not properly updated. Identical word dawgs.";
 

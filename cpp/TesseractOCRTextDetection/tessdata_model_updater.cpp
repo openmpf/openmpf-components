@@ -463,8 +463,12 @@ bool MPF_Model_Updater::checkDictDir(const char *dict_dir,
             continue;
         }
 
-        std::string lang = dict_dir_iter->path().stem().string();
-
+        std::string lang;
+        if (boost::algorithm::contains(dict_dir_iter->path().string(), ".txt")) {
+            lang = dict_dir_iter->path().stem().stem().string();
+        } else {
+            lang = dict_dir_iter->path().stem().string();
+        }
         // If language model does not exist or has already been updated, skip associated language files.
         if (original_models.find(lang) == original_models.end() ||
             updated_models.find(lang) != updated_models.end()) {
@@ -483,11 +487,14 @@ bool MPF_Model_Updater::checkDictDir(const char *dict_dir,
         }
 
         // Add file, either to the dawg list or the non-dawg list.
-        if (dict_dir_iter->path().has_extension() && boost::algorithm::contains(dict_dir_iter->path().extension().string(), "dawg")) {
-            printf("Adding dawg model file: %s\n",  dict_dir_iter->path().string().c_str());
+        if (dict_dir_iter->path().has_extension() &&
+            (boost::algorithm::contains(dict_dir_iter->path().extension().string(), "dawg") ||
+             boost::algorithm::contains(dict_dir_iter->path().extension().string(), "txt"))) {
+
+            printf("Adding wordlist model file (txt, dawg): %s\n",  dict_dir_iter->path().string().c_str());
             lang_dict_map.at(lang).second.push_back(dict_dir_iter->path().filename().string());
         } else {
-            printf("Adding model file: %s\n",  dict_dir_iter->path().string().c_str());
+            printf("Adding non-wordlist model file: %s\n",  dict_dir_iter->path().string().c_str());
             lang_dict_map.at(lang).first.push_back(dict_dir_iter->path().filename().string());
         }
         dict_dir_iter++;
@@ -538,6 +545,10 @@ std::set<std::string> MPF_Model_Updater::updateLanguageFiles(const char *model_d
     // Then create a temporary directory to store all model files.
     TempRandomDirectory temp_dir(updated_model_dir);
 
+    // Also create a temporary directory to store intermediate dawg files.
+    boost::filesystem::path tmp_dawg_dir_path = boost::filesystem::path(updated_model_dir) / "tmp-dawg-dir";
+    TempRandomDirectory tmp_dawg_dir(tmp_dawg_dir_path.string());
+
     for (auto &it: lang_dict_map) {
         printf("\nProcessing %s\n", it.first.c_str());
         std::vector<std::string> updated_files;
@@ -572,20 +583,44 @@ std::set<std::string> MPF_Model_Updater::updateLanguageFiles(const char *model_d
         // Then replace each dawg file in tmp directory with its counterpart.
         // Check based whether LSTM version should be used.
         for (std::string &file: it.second.second) {
-            printf("Updating dawg file: %s\n", file.c_str());
+            bool text_format = false;
 
-            // Determine if file is LSTM or not.
-            boost::filesystem::path src_wordlist = boost::filesystem::path(dict_dir) / file;
-            boost::filesystem::path dst_dawg = temp_dir.path / file;
+            std::string target_file = file;
 
-            updated_files.push_back(dst_dawg.string());
-            updated_files_c_str.push_back(&updated_files.back()[0]);
+            if (boost::filesystem::extension(file) == ".txt") {
+                text_format = true;
+                target_file = boost::filesystem::path(file).replace_extension("").string();
+                printf("Updating dawg file %s with text-based wordlist %s\n", target_file.c_str(), file.c_str());
+            } else {
+                printf("Combining model dawg with given dawg: %s\n", file.c_str());
+            }
 
+
+            // Get proper unicharset file version (legacy, lstm).
             std::string unicharset_file = ".unicharset";
             if (boost::algorithm::contains(file,"lstm")) {
                 unicharset_file = ".lstm-unicharset";
             }
             boost::filesystem::path unichar_path = temp_dir.path / (it.first + unicharset_file);
+
+
+            // Convert to text if wordlist is in dawg format.
+            boost::filesystem::path src_wordlist = boost::filesystem::path(dict_dir) / file;
+            if (!text_format){
+
+                boost::filesystem::path translated_wordlist = tmp_dawg_dir.path / (file + ".txt");
+
+                convertDawgToWordList(unichar_path.string().c_str(),
+                                      src_wordlist.string().c_str(),
+                                      translated_wordlist.string().c_str());
+                src_wordlist = translated_wordlist;
+            }
+
+            boost::filesystem::path dst_dawg = temp_dir.path / target_file;
+            updated_files.push_back(dst_dawg.string());
+            updated_files_c_str.push_back(&updated_files.back()[0]);
+
+
             
             if (!replace_dawgs) {
                 addWordListToDawg(unichar_path.string().c_str(),
