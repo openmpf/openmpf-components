@@ -14,15 +14,15 @@ Extract a given model's component files (dictionaries, unicharset, etc.) into ta
 
 `./tessdata_model_updater -e <TRAINEDDATA_FILE> <OUTPUT_LANGUAGE_PATH_PREFIX>`
 
-The `OUTPUT_LANGUAGE_PATH_PREFIX` is applied across all extracted files.
+The `OUTPUT_LANGUAGE_PATH_PREFIX` is applied to all extracted files.
 
-For example, to extract out the `eng.*-dawg` files from `eng.traineddata` model into another directory:
+For example, to extract out the `eng.*-dawg` files from the `eng.traineddata` model (as well as all of the other component files) into another directory:
 
 `./tessdata_model_updater -e eng.traineddata extracted_model_dir/eng`
 
-### Convert `*-dwag` File to Word List
+### Convert `*-dawg` File to Word List
 
-Convert extracted model `*-dawg` dictionary files to text formatted wordlist:
+Convert an extracted model `*-dawg` dictionary file to a text-formatted wordlist:
 
 `./tessdata_model_updater -dw <TRAINEDDATA_UNICHARSET_FILE> <TRAINEDDATA_DAWG_FILE> <OUTPUT_WORD_LIST_FILE>`
 
@@ -30,7 +30,7 @@ Example:
 
 `./tessdata_model_updater -dw eng.unicharset eng.word-dawg eng.word-dawg.txt`
 
-Note that the `eng.unicharset` file was previously extracted from the existing `eng.traineddata` model using the `-e` command, as described in the above section.
+Note that the `eng.unicharset` file was previously extracted from the existing `eng.traineddata` model using the `-e` command, as described [here](#extract-traineddata-model).
 
 Some language models contain legacy and LSTM `unicharset` files (ex. `eng.unicharset`, `eng.lstm-unicharset`).
 
@@ -52,7 +52,7 @@ Example:
 
 `./tessdata_model_updater -c eng.word-dawg.txt eng.updated.word-dawg.txt eng.combined.word-dawg.txt`
 
-### Convert Word List into `*-dwag` File
+### Convert Word List into `*-dawg` File
 
 Convert a given wordlist into a model DAWG format:
 
@@ -62,7 +62,7 @@ Example:
 
 `./tessdata_model_updater -wd eng.unicharset eng.word-dawg.txt eng.word-dawg`
 
-Note that the `eng.unicharset` file was previously extracted from the existing `eng.traineddata` model using the `-e` command, as described in the above section.
+Note that the `eng.unicharset` file was previously extracted from the existing `eng.traineddata` model using the `-e` command, as described as described [here](#extract-traineddata-model).
 
 Some language models contain legacy and LSTM `unicharset` files (ex. `eng.unicharset`, `eng.lstm-unicharset`).
 
