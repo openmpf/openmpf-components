@@ -74,7 +74,7 @@ Example:
 `./tessdata_model_updater -wd eng.unicharset eng.word-dawg.txt eng.word-dawg`
 
 Note that the `eng.unicharset` file was previously extracted from the existing
-`eng.traineddata` model using the `-e` command, as described as described
+`eng.traineddata` model using the `-e` command, as described
 [here](#extract-traineddata-model).
 
 Some language models contain legacy and LSTM `unicharset` files (ex.
