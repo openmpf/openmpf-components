@@ -1,6 +1,6 @@
 # Inspecting and Updating Tessdata Models With Custom Word Dictionaries
 
-You may inspect and update you existing Tesseract `*.traineddata` models with
+You may inspect and update your existing Tesseract `*.traineddata` models with
 the `tessdata_model_updater` app. This app is installed onto the Tesseract
 Docker component image and can be run as follows:
 
