@@ -115,7 +115,7 @@ namespace MPF_Model_Updater {
     class TempRandomDirectory {
         public:
             boost::filesystem::path path;
-            explicit TempRandomDirectory(const std::string &directory, const std::string &append);
+            explicit TempRandomDirectory(const std::string &directory, const std::string &prefix);
 
             ~TempRandomDirectory();
             TempRandomDirectory(const TempRandomDirectory&) = delete;

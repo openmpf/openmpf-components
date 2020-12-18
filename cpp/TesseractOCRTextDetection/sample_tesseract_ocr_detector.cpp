@@ -47,31 +47,27 @@ using std::to_string;
 
 void print_usage(char *argv[]) {
 
-    std::cout << "Usage: " << argv[0] << " -i <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
-    std::cout << "Usage: " << argv[0] << " -g <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
-    std::cout << "Usage w/ OSD: " << argv[0] << " -i --osd <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
-    std::cout << "Usage w/ OSD: " << argv[0] << " -g --osd <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl <<
+    std::cout << "Usage: " << argv[0] <<
+                 " <-i | -g> [--osd] [--oem TESSERACT_OEM] <IMAGE_URI | GENERIC_URI> [TESSERACT_LANGUAGE]" <<
+                 std::endl << std::endl;
+    std::cout << "Notes: " << std::endl << std::endl;
+    std::cout << " -i | -g : Specifies whether to process an image (-i <IMAGE_URI>) or generic document (-g <GENERIC_URI>)." <<
+                 std::endl << std::endl;
+    std::cout << " --osd   : When provided, runs the job with automatic orientation and script detection (OSD). " <<
                  std::endl;
-
-    std::cout << "OSD = Automatic orientation and script detection. Input tesseract languages are generally ignored" <<
+    std::cout << "           Input tesseract languages are generally ignored" <<
                  " whenever OSD returns successful predictions and can be left out." << std::endl << std::endl;
 
-    std::cout << "Usage w/ OEM: " << argv[0] <<
-                 " -i --oem [TESSERACT_OEM] <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+    std::cout << " --oem TESSERACT_OEM : When provided runs the job with the specified TESSERACT_OEM engine mode" <<
+                 std::endl <<
+                 "                       Tesseract currently supports legacy (0) lstm (1), lstm + legacy (2)," <<
+                 " and default (3)." << std::endl <<
+                 "                       Default (OEM = 3) setting uses whichever language engine is currently available." <<
+                 std::endl << std::endl;
 
-    std::cout << "Usage w/ OEM: " << argv[0] <<
-                 " -g --oem [TESSERACT_OEM] <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+    std::cout << "  TESSERACT_LANGUAGE : When provided, sets the default TESSERACT_LANGUAGE to the given value." <<
+                 std::endl << std::endl;
 
-    std::cout << "Usage w/ OEM + OSD: " << argv[0] <<
-                 " -i --osd --oem [TESSERACT_OEM] <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
-
-    std::cout << "Usage w/ OEM + OSD: " << argv[0] <<
-                 " -g --osd --oem [TESSERACT_OEM] <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl << std::endl;
-
-     std::cout << "OEM = OCR Engine Modes." <<
-                  "Tesseract currently supports legacy (0), lstm (1), lstm + legacy (2), and default (3)." <<
-                  "Default (OEM = 3) setting uses whichever language engine is currently available." << std::endl <<
-                  std::endl;
 }
 
 void print_detection_properties(Properties properties, float confidence) {

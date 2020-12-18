@@ -56,29 +56,89 @@ Users will need to specify the `script/` path followed by the full name of the
 script being processed. (ex. `TESSERACT_LANGUAGE=script/Latin` will enable Latin
 script text extraction).
 
-# Updating Tessdata Models With Custom Word Dictionaries:
+# Inspecting and Updating Tessdata Models With Custom Word Dictionaries:
 
-Users may add their own custom words to the Tesseract `*.traineddata` models
-with the tessdata_model_updater app. After building the tessdata_model_updater
-executable, users can run the following command:
+Users may also inspect and update their existing Tesseract `*.traineddata` models
+with the tessdata_model_updater app.
 
-```
-build_dir/tessdata_model_updater -u <ORIGINAL_TESSDATA_MODEL_DIR> <UPDATED_DICT_FILES_DIR> <UPDATED_MODEL_DIR>
-```
+This application is also installed onto the Tesseract docker component image.
+Users can access the app with the following command:
 
-Where:
-   * `ORIGINAL_TESSDATA_MODEL_DIR` - Contains the original `*.traineddata` models.
+Docker exec -it <MPF_TESSERACT_CONTAINER> /opt/mpf/tessdata_model_updater <MODEL_UPDATER_COMMANDS>
 
-   * `UPDATED_MODEL_DIR` - Will contain the updated `*.traineddata` output models. Users can set this equal to `ORIGINAL_TESSDATA_MODEL_DIR` to update all models directly.
+Below is a summary of the available model updater commands. See next section for a guide on updating models
+using either manual or an automated command.
 
-   * `UPDATED_DICT_FILES` - Contains sets of `[LANGUAGE].*-dawg` and other model files to add to existing models.
+#### For extracting and inspecting available models:
 
-Each `[LANGUAGE].*-dawg` must contain a text-formatted dictionary of words, separated by newlines.
-The above command will then add these words into the respective `[LANGUAGE].*-dawg` file available in an existing model.
+*  Extract a given model's component files (dictionaries, unicharset, etc.) into target output path:<br/>
+    `./tessdata_model_updater -e traineddata_file output_path_prefix` <br/>
+   The `output_path_prefix` is applied across all extracted files. <br/>
+   For example, to extract out the eng.*-dawg files from eng.traineddata model into another directory:
+       `./tessdata_model_updater -e eng.traineddata extracted_model_dir/eng`
 
-For instance, the `eng.traineddata` model contains an internal `eng.word-dawg` file that specifies its English
-word dictionary. Therefore, adding a wordlist file named `eng.word-dawg` to `[UPDATED_DICT_FILES]`
-will result in new English words being added into the corresponding `eng.traineddata` word dictionary.
+* Convert extracted model DAWG files to text formatted word list:<br/>
+    `./tessdata_model_updater -dw traineddata_unicharset_file traineddata_dawg_file output_text_file` <br/>
+    The unicharset file is used during the DAWG to wordlist conversion step.   <br/>
+    Some language models contain legacy and LSTM unicharset files (ex. eng.unicharset, eng.lstm-unicharset). <br/>
+    Please ensure each DAWG is paired with the correct unicharset file. <br/>
+       Example: eng.lstm-unicharset pairs with eng.lstm-*-dawg files. <br/>
+       Example: eng.unicharset pairs with eng.*-dawg files. <br/>
+
+#### For updating models and word list files:
+
+* Combine two text formatted word lists together: <br/>
+    `./tessdata_model_updater -c wordlist_file_1 wordlist_file_2 output_word_list` <br/>
+
+* Convert a given wordlist into a model DAWG format:<br/>
+    `./tessdata_model_updater -wd traineddata_unicharset_file wordlist_text_file output_traineddata_dawg_file` <br/>
+    The unicharset file follows the same requirements as the DAWG to text conversion step. <br/>
+    In addition, users must provide the wordlist file as a text-formatted list of words separated by newlines. <br/>
+
+    NOTE: Please be aware that a small fraction (~1%) of words may be filtered out during the initial word list
+    to DAWG conversion step. Subsequent conversation between DAWG and text formats will retain all leftover words.
+
+* Overwrite a tesseract model with new word dictionaries or other model components:<br/>
+     `./tessdata_model_updater -o traineddata_file [input_component_file...]`<br/>
+     Users can effectively replace any components in a model (ex. eng.word-dawg, eng.unicharset) by adding
+     replacement files named after the target component extension.
+
+     Example: `./tessdata_model_updater -o eng.traineddata eng.unicharset eng.word-dawg`<br/>
+     Will replace the existing english unicharset and word dictionary file with those provided by the user.<br/>
+     If more than one file is specified with the same extension (ex. two `*.word-dawgs`), then only the last one provided is used.
+
+* Combine extracted model file components back into a single `*.traineddata` model:<br/>
+    `./tessdata_model_updater language_data_path_prefix`<br/>
+    For example, to generate eng.traineddata from eng.* files in target directory: <br/>
+    `./tessdata_model_updater tessdata_extracted_files/eng`<br/>
+    Will combine all `eng.*` model components back into the `eng.traineddata` model file.
+
+* Automatically update all models in target directory with a given set of new model component files:<br/>
+    `./tessdata_model_updater -u original_models_dir updated_model_files_dir output_updated_models_dir`<br/>
+    This command is effectively automates the previous commands to update all model files in a given target directory.<br/>
+    When updating dawg dictionaries, the user provided files will be appended to the existing dawg wordlists.<br/>
+    For ease of use, users may provide dictionary updates in either dawg or text formats. <br/>
+    The given wordlists must match
+    the target model component names, with text files having an additional `.txt` extension.
+
+    Example: Providing `eng.word-dawg.txt` in `updated_model_files_dir` will update the `eng.word-dawg` model component.
+
+    Non-DAWG files will be simply replaced with the newer version.<br/>
+    If users wish to replace all model components (including DAWG files) run the following command instead:<br/>
+    `./tessdata_model_updater -u original_models_dir updated_model_files_dir output_updated_models_dir`
+
+    Please see below section for more details.
+
+
+## Overview for updating existing model dictionaries (manual and automated commands):
+
+TODO: Add remaining steps for manual/automatic model update.
+
+#### Manual Model Update Commands:
+
+#### Automatic Model Update Command:
+
+
 
 # Detecting Multiple Languages
 

@@ -72,8 +72,8 @@ void WordOutputter::output_word(const char *word) {
  * Utility class for creating temporary random subdirectories.
  * @param directory - Base path for random temporary subdirectory.
  */
-TempRandomDirectory::TempRandomDirectory(const std::string &directory, const std::string &append = "/tmp-%"){
-    path = boost::filesystem::path(directory)/boost::filesystem::path(append + "%%%%%%%%%%%%%%%%%%%%%%%%%");
+TempRandomDirectory::TempRandomDirectory(const std::string &directory, const std::string &prefix = "/tmp-%"){
+    path = boost::filesystem::path(directory)/boost::filesystem::path(prefix + "%%%%%%%%%%%%%%%%%%%%%%%%%");
     path = boost::filesystem::unique_path(path);
     boost::filesystem::create_directories(path);
 }
@@ -682,64 +682,28 @@ int main(int argc, char **argv) {
         updateLanguageModel(argv[2], argv+3, argc-3);
     } else {
 
-        printf("\n\nUsage for updating all models in target directory "
-               "with a given set of model files/new dictionaries:\n"
-               "  %s -u original_models_dir updated_model_files output_updated_models_dir\n"
-               "  (e.g. %s -u tessdata updated_eng_model_files_dir tessdata)\n\n",
-               argv[0], argv[0]);
+        printf("\nUsage for updating all models in target directory:\n"
+               "    %s -u original_models_dir updated_model_files_dir output_updated_models_dir\n\n",  argv[0]);
 
-        printf("  NOTE: When updating model DAWG dictionary files, users can add new words\n"
-               "  to the respective model by naming their text-formatted word list after the target DAWG file,"
-               " with an additional .txt extension."
-               "  Example: eng.word-dawg.txt will update eng.word-dawg model file."
-               "  Non-DAWG files will be simply replaced with the newer version.\n\n"
-               "  For example, if both eng.word-dawg.txt and eng.unicharset are in the updated_eng_model_files_dir "
-               "  in the above example command:\n"
-               "     Then eng.unicharset will first replace the default unicharset file for eng.traineddata.\n"
-               "     Afterwards eng.word-dawg.txt will be added to the eng.traineddata's eng.word-dawg dictionary using\n"
-               "     the updated unicharaset file as reference during the wordlist to DAWG conversion.\n\n");
-
-
-        printf(" NOTE: If users wish to replace the entire word dictionary with a new word dictionary: \n"
-               "  %s -ur original_models_dir updated_model_files output_updated_models_dir\n"
-               "  (e.g. %s -ur tessdata updated_eng_model_files_dir tessdata)\n\n\n",
-               argv[0], argv[0]);
-
-        printf("Usage for combining tessdata components:\n"
-               "  %s language_data_path_prefix\n"
-               "  For example, to generate eng.traineddata from eng.* files in target directory:"
-               "  (%s tessdata/eng)\n\n", argv[0], argv[0]);
+        printf("Usage for combining tessdata components into a single model:\n"
+               "    %s language_data_path_prefix\n\n",  argv[0]);
 
         printf("Usage for extracting all tessdata components:\n"
-               "  %s -e traineddata_file output_path_prefix\n"
-               "  (e.g. %s -e eng.traineddata tmp/eng.)\n\n", argv[0], argv[0]);
+               "    %s -e traineddata_file output_path_prefix\n\n",  argv[0]);
 
         printf("Usage for overwriting tessdata components:\n"
-               "  %s -o traineddata_file [input_component_file...]\n"
-               "  (e.g. %s -o eng.traineddata eng.word-dawg)\n",
-               argv[0], argv[0]);
+               "    %s -o traineddata_file [input_component_file...]\n\n",  argv[0]);
 
-        printf(" NOTE: If more than one file is specified with the same extension (ex. *.word-dawg), then only the"
-               " last one is used.\n\n");
         printf("Usage for converting DAWG model files to word list text files:\n"
-               "  %s -dw traineddata_unicharset_file traineddata_dawg_file output_text_file\n"
-               "  (e.g. %s -dw eng.unicharset eng.word-dawg eng.word-dawg.txt)\n\n",
-               argv[0], argv[0]);
+               "    %s -dw traineddata_unicharset_file traineddata_dawg_file output_text_file\n\n",  argv[0]);
 
         printf("Usage for converting word list text files back to DAWG files:\n"
-               "  %s -wd traineddata_unicharset_file wordlist_text_file traineddata_dawg_file\n"
-               "  (e.g. %s -wd eng.unicharset english_wordlist.txt eng.word-dawg)\n\n",
-               argv[0], argv[0]);
+               "    %s -wd traineddata_unicharset_file wordlist_text_file output_traineddata_dawg_file\n\n",  argv[0]);
 
         printf("Usage for combining two text-formatted word lists together:\n"
-               "  %s -c wordlist_file_1 wordlist_file_2 output_word_list\n"
-               "  (e.g. %s -c eng.word-dawg.txt wordlist2.txt updated_eng.word-dawg.txt)\n\n",
-               argv[0], argv[0]);
+               "    %s -c wordlist_file_1 wordlist_file_2 output_word_list\n\n",  argv[0]);
 
-        printf("NOTE: Some language models contain legacy and LSTM unicharset files.\n"
-               "Please ensure that DAWGS are paired with the correct unicharset file. \n\n"
-               "  Example: eng.lstm-unicharset pairs with eng.lstm-*-dawg files.\n"
-               "  Example: eng.unicharset pairs with eng.*-dawg files.\n\n");
+        printf("Please refer to the MPFTesseractOCRTextDetection README for more examples and details.\n\n");
         return 1;
     }
     tm.Directory();
