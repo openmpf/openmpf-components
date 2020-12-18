@@ -29,12 +29,12 @@ import setuptools
 
 setuptools.setup(
     name='AzureFormDetection',
-    version='5.1',
+    version='6.0',
     packages=setuptools.find_packages(exclude=('*test*',)),
     package_data={'': ['text-tags.json']},
     install_requires=(
-        'mpf_component_api>=5.1',
-        'mpf_component_util>=5.1',
+        'mpf_component_api>=6.0',
+        'mpf_component_util>=6.0',
         'opencv-python>=4.4.0',
         'numpy>=1.11'
     ),

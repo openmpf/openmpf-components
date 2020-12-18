@@ -28,7 +28,7 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 ARG MODELS_REGISTRY=openmpf/
 
-FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:5.1 as models
+FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:6.0 as models
 
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
