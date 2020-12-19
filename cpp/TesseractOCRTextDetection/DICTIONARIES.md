@@ -173,7 +173,7 @@ example of a typical use case.
 ### Update Multiple Models with New Files via Replacement
 
 The `-ur` command is similar to the above `-u` command, but instead new DAWG
-components will be generated rather than adding to the word list if the existing
+components will be generated rather than adding to the word list of the existing
 ones:
 
 `./tessdata_model_updater -ur <ORIGINAL_MODELS_DIR> <UPDATED_COMPONENT_FILES_DIR> <OUTPUT_MODELS_DIR>`
