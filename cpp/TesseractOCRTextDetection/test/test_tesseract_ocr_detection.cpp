@@ -425,6 +425,8 @@ TEST(TESSERACTOCR, CustomModelTest) {
 
     ASSERT_TRUE(reference_wordset != updated_wordset) << "Eng model not properly updated. Identical word dawgs.";
 
+    ASSERT_TRUE(reference_wordset_lstm != updated_wordset_lstm) << "Eng model not properly updated. Identical lstm word dawgs.";
+
     updated_wordset.erase("Illldyxne");
     updated_wordset_lstm.erase("Illldyxne");
 

@@ -263,7 +263,7 @@ void MPF_Model_Updater::convertWordListToDawg(const char *unicharset_file,
         tprintf("Writing squished DAWG to '%s'\n", dawg_file);
         dawg->write_squished_dawg(dawg_file);
     } else {
-        tprintf("Dawg is empty, skip producing the output file\n");
+        tprintf("DAWG is empty, skip producing the output file\n");
     }
     delete dawg;
     delete classify;
@@ -377,7 +377,7 @@ void MPF_Model_Updater::addWordListToDawg(const char *unicharset_file,
         tprintf("Writing squished DAWG to '%s'\n", dawg_file);
         dawg->write_squished_dawg(dawg_file);
     } else {
-        tprintf("Dawg is empty, skip producing the output file\n");
+        tprintf("DAWG is empty, skip producing the output file\n");
     }
 
     delete dawg;

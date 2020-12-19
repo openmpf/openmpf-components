@@ -2,12 +2,22 @@
 
 You may inspect and update your existing Tesseract `*.traineddata` models with
 the `tessdata_model_updater` app. This app is installed onto the Tesseract
-Docker component image and can be run as follows:
+Docker component image.
 
-`docker exec -it <MPF_TESSERACT_CONTAINER> /opt/mpf/tessdata_model_updater <MODEL_UPDATER_COMMAND>`
+If you already have a Docker container running, you can use the app as follows:
 
-Below is a summary of the available model updater commands. You may want to skip
-ahead to the [Automated Walkthrough](#automated-walkthrough) section for an
+`docker exec <MPF_TESSERACT_CONTAINER> /opt/mpf/tessdata_model_updater <MODEL_UPDATER_COMMAND>`
+
+Alternatively, you can run a container to execute a single command:
+
+`docker run --rm [-v LOCAL_PATH:CONTAINER_PATH] --entrypoint /opt/mpf/tessdata_model_updater <MPF_TESSERACT_IMAGE> <MODEL_UPDATER_COMMAND>`
+
+For example:
+
+`docker run --rm -v "$(pwd)":/work --entrypoint /opt/mpf/tessdata_model_updater openmpf_tesseract_ocr_text_detection:latest -c /work/eng.word-dawg.txt /work/updates.txt /work/combined.txt`
+
+Below is a summary of the available model updater app commands. You may want to
+skip ahead to the [Automated Walkthrough](#automated-walkthrough) section for an
 example of a typical use case.
 
 
@@ -26,6 +36,9 @@ For example, to extract out the `eng.*-dawg` files from the `eng.traineddata`
 model (as well as all of the other component files) into another directory:
 
 `./tessdata_model_updater -e eng.traineddata extracted_model_dir/eng`
+
+This command will fail if `extracted_model_dir` does not exist. You may need to
+create it first.
 
 ### Convert `*-dawg` File to Word List
 
@@ -129,6 +142,9 @@ Automatically update all models in target directory with a given set of new
 model component files:
 
 `./tessdata_model_updater -u <ORIGINAL_MODELS_DIR> <UPDATED_COMPONENT_FILES_DIR> <OUTPUT_MODELS_DIR>`
+
+This command will fail if `OUTPUT_MODELS_DIR` does not exist. You may need to
+create it first.
 
 This command automates many of the previous commands to update all model files
 in a given target directory. **Specifically, DAWG components will be updated by
