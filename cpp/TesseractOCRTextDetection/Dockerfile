@@ -81,6 +81,10 @@ COPY --from=build_component $BUILD_DIR/plugin/TesseractOCRTextDetection $PLUGINS
 COPY --from=build_component $BUILD_DIR/libmpfTesseractOCRTextDetection.so \
                             $PLUGINS_DIR/TesseractOCRTextDetection/lib/
 
+COPY --from=build_component $BUILD_DIR/tessdata_model_updater \
+                            /opt/mpf/tessdata_model_updater
+
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/TesseractOCRTextDetection/lib
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Tesseract OCR Text Detection" \
