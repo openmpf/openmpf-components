@@ -327,7 +327,7 @@ TEST(TESSERACTOCR, CustomModelTest) {
     boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/updated_tessdata");
     boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/extracted_lang");
 
-    /* TODO: If possible identify why wordlist-to-dawg conversion step shrinks down the original wordlist.
+    /* TODO: If possible identify why word list txt-to-DAWG conversion step shrinks down the original word list.
      * In the meantime, a substitute test is used to ensure remaining words are stable/preserved after adding new
      * keyword.
      * If solution is identified, update test to no longer generate reference copy.
@@ -423,28 +423,28 @@ TEST(TESSERACTOCR, CustomModelTest) {
 
     ASSERT_TRUE(updated_wordset_lstm.count("Illldyxne") > 0) << "Updated eng word missing from eng.lstm-word-dawg.";
 
-    ASSERT_TRUE(reference_wordset != updated_wordset) << "Eng model not properly updated. Identical word dawgs.";
+    ASSERT_TRUE(reference_wordset != updated_wordset) << "Eng model not properly updated. Identical word DAWGs.";
 
-    ASSERT_TRUE(reference_wordset_lstm != updated_wordset_lstm) << "Eng model not properly updated. Identical lstm word dawgs.";
+    ASSERT_TRUE(reference_wordset_lstm != updated_wordset_lstm) << "Eng model not properly updated. Identical LSTM word DAWGs.";
 
     updated_wordset.erase("Illldyxne");
     updated_wordset_lstm.erase("Illldyxne");
 
 
     ASSERT_TRUE(reference_wordset.size() == updated_wordset.size()) << "Eng model not properly updated. " <<
-                                                                       "Mismatching dawg sizes after "<<
+                                                                       "Mismatching DAWG sizes after "<<
                                                                        "removing updated words.";
 
     ASSERT_TRUE(reference_wordset == updated_wordset) << "Eng model not properly updated. " <<
-                                                         "Mismatching dawg wordlist content " <<
+                                                         "Mismatching DAWG word list content " <<
                                                          "after removing updated words.";
 
     ASSERT_TRUE(reference_wordset_lstm.size() == updated_wordset_lstm.size()) << "Eng model not properly updated. " <<
-                                                                                 "Mismatching lstm dawg sizes after " <<
+                                                                                 "Mismatching LSTM DAWG sizes after " <<
                                                                                  "removing updated words.";
 
     ASSERT_TRUE(reference_wordset_lstm == updated_wordset_lstm) << "Eng model not properly updated. " <<
-                                                                   "Mismatching lstm dawg wordlist content " <<
+                                                                   "Mismatching LSTM DAWG word list content " <<
                                                                    "after removing updated words.";
 
     // Currently model dictionary updates mainly impact legacy engine behavior.

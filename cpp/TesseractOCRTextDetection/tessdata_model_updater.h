@@ -27,10 +27,10 @@
 /******************************************************************************
  * File:        tessdata_model_updater.cpp                                    *
  * Description: Updates tesseract traineddata files from user provided        *
- *              wordlist and model files.                                     *
+ *              word lists and model files.                                   *
  *                                                                            *
- *              Based on the following Tesseract training tools, with         *
- *              additional processing for custom wordlists and model files.   *
+ *              Written based on the following Tesseract training tools, with *
+ *              additional processing for custom word lists and model files.  *
  *                                                                            *
  * Reference:   tesseract/src/training/combine_tessdata.cpp                   *
  * Description: Creates a unified traineddata file from several               *

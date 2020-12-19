@@ -43,7 +43,7 @@ create it first.
 ### Convert `*-dawg` File to Word List
 
 Convert an extracted model `*-dawg` dictionary file to a text-formatted
-wordlist:
+word list:
 
 `./tessdata_model_updater -dw <TRAINEDDATA_UNICHARSET_FILE> <TRAINEDDATA_DAWG_FILE> <OUTPUT_WORD_LIST_FILE>`
 
@@ -66,7 +66,7 @@ Please ensure that you use the correct `unicharset` file.
 
 ### Combine Word Lists
 
-Combine two text formatted wordlists together:
+Combine two text formatted word lists together:
 
 `./tessdata_model_updater -c <WORD_LIST_FILE_1> <WORD_LIST_FILE_2> <OUTPUT_WORD_LIST_FILE>`
 
@@ -78,7 +78,7 @@ Example:
 
 ### Convert Word List into `*-dawg` File
 
-Convert a given wordlist into a model DAWG format:
+Convert a given word list into a model DAWG format:
 
 `./tessdata_model_updater -wd <TRAINEDDATA_UNICHARSET_FILE> <WORD_LIST_FILE> <OUTPUT_DAWG_FILE>`
 
@@ -97,11 +97,11 @@ Please ensure that you use the correct `unicharset` file.
 - Example: `eng.lstm-unicharset` pairs with `eng.lstm-*-dawg` files.
 - Example: `eng.unicharset` pairs with `eng.*-dawg` files.
 
-In addition, you must provide the wordlist file as a text-formatted list of
+In addition, you must provide the word list file as a text-formatted list of
 words separated by newlines.
 
 NOTE: Please be aware that a small fraction (~1%) of words may be filtered out
-during the initial wordlist to DAWG conversion step. Subsequent conversation
+during the initial word list to DAWG conversion step. Subsequent conversation
 between DAWG and text formats will retain all leftover words.
 
 ### Overwrite `*.traineddata` Model with New Files
@@ -148,7 +148,7 @@ create it first.
 
 This command automates many of the previous commands to update all model files
 in a given target directory. **Specifically, DAWG components will be updated by
-adding words to their existing wordlist. Non-DAWG components will simply be
+adding words to their existing word list. Non-DAWG components will simply be
 replaced with the newer version.**
 
 Each updated file in `UPDATED_COMPONENT_FILES_DIR` must have the exact same name
@@ -156,13 +156,13 @@ as the target component inside of the `*.traineddata` model. The only exception
 is when updating word dictionaries two formatting options are allowed:
 
 - You may provide a `<LANGUAGE>.*-dawg` file in the Tesseract DAWG format.
-(Use the `-dw` conversion command on existing text-based wordlists to generate
+(Use the `-dw` conversion command on existing text-based word lists to generate
   these files, as explained [here](#convert-word-list-into--dawg-file).)
     - Example: Providing `fra.word-dawg` in `UPDATED_COMPONENT_FILES_DIR` will
     update the `fra.word-dawg` model component.
 
 - You may provide a `<LANGUAGE>.*-dawg.txt` as a text-formatted
-newline-separated list of words. The wordlist must match the name of the
+newline-separated list of words. The word list must match the name of the
 target `<LANGUAGE>.*-dawg` component with an extra `.txt` extension at the end.
     - Example: Providing `eng.word-dawg.txt` in `UPDATED_COMPONENT_FILES_DIR`
     will update the `eng.word-dawg` model component.
@@ -172,8 +172,8 @@ example of a typical use case.
 
 ### Update Multiple Models with New Files via Replacement
 
-The `ur` command is similar to the above `-u` command, but instead new DAWG
-components will be generated rather than adding to the wordlist if the existing
+The `-ur` command is similar to the above `-u` command, but instead new DAWG
+components will be generated rather than adding to the word list if the existing
 ones:
 
 `./tessdata_model_updater -ur <ORIGINAL_MODELS_DIR> <UPDATED_COMPONENT_FILES_DIR> <OUTPUT_MODELS_DIR>`
@@ -195,7 +195,7 @@ Given:
 - `new-english-wordlist.txt`: Target words to add to target model
 - `<TEMP_DIR>`: Temporary directory for storing intermediate model files
 
-Run the following command to extract out wordlist `dawg` files and `unicharset`
+Run the following command to extract out word list `*-dawg` files and `unicharset`
 files:
 
 `./tessdata_model_updater -e eng.traineddata <TEMP_DIR>/eng`
@@ -240,24 +240,24 @@ as the target component inside of the `*.traineddata` model. The only exception
 is when updating word dictionaries two formatting options are allowed:
 
 - You may provide a `<LANGUAGE>.*-dawg` file in the Tesseract DAWG format.
-(Use the `-dw` conversion command on existing text-based wordlists to generate
+(Use the `-dw` conversion command on existing text-based word lists to generate
   these files, as explained [here](#convert-word-list-into--dawg-file).)
     - Example: Providing `fra.word-dawg` in `UPDATED_COMPONENT_FILES_DIR` will
     update the `fra.word-dawg` model component.
 
 - You may provide a `<LANGUAGE>.*-dawg.txt` as a text-formatted
-newline-separated list of words. The wordlist must match the name of the
+newline-separated list of words. The word list must match the name of the
 target `<LANGUAGE>.*-dawg` component with an extra `.txt` extension at the end.
     - Example: Providing `eng.word-dawg.txt` in `UPDATED_COMPONENT_FILES_DIR`
     will update the `eng.word-dawg` model component.
 
 Run the following command to add all `<LANGUAGE>.*-dawg` files to their
-respective languages:
+respective language models:
 
 `tessdata_model_updater -u <ORIGINAL_TESSDATA_MODELS_DIR> <UPDATED_COMPONENT_FILES_DIR> <OUTPUT_MODELS_DIR>`
 
 Run the following command to add all `script/<LANGUAGE>.*-dawg` files to their
-respective scripts:
+respective script models:
 
 `tessdata_model_updater -u <ORIGINAL_TESSDATA_MODELS_SCRIPT_DIR> <UPDATED_COMPONENT_FILES_DIR> <OUPUT_MODELS_SCRIPT_DIR>`
 
@@ -266,7 +266,7 @@ This is typically equivalent to:
 `tessdata_model_updater -u <ORIGINAL_TESSDATA_MODELS_DIR>/script <UPDATED_COMPONENT_FILES_DIR> <OUTPUT_MODELS_DIR>/script`
 
 (If you wish to replace existing word dictionaries with a completely new set of
-words, run the above commands with `ur` instead of `u`.)
+words, run the above commands with `-ur` instead of `-u`.)
 
 Please note that any updated `unicharset` files provided in
 `UPDATED_COMPONENT_FILES_DIR` will be used during the model dictionary updates.
@@ -276,9 +276,9 @@ For example, if both `eng.word-dawg.txt` and `eng.unicharset` are in
 - Then `eng.unicharset` will first replace the default `unicharset` file for
   `eng.traineddata`.
 - Afterwards `eng.word-dawg.txt` will be added to the `eng.traineddata` word
-  dictionary using the updated unicharaset file as reference during the wordlist
+  dictionary using the updated unicharaset file as reference during the word list
   to DAWG conversion step.
 
-NOTE: Please be aware that the wordlist to DAWG conversion step may skip/filter
+NOTE: Please be aware that the word list to DAWG conversion step may skip/filter
 out a small subset of select words when generating the initial `*-dawg` files.
 Subsequent conversion between DAWG and text formats will keep remaining words.
