@@ -274,9 +274,9 @@ void MPF_Model_Updater::convertWordListToDawg(const char *unicharset_file,
  * Trims and ignores blank entries.
  *
  * @param wordlist_file - Path of word list.
- * @param output_wordset - Output word vector.
+ * @param output_wordset - Output word set.
  */
-void MPF_Model_Updater::addToWordList(const char *wordlist_file,
+void MPF_Model_Updater::loadWordList(const char *wordlist_file,
                                       std::set<std::string> &output_wordset) {
     std::ifstream in(wordlist_file);
     std::string str;
@@ -302,8 +302,8 @@ void MPF_Model_Updater::combineWordLists(const char *wordlist_file1,
                                          const char *output_file) {
 
     std::set <std::string> output_wordset;
-    addToWordList(wordlist_file1, output_wordset);
-    addToWordList(wordlist_file2, output_wordset);
+    loadWordList(wordlist_file1, output_wordset);
+    loadWordList(wordlist_file2, output_wordset);
     std::set<std::string>::iterator it = output_wordset.begin();
 
     std::ofstream outfile;

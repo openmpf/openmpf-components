@@ -64,9 +64,11 @@ void setAlgorithmProperties(Properties &algorithm_properties, const std::map<std
 /**
  * Helper function for creating an image job.
  * @param uri - Path to existing input media.
- * @param custom - Custom job properties to run for job.
- * @wild_mode - Sets the expected text type for image OCR runs (structured vs unstructured "wild" text).
- *              Set to true to process images with UNSTRUCTURED_* job parameters instead of STRUCTURED_* job parameters.
+ * @param custom - Custom job algorithm properties.
+ * @param wild_mode - Sets the expected text type for image OCR runs (structured vs unstructured "wild" text).
+ *                    Set to true to process images with UNSTRUCTURED_* job parameters instead of STRUCTURED_* job parameters.
+ *
+ * @return - An MPF image job with the specified algorithm properties.
  */
 MPFImageJob createImageJob(const std::string &uri, const std::map<std::string, std::string> &custom = {},
                            bool wild_mode = false) {
@@ -87,7 +89,9 @@ MPFImageJob createImageJob(const std::string &uri, const std::map<std::string, s
 /**
  * Helper function for creating a generic job
  * @param uri - Path to existing input media.
- * @param custom - Custom job properties to run for job.
+ * @param custom - Custom job algorithm properties.
+ *
+ * @return - An MPF generic job with the specified algorithm properties.
  */
 MPFGenericJob createPDFJob(const std::string &uri, const std::map<std::string, std::string> &custom = {}) {
     Properties algorithm_properties;
@@ -105,6 +109,9 @@ MPFGenericJob createPDFJob(const std::string &uri, const std::map<std::string, s
  * @param ocr - TesseractOCRTextDetection component for running given job.
  * @param image_locations - Output vector of image detection tracks for given job.
  * @param custom - Mapping of input job properties.
+ * @param wild_mode - Sets the expected text type for image OCR runs (structured vs unstructured "wild" text).
+ *                    Set to true to process images with UNSTRUCTURED_* job parameters instead of STRUCTURED_* job parameters.
+ *
  */
 void runImageDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
                        std::vector<MPFImageLocation> &image_locations,
@@ -123,10 +130,10 @@ void runImageDetection(const std::string &image_path, TesseractOCRTextDetection 
  * @param generic_tracks - Output vector of generic document detection tracks for given job.
  * @param custom - Mapping of input job properties.
  */
-void runDocumentDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
+void runDocumentDetection(const std::string &doc_path, TesseractOCRTextDetection &ocr,
                           std::vector<MPFGenericTrack> &generic_tracks,
                           const std::map<std::string, std::string> &custom = {}) {
-    MPFGenericJob job = createPDFJob(image_path, custom);
+    MPFGenericJob job = createPDFJob(doc_path, custom);
     generic_tracks = ocr.GetDetections(job);
     ASSERT_FALSE(generic_tracks.empty());
 }
@@ -139,6 +146,9 @@ void runDocumentDetection(const std::string &image_path, TesseractOCRTextDetecti
  * @param image_locations - Output vector of image detection tracks for given job.
  * @param custom - Mapping of input job properties.
  * @param error- Expected MPF error returned by the job.
+ * @param wild_mode - Sets the expected text type for image OCR runs (structured vs unstructured "wild" text).
+ *                    Set to true to process images with UNSTRUCTURED_* job parameters instead of STRUCTURED_* job parameters.
+ *
  */
 void assertEmptyImageDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
                           std::vector<MPFImageLocation> &image_locations,
@@ -199,6 +209,8 @@ void assertEmptyDocumentDetection(const std::string &doc_path, TesseractOCRTextD
  * @param locations - Vector of image detection tracks for given job.
  * @param property - Key for given job property of interest (i.e. TEXT).
  * @param index - Index of target image track to search for given detection property. Set to -1  to search all tracks.
+ *
+ * @return - True if key value pair exists in specified track. False otherwise.
  */
 bool containsProp(const std::string &exp_text, const std::vector<MPFImageLocation> &locations,
                   const std::string &property, int index = -1) {
@@ -289,9 +301,9 @@ void convert_results(std::vector<MPFImageLocation> &im_track, const std::vector<
  * Trims and ignores blank entries.
  *
  * @param wordlist_file - Path of word list.
- * @param output_wordset - Output word vector.
+ * @param output_wordset - Output word set.
  */
-void addToWordList(const std::string &wordlist_file,
+void loadWordList(const std::string &wordlist_file,
                    std::set<std::string> &output_wordset) {
 
     std::ifstream in(wordlist_file.c_str());
@@ -315,11 +327,11 @@ TEST(TESSERACTOCR, CustomModelTest) {
     boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/updated_tessdata");
     boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/extracted_lang");
 
-     /* TODO: IF possible identify why wordlist-to-dawg conversion step shrinks down the original wordlist.
-         * In the meantime, a substitute test is used to ensure remaining words are stable/preserved after adding new
-         * keyword.
-         */
-    // If solution is identified, update test to no longer generate reference copy.
+    /* TODO: If possible identify why wordlist-to-dawg conversion step shrinks down the original wordlist.
+     * In the meantime, a substitute test is used to ensure remaining words are stable/preserved after adding new
+     * keyword.
+     * If solution is identified, update test to no longer generate reference copy.
+     */
     boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/reference_tessdata");
     boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/reference_tessdata_dict_file");
 
@@ -345,13 +357,16 @@ TEST(TESSERACTOCR, CustomModelTest) {
                                 out_dir + "/eng";
     ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
 
-
-
     model_command = "../tessdata_model_updater -dw" +
                     out_dir + "/eng.unicharset" +
                     out_dir + "/eng.word-dawg" +
                     reference_dict_dir  + "/eng.word-dawg.txt";
-
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+    
+    model_command = "../tessdata_model_updater -dw" +
+                    out_dir + "/eng.lstm-unicharset" +
+                    out_dir + "/eng.lstm-word-dawg" +
+                    reference_dict_dir  + "/eng.lstm-word-dawg.txt";
     ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
 
     model_command = "../tessdata_model_updater -ur" + model_dir + reference_dict_dir + reference_model_dir;
@@ -386,13 +401,20 @@ TEST(TESSERACTOCR, CustomModelTest) {
                                 out_dir + "/eng_original.word-dawg" +
                                 out_dir + "/eng_original.word-dawg.txt" ;
     ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+    
+    model_command = "../tessdata_model_updater -dw" +
+                                out_dir + "/eng_original.lstm-unicharset" +
+                                out_dir + "/eng_original.lstm-word-dawg" +
+                                out_dir + "/eng_original.lstm-word-dawg.txt" ;
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
 
-    std::set<std::string> reference_wordset, updated_wordset, updated_wordset_lstm;
+    std::set<std::string> reference_wordset, reference_wordset_lstm, updated_wordset, updated_wordset_lstm;
 
     out_dir = "data/model_dir/TesseractOCRTextDetection/extracted_lang";
-    addToWordList(out_dir + "/eng_original.word-dawg.txt", reference_wordset);
-    addToWordList(out_dir + "/eng_updated.word-dawg.txt", updated_wordset);
-    addToWordList(out_dir + "/eng_updated.lstm-word-dawg.txt", updated_wordset_lstm);
+    loadWordList(out_dir + "/eng_original.word-dawg.txt", reference_wordset);
+    loadWordList(out_dir + "/eng_original.lstm-word-dawg.txt", reference_wordset_lstm);
+    loadWordList(out_dir + "/eng_updated.word-dawg.txt", updated_wordset);
+    loadWordList(out_dir + "/eng_updated.lstm-word-dawg.txt", updated_wordset_lstm);
 
 
     ASSERT_TRUE(reference_wordset.count("Illldyxne") == 0) << "Updated eng word in wrong model.";
@@ -404,13 +426,27 @@ TEST(TESSERACTOCR, CustomModelTest) {
     ASSERT_TRUE(reference_wordset != updated_wordset) << "Eng model not properly updated. Identical word dawgs.";
 
     updated_wordset.erase("Illldyxne");
+    updated_wordset_lstm.erase("Illldyxne");
 
 
     ASSERT_TRUE(reference_wordset.size() == updated_wordset.size()) << "Eng model not properly updated. " <<
-                                                                 "Mismatching dawg sizes after removing updated words.";
+                                                                       "Mismatching dawg sizes after "<<
+                                                                       "removing updated words.";
 
     ASSERT_TRUE(reference_wordset == updated_wordset) << "Eng model not properly updated. " <<
-                                                        "Mismatching dawg wordlist content after removing updated words.";
+                                                         "Mismatching dawg wordlist content " <<
+                                                         "after removing updated words.";
+
+    ASSERT_TRUE(reference_wordset_lstm.size() == updated_wordset_lstm.size()) << "Eng model not properly updated. " <<
+                                                                                 "Mismatching lstm dawg sizes after " <<
+                                                                                 "removing updated words.";
+
+    ASSERT_TRUE(reference_wordset_lstm == updated_wordset_lstm) << "Eng model not properly updated. " <<
+                                                                   "Mismatching lstm dawg wordlist content " <<
+                                                                   "after removing updated words.";
+
+    // Currently model dictionary updates mainly impact legacy engine behavior.
+    // Test to ensure that the legacy engine recognizes new word after updating dictionary file.
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");
     std::vector<MPFImageLocation> results;

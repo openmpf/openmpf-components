@@ -78,7 +78,7 @@ namespace MPF_Model_Updater {
 
     void convertDawgToWordList(const char *unicharset_file, const char *dawg_file, const char *wordlist_file);
 
-    void addToWordList(const char *wordlist_file, std::set<std::string> &output_wordset);
+    void loadWordList(const char *wordlist_file, std::set<std::string> &output_wordset);
 
     void combineWordLists(const char *wordlist_file1, const char *wordlist_file2, const char *output_file);
 
