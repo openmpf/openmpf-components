@@ -31,6 +31,10 @@ FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:5.0 as models
 
 FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_server
 
+RUN apt-get update; \
+    apt-get -y upgrade; \
+    rm -rf /var/lib/apt/lists/*
+
 COPY --from=models /models/model.graphdef /models/ip_irv2_coco/1/model.graphdef
 
 # Specify custom models here.
