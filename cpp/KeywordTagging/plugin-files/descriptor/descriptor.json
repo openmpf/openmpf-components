@@ -1,7 +1,7 @@
 {
   "componentName": "KeywordTagging",
-  "componentVersion": "5.1",
-  "middlewareVersion": "5.1",
+  "componentVersion": "6.0",
+  "middlewareVersion": "6.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/KeywordTagging/lib/libmpfKeywordTagging.so",
   "environmentVariables": [
@@ -13,7 +13,7 @@
   ],
   "algorithm": {
     "name": "KEYWORDTAGGING",
-    "description": "Performs keyword tagging on text and transcripts.",
+    "description": "Performs keyword tagging.",
     "actionType": "DETECTION",
     "requiresCollection": {
       "states": []
@@ -40,7 +40,7 @@
           "name": "FEED_FORWARD_PROP_TO_PROCESS",
           "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to consider performing keyword tagging on. If the first property listed is present, then keyword tagging is performed on that property. If it's not then the next property in the list is considered. At most, keyword tagging is only performed on one property.",
           "type": "STRING",
-          "defaultValue": "TEXT,TRANSCRIPT"
+          "defaultValue": "TRANSLATION,TEXT,TRANSCRIPT"
         }
       ]
     }
@@ -54,12 +54,16 @@
     },
     {
       "name": "KEYWORD TAGGING (WITH FF REGION) ACTION",
-      "description": "Performs keyword tagging on detections with TEXT and TRANSCRIPT properties.",
+      "description": "Performs keyword tagging on feed-forward tracks and detections.",
       "algorithm": "KEYWORDTAGGING",
       "properties": [
         {
           "name": "FEED_FORWARD_TYPE",
           "value": "REGION"
+        },
+        {
+          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "value": "TRUE"
         }
       ]
     }
@@ -74,7 +78,7 @@
     },
     {
       "name": "KEYWORD TAGGING (WITH FF REGION) TASK",
-      "description": "Performs keyword tagging on detections with TEXT and TRANSCRIPT properties.",
+      "description": "Performs keyword tagging on feed-forward tracks and detections.",
       "actions": [
         "KEYWORD TAGGING (WITH FF REGION) ACTION"
       ]

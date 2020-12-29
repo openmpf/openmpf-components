@@ -28,12 +28,12 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 ARG MODELS_REGISTRY=openmpf/
 
-FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:5.1 as models
+FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:6.0 as models
 
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-RUN yum -y install git openssl-devel curl-devel \
+RUN yum -y --nogpgcheck install git openssl-devel curl-devel cuda-cufft-10-2 cuda-npp-10-2 \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
@@ -139,7 +139,7 @@ FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_test_server
 
 COPY --from=build_component /usr/lib64/libssl3.so /usr/lib64/libnspr4.so /usr/lib64/libnss3.so \
     /usr/lib64/libgtest*.so.0.0.0 /home/mpf/mpf-sdk-install/lib/ /usr/local/lib/
-COPY --from=build_component /opt/opencv-3.4.7/lib64 /apps/install/opencv3.4.7/lib64/
+COPY --from=build_component /opt/opencv-4.5.0/lib64 /apps/install/opencv4.5.0/lib64/
 COPY --from=build_component /home/mpf/component_build /Testing_MPF_FILES/
 COPY --from=build_component /home/mpf/component_src/test/run_docker_tests.sh /Testing_MPF_FILES/test
 
@@ -147,7 +147,7 @@ ARG RUN_TESTS=false
 
 RUN if [ "${RUN_TESTS,,}" == true ]; \
     then cd /Testing_MPF_FILES/test/ \
-    && LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/Testing_MPF_FILES/plugin/TrtisDetection/lib/:/apps/install/opencv3.4.7/lib64/ \
+    && LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/Testing_MPF_FILES/plugin/TrtisDetection/lib/:/apps/install/opencv4.5.0/lib64/ \
     && ./run_docker_tests.sh \
 ; fi
 

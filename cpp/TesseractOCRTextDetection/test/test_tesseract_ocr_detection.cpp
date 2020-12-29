@@ -24,14 +24,18 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include <set>
+#include <stdlib.h>
 #include <string>
 #include <MPFDetectionComponent.h>
 #include <unistd.h>
 #include <gtest/gtest.h>
+#include <fstream>
 
 #define BOOST_NO_CXX11_SCOPED_ENUMS
 
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <log4cxx/xml/domconfigurator.h>
 
 #undef BOOST_NO_CXX11_SCOPED_ENUMS
@@ -42,7 +46,11 @@ using namespace MPF::COMPONENT;
 using log4cxx::Logger;
 using log4cxx::xml::DOMConfigurator;
 
-
+/**
+ * Helper function for setting standard job properties for each test.
+ * @param algorithm_properties - Set of baseline job algorithm properties.
+ * @param custom - Custom job properties that can replace original predefined job properties.
+ */
 void setAlgorithmProperties(Properties &algorithm_properties, const std::map<std::string, std::string> &custom) {
     algorithm_properties["STRUCTURED_TEXT_SHARPEN"] = "-1.0";
     algorithm_properties["TESSERACT_LANGUAGE"] = "eng";
@@ -53,6 +61,15 @@ void setAlgorithmProperties(Properties &algorithm_properties, const std::map<std
     }
 }
 
+/**
+ * Helper function for creating an image job.
+ * @param uri - Path to existing input media.
+ * @param custom - Custom job algorithm properties.
+ * @param wild_mode - Sets the expected text type for image OCR runs (structured vs unstructured "wild" text).
+ *                    Set to true to process images with UNSTRUCTURED_* job parameters instead of STRUCTURED_* job parameters.
+ *
+ * @return - An MPF image job with the specified algorithm properties.
+ */
 MPFImageJob createImageJob(const std::string &uri, const std::map<std::string, std::string> &custom = {},
                            bool wild_mode = false) {
     Properties algorithm_properties;
@@ -69,6 +86,13 @@ MPFImageJob createImageJob(const std::string &uri, const std::map<std::string, s
     return job;
 }
 
+/**
+ * Helper function for creating a generic job
+ * @param uri - Path to existing input media.
+ * @param custom - Custom job algorithm properties.
+ *
+ * @return - An MPF generic job with the specified algorithm properties.
+ */
 MPFGenericJob createPDFJob(const std::string &uri, const std::map<std::string, std::string> &custom = {}) {
     Properties algorithm_properties;
     Properties media_properties;
@@ -78,6 +102,17 @@ MPFGenericJob createPDFJob(const std::string &uri, const std::map<std::string, s
     return job;
 }
 
+/**
+ * Helper function for running given image job. Checks if job results is not empty.
+ *
+ * @param image_path - Path of image
+ * @param ocr - TesseractOCRTextDetection component for running given job.
+ * @param image_locations - Output vector of image detection tracks for given job.
+ * @param custom - Mapping of input job properties.
+ * @param wild_mode - Sets the expected text type for image OCR runs (structured vs unstructured "wild" text).
+ *                    Set to true to process images with UNSTRUCTURED_* job parameters instead of STRUCTURED_* job parameters.
+ *
+ */
 void runImageDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
                        std::vector<MPFImageLocation> &image_locations,
                        const std::map<std::string, std::string> &custom = {},
@@ -87,14 +122,34 @@ void runImageDetection(const std::string &image_path, TesseractOCRTextDetection 
     ASSERT_FALSE(image_locations.empty());
 }
 
-void runDocumentDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
+/**
+ * Helper function for running given generic job. Checks if job results is not empty.
+ *
+ * @param doc_path - Path of given document.
+ * @param ocr - TesseractOCRTextDetection component for running given job.
+ * @param generic_tracks - Output vector of generic document detection tracks for given job.
+ * @param custom - Mapping of input job properties.
+ */
+void runDocumentDetection(const std::string &doc_path, TesseractOCRTextDetection &ocr,
                           std::vector<MPFGenericTrack> &generic_tracks,
                           const std::map<std::string, std::string> &custom = {}) {
-    MPFGenericJob job = createPDFJob(image_path, custom);
+    MPFGenericJob job = createPDFJob(doc_path, custom);
     generic_tracks = ocr.GetDetections(job);
     ASSERT_FALSE(generic_tracks.empty());
 }
 
+/**
+ * Helper function for checking if running given image job will return no results.
+ *
+ * @param image_path - Path of image
+ * @param ocr - TesseractOCRTextDetection component for running given job.
+ * @param image_locations - Output vector of image detection tracks for given job.
+ * @param custom - Mapping of input job properties.
+ * @param error- Expected MPF error returned by the job.
+ * @param wild_mode - Sets the expected text type for image OCR runs (structured vs unstructured "wild" text).
+ *                    Set to true to process images with UNSTRUCTURED_* job parameters instead of STRUCTURED_* job parameters.
+ *
+ */
 void assertEmptyImageDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
                           std::vector<MPFImageLocation> &image_locations,
                           const std::map<std::string, std::string> &custom = {},
@@ -117,11 +172,20 @@ void assertEmptyImageDetection(const std::string &image_path, TesseractOCRTextDe
     ASSERT_TRUE(image_locations.empty());
 }
 
-void assertEmptyDocumentDetection(const std::string &image_path, TesseractOCRTextDetection &ocr,
+/**
+ * Helper function for checking if running given generic job will return no results.
+ *
+ * @param doc_path - Path of given document.
+ * @param ocr - TesseractOCRTextDetection component for running given job.
+ * @param generic_tracks - Output vector of generic document detection tracks for given job.
+ * @param custom - Mapping of input job properties.
+ * @param error- Expected MPF error returned by the job.
+ */
+void assertEmptyDocumentDetection(const std::string &doc_path, TesseractOCRTextDetection &ocr,
                                   std::vector<MPFGenericTrack> &generic_tracks,
                                   const std::map<std::string, std::string> &custom = {},
                                   MPFDetectionError error = MPF_DETECTION_SUCCESS) {
-    MPFGenericJob job = createPDFJob(image_path, custom);
+    MPFGenericJob job = createPDFJob(doc_path, custom);
     try {
         generic_tracks = ocr.GetDetections(job);
         if (error != MPF_DETECTION_SUCCESS) {
@@ -138,6 +202,16 @@ void assertEmptyDocumentDetection(const std::string &image_path, TesseractOCRTex
     ASSERT_TRUE(generic_tracks.empty());
 }
 
+/**
+ * Helper function for checking if given key value pair is present in output job detection tracks.
+ *
+ * @param exp_text - Expected value for given job detection property.
+ * @param locations - Vector of image detection tracks for given job.
+ * @param property - Key for given job property of interest (i.e. TEXT).
+ * @param index - Index of target image track to search for given detection property. Set to -1  to search all tracks.
+ *
+ * @return - True if key value pair exists in specified track. False otherwise.
+ */
 bool containsProp(const std::string &exp_text, const std::vector<MPFImageLocation> &locations,
                   const std::string &property, int index = -1) {
     if (index != -1) {
@@ -158,6 +232,12 @@ bool containsProp(const std::string &exp_text, const std::vector<MPFImageLocatio
     return false;
 }
 
+/**
+ * Helper function for checking if two strings are equal. Reports index of mismatch if strings are of equal length.
+ *
+ * @param expected - Expected string value from TEXT detection job property.
+ * @param actual - Actual string value from TEXT detection job property.
+ */
 void assertSameText(const std::string &expected, const std::string &actual) {
     ASSERT_EQ(expected.length(), actual.length()) << "Expected and detected text are not the same."
                             << " The expected text has a length of " << expected.length()
@@ -170,12 +250,30 @@ void assertSameText(const std::string &expected, const std::string &actual) {
     }
 }
 
+/**
+ * Helper function for checking if given key value pair is present in output job detection tracks.
+ *
+ * @param image_path - Path of given image.
+ * @param expected_text - Expected value for given job detection property.
+ * @param locations - Vector of image detection tracks for given job.
+ * @param prop - Key for given job property of interest (i.e. TEXT).
+ * @param index - Index of target image track to search for given detection property. Set to -1  to search all tracks.
+ */
 void assertInImage(const std::string &image_path, const std::string &expected_value,
                    const std::vector<MPFImageLocation> &locations, const std::string &prop, int index = -1) {
     ASSERT_TRUE(containsProp(expected_value, locations, prop, index))
                                 << "Expected OCR to detect " << prop << " \"" << expected_value << "\" in " << image_path;
 }
 
+/**
+ * Helper function for checking if given key value pair is not present in output job detection tracks.
+ *
+ * @param image_path - Path of given image.
+ * @param expected_text - Expected value for given job detection property.
+ * @param locations - Vector of image detection tracks for given job.
+ * @param prop - Key for given job property of interest (i.e. TEXT).
+ * @param index - Index of target image track to search for given detection property. Set to -1  to search all tracks.
+ */
 void assertNotInImage(const std::string &image_path, const std::string &expected_text,
                       const std::vector<MPFImageLocation> &locations, const std::string &prop, int index = -1) {
     ASSERT_FALSE(containsProp(expected_text, locations, prop, index))
@@ -183,12 +281,203 @@ void assertNotInImage(const std::string &image_path, const std::string &expected
                                 << image_path;
 }
 
+/**
+ * Helper function for converting job results between image and generic tracks.
+ * Converts from generic to image track.
+ *
+ * @param im_track - Copy over generic tracks into this image track vector.
+ * @param gen_track - Input generic job results track vector.
+ */
 void convert_results(std::vector<MPFImageLocation> &im_track, const std::vector<MPFGenericTrack> &gen_track) {
     for (const auto & i : gen_track) {
         MPFImageLocation image_location(0, 0, 1, 1);
         image_location.detection_properties = i.detection_properties;
         im_track.push_back(image_location);
     }
+}
+
+/**
+ * Helper function for loading word lists in txt format.
+ * Trims and ignores blank entries.
+ *
+ * @param wordlist_file - Path of word list.
+ * @param output_wordset - Output word set.
+ */
+void loadWordList(const std::string &wordlist_file,
+                   std::set<std::string> &output_wordset) {
+
+    std::ifstream in(wordlist_file.c_str());
+    std::string str;
+    while (std::getline(in, str)) {
+        boost::trim(str);
+        if (str.size() > 0) {
+           output_wordset.insert(str);
+        }
+    }
+    in.close();
+}
+
+
+TEST(TESSERACTOCR, CustomModelTest) {
+
+    // Ensure custom model generation works as intended.
+
+    boost::filesystem::remove_all("data/model_dir");
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/tessdata");
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/updated_tessdata");
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/extracted_lang");
+
+    /* TODO: If possible identify why word list txt-to-DAWG conversion step shrinks down the original word list.
+     * In the meantime, a substitute test is used to ensure remaining words are stable/preserved after adding new
+     * keyword.
+     * If solution is identified, update test to no longer generate reference copy.
+     */
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/reference_tessdata");
+    boost::filesystem::create_directories("data/model_dir/TesseractOCRTextDetection/reference_tessdata_dict_file");
+
+    std::string model = boost::filesystem::absolute(
+            "../plugin/TesseractOCRTextDetection/tessdata/eng.traineddata").string();
+    symlink(model.c_str(), "data/model_dir/TesseractOCRTextDetection/tessdata/eng.traineddata");
+
+
+    std::string model_dir = " data/model_dir/TesseractOCRTextDetection/tessdata";
+    std::string dict_dir = " data/tessdata_dict_file";
+    std::string updated_model_dir  = " data/model_dir/TesseractOCRTextDetection/updated_tessdata";
+    std::string reference_dict_dir = " data/model_dir/TesseractOCRTextDetection/reference_tessdata_dict_file";
+    std::string reference_model_dir  = " data/model_dir/TesseractOCRTextDetection/reference_tessdata";
+    std::string out_dir = " data/model_dir/TesseractOCRTextDetection/extracted_lang";
+
+    std::string model_command = "../tessdata_model_updater -u" + model_dir + dict_dir + updated_model_dir;
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+
+    // Generate reference copy by reconverting original model using current tessdata model updater.
+    model_command = "../tessdata_model_updater -e" +
+                                model_dir + "/eng.traineddata" +
+                                out_dir + "/eng";
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+    model_command = "../tessdata_model_updater -dw" +
+                    out_dir + "/eng.unicharset" +
+                    out_dir + "/eng.word-dawg" +
+                    reference_dict_dir  + "/eng.word-dawg.txt";
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+    
+    model_command = "../tessdata_model_updater -dw" +
+                    out_dir + "/eng.lstm-unicharset" +
+                    out_dir + "/eng.lstm-word-dawg" +
+                    reference_dict_dir  + "/eng.lstm-word-dawg.txt";
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+    model_command = "../tessdata_model_updater -ur" + model_dir + reference_dict_dir + reference_model_dir;
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+
+    // Unpack reference and updated languages.
+    model_command = "../tessdata_model_updater -e" +
+                                updated_model_dir + "/eng.traineddata" +
+                                out_dir + "/eng_updated";
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+    model_command = "../tessdata_model_updater -e" +
+                                    reference_model_dir + "/eng.traineddata" +
+                                    out_dir + "/eng_original";
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+    model_command = "../tessdata_model_updater -dw" +
+                                out_dir + "/eng_updated.unicharset" +
+                                out_dir + "/eng_updated.word-dawg" +
+                                out_dir + "/eng_updated.word-dawg.txt" ;
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+    model_command = "../tessdata_model_updater -dw" +
+                                out_dir + "/eng_updated.lstm-unicharset" +
+                                out_dir + "/eng_updated.lstm-word-dawg" +
+                                out_dir + "/eng_updated.lstm-word-dawg.txt" ;
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+    model_command = "../tessdata_model_updater -dw" +
+                                out_dir + "/eng_original.unicharset" +
+                                out_dir + "/eng_original.word-dawg" +
+                                out_dir + "/eng_original.word-dawg.txt" ;
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+    
+    model_command = "../tessdata_model_updater -dw" +
+                                out_dir + "/eng_original.lstm-unicharset" +
+                                out_dir + "/eng_original.lstm-word-dawg" +
+                                out_dir + "/eng_original.lstm-word-dawg.txt" ;
+    ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
+
+    std::set<std::string> reference_wordset, reference_wordset_lstm, updated_wordset, updated_wordset_lstm;
+
+    out_dir = "data/model_dir/TesseractOCRTextDetection/extracted_lang";
+    loadWordList(out_dir + "/eng_original.word-dawg.txt", reference_wordset);
+    loadWordList(out_dir + "/eng_original.lstm-word-dawg.txt", reference_wordset_lstm);
+    loadWordList(out_dir + "/eng_updated.word-dawg.txt", updated_wordset);
+    loadWordList(out_dir + "/eng_updated.lstm-word-dawg.txt", updated_wordset_lstm);
+
+
+    ASSERT_TRUE(reference_wordset.count("Illldyxne") == 0) << "Updated eng word in wrong model.";
+
+    ASSERT_TRUE(updated_wordset.count("Illldyxne") > 0) << "Updated eng word missing from eng.word-dawg.";
+
+    ASSERT_TRUE(updated_wordset_lstm.count("Illldyxne") > 0) << "Updated eng word missing from eng.lstm-word-dawg.";
+
+    ASSERT_TRUE(reference_wordset != updated_wordset) << "Eng model not properly updated. Identical word DAWGs.";
+
+    ASSERT_TRUE(reference_wordset_lstm != updated_wordset_lstm) << "Eng model not properly updated. Identical LSTM word DAWGs.";
+
+    updated_wordset.erase("Illldyxne");
+    updated_wordset_lstm.erase("Illldyxne");
+
+
+    ASSERT_TRUE(reference_wordset.size() == updated_wordset.size()) << "Eng model not properly updated. " <<
+                                                                       "Mismatching DAWG sizes after "<<
+                                                                       "removing updated words.";
+
+    ASSERT_TRUE(reference_wordset == updated_wordset) << "Eng model not properly updated. " <<
+                                                         "Mismatching DAWG word list content " <<
+                                                         "after removing updated words.";
+
+    ASSERT_TRUE(reference_wordset_lstm.size() == updated_wordset_lstm.size()) << "Eng model not properly updated. " <<
+                                                                                 "Mismatching LSTM DAWG sizes after " <<
+                                                                                 "removing updated words.";
+
+    ASSERT_TRUE(reference_wordset_lstm == updated_wordset_lstm) << "Eng model not properly updated. " <<
+                                                                   "Mismatching LSTM DAWG word list content " <<
+                                                                   "after removing updated words.";
+
+    // Currently model dictionary updates mainly impact legacy engine behavior.
+    // Test to ensure that the legacy engine recognizes new word after updating dictionary file.
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+    std::map<std::string, std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "eng"},
+                                                            {"TESSERACT_OEM", "0"},
+                                                            {"MODELS_DIR_PATH",       "data/model_dir"},
+                                                            {"TESSDATA_MODELS_SUBDIRECTORY",
+                                                             "TesseractOCRTextDetection/tessdata"},
+                                                            {"ENABLE_OSD_AUTOMATION", "false"}};
+
+    ASSERT_NO_FATAL_FAILURE(runImageDetection("data/new-word.png", ocr, results, custom_properties));
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected eng tessdata model.";
+    ASSERT_TRUE(results[0].detection_properties.at("TEXT") == "IIIIdyxne IIIIdyxne IIIIdyxne IIIIdyxne")
+                    << "Expected default eng OCR output of new words.";
+
+
+    results.clear();
+    {
+        auto custom_properties_copy = custom_properties;
+        custom_properties_copy["TESSDATA_MODELS_SUBDIRECTORY"] = "TesseractOCRTextDetection/updated_tessdata";
+        ASSERT_NO_FATAL_FAILURE(runImageDetection("data/new-word.png", ocr, results, custom_properties_copy));
+        ASSERT_TRUE(results[0].detection_properties.at("TEXT_LANGUAGE") == "eng") << "Expected eng tessdata model.";
+        ASSERT_TRUE(results[0].detection_properties.at("TEXT") == "Illldyxne Illldyxne Illldyxne Illldyxne")
+                        << "Expected updated eng model to properly identify new word.";
+    }
+
+    boost::filesystem::remove_all("data/model_dir");
+    ASSERT_TRUE(ocr.Close());
 }
 
 TEST(TESSERACTOCR, ImageProcessingTest) {
@@ -251,6 +540,8 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
 
     ASSERT_TRUE(ocr.Close());
 }
+
+
 
 TEST(TESSERACTOCR, ModelTest) {
 

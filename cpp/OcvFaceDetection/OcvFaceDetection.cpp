@@ -205,7 +205,7 @@ void OcvFaceDetection::Display(const string title, const Mat &img) {
 
 Rect OcvFaceDetection::GetMatch(const Mat &frame_rgb_display, const Mat &frame_gray, const Mat &templ) {
     //no clue what method is best - default of the opencv demo
-    int match_method = CV_TM_CCOEFF_NORMED;
+    int match_method = cv::TM_CCOEFF_NORMED;
 
     Mat img_display = frame_rgb_display.clone();
 
@@ -230,7 +230,7 @@ Rect OcvFaceDetection::GetMatch(const Mat &frame_rgb_display, const Mat &frame_g
     minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, Mat());
 
     /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
-    if (match_method == CV_TM_SQDIFF || match_method == CV_TM_SQDIFF_NORMED) { matchLoc = minLoc; }
+    if (match_method == cv::TM_SQDIFF || match_method == cv::TM_SQDIFF_NORMED) { matchLoc = minLoc; }
     else { matchLoc = maxLoc; }
 
     Rect match_rect(matchLoc.x, matchLoc.y, templ.cols, templ.rows);
@@ -303,7 +303,7 @@ Mat OcvFaceDetection::GetMask(const Mat &frame, const Rect &face_rect, bool copy
     //would allow for using a rotated rect!! - possible future improvement
     rotated_rect.angle = 0.0f;
     //draw the ellipse on the black frame to create the mask
-    ellipse(image_mask, rotated_rect, Scalar(255), CV_FILLED);
+    ellipse(image_mask, rotated_rect, Scalar(255), cv::FILLED);
 
     if (copy_face_rect) {
         //Copy face to masked image
@@ -568,10 +568,10 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
                             //only keep if within the correct detected face rect
                             if (correct_detected_rect_pair.first.contains(new_points[i])) {
                                 track->current_points.push_back(new_points[i]);
-                                circle(frame_draw_pre_verified, new_points[i], 2, Scalar(255, 255, 255), CV_FILLED);
+                                circle(frame_draw_pre_verified, new_points[i], 2, Scalar(255, 255, 255), cv::FILLED);
                             }
                             else {
-                                circle(frame_draw_pre_verified, new_points[i], 2, Scalar(0, 0, 255), CV_FILLED);
+                                circle(frame_draw_pre_verified, new_points[i], 2, Scalar(0, 0, 255), cv::FILLED);
                             }
                         }
                     }
@@ -587,7 +587,7 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
                     for (unsigned i = 0; i < new_points.size(); i++) {
                         track->current_points.push_back(new_points[i]);
                         //draw the points as red
-                        circle(frame_draw_pre_verified, new_points[i], 2, Scalar(0, 0, 255), CV_FILLED);
+                        circle(frame_draw_pre_verified, new_points[i], 2, Scalar(0, 0, 255), cv::FILLED);
                     }
 
                     //draw a circle around the points
@@ -875,7 +875,7 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
                     if(imshow_on) {
                         for(unsigned k=0; k<track_new.current_points.size(); k++) //TODO: could also use the err vector (from calcOpticalFlowPyrLK) with a float threshold
                         {
-                            circle(frame_draw, track_new.current_points[k], 2, Scalar(0, 255, 255), CV_FILLED);
+                            circle(frame_draw, track_new.current_points[k], 2, Scalar(0, 255, 255), cv::FILLED);
                         }
 
                         Display("Open Tracker", frame_draw);
@@ -1060,7 +1060,7 @@ vector<MPFImageLocation> OcvFaceDetection::GetDetectionsFromImageData(
     if (verbosity > 0) {
         //    Draw a rectangle onto the input image for each detection
         if (imshow_on) {
-            cv::namedWindow("original image", CV_WINDOW_AUTOSIZE);
+            cv::namedWindow("original image", cv::WINDOW_AUTOSIZE);
             imshow("original image", image_data);
             cv::waitKey(5);
         }
@@ -1072,7 +1072,7 @@ vector<MPFImageLocation> OcvFaceDetection::GetDetectionsFromImageData(
             rectangle(image_data, object, CV_RGB(0, 0, 0), 2);
         }
         if (imshow_on) {
-            cv::namedWindow("new image", CV_WINDOW_AUTOSIZE);
+            cv::namedWindow("new image", cv::WINDOW_AUTOSIZE);
             imshow("new image", image_data);
             //0 waits indefinitely for input, which could cause problems when run as a component
             //cv::waitKey(0);

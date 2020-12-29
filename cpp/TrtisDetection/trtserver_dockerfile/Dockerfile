@@ -39,6 +39,10 @@ COPY models /models
 
 COPY docker-entrypoint.sh /opt/tensorrtserver
 
+RUN apt-get update; \
+    apt-get -y upgrade; \
+    rm -rf /var/lib/apt/lists/*
+
 ENTRYPOINT ["/opt/tensorrtserver/docker-entrypoint.sh"]
 
 LABEL org.label-schema.license="Apache 2.0" \

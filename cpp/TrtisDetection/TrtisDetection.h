@@ -28,6 +28,7 @@
 #ifndef OPENMPF_COMPONENTS_TRTISDETECTION_H
 #define OPENMPF_COMPONENTS_TRTISDETECTION_H
 
+#include <opencv2/core.hpp>
 #include <log4cxx/logger.h>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
 
