@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2020 The MITRE Corporation                                       *
+ * Copyright 2021 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -28,6 +28,7 @@
 #ifndef OPENMPF_COMPONENTS_TRTISDETECTION_H
 #define OPENMPF_COMPONENTS_TRTISDETECTION_H
 
+#include <opencv2/core.hpp>
 #include <log4cxx/logger.h>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
 

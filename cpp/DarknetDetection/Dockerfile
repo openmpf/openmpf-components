@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2020 The MITRE Corporation                                      #
+# Copyright 2021 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -36,13 +36,9 @@ RUN mkdir /weights && curl --location https://pjreddie.com/media/files/yolov3.we
 # Build Component
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-RUN yum-config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64 \
-    && VERSION=9-0-9.0.176-1 \
-    && yum install -y --nogpgcheck cuda-minimal-build-$VERSION cuda-cublas-dev-$VERSION cuda-curand-dev-$VERSION \
+RUN yum install --nogpgcheck -y cuda-curand-dev-10-2 \
     && yum clean all \
-    && rm -rf /var/cache/yum/* \
-    && ln -s cuda-9.0 /usr/local/cuda \
-    && echo '/usr/local/cuda/lib64' >> /etc/ld.so.conf.d/cuda.conf
+    && rm -rf /var/cache/yum/*;
 
 COPY . .
 
@@ -53,18 +49,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./DarknetDetecti
 
 
 ####################################################
-FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG}
-
-RUN yum-config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64 \
-    && yum install -y --nogpgcheck cuda-cudart-9-0-9.0.176-1 \
-    && yum clean all \
-    && rm -rf /var/cache/yum/* \
-    && ln -s cuda-9.0 /usr/local/cuda \
-    && echo '/usr/local/cuda/lib64' >> /etc/ld.so.conf.d/cuda.conf
-
-# Environment variables required by nvidia runtime.
-ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as darknet_component
 
 COPY --from=download_weights /weights $PLUGINS_DIR/DarknetDetection/models
 
@@ -83,3 +68,21 @@ LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
 
+
+####################################################
+FROM darknet_component as sample_executable
+
+COPY --from=build_component $BUILD_DIR/sample_darknet_detector /opt/mpf/
+
+COPY --from=build_component $BUILD_DIR/test/data /opt/mpf/test-data
+
+RUN ln -s /opt/mpf/plugins /opt/mpf/plugin
+
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/DarknetDetection/lib
+
+ENTRYPOINT ["/opt/mpf/sample_darknet_detector"]
+
+
+####################################################
+# Set final image when no --target specified.
+FROM darknet_component

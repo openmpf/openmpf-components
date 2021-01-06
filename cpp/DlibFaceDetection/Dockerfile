@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2020 The MITRE Corporation                                      #
+# Copyright 2021 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -35,7 +35,7 @@ RUN yum install --assumeyes bzip2 \
     && rm --recursive /var/cache/yum/*
 
 RUN mkdir --parents /apps/source/dlib-sources; \
-    curl --location 'http://dlib.net/files/dlib-18.18.tar.bz2' \
+    curl --location 'http://dlib.net/files/dlib-19.20.tar.bz2' \
         | tar --extract --bzip2 --directory /apps/source/dlib-sources
 
 

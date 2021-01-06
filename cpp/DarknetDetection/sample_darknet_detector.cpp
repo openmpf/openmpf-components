@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2020 The MITRE Corporation                                       *
+ * Copyright 2021 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -28,6 +28,8 @@
 #include <QCoreApplication>
 #include <iomanip>
 #include <chrono>
+#include <opencv2/core/cuda.hpp>
+
 
 #include "DarknetDetection.h"
 
@@ -37,9 +39,26 @@ using namespace MPF::COMPONENT;
 void print_tracks(const std::vector<MPFVideoTrack> &tracks);
 
 int main(int argc, char* argv[]) {
+    if (argc == 2) {
+        std::string arg1 = argv[1];
+        if (arg1 == "gpu-info") {
+            int cuda_device_count = cv::cuda::getCudaEnabledDeviceCount();
+            std::cout << "Cuda device count: " << cuda_device_count << std::endl;
+            if (cuda_device_count > 0) {
+                for (int i = 0; i < cuda_device_count; i++) {
+                    std::cout << "==== Device #" << i << " ====" << std::endl;
+                    cv::cuda::printCudaDeviceInfo(i);
+                    std::cout << "=================================" << std::endl;
+                }
+            }
+            return EXIT_SUCCESS;
+        }
+    }
+
     if (argc < 3) {
         std::cout << "Usage: " << argv[0] << " <uri> <model_name> [gpu_index]" << std::endl;
         std::cout << "Usage: " << argv[0] << " <uri> <model_name> <start_frame> <end_frame> [gpu_index] [queue_capacity]" << std::endl;
+        std::cout << "Usage: " << argv[0] << " gpu-info" << std::endl;
         return 1;
     }
 

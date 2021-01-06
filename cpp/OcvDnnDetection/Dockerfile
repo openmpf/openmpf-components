@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2020 The MITRE Corporation                                      #
+# Copyright 2021 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -36,8 +36,7 @@ ARG RUN_TESTS=false
 RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvDnnDetectionTest; fi
 
 
-
-FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as ocv_dnn_component
 
 ENV COMPONENT_LOG_NAME ocv-dnn-detection.log
 
@@ -53,3 +52,20 @@ LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
+
+
+FROM ocv_dnn_component as sample_executable
+
+COPY --from=build_component $BUILD_DIR/sample_ocv_dnn_classifier /opt/mpf/
+
+COPY --from=build_component $BUILD_DIR/test/data /opt/mpf/test-data
+
+RUN ln -s /opt/mpf/plugins /opt/mpf/plugin
+
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvDnnDetection/lib
+
+ENTRYPOINT ["/opt/mpf/sample_ocv_dnn_classifier"]
+
+
+# Set final image when no --target specified.
+FROM ocv_dnn_component

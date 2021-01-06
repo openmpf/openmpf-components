@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2020 The MITRE Corporation                                      #
+# Copyright 2021 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -31,13 +31,14 @@ project(dlib-face-detection)
 set(CMAKE_CXX_STANDARD 11)
 
 set(USE_AVX_INSTRUCTIONS ON)
-set(DLIB_DIR /apps/source/dlib-sources/dlib-18.18/dlib)
+set(DLIB_USE_CUDA OFF)
+set(DLIB_DIR /apps/source/dlib-sources/dlib-19.20/dlib)
 include(${DLIB_DIR}/cmake)
 set_property(TARGET dlib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 include(../ComponentSetup.cmake)
 
-find_package(OpenCV 3.4.7 EXACT REQUIRED PATHS /opt/opencv-3.4.7 COMPONENTS opencv_highgui)
+find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0 COMPONENTS opencv_highgui)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)

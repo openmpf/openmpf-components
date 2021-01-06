@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2020 The MITRE Corporation                                       *
+ * Copyright 2021 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -667,7 +667,7 @@ vector<MPFImageLocation> DlibFaceDetection::GetDetectionsFromImageData(const MPF
     if (verbosity > 0) {
         //    Draw a rectangle onto the input image for each detection
         if (imshow_on) {
-            namedWindow("original image", CV_WINDOW_AUTOSIZE);
+            namedWindow("original image", cv::WINDOW_AUTOSIZE);
             imshow("original image", image);
             waitKey(5);
         }
@@ -679,7 +679,7 @@ vector<MPFImageLocation> DlibFaceDetection::GetDetectionsFromImageData(const MPF
             cv::rectangle(image, object, CV_RGB(0, 0, 0), 2);
         }
         if (imshow_on) {
-            namedWindow("new image", CV_WINDOW_AUTOSIZE);
+            namedWindow("new image", cv::WINDOW_AUTOSIZE);
             imshow("new image", image);
             //0 waits indefinitely for input, which could cause problems when run as a component
             waitKey(5);

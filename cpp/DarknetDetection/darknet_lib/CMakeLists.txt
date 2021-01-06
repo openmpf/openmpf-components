@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2020 The MITRE Corporation                                      #
+# Copyright 2021 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -78,8 +78,6 @@ set(DARKNET_LIB_SRC_FILES
     src/yolo_layer.c
     src/iseg_layer.c)
 
-find_package(OpenCV 3.4.7 EXACT REQUIRED PATHS /opt/opencv-3.4.7 COMPONENTS opencv_core opencv_highgui)
-
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Darknet fails to compile when all optimizations are disabled, which is the default for debug builds.
@@ -91,9 +89,8 @@ else()
 endif()
 
 add_library(darknet_lib ${DARKNET_LIB_SRC_FILES})
-target_compile_definitions(darknet_lib PUBLIC -DOPENCV)
 target_include_directories(darknet_lib PUBLIC include)
-target_link_libraries(darknet_lib m pthread ${OpenCV_LIBS})
+target_link_libraries(darknet_lib m pthread)
 
 
 if (DARKNET_BUILD_CUDA)
@@ -125,9 +122,9 @@ if (DARKNET_BUILD_CUDA)
 
     CUDA_ADD_LIBRARY(darknet_lib_cuda ${DARKNET_LIB_SRC_FILES} ${DARKNET_CUDA_SRC_FILES})
     CUDA_ADD_CUBLAS_TO_TARGET(darknet_lib_cuda)
-    target_compile_definitions(darknet_lib_cuda PUBLIC -DOPENCV -DGPU)
+    target_compile_definitions(darknet_lib_cuda PUBLIC -DGPU)
 
     target_include_directories(darknet_lib_cuda PUBLIC include ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(darknet_lib_cuda m pthread ${OpenCV_LIBS} ${CUDA_curand_LIBRARY})
+    target_link_libraries(darknet_lib_cuda m pthread ${CUDA_curand_LIBRARY})
 endif()
 

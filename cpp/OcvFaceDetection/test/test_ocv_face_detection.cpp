@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2020 The MITRE Corporation                                       *
+ * Copyright 2021 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -120,7 +120,7 @@ TEST(OcvFaceDetection, VerifyQuality) {
         test_image_path = current_working_dir + "/" + test_image_path;
     }
 
-    cv::Mat image = cv::imread(test_image_path, CV_LOAD_IMAGE_IGNORE_ORIENTATION + CV_LOAD_IMAGE_COLOR);
+    cv::Mat image = cv::imread(test_image_path, cv::IMREAD_IGNORE_ORIENTATION + cv::IMREAD_COLOR);
     ASSERT_TRUE(!image.empty());
 
     cv::Mat image_gray = Utils::ConvertToGray(image);

@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2020 The MITRE Corporation                                       *
+ * Copyright 2021 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -28,9 +28,6 @@
 #include <vector>
 #include <iostream>
 #include "TesseractOCRTextDetection.h"
-#include "MPFComponentInterface.h"
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string.hpp>
 
 /**
  * NOTE: This main is only intended to serve as a test harness for compiling a
@@ -47,13 +44,27 @@ using std::to_string;
 
 void print_usage(char *argv[]) {
 
-    std::cout << "Usage: " << argv[0] << " -i <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
-    std::cout << "Usage: " << argv[0] << " -g <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
-    std::cout << "Usage w/ OSD: " << argv[0] << " -i --osd <IMAGE_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
-    std::cout << "Usage w/ OSD: " << argv[0] << " -g --osd <GENERIC_DATA_URI> [TESSERACT_LANGUAGES]" << std::endl;
+    std::cout << "Usage: " << argv[0] <<
+                 " <-i | -g> [--osd] [--oem TESSERACT_OEM] <IMAGE_URI | GENERIC_URI> [TESSERACT_LANGUAGE]" <<
+                 std::endl << std::endl;
+    std::cout << "Notes: " << std::endl << std::endl;
+    std::cout << " -i | -g : Specifies whether to process an image (-i <IMAGE_URI>) or generic document (-g <GENERIC_URI>)." <<
+                 std::endl << std::endl;
+    std::cout << " --osd   : When provided, runs the job with automatic orientation and script detection (OSD). " <<
+                 std::endl;
+    std::cout << "           Input tesseract languages are generally ignored" <<
+                 " whenever OSD returns successful predictions and can be left out." << std::endl << std::endl;
 
-    std::cout << "OSD = Automatic orientation and script detection. Input tesseract languages are generally ignored" <<
-                 " whenever OSD returns successful predictions and can be left out." << std::endl;
+    std::cout << " --oem TESSERACT_OEM : When provided runs the job with the specified TESSERACT_OEM engine mode" <<
+                 std::endl <<
+                 "                       Tesseract currently supports legacy (0) lstm (1), lstm + legacy (2)," <<
+                 " and default (3)." << std::endl <<
+                 "                       Default (OEM = 3) setting uses whichever language engine is currently available." <<
+                 std::endl << std::endl;
+
+    std::cout << "  TESSERACT_LANGUAGE : When provided, sets the default TESSERACT_LANGUAGE to the given value." <<
+                 std::endl << std::endl;
+
 }
 
 void print_detection_properties(Properties properties, float confidence) {
@@ -79,13 +90,27 @@ void print_detection_properties(Properties properties, float confidence) {
     if (properties.count("TEXT") > 0) {
         std::cout << "OCR result:" << std::endl
                   << "    Text: \"" << properties.at("TEXT") << "\"" << std::endl
-                  << "    Tags: \"" << properties.at("TAGS") << "\"" << std::endl
-                  << "    Trigger words: \"" << properties.at("TRIGGER_WORDS") << "\"" << std::endl
-                  << "    Trigger offsets: " << properties.at("TRIGGER_WORDS_OFFSET") << std::endl
                   << "    OCR language: " << properties.at("TEXT_LANGUAGE") << std::endl
                   << "    Confidence: " << confidence << std::endl;
     }
     std::cout << std::endl;
+}
+
+bool check_options(const std::string &next_option,  const int &argc, char *argv[],
+                   Properties &algorithm_properties, int &uri_index){
+
+    if (next_option == "--osd") {
+        algorithm_properties["ENABLE_OSD_AUTOMATION"] = "true";
+        uri_index++;
+    } else if (next_option == "--oem" || argc - uri_index > 2) {
+        std::cout << "Updating OEM MODE " << argv[uri_index + 1];
+        algorithm_properties["TESSERACT_OEM"] = argv[uri_index + 1];
+        uri_index += 2;
+    } else {
+        return false;
+    }
+    return true;
+
 }
 
 int main(int argc, char *argv[]) {
@@ -96,33 +121,31 @@ int main(int argc, char *argv[]) {
         }
 
         std::string media_option(argv[1]);
-        std::string option_2(argv[2]);
         std::string uri = "";
-        bool enable_osd = false;
 
         Properties algorithm_properties;
         Properties media_properties;
         std::string job_name("OCR_test");
-        algorithm_properties["TAGGING_FILE"] = "text-tags.json";
         algorithm_properties["THRS_FILTER"] = "false";
         algorithm_properties["HIST_FILTER"] = "false";
         algorithm_properties["SHARPEN"] = "1.0";
+        algorithm_properties["ENABLE_OSD_AUTOMATION"] = "false";
 
-        if (option_2 == "--osd") {
-            uri = argv[3];
-            algorithm_properties["ENABLE_OSD_AUTOMATION"] = "true";
-            enable_osd = true;
-        }
-        else {
-            algorithm_properties["ENABLE_OSD_AUTOMATION"] = "false";
-            uri = argv[2];
+        int uri_index = 2;
+        std::string next_option = std::string(argv[uri_index]);
+        if (check_options(next_option, argc, argv, algorithm_properties, uri_index)) {
+            next_option = std::string(argv[uri_index]);
+            check_options(next_option, argc, argv, algorithm_properties, uri_index);
         }
 
-        if (argc == 4 && !enable_osd) {
-            algorithm_properties["TESSERACT_LANGUAGE"] = argv[3];
-        }
-        else if (argc == 5 && enable_osd) {
-            algorithm_properties["TESSERACT_LANGUAGE"] = argv[4];
+        if (argc - uri_index == 1) {
+            uri = argv[uri_index];
+        } else if (argc - uri_index == 2) {
+            uri = argv[uri_index];
+            algorithm_properties["TESSERACT_LANGUAGE"] = argv[uri_index + 1];
+        } else {
+             print_usage(argv);
+             return 0;
         }
 
         // Instantiate the component.

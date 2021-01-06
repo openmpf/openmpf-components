@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2020 The MITRE Corporation                                      #
+# Copyright 2021 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -29,7 +29,7 @@ ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} as build_component
 
 # Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN pip3 install --no-cache-dir 'opencv-python>=3.4.7'
+RUN pip3 install --no-cache-dir 'opencv-python>=4.4.0'
 
 COPY . .
 

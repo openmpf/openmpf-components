@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2020 The MITRE Corporation                                      #
+# Copyright 2021 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -54,12 +54,17 @@ RUN mkdir /tmp/tesseract; \
 
 RUN mkdir /tmp/oalpr; \
     cd /tmp/oalpr; \
-    curl --location 'https://github.com/openalpr/openalpr/archive/6ead2fb8f72ac1929a2e04912c5795af0bf37761.tar.gz' \
+    curl --location 'https://github.com/openalpr/openalpr/archive/386895386781f04ef056e93dd70d9ec36f72d350.tar.gz' \
         | tar --extract --gzip; \
-    cd openalpr-6ead2fb8f72ac1929a2e04912c5795af0bf37761/src; \
+    cd openalpr-386895386781f04ef056e93dd70d9ec36f72d350/src; \
+    # The following sed command will need to be modified when upgrading OALPR.
+    # Line 101 of the OALPR CMakeLists.txt contains: FIND_PACKAGE( OpenCV REQUIRED )
+    # That pulls in a bunch of OpenCV libraries that OALPR doesn't need.
+    sed -i '101s/.*/  FIND_PACKAGE( OpenCV REQUIRED COMPONENTS opencv_core opencv_imgcodecs opencv_highgui opencv_objdetect opencv_video)/' \
+            CMakeLists.txt; \
     mkdir build; \
     cd build; \
-    cmake3 -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DWITH_DAEMON=OFF \
+    cmake3 -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DWITH_DAEMON=OFF -DWITH_GPU_DETECTOR=false \
            -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -DLeptonica_LIB=/usr/local/lib/libleptonica.so ..; \
     make install -j "$(nproc)"; \
     rm --recursive /tmp/oalpr
