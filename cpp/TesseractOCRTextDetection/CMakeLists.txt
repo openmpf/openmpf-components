@@ -44,7 +44,7 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 find_package( Leptonica 1.75.0 REQUIRED )
-find_package( Tesseract 4.0.0 REQUIRED )
+find_package( Tesseract 4.1.1 REQUIRED )
 
 find_package(Boost 1.53.0 COMPONENTS regex locale filesystem)
 include_directories(${Boost_INCLUDE_DIRS})

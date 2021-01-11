@@ -4,11 +4,6 @@
  * File:         blobs.cpp  (Formerly blobs.c)
  * Description:  Blob definition
  * Author:       Mark Seaman, OCR Technology
- * Created:      Fri Oct 27 15:39:52 1989
- * Modified:     Thu Mar 28 15:33:26 1991 (Mark Seaman) marks@hpgrlt
- * Language:     C
- * Package:      N/A
- * Status:       Experimental (Do Not Distribute)
  *
  * (c) Copyright 1989, Hewlett-Packard Company.
  ** Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +29,6 @@
 #include "blobs.h"
 #include "ccstruct.h"
 #include "clst.h"
-#include "emalloc.h"
 #include "helpers.h"
 #include "linlsq.h"
 #include "normalis.h"
@@ -42,7 +36,6 @@
 #include "ocrrow.h"
 #include "points.h"
 #include "polyaprx.h"
-#include "structures.h"
 #include "werd.h"
 
 #include <algorithm>
@@ -72,9 +65,6 @@ CLISTIZE(EDGEPT)
 /* static */
 bool TPOINT::IsCrossed(const TPOINT& a0, const TPOINT& a1, const TPOINT& b0,
                        const TPOINT& b1) {
-  int b0a1xb0b1, b0b1xb0a0;
-  int a1b1xa1a0, a1a0xa1b0;
-
   TPOINT b0a1, b0a0, a1b1, b0b1, a1a0;
 
   b0a1.x = a1.x - b0.x;
@@ -88,12 +78,12 @@ bool TPOINT::IsCrossed(const TPOINT& a0, const TPOINT& a1, const TPOINT& b0,
   b0b1.y = b1.y - b0.y;
   a1a0.y = a0.y - a1.y;
 
-  b0a1xb0b1 = CROSS(b0a1, b0b1);
-  b0b1xb0a0 = CROSS(b0b1, b0a0);
-  a1b1xa1a0 = CROSS(a1b1, a1a0);
-  // For clarity, we want CROSS(a1a0,a1b0) here but we have b0a1 instead of a1b0
-  // so use -CROSS(a1b0,b0a1) instead, which is the same.
-  a1a0xa1b0 = -CROSS(a1a0, b0a1);
+  int b0a1xb0b1 = b0a1.cross(b0b1);
+  int b0b1xb0a0 = b0b1.cross(b0a0);
+  int a1b1xa1a0 = a1b1.cross(a1a0);
+  // For clarity, we want a1a0.cross(a1b0) here but we have b0a1 instead of a1b0
+  // so use -a1b0.cross(b0a1) instead, which is the same.
+  int a1a0xa1b0 = -a1a0.cross(b0a1);
 
   return ((b0a1xb0b1 > 0 && b0b1xb0a0 > 0) ||
           (b0a1xb0b1 < 0 && b0b1xb0a0 < 0)) &&
@@ -102,7 +92,7 @@ bool TPOINT::IsCrossed(const TPOINT& a0, const TPOINT& a1, const TPOINT& b0,
 
 // Consume the circular list of EDGEPTs to make a TESSLINE.
 TESSLINE* TESSLINE::BuildFromOutlineList(EDGEPT* outline) {
-  TESSLINE* result = new TESSLINE;
+  auto* result = new TESSLINE;
   result->loop = outline;
   if (outline->src_outline != nullptr) {
     // ASSUMPTION: This function is only ever called from ApproximateOutline
@@ -257,7 +247,7 @@ void TESSLINE::MinMaxCrossProduct(const TPOINT vec, int* min_xp,
   EDGEPT* this_edge = loop;
   do {
     if (!this_edge->IsHidden() || !this_edge->prev->IsHidden()) {
-      int product = CROSS(this_edge->pos, vec);
+      int product = this_edge->pos.cross(vec);
       UpdateRange(product, min_xp, max_xp);
     }
     this_edge = this_edge->next;
@@ -335,7 +325,7 @@ static TESSLINE** ApproximateOutlineList(bool allow_detailed_fx,
 // contain pointers to the input C_OUTLINEs that enable higher-resolution
 // feature extraction that does not use the polygonal approximation.
 TBLOB* TBLOB::PolygonalCopy(bool allow_detailed_fx, C_BLOB* src) {
-  TBLOB* tblob = new TBLOB;
+  auto* tblob = new TBLOB;
   ApproximateOutlineList(allow_detailed_fx, src->out_list(), false,
                          &tblob->outlines);
   return tblob;
@@ -343,7 +333,7 @@ TBLOB* TBLOB::PolygonalCopy(bool allow_detailed_fx, C_BLOB* src) {
 
 // Factory builds a blob with no outlines, but copies the other member data.
 TBLOB* TBLOB::ShallowCopy(const TBLOB& src) {
-  TBLOB* blob = new TBLOB;
+  auto* blob = new TBLOB;
   blob->denorm_ = src.denorm_;
   return blob;
 }
@@ -382,7 +372,7 @@ void TBLOB::CopyFrom(const TBLOB& src) {
   TESSLINE* prev_outline = nullptr;
   for (TESSLINE* srcline = src.outlines; srcline != nullptr;
        srcline = srcline->next) {
-    TESSLINE* new_outline = new TESSLINE(*srcline);
+    auto* new_outline = new TESSLINE(*srcline);
     if (outlines == nullptr)
       outlines = new_outline;
     else
@@ -784,7 +774,7 @@ void TBLOB::CollectEdges(const TBOX& box, TBOX* bounding_box, LLSQ* llsq,
 // Factory to build a TWERD from a (C_BLOB) WERD, with polygonal
 // approximation along the way.
 TWERD* TWERD::PolygonalCopy(bool allow_detailed_fx, WERD* src) {
-  TWERD* tessword = new TWERD;
+  auto* tessword = new TWERD;
   tessword->latin_script = src->flag(W_SCRIPT_IS_LATIN);
   C_BLOB_IT b_it(src->cblob_list());
   for (b_it.mark_cycle_pt(); !b_it.cycled_list(); b_it.forward()) {
@@ -805,7 +795,7 @@ void TWERD::BLNormalize(const BLOCK* block, const ROW* row, Pix* pix,
   if (norm_box != nullptr) word_box = *norm_box;
   float word_middle = (word_box.left() + word_box.right()) / 2.0f;
   float input_y_offset = 0.0f;
-  float final_y_offset = static_cast<float>(kBlnBaselineOffset);
+  auto final_y_offset = static_cast<float>(kBlnBaselineOffset);
   float scale = kBlnXHeight / x_height;
   if (row == nullptr) {
     word_middle = word_box.left();
@@ -850,7 +840,7 @@ void TWERD::CopyFrom(const TWERD& src) {
   Clear();
   latin_script = src.latin_script;
   for (int b = 0; b < src.blobs.size(); ++b) {
-    TBLOB* new_blob = new TBLOB(*src.blobs[b]);
+    auto* new_blob = new TBLOB(*src.blobs[b]);
     blobs.push_back(new_blob);
   }
 }
@@ -932,7 +922,7 @@ bool divisible_blob(TBLOB* blob, bool italic_blob, TPOINT* location) {
     TPOINT mid_pt1(
         static_cast<int16_t>((outline1->topleft.x + outline1->botright.x) / 2),
         static_cast<int16_t>((outline1->topleft.y + outline1->botright.y) / 2));
-    int mid_prod1 = CROSS(mid_pt1, vertical);
+    int mid_prod1 = mid_pt1.cross(vertical);
     int min_prod1, max_prod1;
     outline1->MinMaxCrossProduct(vertical, &min_prod1, &max_prod1);
     for (TESSLINE* outline2 = outline1->next; outline2 != nullptr;
@@ -942,7 +932,7 @@ bool divisible_blob(TBLOB* blob, bool italic_blob, TPOINT* location) {
                          (outline2->topleft.x + outline2->botright.x) / 2),
                      static_cast<int16_t>(
                          (outline2->topleft.y + outline2->botright.y) / 2));
-      int mid_prod2 = CROSS(mid_pt2, vertical);
+      int mid_prod2 = mid_pt2.cross(vertical);
       int min_prod2, max_prod2;
       outline2->MinMaxCrossProduct(vertical, &min_prod2, &max_prod2);
       int mid_gap = abs(mid_prod2 - mid_prod1);
@@ -978,13 +968,13 @@ void divide_blobs(TBLOB* blob, TBLOB* other_blob, bool italic_blob,
 
   TESSLINE* outline = blob->outlines;
   blob->outlines = nullptr;
-  int location_prod = CROSS(location, vertical);
+  int location_prod = location.cross(vertical);
 
   while (outline != nullptr) {
     TPOINT mid_pt(
         static_cast<int16_t>((outline->topleft.x + outline->botright.x) / 2),
         static_cast<int16_t>((outline->topleft.y + outline->botright.y) / 2));
-    int mid_prod = CROSS(mid_pt, vertical);
+    int mid_prod = mid_pt.cross(vertical);
     if (mid_prod < location_prod) {
       // Outline is in left blob.
       if (outline1)

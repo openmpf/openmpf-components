@@ -1,14 +1,9 @@
 /* -*-C-*-
  ********************************************************************************
  *
- * File:        blobs.h  (Formerly blobs.h)
- * Description:  Blob definition
- * Author:       Mark Seaman, OCR Technology
- * Created:      Fri Oct 27 15:39:52 1989
- * Modified:     Thu Mar 28 15:33:38 1991 (Mark Seaman) marks@hpgrlt
- * Language:     C
- * Package:      N/A
- * Status:       Experimental (Do Not Distribute)
+ * File:        blobs.h
+ * Description: Blob definition
+ * Author:      Mark Seaman, OCR Technology
  *
  * (c) Copyright 1989, Hewlett-Packard Company.
  ** Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +33,6 @@
 #include "publictypes.h"       // for OcrEngineMode
 #include "rect.h"              // for TBOX
 #include "scrollview.h"        // for ScrollView, ScrollView::Color
-#include "vecfuncs.h"          // for CROSS
 
 class BLOCK;
 class C_BLOB;
@@ -75,9 +69,31 @@ struct TPOINT {
   static bool IsCrossed(const TPOINT& a0, const TPOINT& a1, const TPOINT& b0,
                         const TPOINT& b1);
 
+  // Assign the difference from point p1 to point p2.
+  void diff(const TPOINT& p1, const TPOINT& p2) {
+    x = p1.x - p2.x;
+    y = p1.y - p2.y;
+  }
+
+  // Return cross product.
+  int cross(const TPOINT& other) const {
+    return x * other.y - y * other.x;
+  }
+
+  // Return scalar or dot product.
+  int dot(const TPOINT& other) const {
+    return x * other.x + y * other.y;
+  }
+
+  // Calculate length of vector.
+  int length() const {
+    return x * x + y * y;
+  }
+
   int16_t x;                       // absolute x coord.
   int16_t y;                       // absolute y coord.
 };
+
 using VECTOR = TPOINT;           // structure for coordinates.
 
 struct EDGEPT {
@@ -131,7 +147,7 @@ struct EDGEPT {
     const EDGEPT* pt = this->next;
     do {
       TPOINT origin_vec(pt->pos.x - pos.x, pt->pos.y - pos.y);
-      area += CROSS(origin_vec, pt->vec);
+      area += origin_vec.cross(pt->vec);
       pt = pt->next;
     } while (pt != end && pt != this);
     return area;

@@ -19,15 +19,18 @@
 #ifndef TESSERACT_DICT_DICT_H_
 #define TESSERACT_DICT_DICT_H_
 
+#ifndef DISABLED_LEGACY_ENGINE
 #include "ambigs.h"
+#endif
 #include "dawg.h"
 #include "dawg_cache.h"
-#include "host.h"
 #include "ratngs.h"
 #include "stopper.h"
 #include "trie.h"
 #include "unicharset.h"
+#ifndef DISABLED_LEGACY_ENGINE
 #include "params_training_featdef.h"
+#endif  // ndef DISABLED_LEGACY_ENGINE
 
 class MATRIX;
 class WERD_RES;
@@ -56,7 +59,7 @@ static const int kRatingPad = 4;
 static const char kDictWildcard[] = "\u2606";   // WHITE STAR
 static const int kDictMaxWildcards = 2;  // max wildcards for a word
 // TODO(daria): If hyphens are different in different languages and can be
-// inferred from model_updater_tesseract_src data we should load their values dynamically.
+// inferred from training data we should load their values dynamically.
 static const char kHyphenSymbol[] = "-";
 static const char kSlashSymbol[] = "/";
 static const char kQuestionSymbol[] = "?";
@@ -101,14 +104,17 @@ class Dict {
   UNICHARSET& getUnicharset() {
     return getCCUtil()->unicharset;
   }
+#ifndef DISABLED_LEGACY_ENGINE
   const UnicharAmbigs &getUnicharAmbigs() const {
     return getCCUtil()->unichar_ambigs;
   }
-
+#endif
   // Returns true if unichar_id is a word compounding character like - or /.
   inline bool compound_marker(UNICHAR_ID unichar_id) {
+    const UNICHARSET& unicharset = getUnicharset();
+    ASSERT_HOST(unicharset.contains_unichar_id(unichar_id));
     const GenericVector<UNICHAR_ID>& normed_ids =
-        getUnicharset().normed_ids(unichar_id);
+        unicharset.normed_ids(unichar_id);
     return normed_ids.size() == 1 &&
         (normed_ids[0] == hyphen_unichar_id_ ||
          normed_ids[0] == slash_unichar_id_);
@@ -116,8 +122,10 @@ class Dict {
   // Returns true if unichar_id is an apostrophe-like character that may
   // separate prefix/suffix words from a main body word.
   inline bool is_apostrophe(UNICHAR_ID unichar_id) {
+    const UNICHARSET& unicharset = getUnicharset();
+    ASSERT_HOST(unicharset.contains_unichar_id(unichar_id));
     const GenericVector<UNICHAR_ID>& normed_ids =
-        getUnicharset().normed_ids(unichar_id);
+        unicharset.normed_ids(unichar_id);
     return normed_ids.size() == 1 && normed_ids[0] == apostrophe_unichar_id_;
   }
 
@@ -141,17 +149,20 @@ class Dict {
     }
   }
   /// Check whether the word has a hyphen at the end.
-  inline bool has_hyphen_end(UNICHAR_ID unichar_id, bool first_pos) const {
+  inline bool has_hyphen_end(const UNICHARSET* unicharset,
+                             UNICHAR_ID unichar_id, bool first_pos) const {
     if (!last_word_on_line_ || first_pos)
       return false;
+    ASSERT_HOST(unicharset->contains_unichar_id(unichar_id));
     const GenericVector<UNICHAR_ID>& normed_ids =
-        getUnicharset().normed_ids(unichar_id);
+        unicharset->normed_ids(unichar_id);
     return normed_ids.size() == 1 && normed_ids[0] == hyphen_unichar_id_;
   }
   /// Same as above, but check the unichar at the end of the word.
   inline bool has_hyphen_end(const WERD_CHOICE &word) const {
     int word_index = word.length() - 1;
-    return has_hyphen_end(word.unichar_id(word_index), word_index == 0);
+    return has_hyphen_end(word.unicharset(), word.unichar_id(word_index),
+                          word_index == 0);
   }
   /// Unless the previous word was the last one on the line, and the current
   /// one is not (thus it is the first one on the line), erase hyphen_word_,
@@ -245,10 +256,12 @@ class Dict {
                              CHAR_FRAGMENT_INFO *char_frag_info);
 
   /* stopper.cpp *************************************************************/
+#if !defined(DISABLED_LEGACY_ENGINE)
   bool NoDangerousAmbig(WERD_CHOICE *BestChoice,
                         DANGERR *fixpt,
                         bool fix_replaceable,
                         MATRIX* ratings);
+#endif  // !defined(DISABLED_LEGACY_ENGINE)
   // Replaces the corresponding wrong ngram in werd_choice with the correct
   // one. The whole correct n-gram is inserted into the ratings matrix and
   // the werd_choice: no more fragments!. Rating and certainty of new entries
@@ -277,7 +290,9 @@ class Dict {
   /// and should be tried again on the second pass or should be flagged to
   /// the user.
   bool AcceptableResult(WERD_RES *word) const;
+#if !defined(DISABLED_LEGACY_ENGINE)
   void EndDangerousAmbigs();
+#endif   // !defined(DISABLED_LEGACY_ENGINE)
   /// Prints the current choices for this word to stdout.
   void DebugWordChoices();
   /// Sets up stopper variables in preparation for the first pass.
@@ -286,7 +301,7 @@ class Dict {
   void SettupStopperPass2();
   /* context.cpp *************************************************************/
   /// Check a string to see if it matches a set of lexical rules.
-  int case_ok(const WERD_CHOICE &word, const UNICHARSET &unicharset) const;
+  int case_ok(const WERD_CHOICE& word) const;
   /// Returns true if the word looks like an absolute garbage
   /// (e.g. image mistakenly recognized as text).
   bool absolute_garbage(const WERD_CHOICE &word, const UNICHARSET &unicharset);
@@ -295,7 +310,7 @@ class Dict {
 
   /// Initialize Dict class - load dawgs from [lang].traineddata and
   /// user-specified wordlist and parttern list.
-  static DawgCache *GlobalDawgCache();
+  static TESS_API DawgCache *GlobalDawgCache();
   // Sets up ready for a Load or LoadLSTM.
   void SetupForLoad(DawgCache *dawg_cache);
   // Loads the dawgs needed by Tesseract. Call FinishLoad() after.
@@ -502,14 +517,16 @@ class Dict {
   /** Private member variables. */
   CCUtil* ccutil_;
   /**
-   * Table that stores ambiguities computed during model_updater_tesseract_src
+   * Table that stores ambiguities computed during training
    * (loaded when NoDangerousAmbigs() is called for the first time).
    * Each entry i in the table stores a set of amibiguities whose
    * wrong ngram starts with unichar id i.
    */
-  UnicharAmbigs *dang_ambigs_table_;
+#ifndef DISABLED_LEGACY_ENGINE
+  UnicharAmbigs* dang_ambigs_table_ = nullptr;
   /** Same as above, but for ambiguities with replace flag set. */
-  UnicharAmbigs *replace_ambigs_table_;
+  UnicharAmbigs* replace_ambigs_table_ = nullptr;
+#endif
   /** Additional certainty padding allowed before a word is rejected. */
   float reject_offset_;
   // Cached UNICHAR_IDs:
@@ -604,7 +621,6 @@ class Dict {
   INT_VAR_H(dawg_debug_level, 0, "Set to 1 for general debug info"
             ", to 2 for more details, to 3 to see all the debug messages");
   INT_VAR_H(hyphen_debug_level, 0, "Debug level for hyphenated words.");
-  INT_VAR_H(max_viterbi_list_size, 10, "Maximum size of viterbi list.");
   BOOL_VAR_H(use_only_first_uft8_step, false,
              "Use only the first UTF8 step of the given string"
              " when computing log probabilities.");
@@ -626,9 +642,6 @@ class Dict {
   INT_VAR_H(tessedit_truncate_wordchoice_log, 10, "Max words to keep in list");
   STRING_VAR_H(word_to_debug, "", "Word for which stopper debug information"
                " should be printed to stdout");
-  STRING_VAR_H(word_to_debug_lengths, "",
-               "Lengths of unichars in word_to_debug");
-  INT_VAR_H(fragments_debug, 0, "Debug character fragments");
   BOOL_VAR_H(segment_nonalphabetic_script, false,
              "Don't use any alphabetic-specific tricks."
              "Set to true in the traineddata config file for"

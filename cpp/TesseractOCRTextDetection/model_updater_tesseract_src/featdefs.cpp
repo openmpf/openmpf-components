@@ -18,21 +18,21 @@
           Include Files and Type Defines
 -----------------------------------------------------------------------------*/
 #include "featdefs.h"
-#include "emalloc.h"
-#include "scanutils.h"
-
 #include <cstring>
 #include <cstdio>
+#include "emalloc.h"
+#include "picofeat.h"  // for PicoFeatureLength
+#include "scanutils.h"
 
 #define PICO_FEATURE_LENGTH 0.05
 
 /*-----------------------------------------------------------------------------
         Global Data Definitions and Declarations
 -----------------------------------------------------------------------------*/
-const char* kMicroFeatureType = "mf";
-const char* kCNFeatureType = "cn";
-const char* kIntFeatureType = "if";
-const char* kGeoFeatureType = "tb";
+const char* const kMicroFeatureType = "mf";
+const char* const kCNFeatureType = "cn";
+const char* const kIntFeatureType = "if";
+const char* const kGeoFeatureType = "tb";
 
 // Define all of the parameters for the MicroFeature type.
 StartParamDesc(MicroFeatureParams)
@@ -74,8 +74,8 @@ EndParamDesc
 // Now define the feature type itself (see features.h for parameters).
 DefineFeature(GeoFeatDesc, 3, 0, kGeoFeatureType, GeoFeatParams)
 
-// Other features used for model_updater_tesseract_src the adaptive classifier, but not used
-// during normal model_updater_tesseract_src, therefore not in the DescDefs array.
+// Other features used for training the adaptive classifier, but not used
+// during normal training, therefore not in the DescDefs array.
 
 // Define all of the parameters for the PicoFeature type
 // define knob that can be used to adjust pico-feature length.
@@ -147,7 +147,7 @@ void FreeCharDescription(CHAR_DESC CharDesc) {
  */
 CHAR_DESC NewCharDescription(const FEATURE_DEFS_STRUCT &FeatureDefs) {
   CHAR_DESC CharDesc;
-  CharDesc = (CHAR_DESC) Emalloc (sizeof (CHAR_DESC_STRUCT));
+  CharDesc = static_cast<CHAR_DESC>(Emalloc (sizeof (CHAR_DESC_STRUCT)));
   CharDesc->NumFeatureSets = FeatureDefs.NumFeatureTypes;
 
   for (size_t i = 0; i < CharDesc->NumFeatureSets; i++)
