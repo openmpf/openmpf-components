@@ -114,17 +114,18 @@ class AzureConnection(object):
         )
 
     def submit_batch_transcription(self, recording_url, job_name,
-                                   diarize, language, blob_access_time):
+                                   diarize, language, expiry):
         self.logger.info('Submitting batch transcription...')
         data = dict(
-            recordingsUrl=recording_url,
-            name=job_name,
+            contentUrls=[recording_url],
+            displayName=job_name,
             description=job_name,
             locale=language,
             properties=dict(
                 wordLevelTimestampsEnabled='true',
-                diarizationEnabled=str(diarize),
-                timeToLive=minutes_to_iso8601(blob_access_time)
+                profanityFilterMode='None',
+                diarizationEnabled=str(diarize).lower(),
+                timeToLive=minutes_to_iso8601(expiry)
             )
         )
 
@@ -193,7 +194,28 @@ class AzureConnection(object):
         return result
 
     def get_transcription(self, result):
-        results_uri = result['resultsUrls']['channel_0']
+        results_uri = result['links']['files']
+        req = request.Request(
+            url=results_uri,
+            headers=self.acs_headers,
+            method='GET'
+        )
+        try:
+            self.logger.debug('Retrieving transcription file location')
+            response = request.urlopen(req)
+            files = json.load(response)
+        except HTTPError as e:
+            error_str = e.read()
+            raise mpf.DetectionException(
+                "Failed to retrieve transcription location: Request failed "
+                f"with HTTP status {e.code} and message: {error_str}",
+                mpf.DetectionError.DETECTION_FAILED
+            )
+        results_uri = next(
+            v['links']['contentUrl'] for v in files['values']
+            if v['kind'] == 'Transcription'
+        )
+
         try:
             self.logger.debug('Retrieving transcription result')
             response = request.urlopen(results_uri)
@@ -201,50 +223,11 @@ class AzureConnection(object):
         except HTTPError as e:
             error_str = e.read()
             raise mpf.DetectionException(
-                'Request failed with HTTP status {} and messages: {}'.format(
-                    e.code,
-                    error_str
-                ),
+                "Failed to retrieve transcription: Request failed "
+                f"with HTTP status {e.code} and message: {error_str}",
                 mpf.DetectionError.DETECTION_FAILED
             )
-
-    def delete_transcription(self, location):
-        self.logger.info('Deleting transcription...')
-        req = request.Request(
-            url=location,
-            headers=self.acs_headers,
-            method='DELETE'
-        )
-        try:
-            request.urlopen(req)
-        except HTTPError:
-            # If the transcription task doesn't exist, ignore
-            #  This is a temporary solution, to be fixed with v3.0
-            self.logger.warning(
-                f'Transcription task deletion failed. This transcription '
-                f'should be deleted manually: {location}')
 
     def delete_blob(self, recording_id):
         self.logger.info('Deleting blob...')
         self.container_client.delete_blob(recording_id)
-
-    def get_transcriptions(self):
-        self.logger.info('Retrieving all transcriptions...')
-        req = request.Request(
-            url=self.url,
-            headers=self.acs_headers,
-            method='GET'
-        )
-        response = request.urlopen(req)
-        transcriptions = json.load(response)
-        return transcriptions
-
-    def delete_all_transcriptions(self):
-        self.logger.info('Deleting all transcriptions...')
-        for trans in self.get_transcriptions():
-            req = request.Request(
-                url=self.url + '/' + trans['id'],
-                headers=self.acs_headers,
-                method='DELETE'
-            )
-            request.urlopen(req)
