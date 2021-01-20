@@ -91,6 +91,7 @@ class AcsSpeechDetectionProcessor(object):
                     job_name=job_name,
                     diarize=diarize,
                     language=lang,
+                    blob_access_time=blob_access_time
                 )
             except Exception as e:
                 if 'This locale does not support diarization' in str(e):

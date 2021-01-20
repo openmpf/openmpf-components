@@ -29,10 +29,26 @@ import time
 from urllib import request
 from urllib.error import HTTPError
 from datetime import datetime, timedelta
+from dateutil import relativedelta
 from azure.storage.blob import ResourceTypes, AccountSasPermissions, generate_account_sas, ContainerClient
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
+
+def minutes_to_iso8601(mins):
+    """ Convert minutes to ISO 8601 duration, the format expected by
+        Azure for timeToLive. Use dateutil to construct this string,
+        to avoid issues with daylight savings, leap years, etc.
+    """
+    now = datetime.now()
+    expiration = now + timedelta(minutes=mins)
+
+    delta = relativedelta.relativedelta(expiration, now)
+    date = f"{delta.years}Y{delta.months}M{delta.days}D"
+    time = f"{delta.hours}H{delta.minutes}M{delta.seconds}S"
+
+    return f"P{date}T{time}"
 
 
 class AzureConnection(object):
@@ -98,7 +114,7 @@ class AzureConnection(object):
         )
 
     def submit_batch_transcription(self, recording_url, job_name,
-                                   diarize, language):
+                                   diarize, language, blob_access_time):
         self.logger.info('Submitting batch transcription...')
         data = dict(
             recordingsUrl=recording_url,
@@ -106,8 +122,9 @@ class AzureConnection(object):
             description=job_name,
             locale=language,
             properties=dict(
-                AddWordLevelTimestamps='True',
-                AddDiarization=str(diarize),
+                wordLevelTimestampsEnabled='true',
+                diarizationEnabled=str(diarize),
+                timeToLive=minutes_to_iso8601(blob_access_time)
             )
         )
 

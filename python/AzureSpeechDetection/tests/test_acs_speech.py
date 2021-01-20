@@ -394,8 +394,8 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
             return
 
         properties = data.get('properties')
-        if not properties or not mpf_util.get_property(properties, 'AddWordLevelTimestamps', False):
-            raise Exception('Expected AddWordLevelTimestamps to be enabled')
+        if not properties or not mpf_util.get_property(properties, 'wordLevelTimestampsEnabled', False):
+            raise Exception('Expected wordLevelTimestampsEnabled')
 
         self.send_response(202)
 
