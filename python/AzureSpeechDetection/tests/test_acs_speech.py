@@ -43,7 +43,7 @@ import mpf_component_util as mpf_util
 
 local_path = os.path.realpath(os.path.dirname(__file__))
 base_local_path = os.path.join(local_path, 'test_data')
-base_url_path = '/api/speechtotext/v2.0/'
+base_url_path = '/speechtotext/v3.0/'
 
 test_port = 10669
 origin = 'http://localhost:{}'.format(test_port)
@@ -51,7 +51,10 @@ url_prefix = origin + base_url_path
 transcription_url = url_prefix + 'transcriptions'
 blobs_url = url_prefix + 'recordings'
 outputs_url = url_prefix + 'outputs'
+models_url = url_prefix + 'models'
 container_url = 'https://account_name.blob.core.endpoint.suffix/container_name'
+
+
 def get_test_properties(**extra_properties):
     return dict(
         ACS_URL=transcription_url,
@@ -60,6 +63,7 @@ def get_test_properties(**extra_properties):
         ACS_BLOB_SERVICE_KEY='acs_blob_service_key',
         **extra_properties
     )
+
 
 class TestAcsSpeech(unittest.TestCase):
     mock_server: ClassVar['MockServer']
@@ -115,8 +119,10 @@ class TestAcsSpeech(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         transcript = result[0].detection_properties['TRANSCRIPT']
-        self.assertEqual("There's 3 left on the left side of the one closest to us.", transcript)
-
+        self.assertEqual(
+            "There's 3 left on the left side, the one closest to us.",
+            transcript
+        )
 
     def test_video_file(self):
         job = mpf.VideoJob(
@@ -139,7 +145,10 @@ class TestAcsSpeech(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         transcript = result[0].detection_properties['TRANSCRIPT']
-        self.assertEqual("There's 3 left on the left side the one closest to us.", transcript)
+        self.assertEqual(
+            "There's 3 left on the left side, the one closest to us.",
+            transcript
+        )
 
     def test_diarization(self):
         job_raw = mpf.AudioJob(
@@ -194,7 +203,6 @@ class TestAcsSpeech(unittest.TestCase):
         self.assertEqual({'0'}, ids_raw)
         self.assertEqual({'0'}, ids_dia)
 
-
     def test_language(self):
         job_en = mpf.AudioJob(
             job_name='test_bilingual_english',
@@ -216,7 +224,7 @@ class TestAcsSpeech(unittest.TestCase):
             stop_time=-1,
             job_properties=get_test_properties(
                 DIARIZE='TRUE',
-                LANGUAGE='sp-MX'
+                LANGUAGE='es-MX'
             ),
             media_properties={},
             feed_forward_track=None
@@ -224,22 +232,22 @@ class TestAcsSpeech(unittest.TestCase):
         comp = AcsSpeechComponent()
         res_en, res_sp = self.run_patched_jobs(comp, 'audio', job_en, job_sp)
 
-        self.assertEqual(15, len(res_en))
-        self.assertEqual(22, len(res_sp))
+        self.assertEqual(23, len(res_en))
+        self.assertEqual(23, len(res_sp))
 
         # Audio switches from Spanish to English at about 0:58.
         #  Speaker 1 says one sentence in English at about 0:58-1:00.
         #  Speaker 2 begins at 1:04 and speaks only English.
         lang_switch = 58000
 
+        mean = lambda lst: sum(lst) / len(lst)
         bad = [r.confidence for r in res_en if r.start_time < lang_switch]
         good = [r.confidence for r in res_en if r.start_time > lang_switch]
-        self.assertGreater(min(good), max(bad))
+        self.assertGreater(mean(good), mean(bad))
 
         bad = [r.confidence for r in res_sp if r.start_time > lang_switch]
         good = [r.confidence for r in res_sp if r.start_time < lang_switch]
-        self.assertGreater(min(good), max(bad))
-
+        self.assertGreater(mean(good), mean(bad))
 
     def test_missing_audio(self):
         job = mpf.AudioJob(
@@ -320,23 +328,36 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
 
         if not self.path.startswith(self.server.base_url_path):
             self.send_error(404, 'NotFound')
-            self.wfile.write('The resource you are looking for has been removed, had its name changed, '
-                             'or is temporarily unavailable.'.encode())
+            self.wfile.write(
+                'The resource you are looking for has been removed, had its '
+                'name changed, or is temporarily unavailable.'.encode()
+            )
             return
         tail = self.path[len(self.server.base_url_path):]
 
         if tail.startswith('transcriptions'):
+            jobname = tail[len('transcriptions/'):]
+            if jobname.endswith('.json'):
+                jobname = jobname[:-len('.json')]
+            if jobname.endswith('/files'):
+                jobname = jobname[:-len('/files')]
+
             self._validate_headers()
-            if self.path not in self.server.jobs:
+            if jobname not in self.server.jobs:
+                print('\n\n\n', jobname, self.server.jobs, '\n\n\n')
                 self.send_error(404, 'NotFound')
-                self.wfile.write('The specified entity cannot be found.'.encode())
+                self.wfile.write(
+                    'The specified entity cannot be found.'.encode()
+                )
                 return
         elif tail.startswith('outputs'):
             pass
         else:
             self.send_error(404, 'NotFound')
-            self.wfile.write('The resource you are looking for has been removed, '
-                             'had its name changed, or is temporarily unavailable.'.encode())
+            self.wfile.write(
+                'The resource you are looking for has been removed, had its '
+                'name changed, or is temporarily unavailable.'.encode()
+            )
             return
 
         if self.path.startswith(self.server.base_url_path):
@@ -351,8 +372,10 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
 
         if not self.path.startswith(self.server.base_url_path):
             self.send_error(404, 'NotFound')
-            self.wfile.write('The resource you are looking for has been removed, had its name changed, '
-                             'or is temporarily unavailable.'.encode())
+            self.wfile.write(
+                'The resource you are looking for has been removed, had its '
+                'name changed, or is temporarily unavailable.'.encode()
+            )
             return
         tail = self.path[len(self.server.base_url_path):]
 
@@ -364,10 +387,11 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
             self.end_headers()
         else:
             self.send_error(404)
-            self.wfile.write('The resource you are looking for has been removed, had its name changed, '
-                             'or is temporarily unavailable.'.encode())
+            self.wfile.write(
+                'The resource you are looking for has been removed, had its '
+                'name changed, or is temporarily unavailable.'.encode()
+            )
             return
-
 
     def do_POST(self):
         self._validate_headers()
@@ -376,25 +400,36 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
         post_body = self.rfile.read(content_len)
         data = json.loads(post_body)
 
-        if not data.get('recordingsUrl'):
+        if not data.get('contentUrls'):
             self.send_error(400, 'InvalidPayload')
             self.wfile.write(
-                'Only absolute URIs containing a valid scheme, authority and path are allowed for '
-                'transcription.recordingsUrl.'.encode())
+                'Only absolute URIs containing a valid scheme, authority and '
+                'path are allowed for transcription.recordingsUrl.'.encode()
+            )
             return
 
-        if not data.get('name'):
+        if not data.get('displayName'):
             self.send_error(400, 'InvalidPayload')
-            self.wfile.write('A non empty string is required for transcription.name.'.encode())
+            self.wfile.write(
+                'A non empty string is required for '
+                'transcription.name.'.encode()
+            )
             return
 
         if not data.get('locale'):
             self.send_error(400, 'InvalidPayload')
-            self.wfile.write('A non empty string is required for transcription.locale.'.encode())
+            self.wfile.write(
+                'A non empty string is required for '
+                'transcription.locale.'.encode()
+            )
             return
 
         properties = data.get('properties')
-        if not properties or not mpf_util.get_property(properties, 'wordLevelTimestampsEnabled', False):
+        if not properties or not mpf_util.get_property(
+                    properties,
+                    'wordLevelTimestampsEnabled',
+                    False
+                ):
             raise Exception('Expected wordLevelTimestampsEnabled')
 
         self.send_response(202)
@@ -402,9 +437,9 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
         location = os.path.join(
             self.server.base_url_path,
             'transcriptions',
-            data.get('name') + '.json'
+            data.get('displayName') + '.json'
         )
-        self.server.jobs.add(location)
+        self.server.jobs.add(data.get('displayName'))
         self.send_header('Location', origin + location)
         self.end_headers()
         return

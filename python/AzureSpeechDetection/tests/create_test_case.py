@@ -31,11 +31,13 @@ import argparse
 import mimetypes
 from urllib import request
 
-import mpf_component_api as mpf
-from test_acs_speech import transcription_url, blobs_url, outputs_url
+from test_acs_speech import (
+    transcription_url, blobs_url, outputs_url, models_url
+)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from acs_speech_component import AcsSpeechComponent
+
 
 def guess_type(filename):
     if filename.endswith('.mkv'):
@@ -49,18 +51,19 @@ if __name__ == '__main__':
             'Sample Azure Speech component on audio or video files.'
         )
     )
-    parser.add_argument('--start_time', type=int)
-    parser.add_argument('--stop_time', type=int)
-    parser.add_argument('--start_frame', type=int)
-    parser.add_argument('--stop_frame', type=int)
-    parser.add_argument('--frame_count', type=int)
+    parser.add_argument('--start-time', type=int)
+    parser.add_argument('--stop-time', type=int)
+    parser.add_argument('--start-frame', type=int)
+    parser.add_argument('--stop-frame', type=int)
+    parser.add_argument('--frame-count', type=int)
     parser.add_argument('--fps', type=float)
     parser.add_argument('--duration', type=float)
 
     parser.add_argument('--diarize', action='store_true')
     parser.add_argument('--language', type=str, default="en-US")
     parser.add_argument('--blob-access-time', type=int, default=120)
-    parser.add_argument('--job_name', type=str, required=True)
+    parser.add_argument('--transcription-expiration', type=int, default=120)
+    parser.add_argument('--job-name', type=str, required=True)
     parser.add_argument('filepath')
     args = parser.parse_args()
 
@@ -68,7 +71,8 @@ if __name__ == '__main__':
         DIARIZE=str(args.diarize).upper(),
         LANGUAGE=str(args.language),
         CLEANUP="TRUE",
-        BLOB_ACCESS_TIME=str(args.blob_access_time)
+        BLOB_ACCESS_TIME=str(args.blob_access_time),
+        TRANSCRIPTION_EXPIRATION=str(args.transcription_expiration)
     )
 
     media_properties = dict()
@@ -152,7 +156,7 @@ if __name__ == '__main__':
     recording_url = comp.processor.acs.upload_file_to_blob(
         filepath=args.filepath,
         recording_id=recording_id,
-        blob_access_time=blob_access_time,
+        blob_access_time=args.blob_access_time,
         start_time=start_time,
         stop_time=stop_time
     )
@@ -161,9 +165,10 @@ if __name__ == '__main__':
             recording_url=recording_url,
             job_name=job_name,
             diarize=parsed_properties['diarize'],
-            language=parsed_properties['lang']
+            language=parsed_properties['lang'],
+            expiry=args.transcription_expiration
         )
-    except:
+    except Exception:
         comp.processor.acs.delete_blob(recording_id)
         raise
 
@@ -171,40 +176,62 @@ if __name__ == '__main__':
     try:
         result = comp.processor.acs.poll_for_result(output_loc)
         if result['status'] == 'Succeeded':
-            results_uri = result['resultsUrls']['channel_0']
-            response = request.urlopen(results_uri)
+            results_uri = result['links']['files']
+            req = request.Request(
+                url=results_uri,
+                headers=comp.processor.acs.acs_headers,
+                method='GET'
+            )
+            response = request.urlopen(req)
+            files = json.load(response)
+
+            transcript_uri = next(
+                v['links']['contentUrl'] for v in files['values']
+                if v['kind'] == 'Transcription'
+            )
+            response = request.urlopen(transcript_uri)
             transcription = json.load(response)
     finally:
         comp.processor.acs.delete_blob(recording_id)
-        comp.processor.acs.delete_transcription(output_loc)
 
-
-    result['recordingsUrl'] = "{}/{}?test_queries".format(
-        blobs_url,
-        recording_id
-    )
-    result['reportFileUrl'] = "test.report.file"
-    for k in result['resultsUrls'].keys():
-        result['resultsUrls'][k] = "{}/{}.json?test_queries".format(
-            outputs_url,
-            job_name
-        )
-
-    path = os.path.join(
+    job_url = f"{transcription_url}/{job_name}"
+    base_local_path = os.path.join(
         os.path.realpath(os.path.dirname(__file__)),
-        'test_data',
-        'transcriptions',
-        job_name
-    ) + '.json'
+        'test_data'
+    )
+
+    # Update result object to point to files path
+    result['self'] = f"{job_url}.json"
+    result['model']['self'] = f"{models_url}/base/modelhash"
+    result['links']['files'] = f"{job_url}/files.json"
+    path = os.path.join(base_local_path, 'transcriptions', job_name) + '.json'
     with open(path, 'w') as fout:
         json.dump(result, fout, indent=4)
 
+    # If job was successful, save the output files
     if transcription is not None:
-        path = os.path.join(
-            os.path.realpath(os.path.dirname(__file__)),
-            'test_data',
-            'outputs',
-            job_name
-        ) + '.json'
-        with open(path, 'w') as fout:
+        # Ensure directories exist
+        jobdir = os.path.join(base_local_path, 'transcriptions', job_name)
+        outdir = os.path.join(base_local_path, 'outputs')
+        os.makedirs(jobdir, exist_ok=True)
+        os.makedirs(outdir, exist_ok=True)
+
+        # Update files object to point to transcription path
+        for i, value in enumerate(files['values']):
+            value['self'] = f"{job_url}/files/hash{i}.json"
+            value['links']['contentUrl'] = "dummy_file.json"
+            if value['kind'] == 'Transcription':
+                value['links']['contentUrl'] = f"{outputs_url}/{job_name}.json"
+
+        # Update transcription object to point to recording
+        transcription['source'] = f"{blobs_url}/{recording_id}"
+
+        # Save files object to job directory
+        files_path = os.path.join(jobdir, 'files.json')
+        with open(files_path, 'w') as fout:
+            json.dump(files, fout, indent=4)
+
+        # Save the transcription object to outputs directory
+        transcription_path = os.path.join(outdir, job_name) + '.json'
+        with open(transcription_path, 'w') as fout:
             json.dump(transcription, fout, indent=4)
