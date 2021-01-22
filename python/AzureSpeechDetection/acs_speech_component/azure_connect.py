@@ -211,14 +211,14 @@ class AzureConnection(object):
                 f"with HTTP status {e.code} and message: {error_str}",
                 mpf.DetectionError.DETECTION_FAILED
             )
-        results_uri = next(
+        transcript_uri = next(
             v['links']['contentUrl'] for v in files['values']
             if v['kind'] == 'Transcription'
         )
 
         try:
             self.logger.debug('Retrieving transcription result')
-            response = request.urlopen(results_uri)
+            response = request.urlopen(transcript_uri)
             return json.load(response)
         except HTTPError as e:
             error_str = e.read()
