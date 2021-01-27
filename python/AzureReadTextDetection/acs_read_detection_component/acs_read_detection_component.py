@@ -447,7 +447,8 @@ class ReadResultsProcessor(object):
                         if not self._merge_lines:
                             detection_properties = dict(OUTPUT_TYPE='LINE',
                                                         LINE_NUM=str(line_num),
-                                                        TEXT=line['text'])
+                                                        TEXT=line['text'],
+                                                        ROTATION=str(mpf_util.normalize_angle(page['angle'])))
                             if not(is_video):
                                 detection_properties["PAGE_NUM"] = str(page_num)
 
@@ -468,7 +469,8 @@ class ReadResultsProcessor(object):
 
                     if self._merge_lines and len(lines) > 0:
                         detection_properties = dict(OUTPUT_TYPE='MERGED_LINES',
-                                                    TEXT='\n'.join(lines))
+                                                    TEXT='\n'.join(lines),
+                                                    ROTATION=str(mpf_util.normalize_angle(page['angle'])))
                         if not(is_video):
                             detection_properties["PAGE_NUM"] = str(page_num)
                         detections.append(self._create_detection(detection_properties, bounding_box))

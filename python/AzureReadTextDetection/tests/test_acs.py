@@ -45,6 +45,15 @@ import acs_read_detection_component
 from acs_read_detection_component import AcsReadDetectionComponent, FrameEncoder
 
 
+human_rights_image_text = '''Human Rights. Bulgarian and English.
+UNIVERSAL DECLARATION OF HUMAN RIGHTS
+Article 1
+All human beings are born free and equal in dignity and
+rights. They are endowed with reason and conscience
+and should act towards one another in a spirit of
+brotherhood.'''
+
+
 class TestAcs(unittest.TestCase):
 
     mock_server: ClassVar['MockServer']
@@ -115,6 +124,9 @@ class TestAcs(unittest.TestCase):
     def test_resize_due_to_compression(self):
         img = cv2.imread(get_test_file('downsampling/noise.png'))
 
+        # Set the class max file size limit to a smaller value to force resizing.
+        FrameEncoder.MAX_FILE_SIZE = 20 * 1024 * 1024
+
         original_size = mpf_util.Size.from_frame(img)
         encoded_frame, new_size = FrameEncoder().resize_and_encode(img)
         self.assertNotEqual(original_size, new_size)
@@ -126,12 +138,12 @@ class TestAcs(unittest.TestCase):
         self.assertTrue(len(encoded_frame) <= FrameEncoder.MAX_FILE_SIZE)
 
     def test_pdf(self):
-        self.set_results_path(get_test_file('regular-forms/pdf-results.json'))
-        job = mpf.GenericJob('Test', get_test_file('regular-forms/form-recognizer-demo-sample1.pdf'),
+        self.set_results_path(get_test_file('regular/pdf-results.json'))
+        job = mpf.GenericJob('Test', get_test_file('regular/form-recognizer-demo-sample1.pdf'),
                              get_test_properties(), {}, None)
         detections = list(AcsReadDetectionComponent().get_detections_from_generic(job))
 
-        self.assertEqual(3, len(detections))
+        self.assertEqual(1, len(detections))
 
         line_detection = detections[0]
         self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
@@ -142,8 +154,8 @@ class TestAcs(unittest.TestCase):
 
 
     def test_png(self):
-        self.set_results_path(get_test_file('regular-forms/png-results.json'))
-        job = mpf.ImageJob('Test', get_test_file('regular-forms/contoso-invoice.png'), get_test_properties(), {}, None)
+        self.set_results_path(get_test_file('regular/png-results.json'))
+        job = mpf.ImageJob('Test', get_test_file('regular/contoso-invoice.png'), get_test_properties(), {}, None)
         detections = list(AcsReadDetectionComponent().get_detections_from_image(job))
 
         self.assertEqual(1, len(detections))
@@ -154,6 +166,97 @@ class TestAcs(unittest.TestCase):
         self.assertTrue('Contoso, Ltd.' in line_detection.detection_properties['TEXT'])
         self.assertTrue('554 Magnolia Way\nWalnut, WY, 98432' in line_detection.detection_properties['TEXT'])
         self.assertTrue('Thank you for your business!' in line_detection.detection_properties['TEXT'])
+
+
+    def run_image_test(self, image_file_name, results_file_name, expected_detection_rect, expected_rotation):
+        self.set_results_path(get_test_file(results_file_name))
+
+        img_path = get_test_file(image_file_name)
+        job = mpf.ImageJob('Test', img_path, get_test_properties(), {}, None)
+        detections = list(AcsReadDetectionComponent().get_detections_from_image(job))
+
+        self.assertEqual(1, len(detections))
+        detection = detections[0]
+        self.assertEqual(human_rights_image_text, detection.detection_properties['TEXT'])
+        self.assertEqual(expected_detection_rect,
+                       mpf_util.Rect.from_image_location(detection))
+        self.assertAlmostEqual(expected_rotation, float(detection.detection_properties['ROTATION']))
+
+        # TODO: Update with 3.2.preview mode
+        # self.assertEqual('en', detection.detection_properties['TEXT_LANGUAGE'])
+
+
+    def test_image_file(self):
+        self.run_image_test('orientation/img/eng.png', 'orientation/img/eng-results.json',
+                            mpf_util.Rect(109, 56, 996, 433), 0)
+
+
+    def test_image_15deg_rotation(self):
+        self.run_image_test('orientation/img/eng-15deg.png', 'orientation/img/eng-15deg-results.json',
+                            mpf_util.Rect(67, 60, 1036, 517), 345.0055)
+
+
+    def test_image_90deg_rotation(self):
+        self.run_image_test('orientation/img/eng-90deg.png', 'orientation/img/eng-90deg-results.json',
+                            mpf_util.Rect(55, 85, 435, 997), 270.0)
+
+
+    def test_image_100deg_rotation(self):
+        self.run_image_test('orientation/img/eng-100deg.png', 'orientation/img/eng-100deg-results.json',
+                            mpf_util.Rect(66, 93, 470, 1027), 260.0397)
+
+
+    def test_image_180deg_rotation(self):
+        self.run_image_test('orientation/img/eng-180deg.png', 'orientation/img/eng-180deg-results.json',
+                            mpf_util.Rect(85, 151, 996, 433), 180.0289)
+
+
+    def test_image_200deg_rotation(self):
+        self.run_image_test('orientation/img/eng-200deg.png', 'orientation/img/eng-200deg-results.json',
+                            mpf_util.Rect(110, 41, 1029, 566), 160.0225)
+
+
+    def test_image_270deg_rotation(self):
+        self.run_image_test('orientation/img/eng-270deg.png', 'orientation/img/eng-270deg-results.json',
+                            mpf_util.Rect(152, 108, 434, 998), 90)
+
+
+    def test_image_290deg_rotation(self):
+        self.run_image_test('orientation/img/eng-290deg.png', 'orientation/img/eng-290deg-results.json',
+                            mpf_util.Rect(38, 129, 562, 1034), 70.0808)
+
+
+
+    def test_video(self):
+        test_video_frame_count = 8
+        for i in range(test_video_frame_count):
+            self.set_results_path(get_test_file('orientation/video/results-frame{}.json'.format(i)))
+
+        job = mpf.VideoJob('Test', get_test_file('orientation/video/test-vid.avi'), 0, -1, get_test_properties(), {},
+                           None)
+        tracks = list(AcsReadDetectionComponent().get_detections_from_video(job))
+
+        self.assertEqual(8, len(tracks))
+
+        detections_indexed_by_frame = {}
+
+        for track in tracks:
+            self.assertEqual(1, len(track.frame_locations))
+            detection = track.frame_locations[track.start_frame]
+            self.assertFalse(track.start_frame in detections_indexed_by_frame)
+
+            self.assertEqual(human_rights_image_text, track.detection_properties['TEXT'])
+            self.assertEqual(human_rights_image_text, detection.detection_properties['TEXT'])
+
+            #self.assertEqual('en', detection.detection_properties['TEXT_LANGUAGE'])
+            #self.assertEqual('en', track.detection_properties['TEXT_LANGUAGE'])
+
+            detections_indexed_by_frame[track.start_frame] = detection
+
+
+        # TODO: Run another check over angle generation.
+        self.assertEqual(mpf_util.Rect(109, 54, 999, 437),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[0]))
 
 
     def test_upsampling(self):
@@ -194,7 +297,7 @@ class TestAcs(unittest.TestCase):
 
         url = acs_read_detection_component.JobRunner.get_acs_url(properties)
         self.assertEqual('http://localhost:10669/vision/'
-                         'v3.1/read/analyze?language=en, url)
+                         'v3.1/read/analyze?language=en', url)
 
 
 def get_test_properties(**extra_properties):
