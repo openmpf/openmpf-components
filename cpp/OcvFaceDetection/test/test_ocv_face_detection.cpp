@@ -120,7 +120,7 @@ TEST(OcvFaceDetection, VerifyQuality) {
         test_image_path = current_working_dir + "/" + test_image_path;
     }
 
-    cv::Mat image = cv::imread(test_image_path, CV_LOAD_IMAGE_IGNORE_ORIENTATION + CV_LOAD_IMAGE_COLOR);
+    cv::Mat image = cv::imread(test_image_path, cv::IMREAD_IGNORE_ORIENTATION + cv::IMREAD_COLOR);
     ASSERT_TRUE(!image.empty());
 
     cv::Mat image_gray = Utils::ConvertToGray(image);

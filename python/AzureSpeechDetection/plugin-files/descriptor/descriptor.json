@@ -1,7 +1,7 @@
 {
   "componentName": "AzureSpeechDetection",
-  "componentVersion": "5.0",
-  "middlewareVersion": "5.0",
+  "componentVersion": "6.0",
+  "middlewareVersion": "6.0",
   "sourceLanguage": "python",
   "batchLibrary": "AzureSpeechDetection",
   "environmentVariables": [],
@@ -19,6 +19,12 @@
         "DETECTION_SPEECH_AZURE"
       ],
       "properties": [
+        {
+          "name": "TARGET_SEGMENT_LENGTH",
+          "description": "If this value is less than or equal to 0, no segmenting will be performed.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
         {
           "name": "ACS_URL",
           "description": "URL for the Azure Cognitive Services Endpoint. e.g. https://virginia.cris.azure.us/api/speechtotext/v2.0/transcriptions. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.  Note that the component was only tested against v2.0 of the API.",
@@ -81,6 +87,21 @@
           "value": "en-US"
         }
       ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION TO SPANISH ACTION",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in Spanish.",
+      "algorithm": "AZURESPEECH",
+      "properties": [
+        {
+          "name": "LANGUAGE",
+          "value": "es-US"
+        },
+        {
+          "name": "DIARIZE",
+          "value": "FALSE"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -90,6 +111,13 @@
       "actions": [
         "AZURE SPEECH DETECTION ACTION"
       ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION TO SPANISH TASK",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in Spanish.",
+      "actions": [
+        "AZURE SPEECH DETECTION TO SPANISH ACTION"
+      ]
     }
   ],
   "pipelines": [
@@ -98,6 +126,22 @@
       "description": "Uses Azure Cognitive Services to perform speech-to-text in English.",
       "tasks": [
         "AZURE SPEECH DETECTION TASK"
+      ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION WITH KEYWORD TAGGING PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in English and performs keyword tagging.",
+      "tasks": [
+        "AZURE SPEECH DETECTION TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION TO SPANISH WITH TRANSLATION TO ENGLISH PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in Spanish and translation to English.",
+      "tasks": [
+        "AZURE SPEECH DETECTION TO SPANISH TASK",
+        "AZURE TRANSLATION (WITH FF REGION) TASK"
       ]
     }
   ]

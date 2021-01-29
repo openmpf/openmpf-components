@@ -28,8 +28,8 @@ Declaration of Human Rights. http://www.un.org/en/universal-declaration-human-ri
 Custom generated image, contains English text from the Universal
 Declaration of Human Rights. http://www.un.org/en/universal-declaration-human-rights/
 
-# eng-bul.png
-Custom generated image, contains English and Bulgarian text from the Universal
+# eng-bul.png, eng-bul-small.png
+Custom generated images, contain English and Bulgarian text from the Universal
 Declaration of Human Rights (http://www.un.org/en/universal-declaration-human-rights).
 
 # eng-rotated.png
@@ -45,6 +45,9 @@ Custom generated image containing gibberish text.
 # limited-contrast.png
 Custom generated image containing text with poor contrast.
 
+# new-word.png
+Custom generated image containing a gibberish word.
+
 # numeric.png
 Custom generated image containing only numbers.
 
@@ -57,6 +60,9 @@ Contains Bulgarian text from the Universal Declaration of Human Rights
 Custom generated pdf for testing script and orientation detection.
 Contains chinese text from the Universal Declaration of Human Rights.
 https://www.ohchr.org/en/udhr/pages/searchbylang.aspx
+
+# tessdata_dict_file/eng.word-dawg
+Contains a custom wordlist for processing new-word.png.
 
 # tags-keyword.png
 Custom generated image for testing keyword tags.

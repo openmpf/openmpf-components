@@ -32,7 +32,7 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_componen
 RUN yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
     && yum --enablerepo=remi install -y ImageMagick ImageMagick-c++ \
          ImageMagick-c++-devel ImageMagick-devel ImageMagick-libs \
-         libgif libjpeg libpng libtiff zlib ghostscript \
+         libjpeg libpng libtiff zlib ghostscript \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
@@ -81,6 +81,10 @@ COPY --from=build_component $BUILD_DIR/plugin/TesseractOCRTextDetection $PLUGINS
 COPY --from=build_component $BUILD_DIR/libmpfTesseractOCRTextDetection.so \
                             $PLUGINS_DIR/TesseractOCRTextDetection/lib/
 
+COPY --from=build_component $BUILD_DIR/tessdata_model_updater \
+                            /opt/mpf/tessdata_model_updater
+
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/TesseractOCRTextDetection/lib
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Tesseract OCR Text Detection" \

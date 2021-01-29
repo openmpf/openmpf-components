@@ -1,7 +1,7 @@
 {
   "componentName": "OcvDnnDetection",
-  "componentVersion": "5.0",
-  "middlewareVersion": "5.0",
+  "componentVersion": "6.0",
+  "middlewareVersion": "6.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/OcvDnnDetection/lib/libmpfOcvDnnDetection.so",
   "environmentVariables": [
@@ -107,6 +107,36 @@
           "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0.0, 255.0].",
           "type": "FLOAT",
           "defaultValue": "0.0"
+        },
+        {
+          "name": "CLASSIFICATION_TYPE",
+          "description": "By default, each detection will have a CLASSIFICATION, CLASSIFICATION LIST, and CLASSIFICATION CONFIDENCE LIST property. Set this value to change the \"CLASSIFICATION\" part of each output property name to something else.",
+          "type": "STRING",
+          "defaultValue": "CLASSIFICATION"
+        },
+        {
+          "name": "FEED_FORWARD_WHITELIST_FILE",
+          "description": "When FEED_FORWARD_TYPE is provided and not set to NONE, only feed-forward detections with class names contained in the specified file will be processed. If no file is specified, all of the detections will be processed.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "FEED_FORWARD_EXCLUDE_BEHAVIOR",
+          "description": "When FEED_FORWARD_TYPE is provided and not set to NONE, and FEED_FORWARD_WHITELIST_FILE is provided, this value determines what to do with feed-forward detections with class names not contained in the FEED_FORWARD_WHITELIST_FILE. Acceptable values are PASS_THROUGH and DROP.",
+          "type": "STRING",
+          "defaultValue": "PASS_THROUGH"
+        },
+        {
+          "name": "CUDA_DEVICE_ID",
+          "description": "ID of CUDA device (typically 0) to be used. When less than 0 CUDA will be disabled.",
+          "type": "INT",
+          "propertiesKey": "detection.cuda.device.id"
+        },
+        {
+          "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
+          "description": "Indicates whether or not the CPU only version should run if there is an issue with the GPU. Only used when CUDA_DEVICE_ID >= 0.",
+          "type": "BOOLEAN",
+          "propertiesKey": "detection.use.cpu.when.gpu.problem"
         }
       ]
     }

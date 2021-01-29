@@ -11,6 +11,9 @@ hs_err_pid*
 
 *.iml
 *.idea*
+*.vscode*
+*.devcontainer*
+
 
 target/
 
@@ -56,4 +59,3 @@ cmake-build-release/
 *.exe
 *.out
 *.app
-

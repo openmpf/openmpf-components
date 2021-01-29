@@ -1,7 +1,7 @@
 {
   "componentName": "AzureOcrTextDetection",
-  "componentVersion": "5.0",
-  "middlewareVersion": "5.0",
+  "componentVersion": "6.0",
+  "middlewareVersion": "6.0",
   "sourceLanguage": "python",
   "batchLibrary": "AzureOcrTextDetection",
   "environmentVariables": [],
@@ -48,12 +48,6 @@
           "description": "Whether to detect the text orientation in the image. When true the OCR service tries to detect the image orientation and correct it before further processing (e.g. if it's upside-down).",
           "type": "BOOLEAN",
           "defaultValue": "true"
-        },
-        {
-          "name": "TAGGING_FILE",
-          "description": "Name of a JSON file that describes a tag hierarchy to be used on the full text returned from Azure OCR. Will default to the plugin's acs_ocr_component directory unless an alternate path to tagging file is specified (i.e. `$MPF_HOME/.../text-tags.json`).",
-          "type": "STRING",
-          "defaultValue": "text-tags.json"
         }
       ]
     }
@@ -122,6 +116,14 @@
       "tasks": [
         "AZURE OCR TEXT DETECTION (WITH REGION MERGING) TASK",
         "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "AZURE OCR TEXT DETECTION WITH KEYWORD TAGGING",
+      "description": "Uses Azure Cognitive Services to perform optical character recognition and performs keyword tagging.",
+      "tasks": [
+        "AZURE OCR TEXT DETECTION (WITH REGION MERGING) TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
     }
   ]

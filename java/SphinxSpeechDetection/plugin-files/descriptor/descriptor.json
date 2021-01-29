@@ -1,9 +1,9 @@
 {
   "componentName": "SphinxSpeechDetection",
-  "componentVersion": "5.0",
-  "middlewareVersion": "5.0",
+  "componentVersion": "6.0",
+  "middlewareVersion": "6.0",
   "sourceLanguage": "java",
-  "batchLibrary": "mpf-sphinx-speech-detection-component-5.0.jar",
+  "batchLibrary": "mpf-sphinx-speech-detection-component-6.0.jar",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",
@@ -58,6 +58,14 @@
       "tasks": [
         "SPHINX SPEECH DETECTION TASK",
         "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "SPHINX SPEECH DETECTION WITH KEYWORD TAGGING PIPELINE",
+      "description": "Performs Sphinx speech detection and keyword tagging.",
+      "tasks": [
+        "SPHINX SPEECH DETECTION TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
     }
   ]

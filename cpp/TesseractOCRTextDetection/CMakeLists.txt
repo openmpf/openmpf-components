@@ -33,7 +33,7 @@ set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
 message("Package in ${PACKAGE_DIR}")
 
 unset(OpenCV_CONFIG_PATH CACHE)
-find_package(OpenCV 3.4.7 EXACT REQUIRED PATHS /opt/opencv-3.4.7
+find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0
     COMPONENTS opencv_highgui opencv_objdetect opencv_features2d opencv_ml opencv_flann opencv_video)
 
 
@@ -53,7 +53,7 @@ include_directories(${Tesseract_INCLUDE_DIRS})
 include_directories(${Leptonica_INCLUDE_DIRS})
 
 set(OCR_SOURCE_FILES
-        TesseractOCRTextDetection.cpp TesseractOCRTextDetection.h JSON.cpp JSONValue.cpp JSON.h JSONValue.h)
+        TesseractOCRTextDetection.cpp TesseractOCRTextDetection.h)
 
 add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=16 )
 add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
@@ -67,7 +67,12 @@ configure_mpf_component(TesseractOCRTextDetection TARGETS  mpfTesseractOCRTextDe
 
 
 add_subdirectory(test)
+add_subdirectory(model_updater_tesseract_src)
 
 # Build executable
 add_executable(sample_tesseract_ocr_detector sample_tesseract_ocr_detector.cpp)
 target_link_libraries(sample_tesseract_ocr_detector mpfTesseractOCRTextDetection)
+
+# Build executable
+add_executable              (tessdata_model_updater tessdata_model_updater.cpp)
+target_link_libraries       (tessdata_model_updater libtesseract ${Tesseract_LIBRARIES} ${Leptonica_LIBRARIES} ${Boost_LIBRARIES})
