@@ -28,37 +28,44 @@
 #ifndef OPENMPF_COMPONENTS_OCVYOLODETECTION_H
 #define OPENMPF_COMPONENTS_OCVYOLODETECTION_H
 
+#include <memory>
+#include <list>
+#include <string>
+#include <vector>
+
 #include <log4cxx/logger.h>
-#include <opencv2/imgproc/imgproc.hpp>
 
-#include "adapters/MPFImageAndVideoDetectionComponentAdapter.h"
+#include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
+#include <ModelsIniParser.h>
 
-#include "types.h"
-#include "Track.h"
-#include "DetectionLocation.h"
 #include "Config.h"
-
-namespace MPF{
- namespace COMPONENT{
-
-  using namespace std;
+#include "YoloNetwork.h"
 
 
-  class OcvYoloDetection : public MPFImageAndVideoDetectionComponentAdapter {
+class OcvYoloDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
-    public:
-      bool Init()  override;
-      bool Close() override;
-      string GetDetectionType(){return "CLASS";};
-      MPFVideoTrackVec    GetDetections(const MPFVideoJob &job) override;
-      MPFImageLocationVec GetDetections(const MPFImageJob &job) override;
+public:
+    bool Init() override;
 
-    private:
+    bool Close() override;
 
-      log4cxx::LoggerPtr _log;
+    std::string GetDetectionType() override;
 
-      MPFVideoTrack _convert_track(Track &track);  ///< convert to MFVideoTrack and release
-  };
- }
-}
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(
+            const MPF::COMPONENT::MPFVideoJob &job) override;
+
+    std::vector<MPF::COMPONENT::MPFImageLocation> GetDetections(
+            const MPF::COMPONENT::MPFImageJob &job) override;
+
+private:
+    log4cxx::LoggerPtr logger_;
+
+    MPF::COMPONENT::ModelsIniParser<ModelSettings> modelsParser_;
+
+    std::unique_ptr<YoloNetwork> cachedYoloNetwork_;
+
+    YoloNetwork& GetYoloNetwork(const MPF::COMPONENT::Properties &jobProperties,
+                                const Config &config);
+};
+
 #endif

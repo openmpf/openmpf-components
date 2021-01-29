@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -27,6 +29,18 @@
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 
+FROM centos:7 as download_weights
+# Download weights in separate stage so they don't need to be re-downloaded when base images change.
+RUN mkdir /weights \
+    && curl --location https://pjreddie.com/media/files/yolov3.weights > /weights/yolov3.weights
+
+
+RUN curl --location \
+        https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov4.weights \
+        > /weights/yolov4.weights
+
+
+
 # Download library source code so it doesn't need to be re-downloaded when base images change
 FROM centos:7 as download_library_source
 
@@ -35,33 +49,34 @@ RUN yum install --assumeyes bzip2 \
     && rm --recursive /var/cache/yum/*
 
 RUN mkdir --parents /apps/source/dlib-sources; \
-    curl --location 'http://dlib.net/files/dlib-19.19.tar.bz2' \
-    | tar --extract --bzip2 --directory /apps/source/dlib-sources
+    curl --location 'http://dlib.net/files/dlib-19.20.tar.bz2' \
+        | tar --extract --bzip2 --directory /apps/source/dlib-sources
+
 
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
 COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
-COPY . .
 
-RUN cd /apps/source/dlib-sources/dlib-19.19/dlib && mkdir build && cd build && cmake3 -DBUILD_SHARED_LIBS:BOOL="1" .. \
-    && cmake3 --build . --config Release && make --jobs "$(nproc)" install && ldconfig
+COPY . .
 
 RUN build-component.sh
 
 ARG RUN_TESTS=false
-RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvSsdFaceDetectionTest; fi
+RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvYoloDetectionTest; fi
 
 
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-ENV COMPONENT_LOG_NAME ocv-ssd-face-detection.log
+COPY --from=download_weights /weights $PLUGINS_DIR/OcvYoloDetection/models
 
-COPY --from=build_component $BUILD_DIR/plugin/OcvSsdFaceDetection $PLUGINS_DIR/OcvSsdFaceDetection
+ENV COMPONENT_LOG_NAME ocv-yolo-detection.log
 
-COPY --from=build_component $BUILD_DIR/libmpfOcvSsdFaceDetection.so \
-                            $PLUGINS_DIR/OcvSsdFaceDetection/lib/
+COPY --from=build_component $BUILD_DIR/plugin/OcvYoloDetection $PLUGINS_DIR/OcvYoloDetection
+
+COPY --from=build_component $BUILD_DIR/libmpfOcvYoloDetection.so \
+                            $PLUGINS_DIR/OcvYoloDetection/lib/
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF OpenCV Yolo Detection" \

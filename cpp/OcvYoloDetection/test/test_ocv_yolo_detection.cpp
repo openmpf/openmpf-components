@@ -24,232 +24,65 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-
 #include <string>
 #include <utility>
 #include <vector>
-#include <chrono>
 
 #include <gtest/gtest.h>
-#include <MPFDetectionComponent.h>
-#include <QDir>
-#include <MPFSimpleConfigLoader.h>
-#include <Utils.h>
-#include <ReadDetectionsFromFile.h>
-//#include <DetectionComparison.h>
-#include <VideoGeneration.h>
-#include <WriteDetectionsToFile.h>
-#include <ImageGeneration.h>
+#include <MPFDetectionObjects.h>
+#include <MPFImageReader.h>
+#include <MPFVideoCapture.h>
 
-#define private public
 #include "DetectionLocation.h"
 #include "OcvYoloDetection.h"
-#include "DetectionComparisonA.h"
-using namespace std;
+#include "YoloNetwork.h"
+#include "Track.h"
+
 using namespace MPF::COMPONENT;
 
 /** ***************************************************************************
 *   macros for "pretty" gtest messages
 **************************************************************************** */
-#define ANSI_TXT_GRN "\033[0;32m"
-#define ANSI_TXT_MGT "\033[0;35m" //Magenta
-#define ANSI_TXT_DFT "\033[0;0m" //Console default
 #define GTEST_BOX "[          ] "
 #define GOUT(MSG){                                                            \
   std::cout << GTEST_BOX << MSG << std::endl;                                 \
 }
-#define GOUT_MGT(MSG){                                                        \
-  std::cout << ANSI_TXT_MGT << GTEST_BOX << MSG << ANSI_TXT_DFT << std::endl; \
-}
-#define GOUT_GRN(MSG){                                                        \
-  std::cout << ANSI_TXT_GRN << GTEST_BOX << MSG << ANSI_TXT_DFT << std::endl; \
-}
 
-/** ***************************************************************************
-*   global variable to hold the file name parameters
-**************************************************************************** */
 
- QHash<QString, QString> GetTestParameters(){
-
-  QString current_path = QDir::currentPath();
-  QHash<QString, QString> parameters;
-  string config_path(current_path.toStdString() + "/config/test_ocv_yolo_config.ini");
-  int rc = LoadConfig(config_path, parameters);
-  if(rc == 0){
-    parameters["CONFIG_FILE"] = QString::fromStdString(config_path);
-  }else{
-    parameters.clear();
-    GOUT("config file failed to load with error:" << rc << " for '" << config_path << "'");
-  }
-  return parameters;
-}
-/** ***************************************************************************
-*   get current working directory with minimal error checking
-**************************************************************************** */
-
-static string GetCurrentWorkingDirectory() {
-  char cwd[1024];
-  if (getcwd(cwd, sizeof(cwd)) != NULL) {
-      return string(cwd);
-  }else{
-      return "";
-  }
+OcvYoloDetection initComponent() {
+    OcvYoloDetection component;
+    component.SetRunDirectory(".");
+    component.Init();
+    return component;
 }
 
-/** ***************************************************************************
-*   Test component opencv version
-**************************************************************************** */
-TEST(OcvYoloDetection, OpenCVVersion) {
-  GOUT("OpenCV Version:" << CV_MAJOR_VERSION << "." << CV_MINOR_VERSION);
 
-  if(CV_MAJOR_VERSION > 4) return;
-  if(CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >=5) return;
-
-  FAIL() << "YoloV4 requires OpenCV Version 4.5 or higher";
-
-}
-
-/** ***************************************************************************
-*   Test initializing component
-**************************************************************************** */
-TEST(OcvYoloDetection, Init) {
-
-  string current_working_dir = GetCurrentWorkingDirectory();
-  GOUT("current working dir: " << current_working_dir);
-  ASSERT_TRUE(current_working_dir != "");
-
-  QHash<QString, QString> parameters = GetTestParameters();
-  GOUT("config file:" << parameters["CONFIG_FILE"].toStdString());
-  ASSERT_TRUE(parameters.count() > 1);
-
-  OcvYoloDetection *ocv_yolo_detection = new OcvYoloDetection();
-  ASSERT_TRUE(NULL != ocv_yolo_detection);
-
-  string dir_input(current_working_dir + "/../plugin");
-  ocv_yolo_detection->SetRunDirectory(dir_input);
-  string rundir = ocv_yolo_detection->GetRunDirectory();
-  EXPECT_EQ(dir_input, rundir);
-
-  ASSERT_TRUE(ocv_yolo_detection->Init());
-
-  MPFComponentType comp_type = ocv_yolo_detection->GetComponentType();
-  ASSERT_TRUE(MPF_DETECTION_COMPONENT == comp_type);
-
-  map<int,vector<string>> classGroups;
-  for(int c=0; c < DetectionLocation::_classGroupIdx.size(); c++){
-    classGroups[DetectionLocation::_classGroupIdx[c]].push_back(DetectionLocation::_netClasses[c]);
-  }
-
-  for(auto &g : classGroups){
-    stringstream ss;
-    for(string s : g.second) ss << s << ",";
-    GOUT("Group " << g.first << ":" << ss.str());
-  }
-
-  EXPECT_TRUE(ocv_yolo_detection->Close());
-  delete ocv_yolo_detection;
-}
-
-/** ***************************************************************************
-*   Test yolo on GPU
-**************************************************************************** */
-TEST(OcvYoloDetection, DISABLED_YoloInference) {
-
-  string current_working_dir = GetCurrentWorkingDirectory();
-  GOUT("current working dir: " << current_working_dir);
-  ASSERT_TRUE(current_working_dir != "");
-
-  QHash<QString, QString> parameters = GetTestParameters();
-  GOUT("config file:" << parameters["CONFIG_FILE"].toStdString());
-  ASSERT_TRUE(parameters.count() > 1);
-
-  OcvYoloDetection *ocv_yolo_detection = new OcvYoloDetection();
-  ASSERT_TRUE(NULL != ocv_yolo_detection);
-
-  string dir_input(current_working_dir + "/../plugin");
-  ocv_yolo_detection->SetRunDirectory(dir_input);
-  string rundir = ocv_yolo_detection->GetRunDirectory();
-  EXPECT_EQ(dir_input, rundir);
-
-  string image_file = parameters["OCV_IMAGE_FILE" ].toStdString();
-
-  ASSERT_TRUE(ocv_yolo_detection->Init());
-
-  cv::Mat img = cv::imread(image_file);
-  ASSERT_FALSE(img.empty());
-
-  cv::Mat blob = cv::dnn::blobFromImage(img,
-                                         1/255.0,
-                                         cv::Size(416,416),
-                                         cv::Scalar(0,0,0),
-                                         true,false);
-  GOUT("input blob " << blob.size);
-
-  vector<cv::Mat> outs;
-  int inference_count = 30;
-  GOUT("Default device");
-  cv::cuda::DeviceInfo di;
-  GOUT("CUDA Device:" << di.name());
-  auto start_time = chrono::high_resolution_clock::now();
-  for(int i=0;i<inference_count;i++){
-    DetectionLocation::_net.setInput(blob,"data");
-    DetectionLocation::_net.forward(outs, DetectionLocation::_netOutputNames);
-  }
-  auto end_time = chrono::high_resolution_clock::now();
-  double time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
-  GOUT("\tCUDA inference time: " << fixed << setprecision(5) << time_taken/inference_count << "[sec]");
-  for(int i=0;i<outs.size();i++){
-    GOUT("output blob[" << i << "]" << outs[i].size);
-  }
-
-  GOUT("CPU only");
-  DetectionLocation::loadNetToCudaDevice(-1);
-  start_time = chrono::high_resolution_clock::now();
-  for(int i=0;i<inference_count;i++){
-    DetectionLocation::_net.setInput(blob,"data");
-    DetectionLocation::_net.forward(outs, DetectionLocation::_netOutputNames);
-  }
-  end_time = chrono::high_resolution_clock::now();
-  time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
-  GOUT("\tCPU inference time: " << fixed << setprecision(5) << time_taken/inference_count << "[sec]");
-  for(int i=0;i<outs.size();i++){
-    GOUT("output blob[" << i << "]" << outs[i].size);
-  }
-
-
-  EXPECT_TRUE(ocv_yolo_detection->Close());
-  delete ocv_yolo_detection;
-}
 /** ***************************************************************************
 *   Test phase correlator and similarity score images
 **************************************************************************** */
+// TODO: Determine if this is worth saving. If it is, then clean it up.
 TEST(OcvYoloDetection, TestCorrelator) {
-    string current_working_dir = GetCurrentWorkingDirectory();
-    QHash<QString, QString> parameters = GetTestParameters();
-
-    string test_output_dir = current_working_dir + "/test/test_output/";
-    string image_file                = parameters["OCV_CORRELATOR_IMAGE_FILE" ].toStdString();
-    string output_image_file         = parameters["OCV_CORRELATOR_OUTPUT_FILE"].toStdString();
-
-    // 	Create an OCV detection object.
-    OcvYoloDetection *detection = new OcvYoloDetection();
-    ASSERT_TRUE(NULL != detection);
-
-    detection->SetRunDirectory(current_working_dir + "/../plugin");
-    ASSERT_TRUE(detection->Init());
+    string image_file = "data/dog.jpg";
+    string output_image_file = "correlator.png";
 
     GOUT("Correlator Output:\t" << output_image_file);
     GOUT("Input Image:\t"       << image_file);
+    MPFImageJob job("Testing", image_file, { }, { });
+    MPFImageReader imageReader(job);
+    Config cfg(job.job_properties);
+    Frame frame1(imageReader.GetImage());
+    EXPECT_FALSE(frame1.data.empty()) << "Could not load:" << image_file;
 
-    Config cfg(MPFImageJob("Testing", image_file, { }, { }));
-    FrameVec framesVec = {cfg.getImageFrame()};
-    EXPECT_FALSE(framesVec[0].bgr.empty()) << "Could not load:" << image_file;
+    ModelSettings modelSettings;
+    modelSettings.networkConfigFile = "OcvYoloDetection/models/yolov4-tiny.cfg";
+    modelSettings.weightsFile = "OcvYoloDetection/models/yolov4-tiny.weights";
+    modelSettings.namesFile = "OcvYoloDetection/models/coco.names";
+    std::vector<std::vector<DetectionLocation>> detections
+            = YoloNetwork(modelSettings, cfg).GetDetections({frame1}, cfg);
 
-
-    DetectionLocationListVec detections = DetectionLocation::createDetections(cfg, framesVec);
     EXPECT_FALSE(detections[0].empty());
 
-    DetectionLocationList::iterator dogItr=detections[0].begin();
+    std::vector<DetectionLocation>::iterator dogItr=detections[0].begin();
     while(dogItr != detections[0].end()){
       if(dogItr->detection_properties["CLASSIFICATION"]=="dog"){
         GOUT("Found:\t" << dogItr->detection_properties["CLASSIFICATION"]
@@ -265,27 +98,26 @@ TEST(OcvYoloDetection, TestCorrelator) {
     cv::Size2d size(dogItr->width*0.95,dogItr->height*0.95);
     cv::Point2d center(cv::Point2d(dogItr->getRect().tl() + dogItr->getRect().br()) / 2.0);
     cv::Mat dog;
-    cv::getRectSubPix(dogItr->frame.bgr, size, center + offset, dog);
+    cv::getRectSubPix(dogItr->frame.data, size, center + offset, dog);
     cv::imwrite("correlationPatch.png", dog);
 
-    Frame frame;
-    frame.bgr = cv::Mat::zeros(dogItr->frame.bgr.size(),dogItr->frame.bgr.type());
-    cv::Rect2i pasteRoi(cv::Point2i(frame.bgr.size() - dog.size()) / 2, dog.size());
-    dog.copyTo(frame.bgr(pasteRoi));
-    cv::imwrite("correlationFrame.png",frame.bgr);
+    Frame frame2(cv::Mat::zeros(dogItr->frame.data.size(), dogItr->frame.data.type()));
+    cv::Rect2i pasteRoi(cv::Point2i(frame2.data.size() - dog.size()) / 2, dog.size());
+    dog.copyTo(frame2.data(pasteRoi));
+    cv::imwrite("correlationFrame.png",frame2.data);
 
     Track t;
-    t.locations.push_back(
+    t.add(
       DetectionLocation(cfg,
-                        frame,
+                        frame2,
                         pasteRoi,
                         0.97,
                         dogItr->getClassFeature(),
                         cv::Mat()));
-    GOUT("Shift image " << t.locations.back().getRect() << " centered at " << (t.locations.back().getRect().tl()+t.locations.back().getRect().br())/2.0);
+    GOUT("Shift image " << t.back().getRect() << " centered at " << (t.back().getRect().tl()+t.back().getRect().br())/2.0);
 
 
-    cv::Point2d ph_offset =  dogItr->_phaseCorrelate(t);
+    cv::Point2d ph_offset =  dogItr->phaseCorrelate(t);
     cv::Point2d diff = (offset + ph_offset);
     double dist = sqrt(diff.dot(diff));
     GOUT("phase correlation found offset:" << ph_offset << " at a distance of " << dist << " pixels");
@@ -294,153 +126,242 @@ TEST(OcvYoloDetection, TestCorrelator) {
     float feature_dist = dogItr->featureDist(t);
     GOUT("feature distance: "<< feature_dist );
     EXPECT_LE(feature_dist,1E-3);
-
-    EXPECT_TRUE(detection->Close());
-    delete detection;
-}
-
-/** ***************************************************************************
-*   Test detection in images
-**************************************************************************** */
-TEST(OcvYoloDetection, TestOnKnownImage) {
-
-    string current_working_dir = GetCurrentWorkingDirectory();
-    QHash<QString, QString> parameters = GetTestParameters();
-
-    string test_output_dir = current_working_dir + "/test/test_output/";
-    string known_image_file          = parameters["OCV_IMAGE_FILE"       ].toStdString();
-    string known_detections_file     = parameters["OCV_IMAGE_KNOWN_DETECTIONS" ].toStdString();
-    string output_image_file         = parameters["OCV_IMAGE_OUTPUT_FILE"].toStdString();
-    string output_detections_file    = parameters["OCV_IMAGE_FOUND_DETECTIONS" ].toStdString();
-    float comparison_score_threshold = parameters["OCV_IMAGE_COMPARISON_SCORE"].toFloat();
-
-    // 	Create an OCV detection object.
-    OcvYoloDetection *detection = new OcvYoloDetection();
-    ASSERT_TRUE(NULL != detection);
-
-    detection->SetRunDirectory(current_working_dir + "/../plugin");
-    ASSERT_TRUE(detection->Init());
-
-    GOUT("Input Known Detections:\t"  << known_detections_file);
-    GOUT("Output Found Detections:\t" << output_detections_file);
-    GOUT("Input Image:\t"             << known_image_file);
-    GOUT("Output Image:\t"            << output_image_file);
-    GOUT("comparison threshold:\t"    << comparison_score_threshold);
-
-    // 	Load the known detections into memory.
-    vector<MPFImageLocation> known_detections;
-    ASSERT_TRUE(ReadDetectionsFromFile::ReadImageLocations(known_detections_file, known_detections));
-
-
-    MPFImageJob image_job("Testing", known_image_file, {{"DETECTION_CONFIDENCE_THRESHOLD","0.3"},
-                                                        {"DETECTION_NMS_THRESHOLD","0.5"},
-                                                        {"DETECTION_IMAGE_SIZE","320"}},
-                                                       {});
-    vector<MPFImageLocation> found_detections = detection->GetDetections(image_job);
-    EXPECT_FALSE(found_detections.empty());
-
-    // create output video to view performance
-    ImageGeneration image_generation;
-    image_generation.WriteDetectionOutputImage(known_image_file,
-                                               found_detections,
-                                               test_output_dir + "/" + output_image_file);
-
-    WriteDetectionsToFile::WriteVideoTracks(test_output_dir + "/" + output_detections_file,
-                                            found_detections);
-
-    float comparison_score = DetectionComparisonA::CompareDetectionOutput(found_detections, known_detections);
-    GOUT("Detection comparison score: " << comparison_score);
-    ASSERT_TRUE(comparison_score > comparison_score_threshold);
-
-    EXPECT_TRUE(detection->Close());
-    delete detection;
 }
 
 
-/** ***************************************************************************
-*   Test detection and tracking in videos
-**************************************************************************** */
-TEST(OcvYoloDetection, TestOnKnownVideo) {
 
-    string         current_working_dir = GetCurrentWorkingDirectory();
-    QHash<QString, QString> parameters = GetTestParameters();
+template <typename T>
+T findDetectionWithClass(const std::string& classification,
+                         const std::vector<T> &detections) {
+    for (const auto& detection : detections) {
+        if (classification == detection.detection_properties.at("CLASSIFICATION")) {
+            return detection;
+        }
+    }
 
-    string test_output_dir = current_working_dir + "/test/test_output/";
-
-    GOUT("Reading parameters for video test.");
-
-    int start = parameters["OCV_VIDEO_START_FRAME"].toInt();
-    int  stop = parameters["OCV_VIDEO_STOP_FRAME" ].toInt();
-    int  rate = parameters["OCV_VIDEO_FRAME_RATE" ].toInt();
-    string inTrackFile  = parameters["OCV_VIDEO_KNOWN_TRACKS"].toStdString();
-    string inVideoFile  = parameters["OCV_VIDEO_FILE"].toStdString();
-    string outTrackFile = parameters["OCV_VIDEO_FOUND_TRACKS"].toStdString();
-    string outVideoFile = parameters["OCV_VIDEO_OUTPUT_FILE"].toStdString();
-    float comparison_score_threshold = parameters["OCV_VIDEO_COMPARISON_SCORE_VIDEO"].toFloat();
-
-    GOUT("Start:\t"    << start);
-    GOUT("Stop:\t"     << stop);
-    GOUT("Rate:\t"     << rate);
-    GOUT("inTrack:\t"  << inTrackFile);
-    GOUT("outTrack:\t" << outTrackFile);
-    GOUT("inVideo:\t"  << inVideoFile);
-    GOUT("outVideo:\t" << outVideoFile);
-    GOUT("comparison threshold:\t" << comparison_score_threshold);
-
-    GOUT("\tCreating OCV Yolo Detection");
-    OcvYoloDetection *ocv_yolo_detection = new OcvYoloDetection();
-    ASSERT_TRUE(NULL != ocv_yolo_detection);
-    ocv_yolo_detection->SetRunDirectory(current_working_dir + "/../plugin");
-    ASSERT_TRUE(ocv_yolo_detection->Init());
-
-    GOUT("\tRunning the tracker on the video: " << inVideoFile);
-    MPFVideoJob videoJob("Testing", inVideoFile, start, stop, { }, { });
-    auto start_time = chrono::high_resolution_clock::now();
-    vector<MPFVideoTrack> found_tracks = ocv_yolo_detection->GetDetections(videoJob);
-    auto end_time = chrono::high_resolution_clock::now();
-    EXPECT_FALSE(found_tracks.empty());
-    double time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count();
-    time_taken = time_taken * 1e-9;
-    GOUT("\tVideoJob processing time: " << fixed << setprecision(5) << time_taken << "[sec]");
-
-    GOUT("\tWriting detected video and test tracks to files.");
-    VideoGeneration video_generation;
-    video_generation.WriteTrackOutputVideo(inVideoFile, found_tracks, (test_output_dir + "/" + outVideoFile));
-    WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/" + outTrackFile), found_tracks);
-
-    GOUT("\tClosing down detection.");
-    EXPECT_TRUE(ocv_yolo_detection->Close());
-    delete ocv_yolo_detection;
+    throw std::runtime_error("No detection with class: " + classification);
 }
 
 
-/** ***************************************************************************
-*   Test dlib max cost detection
-**************************************************************************** */
-#include <dlib/optimization.h>
-TEST(OcvYoloDetection, DISABLED_MaxCostAssignment) {
-  dlib::matrix<long> costs = dlib::zeros_matrix<long>(8,8);
-  //dlib::matrix<int> costs = dlib::zeros_matrix<int>(8,8);  // this gives wrong result. Overflow ?!
-  costs = 1,2,2080142655,2086630807,3,4,5,6,
-          2096932173,2068833426,7,8,2098569871,9,10,11,
-          2144440038,2115634073,12,13,2134986491,14,15,16,
-          2129194210,2147086229,17,18,2132959446,19,20,21,
-          2141311336,2123985951,22,23,2144927865,24,25,26,
-          27,28,2087059297,2147231454,29,30,31,32,
-          33,34,2147248774,2082771391,35,36,37,38,
-          2126672429,2138828231,39,40,2116060790,41,42,43;
-
-  vector<long> av; //assignment vector to return
-  av = dlib::max_cost_assignment(costs);
-  GOUT( "solved assignment vec["<< av.size() << "] = "  << av);
-
+Properties getTinyYoloConfig(float confidenceThreshold = 0.5) {
+    return {
+            { "MODEL_NAME", "tiny yolo" },
+            {"NET_INPUT_IMAGE_SIZE", "416"},
+            { "CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold) }
+    };
 }
 
 
-/** **************************************************************************
-*
-**************************************************************************** */
-int main(int argc, char **argv){
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+TEST(OcvYoloDetection, TestImage) {
+    MPFImageJob job("Test", "data/dog.jpg", getTinyYoloConfig(), {});
+
+    auto detections = initComponent().GetDetections(job);
+    ASSERT_EQ(3, detections.size());
+
+    {
+        const auto& dogDetection = findDetectionWithClass("dog", detections);
+        ASSERT_EQ(127, dogDetection.x_left_upper);
+        ASSERT_EQ(210, dogDetection.y_left_upper);
+        ASSERT_EQ(201, dogDetection.width);
+        ASSERT_EQ(319, dogDetection.height);
+        ASSERT_NEAR(0.727862, dogDetection.confidence, 0.001);
+        ASSERT_EQ("dog", dogDetection.detection_properties.at("CLASSIFICATION"));
+    }
+    {
+        const auto& bikeDetection = findDetectionWithClass("bicycle", detections);
+        ASSERT_EQ(185, bikeDetection.x_left_upper);
+        ASSERT_EQ(134, bikeDetection.y_left_upper);
+        ASSERT_EQ(392, bikeDetection.width);
+        ASSERT_EQ(296, bikeDetection.height);
+        ASSERT_NEAR(0.74281, bikeDetection.confidence, 0.001);
+        ASSERT_EQ("bicycle", bikeDetection.detection_properties.at("CLASSIFICATION"));
+    }
+    {
+        const auto& carDetection = findDetectionWithClass("car", detections);
+        ASSERT_EQ(467, carDetection.x_left_upper);
+        ASSERT_EQ(78, carDetection.y_left_upper);
+        ASSERT_EQ(227, carDetection.width);
+        ASSERT_EQ(89, carDetection.height);
+        ASSERT_NEAR(0.656565, carDetection.confidence, 0.001);
+        ASSERT_EQ("car", carDetection.detection_properties.at("CLASSIFICATION"));
+    }
 }
+
+
+void show_track(const std::string& videoPath, const MPFVideoTrack &track) {
+    MPFVideoCapture cap(videoPath);
+    std::cout << "Track class: " << track.detection_properties.at("CLASSIFICATION") << std::endl;
+
+    for (const auto& pair : track.frame_locations) {
+        std::cout << "Frame: " << pair.first << "   Class: " << pair.second.detection_properties.at("CLASSIFICATION") << std::endl;
+        cap.SetFramePosition(pair.first);
+        cv::Mat frame;
+        cap.Read(frame);
+        cv::Rect detectionRect(pair.second.x_left_upper, pair.second.y_left_upper,
+                               pair.second.width, pair.second.height);
+
+        cv::rectangle(frame, detectionRect, {255, 0, 0});
+
+        cv::imshow("test", frame);
+        cv::waitKey();
+    }
+}
+
+
+TEST(OcvYoloDetection, TestVideo) {
+    auto jobProps = getTinyYoloConfig(0.92);
+    jobProps.emplace("TRACKING_DISABLE_MOSSE_TRACKER", "true");
+    MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 2, 10,
+                    jobProps, {});
+
+    auto tracks = initComponent().GetDetections(job);
+    ASSERT_EQ(3, tracks.size());
+    {
+        auto personTrack = findDetectionWithClass("person", tracks);
+        ASSERT_EQ(2, personTrack.start_frame);
+        ASSERT_EQ(5, personTrack.stop_frame);
+        ASSERT_EQ(2, personTrack.frame_locations.size());
+        ASSERT_NEAR(0.927688, personTrack.confidence, 0.001);
+
+        const auto& personDetection = personTrack.frame_locations.at(2);
+        ASSERT_EQ(532, personDetection.x_left_upper);
+        ASSERT_EQ(0, personDetection.y_left_upper);
+        ASSERT_EQ(70, personDetection.width);
+        ASSERT_EQ(147, personDetection.height);
+        ASSERT_EQ(personTrack.confidence, personDetection.confidence);
+    }
+
+    int carTrack1Idx = -1;
+    int carTrack2Idx = -1;
+    for (int i = 0; i < tracks.size(); ++i) {
+        const auto& track = tracks[i];
+        if (track.detection_properties.at("CLASSIFICATION") != "car") {
+            continue;
+        }
+        if (track.frame_locations.at(2).x_left_upper == 223) {
+            carTrack1Idx = i;
+        }
+        else {
+            carTrack2Idx = i;
+        }
+    }
+    ASSERT_TRUE(carTrack1Idx >= 0);
+    ASSERT_TRUE(carTrack2Idx >= 0);
+
+    {
+        const auto& carTrack = tracks.at(carTrack1Idx);
+        ASSERT_EQ(2, carTrack.start_frame);
+        ASSERT_EQ(10, carTrack.stop_frame);
+        ASSERT_EQ(9, carTrack.frame_locations.size());
+        ASSERT_NEAR(0.961101, carTrack.confidence, 0.001);
+
+        const auto& carDetection = carTrack.frame_locations.at(2);
+        ASSERT_EQ(223, carDetection.x_left_upper);
+        ASSERT_EQ(20, carDetection.y_left_upper);
+        ASSERT_EQ(318, carDetection.width);
+        ASSERT_EQ(86, carDetection.height);
+        ASSERT_NEAR(0.952526, carDetection.confidence, 0.001);
+    }
+
+    {
+        const auto& carTrack = tracks.at(carTrack2Idx);
+        ASSERT_EQ(2, carTrack.start_frame);
+        ASSERT_EQ(10, carTrack.stop_frame);
+        ASSERT_EQ(7, carTrack.frame_locations.size());
+        ASSERT_NEAR(0.9496, carTrack.confidence, 0.001);
+
+        const auto& carDetection = carTrack.frame_locations.at(3);
+        ASSERT_EQ(591, carDetection.x_left_upper);
+        ASSERT_EQ(37, carDetection.y_left_upper);
+        ASSERT_EQ(434, carDetection.width);
+        ASSERT_EQ(131, carDetection.height);
+        ASSERT_EQ(carTrack.confidence, carDetection.confidence);
+    }
+
+}
+
+// TODO Figure out how to fix. Caused by using ocv tracker in OcvYoloDetection::ProcessFrameDetections
+TEST(OcvYoloDetection, DISABLED_TestTrackingError) {
+    MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 1, 2,
+                    getTinyYoloConfig(0.95), {});
+
+    auto tracks = initComponent().GetDetections(job);
+    for (const auto& track : tracks) {
+        for (const auto& imgLocPair : track.frame_locations) {
+            ASSERT_EQ(1, imgLocPair.second.detection_properties.count("CLASSIFICATION"));
+        }
+    }
+}
+
+
+TEST(OcvYoloDetection, TestInvalidModel) {
+    ModelSettings modelSettings;
+    modelSettings.networkConfigFile = "fake config";
+    modelSettings.namesFile = "fake names";
+    modelSettings.weightsFile = "fake weights";
+    Config config({});
+
+    try {
+        YoloNetwork network(modelSettings, config);
+        FAIL() << "Expected exception not thrown.";
+    }
+    catch (const MPFDetectionException &e) {
+        ASSERT_EQ(MPF_COULD_NOT_READ_DATAFILE, e.error_code);
+    }
+}
+
+
+bool objectFound(const std::string &expectedObjectName, const Properties &detectionProperties) {
+    return expectedObjectName == detectionProperties.at("CLASSIFICATION");
+}
+
+bool objectFound(const std::string &expectedObjectName, int frameNumber,
+                 const std::vector<MPFVideoTrack> &tracks) {
+
+    return std::any_of(tracks.begin(), tracks.end(), [&](const MPFVideoTrack &track) {
+        return frameNumber >= track.start_frame
+               && frameNumber <= track.stop_frame
+               && objectFound(expectedObjectName, track.detection_properties)
+               && objectFound(expectedObjectName,
+                              track.frame_locations.at(frameNumber).detection_properties);
+
+    });
+}
+
+bool objectFound(const std::string &expected_object_name,
+                 const std::vector<MPFImageLocation> &detections) {
+    return std::any_of(detections.begin(), detections.end(), [&](const MPFImageLocation &loc) {
+        return objectFound(expected_object_name, loc.detection_properties);
+    });
+}
+
+
+TEST(OcvYoloDetection, TestWhitelist) {
+    Properties jobProps = getTinyYoloConfig();
+    auto component = initComponent();
+
+    {
+        jobProps["CLASS_WHITELIST_FILE"] = "data/test-whitelist.txt";
+        MPFImageJob job("Test", "data/dog.jpg", jobProps, {});
+
+        std::vector<MPFImageLocation> results = component.GetDetections(job);
+        ASSERT_TRUE(objectFound("dog", results));
+        ASSERT_TRUE(objectFound("bicycle", results));
+        ASSERT_FALSE(objectFound("car", results));
+    }
+    {
+        int end_frame = 2;
+        setenv("TEST_ENV_VAR", "data", true);
+        setenv("TEST_ENV_VAR2", "whitelist", true);
+        jobProps["CLASS_WHITELIST_FILE"] = "$TEST_ENV_VAR/test-${TEST_ENV_VAR2}.txt";
+
+        MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, jobProps, {});
+
+        std::vector<MPFVideoTrack> results = component.GetDetections(job);
+        for (int i = 0; i <= end_frame; i++) {
+            ASSERT_TRUE(objectFound("person", i, results));
+            ASSERT_FALSE(objectFound("car", i, results));
+        }
+    }
+}
+

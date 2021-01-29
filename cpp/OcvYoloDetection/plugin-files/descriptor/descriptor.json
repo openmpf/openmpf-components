@@ -25,22 +25,34 @@
       ],
       "properties": [
         {
-          "name": "DETECTION_CONFIDENCE_THRESHOLD",
+          "name": "CONFIDENCE_THRESHOLD",
           "description": "Minimum detection confidence value [0...1] needed to keep detection and start a track.",
           "type": "FLOAT",
           "defaultValue": "0.5"
         },
         {
-          "name": "DETECTION_NMS_THRESHOLD",
-          "description": "Non maximum suppression threshold [0...1], IoU for duplicate object detection supression.",
-          "type": "FLOAT",
-          "defaultValue": "0.3"
+          "name": "MODEL_NAME",
+          "description": "Name of YOLO model to run.",
+          "type": "STRING",
+          "defaultValue": "tiny yolo"
         },
         {
-          "name": "DETECTION_IMAGE_SIZE",
-          "description": "Scaled image width and height for detection network input (e.g. 320,416, or 608).",
+          "name": "MODELS_DIR_PATH",
+          "description": "Path to models directory",
+          "type": "STRING",
+          "propertiesKey": "detection.models.dir.path"
+        },
+        {
+          "name": "NET_INPUT_IMAGE_SIZE",
+          "description": "Scaled image width and height for detection network input (e.g. 320, 416, or 608).",
           "type": "INT",
-          "defaultValue": "320"
+          "defaultValue": "416"
+        },
+        {
+          "name": "DETECTION_NMS_THRESHOLD",
+          "description": "Non maximum suppression threshold [0...1], IoU for duplicate object detection suppression.",
+          "type": "FLOAT",
+          "defaultValue": "0.3"
         },
         {
           "name": "DETECTION_FRAME_BATCH_SIZE",
@@ -49,10 +61,22 @@
           "defaultValue": "16"
         },
         {
+          "name": "FRAME_QUEUE_CAPACITY",
+          "description": "The maximum number of frames in the frame queue used by MPFAsyncVideoCapture.",
+          "type": "INT",
+          "defaultValue": "16"
+        },
+        {
           "name": "NUMBER_OF_CLASSIFICATIONS_PER_REGION",
           "description": "Number of classification to return per detection",
           "type": "INT",
           "defaultValue": "5"
+        },
+        {
+          "name": "CLASS_WHITELIST_FILE",
+          "description": "When provided, only class names contained in the specified file will be reported.",
+          "type": "STRING",
+          "defaultValue": ""
         },
         {
           "name": "TRACKING_MAX_FRAME_GAP",
@@ -130,13 +154,13 @@
           "name": "CUDA_DEVICE_ID",
           "description": "CUDA device / GPU to use, -1 to only use CPU",
           "type": "INT",
-          "defaultValue": "-1"
+          "propertiesKey": "detection.cuda.device.id"
         },
         {
           "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
           "description": "if true will fallback to CPU only when GPU fails to initialize",
           "type": "BOOLEAN",
-          "defaultValue": "true"
+          "propertiesKey": "detection.use.cpu.when.gpu.problem"
         }
 
       ]
@@ -144,98 +168,231 @@
   },
   "actions": [
     {
-      "name": "OCV YOLO DETECTION ACTION",
-      "description": "Executes the OpenCV Yolo detection algorithm using the default parameters.",
+      "name": "OCV TINY YOLO OBJECT DETECTION ACTION",
+      "description": "Runs the Tiny YOLO object detection Darknet model.",
       "algorithm": "OCVYOLO",
-      "properties": []
-    },
-    {
-      "name": "OCV YOLO DETECTION (WITH AUTO-ORIENTATION) ACTION",
-      "description": "Executes the OpenCV Yolo detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
-      "algorithm": "YOLOCV",
       "properties": [
         {
-          "name": "AUTO_ROTATE",
-          "value": "true"
+          "name": "CONFIDENCE_THRESHOLD",
+          "value": "0.5"
         },
         {
-          "name": "AUTO_FLIP",
-          "value": "true"
+          "name": "MODEL_NAME",
+          "value": "TINY YOLO"
+        },
+        {
+          "name": "NET_INPUT_IMAGE_SIZE",
+          "value": "416"
+        }
+      ]
+    },
+    {
+      "name": "OCV TINY YOLO VEHICLE DETECTION ACTION",
+      "description": "Runs the Tiny YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
+      "algorithm": "OCVYOLO",
+      "properties": [
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "value": "0.5"
+        },
+        {
+          "name": "MODEL_NAME",
+          "value": "TINY YOLO"
+        },
+        {
+          "name": "NET_INPUT_IMAGE_SIZE",
+          "value": "416"
+        },
+        {
+          "name": "CLASS_WHITELIST_FILE",
+          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-whitelist.txt"
+        }
+      ]
+    },
+    {
+      "name": "OCV YOLO OBJECT DETECTION ACTION",
+      "description": "Runs the YOLO object detection Darknet model.",
+      "algorithm": "OCVYOLO",
+      "properties": [
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "value": "0.5"
+        },
+        {
+          "name": "MODEL_NAME",
+          "value": "YOLO"
+        },
+        {
+          "name": "NET_INPUT_IMAGE_SIZE",
+          "value": "608"
+        }
+      ]
+    },
+    {
+      "name": "OCV YOLO V3 OBJECT DETECTION ACTION",
+      "description": "Runs the YOLO V3 object detection Darknet model.",
+      "algorithm": "OCVYOLO",
+      "properties": [
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "value": "0.5"
+        },
+        {
+          "name": "MODEL_NAME",
+          "value": "YOLO V3"
+        },
+        {
+          "name": "NET_INPUT_IMAGE_SIZE",
+          "value": "608"
+        }
+      ]
+    },
+    {
+      "name": "OCV TINY YOLO V3 OBJECT DETECTION ACTION",
+      "description": "Runs the TINY YOLO V3 object detection Darknet model.",
+      "algorithm": "OCVYOLO",
+      "properties": [
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "value": "0.5"
+        },
+        {
+          "name": "MODEL_NAME",
+          "value": "TINY YOLO V3"
+        },
+        {
+          "name": "NET_INPUT_IMAGE_SIZE",
+          "value": "416"
+        }
+      ]
+    },
+    {
+      "name": "OCV YOLO VEHICLE DETECTION ACTION",
+      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
+      "algorithm": "OCVYOLO",
+      "properties": [
+        {
+          "name": "CONFIDENCE_THRESHOLD",
+          "value": "0.5"
+        },
+        {
+          "name": "MODEL_NAME",
+          "value": "YOLO"
+        },
+        {
+          "name": "NET_INPUT_IMAGE_SIZE",
+          "value": "608"
+        },
+        {
+          "name": "CLASS_WHITELIST_FILE",
+          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-whitelist.txt"
         }
       ]
     }
   ],
   "tasks": [
     {
-      "name": "OCV YOLO DETECTION TASK",
-      "description": "Performs OpenCV Yolo detection.",
+      "name": "OCV TINY YOLO OBJECT DETECTION TASK",
+      "description": "Runs the Tiny YOLO object detection Darknet model.",
       "actions": [
-        "OCV YOLO DETECTION ACTION"
+        "OCV TINY YOLO OBJECT DETECTION ACTION"
       ]
     },
     {
-      "name": "OCV YOLO DETECTION (WITH AUTO-ORIENTATION) TASK",
-      "description": "Executes the OpenCV Yolo detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
+      "name": "OCV TINY YOLO VEHICLE DETECTION TASK",
+      "description": "Runs the Tiny YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
       "actions": [
-        "OCV YOLO DETECTION (WITH AUTO-ORIENTATION) ACTION"
+        "OCV TINY YOLO VEHICLE DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "OCV YOLO OBJECT DETECTION TASK",
+      "description": "Runs the YOLO object detection Darknet model.",
+      "actions": [
+        "OCV YOLO OBJECT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "OCV YOLO V3 OBJECT DETECTION TASK",
+      "description": "Runs the YOLO V3 object detection Darknet model.",
+      "actions": [
+        "OCV YOLO V3 OBJECT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "OCV TINY YOLO V3 OBJECT DETECTION TASK",
+      "description": "Runs the TINY YOLO V3 object detection Darknet model.",
+      "actions": [
+        "OCV TINY YOLO V3 OBJECT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "OCV YOLO VEHICLE DETECTION TASK",
+      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
+      "actions": [
+        "OCV YOLO VEHICLE DETECTION ACTION"
       ]
     }
   ],
   "pipelines": [
     {
-      "name": "OCV YOLO DETECTION PIPELINE",
-      "description": "Performs OpenCV Yolo detection.",
+      "name": "OCV TINY YOLO OBJECT DETECTION PIPELINE",
+      "description": "Runs the Tiny YOLO object detection Darknet model.",
       "tasks": [
-        "OCV YOLO DETECTION TASK"
+        "OCV TINY YOLO OBJECT DETECTION TASK"
       ]
     },
     {
-      "name": "OCV YOLO DETECTION (WITH MARKUP) PIPELINE",
-      "description": "Performs OpenCV Yolo detection and marks up the results.",
+      "name": "OCV TINY YOLO OBJECT DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the Tiny YOLO object detection Darknet model and produces markup.",
       "tasks": [
-        "OCV YOLO DETECTION TASK",
+        "OCV TINY YOLO OBJECT DETECTION TASK",
         "OCV GENERIC MARKUP TASK"
       ]
     },
     {
-      "name": "OCV YOLO DETECTION (WITH MOG MOTION PREPROCESSOR) PIPELINE",
-      "description": "Performs MOG motion preprocessing and OpenCV Yolo detection.",
+      "name": "OCV YOLO OBJECT DETECTION PIPELINE",
+      "description": "Runs the YOLO object detection Darknet model.",
       "tasks": [
-        "MOG MOTION DETECTION PREPROCESSOR TASK",
-        "OCV YOLO DETECTION TASK"
+        "OCV YOLO OBJECT DETECTION TASK"
       ]
     },
     {
-      "name": "OCV YOLO DETECTION (WITH SUBSENSE MOTION PREPROCESSOR) PIPELINE",
-      "description": "Performs SuBSENSE motion preprocessing and OpenCV face detection.",
+      "name": "OCV YOLO OBJECT DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the YOLO object detection Darknet model and produces markup.",
       "tasks": [
-        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
-        "OCV YOLO DETECTION TASK"
-      ]
-    },
-    {
-      "name": "OCV YOLO DETECTION (WITH MOG MOTION PREPROCESSOR AND MARKUP) PIPELINE",
-      "description": "Performs MOG motion preprocessing, OpenCV Yolo detection, and markup.",
-      "tasks": [
-        "MOG MOTION DETECTION PREPROCESSOR TASK",
-        "OCV YOLO DETECTION TASK",
+        "OCV YOLO OBJECT DETECTION TASK",
         "OCV GENERIC MARKUP TASK"
       ]
     },
     {
-      "name": "OCV YOLO DETECTION (WITH SUBSENSE MOTION PREPROCESSOR AND MARKUP) PIPELINE",
-      "description": "Performs SuBSENSE motion preprocessing, OpenCV Yolo detection, and markup.",
+      "name": "OCV YOLO V3 OBJECT DETECTION PIPELINE",
+      "description": "Runs the YOLO V3 object detection Darknet model.",
       "tasks": [
-        "SUBSENSE MOTION DETECTION PREPROCESSOR TASK",
-        "OCV YOLO DETECTION TASK",
+        "OCV YOLO V3 OBJECT DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV YOLO V3 OBJECT DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the YOLO object detection Darknet model and produces markup.",
+      "tasks": [
+        "OCV YOLO V3 OBJECT DETECTION TASK",
         "OCV GENERIC MARKUP TASK"
       ]
     },
     {
-      "name": "OCV YOLO DETECTION (WITH AUTO-ORIENTATION) PIPELINE",
-      "description": "Executes the OpenCV Yolo detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
+      "name": "OCV TINY YOLO V3 OBJECT DETECTION PIPELINE",
+      "description": "Runs the TINY YOLO V3 object detection Darknet model.",
       "tasks": [
-        "OCV YOLO DETECTION (WITH AUTO-ORIENTATION) TASK"
+        "OCV TINY YOLO V3 OBJECT DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV TINY YOLO V3 OBJECT DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the TINY YOLO object detection Darknet model and produces markup.",
+      "tasks": [
+        "OCV TINY YOLO V3 OBJECT DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
       ]
     }
   ]

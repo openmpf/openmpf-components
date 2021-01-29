@@ -26,60 +26,92 @@
 #ifndef OCVYOLODETECTION_UTIL_H
 #define OCVYOLODETECTION_UTIL_H
 
-#include <opencv2/opencv.hpp>
+#include <ostream>
+#include <string>
+#include <sstream>
+#include <vector>
+
 #include <dlib/matrix.h>
 
-#include "detectionComponentUtils.h"
+#include <opencv2/core.hpp>
 
-#include "types.h"
+#include <MPFDetectionObjects.h>
 
-namespace MPF{
-  namespace COMPONENT{
 
-    using namespace std;
 
-    #define THROW_EXCEPTION(MSG){                                    \
-      string path(__FILE__);                                         \
-      string f(path.substr(path.find_last_of("/\\") + 1));           \
-      throw runtime_error(f + "[" + to_string(__LINE__)+"] " + MSG); \
-    }                                                                          ///< exception macro so we can see where in the code it happened
+/// snap a rectangle to frame edges if close
+cv::Rect2i snapToEdges(const cv::Rect2i &rt,
+                       const cv::Rect2i &rm,
+                       const cv::Size2i &frameSize,
+                       float edgeSnapDist);
 
-    cv::Rect2i snapToEdges(const cv::Rect2i& rt,
-                           const cv::Rect2i& rm,
-                           const cv::Size2i& frameSize,
-                          const float edgeSnapDist);                           ///< snap a rectangle to frame edges if close
 
-    inline
-    float cosDist(const cv::Mat &f1, const cv::Mat &f2){                       ///< cosine distance between two unit vectors
-      return 1.0f - max( 0.0f, min( 1.0f, static_cast<float>(f1.dot(f2))));
-    }
-
-    string format(cv::Mat1f m);                                                ///< output cv matrix on single line
-
-    template<typename T>
-    string dformat(dlib::matrix<T> m);                                         ///< output dlib matrix on single line
-
-    cv::Mat fromString(const string data,
-                       const int    rows,
-                       const int    cols,
-                       const string dt);                                       ///< read opencv matrix from string
-
-    template<typename T>
-    T get(const Properties &p, const string &k, const T def);                  ///< get MPF properties of various types
-
-    template<typename T>
-    T getEnv(const Properties &p, const string &k, const T def);               ///< get MPF properties of various types with fallback to environment variables
-
-    template<typename T>
-    ostream& operator<< (ostream& os, const vector<T>& v);                     ///< output vector to stream
-    ostream& operator<< (ostream& os, const MPFImageLocation& l);              ///< output MPFImageLocation to stream
-    ostream& operator<< (ostream& os, const MPFVideoTrack& t);                 ///< output MPFVideoTrack to stream
-
-  }
+/// cosine distance between two unit vectors
+inline float cosDist(const cv::Mat &f1, const cv::Mat &f2) {
+    return 1.0f - std::max(0.0f, std::min(1.0f, static_cast<float>(f1.dot(f2))));
 }
 
-namespace cv{
-  std::ostream& operator<< (std::ostream& os, const cv::Rect& r);              ///< reformat cv::rect output to stream
+/// output cv matrix on single line
+std::string format(const cv::Mat1f &m);
+
+
+/** ****************************************************************************
+ *  print out dlib matrix on a single line
+ *
+ * \param   m matrix to serialize to single line string
+ * \returns single line string representation of matrix
+ *
+***************************************************************************** */
+template<typename T>
+std::string dformat(const dlib::matrix<T> &m) {
+    std::stringstream ss;
+    ss << "{";
+    for (size_t r = 0; r < m.nr(); r++) {
+        for (size_t c = 0; c < m.nc(); c++) {
+            ss << m(r, c);
+            if (c != m.nc() - 1) { ss << ","; }
+        }
+        if (r != m.nr() - 1) { ss << "; "; }
+    }
+    ss << "}";
+    return ss.str();
+}
+
+/// read opencv matrix from string
+cv::Mat fromString(const std::string &data,
+                   int rows,
+                   int cols,
+                   const std::string& dt = "f");
+
+
+
+/// output vector to stream
+template<typename T>
+std::ostream & operator<<(std::ostream &os, const std::vector<T> &v) {
+    os << "{";
+    size_t last = v.size() - 1;
+    for (size_t i = 0; i < v.size(); ++i) {
+        os << v[i];
+        if (i != last) { os << ", "; }
+    }
+    os << "}";
+    return os;
+}
+
+
+namespace MPF {
+    namespace COMPONENT {
+        /// output MPFImageLocation to stream
+        std::ostream &operator<<(std::ostream &os, const MPF::COMPONENT::MPFImageLocation &l);
+
+        /// output MPFVideoTrack to stream
+        std::ostream &operator<<(std::ostream &os, const MPF::COMPONENT::MPFVideoTrack &t);
+    }
+}
+
+namespace cv {
+    /// reformat cv::rect output to stream
+    std::ostream &operator<<(std::ostream &os, const cv::Rect &r);
 }
 
 #endif

@@ -27,104 +27,98 @@
 #ifndef OCVYOLODETECTION_CONFIG_H
 #define OCVYOLODETECTION_CONFIG_H
 
+#include <ostream>
+#include <string>
+
 #include <log4cxx/logger.h>
 #include <opencv2/opencv.hpp>
-#include <thread>
-#include <mutex>
-#include <atomic>
 
-#include "adapters/MPFImageAndVideoDetectionComponentAdapter.h"
-#include "MPFImageReader.h"
-#include "MPFVideoCapture.h"
-
-#include "types.h"
-
-namespace MPF{
- namespace COMPONENT{
-
-  using namespace std;
-
-  /** ****************************************************************************
-  * logging shorthand macros
-  ****************************************************************************** */
-  #define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log, MSG) }
-  #define LOG_DEBUG(MSG){ LOG4CXX_DEBUG(Config::log, MSG) }
-  #define LOG_INFO( MSG){ LOG4CXX_INFO (Config::log, MSG) }
-  #define LOG_WARN( MSG){ LOG4CXX_WARN (Config::log, MSG) }
-  #define LOG_ERROR(MSG){ LOG4CXX_ERROR(Config::log, MSG) }
-  #define LOG_FATAL(MSG){ LOG4CXX_FATAL(Config::log, MSG) }
-
-  /* **************************************************************************
-  *   Configuration parameters populated with appropriate values & defaults
-  *************************************************************************** */
-  class Config{
-    public:
-      float   confThresh;               ///< detection confidence threshold
-      float   nmsThresh;                ///< non-maximum supression threshold to remove redundant bboxes
-      int     inputImageSize;           ///< network image input size (320, 416, 608)
-      int     numClassPerRegion;        ///< number of class labels and confidence scores to return for a bbox
-      long    detFrameInterval;         ///< number of frames between looking for new detection (tracking only)
-      int     frameBatchSize;           ///< number of frames to batch inference when processing video
-
-      float   maxClassDist;             ///< maximun class feature scores above which detections will not be considered for the same track
-      float   maxFeatureDist;           ///< maximum feature distance to maintain track continuity
-      float   maxCenterDist;            ///< maximum spatial distance normalized by diagonal to maintain track continuity
-      long    maxFrameGap;              ///< maximum temporal distance (frames) to maintain track continuity
-      float   maxIOUDist;               ///< maximum for (1 - Intersection/Union) to maintain track continuity
-      float   edgeSnapDist;             ///< distance as a fractino of image dimensions within which bboxes are snapped to frame edge
-
-      int     dftSize;                  ///< size of dft used for bbox alignment
-      bool    dftHannWindowEnabled;     ///< use hanning windowing with dft
-      bool    mosseTrackerDisabled;     ///< disable builtin OCV MOSSE tracking
-
-      float   maxKFResidual;            ///< maximim residulal for valid detection to track assignment
-      bool    kfDisabled;               ///< if true kalman filtering is disabled
-      cv::Mat1f RN;                     ///< kalman filter measurement noise matrix
-      cv::Mat1f QN;                     ///< kalman filter process noise variances (i.e. unknown accelerations)
+#include <MPFDetectionObjects.h>
 
 
-      bool fallback2CpuWhenGpuProblem;  ///< fallback to cpu if there is a gpu problem
-      int  cudaDeviceId;                ///< gpu device id to use for cuda
+/** ****************************************************************************
+* logging shorthand macros
+****************************************************************************** */
+#define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log, MSG) }
+#define LOG_DEBUG(MSG){ LOG4CXX_DEBUG(Config::log, MSG) }
+#define LOG_INFO(MSG){ LOG4CXX_INFO (Config::log, MSG) }
+#define LOG_WARN(MSG){ LOG4CXX_WARN (Config::log, MSG) }
+#define LOG_ERROR(MSG){ LOG4CXX_ERROR(Config::log, MSG) }
+#define LOG_FATAL(MSG){ LOG4CXX_FATAL(Config::log, MSG) }
 
-      MPFDetectionError   lastError;    ///< last MPF error that should be returned
 
-      // configuration values shared by all jobs
-      static string             pluginPath;        ///< path to the plugin
-      static string             configPath;        ///< path to configuration file(s)
-      static log4cxx::LoggerPtr log;               ///< shared log object
+class Config {
+public:
+    /// detection confidence threshold
+    float confidenceThreshold;
 
-      Config();
-      Config(const MPFImageJob &job);
-      Config(const MPFVideoJob &job);
-      ~Config();
+    /// non-maximum suppression threshold to remove redundant bounding boxes
+    float nmsThresh;                
+    
+    /// number of class labels and confidence scores to return for a bbox
+    int numClassPerRegion;
 
-      void  ReverseTransform(MPFImageLocation loc) const {_imreaderPtr->ReverseTransform(loc);  }
-      void  ReverseTransform(MPFVideoTrack  track) const {_videocapPtr->ReverseTransform(track);}
+    int netInputImageSize;
 
-      Frame    getImageFrame() const;           ///< get an image as a frame
-      FrameVec getVideoFrames(int numFrames);   ///< get a batch of frames from frameQ
-      void     frameReaderThread();             ///< async thread to keep frameQ filled
+    /// number of frames to batch inference when processing video
+    int frameBatchSize;
 
-    private:
-      unique_ptr<MPFImageReader>  _imreaderPtr;
-      unique_ptr<MPFVideoCapture> _videocapPtr;
-      unique_ptr<thread>          _captureThreadPtr;
-      atomic<bool>                _capturing;
-      mutex                       _captureMtx;
-      FrameQ                      _frameQ;
+    /// maximun class feature scores above which detections will not be considered for the same track
+    float maxClassDist;
 
-      static cv::Mat1f      _defaultHanningWindow;  ///< default hannning window matching _dftSize
+    /// maximum feature distance to maintain track continuity
+    float maxFeatureDist;
 
-      string                      _strRN;                 ///< kalman filter measurement noise matrix serialized to string
-      string                      _strQN;                 ///< kalman filter process noise matrix serialized to string
+    /// maximum spatial distance normalized by diagonal to maintain track continuity
+    float maxCenterDist;
 
-      void    _parse(const MPFJob &job);
+    /// maximum temporal distance (frames) to maintain track continuity
+    long maxFrameGap;
 
-  };
+    /// maximum for (1 - Intersection/Union) to maintain track continuity
+    float maxIOUDist;
 
-  ostream& operator<< (ostream& out, const Config& cfg);  ///< Dump Config to a stream
+    /// distance as a fraction of image dimensions within which bboxes are snapped to frame edge
+    float edgeSnapDist;
 
- }
-}
+    /// size of dft used for bbox alignment
+    int dftSize;
+
+    /// use hanning windowing with dft
+    bool dftHannWindowEnabled;
+
+    /// disable builtin OCV MOSSE tracking
+    bool mosseTrackerDisabled;
+
+    /// maximum residual for valid detection to track assignment
+    float maxKFResidual;
+
+    /// if true kalman filtering is disabled
+    bool kfDisabled;
+
+    /// kalman filter measurement noise matrix
+    cv::Mat1f RN;
+
+    /// kalman filter process noise variances (i.e. unknown accelerations)
+    cv::Mat1f QN;
+
+    /// fallback to cpu if there is a gpu problem
+    bool fallback2CpuWhenGpuProblem;
+
+    /// gpu device id to use for cuda
+    int cudaDeviceId;
+
+    std::string classWhiteListPath;
+
+    /// shared log object
+    static log4cxx::LoggerPtr log;               
+
+
+    explicit Config(const MPF::COMPONENT::Properties& jobProps);
+};
+
+/// Dump Config to a stream
+std::ostream &operator<<(std::ostream &out, const Config &cfg);  
+
 
 #endif

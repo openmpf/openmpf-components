@@ -26,36 +26,43 @@
 #ifndef OCVYOLODETECTION_FRAME_H
 #define OCVYOLODETECTION_FRAME_H
 
+#include <utility>
+
 #include <opencv2/opencv.hpp>
-#include "types.h"
-#include "Config.h"
 
-namespace MPF{
- namespace COMPONENT{
 
-    using namespace std;
+/* **************************************************************************
+*  Represent a frame with time stamp
+*************************************************************************** */
+class Frame {
+public:
+    /// index of frame
+    size_t idx;
 
-    /* **************************************************************************
-    *  Represent a frame with time stamp
-    *************************************************************************** */
-     class Frame{
-       public:
-         size_t  idx=0;                 ///< index of frame
-         double  time=0;                ///< time of current frame in sec
-         double  timeStep=0;            ///< time interval between frames in sec
-         cv::Mat bgr;                   ///< bgr image frame
+    /// time of current frame in sec
+    double time;
 
-         cv::Rect2i getRect() const { return cv::Rect2i(0,0,bgr.cols-1,bgr.rows-1); }
+    /// time interval between frames in sec
+    double timeStep;
 
-         Frame(){};
-         Frame(size_t idx, double time, double timeStep, cv::Mat bgr):
-           idx(idx),
-           time(time),
-           timeStep(timeStep),
-           bgr(bgr){};
-     };
+    /// bgr image frame
+    cv::Mat data;
 
-   }
-}
+    cv::Rect getRect() const {
+        return {cv::Point(0, 0), data.size()};
+    }
+
+    Frame(size_t idx, double time, double timeStep, cv::Mat data)
+        : idx(idx)
+        , time(time)
+        , timeStep(timeStep)
+        , data(std::move(data)) { };
+
+
+    explicit Frame(cv::Mat data)
+        : Frame(0, 0, 0, std::move(data)) {
+    }
+};
+
 
 #endif

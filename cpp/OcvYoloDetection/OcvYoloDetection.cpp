@@ -26,28 +26,186 @@
 
 #include "OcvYoloDetection.h"
 
-#include <algorithm>
+#include <functional>
+#include <list>
 #include <stdexcept>
-#include <limits.h>
-#include <chrono>
+#include <vector>
+#include <utility>
+#include <tuple>
+
+#include <opencv2/core.hpp>
 
 #include <log4cxx/xml/domconfigurator.h>
 
-#include <QFile>
-#include <QFileInfo>
-#include <QHash>
-#include <QString>
-
 // MPF-SDK header files
-#include "Utils.h"
-#include "MPFSimpleConfigLoader.h"
-#include "detectionComponentUtils.h"
+#include <MPFAsyncVideoCapture.h>
+#include <MPFImageReader.h>
+#include <Utils.h>
 
-#include "types.h"
-#include "Config.h"
 #include "Cluster.h"
+#include "Config.h"
+#include "DetectionLocation.h"
+#include "Track.h"
+
 
 using namespace MPF::COMPONENT;
+using DetectionComponentUtils::GetProperty;
+
+namespace {
+    std::vector<Frame> GetVideoFrames(MPFAsyncVideoCapture &videoCapture, int numFrames) {
+        double fps = videoCapture.GetFrameRate();
+        std::vector<Frame> frames;
+        frames.reserve(numFrames);
+        for (int i = 0; i < numFrames; i++) {
+            if (MPFFrame mpfFrame = videoCapture.Read()) {
+                double time = mpfFrame.index / fps;
+                frames.emplace_back(mpfFrame.index, time, 1 / fps,
+                                    std::move(mpfFrame.data));
+            }
+            else {
+                break;
+            }
+        }
+        return frames;
+    }
+
+
+    std::vector<Track> AssignDetections(
+            std::vector<Cluster<Track>> &trackClusters,
+            std::vector<Cluster<DetectionLocation>> &detectionClusters,
+            const Config &config) {
+
+        // tracks that were assigned a detection in the current frame
+        std::vector<Track> assignedTracks;
+        // intersection over union tracking and assignment
+        Track::assignDetections(trackClusters,
+                                detectionClusters,
+                                assignedTracks,
+                                config.maxIOUDist,
+                                config.maxClassDist,
+                                config.maxKFResidual,
+                                config.edgeSnapDist,
+                                std::mem_fn(&DetectionLocation::iouDist));
+        LOG_TRACE("IOU assignment complete");
+
+        // feature-based tracking tracking and assignment
+        Track::assignDetections(trackClusters,
+                                detectionClusters,
+                                assignedTracks,
+                                config.maxFeatureDist,
+                                config.maxClassDist,
+                                config.maxKFResidual,
+                                config.edgeSnapDist,
+                                std::mem_fn(&DetectionLocation::featureDist));
+        LOG_TRACE("Feature assignment complete");
+
+        // center-to-center distance tracking and assignment
+        Track::assignDetections(trackClusters,
+                                detectionClusters,
+                                assignedTracks,
+                                config.maxCenterDist,
+                                config.maxClassDist,
+                                config.maxKFResidual,
+                                config.edgeSnapDist,
+                                std::mem_fn(&DetectionLocation::center2CenterDist));
+        LOG_TRACE("Center2Center assignment complete");
+        return assignedTracks;
+    }
+
+
+    void ProcessFrameDetections(
+            const Config &config,
+            const Frame &frame,
+            std::vector<DetectionLocation> &&detections,
+            std::vector<Track> &inProgressTracks,
+            std::vector<MPFVideoTrack> &completedTracks) {
+
+        LOG_TRACE(detections.size() << " detections to be matched to " << inProgressTracks.size()
+                    << " tracks");
+
+        // group detections according to class features
+        std::vector<Cluster<DetectionLocation>> detectionClusterList
+                = clusterItems(std::move(detections), config.maxClassDist);
+
+        //group tracks according to class features
+        std::vector<Cluster<Track>> trackClusterList
+                = clusterItems(std::move(inProgressTracks), config.maxClassDist);
+        inProgressTracks.clear();
+
+        // tracks that were assigned a detection in the current frame
+        std::vector<Track> assignedTracks
+                = AssignDetections(trackClusterList, detectionClusterList, config);
+
+        // LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
+        // any detection not assigned up to this point becomes a new track
+        for (auto &detectionCluster : detectionClusterList) {
+            // make any unassigned detections into new tracks
+            for (auto& detection : detectionCluster.members) {
+                // TODO: Ask why this isn't assigned to anything
+                // start of tracks always get feature calculated
+                detection.getDFTFeature();
+                // create new track
+                assignedTracks.emplace_back();
+                if (!config.kfDisabled) {
+                    // initialize kalman tracker
+                    assignedTracks.back().kalmanInit(detection.frame.time,
+                                                     detection.frame.timeStep,
+                                                     detection.getRect(),
+                                                     detection.frame.getRect(),
+                                                     config.RN, config.QN);
+                }
+                // add 1st detection to track
+                assignedTracks.back().add(std::move(detection));
+                LOG_TRACE("created new track " << assignedTracks.back());
+
+            }
+        }
+
+        for (auto &trackCluster : trackClusterList) {
+            // check any tracks that didn't get a detection and use tracker to continue them if possible
+            if (!config.mosseTrackerDisabled) {
+                // track leftover have no detections in current frame, try tracking
+                for (auto &track : trackCluster.members) {
+                    cv::Rect2i predictedRect;
+                    if (track.ocvTrackerPredict(frame, config.maxFrameGap, predictedRect)) {
+                        // tracker returned something
+                        if (track.testResidual(predictedRect, config.edgeSnapDist)
+                                <= config.maxKFResidual) {
+                            // TODO fix empty detection_properties and 0 confidence
+                            track.add({
+                                    config, frame, predictedRect, 0.0,
+                                    track.back().getClassFeature(),
+                                    track.back().getDFTFeature()});
+                            track.kalmanCorrect(config.edgeSnapDist);
+                        }
+                    }
+                }
+            }
+            assignedTracks.insert(assignedTracks.end(),
+                                  std::make_move_iterator(trackCluster.members.begin()),
+                                  std::make_move_iterator(trackCluster.members.end()));
+        }
+
+        for (auto& track : assignedTracks) {
+            auto gapSize = frame.idx - track.back().frame.idx;
+            if (gapSize > config.maxFrameGap) {
+                // remove and convert any tracks too far in the past from the active list
+                completedTracks.push_back(Track::toMpfTrack(std::move(track)));
+            }
+            else {
+                inProgressTracks.push_back(std::move(track));
+            }
+        }
+
+        // advance kalman predictions
+        if (!config.kfDisabled) {
+            for (auto &track : inProgressTracks) {
+                track.kalmanPredict(frame.time, config.edgeSnapDist);
+            }
+        }
+    }
+} // end anonymous namespace
+
 
 /** ****************************************************************************
 *  Initialize Yolo detector module by setting up paths and reading configs
@@ -57,52 +215,51 @@ using namespace MPF::COMPONENT;
 * \returns   true on success
 ***************************************************************************** */
 bool OcvYoloDetection::Init() {
-    Config::pluginPath = GetRunDirectory() + "/OcvYoloDetection";
-    Config::configPath = Config::pluginPath + "/config";
+    auto pluginPath = GetRunDirectory() + "/OcvYoloDetection";
 
-    log4cxx::xml::DOMConfigurator::configure(Config::configPath + "/Log4cxxConfig.xml");
-    Config::log = log4cxx::Logger::getLogger("OcvYoloDetection");              LOG_DEBUG("Initializing OcvYoloDetector");
+    log4cxx::xml::DOMConfigurator::configure(pluginPath + "/config/Log4cxxConfig.xml");
+    logger_ = log4cxx::Logger::getLogger("OcvYoloDetection");
+    Config::log = log4cxx::Logger::getLogger("OcvYoloDetection");
+    LOG_DEBUG("Initializing OcvYoloDetector");
 
-    // read config file and create or update any missing env variables
-    string configParamsPath = Config::configPath + "/mpfOcvYoloDetection.ini";
-    QHash<QString,QString> params;
-    if(LoadConfig(configParamsPath, params)) {                                 LOG_ERROR( "Failed to load the OcvYoloDetection config from: " << configParamsPath);
-        return false;
-    }                                                                          LOG_TRACE("read config file:" << configParamsPath);
+    modelsParser_.Init(pluginPath + "/models")
+            .RegisterPathField("network_config", &ModelSettings::networkConfigFile)
+            .RegisterPathField("names", &ModelSettings::namesFile)
+            .RegisterPathField("weights", &ModelSettings::weightsFile)
+            .RegisterOptionalPathField("confusion_matrix", &ModelSettings::confusionMatrixFile);
 
-    Properties props;
-    for(auto p = params.begin(); p != params.end(); p++){
-      const string key = p.key().toStdString();
-      const string val = p.value().toStdString();                              LOG_TRACE("Config    Vars:" << key << "=" << val);
-      const char* env_val = getenv(key.c_str());                               LOG_TRACE("Verifying ENVs:" << key << "=" << env_val);
-      if(env_val == NULL){
-        if(setenv(key.c_str(), val.c_str(), 0) !=0){                           LOG_ERROR("Failed to convert config to env variable: " << key << "=" << val);
-          return false;
-        }
-      }else if(string(env_val) != val){                                        LOG_INFO("Keeping existing env variable:" << key << "=" << string(env_val));
-      }
-    }
-
-    bool detectionLocationInitalizedOK = DetectionLocation::Init();
-
-    //Properties fromEnv;
-    int cudaDeviceId   = getEnv<int> ({},"CUDA_DEVICE_ID", -1);
-    bool fallbackToCPU = getEnv<bool>({},"FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", true);
-    bool defaultCudaDeviceOK = DetectionLocation::loadNetToCudaDevice(cudaDeviceId) || fallbackToCPU;
-
-    return    detectionLocationInitalizedOK
-           && defaultCudaDeviceOK;
-
-
+    LOG4CXX_INFO(logger_, "Initialized OcvYoloDetection component.");
+    return true;
 }
 
-/** ****************************************************************************
-* Clean up and release any created detector objects
-*
-* \returns   true on success
-***************************************************************************** */
 bool OcvYoloDetection::Close() {
     return true;
+}
+
+
+std::string OcvYoloDetection::GetDetectionType() {
+   return "CLASS";
+}
+
+
+YoloNetwork& OcvYoloDetection::GetYoloNetwork(const Properties &jobProperties,
+                                              const Config &config) {
+    auto modelName = GetProperty(jobProperties, "MODEL_NAME", "tiny yolo");
+    auto modelsDirPath = GetProperty(jobProperties, "MODELS_DIR_PATH", ".");
+    auto modelSettings = modelsParser_.ParseIni(modelName, modelsDirPath + "/OcvYoloDetection");
+
+    if (cachedYoloNetwork_) {
+        if (cachedYoloNetwork_->IsCompatible(modelSettings, config)) {
+            LOG4CXX_INFO(logger_, "Reusing cached model.");
+            return *cachedYoloNetwork_;
+        }
+        else {
+            // Reset to remove current network from memory before loading the new one.
+            cachedYoloNetwork_.reset();
+        }
+    }
+    cachedYoloNetwork_.reset(new YoloNetwork(std::move(modelSettings), config));
+    return *cachedYoloNetwork_;
 }
 
 /** ****************************************************************************
@@ -113,79 +270,38 @@ bool OcvYoloDetection::Close() {
 * \returns  locations collection to which detections have been added
 *
 ***************************************************************************** */
-MPFImageLocationVec OcvYoloDetection::GetDetections(const MPFImageJob   &job) {
+std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob &job) {
+    try {
+        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
+        Config config(job.job_properties);
+        auto& yoloNetwork = GetYoloNetwork(job.job_properties, config);
 
-  try {                                                                        LOG_DEBUG( "[" << job.job_name << "Data URI = " << job.data_uri);
-    Config cfg(job);
-    if(cfg.lastError != MPF_DETECTION_SUCCESS){
-      throw MPFDetectionException(cfg.lastError,"failed to parse image job configuration parameters");
+        MPFImageReader imageReader(job);
+        std::vector<std::vector<DetectionLocation>> detections = yoloNetwork.GetDetections(
+                { Frame(imageReader.GetImage()) }, config);
+
+        std::vector<MPFImageLocation> results;
+        for (std::vector<DetectionLocation> &locationList : detections) {
+            for (DetectionLocation &location : locationList) {
+                results.emplace_back(
+                        location.x_left_upper,
+                        location.y_left_upper,
+                        location.width,
+                        location.height,
+                        location.confidence,
+                        std::move(location.detection_properties));
+                imageReader.ReverseTransform(results.back());
+            }
+        }
+        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << results.size()
+                                << " detections.");
+        return results;
     }
-    DetectionLocation::loadNetToCudaDevice(cfg.cudaDeviceId);
-
-    FrameVec framesVec = {cfg.getImageFrame()};  // only do one frame at a time for now
-    DetectionLocationListVec detections = DetectionLocation::createDetections(cfg, framesVec);
-    assert(framesVec.size() == detections.size());
-
-    MPFImageLocationVecVec locationsVec;
-    for(unsigned i=0; i<framesVec.size(); i++){                                   LOG_DEBUG( "[" << job.job_name << "] Number of detections = " << detections[i].size());
-      MPFImageLocationVec locations;
-      for(auto &det:detections[i]){
-        MPFImageLocation loc = det;
-        cfg.ReverseTransform(loc);
-        locations.push_back(loc);
-      }
-      detections[i].clear();
-      locationsVec.push_back(locations);
+    catch (...) {
+        Utils::LogAndReThrowException(job, logger_);
     }
-    return locationsVec[0];   // only return the one for now
-
-  }catch(const runtime_error& re){
-    LOG_FATAL( "[" << job.job_name << "] runtime error: " << re.what());
-    throw MPFDetectionException(re.what());
-  }catch(const exception& ex){
-    LOG_FATAL( "[" << job.job_name << "] exception: " << ex.what());
-    throw MPFDetectionException(ex.what());
-  }catch (...){
-    LOG_FATAL( "[" << job.job_name << "] unknown error");
-    throw MPFDetectionException(" Unknown error processing image job");
-  }
-                                                                               LOG_DEBUG("[" << job.job_name << "] complete.");
 }
 
-/** ****************************************************************************
-* Convert track (list of detection ptrs) to an MPFVideoTrack object
-*
-* \param [in,out]  tracks  Tracks collection to which detections will be added
-*
-* \returns MPFVideoTrack object resulting from conversion
-*
-* \note detection pts are released on conversion and confidence is assigned
-*       as the average of the detection confidences
-*
-***************************************************************************** */
-MPFVideoTrack OcvYoloDetection::_convert_track(Track &track){
-
-  MPFVideoTrack mpf_track;
-  mpf_track.start_frame = track.locations.front().frame.idx;
-  mpf_track.stop_frame  = track.locations.back().frame.idx;
-
-  #ifdef KFDUMP_STATE
-    stringstream ss;
-    ss << &track << ".csv";
-    string filename = ss.str();
-    track.kalmanDump(filename);
-    mpf_track.detection_properties["kf_id"] = filename;
-  #endif
-
-  for(auto &det : track.locations){
-    mpf_track.confidence += det.confidence;
-    mpf_track.frame_locations.insert(mpf_track.frame_locations.end(),{det.frame.idx,det});
-  }
-  mpf_track.confidence /= static_cast<float>(track.locations.size());
-  track.locations.clear();
-
-  return mpf_track;
-}
 
 /** ****************************************************************************
 * Read frames from a video, get object detections and make tracks
@@ -195,184 +311,53 @@ MPFVideoTrack OcvYoloDetection::_convert_track(Track &track){
 * \returns   Tracks collection to which detections have been added
 *
 ***************************************************************************** */
-MPFVideoTrackVec OcvYoloDetection::GetDetections(const MPFVideoJob &job){
+std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &job) {
+    try {
+        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
+        std::vector<MPFVideoTrack> completedTracks;
+        std::vector<Track> inProgressTracks;
 
-  MPFVideoTrackVec  mpf_tracks;
-  TrackList         tracks;
+        Config config(job.job_properties);
+        auto& yoloNetwork = GetYoloNetwork(job.job_properties, config);
+        MPFAsyncVideoCapture videoCapture(job);
 
-  try{
-    Config cfg(job);
-    if(cfg.lastError != MPF_DETECTION_SUCCESS){
-      throw MPFDetectionException(cfg.lastError,"failed to parse video job configuration parameters");
-    }
-
-    DetectionLocation::loadNetToCudaDevice(cfg.cudaDeviceId);
-
-    FrameVec framesVec = cfg.getVideoFrames(cfg.frameBatchSize);            // get initial batch of frames
-    do {                                                                       LOG_TRACE(".");
-                                                                               LOG_TRACE("processing frames [" << framesVec.front().idx << "..." << framesVec.back().idx << "]");
-      // do something clever with frame skipping here ?
-      // detectTrigger++;
-      // detectTrigger = detectTrigger % (cfg.detFrameInterval + 1);
-
-      #ifndef NDEBUG
-      auto start_time = chrono::high_resolution_clock::now();
-      #endif
-      DetectionLocationListVec detectionsVec = DetectionLocation::createDetections(cfg, framesVec); // look for new detections
-      #ifndef NDEBUG
-      auto end_time = chrono::high_resolution_clock::now();
-      double time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
-      LOG_DEBUG("Detection time:  " << fixed << setprecision(5) << time_taken << "[sec] for " << framesVec.size() << " frames");
-      LOG_DEBUG("Detection  speed: " << framesVec.size() / time_taken << "[fps]");
-      #endif
-
-      #ifndef NDEBUG
-      start_time = chrono::high_resolution_clock::now();
-      #endif
-      assert(framesVec.size() == detectionsVec.size());
-      for(unsigned i=0; i<framesVec.size(); i++){
-
-                                                                          LOG_TRACE( detectionsVec[i].size() <<" detections to be matched to " << tracks.size() << " tracks");
-        TrackList assignedTracks;          // tracks that were assigned a detection in the current frame
-
-        // group detections according to class features
-        auto detClusterList = DetectionCluster::cluster(detectionsVec[i],cfg.maxClassDist);
-        assert(detectionsVec[i].empty());
-
-        //group tracks according to class features
-        auto trackClusterList = TrackCluster::cluster(tracks,cfg.maxClassDist);
-        assert(tracks.empty());
-
-        // intersection over union tracking and assignment
-        Track::assignDetections<&DetectionLocation::iouDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxIOUDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
-        LOG_TRACE("IOU assignment complete");
-
-        // feature-based tracking tracking and assignment
-        Track::assignDetections<&DetectionLocation::featureDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxFeatureDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
-        LOG_TRACE("Feature assignment complete");
-
-        // center-to-center distance tracking and assignment
-        Track::assignDetections<&DetectionLocation::center2CenterDist>(trackClusterList,detClusterList,assignedTracks,cfg.maxCenterDist,cfg.maxClassDist,cfg.maxKFResidual,cfg.edgeSnapDist);
-        LOG_TRACE("Center2Center assignment complete");
-
-                                                                                    // LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
-        // any detection not assigned up to this point becomes a new track
-        for(auto& detCluster : detClusterList){
-          auto detItr = detCluster.members.begin();
-          while(detItr != detCluster.members.end()){             // make any unassigned detections into new tracks
-            detItr->getDFTFeature();                             // start of tracks always get feature calculated
-            assignedTracks.push_back(Track());                                      // create new track
-            if(!cfg.kfDisabled){                                                    // initialize kalman tracker
-              assignedTracks.back().kalmanInit(detItr->frame.time,
-                                              detItr->frame.timeStep,
-                                              detItr->getRect(),
-                                              detItr->frame.getRect(),
-                                              cfg.RN,cfg.QN);
+        while (true) {
+            auto frameBatch = GetVideoFrames(videoCapture, config.frameBatchSize);
+            if (frameBatch.empty()) {
+                break;
             }
-            assignedTracks.back().locations.splice(assignedTracks.back().locations.end(), detCluster.members, detItr++); // add 1st detection to track
+            LOG_TRACE("processing frames [" << frameBatch.front().idx << "..."
+                                            << frameBatch.back().idx << "]");
 
-                                                        LOG_TRACE("created new track " << assignedTracks.back());
-          }
-          assert(detCluster.members.empty());                                  // all detections should be removed at this point
-        }
+            // look for new detections
+            std::vector<std::vector<DetectionLocation>> detectionsVec
+                    = yoloNetwork.GetDetections(frameBatch, config);
 
-        for(auto& trackCluster : trackClusterList){
-          if(!cfg.mosseTrackerDisabled){                                         // check any tracks that didn't get a detection and use tracker to continue them if possible
-            cv::Rect2i pred;
-            for(auto &track : trackCluster.members){                                           // track leftover have no detections in current frame, try tracking
-              if(track.ocvTrackerPredict(framesVec[i],cfg.maxFrameGap, pred)){   // tracker returned something
-                if(track.testResidual(pred, cfg.edgeSnapDist) <= cfg.maxKFResidual){
-                  auto& prevTailDet = track.locations.back();
-                  track.locations.push_back(
-                    DetectionLocation(cfg, framesVec[i], pred, 0.0,
-                                      track.locations.back().getClassFeature(),
-                                      track.locations.back().getDFTFeature()));
-                  track.kalmanCorrect(cfg.edgeSnapDist);
-                }
-              }
+            assert(frameBatch.size() == detectionsVec.size());
+            for (int i = 0; i < frameBatch.size(); i++) {
+                ProcessFrameDetections(config, frameBatch.at(i), std::move(detectionsVec.at(i)),
+                                       inProgressTracks,
+                                       completedTracks);
             }
-          }
-          assignedTracks.splice(assignedTracks.end(), trackCluster.members);
-          assert(trackCluster.members.empty());
-        }
-        tracks.splice(tracks.end(), assignedTracks);
-        assert(assignedTracks.empty());
-
-        // remove and convert any tracks too far in the past from the active list
-        tracks.remove_if([&](Track& track){
-          if(framesVec[i].idx - track.locations.back().frame.idx > cfg.maxFrameGap){       LOG_TRACE("dropping old track: " << track);
-            mpf_tracks.push_back(_convert_track(track));
-            return true;
-          }
-          return false;
-        });
-
-        // advance kalman predictions
-        if(! cfg.kfDisabled){
-          for(auto &track:tracks){
-            track.kalmanPredict(framesVec[i].time, cfg.edgeSnapDist);
-          }
         }
 
+        // convert any remaining active tracks to MPFVideoTracks
+        for (Track &track : inProgressTracks) {
+            completedTracks.push_back(Track::toMpfTrack(std::move(track)));
+        }
 
-      }                                                                        LOG_DEBUG( "[" << job.job_name << "] Number of tracks detected = " << tracks.size());
-      #ifndef NDEBUG
-      end_time = chrono::high_resolution_clock::now();
-      time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
-      LOG_DEBUG("Tracking time:  " << fixed << setprecision(5) << time_taken << "[sec] for " << framesVec.size() << " frames");
-      LOG_DEBUG("Tracking  speed: " << framesVec.size() / time_taken << "[fps]");
-      #endif
+        for (MPFVideoTrack &mpfTrack : completedTracks) {
+            videoCapture.ReverseTransform(mpfTrack);
+        }
 
-      #ifndef NDEBUG
-      start_time = chrono::high_resolution_clock::now();
-      #endif
-      // grab next batch of frames
-      framesVec = cfg.getVideoFrames(cfg.frameBatchSize);
-      #ifndef NDEBUG
-      end_time = chrono::high_resolution_clock::now();
-      time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() * 1e-9;
-      LOG_DEBUG("Frame read time:  " << fixed << setprecision(5) << time_taken << "[sec] for " << framesVec.size() << " frames");
-      LOG_DEBUG("Read speed: " << framesVec.size() / time_taken << "[fps]");
-      #endif
+        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << completedTracks.size()
+                     << " tracks.");
 
-    } while(framesVec.size() > 0);
-
-    // convert any remaining active tracks to MPFVideoTracks
-    for(auto &track:tracks){
-      mpf_tracks.push_back(_convert_track(track));
+        return completedTracks;
     }
-
-    // reverse transform all mpf tracks
-    for(auto &mpf_track:mpf_tracks){
-      cfg.ReverseTransform(mpf_track);
+    catch (...) {
+        Utils::LogAndReThrowException(job, logger_);
     }
-
-    // sort tracks by start frame, just to be nice :)
-    sort(mpf_tracks.begin(),mpf_tracks.end(),
-      [](const MPFVideoTrack &a, const MPFVideoTrack &b){
-        return a.start_frame < b.start_frame;
-      });
-
-    #ifdef KFDUMP_STATE    // rename kalman filter debug outputs
-    for(size_t i=0; i < mpf_tracks.size(); i++){
-      stringstream ssOld, ssNew;
-      ssOld << mpf_tracks[i].detection_properties["kf_id"];
-      mpf_tracks[i].detection_properties.erase("kf_id");
-      ssNew << setw(4) << setfill('0') << i << ".csv";
-      rename(ssOld.str().c_str(), ssNew.str().c_str());                        LOG_TRACE(i << ":" << ssOld.str());
-    }
-    #endif
-
-    return mpf_tracks;
-
-  }catch(const runtime_error& re){                                             LOG_FATAL( "[" << job.job_name << "] runtime error: " << re.what());
-    throw MPFDetectionException(re.what());
-  }catch(const exception& ex){                                                 LOG_FATAL( "[" << job.job_name << "] exception: " << ex.what());
-    throw MPFDetectionException(ex.what());
-  }catch (...) {                                                               LOG_FATAL( "[" << job.job_name << "] unknown error");
-    throw MPFDetectionException("Unknown error processing video job");
-  }
-                                                                               LOG_DEBUG("[" << job.job_name << "] complete.");
 }
 
 

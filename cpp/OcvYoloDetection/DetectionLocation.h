@@ -28,85 +28,73 @@
 #define OCVYOLODETECTION_DETECTIONLOCATION_H
 
 #include <log4cxx/logger.h>
-#include <opencv2/dnn.hpp>
+#include <opencv2/core.hpp>
 
-#include "types.h"
-#include "util.h"
 #include "Config.h"
 #include "Frame.h"
 
-namespace MPF{
- namespace COMPONENT{
 
-  using namespace std;
+// TODO Should something be done about circular dependency between DetectionLocation and Track?
+class Track;
 
-  using DetectionLocationCostFunc = float (DetectionLocation::*)(const Track &tr) const; ///< assignment cost member-function type
 
-  class DetectionLocation: public MPFImageLocation{ // extend MPFImageLocation
+class DetectionLocation : public MPF::COMPONENT::MPFImageLocation {
 
-    public:
-      using MPFImageLocation::MPFImageLocation;  // C++11 inherit all constructors for MPFImageLocation
+public:
+    /// frame associated with detection
+    Frame frame;
 
-      const Frame frame;                                   ///< frame associated with detection
+    DetectionLocation(const Config &config,
+                      Frame frame,
+                      const cv::Rect2d &boundingBox,
+                      float confidence,
+                      cv::Mat classFeature,
+                      cv::Mat dftFeature);
 
-      const cv::Mat&       getClassFeature() const;        ///< get unit vector of scores
-      const cv::Mat&       getDFTFeature()   const;        ///< get dft for phase correlation
-      const cv::Rect2i     getRect()         const;        ///< get location   as an opencv rectange
-      void                 setRect(const cv::Rect2i& rec); ///< set location from an opencv rectangle
+    /// get unit vector of scores
+    cv::Mat getClassFeature() const;
 
-      float           iouDist(const Track &tr) const;   ///< 1 - compute intersection over union
-      float center2CenterDist(const Track &tr) const;   ///< compute normalized center to center distance
-      float       featureDist(const Track &tr) const;   ///< compute deep feature similarity distance
-      float    kfResidualDist(const Track &tr) const;   ///< compute kalman filter residual distance
+    /// get dft for phase correlation
+    // TODO Determine if this can be made const
+    cv::Mat getDFTFeature();
 
-      static bool                       Init();                                                                ///< setup class shared members
-      static DetectionLocationListVec   createDetections(const Config &cfg,const FrameVec &frames);            ///< created detection objects from image frame
-      static bool                       loadNetToCudaDevice(const int cudaDeviceId);                           ///< load network to active CUDA device
+    /// get location as an opencv rectangle
+    cv::Rect2i getRect() const;
 
-      DetectionLocation(const Config     &cfg,
-                        const Frame       frm,
-                        const cv::Rect2d  bbox,
-                        const float       conf,
-                        const cv::Mat     classFeature,
-                        const cv::Mat     dftFeature);
+    /// set location from an opencv rectangle
+    void setRect(const cv::Rect2i &rect);
 
-      DetectionLocation(DetectionLocation &&d):MPFImageLocation(move(d)),
-                                               frame(move(d.frame)),
-                                               _cfg(d._cfg),
-                                               _classFeature(move(d._classFeature)),
-                                               _dftFeature(move(d._dftFeature))
-                                               {}
+    /// 1 - compute intersection over union
+    float iouDist(const Track &track) const;
 
-    private:
-      const Config       &_cfg;                  ///< job configuration and shared config state
-      const cv::Mat     _classFeature;           ///< unit vector of with elements proportional to scores for each classes
-      const cv::Mat     _dftFeature;             ///< dft for matching-up detections via phase correlation
+    /// compute normalized center to center distance
+    float center2CenterDist(const Track &track) const;
+    
+    /// compute deep feature similarity distance
+    // TODO: Determine if we can make this "float featureDist(const Track &track) const"
+    float featureDist(Track &track);
 
-      static cv::dnn::Net _net;                  ///< DNN detector network
-      static stringVec    _netClasses;           ///< list of classes for DNN
-      static stringVec    _netOutputNames;       ///< list of DNN output names
-      static cv::Mat1f    _netConfusion;         ///< classifier confusion matrix
-      static intVec       _classGroupIdx;        ///< class index to class group mapping from confusion matrix
+    /// compute kalman filter residual distance
+    float kfResidualDist(const Track &track) const;
 
-      float _iouDist(const cv::Rect2i &rect) const;    ///< compute intersection over union
+    /// get bbox alignment via phase correlation
+    cv::Point2d phaseCorrelate(Track &tr);
 
-      cv::Point2d     _phaseCorrelate(  const Track      &tr)    const;  ///< get bbox alignment via phase correlation
-      const cv::Mat1f _getHanningWindow(const cv::Size   &size)  const;  ///< get hanning window of specified size
+private:
+    int dftSize_;
+    bool dftHanningWindowEnabled_;
+    float edgeSnapDist_;
 
-      static void _loadNet(const bool useCUDA);    ///< turn on or off cuda backend for inferencing
-  };
+    /// unit vector of with elements proportional to scores for each classes
+    cv::Mat classFeature_;
+    
+    /// dft for matching-up detections via phase correlation
+    cv::Mat dftFeature_;
 
-  /** **************************************************************************
-  *   Dump DetectionLocation to a stream
-  *************************************************************************** */
-  inline
-  ostream& operator<< (ostream& out, const DetectionLocation& d) {
-    out  << "[" << (MPFImageLocation)d
-         << "]";
-    return out;
-  }
+    /// get hanning window of specified size
+    cv::Mat1f getHanningWindow(const cv::Size &size) const;
+};
 
- }
-}
+
 
 #endif

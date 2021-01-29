@@ -26,34 +26,96 @@
 #ifndef OCVYOLODETECTION_CLUSTER_H
 #define OCVYOLODETECTION_CLUSTER_H
 
-#include "types.h"
+#include <algorithm>
+#include <utility>
+#include <vector>
 
-namespace MPF{
- namespace COMPONENT{
+#include <opencv2/core.hpp>
 
-    using namespace std;
+#include "util.h"
 
-    template<class T>
-    using featureFunc  = const cv::Mat&(T::*)() const;             // could parameterize away cv::Mat
-    using distanceFunc = float(*)(const cv::Mat&, const cv::Mat&);
 
-    template<class T, featureFunc<T> fFunc, distanceFunc dFunc>
-    class Cluster{
-      public:
-        cv::Mat aveFeature;                            ///< average feature (centroid) of the cluster
-        list<T> members;                               ///< members of the cluster
+template<typename T>
+class Cluster {
+public:
+    // average feature (centroid) of the cluster
+    cv::Mat averageFeature;
+    // members of the cluster
+    std::vector<T> members;
 
-        void add(T&& m);                               ///< move an item into member list
+    explicit Cluster(T member)
+            : averageFeature(member.getClassFeature()) {
+        members.push_back(std::move(member));
+    }
 
-        static void cluster(list<T>                           &lis,
-                            list<Cluster<T, fFunc, dFunc>>    &clList,
-                            float                              maxDist);  ///< cluster items in a list
+    // These are needed to prevent a template error when Clusters are inserted in to vectors.
+    Cluster(Cluster&&) = default;
+    Cluster(const Cluster&) = delete;
 
-        static list<Cluster<T, fFunc, dFunc>> cluster(list<T> &lis,
-                                                      float    maxDist);  ///< cluster items in a list
 
-   };
- }
+
+    /** ***************************************************************************
+    *   add a single member to a cluster
+    *
+    * @tparam T     type of objects in cluster
+    * @tparam fFunc member function of T to retrieve feature vector
+    * @tparam dFunc function to compute distance between two feature vectors
+    *
+    * @param  m object to move into the cluster's member list
+    *
+    **************************************************************************** */
+    void add(T newMember) {
+        if (members.empty()) {
+            averageFeature = newMember.getClassFeature();
+        }
+        else {
+            cv::normalize((averageFeature * members.size()) + newMember.getClassFeature(),
+                          averageFeature);
+        }
+        members.push_back(std::move(newMember));
+    }
+};
+
+
+
+/** ***************************************************************************
+*  very naive agglomerative clustering (not suitable for lots of items),
+*  move items from a list list of clusters that is returned
+*
+* @tparam T     type of objects in cluster
+* @tparam TDistanceFunc function to compute distance between two feature vectors
+*
+* @param[in,out] items     list of objects to be moved into clusters
+* @param[in]     maxDist maximum feature distance an object can be from
+*                        its cluster's average feature
+* @param[in] distanceFunc  function to compute distance between two feature vectors
+*
+* @returns  list of clusters that object have been moved into
+*
+**************************************************************************** */
+template <typename T, typename TDistanceFunc = decltype(cosDist)>
+std::vector<Cluster<T>> clusterItems(std::vector<T> items, float maxDist,
+                                     TDistanceFunc&& distanceFunc = cosDist) {
+    std::vector<Cluster<T>> clusters;
+    for (auto& item : items) {
+        auto feature = item.getClassFeature();
+        // find 1st cluster item can join
+        // TODO: Should we be using the minimum rather than the first?
+        auto matchingCluster = std::find_if(
+                clusters.begin(), clusters.end(),
+                [&](const Cluster<T> &cluster) {
+                    return distanceFunc(cluster.averageFeature, feature) < maxDist;
+                });
+        if (matchingCluster != clusters.end()) {
+            // found a cluster to join
+            matchingCluster->add(std::move(item));
+        }
+        else {
+            // no cluster found, make a new one
+            clusters.emplace_back(std::move(item));
+        }
+    }
+    return clusters;
 }
 
 #endif

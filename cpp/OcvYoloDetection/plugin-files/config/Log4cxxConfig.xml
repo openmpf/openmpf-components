@@ -48,7 +48,7 @@
   <logger name="OcvYoloDetection" additivity="false">
     <level value="INFO"/>
     <appender-ref ref="OCV-YOLO-DETECTION-FILE"/>
-    <appender-ref ref="Console"/>
+<!--    <appender-ref ref="Console"/>-->
   </logger>
 
  </log4j:configuration>

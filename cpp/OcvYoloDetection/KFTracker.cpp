@@ -410,7 +410,7 @@ void KFTracker::dump(string filename){
 /** **************************************************************************
 *   Dump Diagnostics for MPF::COMPONENT::KFTracker to a stream
 *************************************************************************** */
-ostream& MPF::COMPONENT::operator<< (ostream& out, const KFTracker& kft) {
+ostream& operator<< (ostream& out, const KFTracker& kft) {
   out << kft._t << ",";
 
   for(int i=0; i < kft._kf.statePre.rows; i++){

@@ -30,62 +30,39 @@ project(ocv-yolo-detection)
 
 set(CMAKE_CXX_STANDARD 11)
 
-#set(CMAKE_BUILD_TYPE RelWithDebInfo)    # build release version with debug symbols
-set(CMAKE_BUILD_TYPE Debug)            # build debug version
-
-add_definitions(-Wfatal-errors)
 include(../ComponentSetup.cmake)
 
-# Specify dlib source directory here.
-# Otherwise, disable the following three lines if using find_package(dlib) instead.
-#set(DLIB_DIR /apps/source/dlib-sources/dlib-19.19/dlib)
-#include(${DLIB_DIR}/cmake)
-#set_property(TARGET dlib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # Uncomment if not specifying dlib source directory.
 # Warning: may not work with dlib release installation.
-find_package(dlib REQUIRED)
+#find_package(dlib REQUIRED)
 
-find_package(OpenCV
-  REQUIRED
-  COMPONENTS
-     opencv_dnn
-     opencv_videoio
-     opencv_tracking
-)
-if(${OpenCV_VERSION} VERSION_LESS 4.5)
-  message(FATAL_ERROR "OpenCV ${OpenCV_VERSION} is below minimum 4.5")
-endif()
+set(USE_AVX_INSTRUCTIONS ON)
+set(DLIB_USE_CUDA OFF)
+set(DLIB_DIR /apps/source/dlib-sources/dlib-19.20/dlib)
+include(${DLIB_DIR}/cmake)
+set_property(TARGET dlib PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+
+find_package(OpenCV 4.5.0 EXACT REQUIRED COMPONENTS opencv_dnn opencv_videoio opencv_tracking)
 
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
-find_package(CUDA)
 
-find_package(GTest)
-if (${GTEST_FOUND})
-    message("-- found GTest, configuring tests")
-    enable_testing()
-    include(Dart)
-endif()
-
-IF(CUDA_FOUND)
-    MESSAGE( STATUS "I found CUDA !" )
-    SET(HAVE_CUDA ${CUDA_FOUND} CACHE BOOL "Set to TRUE if CUDA is found, FALSE otherwise")
-    set (CMAKE_CXX_FLAGS "-DHAVE_CUDA=1")
-ENDIF(CUDA_FOUND)
 
 set(OCV_YOLO_DETECTION_SOURCE_FILES
-        util.cpp
-        Config.cpp
-        Frame.cpp
-        DetectionLocation.cpp
-        Cluster.cpp
-        Track.cpp
-        KFTracker.cpp
-        OcvYoloDetection.cpp
-        ocv_phasecorr.cpp)
+        util.cpp util.h
+        Config.cpp Config.h
+        Frame.cpp Frame.h
+        DetectionLocation.cpp DetectionLocation.h
+        Track.cpp Track.h
+        KFTracker.cpp KFTracker.h
+        OcvYoloDetection.cpp OcvYoloDetection.h
+        ocv_phasecorr.cpp ocv_phasecorr.h
+        YoloNetwork.cpp YoloNetwork.h
+        WhitelistFilter.cpp WhitelistFilter.h)
 
 add_library(mpfOcvYoloDetection SHARED ${OCV_YOLO_DETECTION_SOURCE_FILES})
 target_link_libraries(mpfOcvYoloDetection
@@ -99,12 +76,6 @@ configure_mpf_component(OcvYoloDetection TARGETS mpfOcvYoloDetection)
 
 add_subdirectory(test)
 
-add_executable(       sample_ocv_yolo_detector sample_ocv_yolo_detector.cpp)
+add_executable(sample_ocv_yolo_detector sample_ocv_yolo_detector.cpp)
 target_link_libraries(sample_ocv_yolo_detector mpfOcvYoloDetection)
 
-# update configs if they change
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-  plugin-files/config/mpfOcvYoloDetection.ini
-  plugin-files/config/Log4cxxConfig.xml
-  plugin-files/descriptor/descriptor.json
-  test/test_ocv_yolo_config.ini)
