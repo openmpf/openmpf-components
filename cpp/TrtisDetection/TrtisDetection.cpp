@@ -35,7 +35,6 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <log4cxx/logmanager.h>
-#include <log4cxx/xml/domconfigurator.h>
 
 #include <Utils.h>
 #include <detectionComponentUtils.h>
@@ -576,11 +575,9 @@ bool TrtisDetection::Init() {
     if (run_dir.empty()) { run_dir = "."; }
 
     string plugin_path = run_dir + "/TrtisDetection";
-    string config_path = plugin_path + "/config";
     string models_path = plugin_path + "/models";
 
     // Configure logger
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
     _log = log4cxx::Logger::getLogger("TrtisDetection");
 
     try {

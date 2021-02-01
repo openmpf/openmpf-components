@@ -38,7 +38,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./KeywordTagging
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-ENV COMPONENT_LOG_NAME keyword-tagging.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/KeywordTagging/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/KeywordTagging \
                             $PLUGINS_DIR/KeywordTagging
