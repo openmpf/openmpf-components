@@ -27,6 +27,7 @@
 import csv
 import io
 import json
+import logging
 import math
 import os
 import time
@@ -41,7 +42,8 @@ import numpy as np
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-logger = mpf.configure_logging('acs-form-detection.log', __name__ == '__main__')
+
+logger = logging.getLogger('AcsFormDetectionComponent')
 
 
 class AcsFormDetectionComponent(mpf_util.ImageReaderMixin, object):
@@ -116,11 +118,11 @@ class JobRunner(object):
                                           resize_scale_factor,
                                           self._merge_lines).process_form_results(form_results_json)
         return detections
-            
+
     def get_pdf_detections(self, data_uri):
         with open(data_uri, 'rb') as f:
             pdf_content = f.read()
-        
+
         form_results_json = self._post_to_acs(pdf_content)
 
         return FormResultsProcessor(self._is_image, 1, self._merge_lines).process_form_results(form_results_json)

@@ -27,7 +27,7 @@
 import bisect
 import io
 import json
-import os
+import logging
 import pathlib
 import re
 import urllib.error
@@ -39,7 +39,8 @@ from typing import Callable, Dict, List, Literal, Mapping, Match, NamedTuple, Op
 
 import mpf_component_api as mpf
 
-log = mpf.configure_logging('acs-translation.log', __name__ == '__main__')
+
+log = logging.getLogger('AcsTranslationComponent')
 
 
 class AcsTranslationComponent:
