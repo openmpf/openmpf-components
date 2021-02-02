@@ -16,9 +16,9 @@ the job property will be used.
    and can be specified through the URL as follows:
 
    - `https://{endpoint}/vision/v3.1/read/analyze` - v3.1 Read OCR analysis.
-   - `https://{endpoint}/vision/v3.1-preview.2/read/analyze` - v3.2 preview Read OCR analysis.
+   - `https://{endpoint}/vision/v3.1-preview.2/read/analyze` - v3.1 preview Read OCR analysis.
 
-   This component has only been tested against v3.1 of the API.
+   This component has been tested against both versions of the API.
    
 - `ACS_SUBSCRIPTION_KEY`: A string containing your Azure Cognitive Services
   subscription key. To get one you will need to create an 

@@ -167,6 +167,19 @@ class TestAcs(unittest.TestCase):
         self.assertTrue('554 Magnolia Way\nWalnut, WY, 98432' in line_detection.detection_properties['TEXT'])
         self.assertTrue('Thank you for your business!' in line_detection.detection_properties['TEXT'])
 
+    def test_chinese_text(self):
+        self.set_results_path(get_test_file('foreign/chinese-two-cities-results.json'))
+        job = mpf.ImageJob('Test', get_test_file('foreign/chinese-two-cities.png'), get_test_properties(), {}, None)
+
+        detections = list(AcsReadDetectionComponent().get_detections_from_image(job))
+        self.assertEqual(1, len(detections))
+        detection = detections[0]
+
+        with open(get_test_file('foreign/chinese-two-cities-expected-text.txt')) as f:
+            expected_text = f.read().strip()
+
+        self.assertEqual(expected_text, detection.detection_properties['TEXT'])
+
 
     def run_image_test(self, image_file_name, results_file_name, expected_detection_rect, expected_rotation):
         self.set_results_path(get_test_file(results_file_name))
@@ -183,6 +196,7 @@ class TestAcs(unittest.TestCase):
         self.assertAlmostEqual(expected_rotation, float(detection.detection_properties['ROTATION']))
 
         # TODO: Update with 3.2.preview mode
+        # UPDATE: Language parameter specified but not found during test runs.
         # self.assertEqual('en', detection.detection_properties['TEXT_LANGUAGE'])
 
 
@@ -227,6 +241,7 @@ class TestAcs(unittest.TestCase):
 
 
 
+
     def test_video(self):
         test_video_frame_count = 8
         for i in range(test_video_frame_count):
@@ -255,9 +270,35 @@ class TestAcs(unittest.TestCase):
 
 
         # TODO: Run another check over angle generation.
+        # Update: Azure reported the angles in negative values, double check if ACS angles match MPF angles.
         self.assertEqual(mpf_util.Rect(109, 54, 999, 437),
                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[0]))
+        self.assertAlmostEqual(345.1056, float(detections_indexed_by_frame[1].detection_properties['ROTATION']))
 
+
+        self.assertEqual(mpf_util.Rect(54, 86, 438, 1000),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[2]))
+        self.assertAlmostEqual(270, float(detections_indexed_by_frame[2].detection_properties['ROTATION']))
+
+        self.assertEqual(mpf_util.Rect(71, 89, 465, 1034),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[3]))
+        self.assertAlmostEqual(260.0991, float(detections_indexed_by_frame[3].detection_properties['ROTATION']))
+
+        self.assertEqual(mpf_util.Rect(84, 148, 1003, 439),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[4]))
+        self.assertAlmostEqual(179.9653, float(detections_indexed_by_frame[4].detection_properties['ROTATION']))
+
+        self.assertEqual(mpf_util.Rect(109, 43, 1032, 560),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[5]))
+        self.assertAlmostEqual(160.0783, float(detections_indexed_by_frame[5].detection_properties['ROTATION']))
+
+        self.assertEqual(mpf_util.Rect(151, 106, 440, 1002),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[6]))
+        self.assertAlmostEqual(89.9403, float(detections_indexed_by_frame[6].detection_properties['ROTATION']))
+
+        self.assertEqual(mpf_util.Rect(38, 129, 560, 1030),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[7]))
+        self.assertAlmostEqual(70.0706, float(detections_indexed_by_frame[7].detection_properties['ROTATION']))
 
     def test_upsampling(self):
         self.set_results_path(get_test_file('upsampling/tiny-image-results.json'))
