@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -33,14 +35,16 @@ FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:6.0 as models
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-RUN yum -y --nogpgcheck install git openssl-devel curl-devel cuda-cufft-10-2 cuda-npp-10-2 \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum -y --nogpgcheck install git openssl-devel curl-devel cuda-cufft-10-2 cuda-npp-10-2 \
+    && yum clean all
 
 # Install cares, protobuf, zlib, gRPC
 WORKDIR /tmp
 
-RUN git clone -b v1.20.0 --depth 1 --recurse-submodules https://github.com/grpc/grpc \
+RUN --mount=type=tmpfs,target=/tmp \
+git clone -b v1.20.0 --depth 1 --recurse-submodules https://github.com/grpc/grpc \
 && cd grpc \
 && mkdir -p /tmp/grpc/third_party/protobuf/cmake/build \
 && cd /tmp/grpc/third_party/protobuf/cmake/build \
@@ -76,7 +80,8 @@ RUN git clone -b v1.20.0 --depth 1 --recurse-submodules https://github.com/grpc/
 
 # Install AWS SDK for C++ so we can use S3 storage.
 # Do this before installing newer curl.
-RUN mkdir /tmp/aws-sdk-cpp \
+RUN --mount=type=tmpfs,target=/tmp \
+    mkdir /tmp/aws-sdk-cpp \
     && cd /tmp/aws-sdk-cpp \
     && curl --location 'https://github.com/aws/aws-sdk-cpp/archive/1.8.48.tar.gz' \
         | tar --extract --gzip \
@@ -93,7 +98,8 @@ RUN mkdir /tmp/aws-sdk-cpp \
 
 # Install curl
 # Newer version needed for TRTIS.
-RUN cd /tmp/ \
+RUN --mount=type=tmpfs,target=/tmp \
+cd /tmp/ \
 && git clone -b curl-7_67_0 --depth 1 https://github.com/curl/curl.git \
 && cd curl \
 && mkdir build && cd build \
@@ -103,7 +109,8 @@ RUN cd /tmp/ \
 && ldconfig
 
 # Install TensorRT-Inference-Server client libs.
-RUN cd /tmp/ \
+RUN --mount=type=tmpfs,target=/tmp \
+cd /tmp/ \
 && git clone -b v1.7.0 --depth 1 https://github.com/NVIDIA/tensorrt-inference-server.git tensorrt-inference-server \
 # Disable building TRTIS python client.
 && sed -i '/add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/d' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt \

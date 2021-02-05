@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -36,13 +38,12 @@ RUN mkdir /weights && curl --location https://pjreddie.com/media/files/yolov3.we
 # Build Component
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-RUN yum install --nogpgcheck -y cuda-curand-dev-10-2 \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*;
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum install --nogpgcheck -y cuda-curand-dev-10-2;\
+    yum clean all;
 
-COPY . .
-
-RUN build-component.sh
+RUN --mount=target=. build-component.sh
 
 ARG RUN_TESTS=false
 RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./DarknetDetectionTest; fi
