@@ -425,10 +425,66 @@ class ReadResultsProcessor(object):
         corrected_box = mpf_util.Rect.from_corner_and_size(top_left, (width, height))
         return corrected_box
 
-    def _convert_to_rect(self, bonding_box):
-        p1 = (bonding_box[0], bonding_box[1])
-        p2 = (bonding_box[4], bonding_box[5])
-        return mpf_util.Rect.from_corners(p1, p2)
+    def _convert_to_rect(self, bounding_box):
+        """
+        Convert an angled ACS formatted bounding box into an MPF bounding box with text rotation angle.
+        Calculates the angle of rotation based on the position of the bounding box upper corners relative to text.
+        """
+
+        # p1 = top left, p2 = top right, p3 = bottom left of bounding box
+        p1 = (bounding_box[0], bounding_box[1])
+        p2 = (bounding_box[2], bounding_box[3])
+        p3 = (bounding_box[6], bounding_box[7])
+        w = math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+        h = math.sqrt((p1[0] - p3[0])**2 + (p1[1] - p3[1])**2)
+
+        if (w==0 or h==0):
+            angle = 0
+        else:
+            # Calculate rotation angle based on the position of the top right corner relative to its 0-degree position.
+            # p2 = p_ref for 0 degree rotation.
+            p_ref = (p1[0] + w, p1[1])
+            d_ref = math.sqrt((p2[0] - p_ref[0])**2 + (p2[1] - p_ref[1])**2)
+            angle = math.acos((2*w*w - d_ref*d_ref)/(2*w*w))
+
+        if (p_ref[1] < p2[1]):
+            # Flip angle if rotation occurs in the clockwise direction (0 to -180 degrees).
+            angle = -angle
+
+        angle = math.degrees(angle)
+        return mpf_util.Rect.from_corner_and_size(p1, (w,h)), angle
+
+
+    def _orient_bounding_box(self, bounding_box, angle):
+        """
+        Convert a rotated OpenCV bounding box into an ACS formatted bounding box.
+
+        OpenCV does not appear to guarantee that the starting index is always one particular corner of the bounding box.
+        Therefore, use the given ACS text-angle to orient the bounding box with the starting index at the top left
+        corner relative to the text.
+        """
+
+        top_index = 0
+        top_height = bounding_box[0][1]
+
+        for i in range(1,4):
+            if (bounding_box[i][1] < top_height):
+                top_index = i
+                top_height = bounding_box[i][1]
+
+        # In case of a tie, the left-corner is selected.
+        if (bounding_box[top_index-1][1] == bounding_box[top_index][1]):
+            top_index = top_index -1
+
+        start_index = (top_index + int(angle/90)) % 4
+
+        translated_bounding_box = []
+
+        for i in range(4):
+            current_index = (start_index + i) % 4
+            translated_bounding_box.append(bounding_box[current_index][0])
+            translated_bounding_box.append(bounding_box[current_index][1])
+        return translated_bounding_box
 
 
     def process_read_results(self, read_results_json, is_video = False):
@@ -442,35 +498,43 @@ class ReadResultsProcessor(object):
                     line_num = 1
                     lines = []
                     bounding_box = []
+                    bounding_boxes = []
 
                     for line in page['lines']:
                         if not self._merge_lines:
                             detection_properties = dict(OUTPUT_TYPE='LINE',
                                                         LINE_NUM=str(line_num),
                                                         TEXT=line['text'],
-                                                        ROTATION=str(mpf_util.normalize_angle(page['angle'])))
+                                                        )
+
+
                             if not(is_video):
                                 detection_properties["PAGE_NUM"] = str(page_num)
 
 
                             if self._is_image:
-                                bounding_box = self._convert_to_rect(line['boundingBox'])
+                                bounding_box, angle = self._convert_to_rect(line['boundingBox'])
+                                detection_properties['ROTATION'] = str(mpf_util.normalize_angle(angle))
                             detections.append(self._create_detection(detection_properties, bounding_box))
                             line_num += 1
                         else:
                             lines.append(line['text'])
 
                             if self._is_image:
-                                if len(bounding_box) == 0:
-                                    bounding_box = self._convert_to_rect(line['boundingBox'])
-                                else:
-                                    second_bounding_box = self._convert_to_rect(line['boundingBox'])
-                                    bounding_box = bounding_box.union(second_bounding_box)
+                                for i in range(4):
+                                    bounding_boxes.append([line['boundingBox'][2*i],line['boundingBox'][2*i+1]])
 
                     if self._merge_lines and len(lines) > 0:
                         detection_properties = dict(OUTPUT_TYPE='MERGED_LINES',
                                                     TEXT='\n'.join(lines),
-                                                    ROTATION=str(mpf_util.normalize_angle(page['angle'])))
+                                                    )
+                        if self._is_image:
+                            bounding_boxes = np.array(bounding_boxes).reshape((-1,1,2)).astype(np.int32)
+                            bounding_box = cv2.boxPoints(cv2.minAreaRect(bounding_boxes)).astype(np.int32)
+                            bounding_box = self._orient_bounding_box(bounding_box, mpf_util.normalize_angle(page['angle']))
+                            bounding_box, angle = self._convert_to_rect(bounding_box)
+                            detection_properties['ROTATION'] = str(mpf_util.normalize_angle(angle))
+
                         if not(is_video):
                             detection_properties["PAGE_NUM"] = str(page_num)
                         detections.append(self._create_detection(detection_properties, bounding_box))

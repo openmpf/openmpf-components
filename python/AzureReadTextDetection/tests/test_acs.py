@@ -195,51 +195,45 @@ class TestAcs(unittest.TestCase):
                        mpf_util.Rect.from_image_location(detection))
         self.assertAlmostEqual(expected_rotation, float(detection.detection_properties['ROTATION']))
 
-        # TODO: Update with 3.2.preview mode
-        # UPDATE: Language parameter specified but not found during test runs.
-        # self.assertEqual('en', detection.detection_properties['TEXT_LANGUAGE'])
-
 
     def test_image_file(self):
         self.run_image_test('orientation/img/eng.png', 'orientation/img/eng-results.json',
-                            mpf_util.Rect(109, 56, 996, 433), 0)
+                            mpf_util.Rect(109, 56, 995, 432), 0)
 
 
     def test_image_15deg_rotation(self):
         self.run_image_test('orientation/img/eng-15deg.png', 'orientation/img/eng-15deg-results.json',
-                            mpf_util.Rect(67, 60, 1036, 517), 345.0055)
+                            mpf_util.Rect(66, 194, 998, 433), 15.219872160655177)
 
 
     def test_image_90deg_rotation(self):
         self.run_image_test('orientation/img/eng-90deg.png', 'orientation/img/eng-90deg-results.json',
-                            mpf_util.Rect(55, 85, 435, 997), 270.0)
+                            mpf_util.Rect(55, 1081, 996, 434), 90.0)
 
 
     def test_image_100deg_rotation(self):
         self.run_image_test('orientation/img/eng-100deg.png', 'orientation/img/eng-100deg-results.json',
-                            mpf_util.Rect(66, 93, 470, 1027), 260.0397)
+                            mpf_util.Rect(145, 1120, 994, 434), 100.31515702822162)
 
 
     def test_image_180deg_rotation(self):
         self.run_image_test('orientation/img/eng-180deg.png', 'orientation/img/eng-180deg-results.json',
-                            mpf_util.Rect(85, 151, 996, 433), 180.0289)
+                            mpf_util.Rect(1081, 584, 996, 433), 180.0)
 
 
     def test_image_200deg_rotation(self):
         self.run_image_test('orientation/img/eng-200deg.png', 'orientation/img/eng-200deg-results.json',
-                            mpf_util.Rect(110, 41, 1029, 566), 160.0225)
+                            mpf_util.Rect(1139, 414, 997, 434), 200.05181234876986)
 
 
     def test_image_270deg_rotation(self):
         self.run_image_test('orientation/img/eng-270deg.png', 'orientation/img/eng-270deg-results.json',
-                            mpf_util.Rect(152, 108, 434, 998), 90)
+                            mpf_util.Rect(585, 108, 997, 434), 270.0)
 
 
     def test_image_290deg_rotation(self):
         self.run_image_test('orientation/img/eng-290deg.png', 'orientation/img/eng-290deg-results.json',
-                            mpf_util.Rect(38, 129, 562, 1034), 70.0808)
-
-
+                            mpf_util.Rect(407, 128, 1002, 433), 290.0075209483723)
 
 
     def test_video(self):
@@ -268,37 +262,39 @@ class TestAcs(unittest.TestCase):
 
             detections_indexed_by_frame[track.start_frame] = detection
 
-
-        # TODO: Run another check over angle generation.
-        # Update: Azure reported the angles in negative values, double check if ACS angles match MPF angles.
-        self.assertEqual(mpf_util.Rect(109, 54, 999, 437),
+        self.assertEqual(mpf_util.Rect(1106, 49, 438, 998),
                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[0]))
-        self.assertAlmostEqual(345.1056, float(detections_indexed_by_frame[1].detection_properties['ROTATION']))
+        self.assertAlmostEqual(270.2616227456948, float(detections_indexed_by_frame[0].detection_properties['ROTATION']))
 
 
-        self.assertEqual(mpf_util.Rect(54, 86, 438, 1000),
+        self.assertEqual(mpf_util.Rect(64, 193, 1000, 438),
+                         mpf_util.Rect.from_image_location(detections_indexed_by_frame[1]))
+        self.assertAlmostEqual(14.938792576116121, float(detections_indexed_by_frame[1].detection_properties['ROTATION']))
+
+
+        self.assertEqual(mpf_util.Rect(54, 1085, 999, 437),
                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[2]))
-        self.assertAlmostEqual(270, float(detections_indexed_by_frame[2].detection_properties['ROTATION']))
+        self.assertAlmostEqual(90.0, float(detections_indexed_by_frame[2].detection_properties['ROTATION']))
 
-        self.assertEqual(mpf_util.Rect(71, 89, 465, 1034),
+        self.assertEqual(mpf_util.Rect(141, 1123, 1002, 438),
                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[3]))
-        self.assertAlmostEqual(260.0991, float(detections_indexed_by_frame[3].detection_properties['ROTATION']))
+        self.assertAlmostEqual(99.94173427712408, float(detections_indexed_by_frame[3].detection_properties['ROTATION']))
 
-        self.assertEqual(mpf_util.Rect(84, 148, 1003, 439),
+        self.assertEqual(mpf_util.Rect(1087, 587, 1003, 440),
                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[4]))
-        self.assertAlmostEqual(179.9653, float(detections_indexed_by_frame[4].detection_properties['ROTATION']))
+        self.assertAlmostEqual(180.0571243873999, float(detections_indexed_by_frame[4].detection_properties['ROTATION']))
 
-        self.assertEqual(mpf_util.Rect(109, 43, 1032, 560),
+        self.assertEqual(mpf_util.Rect(1141, 416, 999, 437),
                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[5]))
-        self.assertAlmostEqual(160.0783, float(detections_indexed_by_frame[5].detection_properties['ROTATION']))
+        self.assertAlmostEqual(199.93904791680956, float(detections_indexed_by_frame[5].detection_properties['ROTATION']))
 
-        self.assertEqual(mpf_util.Rect(151, 106, 440, 1002),
+        self.assertEqual(mpf_util.Rect(590, 105, 1001, 441),
                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[6]))
-        self.assertAlmostEqual(89.9403, float(detections_indexed_by_frame[6].detection_properties['ROTATION']))
+        self.assertAlmostEqual(270.28619032471966, float(detections_indexed_by_frame[6].detection_properties['ROTATION']))
 
-        self.assertEqual(mpf_util.Rect(38, 129, 560, 1030),
+        self.assertEqual(mpf_util.Rect(410, 128, 997, 436),
                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[7]))
-        self.assertAlmostEqual(70.0706, float(detections_indexed_by_frame[7].detection_properties['ROTATION']))
+        self.assertAlmostEqual(290.1057533495411, float(detections_indexed_by_frame[7].detection_properties['ROTATION']))
 
     def test_upsampling(self):
         self.set_results_path(get_test_file('upsampling/tiny-image-results.json'))

@@ -36,23 +36,28 @@ from acs_read_detection_component import AcsReadDetectionComponent
 
 
 def main():
+    # Debugging option, set to true to view individual lines.
+    check_lines = False
     if len(sys.argv) != 4:
         sys.exit('Error: Invalid number of arguments. \nUsage: {} <acs_url> <acs_subscription_key> <img_path>'
                  .format(sys.argv[0]))
     _, acs_url, acs_subscription_key, img_path = sys.argv
 
+    merge_lines = "True"
+    if check_lines:
+        merge_lines = "False"
     if img_path.lower().endswith('.pdf'):
         job = mpf.GenericJob('Sample Job', img_path,
-                             dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key), {},
+                             dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key, MERGE_LINES=merge_lines), {},
                              None)
         detections = list(AcsReadDetectionComponent().get_detections_from_generic(job))
     elif img_path.lower().endswith('.avi'):
         job = mpf.VideoJob('Sample Job', img_path, 0, -1,
-                             dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key), {},
+                             dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key, MERGE_LINES=merge_lines), {},
                              None)
         detections = list(AcsReadDetectionComponent().get_detections_from_video(job))
     else:
-        job = mpf.ImageJob('Sample Job', img_path, dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key), {},
+        job = mpf.ImageJob('Sample Job', img_path, dict(ACS_URL=acs_url, ACS_SUBSCRIPTION_KEY=acs_subscription_key, MERGE_LINES=merge_lines), {},
                            None)
         detections = list(AcsReadDetectionComponent().get_detections_from_image(job))
 
