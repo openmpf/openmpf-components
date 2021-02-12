@@ -33,7 +33,6 @@ from typing import ClassVar
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from unittest.mock import patch
 
-# Add pyspeech_component to path.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from acs_speech_component import AcsSpeechComponent
 
