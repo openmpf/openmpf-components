@@ -75,7 +75,7 @@ float DetectionLocation::iouDist(const Track &track) const {
 }
 
 /** **************************************************************************
-* Compute euclidean center to distance center distance from normalized centers
+* Compute Euclidean center to center distance from normalized centers
 *
 * \param   track track
 * \returns   normalized center to center distance [0 ... Sqrt(2)]
@@ -165,7 +165,7 @@ float DetectionLocation::featureDist(Track &track) {
 
 
 /** **************************************************************************
-* Compute kalman distance (error from predicted) to track's tail detection's
+* Compute Kalman distance (error from predicted) to track's tail detection's
 *
 * \param   track track
 * \returns distance
@@ -196,9 +196,9 @@ void DetectionLocation::setRect(const cv::Rect2i &rec) {
 
 
 /** **************************************************************************
-* get hanning window of specified size
+* get Hanning window of specified size
 *
-* \param size  size of hanning windowing to return
+* \param size  size of Hanning windowing to return
 *
 *************************************************************************** */
 cv::Mat1f DetectionLocation::getHanningWindow(const cv::Size &size) const {
@@ -207,14 +207,14 @@ cv::Mat1f DetectionLocation::getHanningWindow(const cv::Size &size) const {
         static cv::Mat1f defaultWindow;
 
         if (defaultWindow.empty() || defaultWindow.rows != dftSize_) {
-            //LOG_TRACE("Created default hanning window of size " << defWin.size());
+            //LOG_TRACE("Created default Hanning window of size " << defWin.size());
             cv::createHanningWindow(defaultWindow, cv::Size(dftSize_, dftSize_), CV_32F);
         }
         return defaultWindow;
     }
     else {
         cv::Mat1f customWindow;
-        //LOG_TRACE("Created custom hanning window of size " << customWin.size());
+        //LOG_TRACE("Created custom Hanning window of size " << customWin.size());
         cv::createHanningWindow(customWindow, size, CV_32F);
         return customWindow;
     }
@@ -263,7 +263,7 @@ cv::Mat DetectionLocation::getDFTFeature() {
     // Buffer target region
     cv::Rect2i featureRoi((feature.size() - grayRoi.size()) / 2, grayRoi.size());
 
-    // Apply hanning window
+    // Apply Hanning window
     if (dftHanningWindowEnabled_) {
         cv::Mat1f hann = getHanningWindow(grayRoi.size());
         cv::multiply(gray(grayRoi), hann, gray(grayRoi));

@@ -38,17 +38,21 @@
 
 using namespace std;
 
-class KFTracker{
+class KFTracker {
 
-  public:
-    void             setStatePreFromBBox (const cv::Rect2i& r);
-    void             setStatePostFromBBox(const cv::Rect2i& r);
-    const cv::Rect2i predictedBBox() const {return _bboxFromState(_kf.statePre)  & _roi;};
-    const cv::Rect2i correctedBBox() const {return _bboxFromState(_kf.statePost) & _roi;};
+public:
+    void setStatePreFromBBox(const cv::Rect2i &r);
 
-    void predict(const float t);                ///< advance Kalman state to time t and get predicted bbox
-    void correct(const cv::Rect2i &rec);        ///< correct current filter state with measurement rec
-    float testResidual(const cv::Rect2i &rec, const int snapDist) const;  ///< return a normalized error if rec is assigned
+    void setStatePostFromBBox(const cv::Rect2i &r);
+
+    const cv::Rect2i predictedBBox() const { return _bboxFromState(_kf.statePre) & _roi; };
+
+    const cv::Rect2i correctedBBox() const { return _bboxFromState(_kf.statePost) & _roi; };
+
+    void predict(const float t);         ///< advance Kalman state to time t and get predicted bbox
+    void correct(const cv::Rect2i &rec); ///< correct current filter state with measurement rec
+    float
+    testResidual(const cv::Rect2i &rec, const int snapDist) const;  ///< return a normalized error if rec is assigned
     KFTracker(const float t,
               const float dt,
               const cv::Rect2i &rec0,
@@ -56,31 +60,32 @@ class KFTracker{
               const cv::Mat1f &rn,
               const cv::Mat1f &qn);
 
-    KFTracker(KFTracker &&t):_kf(move(t._kf)),
-                             _t(t._t),
-                             _dt(t._dt),
-                             _roi(move(t._roi)),
-                             _qn(move(t._qn)),
-                             _state_trace(t._state_trace.str()){}
+    KFTracker(KFTracker &&kft) : _kf(move(kft._kf)),
+                                 _t(kft._t),
+                                 _dt(kft._dt),
+                                 _roi(move(kft._roi)),
+                                 _qn(move(kft._qn)),
+                                 _state_trace(kft._state_trace.str()) {}
 
     // diagnostic output function for debug/tuning
     void dump(string filename);
-    friend ostream& operator<< (ostream& out, const KFTracker& kft);
+    friend ostream &operator<<(ostream &out, const KFTracker &kft);
 
-  private:
-    mutable cv::KalmanFilter _kf;          ///< kalman filter for bounding box
-    float                    _t;           ///< time corresponding to kalman filter state
+private:
+    mutable cv::KalmanFilter _kf;          ///< Kalman filter for bounding box
+    float                    _t;           ///< time corresponding to Kalman filter state
     float                    _dt;          ///< time step to use for filter updates
     cv::Rect2i               _roi;         ///< canvas clipping limits for bboxes returned by filter
-    cv::Mat1f                _qn;          ///< kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
+    cv::Mat1f                _qn;          ///< Kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
     stringstream             _state_trace; ///< time series of states for csv file output supporting debug/tuning
 
-    static cv::Mat1f      _measurementFromBBox(const cv::Rect2i& r);
-    static cv::Rect2i     _bboxFromState(const cv::Mat1f& state);
-    void                  _setTimeStep(float dt);           ///< update model variables Q F for time step size dt
+    static cv::Mat1f _measurementFromBBox(const cv::Rect2i &r);
+
+    static cv::Rect2i _bboxFromState(const cv::Mat1f &state);
+
+    void _setTimeStep(float dt); ///< update model variables Q F for time step size dt
 
 };
-
 
 
 #endif

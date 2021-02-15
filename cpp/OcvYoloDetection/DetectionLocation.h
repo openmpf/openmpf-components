@@ -74,7 +74,7 @@ public:
     // TODO: Determine if we can make this "float featureDist(const Track &track) const"
     float featureDist(Track &track);
 
-    /// compute kalman filter residual distance
+    /// compute Kalman filter residual distance
     float kfResidualDist(const Track &track) const;
 
     /// get bbox alignment via phase correlation
@@ -91,7 +91,7 @@ private:
     /// dft for matching-up detections via phase correlation
     cv::Mat dftFeature_;
 
-    /// get hanning window of specified size
+    /// get Hanning window of specified size
     cv::Mat1f getHanningWindow(const cv::Size &size) const;
 };
 

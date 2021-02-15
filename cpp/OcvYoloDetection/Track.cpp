@@ -122,7 +122,7 @@ bool Track::ocvTrackerPredict(const Frame &frame, const long maxFrameGap, cv::Re
             ocvTrackerStartFrameIdx_ = frame.idx;
         }
         else {
-            LOG_TRACE("can't create tracker created for " << back());
+            LOG_TRACE("can't create tracker for " << back());
             return false;
         }
     }
@@ -161,7 +161,7 @@ cv::Rect2i Track::predictedBox() const {
 /** **************************************************************************
  * Advance Kalman filter state to predict next bbox at time t
  *
- * \param t time in sec to which kalamn filter state is advanced to
+ * \param t time in sec to which Kalman filter state is advanced to
  *
 *************************************************************************** */
 void Track::kalmanPredict(const float t, const float edgeSnap) {
@@ -177,7 +177,7 @@ void Track::kalmanPredict(const float t, const float edgeSnap) {
 }
 
 /** **************************************************************************
- * apply kalman correction to tail detection using tail's measurement
+ * apply Kalman correction to tail detection using tail's measurement
 *************************************************************************** */
 void Track::kalmanCorrect(const float edgeSnap) {
     if (kalmanFilterTracker_) {
@@ -193,8 +193,6 @@ void Track::kalmanCorrect(const float edgeSnap) {
     }
 }
 
-/** **************************************************************************
-*************************************************************************** */
 float Track::testResidual(const cv::Rect2i &bbox, const float edgeSnap) const {
     if (kalmanFilterTracker_) {
         return kalmanFilterTracker_->testResidual(bbox, edgeSnap);

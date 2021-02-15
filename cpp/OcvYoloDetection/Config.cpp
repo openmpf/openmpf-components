@@ -35,13 +35,13 @@ using namespace MPF::COMPONENT;
 using DetectionComponentUtils::GetProperty;
 
 // Shared static members (might need mutex locks and condition variable if multithreading... )
-log4cxx::LoggerPtr                Config::log = log4cxx::Logger::getRootLogger();
+log4cxx::LoggerPtr Config::log = log4cxx::Logger::getRootLogger();
 
 
 namespace {
     cv::Mat1f LoadCovarianceMat(const std::string &serializedMat) {
         auto result = fromString(serializedMat, 4, 1, "f");
-        //convert stddev to variances
+        //convert stdev to variances
         return result.mul(result);
     }
 }

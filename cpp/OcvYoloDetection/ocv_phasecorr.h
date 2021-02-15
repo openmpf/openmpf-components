@@ -24,7 +24,7 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-// OpenCV has not exposed these function so we need to duplicate them here :(
+// OpenCV has not exposed these functions so we need to duplicate them here.
 
 #ifndef OCV_PHASECORR_H
 #define OCV_PHASECORR_H

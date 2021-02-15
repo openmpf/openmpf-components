@@ -57,11 +57,9 @@ public:
     /** ***************************************************************************
     *   add a single member to a cluster
     *
-    * @tparam T     type of objects in cluster
-    * @tparam fFunc member function of T to retrieve feature vector
-    * @tparam dFunc function to compute distance between two feature vectors
+    * @tparam T  type of objects in cluster
     *
-    * @param  m object to move into the cluster's member list
+    * @param newMember  object to move into the cluster's member list
     *
     **************************************************************************** */
     void add(T newMember) {
@@ -80,17 +78,17 @@ public:
 
 /** ***************************************************************************
 *  very naive agglomerative clustering (not suitable for lots of items),
-*  move items from a list list of clusters that is returned
+*  move items to a vector of clusters that is returned
 *
-* @tparam T     type of objects in cluster
-* @tparam TDistanceFunc function to compute distance between two feature vectors
+* @tparam T              type of objects in cluster
+* @tparam TDistanceFunc  function to compute distance between two feature vectors
 *
-* @param[in,out] items     list of objects to be moved into clusters
-* @param[in]     maxDist maximum feature distance an object can be from
-*                        its cluster's average feature
+* @param[in,out] items     vector of objects to be moved into clusters
+* @param[in]     maxDist   maximum feature distance an object can be from
+*                          its cluster's average feature
 * @param[in] distanceFunc  function to compute distance between two feature vectors
 *
-* @returns  list of clusters that object have been moved into
+* @returns vector of clusters that object have been moved into
 *
 **************************************************************************** */
 template <typename T, typename TDistanceFunc = decltype(cosDist)>

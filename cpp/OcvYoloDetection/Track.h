@@ -99,7 +99,7 @@ public:
     *   Compute cost vector and solve it to give detection to track assignment matrix
     *
     * \param COST_FUNC     cost function to use
-    * \param TrackPtrList  list of existing tracks to consider for assignment
+    * \param TrackPtrList  vector of existing tracks to consider for assignment
     * \param detections    vector of detections that need assigned to tracks
     * \param maxCost       maximum assignment cost, if exceeded the particular
     *                      detection to track assignment will be removed from result
@@ -228,7 +228,7 @@ public:
     friend std::ostream &operator<<(std::ostream &out, const Track &t);
 
 private:
-    /// list of locations making up track
+    /// vector of locations making up track
     std::vector<DetectionLocation> locations_;
 
     /// openCV tracker to help bridge gaps when detector fails

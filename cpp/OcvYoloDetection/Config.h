@@ -63,7 +63,7 @@ public:
     /// number of frames to batch inference when processing video
     int frameBatchSize;
 
-    /// maximun class feature scores above which detections will not be considered for the same track
+    /// maximum class feature scores above which detections will not be considered for the same track
     float maxClassDist;
 
     /// maximum feature distance to maintain track continuity
@@ -84,7 +84,7 @@ public:
     /// size of dft used for bbox alignment
     int dftSize;
 
-    /// use hanning windowing with dft
+    /// use Hanning windowing with dft
     bool dftHannWindowEnabled;
 
     /// disable builtin OCV MOSSE tracking
@@ -93,13 +93,13 @@ public:
     /// maximum residual for valid detection to track assignment
     float maxKFResidual;
 
-    /// if true kalman filtering is disabled
+    /// if true Kalman filtering is disabled
     bool kfDisabled;
 
-    /// kalman filter measurement noise matrix
+    /// Kalman filter measurement noise matrix
     cv::Mat1f RN;
 
-    /// kalman filter process noise variances (i.e. unknown accelerations)
+    /// Kalman filter process noise variances (i.e. unknown accelerations)
     cv::Mat1f QN;
 
     /// fallback to cpu if there is a gpu problem

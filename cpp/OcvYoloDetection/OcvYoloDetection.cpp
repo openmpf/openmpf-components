@@ -147,7 +147,7 @@ namespace {
                 // create new track
                 assignedTracks.emplace_back();
                 if (!config.kfDisabled) {
-                    // initialize kalman tracker
+                    // initialize Kalman tracker
                     assignedTracks.back().kalmanInit(detection.frame.time,
                                                      detection.frame.timeStep,
                                                      detection.getRect(),
@@ -197,7 +197,7 @@ namespace {
             }
         }
 
-        // advance kalman predictions
+        // advance Kalman predictions
         if (!config.kfDisabled) {
             for (auto &track : inProgressTracks) {
                 track.kalmanPredict(frame.time, config.edgeSnapDist);

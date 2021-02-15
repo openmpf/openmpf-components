@@ -38,7 +38,7 @@
         },
         {
           "name": "MODELS_DIR_PATH",
-          "description": "Path to models directory",
+          "description": "Path to models directory.",
           "type": "STRING",
           "propertiesKey": "detection.models.dir.path"
         },
@@ -50,25 +50,25 @@
         },
         {
           "name": "DETECTION_NMS_THRESHOLD",
-          "description": "Non maximum suppression threshold [0...1], IoU for duplicate object detection suppression.",
+          "description": "Non-maximum suppression threshold [0...1], IoU for duplicate object detection suppression.",
           "type": "FLOAT",
           "defaultValue": "0.3"
         },
         {
           "name": "DETECTION_FRAME_BATCH_SIZE",
-          "description": "Number of frames to batch inference when processing video. GPU VRAM dependant",
+          "description": "Number of frames to batch inference when processing video. GPU VRAM dependant.",
           "type": "INT",
           "defaultValue": "16"
         },
         {
           "name": "FRAME_QUEUE_CAPACITY",
-          "description": "The maximum number of frames in the frame queue used by MPFAsyncVideoCapture.",
+          "description": "The maximum number of frames in the frame queue used by MPFAsyncVideoCapture. In most cases, this should be set to the value of DETECTION_FRAME_BATCH_SIZE. Setting it to a lower value is not recommended.",
           "type": "INT",
           "defaultValue": "16"
         },
         {
           "name": "NUMBER_OF_CLASSIFICATIONS_PER_REGION",
-          "description": "Number of classification to return per detection",
+          "description": "Number of classification to return per detection.",
           "type": "INT",
           "defaultValue": "5"
         },
@@ -80,55 +80,55 @@
         },
         {
           "name": "TRACKING_MAX_FRAME_GAP",
-          "description": "Maximum temporal distance (# of frames) between detection in a track.",
+          "description": "Maximum temporal distance (# of frames) between detections in a track. A gap larger than this value will result in creating a new track.",
           "type": "INT",
           "defaultValue": "4"
         },
         {
           "name": "TRACKING_MAX_CLASS_DIST",
-          "description": "Threshold class-similarity-distance [0...1] above which detections will not be considered for a track of a particular class.",
+          "description": "Maximum class similarity distance [0...1]. Detection clusters and track clusters are formed by comparing candidates against each cluster's average class feature. The distance must fall below this value to add the candidate to the cluster. Similarly, the distance between a detection cluster and track cluster must fall below this value to add those detections to those tracks.",
           "type": "FLOAT",
           "defaultValue": "0.99"
         },
         {
           "name": "TRACKING_MAX_IOU_DIST",
-          "description": "Maximum intersection over union distance (1.0 - iou) =[0..1] between detections below which detection will be considered part of same track",
+          "description": "Maximum intersection over union distance [0...1] between detections. Note that IOU distance = (1.0 - IOU). A detection may be added to a track if the distance between the detection and the track tail is below this value.",
           "type": "FLOAT",
           "defaultValue": "0.3"
         },
         {
           "name": "TRACKING_MAX_FEATURE_DIST",
-          "description": "Maximum distance in nomalized aggregate pixel-difference [0..1] between detections below which detection will be considered part of same track",
+          "description": "Maximum normalized aggregate pixel difference [0...1] between detections. A detection may be added to a track if the distance between the detection and the track tail is below this value.",
           "type": "FLOAT",
           "defaultValue": "0.1"
         },
         {
           "name": "TRACKING_EDGE_SNAP_DIST",
-          "description": "Frame border as fraction of frame dimension within which detection bounding boxes are snapped to edge.",
+          "description": "Specifies a percentage of the frame width and height. Detections that fall within this space near the edge(s) of the frame are snapped to the respective edge(s).",
           "type": "FLOAT",
           "defaultValue": "0.0075"
         },
         {
           "name": "TRACKING_DFT_SIZE",
-          "description": "DFT size for bbox alignment via phase correlation.",
+          "description": "Discrete Fourier transform size for bbox alignment via phase correlation.",
           "type": "INT",
           "defaultValue": "256"
         },
         {
           "name": "TRACKING_DISABLE_MOSSE_TRACKER",
-          "description": "Disable builtin backup OCV MOSSE tracking.",
+          "description": "Disable builtin backup OpenCV MOSSE tracking. OpenCV MOSSE tracking is performed in an attempt to continue a track when there are no compatible Yolo-generated detections in a given frame.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
           "name": "TRACKING_DFT_USE_HANNING_WINDOW",
-          "description": "Use hanning windowing with DFT (better registration, but slower).",
+          "description": "Use Hanning windowing with Discrete Fourier transform (better registration, but slower).",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
         {
           "name": "KF_MAX_ASSIGNMENT_RESIDUAL",
-          "description": "Maximim number of standard deviations of a kalman filter state residual that a potential detection assignment is allowed to cause.",
+          "description": "Maximum number of standard deviations of a Kalman filter state residual that a potential detection assignment is allowed to cause.",
           "type": "FLOAT",
           "defaultValue": "2.5"
         },
@@ -140,25 +140,25 @@
         },
         {
           "name": "KF_RN",
-          "description": "Bounding box detector noise standard deviations (in pixels) [center_x_noise_stdev, center_y_noise_stddev, width_noise_stdev, height_noise_stddev] for Kalman filter R",
+          "description": "Bounding box detector noise standard deviations (in pixels) [center_x_noise_stdev, center_y_noise_stdev, width_noise_stdev, height_noise_stdev] for Kalman filter measurement noise matrix, R.",
           "type": "STRING",
           "defaultValue": " [ 10.0, 10.0, 100.0, 100.0 ] "
         },
         {
           "name": "KF_QN",
-          "description": "Bounding box motion model acceleration inaccuracies/noise (in pixels/sec^2) [center_x_acceleration_noise_stdev, center_y_acceleration_noise_stdev, width_acceleration_noise_stdev, height_acceleration_noise_stdev ] for Kalman filter Q",
+          "description": "Bounding box motion model acceleration inaccuracies/noise (in pixels/sec^2) [center_x_acceleration_noise_stdev, center_y_acceleration_noise_stdev, width_acceleration_noise_stdev, height_acceleration_noise_stdev ] for Kalman filter model (process) noise matrix, Q.",
           "type": "STRING",
           "defaultValue": " [ 1000.0, 1000.0, 1000.0, 1000.0 ] "
         },
         {
           "name": "CUDA_DEVICE_ID",
-          "description": "CUDA device / GPU to use, -1 to only use CPU",
+          "description": "CUDA device / GPU to use. Set to -1 to only use CPU.",
           "type": "INT",
           "propertiesKey": "detection.cuda.device.id"
         },
         {
           "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
-          "description": "if true will fallback to CPU only when GPU fails to initialize",
+          "description": "If true will fallback to CPU only when GPU fails to initialize.",
           "type": "BOOLEAN",
           "propertiesKey": "detection.use.cpu.when.gpu.problem"
         }
@@ -229,8 +229,8 @@
       ]
     },
     {
-      "name": "OCV YOLO V3 OBJECT DETECTION ACTION",
-      "description": "Runs the YOLO V3 object detection Darknet model.",
+      "name": "OCV YOLO VEHICLE DETECTION ACTION",
+      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
       "algorithm": "OCVYOLO",
       "properties": [
         {
@@ -239,11 +239,15 @@
         },
         {
           "name": "MODEL_NAME",
-          "value": "YOLO V3"
+          "value": "YOLO"
         },
         {
           "name": "NET_INPUT_IMAGE_SIZE",
           "value": "608"
+        },
+        {
+          "name": "CLASS_WHITELIST_FILE",
+          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-whitelist.txt"
         }
       ]
     },
@@ -267,8 +271,8 @@
       ]
     },
     {
-      "name": "OCV YOLO VEHICLE DETECTION ACTION",
-      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
+      "name": "OCV YOLO V3 OBJECT DETECTION ACTION",
+      "description": "Runs the YOLO V3 object detection Darknet model.",
       "algorithm": "OCVYOLO",
       "properties": [
         {
@@ -277,15 +281,11 @@
         },
         {
           "name": "MODEL_NAME",
-          "value": "YOLO"
+          "value": "YOLO V3"
         },
         {
           "name": "NET_INPUT_IMAGE_SIZE",
           "value": "608"
-        },
-        {
-          "name": "CLASS_WHITELIST_FILE",
-          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-whitelist.txt"
         }
       ]
     }
@@ -313,10 +313,10 @@
       ]
     },
     {
-      "name": "OCV YOLO V3 OBJECT DETECTION TASK",
-      "description": "Runs the YOLO V3 object detection Darknet model.",
+      "name": "OCV YOLO VEHICLE DETECTION TASK",
+      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
       "actions": [
-        "OCV YOLO V3 OBJECT DETECTION ACTION"
+        "OCV YOLO VEHICLE DETECTION ACTION"
       ]
     },
     {
@@ -327,10 +327,10 @@
       ]
     },
     {
-      "name": "OCV YOLO VEHICLE DETECTION TASK",
-      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
+      "name": "OCV YOLO V3 OBJECT DETECTION TASK",
+      "description": "Runs the YOLO V3 object detection Darknet model.",
       "actions": [
-        "OCV YOLO VEHICLE DETECTION ACTION"
+        "OCV YOLO V3 OBJECT DETECTION ACTION"
       ]
     }
   ],
@@ -366,21 +366,6 @@
       ]
     },
     {
-      "name": "OCV YOLO V3 OBJECT DETECTION PIPELINE",
-      "description": "Runs the YOLO V3 object detection Darknet model.",
-      "tasks": [
-        "OCV YOLO V3 OBJECT DETECTION TASK"
-      ]
-    },
-    {
-      "name": "OCV YOLO V3 OBJECT DETECTION (WITH MARKUP) PIPELINE",
-      "description": "Runs the YOLO object detection Darknet model and produces markup.",
-      "tasks": [
-        "OCV YOLO V3 OBJECT DETECTION TASK",
-        "OCV GENERIC MARKUP TASK"
-      ]
-    },
-    {
       "name": "OCV TINY YOLO V3 OBJECT DETECTION PIPELINE",
       "description": "Runs the TINY YOLO V3 object detection Darknet model.",
       "tasks": [
@@ -392,6 +377,21 @@
       "description": "Runs the TINY YOLO object detection Darknet model and produces markup.",
       "tasks": [
         "OCV TINY YOLO V3 OBJECT DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OCV YOLO V3 OBJECT DETECTION PIPELINE",
+      "description": "Runs the YOLO V3 object detection Darknet model.",
+      "tasks": [
+        "OCV YOLO V3 OBJECT DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV YOLO V3 OBJECT DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the YOLO object detection Darknet model and produces markup.",
+      "tasks": [
+        "OCV YOLO V3 OBJECT DETECTION TASK",
         "OCV GENERIC MARKUP TASK"
       ]
     }
