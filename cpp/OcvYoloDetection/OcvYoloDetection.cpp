@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2020 The MITRE Corporation                                       *
+ * Copyright 2021 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -207,19 +207,11 @@ namespace {
 } // end anonymous namespace
 
 
-/** ****************************************************************************
-*  Initialize Yolo detector module by setting up paths and reading configs
-*  configuration variables are turned into environment variables for late
-*  reference
-*
-* \returns   true on success
-***************************************************************************** */
 bool OcvYoloDetection::Init() {
     auto pluginPath = GetRunDirectory() + "/OcvYoloDetection";
 
     log4cxx::xml::DOMConfigurator::configure(pluginPath + "/config/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("OcvYoloDetection");
-    Config::log = log4cxx::Logger::getLogger("OcvYoloDetection");
     LOG_DEBUG("Initializing OcvYoloDetector");
 
     modelsParser_.Init(pluginPath + "/models")

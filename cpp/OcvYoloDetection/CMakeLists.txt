@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2020 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2020 The MITRE Corporation                                      #
+# Copyright 2021 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -55,7 +55,7 @@ find_package(Qt4 REQUIRED)
 set(OCV_YOLO_DETECTION_SOURCE_FILES
         util.cpp util.h
         Config.cpp Config.h
-        Frame.cpp Frame.h
+        Frame.h
         DetectionLocation.cpp DetectionLocation.h
         Track.cpp Track.h
         KFTracker.cpp KFTracker.h

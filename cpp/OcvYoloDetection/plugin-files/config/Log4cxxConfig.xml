@@ -6,11 +6,11 @@
   ~ under contract, and is subject to the Rights in Data-General Clause       ~
   ~ 52.227-14, Alt. IV (DEC 2007).                                            ~
   ~                                                                           ~
-  ~ Copyright 2020 The MITRE Corporation. All Rights Reserved.                ~
+  ~ Copyright 2021 The MITRE Corporation. All Rights Reserved.                ~
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
 
 <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ~ Copyright 2020 The MITRE Corporation                                      ~
+  ~ Copyright 2021 The MITRE Corporation                                      ~
   ~                                                                           ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");           ~
   ~ you may not use this file except in compliance with the License.          ~
@@ -36,19 +36,8 @@
     </layout>
   </appender>
 
-  <appender name="Console" class="org.apache.log4j.ConsoleAppender">
-    <param name="Target" value="System.out" />
-    <!--layout class="org.apache.log4j.TTCCLayout" /-->
-    <param name="DatePattern" value="'.'yyyy-MM-dd" />
-    <layout class="org.apache.log4j.PatternLayout">
-      <param name="ConversionPattern" value="%d %p [%t] %.30F:%L - %m%n" />
-    </layout>
-  </appender>
-
   <logger name="OcvYoloDetection" additivity="false">
     <level value="INFO"/>
     <appender-ref ref="OCV-YOLO-DETECTION-FILE"/>
-<!--    <appender-ref ref="Console"/>-->
   </logger>
-
  </log4j:configuration>

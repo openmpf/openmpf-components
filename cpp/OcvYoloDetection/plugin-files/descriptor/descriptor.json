@@ -1,7 +1,7 @@
 {
   "componentName": "OcvYoloDetection",
-  "componentVersion": "1.0",
-  "middlewareVersion": "5.1.0",
+  "componentVersion": "6.0",
+  "middlewareVersion": "6.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/OcvYoloDetection/lib/libmpfOcvYoloDetection.so",
   "environmentVariables": [
@@ -173,10 +173,6 @@
       "algorithm": "OCVYOLO",
       "properties": [
         {
-          "name": "CONFIDENCE_THRESHOLD",
-          "value": "0.5"
-        },
-        {
           "name": "MODEL_NAME",
           "value": "TINY YOLO"
         },
@@ -191,10 +187,6 @@
       "description": "Runs the Tiny YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
       "algorithm": "OCVYOLO",
       "properties": [
-        {
-          "name": "CONFIDENCE_THRESHOLD",
-          "value": "0.5"
-        },
         {
           "name": "MODEL_NAME",
           "value": "TINY YOLO"
@@ -215,10 +207,6 @@
       "algorithm": "OCVYOLO",
       "properties": [
         {
-          "name": "CONFIDENCE_THRESHOLD",
-          "value": "0.5"
-        },
-        {
           "name": "MODEL_NAME",
           "value": "YOLO"
         },
@@ -233,10 +221,6 @@
       "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks).",
       "algorithm": "OCVYOLO",
       "properties": [
-        {
-          "name": "CONFIDENCE_THRESHOLD",
-          "value": "0.5"
-        },
         {
           "name": "MODEL_NAME",
           "value": "YOLO"
@@ -257,10 +241,6 @@
       "algorithm": "OCVYOLO",
       "properties": [
         {
-          "name": "CONFIDENCE_THRESHOLD",
-          "value": "0.5"
-        },
-        {
           "name": "MODEL_NAME",
           "value": "TINY YOLO V3"
         },
@@ -275,10 +255,6 @@
       "description": "Runs the YOLO V3 object detection Darknet model.",
       "algorithm": "OCVYOLO",
       "properties": [
-        {
-          "name": "CONFIDENCE_THRESHOLD",
-          "value": "0.5"
-        },
         {
           "name": "MODEL_NAME",
           "value": "YOLO V3"

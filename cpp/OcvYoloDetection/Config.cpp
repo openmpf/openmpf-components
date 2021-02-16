@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2020 The MITRE Corporation                                       *
+ * Copyright 2021 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -34,8 +34,7 @@ using namespace MPF::COMPONENT;
 
 using DetectionComponentUtils::GetProperty;
 
-// Shared static members (might need mutex locks and condition variable if multithreading... )
-log4cxx::LoggerPtr Config::log = log4cxx::Logger::getRootLogger();
+const log4cxx::LoggerPtr Config::log = log4cxx::Logger::getLogger("OcvYoloDetection");
 
 
 namespace {

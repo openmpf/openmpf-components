@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2020 The MITRE Corporation                                       *
+ * Copyright 2021 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -42,14 +42,8 @@ using namespace MPF::COMPONENT;
 namespace {
 
     int ConfigureCudaDeviceIfNeeded(const Config &config, log4cxx::LoggerPtr& log) {
-        // cv::cuda::getCudaEnabledDeviceCount() is the only cv::cuda function that is safe to call
-        // when there isn't CUDA support.
-        int cudaDeviceCount = cv::cuda::getCudaEnabledDeviceCount();
-        bool cudaSupportAvailable = cudaDeviceCount > 0;
-
         if (config.cudaDeviceId < 0) {
-            // Make sure calling cv::cuda::resetDevice() won't throw an exception.
-            if (cudaSupportAvailable) {
+            if (cv::cuda::getCudaEnabledDeviceCount() > 0) {
                 // A previous job may have been configured to use CUDA, but this job wasn't.
                 // We call cv::cuda::resetDevice() so that GPU memory used by the previous job
                 // can be released.
@@ -58,28 +52,26 @@ namespace {
             return -1;
         }
 
-        if (cudaSupportAvailable) {
+        try {
             if (cv::cuda::getDevice() != config.cudaDeviceId) {
                 cv::cuda::resetDevice();
                 cv::cuda::setDevice(config.cudaDeviceId);
             }
             return config.cudaDeviceId;
         }
+        catch (const cv::Exception &e) {
+            if (e.code != cv::Error::GpuApiCallError && e.code != cv::Error::GpuNotSupported) {
+                throw;
+            }
 
-        std::string message = "Can not use CUDA because ";
-        if (cudaDeviceCount == 0) {
-            message += "OpenCV was compiled without CUDA support.";
-        }
-        else if (cudaDeviceCount < 0) {
-            message += "the CUDA driver is not installed or is incompatible.";
-        }
-
-        if (config.fallback2CpuWhenGpuProblem) {
-            LOG4CXX_WARN(log, message << " Job will run on CPU instead.")
-            return -1;
-        }
-        else {
-            throw MPFDetectionException(MPFDetectionError::MPF_GPU_ERROR, message);
+            std::string message = "An error occurred while trying to set CUDA device: " + e.msg;
+            if (config.fallback2CpuWhenGpuProblem) {
+                LOG4CXX_WARN(log, message << ". Job will run on CPU instead.")
+                return -1;
+            }
+            else {
+                throw MPFDetectionException(MPFDetectionError::MPF_GPU_ERROR, message);
+            }
         }
     }
 
