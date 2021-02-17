@@ -193,6 +193,7 @@ if __name__ == '__main__':
             transcription = json.load(response)
     finally:
         comp.processor.acs.delete_blob(recording_id)
+        comp.processor.acs.delete_transcription(output_loc)
 
     job_url = f"{transcription_url}/{job_name}"
     base_local_path = os.path.join(
