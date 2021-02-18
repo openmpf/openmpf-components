@@ -23,8 +23,9 @@
  * See the License for the specific language governing permissions and        *
  * limitations under the License.                                             *
  ******************************************************************************/
-#ifndef OCVYOLODETECTION_FRAME_H
-#define OCVYOLODETECTION_FRAME_H
+
+#ifndef OPENMPF_COMPONENTS_FRAME_H
+#define OPENMPF_COMPONENTS_FRAME_H
 
 #include <utility>
 
@@ -65,4 +66,4 @@ public:
 };
 
 
-#endif
+#endif // OPENMPF_COMPONENTS_FRAME_H

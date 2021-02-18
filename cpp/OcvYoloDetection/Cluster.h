@@ -23,8 +23,9 @@
  * See the License for the specific language governing permissions and        *
  * limitations under the License.                                             *
  ******************************************************************************/
-#ifndef OCVYOLODETECTION_CLUSTER_H
-#define OCVYOLODETECTION_CLUSTER_H
+
+#ifndef OPENMPF_COMPONENTS_CLUSTER_H
+#define OPENMPF_COMPONENTS_CLUSTER_H
 
 #include <algorithm>
 #include <utility>
@@ -116,4 +117,4 @@ std::vector<Cluster<T>> clusterItems(std::vector<T> items, float maxDist,
     return clusters;
 }
 
-#endif
+#endif //OPENMPF_COMPONENTS_CLUSTER_H

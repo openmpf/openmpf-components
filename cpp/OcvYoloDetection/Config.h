@@ -24,8 +24,8 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef OCVYOLODETECTION_CONFIG_H
-#define OCVYOLODETECTION_CONFIG_H
+#ifndef OPENMPF_COMPONENTS_CONFIG_H
+#define OPENMPF_COMPONENTS_CONFIG_H
 
 #include <ostream>
 #include <string>
@@ -121,4 +121,4 @@ public:
 std::ostream &operator<<(std::ostream &out, const Config &cfg);  
 
 
-#endif
+#endif //OPENMPF_COMPONENTS_CONFIG_H

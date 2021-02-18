@@ -68,4 +68,4 @@ private:
                                 const Config &config);
 };
 
-#endif
+#endif //OPENMPF_COMPONENTS_OCVYOLODETECTION_H

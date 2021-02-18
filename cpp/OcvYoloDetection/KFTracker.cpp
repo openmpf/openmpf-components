@@ -29,6 +29,7 @@
 
 
 #define PROCESS_NOISE CONTINUOUS_WHITE
+// TODO: Consider exposing a property to use piecewise white noise instead of continuous white noise.
 //#define PROCESS_NOISE PIECEWISE_WHITE
 
 using namespace MPF::COMPONENT;
@@ -239,6 +240,7 @@ void KFTracker::predict(float t) {
     _kf.predict();
     _kf.errorCovPre += _kf.errorCovPre.t();   // guarantee cov symmetry to help stability
     _kf.errorCovPre /= 2.0f;
+    // TODO: Consider exposing a property to disable width/height velocity/acceleration to reduce "bouncy" tracks.
     /*_kf.statePre.at<float>(8) =
     _kf.statePre.at<float>(11) = 0.0;  // kill width & height acceleration
     _kf.statePre.at<float>(7) =
@@ -259,6 +261,7 @@ void KFTracker::correct(const cv::Rect2i &rec) {
     _kf.correct(_measurementFromBBox(rec));
     _kf.errorCovPost += _kf.errorCovPost.t();   // guarantee cov symmetry to help stability
     _kf.errorCovPost /= 2.0f;
+    // TODO: Consider exposing a property to disable width/height velocity/acceleration to reduce "bouncy" tracks.
     /*_kf.statePost.at<float>(8) =
     _kf.statePost.at<float>(11) = 0.0;  // kill width & height acceleration
     _kf.statePost.at<float>(7) =

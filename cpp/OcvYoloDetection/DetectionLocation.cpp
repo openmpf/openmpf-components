@@ -103,6 +103,7 @@ float DetectionLocation::center2CenterDist(const Track &track) const {
 *
 *************************************************************************** */
 cv::Point2d DetectionLocation::phaseCorrelate(Track &track) {
+    // This code is based on: https://github.com/opencv/opencv/blob/4.5.1/modules/imgproc/src/phasecorr.cpp#L518
     // TODO: Use words instead of single letters and explain what this does
     cv::Mat1f P, Pm, C;
     cv::mulSpectrums(getDFTFeature(), track.back().getDFTFeature(), P, 0, true);

@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2020 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2020 The MITRE Corporation                                       *
+ * Copyright 2021 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -24,7 +24,7 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-// OpenCV has not exposed these functions so we need to duplicate them here.
+// OpenCV has not exposed these functions so we need to duplicate them.
 
 #ifndef OCV_PHASECORR_H
 #define OCV_PHASECORR_H
@@ -37,4 +37,4 @@ namespace cv {
  void fftShift(InputOutputArray _out);
  cv::Point2d weightedCentroid(InputArray _src, cv::Point peakLocation, cv::Size weightBoxSize, double* response);
 }
-#endif
+#endif //OCV_PHASECORR_H

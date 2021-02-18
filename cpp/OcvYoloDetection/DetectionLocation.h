@@ -24,8 +24,8 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef OCVYOLODETECTION_DETECTIONLOCATION_H
-#define OCVYOLODETECTION_DETECTIONLOCATION_H
+#ifndef OPENMPF_COMPONENTS_DETECTIONLOCATION_H
+#define OPENMPF_COMPONENTS_DETECTIONLOCATION_H
 
 #include <log4cxx/logger.h>
 #include <opencv2/core.hpp>
@@ -97,4 +97,4 @@ private:
 
 
 
-#endif
+#endif //OPENMPF_COMPONENTS_DETECTIONLOCATION_H

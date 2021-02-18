@@ -24,8 +24,8 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef OCVYOLODETECTION_TRACK_H
-#define OCVYOLODETECTION_TRACK_H
+#ifndef OPENMPF_COMPONENTS_TRACK_H
+#define OPENMPF_COMPONENTS_TRACK_H
 
 #include <algorithm>
 #include <list>
@@ -282,4 +282,4 @@ private:
 std::ostream &operator<<(std::ostream &out, const Track &t);
 
 
-#endif
+#endif //OPENMPF_COMPONENTS_TRACK_H

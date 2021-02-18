@@ -24,8 +24,8 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef KF_TRACKER_H
-#define KF_TRACKER_H
+#ifndef OPENMPF_COMPONENTS_KFTRACKER_H
+#define OPENMPF_COMPONENTS_KFTRACKER_H
 
 #include <ostream>
 
@@ -88,4 +88,4 @@ private:
 };
 
 
-#endif
+#endif //OPENMPF_COMPONENTS_KFTRACKER_H

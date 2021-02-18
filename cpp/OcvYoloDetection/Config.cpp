@@ -53,6 +53,7 @@ Config::Config(const Properties &jobProps)
         , frameBatchSize(GetProperty(jobProps, "DETECTION_FRAME_BATCH_SIZE", 16))
         , maxClassDist(GetProperty(jobProps, "TRACKING_MAX_CLASS_DIST", 0.99))
         , maxFeatureDist(GetProperty(jobProps, "TRACKING_MAX_FEATURE_DIST", 0.1))
+        // TODO: Center-to-center distance is currently disabled. Expose it as optional behavior or remove it.
         , maxCenterDist(GetProperty(jobProps, "TRACKING_MAX_CENTER_DIST", 0.0))
         , maxFrameGap(GetProperty(jobProps, "TRACKING_MAX_FRAME_GAP", 4))
         , maxIOUDist(GetProperty(jobProps, "TRACKING_MAX_IOU_DIST", 0.3))

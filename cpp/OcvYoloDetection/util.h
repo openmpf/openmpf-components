@@ -23,8 +23,9 @@
  * See the License for the specific language governing permissions and        *
  * limitations under the License.                                             *
  ******************************************************************************/
-#ifndef OCVYOLODETECTION_UTIL_H
-#define OCVYOLODETECTION_UTIL_H
+
+#ifndef OPENMPF_COMPONENTS_UTIL_H
+#define OPENMPF_COMPONENTS_UTIL_H
 
 #include <ostream>
 #include <string>
@@ -114,4 +115,4 @@ namespace cv {
     std::ostream &operator<<(std::ostream &os, const cv::Rect &r);
 }
 
-#endif
+#endif //OPENMPF_COMPONENTS_UTIL_H

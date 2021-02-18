@@ -1,3 +1,9 @@
+// This file was originally part of the OpenCV project:
+// https://github.com/opencv/opencv/blob/4.5.1/modules/imgproc/src/phasecorr.cpp
+// Some functions have been removed and "static" has been removed from some others.
+// See opencv/LICENSE and http://opencv.org/license.html for the actual licensing terms.
+// See also opencv/doc/LICENSE_CHANGE_NOTICE.txt. Below is the original license:
+
 /*********************************************************************
  * Software License Agreement (BSD License)
  *

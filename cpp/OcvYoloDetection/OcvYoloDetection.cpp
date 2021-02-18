@@ -181,6 +181,7 @@ namespace {
                     }
                 }
             }
+            // move tracks with no new detections to assigned tracks
             assignedTracks.insert(assignedTracks.end(),
                                   std::make_move_iterator(trackCluster.members.begin()),
                                   std::make_move_iterator(trackCluster.members.end()));

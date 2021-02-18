@@ -86,19 +86,19 @@
         },
         {
           "name": "TRACKING_MAX_CLASS_DIST",
-          "description": "Maximum class similarity distance [0...1]. Detection clusters and track clusters are formed by comparing candidates against each cluster's average class feature. The distance must fall below this value to add the candidate to the cluster. Similarly, the distance between a detection cluster and track cluster must fall below this value to add those detections to those tracks.",
+          "description": "Maximum class similarity distance [0...1]. Detection clusters and track clusters are formed by comparing candidates against each cluster's average class feature. The distance must equal or fall below this value to add the candidate to the cluster. Similarly, the distance between a detection cluster and track cluster must equal or fall below this value to add those detections to those tracks.  A value of 1 or more will result in comparing all detections to all tracks, regardless of class.",
           "type": "FLOAT",
           "defaultValue": "0.99"
         },
         {
           "name": "TRACKING_MAX_IOU_DIST",
-          "description": "Maximum intersection over union distance [0...1] between detections. Note that IOU distance = (1.0 - IOU). A detection may be added to a track if the distance between the detection and the track tail is below this value.",
+          "description": "Maximum intersection over union distance [0...1] between detections. Note that IOU distance = (1.0 - IOU). A detection may be added to a track if the distance between the detection and the track tail is equal to or below this value. A value of 0 or less will disable track assignment based on this distance metric.",
           "type": "FLOAT",
           "defaultValue": "0.3"
         },
         {
           "name": "TRACKING_MAX_FEATURE_DIST",
-          "description": "Maximum normalized aggregate pixel difference [0...1] between detections. A detection may be added to a track if the distance between the detection and the track tail is below this value.",
+          "description": "Maximum normalized aggregate pixel difference [0...1] between detections. A detection may be added to a track if the distance between the detection and the track tail is equal to or below this value. A value of 0 or less will disable track assignment based on this distance metric.",
           "type": "FLOAT",
           "defaultValue": "0.1"
         },
@@ -122,7 +122,7 @@
         },
         {
           "name": "TRACKING_DFT_USE_HANNING_WINDOW",
-          "description": "Use Hanning windowing with Discrete Fourier transform (better registration, but slower).",
+          "description": "Use Hanning windowing with Discrete Fourier transform. This removes edge effects, resulting in better registration, but is slower.",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
