@@ -72,12 +72,42 @@ void KFTracker::_setTimeStep(float dt) {
         for (int b = 0; b < 4; b++) {
             int i = 3 * b;
             // update state transition matrix F
+            //    | 0  1    2   3  4    5    6  7    8    9 10   11
+            //--------------------------------------------------------
+            //  0 | 1 dt .5dt^2 0  0    0    0  0    0    0  0    0   |   | x|
+            //  1 | 0  1   dt   0  0    0    0  0    0    0  0    0   |   |vx|
+            //  2 | 0  0    1   0  0    0    0  0    0    0  0    0   |   |ax|
+            //  3 | 0  0    0   1 dt .5dt^2  0  0    0    0  0    0   |   | y|
+            //  4 | 0  0    0   0  1   dt    0  0    0    0  0    0   |   |vy|
+            //  5 | 0  0    0   0  0    1    0  0    0    0  0    0   |   |ay|
+            //  6 | 0  0    0   0  0    0    1 dt .5dt^2  0  0    0   |   | w|
+            //  7 | 0  0    0   0  0    0    0  1   dt    0  0    0   |   |vw|
+            //  8 | 0  0    0   0  0    0    0  0    1    0  0    0   |   |aw|
+            //  9 | 0  0    0   0  0    0    0  0    0    1 dt .5dt^2 |   | h|
+            // 10 | 0  0    0   0  0    0    0  0    0    0  1   dt   |   |vh|
+            // 11 | 0  0    0   0  0    0    0  0    0    0  0    1   |   |ah|
             _kf.transitionMatrix.at<float>(i, 1 + i) =
             _kf.transitionMatrix.at<float>(1 + i, 2 + i) = dt;
             _kf.transitionMatrix.at<float>(i, 2 + i) = half_dt2;
 
             // update process noise matrix Q
 #if PROCESS_NOISE == CONTINUOUS_WHITE
+            // See "Out[4]" here:
+            // https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/07-Kalman-Filter-Math.ipynb
+            //    | 0       1      2      3       4      5      6       7      8      9      10     11
+            //----------------------------------------------------------------------------------------------
+            //  0 | dt^5/20 dt^4/8 dt^3/6 0       0      0      0       0      0      0       0      0      |   | x|
+            //  1 | dt^4/8  dt^3/3 dt^2/2 0       0      0      0       0      0      0       0      0      |   |vx|
+            //  2 | dt^3/6  dt^2/2 dt     0       0      0      0       0      0      0       0      0      |   |ax|
+            //  3 | 0       0      0      dt^5/20 dt^4/8 dt^3/6 0       0      0      0       0      0      |   | y|
+            //  4 | 0       0      0      dt^4/8  dt^3/3 dt^2/2 0       0      0      0       0      0      |   |vy|
+            //  5 | 0       0      0      dt^3/6  dt^2/2 dt     0       0      0      0       0      0      |   |ay|
+            //  6 | 0       0      0      0       0      0      dt^5/20 dt^4/8 dt^3/6 0       0      0      |   | w|
+            //  7 | 0       0      0      0       0      0      dt^4/8  dt^3/3 dt^2/2 0       0      0      |   |vw|
+            //  8 | 0       0      0      0       0      0      dt^3/6  dt^2/2 dt     0       0      0      |   |aw|
+            //  9 | 0       0      0      0       0      0      0       0      0      dt^5/20 dt^4/8 dt^3/6 |   | h|
+            // 10 | 0       0      0      0       0      0      0       0      0      dt^4/8  dt^3/3 dt^2/2 |   |vh|
+            // 11 | 0       0      0      0       0      0      0       0      0      dt^3/6  dt^2/2 dt     |   |ah|
             _kf.processNoiseCov.at<float>(i, i) = _qn.at<float>(b, 0) * twentieth_dt5;
             _kf.processNoiseCov.at<float>(1 + i, i) =
             _kf.processNoiseCov.at<float>(i, 1 + i) = _qn.at<float>(b, 0) * eighth_dt4;
@@ -88,6 +118,22 @@ void KFTracker::_setTimeStep(float dt) {
             _kf.processNoiseCov.at<float>(2 + i, 1 + i) = _qn.at<float>(b, 0) * half_dt2;
             _kf.processNoiseCov.at<float>(2 + i, 2 + i) = _qn.at<float>(b, 0) * dt;
 #elif PROCESS_NOISE == PIECEWISE_WHITE
+            // See "Out[8]" here:
+            // https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/07-Kalman-Filter-Math.ipynb
+            //    | 0      1      2      3      4      5      6      7      8      9     10     11
+            //------------------------------------------------------------------------------------------
+            //  0 | dt^4/4 dt^3/2 dt^2/2 0      0      0      0      0      0      0      0      0      |   | x|
+            //  1 | dt^3/2 dt^2   dt     0      0      0      0      0      0      0      0      0      |   |vx|
+            //  2 | dt^2/2 dt     1      0      0      0      0      0      0      0      0      0      |   |ax|
+            //  3 | 0       0     0      dt^4/4 dt^3/2 dt^2/2 0      0      0      0      0      0      |   | y|
+            //  4 | 0       0     0      dt^3/2 dt^2   dt     0      0      0      0      0      0      |   |vy|
+            //  5 | 0       0     0      dt^2/2 dt     1      0      0      0      0      0      0      |   |ay|
+            //  6 | 0       0     0      0      0      0      dt^4/4 dt^3/2 dt^2/2 0      0      0      |   | w|
+            //  7 | 0       0     0      0      0      0      dt^3/2 dt^2   dt     0      0      0      |   |vw|
+            //  8 | 0       0     0      0      0      0      dt^2/2 dt     1      0      0      0      |   |aw|
+            //  9 | 0       0     0      0      0      0      0      0      0      dt^4/4 dt^3/2 dt^2/2 |   | h|
+            // 10 | 0       0     0      0      0      0      0      0      0      dt^3/2 dt^2   dt     |   |vh|
+            // 11 | 0       0     0      0      0      0      0      0      0      dt^2/2 dt     1      |   |ah|
             _kf.processNoiseCov.at<float>(  i,  i) = _qn.at<float>(b,0) * quarter_dt4;
             _kf.processNoiseCov.at<float>(1+i,  i) =
             _kf.processNoiseCov.at<float>(  i,1+i) = _qn.at<float>(b,0) * half_dt3;
@@ -311,23 +357,6 @@ KFTracker::KFTracker(const float t,
     assert(_roi.width > 0);
     assert(_roi.height > 0);
 
-
-    // state transition matrix F
-    //    | 0  1    2   3  4    5    6  7    8    9 10   11
-    //--------------------------------------------------------
-    //  0 | 1 dt .5dt^2 0  0    0    0  0    0    0  0    0   |   | x|
-    //  1 | 0  1   dt   0  0    0    0  0    0    0  0    0   |   |vx|
-    //  2 | 0  0    1   0  0    0    0  0    0    0  0    0   |   |ax|
-    //  3 | 0  0    0   1 dt .5dt^2  0  0    0    0  0    0   |   | y|
-    //  4 | 0  0    0   0  1   dt    0  0    0    0  0    0   |   |vy|
-    //  5 | 0  0    0   0  0    1    0  0    0    0  0    0   |   |vy|
-    //  6 | 0  0    0   0  0    0    1 dt .5dt^2  0  0    0   |   | w|
-    //  7 | 0  0    0   0  0    0    0  1   dt    0  0    0   |   |vw|
-    //  8 | 0  0    0   0  0    0    0  0    1    0  0    0   |   |aw|
-    //  9 | 0  0    0   0  0    0    0  0    0    1 dt .5dt^2 |   | h|
-    // 10 | 0  0    0   0  0    0    0  0    0    0  1   dt   |   |vh|
-    // 11 | 0  0    0   0  0    0    0  0    0    0  0    1   |   |ah|
-
     // measurement matrix H
     //      0  1  2  3  4  5  6  7  8  9 10 11
     //-----------------------------------------
@@ -363,6 +392,8 @@ KFTracker::KFTracker(const float t,
     _kf.statePost.at<float>(9) = z0.at<float>(3);
 
     //initialize error covariance matrix P
+    // See "Design the Measurement Noise Matrix" here:
+    // https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/08-Designing-Kalman-Filters.ipynb
     // z: [ x, y, w, h]
     // x: [ x,vx,ax, y,vy,ay, w,wv,aw, h,vh,ah]
     //      0  1  2  3  4  5  6  7  8  9 10 11
