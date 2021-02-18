@@ -106,7 +106,7 @@
           "name": "TRACKING_EDGE_SNAP_DIST",
           "description": "Specifies a percentage of the frame width and height. Detections that fall within this space near the edge(s) of the frame are snapped to the respective edge(s).",
           "type": "FLOAT",
-          "defaultValue": "0.0075"
+          "defaultValue": "0.005"
         },
         {
           "name": "TRACKING_DFT_SIZE",

@@ -113,6 +113,37 @@ namespace {
     }
 
 
+    void ExtendWithOcvTracker(const Config& config, const Frame &frame,
+                              Cluster<Track> &trackCluster) {
+        if (config.mosseTrackerDisabled) {
+            return;
+        }
+        // tracks leftover have no detections in current frame, try tracking
+        for (auto &track : trackCluster.members) {
+            cv::Rect2i predictedRect;
+            bool ocvTrackingSuccessful = track.ocvTrackerPredict(frame, config.maxFrameGap,
+                                                                 predictedRect);
+            if (!ocvTrackingSuccessful ||
+                    track.testResidual(predictedRect, config.edgeSnapDist) > config.maxKFResidual) {
+                continue;
+            }
+
+            float previousConfidence = track.back().confidence;
+            auto previousProps = track.back().detection_properties;
+            constexpr float gapFillPenalty = 0.00001;
+            track.add({
+                  config, frame, predictedRect,
+                  // Slightly lower confidence to make sure this detection is never chosen as the exemplar.
+                  previousConfidence - gapFillPenalty,
+                  track.back().getClassFeature(),
+                  track.back().getDFTFeature()});
+            track.back().detection_properties = std::move(previousProps);
+            track.back().detection_properties.emplace("FILLED_GAP", "TRUE");
+            track.kalmanCorrect(config.edgeSnapDist);
+        }
+    }
+
+
     void ProcessFrameDetections(
             const Config &config,
             const Frame &frame,
@@ -163,24 +194,7 @@ namespace {
 
         for (auto &trackCluster : trackClusterList) {
             // check any tracks that didn't get a detection and use tracker to continue them if possible
-            if (!config.mosseTrackerDisabled) {
-                // track leftover have no detections in current frame, try tracking
-                for (auto &track : trackCluster.members) {
-                    cv::Rect2i predictedRect;
-                    if (track.ocvTrackerPredict(frame, config.maxFrameGap, predictedRect)) {
-                        // tracker returned something
-                        if (track.testResidual(predictedRect, config.edgeSnapDist)
-                                <= config.maxKFResidual) {
-                            // TODO fix empty detection_properties and 0 confidence
-                            track.add({
-                                    config, frame, predictedRect, 0.0,
-                                    track.back().getClassFeature(),
-                                    track.back().getDFTFeature()});
-                            track.kalmanCorrect(config.edgeSnapDist);
-                        }
-                    }
-                }
-            }
+            ExtendWithOcvTracker(config, frame, trackCluster);
             // move tracks with no new detections to assigned tracks
             assignedTracks.insert(assignedTracks.end(),
                                   std::make_move_iterator(trackCluster.members.begin()),

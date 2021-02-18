@@ -280,19 +280,6 @@ TEST(OcvYoloDetection, TestVideo) {
 
 }
 
-// TODO Figure out how to fix. Caused by using ocv tracker in OcvYoloDetection::ProcessFrameDetections
-TEST(OcvYoloDetection, DISABLED_TestTrackingError) {
-    MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 1, 2,
-                    getTinyYoloConfig(0.95), {});
-
-    auto tracks = initComponent().GetDetections(job);
-    for (const auto& track : tracks) {
-        for (const auto& imgLocPair : track.frame_locations) {
-            ASSERT_EQ(1, imgLocPair.second.detection_properties.count("CLASSIFICATION"));
-        }
-    }
-}
-
 
 TEST(OcvYoloDetection, TestInvalidModel) {
     ModelSettings modelSettings;
