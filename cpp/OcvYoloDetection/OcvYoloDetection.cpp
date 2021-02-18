@@ -77,38 +77,44 @@ namespace {
 
         // tracks that were assigned a detection in the current frame
         std::vector<Track> assignedTracks;
-        // intersection over union tracking and assignment
-        Track::assignDetections(trackClusters,
-                                detectionClusters,
-                                assignedTracks,
-                                config.maxIOUDist,
-                                config.maxClassDist,
-                                config.maxKFResidual,
-                                config.edgeSnapDist,
-                                std::mem_fn(&DetectionLocation::iouDist));
-        LOG_TRACE("IOU assignment complete");
+        if (config.maxIOUDist > 0) {
+            // intersection over union tracking and assignment
+            Track::assignDetections(trackClusters,
+                                    detectionClusters,
+                                    assignedTracks,
+                                    config.maxIOUDist,
+                                    config.maxClassDist,
+                                    config.maxKFResidual,
+                                    config.edgeSnapDist,
+                                    std::mem_fn(&DetectionLocation::iouDist));
+            LOG_TRACE("IOU assignment complete");
+        }
 
-        // feature-based tracking tracking and assignment
-        Track::assignDetections(trackClusters,
-                                detectionClusters,
-                                assignedTracks,
-                                config.maxFeatureDist,
-                                config.maxClassDist,
-                                config.maxKFResidual,
-                                config.edgeSnapDist,
-                                std::mem_fn(&DetectionLocation::featureDist));
-        LOG_TRACE("Feature assignment complete");
+        if (config.maxFeatureDist > 0) {
+            // feature-based tracking tracking and assignment
+            Track::assignDetections(trackClusters,
+                                    detectionClusters,
+                                    assignedTracks,
+                                    config.maxFeatureDist,
+                                    config.maxClassDist,
+                                    config.maxKFResidual,
+                                    config.edgeSnapDist,
+                                    std::mem_fn(&DetectionLocation::featureDist));
+            LOG_TRACE("Feature assignment complete");
+        }
 
-        // center-to-center distance tracking and assignment
-        Track::assignDetections(trackClusters,
-                                detectionClusters,
-                                assignedTracks,
-                                config.maxCenterDist,
-                                config.maxClassDist,
-                                config.maxKFResidual,
-                                config.edgeSnapDist,
-                                std::mem_fn(&DetectionLocation::center2CenterDist));
-        LOG_TRACE("Center2Center assignment complete");
+        if (config.maxCenterDist > 0) {
+            // center-to-center distance tracking and assignment
+            Track::assignDetections(trackClusters,
+                                    detectionClusters,
+                                    assignedTracks,
+                                    config.maxCenterDist,
+                                    config.maxClassDist,
+                                    config.maxKFResidual,
+                                    config.edgeSnapDist,
+                                    std::mem_fn(&DetectionLocation::center2CenterDist));
+            LOG_TRACE("Center2Center assignment complete");
+        }
         return assignedTracks;
     }
 

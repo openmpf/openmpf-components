@@ -209,7 +209,7 @@ cv::Mat1f DetectionLocation::getHanningWindow(const cv::Size &size) const {
 
         if (defaultWindow.empty() || defaultWindow.rows != dftSize_) {
             //LOG_TRACE("Created default Hanning window of size " << defWin.size());
-            cv::createHanningWindow(defaultWindow, cv::Size(dftSize_, dftSize_), CV_32F);
+            cv::createHanningWindow(defaultWindow, size, CV_32F);
         }
         return defaultWindow;
     }
