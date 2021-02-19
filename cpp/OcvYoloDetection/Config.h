@@ -110,6 +110,8 @@ public:
 
     std::string classWhiteListPath;
 
+    bool enableDebug;
+
     /// shared log object
     static const log4cxx::LoggerPtr log;
 

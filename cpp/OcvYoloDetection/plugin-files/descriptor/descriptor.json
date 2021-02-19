@@ -151,6 +151,12 @@
           "defaultValue": " [ 1000.0, 1000.0, 1000.0, 1000.0 ] "
         },
         {
+          "name": "ENABLE_DEBUG",
+          "description": "Add track assignment information as detection properties.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
           "name": "CUDA_DEVICE_ID",
           "description": "CUDA device / GPU to use. Set to -1 to only use CPU.",
           "type": "INT",
@@ -162,7 +168,6 @@
           "type": "BOOLEAN",
           "propertiesKey": "detection.use.cpu.when.gpu.problem"
         }
-
       ]
     }
   },

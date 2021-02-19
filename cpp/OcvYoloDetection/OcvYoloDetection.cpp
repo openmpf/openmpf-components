@@ -87,7 +87,8 @@ namespace {
                                     config.maxKFResidual,
                                     config.edgeSnapDist,
                                     std::mem_fn(&DetectionLocation::iouDist),
-                                    "IoU");
+                                    "IoU",
+                                    config.enableDebug);
             LOG_TRACE("IOU assignment complete");
         }
 
@@ -101,7 +102,8 @@ namespace {
                                     config.maxKFResidual,
                                     config.edgeSnapDist,
                                     std::mem_fn(&DetectionLocation::featureDist),
-                                    "DFT");
+                                    "DFT",
+                                    config.enableDebug);
             LOG_TRACE("Feature assignment complete");
         }
 
@@ -115,7 +117,8 @@ namespace {
                                     config.maxKFResidual,
                                     config.edgeSnapDist,
                                     std::mem_fn(&DetectionLocation::center2CenterDist),
-                                    "C2C");
+                                    "C2C",
+                                    config.enableDebug);
             LOG_TRACE("Center2Center assignment complete");
         }
         return assignedTracks;

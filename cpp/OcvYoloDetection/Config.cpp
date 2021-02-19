@@ -72,6 +72,7 @@ Config::Config(const Properties &jobProps)
                 GetProperty(jobProps, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", false))
         , cudaDeviceId(GetProperty(jobProps, "CUDA_DEVICE_ID", -1))
         , classWhiteListPath(GetProperty(jobProps, "CLASS_WHITELIST_FILE", ""))
+        , enableDebug(GetProperty(jobProps, "ENABLE_DEBUG", false))
 {
 }
 
