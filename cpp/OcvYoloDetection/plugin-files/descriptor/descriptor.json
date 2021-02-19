@@ -327,6 +327,21 @@
       ]
     },
     {
+      "name": "OCV TINY YOLO VEHICLE DETECTION PIPELINE",
+      "description": "Runs the Tiny YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks)",
+      "tasks": [
+        "OCV TINY YOLO VEHICLE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV TINY YOLO VEHICLE DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the Tiny YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks). Produces markup.",
+      "tasks": [
+        "OCV TINY YOLO VEHICLE DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
       "name": "OCV YOLO OBJECT DETECTION PIPELINE",
       "description": "Runs the YOLO object detection Darknet model.",
       "tasks": [
@@ -338,6 +353,21 @@
       "description": "Runs the YOLO object detection Darknet model and produces markup.",
       "tasks": [
         "OCV YOLO OBJECT DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "OCV YOLO VEHICLE DETECTION PIPELINE",
+      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks)",
+      "tasks": [
+        "OCV YOLO VEHICLE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "OCV YOLO VEHICLE DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the YOLO object detection Darknet model, and only detects road vehicles (cars, buses, trucks). Produces markup.",
+      "tasks": [
+        "OCV YOLO VEHICLE DETECTION TASK",
         "OCV GENERIC MARKUP TASK"
       ]
     },
