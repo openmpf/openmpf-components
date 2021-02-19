@@ -148,8 +148,6 @@ float DetectionLocation::featureDist(Track &track) {
 
     cv::Mat comp;
     // grab corresponding region from bgrFrame with border replication
-    // TODO: Why use two different methods of selecting ROI? Here cv::getRectSubPix is used, but
-    //       cv::Mat::operator()(cv::Rect) is used in cv::absdiff below.
     cv::getRectSubPix(frame.data, trackRoi.size(), center, comp);
 
     // compute pixel wise absolute diff (could do HSV transform 1st?!)
@@ -159,8 +157,6 @@ float DetectionLocation::featureDist(Track &track) {
     // get mean normalized BGR pixel difference
     cv::Scalar mean = cv::mean(comp) / 255.0;
     // combine BGR: d = BGR.BGR
-    // TODO: Why mean.ddot(mean)? That is the vector's length squared.
-    // TODO: Should this be (cv::mean(comp.reshape(1)) / 255.0)[0] ?
     return mean.ddot(mean) / frame.data.channels();
 }
 
