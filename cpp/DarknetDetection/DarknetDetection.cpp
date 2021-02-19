@@ -54,12 +54,7 @@ bool DarknetDetection::Init() {
     cpu_darknet_lib_path_ = plugin_path + "/lib/libdarknet_wrapper.so";
     gpu_darknet_lib_path_ = plugin_path + "/lib/libdarknet_wrapper_cuda.so";
 
-    std::cout << "run_dir = " << run_dir << std::endl;
-    std::cout << "plugin_path = " << plugin_path << std::endl;
-
     log4cxx::xml::DOMConfigurator::configure(plugin_path + "/config/Log4cxxConfig.xml");
-    std::cout << "Configured log4cxx" << std::endl;
-    std::cout << "Getting logger \"DarknetDetection\"" << std::endl;
     logger_ = log4cxx::Logger::getLogger("DarknetDetection");
     
     LOG4CXX_INFO(logger_, "Initializing models parser.");
@@ -128,12 +123,11 @@ std::vector<MPFVideoTrack> DarknetDetection::GetDetections(const MPFVideoJob &jo
             }
             using color_func_t = void(*)(const MPF::COMPONENT::MPFVideoJob &job,
                                          const std::string &path,
-                                         MPF::COMPONENT::MPFVideoCapture &video_cap,
                                          std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks);
             const char *func_name = "runColorCharacterizer";
             color_func_t lib_func_ptr = reinterpret_cast<color_func_t>(dlsym(handle.get(), func_name));
             LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Running color characterizer");
-            lib_func_ptr(job, models_path_, video_cap, tracks);
+            lib_func_ptr(job, models_path_, tracks);
         }
 
         LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] Attempting to apply reverse transform to tracks...")
