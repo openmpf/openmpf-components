@@ -146,8 +146,15 @@ float DetectionLocation::featureDist(Track &track) {
         return 1;
     }
 
+    // Calculate the sum squared error (SSE) over the mean absolute pixel difference for each color channel:
+    //
+    // SSE = (mean(deltaB))^2 + (mean(deltaG))^2 + (mean(deltaR))^2
+    //       ------------------------------------------------------
+    //                                  3
+
     cv::Mat comp;
-    // grab corresponding region from bgrFrame with border replication
+    // grab corresponding region from bgrFrame with border replication and pixel interpolation since the center may
+    // not correspond to an exact pixel location
     cv::getRectSubPix(frame.data, trackRoi.size(), center, comp);
 
     // compute pixel wise absolute diff (could do HSV transform 1st?!)

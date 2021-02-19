@@ -98,7 +98,7 @@
         },
         {
           "name": "TRACKING_MAX_FEATURE_DIST",
-          "description": "Maximum normalized aggregate pixel difference [0...1] between detections. A detection may be added to a track if the distance between the detection and the track tail is equal to or below this value. A value of 0 or less will disable track assignment based on this distance metric.",
+          "description": "Maximum normalized aggregate pixel difference [0...1] between detections. More specifically, the sum squared error (SSE) over the mean absolute pixel difference for each color channel. A detection may be added to a track if the distance between the detection and the track tail is equal to or below this value. A value of 0 or less will disable track assignment based on this distance metric.",
           "type": "FLOAT",
           "defaultValue": "0.1"
         },
