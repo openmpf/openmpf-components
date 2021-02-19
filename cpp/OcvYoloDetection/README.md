@@ -30,7 +30,9 @@ multiple object-to-track assignment stages, each using a linear assignment cost 
   Fast Fourier transform (FFT) phase correlation conveniently available in OpenCV.
 * Any tracks that did not receive a detection are then continued using an OpenCV correlation 
   tracker predicted bounding box as a detection stand-in if possible. If this occurs, a detection 
-  property named `"FILLED_GAP"` with value `"TRUE"` will be added to the new detection.
+  property named `"FILLED_GAP"` with value `"TRUE"` will be added to the new detection. The
+  detection will have a slightly lower confidence than the detection that precedes it, and it
+  will inherit the classification(s) of that detection.
 * Unassigned detections become new tracks.
 * All active tracks then have their object bounding box positions corrected and predicted forward 
   in time with a Kalman filter for the next tracking iteration. During the assignment stages, 
