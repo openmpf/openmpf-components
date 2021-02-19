@@ -283,5 +283,3 @@ cv::Mat DetectionLocation::getDFTFeature() {
     assert(dftFeature_.type() == CV_32FC1);
     return dftFeature_;
 }
-
-

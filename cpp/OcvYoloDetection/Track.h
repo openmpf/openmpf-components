@@ -117,7 +117,8 @@ public:
                                  const float maxCost,
                                  const float maxKFResidual,
                                  const float edgeSnap,
-                                 TCostFunc&& costFunc) {
+                                 TCostFunc&& costFunc,
+                                 const std::string &type) {
 
         if (tracks.empty() || detections.empty() || maxCost <= 0.0) {
             // nothing to do
@@ -146,11 +147,20 @@ public:
                 unassignedTracks.push_back(std::move(track));
                 continue;
             }
+            DetectionLocation &detection = detections[assignedDetectionIdx];
             LOG_TRACE("assigning det "
-                  << detections[assignedDetectionIdx] << " to track " << track
+                  << detection << " to track " << track
                   << " with residual:"
-                  << detections.at(assignedDetectionIdx).kfResidualDist(track) << " cost:"
+                  << detection.kfResidualDist(track) << " cost:"
                   << (INT_MAX - costs(trackIdx, assignedDetectionIdx)) / 1.0E9);
+
+            // DEBUG
+            float cost = (INT_MAX - costs(trackIdx, assignedDetectionIdx)) / 1.0E9;
+            float kfResidual = detection.kfResidualDist(track);
+            detection.detection_properties.emplace("ASSIGNMENT_TYPE", type);
+            detection.detection_properties.emplace("ASSIGNMENT_DIST", std::to_string(cost));
+            detection.detection_properties.emplace("KF_RESIDUAL", std::to_string(kfResidual));
+
             track.releaseOCVTracker();
             assignedDetectionIdxs.insert(assignedDetectionIdx);
             track.add(std::move(detections[assignedDetectionIdx]));
@@ -193,7 +203,8 @@ public:
                                  const float maxClassDist,
                                  const float maxKFResidual,
                                  const float edgeSnap,
-                                 TCostFunc&& costFunc) {
+                                 TCostFunc&& costFunc,
+                                 const std::string &type) {
         for (auto &trackCluster : trackClusterList) {
             if (trackCluster.members.empty()) {
                 continue;
@@ -211,7 +222,8 @@ public:
                                             maxCost,
                                             maxKFResidual,
                                             edgeSnap,
-                                            std::forward<TCostFunc>(costFunc));
+                                            std::forward<TCostFunc>(costFunc),
+                                            type);
                 }
             }
         }
