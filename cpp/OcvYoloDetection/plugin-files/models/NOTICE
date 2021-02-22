@@ -1,0 +1,11 @@
+This software makes use of a data model derived from third party software:
+
+--------------------------------------------------------------------------
+
+# yolov4.weights
+trained on COCO dataset and obtained from https://drive.google.com/open?id=1cewMfusmPjYWbrnuJRuKhPMwRe_b9PaT
+
+https://github.com/AlexeyAB/darknet/blob/master/cfg/yolov4.cfg
+https://github.com/AlexeyAB/darknet/blob/master/data/coco.names
+
+?! Creative Commons Zero v1.0 Universal License http://creativecommons.org/publicdomain/zero/1.0/ ?!

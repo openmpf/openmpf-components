@@ -235,10 +235,7 @@ TEST(OCVDNN, FeedForwardImageTest) {
     // Test feed-forward person pass-through
 
     props["FEED_FORWARD_EXCLUDE_BEHAVIOR"] = "PASS_THROUGH";
-    MPFImageJob pass_job("Test", image_path, props, {});
-    pass_job.feed_forward_location = person_location;
-    pass_job.has_feed_forward_location = true;
-
+    MPFImageJob pass_job("Test", image_path, person_location, props, {});
     std::vector<MPFImageLocation> image_locations = ocv_dnn_component.GetDetections(pass_job);
 
     ASSERT_EQ(1, image_locations.size());
@@ -247,20 +244,14 @@ TEST(OCVDNN, FeedForwardImageTest) {
     // Test feed-forward person drop
 
     props["FEED_FORWARD_EXCLUDE_BEHAVIOR"] = "DROP";
-    MPFImageJob drop_job("Test", image_path, props, {});
-    drop_job.feed_forward_location = person_location;
-    drop_job.has_feed_forward_location = true;
-
+    MPFImageJob drop_job("Test", image_path, person_location, props, {});
     image_locations = ocv_dnn_component.GetDetections(drop_job);
 
     ASSERT_TRUE(image_locations.empty());
 
     // Test feed-forward vehicle processing
 
-    MPFImageJob color_job("Test", image_path, props, {});
-    color_job.feed_forward_location = vehicle_location;
-    color_job.has_feed_forward_location = true;
-
+    MPFImageJob color_job("Test", image_path, vehicle_location, props, {});
     image_locations = ocv_dnn_component.GetDetections(color_job);
 
     ASSERT_EQ(1, image_locations.size());
@@ -316,10 +307,7 @@ TEST(OCVDNN, FeedForwardVideoTest) {
 
     // Test feed-forward vehicle processing
 
-    MPFVideoJob job("Test", video_path, 0, end_frame, props, {});
-    job.feed_forward_track = vehicle_track;
-    job.has_feed_forward_track = true;
-
+    MPFVideoJob job("Test", video_path, 0, end_frame, vehicle_track, props, {});
     std::vector<MPFVideoTrack> tracks = ocv_dnn_component.GetDetections(job);
 
     ASSERT_EQ(1, tracks.size());
