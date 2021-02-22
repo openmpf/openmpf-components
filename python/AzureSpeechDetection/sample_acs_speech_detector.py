@@ -64,8 +64,8 @@ if __name__ == '__main__':
     parser.add_argument('--diarize', action='store_true')
     parser.add_argument('--no-cleanup', action='store_true')
     parser.add_argument('--blob-access-time', type=int, default=120)
+    parser.add_argument('--transcription-expiration', type=int, default=120)
     parser.add_argument('--json-file', type=str, default=None)
-    parser.add_argument('--no-diarize', action='store_true')
     parser.add_argument(
         'files',
         nargs='+',
@@ -78,7 +78,7 @@ if __name__ == '__main__':
         DIARIZE=str(args.diarize),
         CLEANUP=str(not args.no_cleanup),
         BLOB_ACCESS_TIME=str(args.blob_access_time),
-        DIARIZE=str(not args.no_diarize)
+        TRANSCRIPTION_EXPIRATION=str(args.transcription_expiration)
     )
 
     if args.acs_url is not None:

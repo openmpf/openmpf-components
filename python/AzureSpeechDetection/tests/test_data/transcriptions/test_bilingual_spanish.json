@@ -1,60 +1,27 @@
 {
-    "recordingsUrl": "http://localhost:10669/api/speechtotext/v2.0/recordings/bilingual.mp3?test_queries",
-    "reportFileUrl": "test.report.file",
-    "resultsUrls": {
-        "channel_0": "http://localhost:10669/api/speechtotext/v2.0/outputs/test_bilingual_spanish.json?test_queries"
+    "self": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_bilingual_spanish.json",
+    "model": {
+        "self": "http://localhost:10669/speechtotext/v3.0/models/base/modelhash"
     },
-    "models": [
-        {
-            "modelKind": "AcousticAndLanguage",
-            "datasets": [],
-            "lastActionDateTime": "2020-04-17T08:45:44Z",
-            "status": "Succeeded",
-            "id": "26aa9548-d895-4071-99ef-73a8c08dac8e",
-            "createdDateTime": "2020-04-17T08:39:53Z",
-            "locale": "es-MX",
-            "name": "20200408",
-            "description": "es-MX base model",
-            "properties": {
-                "Purpose": "OnlineTranscription,BatchTranscription,LanguageAdaptation",
-                "ModelClass": "unified-v4-pch",
-                "VadKind": "Tuned",
-                "IsDynamicGrammarSupported": "True",
-                "UsesHalide": "True"
-            }
-        },
-        {
-            "modelKind": "AcousticAndLanguage",
-            "datasets": [],
-            "lastActionDateTime": "2020-04-17T08:45:44Z",
-            "status": "Succeeded",
-            "id": "26aa9548-d895-4071-99ef-73a8c08dac8e",
-            "createdDateTime": "2020-04-17T08:39:53Z",
-            "locale": "es-MX",
-            "name": "20200408",
-            "description": "es-MX base model",
-            "properties": {
-                "Purpose": "OnlineTranscription,BatchTranscription,LanguageAdaptation",
-                "ModelClass": "unified-v4-pch",
-                "VadKind": "Tuned",
-                "IsDynamicGrammarSupported": "True",
-                "UsesHalide": "True"
-            }
-        }
-    ],
-    "lastActionDateTime": "2020-06-12T12:24:29Z",
-    "status": "Succeeded",
-    "id": "b8b734a8-6c5c-428d-b698-7ac0f8269e06",
-    "createdDateTime": "2020-06-12T12:22:01Z",
-    "locale": "es-MX",
-    "name": "test_bilingual_spanish",
-    "description": "test_bilingual_spanish",
+    "links": {
+        "files": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_bilingual_spanish/files.json"
+    },
     "properties": {
-        "AddWordLevelTimestamps": "True",
-        "AddDiarization": "True",
-        "ProfanityFilterMode": "Masked",
-        "PunctuationMode": "DictatedAndAutomatic",
-        "CustomPronunciation": "False",
-        "Duration": "00:01:28"
-    }
+        "diarizationEnabled": true,
+        "wordLevelTimestampsEnabled": true,
+        "channels": [
+            0,
+            1
+        ],
+        "punctuationMode": "DictatedAndAutomatic",
+        "profanityFilterMode": "None",
+        "duration": "PT1M28S",
+        "timeToLive": "PT2H"
+    },
+    "lastActionDateTime": "2021-01-22T17:01:45Z",
+    "status": "Succeeded",
+    "createdDateTime": "2021-01-22T16:59:51Z",
+    "locale": "es-MX",
+    "displayName": "test_bilingual_spanish",
+    "description": "test_bilingual_spanish"
 }

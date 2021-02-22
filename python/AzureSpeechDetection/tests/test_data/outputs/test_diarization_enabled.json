@@ -1,1814 +1,1557 @@
 {
-    "AudioFileResults": [
+    "source": "http://localhost:10669/speechtotext/v3.0/recordings/poverty.mp3",
+    "timestamp": "2021-01-22T17:01:42Z",
+    "durationInTicks": 600000000,
+    "duration": "PT1M",
+    "combinedRecognizedPhrases": [
         {
-            "AudioFileName": "Channel.0.wav",
-            "AudioFileUrl": null,
-            "AudioLengthInSeconds": 60.0,
-            "CombinedResults": [
+            "channel": 0,
+            "lexical": "sing the fact that other communities in their county are interested in trying to provide some type of supervised care for the children problem of basic education for children is a critical one and one that we don't really see the total picture on the schools can't do the whole job with the kids in school he gets pretty hard when they run out of clothes we have nine one is my oldest boy quit school last year the last year he didn't go to school we did all we could we talk to him and my brother used to write to him and talk to him tell him but i guess he just didn't want to go to school anymore he he said that he never did have what the other what he needed most of the time and that's when it got to where he had to pay for those current events and things like that that all the other kids would have paid for him he was the only one",
+            "itn": "sing the fact that other communities in their county are interested in trying to provide some type of supervised care for the children problem of basic education for children is a critical one and one that we don't really see the total picture on the schools can't do the whole job with the kids in school he gets pretty hard when they run out of clothes we have 91 is my oldest boy quit school last year the last year he didn't go to school we did all we could we talk to him and my brother used to write to him and talk to him tell him but I guess he just didn't want to go to school anymore he he said that he never did have what the other what he needed most of the time and that's when it got to where he had to pay for those current events and things like that that all the other kids would have paid for him he was the only one",
+            "maskedITN": "Sing the fact that other communities in their County are interested in trying to provide some type of supervised care for the children problem of basic education for children is a critical one and one that we don't really see the total picture on the schools can't do the whole job With the kids in school he gets pretty hard When they run out of clothes we have 91 is my oldest boy Quit school last year the last year he didn't go to school We did all we could we talk to him and My brother used to write to him and talk to him tell him but I guess he just didn't want to go to school anymore He He said that he never did have what the other what he needed most of the time and that's when it got to where he had to pay for those current events and things like that that All the other kids would have paid for him he was the only one",
+            "display": "Sing the fact that other communities in their County are interested in trying to provide some type of supervised care for the children problem of basic education for children is a critical one and one that we don't really see the total picture on the schools can't do the whole job. With the kids in school, he gets pretty hard. When they run out of clothes we have 91 is my oldest boy. Quit school last year, the last year, he didn't go to school. We did all we could we talk to him and. My brother used to write to him and talk to him tell him but. I guess, he just didn't want to go to school anymore. He He said that he never did have what the other what he needed most of the time and that's when it got to where he had to pay for those current events and things like that that. All the other kids would have paid for him, he was the only one."
+        }
+    ],
+    "recognizedPhrases": [
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 1,
+            "offset": "PT0.05S",
+            "duration": "PT17.57S",
+            "offsetInTicks": 500000.0,
+            "durationInTicks": 175700000.0,
+            "nBest": [
                 {
-                    "ChannelNumber": null,
-                    "Lexical": "things the fact that other communities in their county are interested in trying to provide some type of supervised care for the children he could problem with basic education for our children is a critical one and one that we don't really see the total picture on the schools can't do the whole job with the kids in school that gets pretty hard uh when they run out of schools and we have nine and no one is in my oldest boy uh quit school last year last year he didn't go to school we did all we could we talk to him and my brother used to write to him and talk to him tell him but i guess he just didn't want to go to school anymore i think he said that uh he never did have what the other what he needed most of the time and and when it got to where you had to pay for uh those uh current events and things like that that uh an all the other kids they would have paid for him he was the only one",
-                    "ITN": "things the fact that other communities in their county are interested in trying to provide some type of supervised care for the children he could problem with basic education for our children is a critical one and one that we don't really see the total picture on the schools can't do the whole job with the kids in school that gets pretty hard uh when they run out of schools and we have 9 and no one is in my oldest boy uh quit school last year last year he didn't go to school we did all we could we talk to him and my brother used to write to him and talk to him tell him but I guess he just didn't want to go to school anymore I think he said that uh he never did have what the other what he needed most of the time and and when it got to where you had to pay for uh those uh current events and things like that that uh an all the other kids they would have paid for him he was the only one",
-                    "MaskedITN": "Things the fact that other communities in their County are interested in trying to provide some type of supervised care for the children He could problem with basic education for our children is a critical one and one that we don't really see the Total picture on The schools can't do the whole job With the kids in school that gets pretty hard Uh when they run out of schools and we have 9 and no one is in my oldest boy Uh Quit school last year last year he didn't go to school we did all we could we talk to him and My brother used to write to him and talk to him tell him but I guess he just didn't want to go to school anymore I think He said that uh He never did have what the other what he needed most of the time and And when it got to where you had to pay for uh those uh current events and things like that that uh An all the other kids they would have paid for him he was the only one",
-                    "Display": "Things the fact that other communities in their County are interested in trying to provide some type of supervised care for the children. He could problem with basic education for our children is a critical one and one that we don't really see the. Total picture on. The schools can't do the whole job. With the kids in school that gets pretty hard. Uh when they run out of schools and we have 9 and no one is in my oldest boy. Uh. Quit school last year last year he didn't go to school we did all we could we talk to him and. My brother used to write to him and talk to him tell him but. I guess he just didn't want to go to school anymore I think. He said that uh. He never did have what the other what he needed most of the time and. And when it got to where you had to pay for uh those uh current events and things like that that uh. An all the other kids they would have paid for him he was the only one."
+                    "confidence": 0.8948349,
+                    "lexical": "sing the fact that other communities in their county are interested in trying to provide some type of supervised care for the children problem of basic education for children is a critical one and one that we don't really see the total picture on the schools can't do the whole job",
+                    "itn": "sing the fact that other communities in their county are interested in trying to provide some type of supervised care for the children problem of basic education for children is a critical one and one that we don't really see the total picture on the schools can't do the whole job",
+                    "maskedITN": "Sing the fact that other communities in their County are interested in trying to provide some type of supervised care for the children problem of basic education for children is a critical one and one that we don't really see the total picture on the schools can't do the whole job",
+                    "display": "Sing the fact that other communities in their County are interested in trying to provide some type of supervised care for the children problem of basic education for children is a critical one and one that we don't really see the total picture on the schools can't do the whole job.",
+                    "words": [
+                        {
+                            "word": "sing",
+                            "offset": "PT0.05S",
+                            "duration": "PT0.32S",
+                            "offsetInTicks": 500000.0,
+                            "durationInTicks": 3200000.0,
+                            "confidence": 0.544334
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT0.37S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 3700000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.877416
+                        },
+                        {
+                            "word": "fact",
+                            "offset": "PT0.49S",
+                            "duration": "PT0.3S",
+                            "offsetInTicks": 4900000.0,
+                            "durationInTicks": 3000000.0,
+                            "confidence": 0.930436
+                        },
+                        {
+                            "word": "that",
+                            "offset": "PT0.79S",
+                            "duration": "PT0.3S",
+                            "offsetInTicks": 7900000.0,
+                            "durationInTicks": 3000000.0,
+                            "confidence": 0.901197
+                        },
+                        {
+                            "word": "other",
+                            "offset": "PT1.11S",
+                            "duration": "PT0.42S",
+                            "offsetInTicks": 11100000.0,
+                            "durationInTicks": 4200000.0,
+                            "confidence": 0.874959
+                        },
+                        {
+                            "word": "communities",
+                            "offset": "PT1.53S",
+                            "duration": "PT0.7S",
+                            "offsetInTicks": 15300000.0,
+                            "durationInTicks": 7000000.0,
+                            "confidence": 0.927029
+                        },
+                        {
+                            "word": "in",
+                            "offset": "PT2.23S",
+                            "duration": "PT0.3S",
+                            "offsetInTicks": 22300000.0,
+                            "durationInTicks": 3000000.0,
+                            "confidence": 0.955967
+                        },
+                        {
+                            "word": "their",
+                            "offset": "PT2.53S",
+                            "duration": "PT0.22S",
+                            "offsetInTicks": 25300000.0,
+                            "durationInTicks": 2200000.0,
+                            "confidence": 0.869977
+                        },
+                        {
+                            "word": "county",
+                            "offset": "PT2.75S",
+                            "duration": "PT0.58S",
+                            "offsetInTicks": 27500000.0,
+                            "durationInTicks": 5800000.0,
+                            "confidence": 0.875959
+                        },
+                        {
+                            "word": "are",
+                            "offset": "PT3.33S",
+                            "duration": "PT0.18S",
+                            "offsetInTicks": 33300000.0,
+                            "durationInTicks": 1800000.0,
+                            "confidence": 0.784162
+                        },
+                        {
+                            "word": "interested",
+                            "offset": "PT3.51S",
+                            "duration": "PT0.79S",
+                            "offsetInTicks": 35100000.0,
+                            "durationInTicks": 7900000.0,
+                            "confidence": 0.953805
+                        },
+                        {
+                            "word": "in",
+                            "offset": "PT4.32S",
+                            "duration": "PT0.19S",
+                            "offsetInTicks": 43200000.0,
+                            "durationInTicks": 1900000.0,
+                            "confidence": 0.843276
+                        },
+                        {
+                            "word": "trying",
+                            "offset": "PT4.51S",
+                            "duration": "PT0.34S",
+                            "offsetInTicks": 45100000.0,
+                            "durationInTicks": 3400000.0,
+                            "confidence": 0.938512
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT4.85S",
+                            "duration": "PT0.08S",
+                            "offsetInTicks": 48500000.0,
+                            "durationInTicks": 800000.0,
+                            "confidence": 0.898476
+                        },
+                        {
+                            "word": "provide",
+                            "offset": "PT4.93S",
+                            "duration": "PT0.5S",
+                            "offsetInTicks": 49300000.0,
+                            "durationInTicks": 5000000.0,
+                            "confidence": 0.925672
+                        },
+                        {
+                            "word": "some",
+                            "offset": "PT5.43S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 54300000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.951084
+                        },
+                        {
+                            "word": "type",
+                            "offset": "PT5.67S",
+                            "duration": "PT0.6S",
+                            "offsetInTicks": 56700000.0,
+                            "durationInTicks": 6000000.0,
+                            "confidence": 0.954304
+                        },
+                        {
+                            "word": "of",
+                            "offset": "PT6.29S",
+                            "duration": "PT0.28S",
+                            "offsetInTicks": 62900000.0,
+                            "durationInTicks": 2800000.0,
+                            "confidence": 0.892958
+                        },
+                        {
+                            "word": "supervised",
+                            "offset": "PT6.57S",
+                            "duration": "PT0.66S",
+                            "offsetInTicks": 65700000.0,
+                            "durationInTicks": 6600000.0,
+                            "confidence": 0.865174
+                        },
+                        {
+                            "word": "care",
+                            "offset": "PT7.23S",
+                            "duration": "PT0.28S",
+                            "offsetInTicks": 72300000.0,
+                            "durationInTicks": 2800000.0,
+                            "confidence": 0.839483
+                        },
+                        {
+                            "word": "for",
+                            "offset": "PT7.51S",
+                            "duration": "PT0.16S",
+                            "offsetInTicks": 75100000.0,
+                            "durationInTicks": 1600000.0,
+                            "confidence": 0.924013
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT7.67S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 76700000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.886179
+                        },
+                        {
+                            "word": "children",
+                            "offset": "PT7.77S",
+                            "duration": "PT0.75S",
+                            "offsetInTicks": 77700000.0,
+                            "durationInTicks": 7500000.0,
+                            "confidence": 0.941439
+                        },
+                        {
+                            "word": "problem",
+                            "offset": "PT9.17S",
+                            "duration": "PT0.48S",
+                            "offsetInTicks": 91700000.0,
+                            "durationInTicks": 4800000.0,
+                            "confidence": 0.743818
+                        },
+                        {
+                            "word": "of",
+                            "offset": "PT9.65S",
+                            "duration": "PT0.17S",
+                            "offsetInTicks": 96500000.0,
+                            "durationInTicks": 1700000.0,
+                            "confidence": 0.798397
+                        },
+                        {
+                            "word": "basic",
+                            "offset": "PT9.82S",
+                            "duration": "PT0.41S",
+                            "offsetInTicks": 98200000.0,
+                            "durationInTicks": 4100000.0,
+                            "confidence": 0.856537
+                        },
+                        {
+                            "word": "education",
+                            "offset": "PT10.23S",
+                            "duration": "PT0.69S",
+                            "offsetInTicks": 102300000.0,
+                            "durationInTicks": 6900000.0,
+                            "confidence": 0.948453
+                        },
+                        {
+                            "word": "for",
+                            "offset": "PT10.92S",
+                            "duration": "PT0.19S",
+                            "offsetInTicks": 109200000.0,
+                            "durationInTicks": 1900000.0,
+                            "confidence": 0.717889
+                        },
+                        {
+                            "word": "children",
+                            "offset": "PT11.11S",
+                            "duration": "PT0.42S",
+                            "offsetInTicks": 111100000.0,
+                            "durationInTicks": 4200000.0,
+                            "confidence": 0.946482
+                        },
+                        {
+                            "word": "is",
+                            "offset": "PT11.53S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 115300000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.732588
+                        },
+                        {
+                            "word": "a",
+                            "offset": "PT11.63S",
+                            "duration": "PT0.08S",
+                            "offsetInTicks": 116300000.0,
+                            "durationInTicks": 800000.0,
+                            "confidence": 0.903116
+                        },
+                        {
+                            "word": "critical",
+                            "offset": "PT11.71S",
+                            "duration": "PT0.44S",
+                            "offsetInTicks": 117100000.0,
+                            "durationInTicks": 4400000.0,
+                            "confidence": 0.875673
+                        },
+                        {
+                            "word": "one",
+                            "offset": "PT12.15S",
+                            "duration": "PT0.22S",
+                            "offsetInTicks": 121500000.0,
+                            "durationInTicks": 2200000.0,
+                            "confidence": 0.851429
+                        },
+                        {
+                            "word": "and",
+                            "offset": "PT12.37S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 123700000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.811755
+                        },
+                        {
+                            "word": "one",
+                            "offset": "PT12.47S",
+                            "duration": "PT0.2S",
+                            "offsetInTicks": 124700000.0,
+                            "durationInTicks": 2000000.0,
+                            "confidence": 0.931901
+                        },
+                        {
+                            "word": "that",
+                            "offset": "PT12.67S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 126700000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.846285
+                        },
+                        {
+                            "word": "we",
+                            "offset": "PT12.77S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 127700000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.943755
+                        },
+                        {
+                            "word": "don't",
+                            "offset": "PT12.89S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 128900000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.929477
+                        },
+                        {
+                            "word": "really",
+                            "offset": "PT13.15S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 131500000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.9411
+                        },
+                        {
+                            "word": "see",
+                            "offset": "PT13.41S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 134100000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.857008
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT13.65S",
+                            "duration": "PT0.28S",
+                            "offsetInTicks": 136500000.0,
+                            "durationInTicks": 2800000.0,
+                            "confidence": 0.961879
+                        },
+                        {
+                            "word": "total",
+                            "offset": "PT13.95S",
+                            "duration": "PT0.32S",
+                            "offsetInTicks": 139500000.0,
+                            "durationInTicks": 3200000.0,
+                            "confidence": 0.871997
+                        },
+                        {
+                            "word": "picture",
+                            "offset": "PT14.27S",
+                            "duration": "PT0.4S",
+                            "offsetInTicks": 142700000.0,
+                            "durationInTicks": 4000000.0,
+                            "confidence": 0.897951
+                        },
+                        {
+                            "word": "on",
+                            "offset": "PT14.67S",
+                            "duration": "PT0.43S",
+                            "offsetInTicks": 146700000.0,
+                            "durationInTicks": 4300000.0,
+                            "confidence": 0.9553
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT15.46S",
+                            "duration": "PT0.15S",
+                            "offsetInTicks": 154600000.0,
+                            "durationInTicks": 1500000.0,
+                            "confidence": 0.92005
+                        },
+                        {
+                            "word": "schools",
+                            "offset": "PT15.61S",
+                            "duration": "PT0.46S",
+                            "offsetInTicks": 156100000.0,
+                            "durationInTicks": 4600000.0,
+                            "confidence": 0.858237
+                        },
+                        {
+                            "word": "can't",
+                            "offset": "PT16.07S",
+                            "duration": "PT0.29S",
+                            "offsetInTicks": 160700000.0,
+                            "durationInTicks": 2900000.0,
+                            "confidence": 0.794575
+                        },
+                        {
+                            "word": "do",
+                            "offset": "PT16.36S",
+                            "duration": "PT0.17S",
+                            "offsetInTicks": 163600000.0,
+                            "durationInTicks": 1700000.0,
+                            "confidence": 0.956276
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT16.53S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 165300000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.724505
+                        },
+                        {
+                            "word": "whole",
+                            "offset": "PT16.63S",
+                            "duration": "PT0.28S",
+                            "offsetInTicks": 166300000.0,
+                            "durationInTicks": 2800000.0,
+                            "confidence": 0.948333
+                        },
+                        {
+                            "word": "job",
+                            "offset": "PT16.91S",
+                            "duration": "PT0.71S",
+                            "offsetInTicks": 169100000.0,
+                            "durationInTicks": 7100000.0,
+                            "confidence": 0.960051
+                        }
+                    ]
                 }
-            ],
-            "SegmentResults": [
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT18.36S",
+            "duration": "PT2.17S",
+            "offsetInTicks": 183600000.0,
+            "durationInTicks": 21700000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "1",
-                    "Offset": 600000,
-                    "Duration": 84600000,
-                    "OffsetInSeconds": 0.06,
-                    "DurationInSeconds": 8.46,
-                    "NBest": [
+                    "confidence": 0.8948349,
+                    "lexical": "with the kids in school he gets pretty hard",
+                    "itn": "with the kids in school he gets pretty hard",
+                    "maskedITN": "With the kids in school he gets pretty hard",
+                    "display": "With the kids in school, he gets pretty hard.",
+                    "words": [
                         {
-                            "Confidence": 0.926935852,
-                            "Lexical": "things the fact that other communities in their county are interested in trying to provide some type of supervised care for the children",
-                            "ITN": "things the fact that other communities in their county are interested in trying to provide some type of supervised care for the children",
-                            "MaskedITN": "Things the fact that other communities in their County are interested in trying to provide some type of supervised care for the children",
-                            "Display": "Things the fact that other communities in their County are interested in trying to provide some type of supervised care for the children.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "things",
-                                    "Offset": 600000,
-                                    "Duration": 3300000,
-                                    "OffsetInSeconds": 0.06,
-                                    "DurationInSeconds": 0.33,
-                                    "Confidence": 0.936124
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 3900000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 0.39,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.553056
-                                },
-                                {
-                                    "Word": "fact",
-                                    "Offset": 5100000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 0.51,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.975128
-                                },
-                                {
-                                    "Word": "that",
-                                    "Offset": 7900000,
-                                    "Duration": 3600000,
-                                    "OffsetInSeconds": 0.79,
-                                    "DurationInSeconds": 0.36,
-                                    "Confidence": 0.97568
-                                },
-                                {
-                                    "Word": "other",
-                                    "Offset": 11700000,
-                                    "Duration": 3600000,
-                                    "OffsetInSeconds": 1.17,
-                                    "DurationInSeconds": 0.36,
-                                    "Confidence": 0.934902
-                                },
-                                {
-                                    "Word": "communities",
-                                    "Offset": 15300000,
-                                    "Duration": 7000000,
-                                    "OffsetInSeconds": 1.53,
-                                    "DurationInSeconds": 0.7,
-                                    "Confidence": 0.975359
-                                },
-                                {
-                                    "Word": "in",
-                                    "Offset": 22300000,
-                                    "Duration": 3000000,
-                                    "OffsetInSeconds": 2.23,
-                                    "DurationInSeconds": 0.3,
-                                    "Confidence": 0.985396
-                                },
-                                {
-                                    "Word": "their",
-                                    "Offset": 25300000,
-                                    "Duration": 2200000,
-                                    "OffsetInSeconds": 2.53,
-                                    "DurationInSeconds": 0.22,
-                                    "Confidence": 0.944387
-                                },
-                                {
-                                    "Word": "county",
-                                    "Offset": 27500000,
-                                    "Duration": 6000000,
-                                    "OffsetInSeconds": 2.75,
-                                    "DurationInSeconds": 0.6,
-                                    "Confidence": 0.980772
-                                },
-                                {
-                                    "Word": "are",
-                                    "Offset": 33500000,
-                                    "Duration": 1600000,
-                                    "OffsetInSeconds": 3.35,
-                                    "DurationInSeconds": 0.16,
-                                    "Confidence": 0.92903
-                                },
-                                {
-                                    "Word": "interested",
-                                    "Offset": 35100000,
-                                    "Duration": 7900000,
-                                    "OffsetInSeconds": 3.51,
-                                    "DurationInSeconds": 0.79,
-                                    "Confidence": 0.990858
-                                },
-                                {
-                                    "Word": "in",
-                                    "Offset": 43200000,
-                                    "Duration": 1900000,
-                                    "OffsetInSeconds": 4.32,
-                                    "DurationInSeconds": 0.19,
-                                    "Confidence": 0.701137
-                                },
-                                {
-                                    "Word": "trying",
-                                    "Offset": 45100000,
-                                    "Duration": 3400000,
-                                    "OffsetInSeconds": 4.51,
-                                    "DurationInSeconds": 0.34,
-                                    "Confidence": 0.979744
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 48500000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 4.85,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.737783
-                                },
-                                {
-                                    "Word": "provide",
-                                    "Offset": 49300000,
-                                    "Duration": 5000000,
-                                    "OffsetInSeconds": 4.93,
-                                    "DurationInSeconds": 0.5,
-                                    "Confidence": 0.970263
-                                },
-                                {
-                                    "Word": "some",
-                                    "Offset": 54300000,
-                                    "Duration": 2400000,
-                                    "OffsetInSeconds": 5.43,
-                                    "DurationInSeconds": 0.24,
-                                    "Confidence": 0.981402
-                                },
-                                {
-                                    "Word": "type",
-                                    "Offset": 56700000,
-                                    "Duration": 6400000,
-                                    "OffsetInSeconds": 5.67,
-                                    "DurationInSeconds": 0.64,
-                                    "Confidence": 0.990262
-                                },
-                                {
-                                    "Word": "of",
-                                    "Offset": 63300000,
-                                    "Duration": 2400000,
-                                    "OffsetInSeconds": 6.33,
-                                    "DurationInSeconds": 0.24,
-                                    "Confidence": 0.964798
-                                },
-                                {
-                                    "Word": "supervised",
-                                    "Offset": 65700000,
-                                    "Duration": 6600000,
-                                    "OffsetInSeconds": 6.57,
-                                    "DurationInSeconds": 0.66,
-                                    "Confidence": 0.95579
-                                },
-                                {
-                                    "Word": "care",
-                                    "Offset": 72300000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 7.23,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.971888
-                                },
-                                {
-                                    "Word": "for",
-                                    "Offset": 75100000,
-                                    "Duration": 1700000,
-                                    "OffsetInSeconds": 7.51,
-                                    "DurationInSeconds": 0.17,
-                                    "Confidence": 0.930146
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 76800000,
-                                    "Duration": 900000,
-                                    "OffsetInSeconds": 7.68,
-                                    "DurationInSeconds": 0.09,
-                                    "Confidence": 0.846115
-                                },
-                                {
-                                    "Word": "children",
-                                    "Offset": 77700000,
-                                    "Duration": 7500000,
-                                    "OffsetInSeconds": 7.77,
-                                    "DurationInSeconds": 0.75,
-                                    "Confidence": 0.992568
-                                }
-                            ]
+                            "word": "with",
+                            "offset": "PT18.36S",
+                            "duration": "PT0.16S",
+                            "offsetInTicks": 183600000.0,
+                            "durationInTicks": 1600000.0,
+                            "confidence": 0.875299
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT18.52S",
+                            "duration": "PT0.07S",
+                            "offsetInTicks": 185200000.0,
+                            "durationInTicks": 700000.0,
+                            "confidence": 0.805256
+                        },
+                        {
+                            "word": "kids",
+                            "offset": "PT18.59S",
+                            "duration": "PT0.32S",
+                            "offsetInTicks": 185900000.0,
+                            "durationInTicks": 3200000.0,
+                            "confidence": 0.933446
+                        },
+                        {
+                            "word": "in",
+                            "offset": "PT18.91S",
+                            "duration": "PT0.08S",
+                            "offsetInTicks": 189100000.0,
+                            "durationInTicks": 800000.0,
+                            "confidence": 0.853922
+                        },
+                        {
+                            "word": "school",
+                            "offset": "PT18.99S",
+                            "duration": "PT0.32S",
+                            "offsetInTicks": 189900000.0,
+                            "durationInTicks": 3200000.0,
+                            "confidence": 0.928397
+                        },
+                        {
+                            "word": "he",
+                            "offset": "PT19.31S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 193100000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.71316
+                        },
+                        {
+                            "word": "gets",
+                            "offset": "PT19.41S",
+                            "duration": "PT0.3S",
+                            "offsetInTicks": 194100000.0,
+                            "durationInTicks": 3000000.0,
+                            "confidence": 0.927308
+                        },
+                        {
+                            "word": "pretty",
+                            "offset": "PT19.71S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 197100000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.890589
+                        },
+                        {
+                            "word": "hard",
+                            "offset": "PT19.97S",
+                            "duration": "PT0.56S",
+                            "offsetInTicks": 199700000.0,
+                            "durationInTicks": 5600000.0,
+                            "confidence": 0.956603
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT21.71S",
+            "duration": "PT5.57S",
+            "offsetInTicks": 217100000.0,
+            "durationInTicks": 55700000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "1",
-                    "Offset": 87800000,
-                    "Duration": 51600000,
-                    "OffsetInSeconds": 8.78,
-                    "DurationInSeconds": 5.16,
-                    "NBest": [
+                    "confidence": 0.85980463,
+                    "lexical": "when they run out of clothes we have nine one is my oldest boy",
+                    "itn": "when they run out of clothes we have 91 is my oldest boy",
+                    "maskedITN": "When they run out of clothes we have 91 is my oldest boy",
+                    "display": "When they run out of clothes we have 91 is my oldest boy.",
+                    "words": [
                         {
-                            "Confidence": 0.9011653,
-                            "Lexical": "he could problem with basic education for our children is a critical one and one that we don't really see the",
-                            "ITN": "he could problem with basic education for our children is a critical one and one that we don't really see the",
-                            "MaskedITN": "He could problem with basic education for our children is a critical one and one that we don't really see the",
-                            "Display": "He could problem with basic education for our children is a critical one and one that we don't really see the.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "he",
-                                    "Offset": 87800000,
-                                    "Duration": 2300000,
-                                    "OffsetInSeconds": 8.78,
-                                    "DurationInSeconds": 0.23,
-                                    "Confidence": 0.885172
-                                },
-                                {
-                                    "Word": "could",
-                                    "Offset": 90100000,
-                                    "Duration": 2000000,
-                                    "OffsetInSeconds": 9.01,
-                                    "DurationInSeconds": 0.2,
-                                    "Confidence": 0.906755
-                                },
-                                {
-                                    "Word": "problem",
-                                    "Offset": 92100000,
-                                    "Duration": 3600000,
-                                    "OffsetInSeconds": 9.21,
-                                    "DurationInSeconds": 0.36,
-                                    "Confidence": 0.941446
-                                },
-                                {
-                                    "Word": "with",
-                                    "Offset": 95700000,
-                                    "Duration": 2400000,
-                                    "OffsetInSeconds": 9.57,
-                                    "DurationInSeconds": 0.24,
-                                    "Confidence": 0.962832
-                                },
-                                {
-                                    "Word": "basic",
-                                    "Offset": 98100000,
-                                    "Duration": 4000000,
-                                    "OffsetInSeconds": 9.81,
-                                    "DurationInSeconds": 0.4,
-                                    "Confidence": 0.891433
-                                },
-                                {
-                                    "Word": "education",
-                                    "Offset": 102100000,
-                                    "Duration": 7100000,
-                                    "OffsetInSeconds": 10.21,
-                                    "DurationInSeconds": 0.71,
-                                    "Confidence": 0.988724
-                                },
-                                {
-                                    "Word": "for",
-                                    "Offset": 109200000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 10.92,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.917692
-                                },
-                                {
-                                    "Word": "our",
-                                    "Offset": 110400000,
-                                    "Duration": 700000,
-                                    "OffsetInSeconds": 11.04,
-                                    "DurationInSeconds": 0.07,
-                                    "Confidence": 0.47756
-                                },
-                                {
-                                    "Word": "children",
-                                    "Offset": 111100000,
-                                    "Duration": 4100000,
-                                    "OffsetInSeconds": 11.11,
-                                    "DurationInSeconds": 0.41,
-                                    "Confidence": 0.987369
-                                },
-                                {
-                                    "Word": "is",
-                                    "Offset": 115200000,
-                                    "Duration": 1100000,
-                                    "OffsetInSeconds": 11.52,
-                                    "DurationInSeconds": 0.11,
-                                    "Confidence": 0.748182
-                                },
-                                {
-                                    "Word": "a",
-                                    "Offset": 116300000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 11.63,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.972817
-                                },
-                                {
-                                    "Word": "critical",
-                                    "Offset": 117100000,
-                                    "Duration": 4400000,
-                                    "OffsetInSeconds": 11.71,
-                                    "DurationInSeconds": 0.44,
-                                    "Confidence": 0.968014
-                                },
-                                {
-                                    "Word": "one",
-                                    "Offset": 121500000,
-                                    "Duration": 2100000,
-                                    "OffsetInSeconds": 12.15,
-                                    "DurationInSeconds": 0.21,
-                                    "Confidence": 0.904904
-                                },
-                                {
-                                    "Word": "and",
-                                    "Offset": 123600000,
-                                    "Duration": 1100000,
-                                    "OffsetInSeconds": 12.36,
-                                    "DurationInSeconds": 0.11,
-                                    "Confidence": 0.886947
-                                },
-                                {
-                                    "Word": "one",
-                                    "Offset": 124700000,
-                                    "Duration": 2000000,
-                                    "OffsetInSeconds": 12.47,
-                                    "DurationInSeconds": 0.2,
-                                    "Confidence": 0.976501
-                                },
-                                {
-                                    "Word": "that",
-                                    "Offset": 126700000,
-                                    "Duration": 1000000,
-                                    "OffsetInSeconds": 12.67,
-                                    "DurationInSeconds": 0.1,
-                                    "Confidence": 0.853552
-                                },
-                                {
-                                    "Word": "we",
-                                    "Offset": 127700000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 12.77,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.974832
-                                },
-                                {
-                                    "Word": "don't",
-                                    "Offset": 128900000,
-                                    "Duration": 2600000,
-                                    "OffsetInSeconds": 12.89,
-                                    "DurationInSeconds": 0.26,
-                                    "Confidence": 0.975627
-                                },
-                                {
-                                    "Word": "really",
-                                    "Offset": 131500000,
-                                    "Duration": 2600000,
-                                    "OffsetInSeconds": 13.15,
-                                    "DurationInSeconds": 0.26,
-                                    "Confidence": 0.977796
-                                },
-                                {
-                                    "Word": "see",
-                                    "Offset": 134100000,
-                                    "Duration": 2400000,
-                                    "OffsetInSeconds": 13.41,
-                                    "DurationInSeconds": 0.24,
-                                    "Confidence": 0.978539
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 136500000,
-                                    "Duration": 2900000,
-                                    "OffsetInSeconds": 13.65,
-                                    "DurationInSeconds": 0.29,
-                                    "Confidence": 0.98382
-                                }
-                            ]
+                            "word": "when",
+                            "offset": "PT21.71S",
+                            "duration": "PT0.53S",
+                            "offsetInTicks": 217100000.0,
+                            "durationInTicks": 5300000.0,
+                            "confidence": 0.835368
+                        },
+                        {
+                            "word": "they",
+                            "offset": "PT22.24S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 222400000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.862569
+                        },
+                        {
+                            "word": "run",
+                            "offset": "PT22.36S",
+                            "duration": "PT0.22S",
+                            "offsetInTicks": 223600000.0,
+                            "durationInTicks": 2200000.0,
+                            "confidence": 0.923357
+                        },
+                        {
+                            "word": "out",
+                            "offset": "PT22.58S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 225800000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.942013
+                        },
+                        {
+                            "word": "of",
+                            "offset": "PT22.7S",
+                            "duration": "PT0.09S",
+                            "offsetInTicks": 227000000.0,
+                            "durationInTicks": 900000.0,
+                            "confidence": 0.917766
+                        },
+                        {
+                            "word": "clothes",
+                            "offset": "PT22.79S",
+                            "duration": "PT0.64S",
+                            "offsetInTicks": 227900000.0,
+                            "durationInTicks": 6400000.0,
+                            "confidence": 0.887944
+                        },
+                        {
+                            "word": "we",
+                            "offset": "PT23.45S",
+                            "duration": "PT0.25S",
+                            "offsetInTicks": 234500000.0,
+                            "durationInTicks": 2500000.0,
+                            "confidence": 0.711231
+                        },
+                        {
+                            "word": "have",
+                            "offset": "PT23.7S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 237000000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.951099
+                        },
+                        {
+                            "word": "nine",
+                            "offset": "PT23.94S",
+                            "duration": "PT0.66S",
+                            "offsetInTicks": 239400000.0,
+                            "durationInTicks": 6600000.0,
+                            "confidence": 0.900699
+                        },
+                        {
+                            "word": "one",
+                            "offset": "PT25.41S",
+                            "duration": "PT0.45S",
+                            "offsetInTicks": 254100000.0,
+                            "durationInTicks": 4500000.0,
+                            "confidence": 0.89025
+                        },
+                        {
+                            "word": "is",
+                            "offset": "PT25.86S",
+                            "duration": "PT0.39S",
+                            "offsetInTicks": 258600000.0,
+                            "durationInTicks": 3900000.0,
+                            "confidence": 0.760081
+                        },
+                        {
+                            "word": "my",
+                            "offset": "PT26.25S",
+                            "duration": "PT0.17S",
+                            "offsetInTicks": 262500000.0,
+                            "durationInTicks": 1700000.0,
+                            "confidence": 0.886015
+                        },
+                        {
+                            "word": "oldest",
+                            "offset": "PT26.42S",
+                            "duration": "PT0.36S",
+                            "offsetInTicks": 264200000.0,
+                            "durationInTicks": 3600000.0,
+                            "confidence": 0.85227
+                        },
+                        {
+                            "word": "boy",
+                            "offset": "PT26.78S",
+                            "duration": "PT0.5S",
+                            "offsetInTicks": 267800000.0,
+                            "durationInTicks": 5000000.0,
+                            "confidence": 0.814282
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT28.95S",
+            "duration": "PT5.41S",
+            "offsetInTicks": 289500000.0,
+            "durationInTicks": 54100000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "1",
-                    "Offset": 139800000,
-                    "Duration": 10600000,
-                    "OffsetInSeconds": 13.98,
-                    "DurationInSeconds": 1.06,
-                    "NBest": [
+                    "confidence": 0.88247913,
+                    "lexical": "quit school last year the last year he didn't go to school we did all we could we talk to him and",
+                    "itn": "quit school last year the last year he didn't go to school we did all we could we talk to him and",
+                    "maskedITN": "Quit school last year the last year he didn't go to school We did all we could we talk to him and",
+                    "display": "Quit school last year, the last year, he didn't go to school. We did all we could we talk to him and.",
+                    "words": [
                         {
-                            "Confidence": 0.7702813,
-                            "Lexical": "total picture on",
-                            "ITN": "total picture on",
-                            "MaskedITN": "Total picture on",
-                            "Display": "Total picture on.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "total",
-                                    "Offset": 139800000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 13.98,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.857952
-                                },
-                                {
-                                    "Word": "picture",
-                                    "Offset": 142600000,
-                                    "Duration": 4200000,
-                                    "OffsetInSeconds": 14.26,
-                                    "DurationInSeconds": 0.42,
-                                    "Confidence": 0.942034
-                                },
-                                {
-                                    "Word": "on",
-                                    "Offset": 146800000,
-                                    "Duration": 3600000,
-                                    "OffsetInSeconds": 14.68,
-                                    "DurationInSeconds": 0.36,
-                                    "Confidence": 0.968292
-                                }
-                            ]
+                            "word": "quit",
+                            "offset": "PT28.95S",
+                            "duration": "PT0.36S",
+                            "offsetInTicks": 289500000.0,
+                            "durationInTicks": 3600000.0,
+                            "confidence": 0.802173
+                        },
+                        {
+                            "word": "school",
+                            "offset": "PT29.31S",
+                            "duration": "PT0.54S",
+                            "offsetInTicks": 293100000.0,
+                            "durationInTicks": 5400000.0,
+                            "confidence": 0.95002
+                        },
+                        {
+                            "word": "last",
+                            "offset": "PT29.87S",
+                            "duration": "PT0.42S",
+                            "offsetInTicks": 298700000.0,
+                            "durationInTicks": 4200000.0,
+                            "confidence": 0.832554
+                        },
+                        {
+                            "word": "year",
+                            "offset": "PT30.29S",
+                            "duration": "PT0.4S",
+                            "offsetInTicks": 302900000.0,
+                            "durationInTicks": 4000000.0,
+                            "confidence": 0.896669
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT30.69S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 306900000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.768734
+                        },
+                        {
+                            "word": "last",
+                            "offset": "PT30.93S",
+                            "duration": "PT0.29S",
+                            "offsetInTicks": 309300000.0,
+                            "durationInTicks": 2900000.0,
+                            "confidence": 0.921738
+                        },
+                        {
+                            "word": "year",
+                            "offset": "PT31.22S",
+                            "duration": "PT0.13S",
+                            "offsetInTicks": 312200000.0,
+                            "durationInTicks": 1300000.0,
+                            "confidence": 0.875264
+                        },
+                        {
+                            "word": "he",
+                            "offset": "PT31.35S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 313500000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.852683
+                        },
+                        {
+                            "word": "didn't",
+                            "offset": "PT31.45S",
+                            "duration": "PT0.17S",
+                            "offsetInTicks": 314500000.0,
+                            "durationInTicks": 1700000.0,
+                            "confidence": 0.65205
+                        },
+                        {
+                            "word": "go",
+                            "offset": "PT31.62S",
+                            "duration": "PT0.07S",
+                            "offsetInTicks": 316200000.0,
+                            "durationInTicks": 700000.0,
+                            "confidence": 0.789619
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT31.69S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 316900000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.941372
+                        },
+                        {
+                            "word": "school",
+                            "offset": "PT31.81S",
+                            "duration": "PT0.44S",
+                            "offsetInTicks": 318100000.0,
+                            "durationInTicks": 4400000.0,
+                            "confidence": 0.965539
+                        },
+                        {
+                            "word": "we",
+                            "offset": "PT32.27S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 322700000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.729959
+                        },
+                        {
+                            "word": "did",
+                            "offset": "PT32.51S",
+                            "duration": "PT0.18S",
+                            "offsetInTicks": 325100000.0,
+                            "durationInTicks": 1800000.0,
+                            "confidence": 0.913943
+                        },
+                        {
+                            "word": "all",
+                            "offset": "PT32.69S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 326900000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.81926
+                        },
+                        {
+                            "word": "we",
+                            "offset": "PT32.81S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 328100000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.809355
+                        },
+                        {
+                            "word": "could",
+                            "offset": "PT32.93S",
+                            "duration": "PT0.32S",
+                            "offsetInTicks": 329300000.0,
+                            "durationInTicks": 3200000.0,
+                            "confidence": 0.967803
+                        },
+                        {
+                            "word": "we",
+                            "offset": "PT33.25S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 332500000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.760013
+                        },
+                        {
+                            "word": "talk",
+                            "offset": "PT33.37S",
+                            "duration": "PT0.36S",
+                            "offsetInTicks": 333700000.0,
+                            "durationInTicks": 3600000.0,
+                            "confidence": 0.943991
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT33.73S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 337300000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.941145
+                        },
+                        {
+                            "word": "him",
+                            "offset": "PT33.85S",
+                            "duration": "PT0.28S",
+                            "offsetInTicks": 338500000.0,
+                            "durationInTicks": 2800000.0,
+                            "confidence": 0.954243
+                        },
+                        {
+                            "word": "and",
+                            "offset": "PT34.13S",
+                            "duration": "PT0.23S",
+                            "offsetInTicks": 341300000.0,
+                            "durationInTicks": 2300000.0,
+                            "confidence": 0.947865
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT34.9S",
+            "duration": "PT4.29S",
+            "offsetInTicks": 349000000.0,
+            "durationInTicks": 42900000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "1",
-                    "Offset": 154500000,
-                    "Duration": 21300000,
-                    "OffsetInSeconds": 15.45,
-                    "DurationInSeconds": 2.13,
-                    "NBest": [
+                    "confidence": 0.90281945,
+                    "lexical": "my brother used to write to him and talk to him tell him but",
+                    "itn": "my brother used to write to him and talk to him tell him but",
+                    "maskedITN": "My brother used to write to him and talk to him tell him but",
+                    "display": "My brother used to write to him and talk to him tell him but.",
+                    "words": [
                         {
-                            "Confidence": 0.8687023,
-                            "Lexical": "the schools can't do the whole job",
-                            "ITN": "the schools can't do the whole job",
-                            "MaskedITN": "The schools can't do the whole job",
-                            "Display": "The schools can't do the whole job.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "the",
-                                    "Offset": 154500000,
-                                    "Duration": 1600000,
-                                    "OffsetInSeconds": 15.45,
-                                    "DurationInSeconds": 0.16,
-                                    "Confidence": 0.929214
-                                },
-                                {
-                                    "Word": "schools",
-                                    "Offset": 156100000,
-                                    "Duration": 4500000,
-                                    "OffsetInSeconds": 15.61,
-                                    "DurationInSeconds": 0.45,
-                                    "Confidence": 0.951642
-                                },
-                                {
-                                    "Word": "can't",
-                                    "Offset": 160600000,
-                                    "Duration": 3000000,
-                                    "OffsetInSeconds": 16.06,
-                                    "DurationInSeconds": 0.3,
-                                    "Confidence": 0.803729
-                                },
-                                {
-                                    "Word": "do",
-                                    "Offset": 163600000,
-                                    "Duration": 1700000,
-                                    "OffsetInSeconds": 16.36,
-                                    "DurationInSeconds": 0.17,
-                                    "Confidence": 0.932799
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 165300000,
-                                    "Duration": 1000000,
-                                    "OffsetInSeconds": 16.53,
-                                    "DurationInSeconds": 0.1,
-                                    "Confidence": 0.474166
-                                },
-                                {
-                                    "Word": "whole",
-                                    "Offset": 166300000,
-                                    "Duration": 3000000,
-                                    "OffsetInSeconds": 16.63,
-                                    "DurationInSeconds": 0.3,
-                                    "Confidence": 0.986174
-                                },
-                                {
-                                    "Word": "job",
-                                    "Offset": 169300000,
-                                    "Duration": 6500000,
-                                    "OffsetInSeconds": 16.93,
-                                    "DurationInSeconds": 0.65,
-                                    "Confidence": 0.995106
-                                }
-                            ]
+                            "word": "my",
+                            "offset": "PT34.9S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 349000000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.920858
+                        },
+                        {
+                            "word": "brother",
+                            "offset": "PT35.16S",
+                            "duration": "PT0.53S",
+                            "offsetInTicks": 351600000.0,
+                            "durationInTicks": 5300000.0,
+                            "confidence": 0.946235
+                        },
+                        {
+                            "word": "used",
+                            "offset": "PT35.71S",
+                            "duration": "PT0.33S",
+                            "offsetInTicks": 357100000.0,
+                            "durationInTicks": 3300000.0,
+                            "confidence": 0.805943
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT36.04S",
+                            "duration": "PT0.06S",
+                            "offsetInTicks": 360400000.0,
+                            "durationInTicks": 600000.0,
+                            "confidence": 0.900866
+                        },
+                        {
+                            "word": "write",
+                            "offset": "PT36.1S",
+                            "duration": "PT0.25S",
+                            "offsetInTicks": 361000000.0,
+                            "durationInTicks": 2500000.0,
+                            "confidence": 0.879425
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT36.35S",
+                            "duration": "PT0.09S",
+                            "offsetInTicks": 363500000.0,
+                            "durationInTicks": 900000.0,
+                            "confidence": 0.889526
+                        },
+                        {
+                            "word": "him",
+                            "offset": "PT36.44S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 364400000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.944669
+                        },
+                        {
+                            "word": "and",
+                            "offset": "PT36.7S",
+                            "duration": "PT0.08S",
+                            "offsetInTicks": 367000000.0,
+                            "durationInTicks": 800000.0,
+                            "confidence": 0.863788
+                        },
+                        {
+                            "word": "talk",
+                            "offset": "PT36.78S",
+                            "duration": "PT0.3S",
+                            "offsetInTicks": 367800000.0,
+                            "durationInTicks": 3000000.0,
+                            "confidence": 0.92671
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT37.08S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 370800000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.942109
+                        },
+                        {
+                            "word": "him",
+                            "offset": "PT37.2S",
+                            "duration": "PT0.52S",
+                            "offsetInTicks": 372000000.0,
+                            "durationInTicks": 5200000.0,
+                            "confidence": 0.96387
+                        },
+                        {
+                            "word": "tell",
+                            "offset": "PT37.9S",
+                            "duration": "PT0.34S",
+                            "offsetInTicks": 379000000.0,
+                            "durationInTicks": 3400000.0,
+                            "confidence": 0.71267
+                        },
+                        {
+                            "word": "him",
+                            "offset": "PT38.24S",
+                            "duration": "PT0.43S",
+                            "offsetInTicks": 382400000.0,
+                            "durationInTicks": 4300000.0,
+                            "confidence": 0.954264
+                        },
+                        {
+                            "word": "but",
+                            "offset": "PT38.69S",
+                            "duration": "PT0.5S",
+                            "offsetInTicks": 386900000.0,
+                            "durationInTicks": 5000000.0,
+                            "confidence": 0.907967
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT40.11S",
+            "duration": "PT2.4S",
+            "offsetInTicks": 401100000.0,
+            "durationInTicks": 24000000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 183600000,
-                    "Duration": 21500000,
-                    "OffsetInSeconds": 18.36,
-                    "DurationInSeconds": 2.15,
-                    "NBest": [
+                    "confidence": 0.8757851,
+                    "lexical": "i guess he just didn't want to go to school anymore he",
+                    "itn": "I guess he just didn't want to go to school anymore he",
+                    "maskedITN": "I guess he just didn't want to go to school anymore He",
+                    "display": "I guess, he just didn't want to go to school anymore. He",
+                    "words": [
                         {
-                            "Confidence": 0.8687023,
-                            "Lexical": "with the kids in school that gets pretty hard",
-                            "ITN": "with the kids in school that gets pretty hard",
-                            "MaskedITN": "With the kids in school that gets pretty hard",
-                            "Display": "With the kids in school that gets pretty hard.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "with",
-                                    "Offset": 183600000,
-                                    "Duration": 1500000,
-                                    "OffsetInSeconds": 18.36,
-                                    "DurationInSeconds": 0.15,
-                                    "Confidence": 0.855607
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 185100000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 18.51,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.461303
-                                },
-                                {
-                                    "Word": "kids",
-                                    "Offset": 185900000,
-                                    "Duration": 3200000,
-                                    "OffsetInSeconds": 18.59,
-                                    "DurationInSeconds": 0.32,
-                                    "Confidence": 0.950804
-                                },
-                                {
-                                    "Word": "in",
-                                    "Offset": 189100000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 18.91,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.956496
-                                },
-                                {
-                                    "Word": "school",
-                                    "Offset": 189900000,
-                                    "Duration": 3000000,
-                                    "OffsetInSeconds": 18.99,
-                                    "DurationInSeconds": 0.3,
-                                    "Confidence": 0.934116
-                                },
-                                {
-                                    "Word": "that",
-                                    "Offset": 192900000,
-                                    "Duration": 1300000,
-                                    "OffsetInSeconds": 19.29,
-                                    "DurationInSeconds": 0.13,
-                                    "Confidence": 0.811995
-                                },
-                                {
-                                    "Word": "gets",
-                                    "Offset": 194200000,
-                                    "Duration": 2900000,
-                                    "OffsetInSeconds": 19.42,
-                                    "DurationInSeconds": 0.29,
-                                    "Confidence": 0.956499
-                                },
-                                {
-                                    "Word": "pretty",
-                                    "Offset": 197100000,
-                                    "Duration": 2600000,
-                                    "OffsetInSeconds": 19.71,
-                                    "DurationInSeconds": 0.26,
-                                    "Confidence": 0.971843
-                                },
-                                {
-                                    "Word": "hard",
-                                    "Offset": 199700000,
-                                    "Duration": 5400000,
-                                    "OffsetInSeconds": 19.97,
-                                    "DurationInSeconds": 0.54,
-                                    "Confidence": 0.994209
-                                }
-                            ]
+                            "word": "i",
+                            "offset": "PT40.11S",
+                            "duration": "PT0.16S",
+                            "offsetInTicks": 401100000.0,
+                            "durationInTicks": 1600000.0,
+                            "confidence": 0.942163
+                        },
+                        {
+                            "word": "guess",
+                            "offset": "PT40.27S",
+                            "duration": "PT0.2S",
+                            "offsetInTicks": 402700000.0,
+                            "durationInTicks": 2000000.0,
+                            "confidence": 0.92068
+                        },
+                        {
+                            "word": "he",
+                            "offset": "PT40.47S",
+                            "duration": "PT0.07S",
+                            "offsetInTicks": 404700000.0,
+                            "durationInTicks": 700000.0,
+                            "confidence": 0.820857
+                        },
+                        {
+                            "word": "just",
+                            "offset": "PT40.54S",
+                            "duration": "PT0.21S",
+                            "offsetInTicks": 405400000.0,
+                            "durationInTicks": 2100000.0,
+                            "confidence": 0.932197
+                        },
+                        {
+                            "word": "didn't",
+                            "offset": "PT40.75S",
+                            "duration": "PT0.17S",
+                            "offsetInTicks": 407500000.0,
+                            "durationInTicks": 1700000.0,
+                            "confidence": 0.878983
+                        },
+                        {
+                            "word": "want",
+                            "offset": "PT40.92S",
+                            "duration": "PT0.21S",
+                            "offsetInTicks": 409200000.0,
+                            "durationInTicks": 2100000.0,
+                            "confidence": 0.932526
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT41.13S",
+                            "duration": "PT0.09S",
+                            "offsetInTicks": 411300000.0,
+                            "durationInTicks": 900000.0,
+                            "confidence": 0.925835
+                        },
+                        {
+                            "word": "go",
+                            "offset": "PT41.22S",
+                            "duration": "PT0.17S",
+                            "offsetInTicks": 412200000.0,
+                            "durationInTicks": 1700000.0,
+                            "confidence": 0.904272
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT41.39S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 413900000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.942087
+                        },
+                        {
+                            "word": "school",
+                            "offset": "PT41.51S",
+                            "duration": "PT0.2S",
+                            "offsetInTicks": 415100000.0,
+                            "durationInTicks": 2000000.0,
+                            "confidence": 0.835412
+                        },
+                        {
+                            "word": "anymore",
+                            "offset": "PT41.71S",
+                            "duration": "PT0.41S",
+                            "offsetInTicks": 417100000.0,
+                            "durationInTicks": 4100000.0,
+                            "confidence": 0.822133
+                        },
+                        {
+                            "word": "he",
+                            "offset": "PT42.12S",
+                            "duration": "PT0.39S",
+                            "offsetInTicks": 421200000.0,
+                            "durationInTicks": 3900000.0,
+                            "confidence": 0.805807
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT43.51S",
+            "duration": "PT12.32S",
+            "offsetInTicks": 435100000.0,
+            "durationInTicks": 123200000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 211700000,
-                    "Duration": 61200000,
-                    "OffsetInSeconds": 21.17,
-                    "DurationInSeconds": 6.12,
-                    "NBest": [
+                    "confidence": 0.87267405,
+                    "lexical": "he said that he never did have what the other what he needed most of the time and that's when it got to where he had to pay for those current events and things like that that",
+                    "itn": "he said that he never did have what the other what he needed most of the time and that's when it got to where he had to pay for those current events and things like that that",
+                    "maskedITN": "He said that he never did have what the other what he needed most of the time and that's when it got to where he had to pay for those current events and things like that that",
+                    "display": "He said that he never did have what the other what he needed most of the time and that's when it got to where he had to pay for those current events and things like that that.",
+                    "words": [
                         {
-                            "Confidence": 0.859729,
-                            "Lexical": "uh when they run out of schools and we have nine and no one is in my oldest boy",
-                            "ITN": "uh when they run out of schools and we have 9 and no one is in my oldest boy",
-                            "MaskedITN": "Uh when they run out of schools and we have 9 and no one is in my oldest boy",
-                            "Display": "Uh when they run out of schools and we have 9 and no one is in my oldest boy.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "uh",
-                                    "Offset": 211700000,
-                                    "Duration": 5700000,
-                                    "OffsetInSeconds": 21.17,
-                                    "DurationInSeconds": 0.57,
-                                    "Confidence": 0.97632
-                                },
-                                {
-                                    "Word": "when",
-                                    "Offset": 218100000,
-                                    "Duration": 4300000,
-                                    "OffsetInSeconds": 21.81,
-                                    "DurationInSeconds": 0.43,
-                                    "Confidence": 0.910081
-                                },
-                                {
-                                    "Word": "they",
-                                    "Offset": 222400000,
-                                    "Duration": 1100000,
-                                    "OffsetInSeconds": 22.24,
-                                    "DurationInSeconds": 0.11,
-                                    "Confidence": 0.955452
-                                },
-                                {
-                                    "Word": "run",
-                                    "Offset": 223500000,
-                                    "Duration": 2400000,
-                                    "OffsetInSeconds": 22.35,
-                                    "DurationInSeconds": 0.24,
-                                    "Confidence": 0.980468
-                                },
-                                {
-                                    "Word": "out",
-                                    "Offset": 225900000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 22.59,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.981076
-                                },
-                                {
-                                    "Word": "of",
-                                    "Offset": 227100000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 22.71,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.704293
-                                },
-                                {
-                                    "Word": "schools",
-                                    "Offset": 227900000,
-                                    "Duration": 6400000,
-                                    "OffsetInSeconds": 22.79,
-                                    "DurationInSeconds": 0.64,
-                                    "Confidence": 0.959121
-                                },
-                                {
-                                    "Word": "and",
-                                    "Offset": 234500000,
-                                    "Duration": 1100000,
-                                    "OffsetInSeconds": 23.45,
-                                    "DurationInSeconds": 0.11,
-                                    "Confidence": 0.58211
-                                },
-                                {
-                                    "Word": "we",
-                                    "Offset": 235600000,
-                                    "Duration": 1300000,
-                                    "OffsetInSeconds": 23.56,
-                                    "DurationInSeconds": 0.13,
-                                    "Confidence": 0.96817
-                                },
-                                {
-                                    "Word": "have",
-                                    "Offset": 236900000,
-                                    "Duration": 2600000,
-                                    "OffsetInSeconds": 23.69,
-                                    "DurationInSeconds": 0.26,
-                                    "Confidence": 0.983156
-                                },
-                                {
-                                    "Word": "nine",
-                                    "Offset": 239500000,
-                                    "Duration": 6400000,
-                                    "OffsetInSeconds": 23.95,
-                                    "DurationInSeconds": 0.64,
-                                    "Confidence": 0.989627
-                                },
-                                {
-                                    "Word": "and",
-                                    "Offset": 251100000,
-                                    "Duration": 3000000,
-                                    "OffsetInSeconds": 25.11,
-                                    "DurationInSeconds": 0.3,
-                                    "Confidence": 0.841017
-                                },
-                                {
-                                    "Word": "no",
-                                    "Offset": 254100000,
-                                    "Duration": 1800000,
-                                    "OffsetInSeconds": 25.41,
-                                    "DurationInSeconds": 0.18,
-                                    "Confidence": 0.874407
-                                },
-                                {
-                                    "Word": "one",
-                                    "Offset": 255900000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 25.59,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.974485
-                                },
-                                {
-                                    "Word": "is",
-                                    "Offset": 258700000,
-                                    "Duration": 2700000,
-                                    "OffsetInSeconds": 25.87,
-                                    "DurationInSeconds": 0.27,
-                                    "Confidence": 0.967527
-                                },
-                                {
-                                    "Word": "in",
-                                    "Offset": 261400000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 26.14,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.865004
-                                },
-                                {
-                                    "Word": "my",
-                                    "Offset": 262600000,
-                                    "Duration": 1700000,
-                                    "OffsetInSeconds": 26.26,
-                                    "DurationInSeconds": 0.17,
-                                    "Confidence": 0.977819
-                                },
-                                {
-                                    "Word": "oldest",
-                                    "Offset": 264300000,
-                                    "Duration": 3600000,
-                                    "OffsetInSeconds": 26.43,
-                                    "DurationInSeconds": 0.36,
-                                    "Confidence": 0.931401
-                                },
-                                {
-                                    "Word": "boy",
-                                    "Offset": 267900000,
-                                    "Duration": 5000000,
-                                    "OffsetInSeconds": 26.79,
-                                    "DurationInSeconds": 0.5,
-                                    "Confidence": 0.988229
-                                }
-                            ]
+                            "word": "he",
+                            "offset": "PT43.51S",
+                            "duration": "PT0.2S",
+                            "offsetInTicks": 435100000.0,
+                            "durationInTicks": 2000000.0,
+                            "confidence": 0.921086
+                        },
+                        {
+                            "word": "said",
+                            "offset": "PT43.71S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 437100000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.943007
+                        },
+                        {
+                            "word": "that",
+                            "offset": "PT43.95S",
+                            "duration": "PT0.71S",
+                            "offsetInTicks": 439500000.0,
+                            "durationInTicks": 7100000.0,
+                            "confidence": 0.8471
+                        },
+                        {
+                            "word": "he",
+                            "offset": "PT45.09S",
+                            "duration": "PT0.38S",
+                            "offsetInTicks": 450900000.0,
+                            "durationInTicks": 3800000.0,
+                            "confidence": 0.909166
+                        },
+                        {
+                            "word": "never",
+                            "offset": "PT45.47S",
+                            "duration": "PT0.22S",
+                            "offsetInTicks": 454700000.0,
+                            "durationInTicks": 2200000.0,
+                            "confidence": 0.857232
+                        },
+                        {
+                            "word": "did",
+                            "offset": "PT45.69S",
+                            "duration": "PT0.18S",
+                            "offsetInTicks": 456900000.0,
+                            "durationInTicks": 1800000.0,
+                            "confidence": 0.921875
+                        },
+                        {
+                            "word": "have",
+                            "offset": "PT45.87S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 458700000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.893476
+                        },
+                        {
+                            "word": "what",
+                            "offset": "PT46.13S",
+                            "duration": "PT0.16S",
+                            "offsetInTicks": 461300000.0,
+                            "durationInTicks": 1600000.0,
+                            "confidence": 0.746244
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT46.29S",
+                            "duration": "PT0.2S",
+                            "offsetInTicks": 462900000.0,
+                            "durationInTicks": 2000000.0,
+                            "confidence": 0.906372
+                        },
+                        {
+                            "word": "other",
+                            "offset": "PT46.49S",
+                            "duration": "PT0.36S",
+                            "offsetInTicks": 464900000.0,
+                            "durationInTicks": 3600000.0,
+                            "confidence": 0.944805
+                        },
+                        {
+                            "word": "what",
+                            "offset": "PT46.85S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 468500000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.482864
+                        },
+                        {
+                            "word": "he",
+                            "offset": "PT46.99S",
+                            "duration": "PT0.08S",
+                            "offsetInTicks": 469900000.0,
+                            "durationInTicks": 800000.0,
+                            "confidence": 0.776443
+                        },
+                        {
+                            "word": "needed",
+                            "offset": "PT47.07S",
+                            "duration": "PT0.6S",
+                            "offsetInTicks": 470700000.0,
+                            "durationInTicks": 6000000.0,
+                            "confidence": 0.944771
+                        },
+                        {
+                            "word": "most",
+                            "offset": "PT47.93S",
+                            "duration": "PT0.46S",
+                            "offsetInTicks": 479300000.0,
+                            "durationInTicks": 4600000.0,
+                            "confidence": 0.789589
+                        },
+                        {
+                            "word": "of",
+                            "offset": "PT48.39S",
+                            "duration": "PT0.08S",
+                            "offsetInTicks": 483900000.0,
+                            "durationInTicks": 800000.0,
+                            "confidence": 0.940556
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT48.47S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 484700000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.932217
+                        },
+                        {
+                            "word": "time",
+                            "offset": "PT48.57S",
+                            "duration": "PT0.4S",
+                            "offsetInTicks": 485700000.0,
+                            "durationInTicks": 4000000.0,
+                            "confidence": 0.918241
+                        },
+                        {
+                            "word": "and",
+                            "offset": "PT48.97S",
+                            "duration": "PT0.45S",
+                            "offsetInTicks": 489700000.0,
+                            "durationInTicks": 4500000.0,
+                            "confidence": 0.930164
+                        },
+                        {
+                            "word": "that's",
+                            "offset": "PT49.78S",
+                            "duration": "PT0.36S",
+                            "offsetInTicks": 497800000.0,
+                            "durationInTicks": 3600000.0,
+                            "confidence": 0.527284
+                        },
+                        {
+                            "word": "when",
+                            "offset": "PT50.14S",
+                            "duration": "PT0.37S",
+                            "offsetInTicks": 501400000.0,
+                            "durationInTicks": 3700000.0,
+                            "confidence": 0.911463
+                        },
+                        {
+                            "word": "it",
+                            "offset": "PT50.51S",
+                            "duration": "PT0.08S",
+                            "offsetInTicks": 505100000.0,
+                            "durationInTicks": 800000.0,
+                            "confidence": 0.905774
+                        },
+                        {
+                            "word": "got",
+                            "offset": "PT50.59S",
+                            "duration": "PT0.2S",
+                            "offsetInTicks": 505900000.0,
+                            "durationInTicks": 2000000.0,
+                            "confidence": 0.910645
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT50.79S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 507900000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.897406
+                        },
+                        {
+                            "word": "where",
+                            "offset": "PT50.89S",
+                            "duration": "PT0.11S",
+                            "offsetInTicks": 508900000.0,
+                            "durationInTicks": 1100000.0,
+                            "confidence": 0.701765
+                        },
+                        {
+                            "word": "he",
+                            "offset": "PT51S",
+                            "duration": "PT0.11S",
+                            "offsetInTicks": 510000000.0,
+                            "durationInTicks": 1100000.0,
+                            "confidence": 0.948756
+                        },
+                        {
+                            "word": "had",
+                            "offset": "PT51.11S",
+                            "duration": "PT0.16S",
+                            "offsetInTicks": 511100000.0,
+                            "durationInTicks": 1600000.0,
+                            "confidence": 0.918098
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT51.27S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 512700000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.927258
+                        },
+                        {
+                            "word": "pay",
+                            "offset": "PT51.39S",
+                            "duration": "PT0.3S",
+                            "offsetInTicks": 513900000.0,
+                            "durationInTicks": 3000000.0,
+                            "confidence": 0.947007
+                        },
+                        {
+                            "word": "for",
+                            "offset": "PT51.69S",
+                            "duration": "PT0.67S",
+                            "offsetInTicks": 516900000.0,
+                            "durationInTicks": 6700000.0,
+                            "confidence": 0.898877
+                        },
+                        {
+                            "word": "those",
+                            "offset": "PT52.96S",
+                            "duration": "PT0.59S",
+                            "offsetInTicks": 529600000.0,
+                            "durationInTicks": 5900000.0,
+                            "confidence": 0.877995
+                        },
+                        {
+                            "word": "current",
+                            "offset": "PT53.57S",
+                            "duration": "PT0.41S",
+                            "offsetInTicks": 535700000.0,
+                            "durationInTicks": 4100000.0,
+                            "confidence": 0.717396
+                        },
+                        {
+                            "word": "events",
+                            "offset": "PT53.98S",
+                            "duration": "PT0.44S",
+                            "offsetInTicks": 539800000.0,
+                            "durationInTicks": 4400000.0,
+                            "confidence": 0.922057
+                        },
+                        {
+                            "word": "and",
+                            "offset": "PT54.42S",
+                            "duration": "PT0.09S",
+                            "offsetInTicks": 544200000.0,
+                            "durationInTicks": 900000.0,
+                            "confidence": 0.921017
+                        },
+                        {
+                            "word": "things",
+                            "offset": "PT54.51S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 545100000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.949264
+                        },
+                        {
+                            "word": "like",
+                            "offset": "PT54.77S",
+                            "duration": "PT0.2S",
+                            "offsetInTicks": 547700000.0,
+                            "durationInTicks": 2000000.0,
+                            "confidence": 0.934688
+                        },
+                        {
+                            "word": "that",
+                            "offset": "PT54.97S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 549700000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.85302
+                        },
+                        {
+                            "word": "that",
+                            "offset": "PT55.21S",
+                            "duration": "PT0.62S",
+                            "offsetInTicks": 552100000.0,
+                            "durationInTicks": 6200000.0,
+                            "confidence": 0.90011
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT57.05S",
+            "duration": "PT2.93S",
+            "offsetInTicks": 570500000.0,
+            "durationInTicks": 29300000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 277200000,
-                    "Duration": 6700000,
-                    "OffsetInSeconds": 27.72,
-                    "DurationInSeconds": 0.67,
-                    "NBest": [
+                    "confidence": 0.8909492,
+                    "lexical": "all the other kids would have paid for him he was the only one",
+                    "itn": "all the other kids would have paid for him he was the only one",
+                    "maskedITN": "All the other kids would have paid for him he was the only one",
+                    "display": "All the other kids would have paid for him, he was the only one.",
+                    "words": [
                         {
-                            "Confidence": 0.256547451,
-                            "Lexical": "uh",
-                            "ITN": "uh",
-                            "MaskedITN": "Uh",
-                            "Display": "Uh.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "uh",
-                                    "Offset": 277200000,
-                                    "Duration": 6700000,
-                                    "OffsetInSeconds": 27.72,
-                                    "DurationInSeconds": 0.67,
-                                    "Confidence": 0.723532
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 289600000,
-                    "Duration": 54900000,
-                    "OffsetInSeconds": 28.96,
-                    "DurationInSeconds": 5.49,
-                    "NBest": [
+                            "word": "all",
+                            "offset": "PT57.05S",
+                            "duration": "PT0.22S",
+                            "offsetInTicks": 570500000.0,
+                            "durationInTicks": 2200000.0,
+                            "confidence": 0.866611
+                        },
                         {
-                            "Confidence": 0.887677968,
-                            "Lexical": "quit school last year last year he didn't go to school we did all we could we talk to him and",
-                            "ITN": "quit school last year last year he didn't go to school we did all we could we talk to him and",
-                            "MaskedITN": "Quit school last year last year he didn't go to school we did all we could we talk to him and",
-                            "Display": "Quit school last year last year he didn't go to school we did all we could we talk to him and.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "quit",
-                                    "Offset": 289600000,
-                                    "Duration": 3600000,
-                                    "OffsetInSeconds": 28.96,
-                                    "DurationInSeconds": 0.36,
-                                    "Confidence": 0.960735
-                                },
-                                {
-                                    "Word": "school",
-                                    "Offset": 293200000,
-                                    "Duration": 5500000,
-                                    "OffsetInSeconds": 29.32,
-                                    "DurationInSeconds": 0.55,
-                                    "Confidence": 0.989641
-                                },
-                                {
-                                    "Word": "last",
-                                    "Offset": 298900000,
-                                    "Duration": 4100000,
-                                    "OffsetInSeconds": 29.89,
-                                    "DurationInSeconds": 0.41,
-                                    "Confidence": 0.932502
-                                },
-                                {
-                                    "Word": "year",
-                                    "Offset": 303000000,
-                                    "Duration": 3100000,
-                                    "OffsetInSeconds": 30.3,
-                                    "DurationInSeconds": 0.31,
-                                    "Confidence": 0.975734
-                                },
-                                {
-                                    "Word": "last",
-                                    "Offset": 306300000,
-                                    "Duration": 5900000,
-                                    "OffsetInSeconds": 30.63,
-                                    "DurationInSeconds": 0.59,
-                                    "Confidence": 0.899245
-                                },
-                                {
-                                    "Word": "year",
-                                    "Offset": 312200000,
-                                    "Duration": 1300000,
-                                    "OffsetInSeconds": 31.22,
-                                    "DurationInSeconds": 0.13,
-                                    "Confidence": 0.961821
-                                },
-                                {
-                                    "Word": "he",
-                                    "Offset": 313500000,
-                                    "Duration": 1000000,
-                                    "OffsetInSeconds": 31.35,
-                                    "DurationInSeconds": 0.1,
-                                    "Confidence": 0.943289
-                                },
-                                {
-                                    "Word": "didn't",
-                                    "Offset": 314500000,
-                                    "Duration": 1700000,
-                                    "OffsetInSeconds": 31.45,
-                                    "DurationInSeconds": 0.17,
-                                    "Confidence": 0.823623
-                                },
-                                {
-                                    "Word": "go",
-                                    "Offset": 316200000,
-                                    "Duration": 700000,
-                                    "OffsetInSeconds": 31.62,
-                                    "DurationInSeconds": 0.07,
-                                    "Confidence": 0.782704
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 316900000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 31.69,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.97314
-                                },
-                                {
-                                    "Word": "school",
-                                    "Offset": 318100000,
-                                    "Duration": 4500000,
-                                    "OffsetInSeconds": 31.81,
-                                    "DurationInSeconds": 0.45,
-                                    "Confidence": 0.994127
-                                },
-                                {
-                                    "Word": "we",
-                                    "Offset": 322900000,
-                                    "Duration": 2300000,
-                                    "OffsetInSeconds": 32.29,
-                                    "DurationInSeconds": 0.23,
-                                    "Confidence": 0.895191
-                                },
-                                {
-                                    "Word": "did",
-                                    "Offset": 325200000,
-                                    "Duration": 1700000,
-                                    "OffsetInSeconds": 32.52,
-                                    "DurationInSeconds": 0.17,
-                                    "Confidence": 0.961552
-                                },
-                                {
-                                    "Word": "all",
-                                    "Offset": 326900000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 32.69,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.950216
-                                },
-                                {
-                                    "Word": "we",
-                                    "Offset": 328100000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 32.81,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.931849
-                                },
-                                {
-                                    "Word": "could",
-                                    "Offset": 329300000,
-                                    "Duration": 3200000,
-                                    "OffsetInSeconds": 32.93,
-                                    "DurationInSeconds": 0.32,
-                                    "Confidence": 0.96942
-                                },
-                                {
-                                    "Word": "we",
-                                    "Offset": 332500000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 33.25,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.826213
-                                },
-                                {
-                                    "Word": "talk",
-                                    "Offset": 333700000,
-                                    "Duration": 3600000,
-                                    "OffsetInSeconds": 33.37,
-                                    "DurationInSeconds": 0.36,
-                                    "Confidence": 0.97728
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 337300000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 33.73,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.967702
-                                },
-                                {
-                                    "Word": "him",
-                                    "Offset": 338500000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 33.85,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.981746
-                                },
-                                {
-                                    "Word": "and",
-                                    "Offset": 341300000,
-                                    "Duration": 3200000,
-                                    "OffsetInSeconds": 34.13,
-                                    "DurationInSeconds": 0.32,
-                                    "Confidence": 0.974095
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 348700000,
-                    "Duration": 43200000,
-                    "OffsetInSeconds": 34.87,
-                    "DurationInSeconds": 4.32,
-                    "NBest": [
+                            "word": "the",
+                            "offset": "PT57.27S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 572700000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.929068
+                        },
                         {
-                            "Confidence": 0.8944185,
-                            "Lexical": "my brother used to write to him and talk to him tell him but",
-                            "ITN": "my brother used to write to him and talk to him tell him but",
-                            "MaskedITN": "My brother used to write to him and talk to him tell him but",
-                            "Display": "My brother used to write to him and talk to him tell him but.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "my",
-                                    "Offset": 348700000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 34.87,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.962961
-                                },
-                                {
-                                    "Word": "brother",
-                                    "Offset": 351500000,
-                                    "Duration": 5500000,
-                                    "OffsetInSeconds": 35.15,
-                                    "DurationInSeconds": 0.55,
-                                    "Confidence": 0.990163
-                                },
-                                {
-                                    "Word": "used",
-                                    "Offset": 357200000,
-                                    "Duration": 3100000,
-                                    "OffsetInSeconds": 35.72,
-                                    "DurationInSeconds": 0.31,
-                                    "Confidence": 0.89499
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 360300000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 36.03,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.799828
-                                },
-                                {
-                                    "Word": "write",
-                                    "Offset": 361100000,
-                                    "Duration": 2400000,
-                                    "OffsetInSeconds": 36.11,
-                                    "DurationInSeconds": 0.24,
-                                    "Confidence": 0.959773
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 363500000,
-                                    "Duration": 1000000,
-                                    "OffsetInSeconds": 36.35,
-                                    "DurationInSeconds": 0.1,
-                                    "Confidence": 0.926512
-                                },
-                                {
-                                    "Word": "him",
-                                    "Offset": 364500000,
-                                    "Duration": 2600000,
-                                    "OffsetInSeconds": 36.45,
-                                    "DurationInSeconds": 0.26,
-                                    "Confidence": 0.980655
-                                },
-                                {
-                                    "Word": "and",
-                                    "Offset": 367100000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 36.71,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.762264
-                                },
-                                {
-                                    "Word": "talk",
-                                    "Offset": 367900000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 36.79,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.973176
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 370700000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 37.07,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.986942
-                                },
-                                {
-                                    "Word": "him",
-                                    "Offset": 371900000,
-                                    "Duration": 5400000,
-                                    "OffsetInSeconds": 37.19,
-                                    "DurationInSeconds": 0.54,
-                                    "Confidence": 0.994825
-                                },
-                                {
-                                    "Word": "tell",
-                                    "Offset": 380300000,
-                                    "Duration": 2200000,
-                                    "OffsetInSeconds": 38.03,
-                                    "DurationInSeconds": 0.22,
-                                    "Confidence": 0.945682
-                                },
-                                {
-                                    "Word": "him",
-                                    "Offset": 382500000,
-                                    "Duration": 4200000,
-                                    "OffsetInSeconds": 38.25,
-                                    "DurationInSeconds": 0.42,
-                                    "Confidence": 0.985956
-                                },
-                                {
-                                    "Word": "but",
-                                    "Offset": 386900000,
-                                    "Duration": 5000000,
-                                    "OffsetInSeconds": 38.69,
-                                    "DurationInSeconds": 0.5,
-                                    "Confidence": 0.968
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 401200000,
-                    "Duration": 23600000,
-                    "OffsetInSeconds": 40.12,
-                    "DurationInSeconds": 2.36,
-                    "NBest": [
+                            "word": "other",
+                            "offset": "PT57.41S",
+                            "duration": "PT0.16S",
+                            "offsetInTicks": 574100000.0,
+                            "durationInTicks": 1600000.0,
+                            "confidence": 0.884664
+                        },
                         {
-                            "Confidence": 0.8952404,
-                            "Lexical": "i guess he just didn't want to go to school anymore i think",
-                            "ITN": "I guess he just didn't want to go to school anymore I think",
-                            "MaskedITN": "I guess he just didn't want to go to school anymore I think",
-                            "Display": "I guess he just didn't want to go to school anymore I think.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "i",
-                                    "Offset": 401200000,
-                                    "Duration": 1400000,
-                                    "OffsetInSeconds": 40.12,
-                                    "DurationInSeconds": 0.14,
-                                    "Confidence": 0.966319
-                                },
-                                {
-                                    "Word": "guess",
-                                    "Offset": 402600000,
-                                    "Duration": 2000000,
-                                    "OffsetInSeconds": 40.26,
-                                    "DurationInSeconds": 0.2,
-                                    "Confidence": 0.939862
-                                },
-                                {
-                                    "Word": "he",
-                                    "Offset": 404600000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 40.46,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.775645
-                                },
-                                {
-                                    "Word": "just",
-                                    "Offset": 405400000,
-                                    "Duration": 2100000,
-                                    "OffsetInSeconds": 40.54,
-                                    "DurationInSeconds": 0.21,
-                                    "Confidence": 0.96938
-                                },
-                                {
-                                    "Word": "didn't",
-                                    "Offset": 407500000,
-                                    "Duration": 1800000,
-                                    "OffsetInSeconds": 40.75,
-                                    "DurationInSeconds": 0.18,
-                                    "Confidence": 0.971484
-                                },
-                                {
-                                    "Word": "want",
-                                    "Offset": 409300000,
-                                    "Duration": 2000000,
-                                    "OffsetInSeconds": 40.93,
-                                    "DurationInSeconds": 0.2,
-                                    "Confidence": 0.973116
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 411300000,
-                                    "Duration": 900000,
-                                    "OffsetInSeconds": 41.13,
-                                    "DurationInSeconds": 0.09,
-                                    "Confidence": 0.936677
-                                },
-                                {
-                                    "Word": "go",
-                                    "Offset": 412200000,
-                                    "Duration": 1500000,
-                                    "OffsetInSeconds": 41.22,
-                                    "DurationInSeconds": 0.15,
-                                    "Confidence": 0.902376
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 413700000,
-                                    "Duration": 1400000,
-                                    "OffsetInSeconds": 41.37,
-                                    "DurationInSeconds": 0.14,
-                                    "Confidence": 0.951636
-                                },
-                                {
-                                    "Word": "school",
-                                    "Offset": 415100000,
-                                    "Duration": 1800000,
-                                    "OffsetInSeconds": 41.51,
-                                    "DurationInSeconds": 0.18,
-                                    "Confidence": 0.89999
-                                },
-                                {
-                                    "Word": "anymore",
-                                    "Offset": 416900000,
-                                    "Duration": 3900000,
-                                    "OffsetInSeconds": 41.69,
-                                    "DurationInSeconds": 0.39,
-                                    "Confidence": 0.976437
-                                },
-                                {
-                                    "Word": "i",
-                                    "Offset": 420800000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 42.08,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.925671
-                                },
-                                {
-                                    "Word": "think",
-                                    "Offset": 422000000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 42.2,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.952288
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 435000000,
-                    "Duration": 11500000,
-                    "OffsetInSeconds": 43.5,
-                    "DurationInSeconds": 1.15,
-                    "NBest": [
+                            "word": "kids",
+                            "offset": "PT57.57S",
+                            "duration": "PT0.4S",
+                            "offsetInTicks": 575700000.0,
+                            "durationInTicks": 4000000.0,
+                            "confidence": 0.955941
+                        },
                         {
-                            "Confidence": 0.844605446,
-                            "Lexical": "he said that uh",
-                            "ITN": "he said that uh",
-                            "MaskedITN": "He said that uh",
-                            "Display": "He said that uh.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "he",
-                                    "Offset": 435000000,
-                                    "Duration": 2000000,
-                                    "OffsetInSeconds": 43.5,
-                                    "DurationInSeconds": 0.2,
-                                    "Confidence": 0.966531
-                                },
-                                {
-                                    "Word": "said",
-                                    "Offset": 437000000,
-                                    "Duration": 2600000,
-                                    "OffsetInSeconds": 43.7,
-                                    "DurationInSeconds": 0.26,
-                                    "Confidence": 0.972065
-                                },
-                                {
-                                    "Word": "that",
-                                    "Offset": 439600000,
-                                    "Duration": 4400000,
-                                    "OffsetInSeconds": 43.96,
-                                    "DurationInSeconds": 0.44,
-                                    "Confidence": 0.961068
-                                },
-                                {
-                                    "Word": "uh",
-                                    "Offset": 444000000,
-                                    "Duration": 2500000,
-                                    "OffsetInSeconds": 44.4,
-                                    "DurationInSeconds": 0.25,
-                                    "Confidence": 0.948084
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 452600000,
-                    "Duration": 40400000,
-                    "OffsetInSeconds": 45.26,
-                    "DurationInSeconds": 4.04,
-                    "NBest": [
+                            "word": "would",
+                            "offset": "PT57.99S",
+                            "duration": "PT0.41S",
+                            "offsetInTicks": 579900000.0,
+                            "durationInTicks": 4100000.0,
+                            "confidence": 0.821105
+                        },
                         {
-                            "Confidence": 0.871985435,
-                            "Lexical": "he never did have what the other what he needed most of the time and",
-                            "ITN": "he never did have what the other what he needed most of the time and",
-                            "MaskedITN": "He never did have what the other what he needed most of the time and",
-                            "Display": "He never did have what the other what he needed most of the time and.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "he",
-                                    "Offset": 452600000,
-                                    "Duration": 2100000,
-                                    "OffsetInSeconds": 45.26,
-                                    "DurationInSeconds": 0.21,
-                                    "Confidence": 0.935467
-                                },
-                                {
-                                    "Word": "never",
-                                    "Offset": 454700000,
-                                    "Duration": 2200000,
-                                    "OffsetInSeconds": 45.47,
-                                    "DurationInSeconds": 0.22,
-                                    "Confidence": 0.957745
-                                },
-                                {
-                                    "Word": "did",
-                                    "Offset": 456900000,
-                                    "Duration": 1600000,
-                                    "OffsetInSeconds": 45.69,
-                                    "DurationInSeconds": 0.16,
-                                    "Confidence": 0.962709
-                                },
-                                {
-                                    "Word": "have",
-                                    "Offset": 458500000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 45.85,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.955256
-                                },
-                                {
-                                    "Word": "what",
-                                    "Offset": 461300000,
-                                    "Duration": 1600000,
-                                    "OffsetInSeconds": 46.13,
-                                    "DurationInSeconds": 0.16,
-                                    "Confidence": 0.865105
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 462900000,
-                                    "Duration": 2000000,
-                                    "OffsetInSeconds": 46.29,
-                                    "DurationInSeconds": 0.2,
-                                    "Confidence": 0.965811
-                                },
-                                {
-                                    "Word": "other",
-                                    "Offset": 464900000,
-                                    "Duration": 3600000,
-                                    "OffsetInSeconds": 46.49,
-                                    "DurationInSeconds": 0.36,
-                                    "Confidence": 0.972199
-                                },
-                                {
-                                    "Word": "what",
-                                    "Offset": 468500000,
-                                    "Duration": 1400000,
-                                    "OffsetInSeconds": 46.85,
-                                    "DurationInSeconds": 0.14,
-                                    "Confidence": 0.373034
-                                },
-                                {
-                                    "Word": "he",
-                                    "Offset": 469900000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 46.99,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.742879
-                                },
-                                {
-                                    "Word": "needed",
-                                    "Offset": 470700000,
-                                    "Duration": 5600000,
-                                    "OffsetInSeconds": 47.07,
-                                    "DurationInSeconds": 0.56,
-                                    "Confidence": 0.990224
-                                },
-                                {
-                                    "Word": "most",
-                                    "Offset": 479900000,
-                                    "Duration": 4000000,
-                                    "OffsetInSeconds": 47.99,
-                                    "DurationInSeconds": 0.4,
-                                    "Confidence": 0.967788
-                                },
-                                {
-                                    "Word": "of",
-                                    "Offset": 483900000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 48.39,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.964277
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 484700000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 48.47,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.976192
-                                },
-                                {
-                                    "Word": "time",
-                                    "Offset": 485500000,
-                                    "Duration": 4200000,
-                                    "OffsetInSeconds": 48.55,
-                                    "DurationInSeconds": 0.42,
-                                    "Confidence": 0.975549
-                                },
-                                {
-                                    "Word": "and",
-                                    "Offset": 489700000,
-                                    "Duration": 3300000,
-                                    "OffsetInSeconds": 48.97,
-                                    "DurationInSeconds": 0.33,
-                                    "Confidence": 0.980518
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 498000000,
-                    "Duration": 60100000,
-                    "OffsetInSeconds": 49.8,
-                    "DurationInSeconds": 6.01,
-                    "NBest": [
+                            "word": "have",
+                            "offset": "PT58.4S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 584000000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.841146
+                        },
                         {
-                            "Confidence": 0.892613351,
-                            "Lexical": "and when it got to where you had to pay for uh those uh current events and things like that that uh",
-                            "ITN": "and when it got to where you had to pay for uh those uh current events and things like that that uh",
-                            "MaskedITN": "And when it got to where you had to pay for uh those uh current events and things like that that uh",
-                            "Display": "And when it got to where you had to pay for uh those uh current events and things like that that uh.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "and",
-                                    "Offset": 498000000,
-                                    "Duration": 3700000,
-                                    "OffsetInSeconds": 49.8,
-                                    "DurationInSeconds": 0.37,
-                                    "Confidence": 0.835666
-                                },
-                                {
-                                    "Word": "when",
-                                    "Offset": 501700000,
-                                    "Duration": 3400000,
-                                    "OffsetInSeconds": 50.17,
-                                    "DurationInSeconds": 0.34,
-                                    "Confidence": 0.962547
-                                },
-                                {
-                                    "Word": "it",
-                                    "Offset": 505100000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 50.51,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.761487
-                                },
-                                {
-                                    "Word": "got",
-                                    "Offset": 505900000,
-                                    "Duration": 2000000,
-                                    "OffsetInSeconds": 50.59,
-                                    "DurationInSeconds": 0.2,
-                                    "Confidence": 0.93844
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 507900000,
-                                    "Duration": 1000000,
-                                    "OffsetInSeconds": 50.79,
-                                    "DurationInSeconds": 0.1,
-                                    "Confidence": 0.974268
-                                },
-                                {
-                                    "Word": "where",
-                                    "Offset": 508900000,
-                                    "Duration": 1400000,
-                                    "OffsetInSeconds": 50.89,
-                                    "DurationInSeconds": 0.14,
-                                    "Confidence": 0.951239
-                                },
-                                {
-                                    "Word": "you",
-                                    "Offset": 510300000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 51.03,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.965611
-                                },
-                                {
-                                    "Word": "had",
-                                    "Offset": 511100000,
-                                    "Duration": 1600000,
-                                    "OffsetInSeconds": 51.11,
-                                    "DurationInSeconds": 0.16,
-                                    "Confidence": 0.947913
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 512700000,
-                                    "Duration": 1000000,
-                                    "OffsetInSeconds": 51.27,
-                                    "DurationInSeconds": 0.1,
-                                    "Confidence": 0.945844
-                                },
-                                {
-                                    "Word": "pay",
-                                    "Offset": 513700000,
-                                    "Duration": 3200000,
-                                    "OffsetInSeconds": 51.37,
-                                    "DurationInSeconds": 0.32,
-                                    "Confidence": 0.982316
-                                },
-                                {
-                                    "Word": "for",
-                                    "Offset": 516900000,
-                                    "Duration": 3000000,
-                                    "OffsetInSeconds": 51.69,
-                                    "DurationInSeconds": 0.3,
-                                    "Confidence": 0.985236
-                                },
-                                {
-                                    "Word": "uh",
-                                    "Offset": 519900000,
-                                    "Duration": 3700000,
-                                    "OffsetInSeconds": 51.99,
-                                    "DurationInSeconds": 0.37,
-                                    "Confidence": 0.98728
-                                },
-                                {
-                                    "Word": "those",
-                                    "Offset": 529600000,
-                                    "Duration": 5300000,
-                                    "OffsetInSeconds": 52.96,
-                                    "DurationInSeconds": 0.53,
-                                    "Confidence": 0.933668
-                                },
-                                {
-                                    "Word": "uh",
-                                    "Offset": 534900000,
-                                    "Duration": 1400000,
-                                    "OffsetInSeconds": 53.49,
-                                    "DurationInSeconds": 0.14,
-                                    "Confidence": 0.764807
-                                },
-                                {
-                                    "Word": "current",
-                                    "Offset": 536300000,
-                                    "Duration": 3400000,
-                                    "OffsetInSeconds": 53.63,
-                                    "DurationInSeconds": 0.34,
-                                    "Confidence": 0.953828
-                                },
-                                {
-                                    "Word": "events",
-                                    "Offset": 539700000,
-                                    "Duration": 4500000,
-                                    "OffsetInSeconds": 53.97,
-                                    "DurationInSeconds": 0.45,
-                                    "Confidence": 0.972019
-                                },
-                                {
-                                    "Word": "and",
-                                    "Offset": 544200000,
-                                    "Duration": 900000,
-                                    "OffsetInSeconds": 54.42,
-                                    "DurationInSeconds": 0.09,
-                                    "Confidence": 0.884711
-                                },
-                                {
-                                    "Word": "things",
-                                    "Offset": 545100000,
-                                    "Duration": 2600000,
-                                    "OffsetInSeconds": 54.51,
-                                    "DurationInSeconds": 0.26,
-                                    "Confidence": 0.988069
-                                },
-                                {
-                                    "Word": "like",
-                                    "Offset": 547700000,
-                                    "Duration": 2000000,
-                                    "OffsetInSeconds": 54.77,
-                                    "DurationInSeconds": 0.2,
-                                    "Confidence": 0.990565
-                                },
-                                {
-                                    "Word": "that",
-                                    "Offset": 549700000,
-                                    "Duration": 2400000,
-                                    "OffsetInSeconds": 54.97,
-                                    "DurationInSeconds": 0.24,
-                                    "Confidence": 0.924138
-                                },
-                                {
-                                    "Word": "that",
-                                    "Offset": 552100000,
-                                    "Duration": 3900000,
-                                    "OffsetInSeconds": 55.21,
-                                    "DurationInSeconds": 0.39,
-                                    "Confidence": 0.982471
-                                },
-                                {
-                                    "Word": "uh",
-                                    "Offset": 556000000,
-                                    "Duration": 2100000,
-                                    "OffsetInSeconds": 55.6,
-                                    "DurationInSeconds": 0.21,
-                                    "Confidence": 0.960218
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 562300000,
-                    "Duration": 37500000,
-                    "OffsetInSeconds": 56.23,
-                    "DurationInSeconds": 3.75,
-                    "NBest": [
+                            "word": "paid",
+                            "offset": "PT58.66S",
+                            "duration": "PT0.31S",
+                            "offsetInTicks": 586600000.0,
+                            "durationInTicks": 3100000.0,
+                            "confidence": 0.904141
+                        },
                         {
-                            "Confidence": 0.855466545,
-                            "Lexical": "an all the other kids they would have paid for him he was the only one",
-                            "ITN": "an all the other kids they would have paid for him he was the only one",
-                            "MaskedITN": "An all the other kids they would have paid for him he was the only one",
-                            "Display": "An all the other kids they would have paid for him he was the only one.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "an",
-                                    "Offset": 562300000,
-                                    "Duration": 6800000,
-                                    "OffsetInSeconds": 56.23,
-                                    "DurationInSeconds": 0.68,
-                                    "Confidence": 0.948464
-                                },
-                                {
-                                    "Word": "all",
-                                    "Offset": 569700000,
-                                    "Duration": 3000000,
-                                    "OffsetInSeconds": 56.97,
-                                    "DurationInSeconds": 0.3,
-                                    "Confidence": 0.930773
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 572700000,
-                                    "Duration": 1400000,
-                                    "OffsetInSeconds": 57.27,
-                                    "DurationInSeconds": 0.14,
-                                    "Confidence": 0.907189
-                                },
-                                {
-                                    "Word": "other",
-                                    "Offset": 574100000,
-                                    "Duration": 1600000,
-                                    "OffsetInSeconds": 57.41,
-                                    "DurationInSeconds": 0.16,
-                                    "Confidence": 0.943178
-                                },
-                                {
-                                    "Word": "kids",
-                                    "Offset": 575700000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 57.57,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.975725
-                                },
-                                {
-                                    "Word": "they",
-                                    "Offset": 578500000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 57.85,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.854307
-                                },
-                                {
-                                    "Word": "would",
-                                    "Offset": 581300000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 58.13,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.977349
-                                },
-                                {
-                                    "Word": "have",
-                                    "Offset": 584100000,
-                                    "Duration": 2600000,
-                                    "OffsetInSeconds": 58.41,
-                                    "DurationInSeconds": 0.26,
-                                    "Confidence": 0.873007
-                                },
-                                {
-                                    "Word": "paid",
-                                    "Offset": 586700000,
-                                    "Duration": 3000000,
-                                    "OffsetInSeconds": 58.67,
-                                    "DurationInSeconds": 0.3,
-                                    "Confidence": 0.976272
-                                },
-                                {
-                                    "Word": "for",
-                                    "Offset": 589700000,
-                                    "Duration": 1600000,
-                                    "OffsetInSeconds": 58.97,
-                                    "DurationInSeconds": 0.16,
-                                    "Confidence": 0.891403
-                                },
-                                {
-                                    "Word": "him",
-                                    "Offset": 591300000,
-                                    "Duration": 1600000,
-                                    "OffsetInSeconds": 59.13,
-                                    "DurationInSeconds": 0.16,
-                                    "Confidence": 0.976054
-                                },
-                                {
-                                    "Word": "he",
-                                    "Offset": 592900000,
-                                    "Duration": 1400000,
-                                    "OffsetInSeconds": 59.29,
-                                    "DurationInSeconds": 0.14,
-                                    "Confidence": 0.908027
-                                },
-                                {
-                                    "Word": "was",
-                                    "Offset": 594300000,
-                                    "Duration": 1400000,
-                                    "OffsetInSeconds": 59.43,
-                                    "DurationInSeconds": 0.14,
-                                    "Confidence": 0.93731
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 595700000,
-                                    "Duration": 700000,
-                                    "OffsetInSeconds": 59.57,
-                                    "DurationInSeconds": 0.07,
-                                    "Confidence": 0.451994
-                                },
-                                {
-                                    "Word": "only",
-                                    "Offset": 596400000,
-                                    "Duration": 1900000,
-                                    "OffsetInSeconds": 59.64,
-                                    "DurationInSeconds": 0.19,
-                                    "Confidence": 0.989765
-                                },
-                                {
-                                    "Word": "one",
-                                    "Offset": 598300000,
-                                    "Duration": 1500000,
-                                    "OffsetInSeconds": 59.83,
-                                    "DurationInSeconds": 0.15,
-                                    "Confidence": 0.990502
-                                }
-                            ]
+                            "word": "for",
+                            "offset": "PT58.97S",
+                            "duration": "PT0.16S",
+                            "offsetInTicks": 589700000.0,
+                            "durationInTicks": 1600000.0,
+                            "confidence": 0.89011
+                        },
+                        {
+                            "word": "him",
+                            "offset": "PT59.13S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 591300000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.907057
+                        },
+                        {
+                            "word": "he",
+                            "offset": "PT59.27S",
+                            "duration": "PT0.16S",
+                            "offsetInTicks": 592700000.0,
+                            "durationInTicks": 1600000.0,
+                            "confidence": 0.879336
+                        },
+                        {
+                            "word": "was",
+                            "offset": "PT59.43S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 594300000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.911941
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT59.57S",
+                            "duration": "PT0.08S",
+                            "offsetInTicks": 595700000.0,
+                            "durationInTicks": 800000.0,
+                            "confidence": 0.809939
+                        },
+                        {
+                            "word": "only",
+                            "offset": "PT59.65S",
+                            "duration": "PT0.18S",
+                            "offsetInTicks": 596500000.0,
+                            "durationInTicks": 1800000.0,
+                            "confidence": 0.947899
+                        },
+                        {
+                            "word": "one",
+                            "offset": "PT59.83S",
+                            "duration": "PT0.15S",
+                            "offsetInTicks": 598300000.0,
+                            "durationInTicks": 1500000.0,
+                            "confidence": 0.927951
                         }
                     ]
                 }
