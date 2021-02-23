@@ -27,14 +27,14 @@
 import bisect
 import io
 import json
-import os
 import pathlib
 import re
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from typing import Callable, Dict, List, Literal, Mapping, Match, NamedTuple, Optional, \
+from typing import Callable, Dict, Iterator, List, Literal, Mapping, Match, NamedTuple, Optional, \
     Sequence, TypedDict, TypeVar, Union
 
 import mpf_component_api as mpf
@@ -250,6 +250,8 @@ class BreakSentenceClient:
     # Taken from https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-translate
     TRANSLATION_MAX_CHARS = 10_000
 
+    BREAK_SENTENCE_MAX_CHARS = 50_000
+
     def __init__(self, job_properties: Mapping[str, str], subscription_key: str):
         self._break_sentence_url = self._get_break_sentence_url(job_properties)
         self._subscription_key = subscription_key
@@ -267,26 +269,33 @@ class BreakSentenceClient:
                  f'{self.TRANSLATION_MAX_CHARS} characters, but the text contained '
                  f'{len(text)} characters.')
 
-        response_body = self._send_break_sentence_request(text)
+        if len(text) > self.BREAK_SENTENCE_MAX_CHARS:
+            log.info('Guessing sentence breaks because the break sentence endpoint allows a '
+                     f'maximum of {self.BREAK_SENTENCE_MAX_CHARS} characters, but the text '
+                     f'contained {len(text)} characters.')
+            chunks = list(SentenceBreakGuesser.guess_breaks(text))
+            log.info(f'Broke text up in to {len(chunks)} chunks. Each chunk will be sent to the '
+                     f'break sentence endpoint.')
+        else:
+            chunks = (text,)
 
-        chunks = []
-        current_chunk_length = 0
-        with io.StringIO(text) as sio:
-            for length in response_body[0]['sentLen']:
-                if length + current_chunk_length < self.TRANSLATION_MAX_CHARS:
-                    current_chunk_length += length
-                else:
-                    chunks.append(sio.read(current_chunk_length))
-                    current_chunk_length = length
-            chunks.append(sio.read(current_chunk_length))
+        chunk_iter = iter(chunks)
+        chunk = next(chunk_iter)
+        response_body = self._send_break_sentence_request(chunk)
+        detected_lang_info = response_body[0].get('detectedLanguage')
+        grouped_sentences = list(self._process_break_sentence_response(chunk, response_body))
 
-        log.info('Grouped sentences in to %s chunks.', len(chunks))
+        for chunk in chunk_iter:
+            response_body = self._send_break_sentence_request(chunk)
+            grouped_sentences.extend(self._process_break_sentence_response(chunk, response_body))
 
-        if detected_lang_info := response_body[0].get('detectedLanguage'):
-            return SplitTextResult(chunks, detected_lang_info['language'],
+        log.info('Grouped sentences in to %s chunks.', len(grouped_sentences))
+
+        if detected_lang_info:
+            return SplitTextResult(grouped_sentences, detected_lang_info['language'],
                                    detected_lang_info['score'])
         else:
-            return SplitTextResult(chunks)
+            return SplitTextResult(grouped_sentences)
 
 
     def _send_break_sentence_request(self, text: str) -> 'AcsResponses.BreakSentence':
@@ -309,6 +318,20 @@ class BreakSentenceClient:
                 f'Request failed with HTTP status {e.code} and message: {response_content}') from e
 
 
+    @classmethod
+    def _process_break_sentence_response(
+            cls, text: str, response_body: 'AcsResponses.BreakSentence') -> Iterator[str]:
+        current_chunk_length = 0
+        with io.StringIO(text) as sio:
+            for length in response_body[0]['sentLen']:
+                if length + current_chunk_length < cls.TRANSLATION_MAX_CHARS:
+                    current_chunk_length += length
+                else:
+                    yield sio.read(current_chunk_length)
+                    current_chunk_length = length
+            yield sio.read(current_chunk_length)
+
+
     @staticmethod
     def _get_break_sentence_url(job_properties: Mapping[str, str]) -> str:
         url = get_required_property('ACS_URL', job_properties)
@@ -321,6 +344,53 @@ class BreakSentenceClient:
         query_string = urllib.parse.urlencode(query_dict, doseq=True)
         replaced_parts = url_parts._replace(path=path, query=query_string)
         return urllib.parse.urlunparse(replaced_parts)
+
+
+class SentenceBreakGuesser:
+    @classmethod
+    def guess_breaks(cls, text: str) -> Iterator[str]:
+        current_pos = 0
+        max_chars = BreakSentenceClient.BREAK_SENTENCE_MAX_CHARS
+        while chunk := text[current_pos:current_pos + max_chars]:
+            if len(chunk) < max_chars:
+                result = chunk
+            elif (break_pos := cls._get_break_pos(chunk)) > 0:
+                result = chunk[:break_pos]
+            else:
+                result = chunk
+            current_pos += len(result)
+            yield result
+
+
+    SENTENCE_END_PUNCTUATION = '.!?。！？'
+
+    @classmethod
+    def _get_break_pos(cls, text: str) -> int:
+        double_newline_pos = text.rfind('\n\n')
+        if double_newline_pos > 0:
+            return double_newline_pos + 2
+
+        punctuation_positions = (text.rfind(ch) for ch in cls.SENTENCE_END_PUNCTUATION)
+        last_punctuation_pos = next((pos for pos in punctuation_positions if pos > 0), -1)
+        if last_punctuation_pos > 0:
+            return last_punctuation_pos + 1
+
+        last_punctuation_pos = next(
+            (i for i in reversed(range(len(text))) if cls._is_punctuation(text[i])),
+            -1)
+        if last_punctuation_pos > 0:
+            return last_punctuation_pos + 1
+
+        last_space_pos = text.rfind(' ')
+        if last_space_pos > 0:
+            return last_space_pos + 1
+
+        return -1
+
+    @staticmethod
+    def _is_punctuation(char):
+        return unicodedata.category(char) == 'Po'
+
 
 
 

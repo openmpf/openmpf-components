@@ -42,7 +42,9 @@ import mpf_component_api as mpf
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent / '../acs_translation_component'))
 from acs_translation_component import AcsTranslationComponent, TranslationClient, \
-    NewLineBehavior, ChineseAndJapaneseCodePoints, AcsTranslateUrlBuilder, BreakSentenceClient
+    NewLineBehavior, ChineseAndJapaneseCodePoints, AcsTranslateUrlBuilder, BreakSentenceClient, \
+    SentenceBreakGuesser
+
 
 
 SEEN_TRACE_IDS = set()
@@ -689,6 +691,43 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(['ja'], query_dict['suggestedFrom'])
         self.assertEqual(['en'], query_dict['to'])
 
+    @mock.patch.object(BreakSentenceClient, 'BREAK_SENTENCE_MAX_CHARS', new_callable=lambda: 5)
+    def test_guess_breaks_all_types(self, _):
+        input_text = 'a.bc,d.efg,hij kl\n\nmnopqrs'
+        actual = list(SentenceBreakGuesser.guess_breaks(input_text))
+        self.assertEqual(input_text, ''.join(actual))
+        self.assertEqual(7, len(actual))
+
+        # a.bc,
+        self.assertEqual('a.', actual[0])
+        # bc,d.
+        self.assertEqual('bc,d.', actual[1])
+        # efg,h
+        self.assertEqual('efg,', actual[2])
+        # hij k
+        self.assertEqual('hij ', actual[3])
+        # kl\n\nm
+        self.assertEqual('kl\n\n', actual[4])
+        # mnopq
+        self.assertEqual('mnopq', actual[5])
+        # rs
+        self.assertEqual('rs', actual[6])
+
+
+    @mock.patch.object(BreakSentenceClient, 'BREAK_SENTENCE_MAX_CHARS', new_callable=lambda: 20)
+    def test_guess_breaks_actual_sentence(self, _):
+        input_text = 'Hello, what is your name? My name is John.'
+        actual = list(SentenceBreakGuesser.guess_breaks(input_text))
+        self.assertEqual(input_text, ''.join(actual))
+        self.assertEqual(3, len(actual))
+
+        # "Hello, what is your "
+        self.assertEqual('Hello,', actual[0])
+        # " what is your name? "
+        self.assertEqual(' what is your name?', actual[1])
+        # " My name is John."
+        self.assertEqual(' My name is John.', actual[2])
+
 
 
 def get_test_properties(**extra_properties):
@@ -820,12 +859,17 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(430, 'Request body was empty array.')
             raise Exception()
 
+        if is_translate:
+            max_chars = BreakSentenceClient.TRANSLATION_MAX_CHARS
+        else:
+            max_chars = BreakSentenceClient.BREAK_SENTENCE_MAX_CHARS
+
         for translation_request in body:
             request_text = translation_request['Text']
             if len(request_text) == 0:
                 self.send_error(430, 'Translation request did not contain text.')
                 raise Exception()
-            if is_translate and len(request_text) > BreakSentenceClient.TRANSLATION_MAX_CHARS:
+            elif len(request_text) > max_chars:
                 self.send_error(429, 'The server rejected the request because the client has '
                                      'exceeded request limits.')
                 raise Exception()
