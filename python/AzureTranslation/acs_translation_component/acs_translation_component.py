@@ -27,6 +27,7 @@
 import bisect
 import io
 import json
+import logging
 import pathlib
 import re
 import unicodedata
@@ -35,9 +36,10 @@ import urllib.parse
 import urllib.request
 import uuid
 from typing import Callable, Dict, Iterator, List, Literal, Mapping, Match, NamedTuple, Optional, \
-    Sequence, TypedDict, TypeVar, Union
+    Sequence, Tuple, TypedDict, TypeVar, Union
 
 import mpf_component_api as mpf
+import mpf_component_util as mpf_util
 
 log = mpf.configure_logging('acs-translation.log', __name__ == '__main__')
 
@@ -133,18 +135,27 @@ NO_SPACE_LANGS = ('JA',  # Japanese
 
 
 class TranslationClient:
+    DETECT_MAX_CHARS = 50_000
+
     def __init__(self, job_properties: Mapping[str, str]):
         self._subscription_key = get_required_property('ACS_SUBSCRIPTION_KEY', job_properties)
 
         url_builder = AcsTranslateUrlBuilder(job_properties)
         self._translate_url = url_builder.url
         self._to_language = url_builder.to_language.upper()
+        self._provided_from_language = url_builder.from_language
         # Need to know the language's word separator in case the text needs to be split up in to
         # multiple translation requests. In that case we will need to combine the results from
         # each request.
         self._to_lang_word_separator = '' if self._to_language in NO_SPACE_LANGS else ' '
 
-        self._newline_behavior = NewLineBehavior.get(job_properties, url_builder.from_language)
+        self._newline_behavior = NewLineBehavior.get(job_properties)
+
+        self._detect_before_translate = mpf_util.get_property(job_properties,
+                                                              'DETECT_BEFORE_TRANSLATE', True)
+        acs_url = get_required_property('ACS_URL', job_properties)
+        self._detect_url = create_url(acs_url, 'detect', {})
+
         self._break_sentence_client = BreakSentenceClient(job_properties, self._subscription_key)
 
         prop_names = job_properties.get('FEED_FORWARD_PROP_TO_PROCESS', 'TEXT,TRANSCRIPT')
@@ -194,9 +205,23 @@ class TranslationClient:
         if cached_translation := self._translation_cache.get(text):
             return cached_translation
 
-        text_replaced_newlines = self._newline_behavior(text)
-        chunks = self._break_sentence_client.split_input_text(text_replaced_newlines)
-        translation_info = self._translate_chunks(chunks)
+        if self._provided_from_language:
+            from_lang = self._provided_from_language
+            from_lang_confidence = 1
+        elif self._detect_before_translate:
+            from_lang, from_lang_confidence = self._detect_language(text)
+        else:
+            from_lang = from_lang_confidence = None
+
+
+        if from_lang and from_lang.casefold() == self._to_language.casefold():
+            translation_info = TranslationResult('', from_lang, from_lang_confidence)
+        else:
+            text_replaced_newlines = self._newline_behavior(text, from_lang)
+            grouped_sentences = self._break_sentence_client.split_input_text(
+                text_replaced_newlines, from_lang, from_lang_confidence)
+            translation_info = self._translate_chunks(grouped_sentences)
+
         self._translation_cache[text] = translation_info
         return translation_info
 
@@ -207,7 +232,7 @@ class TranslationClient:
         detected_lang_confidence = chunks.detected_language_confidence
 
         for chunk in chunks.chunks:
-            response_body = self._send_translation_request(chunk)
+            response_body = self._send_translation_request(chunk, detected_lang)
             translated_text = response_body[0]['translations'][0]['text']
             translated_text_chunks.append(translated_text)
             if not detected_lang:
@@ -219,18 +244,25 @@ class TranslationClient:
         return TranslationResult(combined_chunks, detected_lang, detected_lang_confidence)
 
 
-    def _send_translation_request(self, text: str) -> 'AcsResponses.Translate':
+    def _send_translation_request(self, text: str,
+                                  from_language: Optional[str]) -> 'AcsResponses.Translate':
+        if from_language:
+            url = set_query_params(self._translate_url, {'from': from_language})
+        else:
+            url = self._translate_url
         request_body = [
             {'Text': text}
         ]
         encoded_body = json.dumps(request_body).encode('utf-8')
-        request = urllib.request.Request(self._translate_url, encoded_body,
+        request = urllib.request.Request(url, encoded_body,
                                          get_acs_headers(self._subscription_key))
         try:
             log.info(f'Sending POST to {self._translate_url}')
+            log_json(request_body)
             with urllib.request.urlopen(request) as response:
                 response_body: AcsResponses.Translate = json.load(response)
                 log.info(f'Received response from {self._translate_url}.')
+                log_json(response_body)
                 return response_body
         except urllib.error.HTTPError as e:
             response_content = e.read().decode('utf-8', errors='replace')
@@ -239,6 +271,91 @@ class TranslationClient:
                 from e
 
 
+    def _detect_language(self, text: str) -> Tuple[str, float]:
+        response = self._send_detect_request(text)
+        primary_language = response[0]['language']
+        primary_language_score = response[0]['score']
+        log.info(f'Detected the primary language of the text was {primary_language} with score '
+                 f'{primary_language_score}')
+
+        if primary_language.casefold() == self._to_language.casefold():
+            return self._handle_matching_from_and_to_lang(primary_language, primary_language_score,
+                                                          response)
+        elif response[0]['isTranslationSupported']:
+            return primary_language, primary_language_score
+        else:
+            return self._handle_untranslatable_primary_language(primary_language, response)
+
+
+    @staticmethod
+    def _handle_matching_from_and_to_lang(primary_language: str, primary_language_score: float,
+                                          response: 'AcsResponses.Detect') -> Tuple[str, float]:
+        alternatives = response[0].get('alternatives')
+        if not alternatives:
+            log.warning('Detected that the text is already in the requested TO_LANGUAGE and'
+                        ' no alternatives were available. No translation will occur.')
+            return primary_language, primary_language_score
+
+        alternative = next((alt for alt in alternatives if alt['isTranslationSupported']), None)
+        if not alternative:
+            log.warning('Detected that the text is already in the requested TO_LANGUAGE and'
+                        ' none of the alternatives support translation. No translation will occur.')
+            return primary_language, primary_language_score
+
+        alternative_lang = alternative['language']
+        alternative_lang_score = alternative['score']
+        log.warning('Detected that the text is already in the requested TO_LANGUAGE,'
+                    f' but the highest score alternative was {alternative_lang} with'
+                    f' score {alternative_lang_score}. Will attempt to translate text to'
+                    f' {alternative_lang}.')
+        return alternative_lang, alternative_lang_score
+
+
+    @staticmethod
+    def _handle_untranslatable_primary_language(
+            primary_language: str, response: 'AcsResponses.Detect') -> Tuple[str, float]:
+        alternatives = response[0].get('alternatives')
+        if not alternatives:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                f'The detected language, {primary_language}, does not support translation and '
+                'there were no alternative languages.')
+
+        alternative = next((alt for alt in alternatives if alt['isTranslationSupported']),
+                           None)
+        if not alternative:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                f'The detected language, {primary_language}, does not support translation and '
+                'none of the alternatives support translation.')
+
+        alternative_lang = alternative['language']
+        alternative_lang_score = alternative['score']
+        log.info(f'The detected language, {primary_language}, does not support translation,'
+                 f' but an alternative language, {alternative_lang} with score '
+                 f'{alternative_lang_score}, does support translation. Will attempt to '
+                 f'translate text to {alternative_lang}.')
+        return alternative_lang, alternative_lang_score
+
+
+    def _send_detect_request(self, text) -> 'AcsResponses.Detect':
+        request_body = [
+            {'Text': text[:self.DETECT_MAX_CHARS]}
+        ]
+        encoded_body = json.dumps(request_body).encode('utf-8')
+        request = urllib.request.Request(self._detect_url, encoded_body,
+                                         get_acs_headers(self._subscription_key))
+        try:
+            log.info(f'Sending POST {self._detect_url}')
+            log_json(request_body)
+            with urllib.request.urlopen(request) as response:
+                response_body: AcsResponses.Detect = json.load(response)
+                log.info(f'Received response from {self._detect_url}.')
+                log_json(response_body)
+                return response_body
+        except urllib.error.HTTPError as e:
+            response_content = e.read().decode('utf-8', errors='replace')
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                f'Request failed with HTTP status {e.code} and message: {response_content}') from e
+
 
 class BreakSentenceClient:
     """
@@ -246,71 +363,83 @@ class BreakSentenceClient:
     translate exceeds the translation endpoint's character limit.
     """
 
-    # ACS limits the number of characters that can be translated in a single REST call.
+    # ACS limits the number of characters that can be translated in a single /translate call.
     # Taken from https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-translate
     TRANSLATION_MAX_CHARS = 10_000
 
+    # ACS limits the number of characters that can be translated in a single /breaksentence call.
+    # Taken from https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-break-sentence
     BREAK_SENTENCE_MAX_CHARS = 50_000
 
+
     def __init__(self, job_properties: Mapping[str, str], subscription_key: str):
-        self._break_sentence_url = self._get_break_sentence_url(job_properties)
+        self._acs_url = get_required_property('ACS_URL', job_properties)
         self._subscription_key = subscription_key
 
 
-    def split_input_text(self, text: str) -> SplitTextResult:
+    def split_input_text(self, text: str, from_lang: Optional[str],
+                         from_lang_confidence: Optional[float]) -> SplitTextResult:
         """
         Breaks up the given text in to chunks that are under TRANSLATION_MAX_CHARS. Each chunk
         will contain one or more complete sentences as reported by the break sentence endpoint.
         """
         if len(text) < self.TRANSLATION_MAX_CHARS:
-            return SplitTextResult([text])
+            return SplitTextResult([text], from_lang, from_lang_confidence)
 
         log.info('Splitting input text because the translation endpoint allows a maximum of '
                  f'{self.TRANSLATION_MAX_CHARS} characters, but the text contained '
                  f'{len(text)} characters.')
 
         if len(text) > self.BREAK_SENTENCE_MAX_CHARS:
-            log.info('Guessing sentence breaks because the break sentence endpoint allows a '
-                     f'maximum of {self.BREAK_SENTENCE_MAX_CHARS} characters, but the text '
-                     f'contained {len(text)} characters.')
+            log.warning('Guessing sentence breaks because the break sentence endpoint allows a '
+                        f'maximum of {self.BREAK_SENTENCE_MAX_CHARS} characters, but the text '
+                        f'contained {len(text)} characters.')
             chunks = list(SentenceBreakGuesser.guess_breaks(text))
-            log.info(f'Broke text up in to {len(chunks)} chunks. Each chunk will be sent to the '
-                     f'break sentence endpoint.')
+            log.warning(f'Broke text up in to {len(chunks)} chunks. Each chunk will be sent to '
+                        'the break sentence endpoint.')
         else:
             chunks = (text,)
 
+        if from_lang:
+            break_sentence_url = create_url(self._acs_url, 'breaksentence',
+                                            dict(language=from_lang))
+        else:
+            break_sentence_url = create_url(self._acs_url, 'breaksentence', {})
+
         chunk_iter = iter(chunks)
         chunk = next(chunk_iter)
-        response_body = self._send_break_sentence_request(chunk)
-        detected_lang_info = response_body[0].get('detectedLanguage')
+        response_body = self._send_break_sentence_request(break_sentence_url, chunk)
+        if not from_lang:
+            detected_lang_info = response_body[0].get('detectedLanguage')
+            if detected_lang_info:
+                from_lang = detected_lang_info['language']
+                from_lang_confidence = detected_lang_info['score']
         grouped_sentences = list(self._process_break_sentence_response(chunk, response_body))
 
         for chunk in chunk_iter:
-            response_body = self._send_break_sentence_request(chunk)
+            response_body = self._send_break_sentence_request(break_sentence_url, chunk)
             grouped_sentences.extend(self._process_break_sentence_response(chunk, response_body))
 
         log.info('Grouped sentences in to %s chunks.', len(grouped_sentences))
-
-        if detected_lang_info:
-            return SplitTextResult(grouped_sentences, detected_lang_info['language'],
-                                   detected_lang_info['score'])
-        else:
-            return SplitTextResult(grouped_sentences)
+        return SplitTextResult(grouped_sentences, from_lang, from_lang_confidence)
 
 
-    def _send_break_sentence_request(self, text: str) -> 'AcsResponses.BreakSentence':
+    def _send_break_sentence_request(
+            self, break_sentence_url: str, text: str) -> 'AcsResponses.BreakSentence':
         request_body = [
             {'Text': text}
         ]
         encoded_body = json.dumps(request_body).encode('utf-8')
-        request = urllib.request.Request(self._break_sentence_url, encoded_body,
+        request = urllib.request.Request(break_sentence_url, encoded_body,
                                          get_acs_headers(self._subscription_key))
         try:
-            log.info(f'Sending POST {self._break_sentence_url}')
+            log.info(f'Sending POST {break_sentence_url}')
+            log_json(request_body)
             with urllib.request.urlopen(request) as response:
                 response_body: AcsResponses.BreakSentence = json.load(response)
                 log.info('Received break sentence response with %s sentences.',
                          len(response_body[0]['sentLen']))
+                log_json(response_body)
                 return response_body
         except urllib.error.HTTPError as e:
             response_content = e.read().decode('utf-8', errors='replace')
@@ -332,18 +461,28 @@ class BreakSentenceClient:
             yield sio.read(current_chunk_length)
 
 
-    @staticmethod
-    def _get_break_sentence_url(job_properties: Mapping[str, str]) -> str:
-        url = get_required_property('ACS_URL', job_properties)
-        url_parts = urllib.parse.urlparse(url)
-        path = url_parts.path + '/breaksentence'
+def create_url(base_url: str, path: str, query_params: Mapping[str, str]) -> str:
+    url_parts = urllib.parse.urlparse(base_url)
+    full_path = url_parts.path + '/' + path
 
-        query_dict = urllib.parse.parse_qs(url_parts.query)
-        query_dict.setdefault('api-version', ['3.0'])
+    query_dict = urllib.parse.parse_qs(url_parts.query)
+    query_dict.setdefault('api-version', ['3.0'])
+    for k, v in query_params.items():
+        query_dict.setdefault(k, [v])
 
-        query_string = urllib.parse.urlencode(query_dict, doseq=True)
-        replaced_parts = url_parts._replace(path=path, query=query_string)
-        return urllib.parse.urlunparse(replaced_parts)
+    query_string = urllib.parse.urlencode(query_dict, doseq=True)
+    replaced_parts = url_parts._replace(path=full_path, query=query_string)
+    return urllib.parse.urlunparse(replaced_parts)
+
+
+def set_query_params(url: str, query_params: Mapping[str, str]) -> str:
+    url_parts = urllib.parse.urlparse(url)
+    query_dict = urllib.parse.parse_qs(url_parts.query)
+    for k, v in query_params.items():
+        query_dict[k] = [v]
+    query_string = urllib.parse.urlencode(query_dict, doseq=True)
+    replaced_parts = url_parts._replace(query=query_string)
+    return urllib.parse.urlunparse(replaced_parts)
 
 
 class SentenceBreakGuesser:
@@ -453,26 +592,17 @@ class NewLineBehavior:
     put spaces between words. When testing with Chinese, spaces resulted in completely different
     translations.
     """
-
     @classmethod
-    def get(cls,
-            job_properties: Mapping[str, str],
-            provided_from_language: Optional[str]) -> Callable[[str], str]:
+    def get(cls, job_properties: Mapping[str, str]) -> Callable[[str, Optional[str]], str]:
         behavior = job_properties.get('STRIP_NEW_LINE_BEHAVIOR') or 'GUESS'
         if behavior == 'GUESS':
-            if provided_from_language:
-                if provided_from_language.upper() in NO_SPACE_LANGS:
-                    return lambda s: cls._replace_new_lines(s, '')
-                else:
-                    return lambda s: cls._replace_new_lines(s, ' ')
-            else:
-                return lambda s: cls._replace_new_lines(s, cls._guess_lang_separator(s))
+            return lambda s, l: cls._replace_new_lines(s, cls._guess_lang_separator(s, l))
         elif behavior == 'REMOVE':
-            return lambda s: cls._replace_new_lines(s, '')
+            return lambda s, _: cls._replace_new_lines(s, '')
         elif behavior == 'SPACE':
-            return lambda s: cls._replace_new_lines(s, ' ')
+            return lambda s, _: cls._replace_new_lines(s, ' ')
         elif behavior == 'NONE':
-            return lambda s: s
+            return lambda s, _: s
         else:
             raise mpf.DetectionError.INVALID_PROPERTY.exception(
                 f'"{behavior}" is not a valid value for the "STRIP_NEW_LINE_BEHAVIOR" property. '
@@ -486,7 +616,6 @@ class NewLineBehavior:
         (?!\n) # Make sure next character isn't a newline
         \s? # Include next character if it is whitespace
         ''', flags=re.MULTILINE | re.IGNORECASE | re.UNICODE | re.DOTALL | re.VERBOSE)
-
 
     @classmethod
     def _replace_new_lines(cls, text: str, replacement: str) -> str:
@@ -503,12 +632,18 @@ class NewLineBehavior:
         return cls.REPLACE_NEW_LINE_REGEX.sub(do_replacement, text)
 
     @staticmethod
-    def _guess_lang_separator(text: str) -> Literal['', ' ']:
-        first_alpha_letter = next((ch for ch in text if ch.isalpha()), 'a')
-        if ChineseAndJapaneseCodePoints.check_char(first_alpha_letter):
-            return ''
+    def _guess_lang_separator(text: str, language: Optional[str]) -> Literal['', ' ']:
+        if language:
+            if language.upper() in NO_SPACE_LANGS:
+                return ''
+            else:
+                return ' '
         else:
-            return ' '
+            first_alpha_letter = next((ch for ch in text if ch.isalpha()), 'a')
+            if ChineseAndJapaneseCodePoints.check_char(first_alpha_letter):
+                return ''
+            else:
+                return ' '
 
 
 class ChineseAndJapaneseCodePoints:
@@ -570,8 +705,30 @@ class AcsResponses:
 
     Translate = List[_TranslateTextInfo]
 
+
     class _SentenceLengthInfo(TypedDict):
         sentLen: List[int]
         detectedLanguage: Optional['AcsResponses._DetectedLangInfo']
 
     BreakSentence = List[_SentenceLengthInfo]
+
+
+    class _AlternativeDetectedLang(TypedDict):
+        language: str
+        score: float
+        isTranslationSupported: bool
+        isTransliterationSupported: bool
+
+    class _DetectedLangWithAlts(TypedDict):
+        language: str
+        score: float
+        isTranslationSupported: bool
+        isTransliterationSupported: bool
+        alternatives: Optional[List['AcsResponses._AlternativeDetectedLang']]
+
+    Detect = List[_DetectedLangWithAlts]
+
+
+def log_json(json_response):
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(json.dumps(json_response, indent=4, ensure_ascii=False))
