@@ -516,6 +516,19 @@ def set_query_params(url: str, query_params: Mapping[str, str]) -> str:
 class SentenceBreakGuesser:
     @classmethod
     def guess_breaks(cls, text: str) -> Iterator[str]:
+        """
+        Splits text up in to substrings that are all at most
+        BreakSentenceClient.BREAK_SENTENCE_MAX_CHARS in length. It is preferable to use the
+        /breaksentence endpoint because splitting a sentence in the middle will cause incorrect
+        translations. When the input text is too long for /breaksentence, our only option is to
+        use some heuristics to guess a good location to split the input text.
+        We attempt to do the minimal number of splits with this method. The substrings produced
+        by this method will be further split up using the much more accurate /breaksentence
+        endpoint.
+
+        :param text: Text to split up
+        :return: Generator producing substrings of input text
+        """
         current_pos = 0
         max_chars = BreakSentenceClient.BREAK_SENTENCE_MAX_CHARS
         while chunk := text[current_pos:current_pos + max_chars]:
@@ -524,10 +537,17 @@ class SentenceBreakGuesser:
             yield chunk[:break_pos]
 
 
-    SENTENCE_END_PUNCTUATION = {'.', '!', '?', '。', '！', '？'}
+    # Characters we know indicate the end of a sentence. The list is not exhaustive and may need to
+    # be updated if we come across others.
+    SENTENCE_END_PUNCTUATION = {
+        '.', '!', '?',  # Latin scripts
+        '。', '！', '？'}  # Chinese (full width) versions
+
 
     @classmethod
     def _get_break_pos(cls, text: str) -> int:
+        # Two newlines in a row result in a blank line. Blank lines are commonly used to delimit
+        # paragraphs.
         double_newline_pos = text.rfind('\n\n')
         if double_newline_pos > 0:
             return double_newline_pos + 2
@@ -540,6 +560,8 @@ class SentenceBreakGuesser:
             return last_punctuation_pos + 1
 
         # Look for last punctuation character in the text.
+        # This will catch non-sentence breaking punctuation, but we already made our best effort
+        # to use sentence breaking punctuation above.
         last_punctuation_pos = next(
             (i for i in reversed(range(len(text))) if cls._is_punctuation(text[i])),
             -1)
@@ -549,6 +571,7 @@ class SentenceBreakGuesser:
         if (last_space_pos := text.rfind(' ')) > 0:
             return last_space_pos + 1
 
+        # No suitable break found. Use entire input.
         return len(text)
 
     @staticmethod
