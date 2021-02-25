@@ -257,11 +257,11 @@ class TranslationClient:
         request = urllib.request.Request(url, encoded_body,
                                          get_acs_headers(self._subscription_key))
         try:
-            log.info(f'Sending POST to {self._translate_url}')
+            log.info(f'Sending POST to {url}')
             log_json(request_body)
             with urllib.request.urlopen(request) as response:
                 response_body: AcsResponses.Translate = json.load(response)
-                log.info(f'Received response from {self._translate_url}.')
+                log.info(f'Received response from {url}.')
                 log_json(response_body)
                 return response_body
         except urllib.error.HTTPError as e:
@@ -383,7 +383,7 @@ class BreakSentenceClient:
         Breaks up the given text in to chunks that are under TRANSLATION_MAX_CHARS. Each chunk
         will contain one or more complete sentences as reported by the break sentence endpoint.
         """
-        if len(text) < self.TRANSLATION_MAX_CHARS:
+        if len(text) <= self.TRANSLATION_MAX_CHARS:
             return SplitTextResult([text], from_lang, from_lang_confidence)
 
         log.info('Splitting input text because the translation endpoint allows a maximum of '
@@ -420,7 +420,7 @@ class BreakSentenceClient:
             response_body = self._send_break_sentence_request(break_sentence_url, chunk)
             grouped_sentences.extend(self._process_break_sentence_response(chunk, response_body))
 
-        log.info('Grouped sentences in to %s chunks.', len(grouped_sentences))
+        log.info('Grouped sentences into %s chunks.', len(grouped_sentences))
         return SplitTextResult(grouped_sentences, from_lang, from_lang_confidence)
 
 
@@ -453,7 +453,7 @@ class BreakSentenceClient:
         current_chunk_length = 0
         with io.StringIO(text) as sio:
             for length in response_body[0]['sentLen']:
-                if length + current_chunk_length < cls.TRANSLATION_MAX_CHARS:
+                if length + current_chunk_length <= cls.TRANSLATION_MAX_CHARS:
                     current_chunk_length += length
                 else:
                     yield sio.read(current_chunk_length)
@@ -491,17 +491,12 @@ class SentenceBreakGuesser:
         current_pos = 0
         max_chars = BreakSentenceClient.BREAK_SENTENCE_MAX_CHARS
         while chunk := text[current_pos:current_pos + max_chars]:
-            if len(chunk) < max_chars:
-                result = chunk
-            elif (break_pos := cls._get_break_pos(chunk)) > 0:
-                result = chunk[:break_pos]
-            else:
-                result = chunk
-            current_pos += len(result)
-            yield result
+            break_pos = cls._get_break_pos(chunk)
+            current_pos += break_pos
+            yield chunk[:break_pos]
 
 
-    SENTENCE_END_PUNCTUATION = '.!?。！？'
+    SENTENCE_END_PUNCTUATION = {'.', '!', '?', '。', '！', '？'}
 
     @classmethod
     def _get_break_pos(cls, text: str) -> int:
@@ -509,28 +504,28 @@ class SentenceBreakGuesser:
         if double_newline_pos > 0:
             return double_newline_pos + 2
 
-        punctuation_positions = (text.rfind(ch) for ch in cls.SENTENCE_END_PUNCTUATION)
-        last_punctuation_pos = next((pos for pos in punctuation_positions if pos > 0), -1)
+        # Look for the last sentence breaking punctuation character in the text.
+        last_punctuation_pos = next(
+            (i for i in reversed(range(len(text))) if text[i] in cls.SENTENCE_END_PUNCTUATION),
+            -1)
         if last_punctuation_pos > 0:
             return last_punctuation_pos + 1
 
+        # Look for last punctuation character in the text.
         last_punctuation_pos = next(
             (i for i in reversed(range(len(text))) if cls._is_punctuation(text[i])),
             -1)
         if last_punctuation_pos > 0:
             return last_punctuation_pos + 1
 
-        last_space_pos = text.rfind(' ')
-        if last_space_pos > 0:
+        if (last_space_pos := text.rfind(' ')) > 0:
             return last_space_pos + 1
 
-        return -1
+        return len(text)
 
     @staticmethod
     def _is_punctuation(char):
         return unicodedata.category(char) == 'Po'
-
-
 
 
 def get_acs_headers(subscription_key: str) -> Dict[str, str]:

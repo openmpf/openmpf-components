@@ -208,7 +208,7 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(CHINESE_SAMPLE_TEXT, request_body1[0]['Text'])
 
         request_body2 = self.get_request_body()
-        self.assertEqual(1, len(request_body1))
+        self.assertEqual(1, len(request_body2))
         self.assertEqual(CHINESE_SAMPLE_TEXT, request_body2[0]['Text'])
 
         request_body3 = self.get_request_body()
@@ -826,6 +826,17 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(' what is your name?', actual[1])
         # " My name is John."
         self.assertEqual(' My name is John.', actual[2])
+
+
+    @mock.patch.object(BreakSentenceClient, 'BREAK_SENTENCE_MAX_CHARS', new_callable=lambda: 20)
+    def test_sentence_end_punctuation(self, _):
+        input_text = 'Hello. How are you? asdfasdf'
+        actual = list(SentenceBreakGuesser.guess_breaks(input_text))
+        self.assertEqual(input_text, ''.join(actual))
+        self.assertEqual(2, len(actual))
+
+        self.assertEqual('Hello. How are you?', actual[0])
+        self.assertEqual(' asdfasdf', actual[1])
 
 
     def test_does_not_translate_when_to_and_from_are_same(self):
