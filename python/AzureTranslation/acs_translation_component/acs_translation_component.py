@@ -36,7 +36,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from typing import Callable, Dict, Iterator, List, Literal, Mapping, Match, NamedTuple, Optional, \
-    Sequence, Tuple, TypedDict, TypeVar, Union
+    Sequence, TypedDict, TypeVar, Union
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -117,10 +117,17 @@ def get_detections_from_non_composite(
         raise
 
 
+class DetectResult(NamedTuple):
+    primary_language: str
+    primary_language_confidence: float
+    alternative_language: Optional[str] = None
+    alternative_language_confidence: Optional[float] = None
+
+
 class TranslationResult(NamedTuple):
     translated_text: str
-    detected_language: Optional[str]
-    detected_language_confidence: Optional[float]
+    detect_result: DetectResult
+
 
 class SplitTextResult(NamedTuple):
     chunks: List[str]
@@ -184,12 +191,17 @@ class TranslationClient:
             detection_properties['TRANSLATION'] = translation_results.translated_text
             detection_properties['TRANSLATION TO LANGUAGE'] = self._to_language
 
-            if translation_results.detected_language:
-                detection_properties['TRANSLATION SOURCE LANGUAGE'] \
-                    = translation_results.detected_language
+            if detect_result := translation_results.detect_result:
+                source_lang = detect_result.primary_language
+                source_lang_confidence = str(detect_result.primary_language_confidence)
+                if detect_result.alternative_language:
+                    source_lang += f'; {detect_result.alternative_language}'
+                    source_lang_confidence += f'; {detect_result.alternative_language_confidence}'
+
+                detection_properties['TRANSLATION SOURCE LANGUAGE'] = source_lang
 
                 detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE'] \
-                    = str(translation_results.detected_language_confidence)
+                    = source_lang_confidence
 
             log.info(f'Successfully translated the "{prop_name}" property.')
             self.translation_count += 1
@@ -206,27 +218,37 @@ class TranslationClient:
             return cached_translation
 
         if self._provided_from_language:
-            from_lang = self._provided_from_language
-            from_lang_confidence = 1
+            detect_result = DetectResult(self._provided_from_language, 1)
+            from_lang, from_lang_confidence, *_ = detect_result
         elif self._detect_before_translate:
-            from_lang, from_lang_confidence = self._detect_language(text)
+            detect_result = self._detect_language(text)
+            if detect_result.alternative_language:
+                from_lang = detect_result.alternative_language
+                from_lang_confidence = detect_result.alternative_language_confidence
+            else:
+                from_lang, from_lang_confidence, *_ = detect_result
         else:
+            detect_result = None
             from_lang = from_lang_confidence = None
 
 
         if from_lang and from_lang.casefold() == self._to_language.casefold():
-            translation_info = TranslationResult('', from_lang, from_lang_confidence)
+            translation_info = TranslationResult('', DetectResult(from_lang, from_lang_confidence))
         else:
             text_replaced_newlines = self._newline_behavior(text, from_lang)
             grouped_sentences = self._break_sentence_client.split_input_text(
                 text_replaced_newlines, from_lang, from_lang_confidence)
-            translation_info = self._translate_chunks(grouped_sentences)
+            if not detect_result and grouped_sentences.detected_language:
+                detect_result = DetectResult(grouped_sentences.detected_language,
+                                             grouped_sentences.detected_language_confidence)
+            translation_info = self._translate_chunks(grouped_sentences, detect_result)
 
         self._translation_cache[text] = translation_info
         return translation_info
 
 
-    def _translate_chunks(self, chunks: SplitTextResult) -> TranslationResult:
+    def _translate_chunks(self, chunks: SplitTextResult,
+                          detect_result: Optional[DetectResult]) -> TranslationResult:
         translated_text_chunks = []
         detected_lang = chunks.detected_language
         detected_lang_confidence = chunks.detected_language_confidence
@@ -241,7 +263,12 @@ class TranslationClient:
                     detected_lang_confidence = detected_lang_info['score']
 
         combined_chunks = self._to_lang_word_separator.join(translated_text_chunks)
-        return TranslationResult(combined_chunks, detected_lang, detected_lang_confidence)
+        if detect_result:
+            return TranslationResult(combined_chunks, detect_result)
+
+        else:
+            return TranslationResult(combined_chunks,
+                                     DetectResult(detected_lang, detected_lang_confidence))
 
 
     def _send_translation_request(self, text: str,
@@ -271,7 +298,7 @@ class TranslationClient:
                 from e
 
 
-    def _detect_language(self, text: str) -> Tuple[str, float]:
+    def _detect_language(self, text: str) -> DetectResult:
         response = self._send_detect_request(text)
         primary_language = response[0]['language']
         primary_language_score = response[0]['score']
@@ -282,25 +309,25 @@ class TranslationClient:
             return self._handle_matching_from_and_to_lang(primary_language, primary_language_score,
                                                           response)
         elif response[0]['isTranslationSupported']:
-            return primary_language, primary_language_score
+            return DetectResult(primary_language, primary_language_score)
         else:
             return self._handle_untranslatable_primary_language(primary_language, response)
 
 
     @staticmethod
     def _handle_matching_from_and_to_lang(primary_language: str, primary_language_score: float,
-                                          response: 'AcsResponses.Detect') -> Tuple[str, float]:
+                                          response: 'AcsResponses.Detect') -> DetectResult:
         alternatives = response[0].get('alternatives')
         if not alternatives:
             log.warning('Detected that the text is already in the requested TO_LANGUAGE and'
                         ' no alternatives were available. No translation will occur.')
-            return primary_language, primary_language_score
+            return DetectResult(primary_language, primary_language_score)
 
         alternative = next((alt for alt in alternatives if alt['isTranslationSupported']), None)
         if not alternative:
             log.warning('Detected that the text is already in the requested TO_LANGUAGE and'
                         ' none of the alternatives support translation. No translation will occur.')
-            return primary_language, primary_language_score
+            return DetectResult(primary_language, primary_language_score)
 
         alternative_lang = alternative['language']
         alternative_lang_score = alternative['score']
@@ -308,12 +335,13 @@ class TranslationClient:
                     f' but the highest score alternative was {alternative_lang} with'
                     f' score {alternative_lang_score}. Will attempt to translate text to'
                     f' {alternative_lang}.')
-        return alternative_lang, alternative_lang_score
+        return DetectResult(primary_language, primary_language_score, alternative_lang,
+                            alternative_lang_score)
 
 
     @staticmethod
     def _handle_untranslatable_primary_language(
-            primary_language: str, response: 'AcsResponses.Detect') -> Tuple[str, float]:
+            primary_language: str, response: 'AcsResponses.Detect') -> DetectResult:
         alternatives = response[0].get('alternatives')
         if not alternatives:
             raise mpf.DetectionError.DETECTION_FAILED.exception(
@@ -333,7 +361,7 @@ class TranslationClient:
                  f' but an alternative language, {alternative_lang} with score '
                  f'{alternative_lang_score}, does support translation. Will attempt to '
                  f'translate text to {alternative_lang}.')
-        return alternative_lang, alternative_lang_score
+        return DetectResult(alternative_lang, alternative_lang_score)
 
 
     def _send_detect_request(self, text) -> 'AcsResponses.Detect':

@@ -223,6 +223,37 @@ class TestAcsTranslation(unittest.TestCase):
             self.get_request_body()
 
 
+    def test_detect_lang_disabled(self):
+        self.set_results_file('results-chinese-with-auto-detect.json')
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=CHINESE_SAMPLE_TEXT))
+        job = mpf.ImageJob('Test', 'test.jpg',
+                           get_test_properties(DETECT_BEFORE_TRANSLATE='FALSE'), {}, ff_loc)
+        results = list(AcsTranslationComponent().get_detections_from_image(job))
+
+        self.assertEqual(1, len(results))
+        result = results[0]
+        self.assertEqual(CHINESE_SAMPLE_TEXT, result.detection_properties['TEXT'])
+
+        self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
+                         result.detection_properties['TRANSLATION'])
+        self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
+
+        self.assertEqual('zh-Hans', result.detection_properties['TRANSLATION SOURCE LANGUAGE'])
+        self.assertAlmostEqual(
+            1.0, float(result.detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+
+
+        translate_url, translate_request_body = self.get_request()
+        translate_query_string: str = urllib.parse.urlparse(translate_url).query
+        translate_query_dict = urllib.parse.parse_qs(translate_query_string)
+        self.assertEqual(['3.0'], translate_query_dict['api-version'])
+        self.assertEqual(['en'], translate_query_dict['to'])
+        self.assertIsNone(translate_query_dict.get('from'))
+
+        self.assertEqual(1, len(translate_request_body))
+        self.assertEqual(CHINESE_SAMPLE_TEXT, translate_request_body[0]['Text'])
+
+
     def test_no_feed_forward_location(self):
         job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {})
         with self.assertRaises(mpf.DetectionException) as cm:
@@ -861,6 +892,27 @@ class TestAcsTranslation(unittest.TestCase):
             self.get_request_body()
 
 
+    def test_multiple_detected_languages(self):
+        self.set_results_file('eng-chinese-detect-result.json')
+        self.set_results_file('eng-chinese-translate-results.json')
+        input_text = 'What is your name? 你好'
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=input_text))
+        job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {}, ff_loc)
+        results = list(AcsTranslationComponent().get_detections_from_image(job))
+        self.assertEqual(1, len(results))
+
+        result_props = results[0].detection_properties
+        self.assertEqual('What is your name? Hello', result_props['TRANSLATION'])
+        self.assertEqual('EN', result_props['TRANSLATION TO LANGUAGE'])
+        self.assertEqual('en; zh-Hans', result_props['TRANSLATION SOURCE LANGUAGE'])
+        self.assertEqual('0.67; 0.33', result_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE'])
+
+        detect_request_body = self.get_request_body()
+        self.assertEqual(input_text, detect_request_body[0]['Text'])
+
+        translate_url, translate_request_body = self.get_request()
+        self.assertEqual(input_text, translate_request_body[0]['Text'])
+        self.assertIn('from=zh-Hans', translate_url)
 
 
 def get_test_properties(**extra_properties):
