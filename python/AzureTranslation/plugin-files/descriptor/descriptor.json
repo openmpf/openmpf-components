@@ -66,6 +66,12 @@
           "description": "The translation endpoint treats newline characters as sentence boundaries. To prevent this newlines can be removed from the input text. Valid values are SPACE (replace with space character), REMOVE (remove newlines), NONE (leave newlines as they are), and GUESS (If source language is Chinese or Japanese use REMOVE, else use SPACE).",
           "type": "STRING",
           "defaultValue": "GUESS"
+        },
+        {
+          "name": "DETECT_BEFORE_TRANSLATE",
+          "description": "Use the /detect endpoint to check if translation can be skipped because the text is already in TO_LANGUAGE.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
         }
       ]
     }
