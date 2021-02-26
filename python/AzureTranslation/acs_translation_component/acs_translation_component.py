@@ -342,6 +342,9 @@ class TranslationClient:
     @staticmethod
     def _handle_untranslatable_primary_language(
             primary_language: str, response: 'AcsResponses.Detect') -> DetectResult:
+        # Currently, the languages that support translation are a superset of the languages that
+        # support transliteration, so unless Azure changes which languages it supports,
+        # this method will never be used.
         alternatives = response[0].get('alternatives')
         if not alternatives:
             raise mpf.DetectionError.DETECTION_FAILED.exception(
@@ -531,11 +534,17 @@ class SentenceBreakGuesser:
         """
         current_pos = 0
         max_chars = BreakSentenceClient.BREAK_SENTENCE_MAX_CHARS
-        while chunk := text[current_pos:current_pos + max_chars]:
-            break_pos = cls._get_break_pos(chunk)
-            current_pos += break_pos
-            yield chunk[:break_pos]
-
+        while True:
+            chunk_end = current_pos + max_chars
+            chunk = text[current_pos:chunk_end]
+            is_last_chunk = len(text) <= chunk_end
+            if is_last_chunk:
+                yield chunk
+                return
+            else:
+                break_pos = cls._get_break_pos(chunk)
+                yield chunk[:break_pos]
+                current_pos += break_pos
 
     # Characters we know indicate the end of a sentence. The list is not exhaustive and may need to
     # be updated if we come across others.

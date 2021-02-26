@@ -823,7 +823,7 @@ class TestAcsTranslation(unittest.TestCase):
 
     @mock.patch.object(BreakSentenceClient, 'BREAK_SENTENCE_MAX_CHARS', new_callable=lambda: 5)
     def test_guess_breaks_all_types(self, _):
-        input_text = 'a.bc,d.efg,hij kl\n\nmnopqrs'
+        input_text = 'a.bc,d.efg,hij kl\n\nmnopqrs.tu'
         actual = list(SentenceBreakGuesser.guess_breaks(input_text))
         self.assertEqual(input_text, ''.join(actual))
         self.assertEqual(7, len(actual))
@@ -840,8 +840,8 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual('kl\n\n', actual[4])
         # mnopq
         self.assertEqual('mnopq', actual[5])
-        # rs
-        self.assertEqual('rs', actual[6])
+        # rs.tu
+        self.assertEqual('rs.tu', actual[6], 'Should not divide final segment of text.')
 
 
     @mock.patch.object(BreakSentenceClient, 'BREAK_SENTENCE_MAX_CHARS', new_callable=lambda: 20)
