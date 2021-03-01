@@ -53,17 +53,19 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     }
 
     public void startElement (String uri, String localName, String qName, Attributes atts) throws SAXException  {
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) {
-           startPage();
-        }
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
-            if (skipTitle) {
-                //Skip metadata section of pptx.
-                skipTitle = false;
-                //Discard title text. (not part of slide text nor master slide content).
-                resetPage();
-            } else {
+        if (atts.getValue("class") != null) {
+            if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) {
                 startPage();
+            }
+            if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
+                if (skipTitle) {
+                    //Skip metadata section of pptx.
+                    skipTitle = false;
+                    //Discard title text. (not part of slide text nor master slide content).
+                    resetPage();
+                } else {
+                    startPage();
+                }
             }
         }
     }
@@ -77,8 +79,8 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
 
     public void characters(char[] ch, int start, int length) throws SAXException {
         if (length > 0) {
-            textResults.append(ch);
-            pageMap.get(pageNumber).append(ch);
+            textResults.append(ch, start, length);
+            pageMap.get(pageNumber).append(ch, start, length);
         }
     }
 
