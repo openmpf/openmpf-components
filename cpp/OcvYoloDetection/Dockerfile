@@ -32,21 +32,20 @@ ARG BUILD_TAG=latest
 FROM centos:7 as download_weights
 # Download weights in separate stage so they don't need to be re-downloaded when base images change.
 RUN mkdir /weights \
-    && curl --location https://pjreddie.com/media/files/yolov3.weights > /weights/yolov3.weights
-
-
-RUN curl --location \
-        https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov4.weights \
-        > /weights/yolov4.weights
-
+    && cd /weights \
+    && curl --location --remote-name --fail \
+        https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov3.weights \
+    && curl --location --remote-name --fail \
+        https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov4.weights
 
 
 # Download library source code so it doesn't need to be re-downloaded when base images change
 FROM centos:7 as download_library_source
 
-RUN yum install --assumeyes bzip2 \
-    && yum clean all \
-    && rm --recursive /var/cache/yum/*
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum install --assumeyes bzip2; \
+    yum clean all
 
 RUN mkdir --parents /apps/source/dlib-sources; \
     curl --location 'http://dlib.net/files/dlib-19.20.tar.bz2' \
@@ -56,14 +55,12 @@ RUN mkdir --parents /apps/source/dlib-sources; \
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
-
-COPY . .
-
-RUN build-component.sh
-
 ARG RUN_TESTS=false
-RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvYoloDetectionTest; fi
+
+RUN --mount=target=. \
+    --mount=from=download_library_source,source=/apps/source/dlib-sources,target=/apps/source/dlib-sources \
+    build-component.sh; \
+    if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test; ./OcvYoloDetectionTest; fi
 
 
 
@@ -71,7 +68,7 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
 COPY --from=download_weights /weights $PLUGINS_DIR/OcvYoloDetection/models
 
-ENV COMPONENT_LOG_NAME ocv-yolo-detection.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvYoloDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/OcvYoloDetection $PLUGINS_DIR/OcvYoloDetection
 
