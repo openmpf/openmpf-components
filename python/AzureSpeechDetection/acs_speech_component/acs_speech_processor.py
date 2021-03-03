@@ -58,7 +58,7 @@ class AcsSpeechDetectionProcessor(object):
     def process_audio(self, target_file, start_time, stop_time, job_name,
                       acs_url, acs_subscription_key, acs_blob_container_url,
                       acs_blob_service_key, lang, diarize, cleanup,
-                      blob_access_time):
+                      blob_access_time, expiry):
         self.update_acs(
             acs_url=acs_url,
             acs_subscription_key=acs_subscription_key,
@@ -91,6 +91,7 @@ class AcsSpeechDetectionProcessor(object):
                     job_name=job_name,
                     diarize=diarize,
                     language=lang,
+                    expiry=expiry
                 )
             except Exception as e:
                 if 'This locale does not support diarization' in str(e):
@@ -126,25 +127,27 @@ class AcsSpeechDetectionProcessor(object):
         self.logger.info('Completed process audio')
         self.logger.info('Creating AudioTracks')
         audio_tracks = []
-        for utt in transcription['AudioFileResults'][0]['SegmentResults']:
-            speaker_id = utt['SpeakerId'] if diarize else '0'
-            display = utt['NBest'][0]['Display']
+        for utt in transcription['recognizedPhrases']:
+            speaker_id = utt['speaker'] if diarize else '0'
+            display = utt['nBest'][0]['display']
 
             # Confidence information. Utterance confidence does not seem
             #  to be a simple aggregate of word confidences.
-            utterance_confidence = utt['NBest'][0]['Confidence']
+            utterance_confidence = utt['nBest'][0]['confidence']
             word_confidences = ', '.join([
-                str(w['Confidence'])
-                for w in utt['NBest'][0]['Words']
+                str(w['confidence'])
+                for w in utt['nBest'][0]['words']
             ])
 
-            # Timing information. Azure works in 100-nanosecond units,
-            #  so divide by 1e4 to obtain milliseconds.
-            utterance_start = utt['Offset'] / 10000.0
-            utterance_stop = (utt['Offset'] + utt['Duration']) / 10000.0
+            # Timing information. Azure works in 100-nanosecond ticks,
+            #  so multiply by 1e-4 to obtain milliseconds.
+            utterance_start = utt['offsetInTicks'] * 1e-4
+            utterance_duration = utt['durationInTicks'] * 1e-4
+            utterance_stop = utterance_start + utterance_duration
             word_segments = ', '.join([
-                str(w['Offset'] / 10000.0) + '-' + str((w['Offset']+w['Duration']) / 10000.0)
-                for w in utt['NBest'][0]['Words']
+                f"{w['offsetInTicks'] * 1e-4:f}-"
+                f"{(w['offsetInTicks'] + w['durationInTicks']) * 1e-4:f}"
+                for w in utt['nBest'][0]['words']
             ])
 
             properties = dict(

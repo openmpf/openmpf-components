@@ -31,7 +31,7 @@ ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 # Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
-RUN pip3 install --no-cache-dir 'azure-storage-blob>=12.3'
+RUN pip3 install --no-cache-dir 'azure-storage-blob>=12.3' 'python-dateutil'
 
 ARG RUN_TESTS=false
 

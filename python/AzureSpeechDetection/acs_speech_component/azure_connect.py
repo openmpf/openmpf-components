@@ -29,10 +29,26 @@ import time
 from urllib import request
 from urllib.error import HTTPError
 from datetime import datetime, timedelta
+from dateutil import relativedelta
 from azure.storage.blob import ResourceTypes, AccountSasPermissions, generate_account_sas, ContainerClient
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
+
+def minutes_to_iso8601(mins):
+    """ Convert minutes to ISO 8601 duration, the format expected by
+        Azure for timeToLive. Use dateutil to construct this string,
+        to avoid issues with daylight savings, leap years, etc.
+    """
+    now = datetime.now()
+    expiration = now + timedelta(minutes=mins)
+
+    delta = relativedelta.relativedelta(expiration, now)
+    date = f"{delta.years}Y{delta.months}M{delta.days}D"
+    time = f"{delta.hours}H{delta.minutes}M{delta.seconds}S"
+
+    return f"P{date}T{time}"
 
 
 class AzureConnection(object):
@@ -98,16 +114,18 @@ class AzureConnection(object):
         )
 
     def submit_batch_transcription(self, recording_url, job_name,
-                                   diarize, language):
+                                   diarize, language, expiry):
         self.logger.info('Submitting batch transcription...')
         data = dict(
-            recordingsUrl=recording_url,
-            name=job_name,
+            contentUrls=[recording_url],
+            displayName=job_name,
             description=job_name,
             locale=language,
             properties=dict(
-                AddWordLevelTimestamps='True',
-                AddDiarization=str(diarize),
+                wordLevelTimestampsEnabled='true',
+                profanityFilterMode='None',
+                diarizationEnabled=str(diarize).lower(),
+                timeToLive=minutes_to_iso8601(expiry)
             )
         )
 
@@ -176,18 +194,37 @@ class AzureConnection(object):
         return result
 
     def get_transcription(self, result):
-        results_uri = result['resultsUrls']['channel_0']
+        results_uri = result['links']['files']
+        req = request.Request(
+            url=results_uri,
+            headers=self.acs_headers,
+            method='GET'
+        )
+        try:
+            self.logger.debug('Retrieving transcription file location')
+            response = request.urlopen(req)
+            files = json.load(response)
+        except HTTPError as e:
+            error_str = e.read()
+            raise mpf.DetectionException(
+                "Failed to retrieve transcription location: Request failed "
+                f"with HTTP status {e.code} and message: {error_str}",
+                mpf.DetectionError.DETECTION_FAILED
+            )
+        transcript_uri = next(
+            v['links']['contentUrl'] for v in files['values']
+            if v['kind'] == 'Transcription'
+        )
+
         try:
             self.logger.debug('Retrieving transcription result')
-            response = request.urlopen(results_uri)
+            response = request.urlopen(transcript_uri)
             return json.load(response)
         except HTTPError as e:
             error_str = e.read()
             raise mpf.DetectionException(
-                'Request failed with HTTP status {} and messages: {}'.format(
-                    e.code,
-                    error_str
-                ),
+                "Failed to retrieve transcription: Request failed "
+                f"with HTTP status {e.code} and message: {error_str}",
                 mpf.DetectionError.DETECTION_FAILED
             )
 
@@ -210,24 +247,3 @@ class AzureConnection(object):
     def delete_blob(self, recording_id):
         self.logger.info('Deleting blob...')
         self.container_client.delete_blob(recording_id)
-
-    def get_transcriptions(self):
-        self.logger.info('Retrieving all transcriptions...')
-        req = request.Request(
-            url=self.url,
-            headers=self.acs_headers,
-            method='GET'
-        )
-        response = request.urlopen(req)
-        transcriptions = json.load(response)
-        return transcriptions
-
-    def delete_all_transcriptions(self):
-        self.logger.info('Deleting all transcriptions...')
-        for trans in self.get_transcriptions():
-            req = request.Request(
-                url=self.url + '/' + trans['id'],
-                headers=self.acs_headers,
-                method='DELETE'
-            )
-            request.urlopen(req)
