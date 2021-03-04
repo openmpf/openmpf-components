@@ -1,0 +1,16 @@
+[
+    {
+        "language": "en",
+        "score": 0.67,
+        "isTranslationSupported": true,
+        "isTransliterationSupported": false,
+        "alternatives": [
+            {
+                "language": "zh-Hans",
+                "score": 0.33,
+                "isTranslationSupported": true,
+                "isTransliterationSupported": true
+            }
+        ]
+    }
+]

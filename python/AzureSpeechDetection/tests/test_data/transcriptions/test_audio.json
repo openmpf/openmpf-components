@@ -1,62 +1,27 @@
 {
-    "recordingsUrl": "http://localhost:10669/api/speechtotext/v2.0/recordings/left.wav?test_queries",
-    "reportFileUrl": "test.report.file",
-    "resultsUrls": {
-        "channel_0": "http://localhost:10669/api/speechtotext/v2.0/outputs/test_audio.json?test_queries"
+    "self": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_audio.json",
+    "model": {
+        "self": "http://localhost:10669/speechtotext/v3.0/models/base/modelhash"
     },
-    "models": [
-        {
-            "modelKind": "AcousticAndLanguage",
-            "datasets": [],
-            "lastActionDateTime": "2019-11-02T01:08:30Z",
-            "status": "Succeeded",
-            "id": "85e81c06-e98b-4104-8f5b-93b3a61e9f0a",
-            "createdDateTime": "2019-11-02T00:02:28Z",
-            "locale": "en-US",
-            "name": "20191007",
-            "description": "en-US base model",
-            "properties": {
-                "Purpose": "OnlineTranscription,BatchTranscription,LanguageAdaptation,LanguageOnlineInterpolation",
-                "ModelClass": "unified-v4-pch",
-                "VadKind": "Tuned",
-                "UseOnlineInterpolation": "False",
-                "IsDynamicGrammarSupported": "True",
-                "UsesHalide": "True"
-            }
-        },
-        {
-            "modelKind": "AcousticAndLanguage",
-            "datasets": [],
-            "lastActionDateTime": "2019-11-02T01:08:30Z",
-            "status": "Succeeded",
-            "id": "85e81c06-e98b-4104-8f5b-93b3a61e9f0a",
-            "createdDateTime": "2019-11-02T00:02:28Z",
-            "locale": "en-US",
-            "name": "20191007",
-            "description": "en-US base model",
-            "properties": {
-                "Purpose": "OnlineTranscription,BatchTranscription,LanguageAdaptation,LanguageOnlineInterpolation",
-                "ModelClass": "unified-v4-pch",
-                "VadKind": "Tuned",
-                "UseOnlineInterpolation": "False",
-                "IsDynamicGrammarSupported": "True",
-                "UsesHalide": "True"
-            }
-        }
-    ],
-    "lastActionDateTime": "2020-06-11T20:53:58Z",
-    "status": "Succeeded",
-    "id": "a4aade3c-fcb2-4cc5-9f4e-199426ec68c6",
-    "createdDateTime": "2020-06-11T20:52:40Z",
-    "locale": "en-US",
-    "name": "test_audio",
-    "description": "test_audio",
+    "links": {
+        "files": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_audio/files.json"
+    },
     "properties": {
-        "AddWordLevelTimestamps": "True",
-        "AddDiarization": "False",
-        "ProfanityFilterMode": "Masked",
-        "PunctuationMode": "DictatedAndAutomatic",
-        "CustomPronunciation": "False",
-        "Duration": "00:00:05"
-    }
+        "diarizationEnabled": false,
+        "wordLevelTimestampsEnabled": true,
+        "channels": [
+            0,
+            1
+        ],
+        "punctuationMode": "DictatedAndAutomatic",
+        "profanityFilterMode": "None",
+        "duration": "PT5S",
+        "timeToLive": "PT2H"
+    },
+    "lastActionDateTime": "2021-01-21T20:10:56Z",
+    "status": "Succeeded",
+    "createdDateTime": "2021-01-21T20:09:58Z",
+    "locale": "en-US",
+    "displayName": "test_audio",
+    "description": "test_audio"
 }

@@ -72,6 +72,12 @@
           "description": "Timespan for which access signatures to blob storage containers will be valid, in minutes.",
           "type": "INT",
           "defaultValue": "120"
+        },
+        {
+          "name": "TRANSCRIPTION_EXPIRATION",
+          "description": "Timespan after which to automatically delete transcriptions, in minutes.",
+          "type": "INT",
+          "defaultValue": "120"
         }
       ]
     }

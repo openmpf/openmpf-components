@@ -103,7 +103,8 @@ class AcsSpeechComponent(object):
             lang=job_properties.get('LANGUAGE', 'en-US'),
             diarize=mpf_util.get_property(job_properties, 'DIARIZE', True),
             cleanup=mpf_util.get_property(job_properties, 'CLEANUP', True),
-            blob_access_time=int(job_properties.get('BLOB_ACCESS_TIME', '120'))
+            blob_access_time=int(job_properties.get('BLOB_ACCESS_TIME', '120')),
+            expiry=int(job_properties.get('TRANSCRIPTION_EXPIRATION', '120'))
         )
 
     def get_detections_from_audio(self, audio_job):
