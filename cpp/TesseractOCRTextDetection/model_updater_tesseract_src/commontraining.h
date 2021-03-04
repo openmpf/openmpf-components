@@ -16,8 +16,9 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config_auto.h"
-#include "baseapi.h"
 #endif
+
+#include "baseapi.h"
 
 #ifdef DISABLED_LEGACY_ENGINE
 
@@ -119,7 +120,7 @@ ShapeTable* LoadShapeTable(const STRING& file_prefix);
 // Helper to write the shape_table.
 void WriteShapeTable(const STRING& file_prefix, const ShapeTable& shape_table);
 
-// Creates a MasterTraininer and loads the model_updater_tesseract_src data into it:
+// Creates a MasterTraininer and loads the training data into it:
 // Initializes feature_defs and IntegerFX.
 // Loads the shape_table if shape_table != nullptr.
 // Loads initial unicharset from -U command-line option.

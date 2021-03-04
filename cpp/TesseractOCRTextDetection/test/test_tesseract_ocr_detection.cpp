@@ -362,7 +362,7 @@ TEST(TESSERACTOCR, CustomModelTest) {
                     out_dir + "/eng.word-dawg" +
                     reference_dict_dir  + "/eng.word-dawg.txt";
     ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
-    
+
     model_command = "../tessdata_model_updater -dw" +
                     out_dir + "/eng.lstm-unicharset" +
                     out_dir + "/eng.lstm-word-dawg" +
@@ -401,7 +401,7 @@ TEST(TESSERACTOCR, CustomModelTest) {
                                 out_dir + "/eng_original.word-dawg" +
                                 out_dir + "/eng_original.word-dawg.txt" ;
     ASSERT_NO_FATAL_FAILURE(std::system(model_command.c_str()));
-    
+
     model_command = "../tessdata_model_updater -dw" +
                                 out_dir + "/eng_original.lstm-unicharset" +
                                 out_dir + "/eng_original.lstm-word-dawg" +

@@ -2,7 +2,6 @@
  ** Filename:    matchdefs.h
  ** Purpose:     Generic interface definitions for feature matchers.
  ** Author:      Dan Johnson
- ** History:     Fri Jan 19 09:21:25 1990, DSJ, Created.
  **
  ** (c) Copyright Hewlett-Packard Company, 1988.
  ** Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +21,6 @@
 /**----------------------------------------------------------------------------
           Include Files and Type Defines
 ----------------------------------------------------------------------------**/
-#include "host.h"
 #include <cstdio>
 #include "unichar.h"
 
@@ -58,8 +56,8 @@ using RATING = float;
 
 /** a CERTAINTY is an indication of the degree of confidence of the
   classifier.  Higher is better.  0 means the match is as good as the
-  mean of the matches seen in model_updater_tesseract_src.  -1 means the match was one
-  standard deviation worse than the model_updater_tesseract_src matches, etc. */
+  mean of the matches seen in training.  -1 means the match was one
+  standard deviation worse than the training matches, etc. */
 using CERTAINTY = float;
 
 /** define a data structure to hold a single match result */

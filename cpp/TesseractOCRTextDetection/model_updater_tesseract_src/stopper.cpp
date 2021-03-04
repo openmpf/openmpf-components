@@ -2,7 +2,6 @@
  ** Filename:    stopper.c
  ** Purpose:     Stopping criteria for word classifier.
  ** Author:      Dan Johnson
- ** History:     Mon Apr 29 14:56:49 1991, DSJ, Created.
  **
  ** (c) Copyright Hewlett-Packard Company, 1988.
  ** Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +21,9 @@
 #include <cmath>
 
 #include "stopper.h"
+#ifndef DISABLED_LEGACY_ENGINE
 #include "ambigs.h"
+#endif
 #include "ccutil.h"
 #include "dict.h"
 #include "helpers.h"
@@ -49,7 +50,7 @@ bool Dict::AcceptableChoice(const WERD_CHOICE& best_choice,
 
   bool no_dang_ambigs = !best_choice.dangerous_ambig_found();
   bool is_valid_word = valid_word_permuter(best_choice.permuter(), false);
-  bool is_case_ok = case_ok(best_choice, getUnicharset());
+  bool is_case_ok = case_ok(best_choice);
 
   if (stopper_debug_level >= 1) {
     const char *xht = "UNKNOWN";
@@ -107,15 +108,14 @@ bool Dict::AcceptableResult(WERD_RES *word) const {
     tprintf("\nRejecter: %s (word=%c, case=%c, unambig=%c, multiple=%c)\n",
             word->best_choice->debug_string().string(),
             (valid_word(*word->best_choice) ? 'y' : 'n'),
-            (case_ok(*word->best_choice, getUnicharset()) ? 'y' : 'n'),
+            (case_ok(*word->best_choice) ? 'y' : 'n'),
             word->best_choice->dangerous_ambig_found() ? 'n' : 'y',
             word->best_choices.singleton() ? 'n' : 'y');
   }
 
   if (word->best_choice->length() == 0 || !word->best_choices.singleton())
     return false;
-  if (valid_word(*word->best_choice) &&
-      case_ok(*word->best_choice, getUnicharset())) {
+  if (valid_word(*word->best_choice) && case_ok(*word->best_choice)) {
     WordSize = LengthOfShortestAlphaRun(*word->best_choice);
     WordSize -= stopper_smallword_size;
     if (WordSize < 0)
@@ -138,6 +138,8 @@ bool Dict::AcceptableResult(WERD_RES *word) const {
     return false;
   }
 }
+
+#if !defined(DISABLED_LEGACY_ENGINE)
 
 bool Dict::NoDangerousAmbig(WERD_CHOICE *best_choice,
                             DANGERR *fixpt,
@@ -178,7 +180,7 @@ bool Dict::NoDangerousAmbig(WERD_CHOICE *best_choice,
       // best_choice consisting from only the original letters will
       // have a rating of 0.0.
       for (i = 0; i < best_choice->length(); ++i) {
-        BLOB_CHOICE_LIST *lst = new BLOB_CHOICE_LIST();
+        auto *lst = new BLOB_CHOICE_LIST();
         BLOB_CHOICE_IT lst_it(lst);
         // TODO(rays/antonova) Put real xheights and y shifts here.
         lst_it.add_to_end(new BLOB_CHOICE(best_choice->unichar_id(i),
@@ -357,6 +359,8 @@ bool Dict::NoDangerousAmbig(WERD_CHOICE *best_choice,
 
 void Dict::EndDangerousAmbigs() {}
 
+#endif   // !defined(DISABLED_LEGACY_ENGINE)
+
 void Dict::SettupStopperPass1() {
   reject_offset_ = 0.0;
 }
@@ -443,7 +447,7 @@ int Dict::LengthOfShortestAlphaRun(const WERD_CHOICE &WordChoice) const {
   int shortest = INT32_MAX;
   int curr_len = 0;
   for (int w = 0; w < WordChoice.length(); ++w) {
-    if (getUnicharset().get_isalpha(WordChoice.unichar_id(w))) {
+    if (WordChoice.unicharset()->get_isalpha(WordChoice.unichar_id(w))) {
       curr_len++;
     } else if (curr_len > 0) {
       if (curr_len < shortest) shortest = curr_len;

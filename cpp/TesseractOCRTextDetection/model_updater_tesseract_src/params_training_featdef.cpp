@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////
 // File:        params_training_featdef.cpp
-// Description: Utility functions for params model_updater_tesseract_src features.
+// Description: Utility functions for params training features.
 // Author:      David Eger
 // Created:     Mon Jun 11 11:26:42 PDT 2012
 //

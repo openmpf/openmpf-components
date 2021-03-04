@@ -50,12 +50,16 @@ RUN mkdir -p /tmp/leptonica \
 
 RUN mkdir -p /tmp/tesseract \
     && cd /tmp/tesseract \
-    && curl -SL 'https://github.com/tesseract-ocr/tesseract/archive/4.0.0.tar.gz' \
+    && curl -SL 'https://github.com/tesseract-ocr/tesseract/archive/4.1.1.tar.gz' \
         | tar --extract --gzip \
-    && mkdir -p tesseract-4.0.0/build \
-    && cd tesseract-4.0.0/build \
+    && mkdir -p tesseract-4.1.1/build \
+    && cd tesseract-4.1.1/build \
     && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local .. \
     && make install -j $(nproc) \
+    && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/unicharset.h /usr/local/include/tesseract/ \
+    && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/errcode.h /usr/local/include/tesseract/ \
+    && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/unicharmap.h /usr/local/include/tesseract/ \
+    && cp /tmp/tesseract/tesseract-4.1.1/src/arch/intsimdmatrix.h /usr/local/include/tesseract/ \
     && rm -rf /tmp/tesseract
 
 COPY . .
