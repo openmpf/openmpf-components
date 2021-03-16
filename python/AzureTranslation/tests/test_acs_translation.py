@@ -879,7 +879,7 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(1, len(results))
 
         result_props = results[0].detection_properties
-        self.assertEqual('Hello', result_props['TRANSLATION'])
+        self.assertNotIn('TRANSLATION', result_props)
         self.assertEqual('EN', result_props['TRANSLATION TO LANGUAGE'])
         self.assertEqual('en', result_props['TRANSLATION SOURCE LANGUAGE'])
         self.assertAlmostEqual(0.95, float(result_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))

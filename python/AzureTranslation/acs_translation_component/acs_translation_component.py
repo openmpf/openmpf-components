@@ -189,10 +189,7 @@ class TranslationClient:
 
             log.info(f'Attempting to translate the "{prop_name}" property...')
             translation_result = self._translate_text(text_to_translate)
-            detection_properties['TRANSLATION'] = translation_result.translated_text
             detection_properties['TRANSLATION TO LANGUAGE'] = self._to_language
-            if translation_result.skipped:
-                detection_properties['SKIPPED TRANSLATION'] = 'TRUE'
 
             if detect_result := translation_result.detect_result:
                 source_lang = detect_result.primary_language
@@ -206,7 +203,14 @@ class TranslationClient:
                 detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE'] \
                     = source_lang_confidence
 
-            log.info(f'Successfully translated the "{prop_name}" property.')
+            if translation_result.skipped:
+                detection_properties['SKIPPED TRANSLATION'] = 'TRUE'
+                log.info(f'Skipped translation of the "{prop_name}" property because it was '
+                         f'already in the target language.')
+            else:
+                detection_properties['TRANSLATION'] = translation_result.translated_text
+                log.info(f'Successfully translated the "{prop_name}" property.')
+
             self.translation_count += 1
             return  # Only process first matched property.
 
