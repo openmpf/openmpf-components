@@ -127,6 +127,7 @@ class DetectResult(NamedTuple):
 class TranslationResult(NamedTuple):
     translated_text: str
     detect_result: DetectResult
+    skipped: bool = False
 
 
 class SplitTextResult(NamedTuple):
@@ -187,11 +188,10 @@ class TranslationClient:
                 continue
 
             log.info(f'Attempting to translate the "{prop_name}" property...')
-            translation_results = self._translate_text(text_to_translate)
-            detection_properties['TRANSLATION'] = translation_results.translated_text
+            translation_result = self._translate_text(text_to_translate)
             detection_properties['TRANSLATION TO LANGUAGE'] = self._to_language
 
-            if detect_result := translation_results.detect_result:
+            if detect_result := translation_result.detect_result:
                 source_lang = detect_result.primary_language
                 source_lang_confidence = str(detect_result.primary_language_confidence)
                 if detect_result.alternative_language:
@@ -203,7 +203,14 @@ class TranslationClient:
                 detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE'] \
                     = source_lang_confidence
 
-            log.info(f'Successfully translated the "{prop_name}" property.')
+            if translation_result.skipped:
+                detection_properties['SKIPPED TRANSLATION'] = 'TRUE'
+                log.info(f'Skipped translation of the "{prop_name}" property because it was '
+                         f'already in the target language.')
+            else:
+                detection_properties['TRANSLATION'] = translation_result.translated_text
+                log.info(f'Successfully translated the "{prop_name}" property.')
+
             self.translation_count += 1
             return  # Only process first matched property.
 
@@ -233,7 +240,8 @@ class TranslationClient:
 
 
         if from_lang and from_lang.casefold() == self._to_language.casefold():
-            translation_info = TranslationResult('', DetectResult(from_lang, from_lang_confidence))
+            translation_info = TranslationResult(
+                text, DetectResult(from_lang, from_lang_confidence), skipped=True)
         else:
             text_replaced_newlines = self._newline_behavior(text, from_lang)
             grouped_sentences = self._break_sentence_client.split_input_text(
