@@ -89,6 +89,7 @@ class JobRunner(object):
         subscription_key = self._get_acs_property_or_env_value('ACS_SUBSCRIPTION_KEY', job_properties)
         self._acs_headers = {'Ocp-Apim-Subscription-Key': subscription_key,
                              'Content-Type': 'application/octet-stream'}
+        self._http_retry = mpf_util.HttpRetry.from_properties(job_properties, logger.warning)
 
         merge_regions_enabled = mpf_util.get_property(job_properties, 'MERGE_REGIONS', False)
         # Select the merge mode for this job
@@ -120,7 +121,7 @@ class JobRunner(object):
     def _post_to_acs(self, encoded_frame):
         request = urllib.request.Request(self._acs_url, bytes(encoded_frame), self._acs_headers)
         try:
-            response = urllib.request.urlopen(request)
+            response = self._http_retry.urlopen(request)
             return json.load(response)
         except urllib.error.HTTPError as e:
             response_content = e.read().decode('utf-8', errors='replace')

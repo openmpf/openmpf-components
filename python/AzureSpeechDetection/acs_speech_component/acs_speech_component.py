@@ -103,7 +103,10 @@ class AcsSpeechComponent(object):
             lang=job_properties.get('LANGUAGE', 'en-US'),
             diarize=mpf_util.get_property(job_properties, 'DIARIZE', True),
             cleanup=mpf_util.get_property(job_properties, 'CLEANUP', True),
-            blob_access_time=int(job_properties.get('BLOB_ACCESS_TIME', '120'))
+            blob_access_time=int(job_properties.get('BLOB_ACCESS_TIME', '120')),
+            http_retry=mpf_util.HttpRetry.from_properties(job_properties, logger.warning),
+            http_max_attempts=mpf_util.get_property(
+                job_properties, 'COMPONENT_HTTP_RETRY_MAX_ATTEMPTS', 10)
         )
 
     def get_detections_from_audio(self, audio_job):

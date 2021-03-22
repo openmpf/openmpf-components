@@ -42,22 +42,39 @@ class AzureConnection(object):
         self.subscription_key = None
         self.blob_container_url = None
         self.blob_service_key = None
+        self.acs_headers = {}
+        self.container_client = None
+        self.http_retry = None
+        self.http_max_attempts = None
 
     def update_acs(self, url, subscription_key, blob_container_url,
-                   blob_service_key):
+                   blob_service_key, http_retry, http_max_attempts):
         self.url = url
         self.subscription_key = subscription_key
-        self.blob_container_url = blob_container_url
-        self.blob_service_key = blob_service_key
         self.acs_headers = {
             'Ocp-Apim-Subscription-Key': subscription_key,
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         }
-        self.container_client = ContainerClient.from_container_url(
-            blob_container_url,
-            blob_service_key
-        )
+        self.http_retry = http_retry
+
+        if (self.blob_container_url != blob_container_url
+                or self.blob_service_key != blob_service_key
+                or self.http_max_attempts != http_max_attempts):
+            self.logger.debug('Updating ACS connection')
+            self.blob_container_url = blob_container_url
+            self.blob_service_key = blob_service_key
+            self.http_max_attempts = http_max_attempts
+            self.container_client = ContainerClient.from_container_url(
+                blob_container_url,
+                blob_service_key,
+                retry_total=http_max_attempts,
+                retry_connect=http_max_attempts,
+                retry_read=http_max_attempts,
+                retry_status=http_max_attempts
+            )
+        else:
+            self.logger.debug('ACS arguments unchanged')
 
     def get_blob_client(self, recording_id):
         return self.container_client.get_blob_client(recording_id)
@@ -119,7 +136,7 @@ class AzureConnection(object):
             method='POST'
         )
         try:
-            response = request.urlopen(req)
+            response = self.http_retry.urlopen(req)
             return response.getheader('Location')
         except HTTPError as e:
             response_content = e.read()
@@ -146,7 +163,7 @@ class AzureConnection(object):
         self.logger.info('Polling for transcription success')
         while True:
             try:
-                response = request.urlopen(req)
+                response = self.http_retry.urlopen(req)
             except HTTPError as e:
                 raise mpf.DetectionException(
                     'Polling failed with status {} and message: {}'.format(
@@ -179,7 +196,7 @@ class AzureConnection(object):
         results_uri = result['resultsUrls']['channel_0']
         try:
             self.logger.debug('Retrieving transcription result')
-            response = request.urlopen(results_uri)
+            response = self.http_retry.urlopen(results_uri)
             return json.load(response)
         except HTTPError as e:
             error_str = e.read()
@@ -199,7 +216,7 @@ class AzureConnection(object):
             method='DELETE'
         )
         try:
-            request.urlopen(req)
+            self.http_retry.urlopen(req)
         except HTTPError:
             # If the transcription task doesn't exist, ignore
             #  This is a temporary solution, to be fixed with v3.0
@@ -218,7 +235,7 @@ class AzureConnection(object):
             headers=self.acs_headers,
             method='GET'
         )
-        response = request.urlopen(req)
+        response = self.http_retry.urlopen(req)
         transcriptions = json.load(response)
         return transcriptions
 
@@ -230,4 +247,4 @@ class AzureConnection(object):
                 headers=self.acs_headers,
                 method='DELETE'
             )
-            request.urlopen(req)
+            self.http_retry.urlopen(req)

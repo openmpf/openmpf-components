@@ -147,6 +147,7 @@ class TranslationClient:
 
     def __init__(self, job_properties: Mapping[str, str]):
         self._subscription_key = get_required_property('ACS_SUBSCRIPTION_KEY', job_properties)
+        self._http_retry = mpf_util.HttpRetry.from_properties(job_properties, log.warning)
 
         url_builder = AcsTranslateUrlBuilder(job_properties)
         self._translate_url = url_builder.url
@@ -164,7 +165,8 @@ class TranslationClient:
         acs_url = get_required_property('ACS_URL', job_properties)
         self._detect_url = create_url(acs_url, 'detect', {})
 
-        self._break_sentence_client = BreakSentenceClient(job_properties, self._subscription_key)
+        self._break_sentence_client = BreakSentenceClient(job_properties, self._subscription_key,
+                                                          self._http_retry)
 
         prop_names = job_properties.get('FEED_FORWARD_PROP_TO_PROCESS', 'TEXT,TRANSCRIPT')
         self._props_to_translate = [p.strip() for p in prop_names.split(',')]
@@ -294,7 +296,7 @@ class TranslationClient:
         try:
             log.info(f'Sending POST to {url}')
             log_json(request_body)
-            with urllib.request.urlopen(request) as response:
+            with self._http_retry.urlopen(request) as response:
                 response_body: AcsResponses.Translate = json.load(response)
                 log.info(f'Received response from {url}.')
                 log_json(response_body)
@@ -385,7 +387,7 @@ class TranslationClient:
         try:
             log.info(f'Sending POST {self._detect_url}')
             log_json(request_body)
-            with urllib.request.urlopen(request) as response:
+            with self._http_retry.urlopen(request) as response:
                 response_body: AcsResponses.Detect = json.load(response)
                 log.info(f'Received response from {self._detect_url}.')
                 log_json(response_body)
@@ -411,9 +413,11 @@ class BreakSentenceClient:
     BREAK_SENTENCE_MAX_CHARS = 50_000
 
 
-    def __init__(self, job_properties: Mapping[str, str], subscription_key: str):
+    def __init__(self, job_properties: Mapping[str, str], subscription_key: str,
+                 http_retry: mpf_util.HttpRetry):
         self._acs_url = get_required_property('ACS_URL', job_properties)
         self._subscription_key = subscription_key
+        self._http_retry = http_retry
 
 
     def split_input_text(self, text: str, from_lang: Optional[str],
@@ -474,7 +478,7 @@ class BreakSentenceClient:
         try:
             log.info(f'Sending POST {break_sentence_url}')
             log_json(request_body)
-            with urllib.request.urlopen(request) as response:
+            with self._http_retry.urlopen(request) as response:
                 response_body: AcsResponses.BreakSentence = json.load(response)
                 log.info('Received break sentence response with %s sentences.',
                          len(response_body[0]['sentLen']))
