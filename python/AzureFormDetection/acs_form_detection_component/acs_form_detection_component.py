@@ -164,16 +164,12 @@ class JobRunner(object):
     def _post_to_acs(self, encoded_frame):
         logger.info('[%s] Sending POST request to %s', self._job_name, self._acs_url)
         request = urllib.request.Request(self._acs_url, bytes(encoded_frame), self._acs_headers)
-        try:
-            with self._http_retry.urlopen(request) as response:
-                results_url = response.headers['operation-location']
-            result_request = urllib.request.Request(results_url, None, self._acs_headers)
-            logger.info('[%s] Received response from ACS server. Obtained form results url.', self._job_name)
-            return self._get_acs_result(result_request)
-        except urllib.error.HTTPError as e:
-            response_content = e.read().decode('utf-8', errors='replace')
-            raise mpf.DetectionException('Request failed with HTTP status {} and message: {}'
-                                         .format(e.code, response_content), mpf.DetectionError.DETECTION_FAILED)
+        with self._http_retry.urlopen(request) as response:
+            results_url = response.headers['operation-location']
+
+        result_request = urllib.request.Request(results_url, None, self._acs_headers)
+        logger.info('[%s] Received response from ACS server. Obtained form results url.', self._job_name)
+        return self._get_acs_result(result_request)
 
     @classmethod
     def get_acs_url(cls, job_properties):

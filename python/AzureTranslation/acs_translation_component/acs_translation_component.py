@@ -293,19 +293,13 @@ class TranslationClient:
         encoded_body = json.dumps(request_body).encode('utf-8')
         request = urllib.request.Request(url, encoded_body,
                                          get_acs_headers(self._subscription_key))
-        try:
-            log.info(f'Sending POST to {url}')
-            log_json(request_body)
-            with self._http_retry.urlopen(request) as response:
-                response_body: AcsResponses.Translate = json.load(response)
-                log.info(f'Received response from {url}.')
-                log_json(response_body)
-                return response_body
-        except urllib.error.HTTPError as e:
-            response_content = e.read().decode('utf-8', errors='replace')
-            raise mpf.DetectionError.DETECTION_FAILED.exception(
-                f'Request failed with HTTP status {e.code} and message: {response_content}') \
-                from e
+        log.info(f'Sending POST to {url}')
+        log_json(request_body)
+        with self._http_retry.urlopen(request) as response:
+            response_body: AcsResponses.Translate = json.load(response)
+            log.info(f'Received response from {url}.')
+            log_json(response_body)
+            return response_body
 
 
     def _detect_language(self, text: str) -> DetectResult:
@@ -384,18 +378,13 @@ class TranslationClient:
         encoded_body = json.dumps(request_body).encode('utf-8')
         request = urllib.request.Request(self._detect_url, encoded_body,
                                          get_acs_headers(self._subscription_key))
-        try:
-            log.info(f'Sending POST {self._detect_url}')
-            log_json(request_body)
-            with self._http_retry.urlopen(request) as response:
-                response_body: AcsResponses.Detect = json.load(response)
-                log.info(f'Received response from {self._detect_url}.')
-                log_json(response_body)
-                return response_body
-        except urllib.error.HTTPError as e:
-            response_content = e.read().decode('utf-8', errors='replace')
-            raise mpf.DetectionError.DETECTION_FAILED.exception(
-                f'Request failed with HTTP status {e.code} and message: {response_content}') from e
+        log.info(f'Sending POST {self._detect_url}')
+        log_json(request_body)
+        with self._http_retry.urlopen(request) as response:
+            response_body: AcsResponses.Detect = json.load(response)
+            log.info(f'Received response from {self._detect_url}.')
+            log_json(response_body)
+            return response_body
 
 
 class BreakSentenceClient:
@@ -475,19 +464,14 @@ class BreakSentenceClient:
         encoded_body = json.dumps(request_body).encode('utf-8')
         request = urllib.request.Request(break_sentence_url, encoded_body,
                                          get_acs_headers(self._subscription_key))
-        try:
-            log.info(f'Sending POST {break_sentence_url}')
-            log_json(request_body)
-            with self._http_retry.urlopen(request) as response:
-                response_body: AcsResponses.BreakSentence = json.load(response)
-                log.info('Received break sentence response with %s sentences.',
-                         len(response_body[0]['sentLen']))
-                log_json(response_body)
-                return response_body
-        except urllib.error.HTTPError as e:
-            response_content = e.read().decode('utf-8', errors='replace')
-            raise mpf.DetectionError.DETECTION_FAILED.exception(
-                f'Request failed with HTTP status {e.code} and message: {response_content}') from e
+        log.info(f'Sending POST {break_sentence_url}')
+        log_json(request_body)
+        with self._http_retry.urlopen(request) as response:
+            response_body: AcsResponses.BreakSentence = json.load(response)
+            log.info('Received break sentence response with %s sentences.',
+                     len(response_body[0]['sentLen']))
+            log_json(response_body)
+            return response_body
 
 
     @classmethod
