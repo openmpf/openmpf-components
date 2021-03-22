@@ -136,8 +136,8 @@ class AzureConnection(object):
             method='POST'
         )
         try:
-            response = self.http_retry.urlopen(req)
-            return response.getheader('Location')
+            with self.http_retry.urlopen(req) as response:
+                return response.getheader('Location')
         except HTTPError as e:
             response_content = e.read()
             raise mpf.DetectionException(
@@ -163,7 +163,24 @@ class AzureConnection(object):
         self.logger.info('Polling for transcription success')
         while True:
             try:
-                response = self.http_retry.urlopen(req)
+                with self.http_retry.urlopen(req) as response:
+                    result = json.load(response)
+                    status = result['status']
+                    if status == 'Succeeded':
+                        self.logger.debug('Transcription succeeded')
+                        break
+                    elif status == 'Failed':
+                        self.logger.debug('Transcription failed')
+                        break
+                    else:
+                        retry_after = int(response.info()['Retry-After'])
+                        self.logger.info(
+                            'Status is {}. Retry in {} seconds.'.format(
+                                status,
+                                retry_after
+                            )
+                        )
+                time.sleep(retry_after)
             except HTTPError as e:
                 raise mpf.DetectionException(
                     'Polling failed with status {} and message: {}'.format(
@@ -172,23 +189,6 @@ class AzureConnection(object):
                     ),
                     mpf.DetectionError.DETECTION_FAILED
                 )
-            result = json.load(response)
-            status = result['status']
-            if status == 'Succeeded':
-                self.logger.debug('Transcription succeeded')
-                break
-            elif status == 'Failed':
-                self.logger.debug('Transcription failed')
-                break
-            else:
-                retry_after = int(response.info()['Retry-After'])
-                self.logger.info(
-                    'Status is {}. Retry in {} seconds.'.format(
-                        status,
-                        retry_after
-                    )
-                )
-                time.sleep(retry_after)
 
         return result
 
@@ -196,8 +196,8 @@ class AzureConnection(object):
         results_uri = result['resultsUrls']['channel_0']
         try:
             self.logger.debug('Retrieving transcription result')
-            response = self.http_retry.urlopen(results_uri)
-            return json.load(response)
+            with self.http_retry.urlopen(results_uri) as response:
+                return json.load(response)
         except HTTPError as e:
             error_str = e.read()
             raise mpf.DetectionException(
@@ -216,7 +216,8 @@ class AzureConnection(object):
             method='DELETE'
         )
         try:
-            self.http_retry.urlopen(req)
+            with self.http_retry.urlopen(req):
+                pass
         except HTTPError:
             # If the transcription task doesn't exist, ignore
             #  This is a temporary solution, to be fixed with v3.0
@@ -235,8 +236,8 @@ class AzureConnection(object):
             headers=self.acs_headers,
             method='GET'
         )
-        response = self.http_retry.urlopen(req)
-        transcriptions = json.load(response)
+        with self.http_retry.urlopen(req) as response:
+            transcriptions = json.load(response)
         return transcriptions
 
     def delete_all_transcriptions(self):
@@ -247,4 +248,5 @@ class AzureConnection(object):
                 headers=self.acs_headers,
                 method='DELETE'
             )
-            self.http_retry.urlopen(req)
+            with self.http_retry.urlopen(req):
+                pass

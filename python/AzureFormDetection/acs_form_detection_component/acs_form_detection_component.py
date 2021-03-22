@@ -135,12 +135,12 @@ class JobRunner(object):
                         self._job_name, result_request.get_full_url())
 
             try:
-                results = self._http_retry.urlopen(result_request)
-                json_results = json.load(results)
-                if results.status != 200:
-                    raise mpf.DetectionError.DETECTION_FAILED.exception('GET request failed with HTTP status {}\n'
-                                                                        .format(results.status) +
-                                                                        '\nHTTP request body:\n{}'.format(json_results))
+                with self._http_retry.urlopen(result_request) as results:
+                    if results.status != 200:
+                        raise mpf.DetectionError.DETECTION_FAILED.exception(
+                            'GET request failed with HTTP status {}\n'.format(results.status) +
+                            '\nHTTP request body:\n{}'.format(json_results))
+                    json_results = json.load(results)
                 status = json_results["status"]
                 if status == "succeeded":
                     logger.info('[%s] Layout Analysis succeeded. Processing form results.', self._job_name)
@@ -165,8 +165,8 @@ class JobRunner(object):
         logger.info('[%s] Sending POST request to %s', self._job_name, self._acs_url)
         request = urllib.request.Request(self._acs_url, bytes(encoded_frame), self._acs_headers)
         try:
-            response = self._http_retry.urlopen(request)
-            results_url = response.headers['operation-location']
+            with self._http_retry.urlopen(request) as response:
+                results_url = response.headers['operation-location']
             result_request = urllib.request.Request(results_url, None, self._acs_headers)
             logger.info('[%s] Received response from ACS server. Obtained form results url.', self._job_name)
             return self._get_acs_result(result_request)
