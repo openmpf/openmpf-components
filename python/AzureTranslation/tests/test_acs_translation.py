@@ -269,7 +269,8 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(mpf.DetectionError.UNSUPPORTED_DATA_TYPE, cm.exception.error_code)
 
 
-    def test_reports_error_when_server_error(self):
+    @mock.patch('time.sleep')
+    def test_reports_error_when_server_error(self, _):
         ff_track = mpf.VideoTrack(
             0, 1, -1,
             {0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=CHINESE_SAMPLE_TEXT))},

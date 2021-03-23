@@ -38,32 +38,17 @@ class AcsSpeechDetectionProcessor(object):
         self.acs = AzureConnection(logger)
 
 
-    def update_acs(self, acs_url, acs_subscription_key,
-                   acs_blob_container_url, acs_blob_service_key):
-        if (self.acs.url != acs_url or
-                self.acs.subscription_key != acs_subscription_key or
-                self.acs.blob_container_url != acs_blob_container_url or
-                self.acs.blob_service_key != acs_blob_service_key):
-            self.logger.debug('Updating ACS connection')
-            self.acs.update_acs(
-                url=acs_url,
-                subscription_key=acs_subscription_key,
-                blob_container_url=acs_blob_container_url,
-                blob_service_key=acs_blob_service_key
-            )
-        else:
-            self.logger.debug('ACS arguments unchanged')
-
-
     def process_audio(self, target_file, start_time, stop_time, job_name,
                       acs_url, acs_subscription_key, acs_blob_container_url,
                       acs_blob_service_key, lang, diarize, cleanup,
-                      blob_access_time):
-        self.update_acs(
-            acs_url=acs_url,
-            acs_subscription_key=acs_subscription_key,
-            acs_blob_container_url=acs_blob_container_url,
-            acs_blob_service_key=acs_blob_service_key
+                      blob_access_time, http_retry, http_max_attempts):
+        self.acs.update_acs(
+            url=acs_url,
+            subscription_key=acs_subscription_key,
+            blob_container_url=acs_blob_container_url,
+            blob_service_key=acs_blob_service_key,
+            http_retry=http_retry,
+            http_max_attempts=http_max_attempts
         )
 
         try:
