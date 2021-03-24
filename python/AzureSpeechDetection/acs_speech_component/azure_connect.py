@@ -27,7 +27,6 @@
 import json
 import time
 from urllib import request
-from urllib.error import HTTPError
 from datetime import datetime, timedelta
 from dateutil import relativedelta
 from azure.storage.blob import ResourceTypes, AccountSasPermissions, generate_account_sas, ContainerClient
@@ -58,22 +57,39 @@ class AzureConnection(object):
         self.subscription_key = None
         self.blob_container_url = None
         self.blob_service_key = None
+        self.acs_headers = {}
+        self.container_client = None
+        self.http_retry = None
+        self.http_max_attempts = None
 
     def update_acs(self, url, subscription_key, blob_container_url,
-                   blob_service_key):
+                   blob_service_key, http_retry, http_max_attempts):
         self.url = url
         self.subscription_key = subscription_key
-        self.blob_container_url = blob_container_url
-        self.blob_service_key = blob_service_key
         self.acs_headers = {
             'Ocp-Apim-Subscription-Key': subscription_key,
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         }
-        self.container_client = ContainerClient.from_container_url(
-            blob_container_url,
-            blob_service_key
-        )
+        self.http_retry = http_retry
+
+        if (self.blob_container_url != blob_container_url
+                or self.blob_service_key != blob_service_key
+                or self.http_max_attempts != http_max_attempts):
+            self.logger.debug('Updating ACS connection')
+            self.blob_container_url = blob_container_url
+            self.blob_service_key = blob_service_key
+            self.http_max_attempts = http_max_attempts
+            self.container_client = ContainerClient.from_container_url(
+                blob_container_url,
+                blob_service_key,
+                retry_total=http_max_attempts,
+                retry_connect=http_max_attempts,
+                retry_read=http_max_attempts,
+                retry_status=http_max_attempts
+            )
+        else:
+            self.logger.debug('ACS arguments unchanged')
 
     def get_blob_client(self, recording_id):
         return self.container_client.get_blob_client(recording_id)
@@ -137,17 +153,8 @@ class AzureConnection(object):
             method='POST'
         )
         try:
-            response = request.urlopen(req)
-            return response.getheader('Location')
-        except HTTPError as e:
-            response_content = e.read()
-            raise mpf.DetectionException(
-                'Failed to post job. Got HTTP status {} and message: {}'.format(
-                    e.code,
-                    response_content
-                ),
-                mpf.DetectionError.DETECTION_FAILED
-            )
+            with self.http_retry.urlopen(req) as response:
+                return response.getheader('Location')
         except Exception as e:
             raise mpf.DetectionException(
                 'Failed to post job. Error message: {:s}'.format(str(e)),
@@ -163,34 +170,24 @@ class AzureConnection(object):
         )
         self.logger.info('Polling for transcription success')
         while True:
-            try:
-                response = request.urlopen(req)
-            except HTTPError as e:
-                raise mpf.DetectionException(
-                    'Polling failed with status {} and message: {}'.format(
-                        e.code,
-                        e.read()
-                    ),
-                    mpf.DetectionError.DETECTION_FAILED
-                )
-            result = json.load(response)
-            status = result['status']
-            if status == 'Succeeded':
-                self.logger.debug('Transcription succeeded')
-                break
-            elif status == 'Failed':
-                self.logger.debug('Transcription failed')
-                break
-            else:
-                retry_after = int(response.info()['Retry-After'])
-                self.logger.info(
-                    'Status is {}. Retry in {} seconds.'.format(
-                        status,
-                        retry_after
+            with self.http_retry.urlopen(req) as response:
+                result = json.load(response)
+                status = result['status']
+                if status == 'Succeeded':
+                    self.logger.debug('Transcription succeeded')
+                    break
+                elif status == 'Failed':
+                    self.logger.debug('Transcription failed')
+                    break
+                else:
+                    retry_after = int(response.info()['Retry-After'])
+                    self.logger.info(
+                        'Status is {}. Retry in {} seconds.'.format(
+                            status,
+                            retry_after
+                        )
                     )
-                )
-                time.sleep(retry_after)
-
+            time.sleep(retry_after)
         return result
 
     def get_transcription(self, result):
@@ -200,33 +197,18 @@ class AzureConnection(object):
             headers=self.acs_headers,
             method='GET'
         )
-        try:
-            self.logger.debug('Retrieving transcription file location')
-            response = request.urlopen(req)
+
+        self.logger.info(f'Retrieving transcription file location from {results_uri}')
+        with self.http_retry.urlopen(req) as response:
             files = json.load(response)
-        except HTTPError as e:
-            error_str = e.read()
-            raise mpf.DetectionException(
-                "Failed to retrieve transcription location: Request failed "
-                f"with HTTP status {e.code} and message: {error_str}",
-                mpf.DetectionError.DETECTION_FAILED
-            )
+
         transcript_uri = next(
             v['links']['contentUrl'] for v in files['values']
             if v['kind'] == 'Transcription'
         )
-
-        try:
-            self.logger.debug('Retrieving transcription result')
-            response = request.urlopen(transcript_uri)
+        self.logger.info(f'Retrieving transcription result from {transcript_uri}')
+        with self.http_retry.urlopen(transcript_uri) as response:
             return json.load(response)
-        except HTTPError as e:
-            error_str = e.read()
-            raise mpf.DetectionException(
-                "Failed to retrieve transcription: Request failed "
-                f"with HTTP status {e.code} and message: {error_str}",
-                mpf.DetectionError.DETECTION_FAILED
-            )
 
     def delete_transcription(self, location):
         self.logger.info('Deleting transcription...')
@@ -236,8 +218,9 @@ class AzureConnection(object):
             method='DELETE'
         )
         try:
-            request.urlopen(req)
-        except HTTPError:
+            with self.http_retry.urlopen(req):
+                pass
+        except mpf.DetectionException:
             # If the transcription task doesn't exist, ignore
             #  This is a temporary solution, to be fixed with v3.0
             self.logger.warning(
