@@ -101,6 +101,7 @@ class TestAcsTranslation(unittest.TestCase):
                 self.assertEqual('zh-Hans', result.detection_properties['TRANSLATION SOURCE LANGUAGE'])
                 self.assertAlmostEqual(
                     1.0, float(result.detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+                self.assertNotIn('SKIPPED TRANSLATION', result.detection_properties)
 
                 detect_request_body = self.get_request_body()
                 self.assertEqual(1, len(detect_request_body))
@@ -878,10 +879,11 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(1, len(results))
 
         result_props = results[0].detection_properties
-        self.assertEqual('', result_props['TRANSLATION'])
+        self.assertNotIn('TRANSLATION', result_props)
         self.assertEqual('EN', result_props['TRANSLATION TO LANGUAGE'])
         self.assertEqual('en', result_props['TRANSLATION SOURCE LANGUAGE'])
         self.assertAlmostEqual(0.95, float(result_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+        self.assertEqual('TRUE', result_props['SKIPPED TRANSLATION'])
 
         request_body = self.get_request_body()
         self.assertEqual('Hello', request_body[0]['Text'])
