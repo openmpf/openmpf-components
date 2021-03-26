@@ -27,6 +27,7 @@
 
 import http.server
 import json
+import logging
 import os
 import pathlib
 import sys
@@ -57,6 +58,7 @@ SPANISH_SAMPLE_TEXT_ENG_TRANSLATE = 'Where\'s the library?'
 
 TEST_DATA = pathlib.Path(__file__).parent / 'data'
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestAcsTranslation(unittest.TestCase):
 

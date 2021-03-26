@@ -36,12 +36,9 @@ from east_component.east_component import EastComponent
 import unittest
 import mpf_component_api as mpf
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestEast(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        logging.basicConfig(level=logging.DEBUG)
 
     def test_image_file(self):
         job = mpf.ImageJob(

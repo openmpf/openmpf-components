@@ -54,6 +54,7 @@ rights. They are endowed with reason and conscience
 and should act towards one another in a spirit of
 brotherhood.'''
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestAcs(unittest.TestCase):
 
@@ -61,7 +62,6 @@ class TestAcs(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        logging.basicConfig(level=logging.DEBUG)
         cls.mock_server = MockServer()
 
     @classmethod
