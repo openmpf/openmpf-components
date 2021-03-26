@@ -30,6 +30,7 @@
 #include <MPFDetectionComponent.h>
 #include <unistd.h>
 #include <gtest/gtest.h>
+#include <log4cxx/basicconfigurator.h>
 #include <fstream>
 
 #define BOOST_NO_CXX11_SCOPED_ENUMS
@@ -313,6 +314,13 @@ void loadWordList(const std::string &wordlist_file,
     }
     in.close();
 }
+
+
+bool init_logging() {
+    log4cxx::BasicConfigurator::configure();
+    return true;
+}
+bool logging_initialized = init_logging();
 
 
 TEST(TESSERACTOCR, CustomModelTest) {

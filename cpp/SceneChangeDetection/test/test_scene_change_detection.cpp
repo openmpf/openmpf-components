@@ -27,6 +27,7 @@
 #include <string>
 #include <MPFDetectionComponent.h>
 #include <gtest/gtest.h>
+#include <log4cxx/basicconfigurator.h>
 #include "SceneChangeDetection.h"
 
 using namespace MPF::COMPONENT;
@@ -50,6 +51,12 @@ void assertScenesDetected(const int &expected, const std::string &video_path,
     ASSERT_TRUE(detections.size() == expected)
                                 << "Expected " << std::to_string(expected) << " scenes in " << video_path;
 }
+
+bool init_logging() {
+    log4cxx::BasicConfigurator::configure();
+    return true;
+}
+bool logging_initialized = init_logging();
 
 
 TEST(SCENECHANGE, VideoTest) {

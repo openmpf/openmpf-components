@@ -33,6 +33,7 @@
 #include <QDir>
 
 #include <gtest/gtest.h>
+#include <log4cxx/basicconfigurator.h>
 
 #include <Utils.h>
 #include <DetectionComparison.h>
@@ -67,6 +68,13 @@ static string GetCurrentWorkingDirectory() {
         return "";
     }
 }
+
+bool init_logging() {
+    log4cxx::BasicConfigurator::configure();
+    return true;
+}
+bool logging_initialized = init_logging();
+
 
 TEST(Detection, Init) {
     string current_working_dir = GetCurrentWorkingDirectory();
