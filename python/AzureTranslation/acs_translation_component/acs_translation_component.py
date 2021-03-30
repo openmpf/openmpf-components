@@ -479,17 +479,20 @@ class BreakSentenceClient:
             cls, text: str, response_body: 'AcsResponses.BreakSentence') -> Iterator[str]:
         current_chunk_length = 0
         current_chunk_begin = 0
+        current_chunk_azure_char_count = 0
         for length in response_body[0]['sentLen']:
             sentence_begin = current_chunk_begin + current_chunk_length
             sentence = text[sentence_begin: sentence_begin + length]
-            sentence_char_count = get_azure_char_count(sentence)
-            if sentence_char_count + current_chunk_length <= cls.TRANSLATION_MAX_CHARS:
-                current_chunk_length += sentence_char_count
+            sentence_azure_char_count = get_azure_char_count(sentence)
+            if sentence_azure_char_count + current_chunk_azure_char_count <= cls.TRANSLATION_MAX_CHARS:
+                current_chunk_length += len(sentence)
+                current_chunk_azure_char_count += sentence_azure_char_count
             else:
                 current_chunk_end = current_chunk_begin + current_chunk_length
                 yield text[current_chunk_begin:current_chunk_end]
                 current_chunk_begin = current_chunk_end
-                current_chunk_length = sentence_char_count
+                current_chunk_length = len(sentence)
+                current_chunk_azure_char_count = sentence_azure_char_count
         yield text[current_chunk_begin:]
 
 
