@@ -11,4 +11,4 @@ property PAGE_NUM = 1) corresponds to first page of each document by default.
 Users can also enable metadata reporting.
 If enabled by setting the job property STORE_METADATA = "true", document 
 metadata will be labeled and stored as the first track.
-Metadata track will not contain the PAGE_NUM detection property.
+Metadata track will not contain the PAGE_NUM or TEXT detection properties.
