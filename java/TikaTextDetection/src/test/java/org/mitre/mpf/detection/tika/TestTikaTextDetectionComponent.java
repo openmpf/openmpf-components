@@ -105,13 +105,13 @@ public class TestTikaTextDetectionComponent {
                 System.out.println(String.format("  Confidence = %f", track.getConfidence()));
                 System.out.println(String.format("  Text = %s", track.getDetectionProperties().get("TEXT")));
                 System.out.println(String.format("  Language = %s", track.getDetectionProperties().get("TEXT_LANGUAGE")));
-                assertEquals("Confidence does not match.", -1.0f, track.getConfidence(),0.1f);
+                assertEquals("Confidence does not match.", -1.0f, track.getConfidence(), 0.1f);
             }
         }
     }
 
     @Test
-    public void testGetDetectionsShortRegexSearch() throws MPFComponentDetectionError {
+    public void testGetDetectionsPowerPointFile() throws MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-tika-detection.pptx").getPath();
 
         Map<String, String> jobProperties = new HashMap<>();
@@ -122,8 +122,7 @@ public class TestTikaTextDetectionComponent {
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        assertEquals("Number of expected tracks does not match.", 11 ,tracks.size());
-
+        assertEquals("Number of expected tracks does not match.", 11, tracks.size());
     }
 
     @Test
