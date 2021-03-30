@@ -11,8 +11,4 @@ property PAGE_NUM = 1) corresponds to first page of each document by default.
 Users can also enable metadata reporting.
 If enabled by setting the job property STORE_METADATA = "true", document 
 metadata will be labeled and stored as the first track.
-Metadata track will not contain the PAGE_NUM, TEXT, TAGS, or TRIGGER_WORDS detection properties.
-
-All text extracted will also be tagged based on content.
-The content tags can be set by user by providing a new context-tag file path
-for the TAGGING_FILE job property.
+Metadata track will not contain the PAGE_NUM detection property.
