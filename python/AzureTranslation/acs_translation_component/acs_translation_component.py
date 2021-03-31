@@ -396,7 +396,7 @@ class BreakSentenceClient:
     # Taken from https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-translate
     TRANSLATION_MAX_CHARS = 10_000
 
-    # ACS limits the number of characters that can be translated in a single /breaksentence call.
+    # ACS limits the number of characters that can be processed in a single /breaksentence call.
     # Taken from https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-break-sentence
     BREAK_SENTENCE_MAX_CHARS = 50_000
 
@@ -419,13 +419,13 @@ class BreakSentenceClient:
             return SplitTextResult([text], from_lang, from_lang_confidence)
 
         log.info('Splitting input text because the translation endpoint allows a maximum of '
-                 f'{self.TRANSLATION_MAX_CHARS} characters, but the text contained '
-                 f'{azure_char_count} characters.')
+                 f'{self.TRANSLATION_MAX_CHARS} Azure characters, but the text contained '
+                 f'{azure_char_count} Azure characters.')
 
         if azure_char_count > self.BREAK_SENTENCE_MAX_CHARS:
             log.warning('Guessing sentence breaks because the break sentence endpoint allows a '
-                        f'maximum of {self.BREAK_SENTENCE_MAX_CHARS} characters, but the text '
-                        f'contained {azure_char_count} characters.')
+                        f'maximum of {self.BREAK_SENTENCE_MAX_CHARS} Azure characters, but the text '
+                        f'contained {azure_char_count} Azure characters.')
             chunks = list(SentenceBreakGuesser.guess_breaks(text))
             log.warning(f'Broke text up in to {len(chunks)} chunks. Each chunk will be sent to '
                         'the break sentence endpoint.')
@@ -484,6 +484,8 @@ class BreakSentenceClient:
             sentence_begin = current_chunk_begin + current_chunk_length
             sentence = text[sentence_begin: sentence_begin + length]
             sentence_azure_char_count = get_azure_char_count(sentence)
+            # The /breaksentence endpoint will return sentences <= 1000 characters, so the following condition will be
+            # true at least once.
             if sentence_azure_char_count + current_chunk_azure_char_count <= cls.TRANSLATION_MAX_CHARS:
                 current_chunk_length += len(sentence)
                 current_chunk_azure_char_count += sentence_azure_char_count
