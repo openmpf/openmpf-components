@@ -257,20 +257,15 @@ class TestAcs(unittest.TestCase):
             self.assertEqual(human_rights_image_text, track.detection_properties['TEXT'])
             self.assertEqual(human_rights_image_text, detection.detection_properties['TEXT'])
 
-            #self.assertEqual('en', detection.detection_properties['TEXT_LANGUAGE'])
-            #self.assertEqual('en', track.detection_properties['TEXT_LANGUAGE'])
-
             detections_indexed_by_frame[track.start_frame] = detection
 
         self.assertEqual(mpf_util.Rect(1106, 49, 438, 998),
                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[0]))
         self.assertAlmostEqual(270.2616227456948, float(detections_indexed_by_frame[0].detection_properties['ROTATION']))
 
-
         self.assertEqual(mpf_util.Rect(64, 193, 1000, 438),
                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[1]))
         self.assertAlmostEqual(14.938792576116121, float(detections_indexed_by_frame[1].detection_properties['ROTATION']))
-
 
         self.assertEqual(mpf_util.Rect(54, 1085, 999, 437),
                          mpf_util.Rect.from_image_location(detections_indexed_by_frame[2]))

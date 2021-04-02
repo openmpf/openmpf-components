@@ -45,7 +45,8 @@ logger = mpf.configure_logging('acs-read-detection.log', __name__ == '__main__')
 class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReaderMixin, object):
     detection_type = 'TEXT'
 
-    def get_detections_from_generic(self, generic_job):
+    @staticmethod
+    def get_detections_from_generic(generic_job):
         try:
             logger.info('[%s] Received generic job: %s', generic_job.job_name, generic_job)
             detections = JobRunner(generic_job.job_name,
@@ -60,7 +61,8 @@ class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReader
 
         return detections
 
-    def get_detections_from_image_reader(self, image_job, image_reader):
+    @staticmethod
+    def get_detections_from_image_reader(image_job, image_reader):
         try:
             logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
 
@@ -75,9 +77,8 @@ class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReader
             logger.exception('[%s] Failed to complete job due to the following exception:', image_job.job_name)
             raise
 
-
-
-    def get_detections_from_video_capture(self, video_job, video_capture):
+    @staticmethod
+    def get_detections_from_video_capture(video_job, video_capture):
         try:
             logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
 
@@ -113,29 +114,12 @@ class JobRunner(object):
             # Only supports PDF files.
             self._acs_headers = {'Ocp-Apim-Subscription-Key': subscription_key,
                                  'Content-Type': 'application/pdf'}
-
-
-    def get_indexed_detections(self, frames):
-        """
-        :param frames: An iterable of frames in a numpy.ndarray with shape (h, w, 3)
-        :return: An iterable of (frame_number, mpf.ImageLocation)
-        """
-        encoder = FrameEncoder()
-
-        for idx, frame in enumerate(frames):
-            # Encode frame in a format compatible with ACS API. This may result in the frame size changing.
-            encoded_frame, resized_frame_dimensions = encoder.resize_and_encode(frame)
-            ocr_results_json = self._post_to_acs(encoded_frame)
-            initial_frame_size = mpf_util.Size.from_frame(frame)
-
-            # Convert the results from the ACS JSON to mpf.ImageLocations
-            detections = self._results_post_processor(ocr_results_json, initial_frame_size, resized_frame_dimensions)
-            for detection in detections:
-                yield idx, detection
+        self._http_retry = mpf_util.HttpRetry.from_properties(job_properties, logger.warning)
 
     def get_image_detections(self, frame, is_video=False):
         """
         :param frame: A numpy.ndarray with shape (h, w, 3)
+        :param is_video: A boolean setting for processing images (False) or videos (True).
         :return: An iterable of mpf.ImageLocation
         """
         encoder = FrameEncoder()
@@ -169,12 +153,14 @@ class JobRunner(object):
                         self._job_name, result_request.get_full_url())
 
             try:
-                results = urllib.request.urlopen(result_request)
-                json_results = json.load(results)
-                if results.status != 200:
-                    raise mpf.DetectionError.DETECTION_FAILED.exception('GET request failed with HTTP status {}\n'
-                                                                        .format(results.status) +
-                                                                        '\nHTTP request body:\n{}'.format(json_results))
+                with self._http_retry.urlopen(result_request) as results:
+                    json_results = json.load(results)
+                    if results.status != 200:
+                        raise mpf.DetectionError.DETECTION_FAILED.exception('GET request failed with HTTP status {}\n'
+                                                                            .format(results.status) +
+                                                                            '\nHTTP request body:\n{}'
+                                                                            .format(json_results))
+
                 status = json_results["status"]
                 if status == "succeeded":
                     logger.info('[%s] Layout Analysis succeeded. Processing read results.', self._job_name)
@@ -199,8 +185,8 @@ class JobRunner(object):
         logger.info('[%s] Sending POST request to %s', self._job_name, self._acs_url)
         request = urllib.request.Request(self._acs_url, bytes(encoded_frame), self._acs_headers)
         try:
-            response = urllib.request.urlopen(request)
-            results_url = response.headers['operation-location']
+            with self._http_retry.urlopen(request) as response:
+                results_url = response.headers['operation-location']
             result_request = urllib.request.Request(results_url, None, self._acs_headers)
             logger.info('[%s] Received response from ACS server. Obtained read results url.', self._job_name)
             return self._get_acs_result(result_request)
@@ -425,7 +411,8 @@ class ReadResultsProcessor(object):
         corrected_box = mpf_util.Rect.from_corner_and_size(top_left, (width, height))
         return corrected_box
 
-    def _convert_to_rect(self, bounding_box):
+    @staticmethod
+    def _convert_to_rect(bounding_box):
         """
         Convert an angled ACS formatted bounding box into an MPF bounding box with text rotation angle.
         Calculates the angle of rotation based on the position of the bounding box upper corners relative to text.
@@ -447,15 +434,15 @@ class ReadResultsProcessor(object):
             d_ref = math.sqrt((p2[0] - p_ref[0])**2 + (p2[1] - p_ref[1])**2)
             angle = math.acos((2*w*w - d_ref*d_ref)/(2*w*w))
 
-        if (p_ref[1] < p2[1]):
-            # Flip angle if rotation occurs in the clockwise direction (0 to -180 degrees).
-            angle = -angle
+            if p_ref[1] < p2[1]:
+                # Flip angle if rotation occurs in the clockwise direction (0 to -180 degrees).
+                angle = -angle
 
         angle = math.degrees(angle)
-        return mpf_util.Rect.from_corner_and_size(p1, (w,h)), angle
+        return mpf_util.Rect.from_corner_and_size(p1, (w, h)), angle
 
-
-    def _orient_bounding_box(self, bounding_box, angle):
+    @staticmethod
+    def _orient_bounding_box(bounding_box, angle):
         """
         Convert a rotated OpenCV bounding box into an ACS formatted bounding box.
 

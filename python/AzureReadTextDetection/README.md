@@ -15,11 +15,11 @@ the job property will be used.
 - `ACS_URL`: URL for the Azure Cognitive Services Endpoint. Multiple Read API versions exist for text detection
    and can be specified through the URL as follows:
 
-   - `https://{endpoint}/vision/v3.1/read/analyze` - v3.1 Read OCR analysis.
-   - `https://{endpoint}/vision/v3.1-preview.2/read/analyze` - v3.1 preview Read OCR analysis.
+   - `https://{endpoint}/vision/v3.1/read/analyze`            - v3.1 Read OCR analysis.
+   - `https://{endpoint}/vision/v3.2-preview.3/read/analyze`  - v3.2 Read OCR analysis (preview).
 
-   This component has been tested against both versions of the API.
-   
+   Note that version 3.2 supports a greater number of auto-detected OCR languages (see [v3.2 documentation](https://westus.dev.cognitive.microsoft.com/docs/services/computer-vision-v3-2-preview-3/operations/5d986960601faab4bf452005)).
+
 - `ACS_SUBSCRIPTION_KEY`: A string containing your Azure Cognitive Services
   subscription key. To get one you will need to create an 
   Azure Cognitive Services account.
@@ -44,6 +44,6 @@ For images, the bounding box information for lines or merged lines is also provi
 
 # Sample Program
 `sample_acs_read_detector.py` can be used to quickly test with the Azure
-endpoint. It supports images, video (*.avi), and PDF inputs only. PDF inputs must contain the `.pdf`
+endpoint. It supports images, video (`*.avi`), and PDF inputs only. PDF inputs must contain the `.pdf`
 extension to be properly recognized as generic job inputs. Similarly video inputs must contain the ".avi" extension.
 Otherwise, the sample code will default to running an image job on the provided input.

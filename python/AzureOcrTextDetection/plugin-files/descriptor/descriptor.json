@@ -16,7 +16,7 @@
       "states": [
         "DETECTION",
         "DETECTION_TEXT",
-        "DETECTION_TEXT_AZURE"
+        "DETECTION_TEXT_AZURE_OCR"
       ],
       "properties": [
         {
