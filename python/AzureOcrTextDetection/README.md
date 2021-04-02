@@ -20,28 +20,7 @@ the job property will be used.
 - `ACS_SUBSCRIPTION_KEY`: A string containing your Azure Cognitive Services
   subscription key. To get one you will need to create an 
   Azure Cognitive Services account.
-
-
-# Text Tagging
-All text extracted from an image can also be tagged using regex and keyword 
-tags in a given json file. For keyword tagging, users can provide either words 
-or phrases (ex. `"bank-tag: [money, bank of america, etc.]"`). Phrases must 
-contain words separated by whitespace. For more complex pattern matching, 
-use regex tags instead. Both forms of tagging are case-insensitive. 
-
-By default, the json tagging file is located in the acs_ocr_component folder 
-as `text-tags.json`, however users can provide an alternate full path to a 
-tagging file of their choice. English and foreign text tags following 
-UTF-8 encoding are supported.
-
-Note that when using `TAGS_BY_REGEX` with multi-word phrases or any regular
-expression that includes a space, in many cases you will likely want to use
-`"\\s+"` instead of the space character. `"\\s+"` matches a sequence of one or 
-more whitespace characters. The recognized text preserves line breaks, so the 
-phrase you are looking for may have a line break in the middle of it. 
-For example, instead of `"\\bhello world\\b"`, you will likely want to use 
-`"\\bhello\\s+world\\b"`. 
-
+  
 
 # Sample Program
 `sample_acs_ocr_text_detector.py` can be used to quickly test with the Azure

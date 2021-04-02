@@ -105,13 +105,13 @@ public class TestTikaTextDetectionComponent {
                 System.out.println(String.format("  Confidence = %f", track.getConfidence()));
                 System.out.println(String.format("  Text = %s", track.getDetectionProperties().get("TEXT")));
                 System.out.println(String.format("  Language = %s", track.getDetectionProperties().get("TEXT_LANGUAGE")));
-                assertEquals("Confidence does not match.", -1.0f, track.getConfidence(),0.1f);
+                assertEquals("Confidence does not match.", -1.0f, track.getConfidence(), 0.1f);
             }
         }
     }
 
     @Test
-    public void testGetDetectionsShortRegexSearch() throws MPFComponentDetectionError {
+    public void testGetDetectionsPowerPointFile() throws MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-tika-detection.pptx").getPath();
 
         Map<String, String> jobProperties = new HashMap<>();
@@ -122,8 +122,29 @@ public class TestTikaTextDetectionComponent {
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        assertEquals("Number of expected tracks does not match.", 11 ,tracks.size());
+        assertEquals("Number of expected tracks does not match.", 11, tracks.size());
+    }
 
+    @Test
+    public void testGetDetectionsExcelFile() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.xlsx").getPath();
 
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "true");
+
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        assertEquals("Number of expected tracks does not match.", 1, tracks.size());
+        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"),
+                containsString("Test"));
+        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"),
+                containsString("1"));
+        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"),
+                containsString("3"));
+        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"),
+                containsString("6"));
     }
 }

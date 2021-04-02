@@ -1,9 +1,8 @@
 ///////////////////////////////////////////////////////////////////////
 // File:        ambigs.cpp
 // Description: Functions for dealing with ambiguities
-//              (model_updater_tesseract_src and recognition).
+//              (training and recognition).
 // Author:      Daria Antonova
-// Created:     Mon Feb 5 11:26:43 PDT 2009
 //
 // (C) Copyright 2008, Google Inc.
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +28,12 @@
 #endif /* _WIN32 && !__GNUC__ */
 
 namespace tesseract {
+
+static const char kAmbigDelimiters[] = "\t ";
+static const char kIllegalMsg[] =
+  "Illegal ambiguity specification on line %d\n";
+static const char kIllegalUnicharMsg[] =
+  "Illegal unichar %s in ambiguity specification\n";
 
 // Maximum line size:
 //   10 for sizes of ambigs, tabs, abmig type and newline
@@ -106,7 +111,7 @@ void UnicharAmbigs::LoadUnicharAmbigs(const UNICHARSET& encoder_set,
                             &replacement_ambig_part_size,
                             replacement_string, &type)) continue;
     // Construct AmbigSpec and add it to the appropriate AmbigSpec_LIST.
-    AmbigSpec *ambig_spec = new AmbigSpec();
+    auto *ambig_spec = new AmbigSpec();
     if (!InsertIntoTable((type == REPLACE_AMBIG) ? replace_ambigs_
                                                  : dang_ambigs_,
                          test_ambig_part_size, test_unichar_ids,

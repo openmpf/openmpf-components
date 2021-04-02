@@ -96,6 +96,7 @@ class JobRunner(object):
             # Only supports PDF files.
             self._acs_headers = {'Ocp-Apim-Subscription-Key': subscription_key,
                                  'Content-Type': 'application/pdf'}
+        self._http_retry = mpf_util.HttpRetry.from_properties(job_properties, logger.warning)
 
     def get_image_detections(self, frame):
         """
@@ -116,11 +117,11 @@ class JobRunner(object):
                                           resize_scale_factor,
                                           self._merge_lines).process_form_results(form_results_json)
         return detections
-            
+
     def get_pdf_detections(self, data_uri):
         with open(data_uri, 'rb') as f:
             pdf_content = f.read()
-        
+
         form_results_json = self._post_to_acs(pdf_content)
 
         return FormResultsProcessor(self._is_image, 1, self._merge_lines).process_form_results(form_results_json)
@@ -134,12 +135,12 @@ class JobRunner(object):
                         self._job_name, result_request.get_full_url())
 
             try:
-                results = urllib.request.urlopen(result_request)
-                json_results = json.load(results)
-                if results.status != 200:
-                    raise mpf.DetectionError.DETECTION_FAILED.exception('GET request failed with HTTP status {}\n'
-                                                                        .format(results.status) +
-                                                                        '\nHTTP request body:\n{}'.format(json_results))
+                with self._http_retry.urlopen(result_request) as results:
+                    if results.status != 200:
+                        raise mpf.DetectionError.DETECTION_FAILED.exception(
+                            'GET request failed with HTTP status {}\n'.format(results.status) +
+                            '\nHTTP request body:\n{}'.format(json_results))
+                    json_results = json.load(results)
                 status = json_results["status"]
                 if status == "succeeded":
                     logger.info('[%s] Layout Analysis succeeded. Processing form results.', self._job_name)
@@ -163,16 +164,12 @@ class JobRunner(object):
     def _post_to_acs(self, encoded_frame):
         logger.info('[%s] Sending POST request to %s', self._job_name, self._acs_url)
         request = urllib.request.Request(self._acs_url, bytes(encoded_frame), self._acs_headers)
-        try:
-            response = urllib.request.urlopen(request)
+        with self._http_retry.urlopen(request) as response:
             results_url = response.headers['operation-location']
-            result_request = urllib.request.Request(results_url, None, self._acs_headers)
-            logger.info('[%s] Received response from ACS server. Obtained form results url.', self._job_name)
-            return self._get_acs_result(result_request)
-        except urllib.error.HTTPError as e:
-            response_content = e.read().decode('utf-8', errors='replace')
-            raise mpf.DetectionException('Request failed with HTTP status {} and message: {}'
-                                         .format(e.code, response_content), mpf.DetectionError.DETECTION_FAILED)
+
+        result_request = urllib.request.Request(results_url, None, self._acs_headers)
+        logger.info('[%s] Received response from ACS server. Obtained form results url.', self._job_name)
+        return self._get_acs_result(result_request)
 
     @classmethod
     def get_acs_url(cls, job_properties):

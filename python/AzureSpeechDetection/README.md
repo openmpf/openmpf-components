@@ -29,5 +29,7 @@ The below properties can be optionally provided to alter the behavior of the com
 
 - `BLOB_ACCESS_TIME`: The amount of time in minutes for which the Azure Speech service will have access to the file in blob storage.
 
+- `TRANSCRIPTION_EXPIRATION`: The amount of time in minutes after which transcription objects will be automatically deleted.
+
 # Sample Program
 `sample_acs_speech_detector.py` can be used to quickly test with the Azure endpoint. Run with the `-h` flag to see accepted command-line arguments.

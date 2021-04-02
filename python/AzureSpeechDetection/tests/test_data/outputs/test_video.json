@@ -1,133 +1,128 @@
 {
-    "AudioFileResults": [
+    "source": "http://localhost:10669/speechtotext/v3.0/recordings/left.avi",
+    "timestamp": "2021-01-22T16:15:25Z",
+    "durationInTicks": 50200000,
+    "duration": "PT5.02S",
+    "combinedRecognizedPhrases": [
         {
-            "AudioFileName": "Channel.0.wav",
-            "AudioFileUrl": null,
-            "AudioLengthInSeconds": 5.02,
-            "CombinedResults": [
+            "channel": 0,
+            "lexical": "there's three left on the left side the one closest to us",
+            "itn": "there's 3 left on the left side the one closest to us",
+            "maskedITN": "There's 3 left on the left side the one closest to us",
+            "display": "There's 3 left on the left side, the one closest to us."
+        }
+    ],
+    "recognizedPhrases": [
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "offset": "PT0.63S",
+            "duration": "PT3.87S",
+            "offsetInTicks": 6300000.0,
+            "durationInTicks": 38700000.0,
+            "nBest": [
                 {
-                    "ChannelNumber": null,
-                    "Lexical": "there's three left on the left side the one closest to us",
-                    "ITN": "there's 3 left on the left side the one closest to us",
-                    "MaskedITN": "There's 3 left on the left side the one closest to us",
-                    "Display": "There's 3 left on the left side the one closest to us."
-                }
-            ],
-            "SegmentResults": [
-                {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": null,
-                    "Offset": 6300000,
-                    "Duration": 38700000,
-                    "OffsetInSeconds": 0.63,
-                    "DurationInSeconds": 3.87,
-                    "NBest": [
+                    "confidence": 0.888124,
+                    "lexical": "there's three left on the left side the one closest to us",
+                    "itn": "there's 3 left on the left side the one closest to us",
+                    "maskedITN": "There's 3 left on the left side the one closest to us",
+                    "display": "There's 3 left on the left side, the one closest to us.",
+                    "words": [
                         {
-                            "Confidence": 0.938951135,
-                            "Lexical": "there's three left on the left side the one closest to us",
-                            "ITN": "there's 3 left on the left side the one closest to us",
-                            "MaskedITN": "There's 3 left on the left side the one closest to us",
-                            "Display": "There's 3 left on the left side the one closest to us.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "there's",
-                                    "Offset": 9300000,
-                                    "Duration": 4000000,
-                                    "OffsetInSeconds": 0.93,
-                                    "DurationInSeconds": 0.4,
-                                    "Confidence": 0.908183
-                                },
-                                {
-                                    "Word": "three",
-                                    "Offset": 13300000,
-                                    "Duration": 4200000,
-                                    "OffsetInSeconds": 1.33,
-                                    "DurationInSeconds": 0.42,
-                                    "Confidence": 0.994331
-                                },
-                                {
-                                    "Word": "left",
-                                    "Offset": 17500000,
-                                    "Duration": 3200000,
-                                    "OffsetInSeconds": 1.75,
-                                    "DurationInSeconds": 0.32,
-                                    "Confidence": 0.987258
-                                },
-                                {
-                                    "Word": "on",
-                                    "Offset": 20700000,
-                                    "Duration": 1800000,
-                                    "OffsetInSeconds": 2.07,
-                                    "DurationInSeconds": 0.18,
-                                    "Confidence": 0.978082
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 22500000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 2.25,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.931961
-                                },
-                                {
-                                    "Word": "left",
-                                    "Offset": 23700000,
-                                    "Duration": 3100000,
-                                    "OffsetInSeconds": 2.37,
-                                    "DurationInSeconds": 0.31,
-                                    "Confidence": 0.989997
-                                },
-                                {
-                                    "Word": "side",
-                                    "Offset": 26800000,
-                                    "Duration": 4300000,
-                                    "OffsetInSeconds": 2.68,
-                                    "DurationInSeconds": 0.43,
-                                    "Confidence": 0.994455
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 31300000,
-                                    "Duration": 2200000,
-                                    "OffsetInSeconds": 3.13,
-                                    "DurationInSeconds": 0.22,
-                                    "Confidence": 0.85266
-                                },
-                                {
-                                    "Word": "one",
-                                    "Offset": 33500000,
-                                    "Duration": 2000000,
-                                    "OffsetInSeconds": 3.35,
-                                    "DurationInSeconds": 0.2,
-                                    "Confidence": 0.945589
-                                },
-                                {
-                                    "Word": "closest",
-                                    "Offset": 35500000,
-                                    "Duration": 4400000,
-                                    "OffsetInSeconds": 3.55,
-                                    "DurationInSeconds": 0.44,
-                                    "Confidence": 0.983266
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 39900000,
-                                    "Duration": 1400000,
-                                    "OffsetInSeconds": 3.99,
-                                    "DurationInSeconds": 0.14,
-                                    "Confidence": 0.9915
-                                },
-                                {
-                                    "Word": "us",
-                                    "Offset": 41300000,
-                                    "Duration": 3500000,
-                                    "OffsetInSeconds": 4.13,
-                                    "DurationInSeconds": 0.35,
-                                    "Confidence": 0.991077
-                                }
-                            ]
+                            "word": "there's",
+                            "offset": "PT0.91S",
+                            "duration": "PT0.42S",
+                            "offsetInTicks": 9100000.0,
+                            "durationInTicks": 4200000.0,
+                            "confidence": 0.694194
+                        },
+                        {
+                            "word": "three",
+                            "offset": "PT1.33S",
+                            "duration": "PT0.42S",
+                            "offsetInTicks": 13300000.0,
+                            "durationInTicks": 4200000.0,
+                            "confidence": 0.970322
+                        },
+                        {
+                            "word": "left",
+                            "offset": "PT1.75S",
+                            "duration": "PT0.32S",
+                            "offsetInTicks": 17500000.0,
+                            "durationInTicks": 3200000.0,
+                            "confidence": 0.917635
+                        },
+                        {
+                            "word": "on",
+                            "offset": "PT2.07S",
+                            "duration": "PT0.18S",
+                            "offsetInTicks": 20700000.0,
+                            "durationInTicks": 1800000.0,
+                            "confidence": 0.930255
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT2.25S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 22500000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.930811
+                        },
+                        {
+                            "word": "left",
+                            "offset": "PT2.37S",
+                            "duration": "PT0.31S",
+                            "offsetInTicks": 23700000.0,
+                            "durationInTicks": 3100000.0,
+                            "confidence": 0.965389
+                        },
+                        {
+                            "word": "side",
+                            "offset": "PT2.68S",
+                            "duration": "PT0.43S",
+                            "offsetInTicks": 26800000.0,
+                            "durationInTicks": 4300000.0,
+                            "confidence": 0.922519
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT3.13S",
+                            "duration": "PT0.22S",
+                            "offsetInTicks": 31300000.0,
+                            "durationInTicks": 2200000.0,
+                            "confidence": 0.709764
+                        },
+                        {
+                            "word": "one",
+                            "offset": "PT3.35S",
+                            "duration": "PT0.2S",
+                            "offsetInTicks": 33500000.0,
+                            "durationInTicks": 2000000.0,
+                            "confidence": 0.869985
+                        },
+                        {
+                            "word": "closest",
+                            "offset": "PT3.55S",
+                            "duration": "PT0.44S",
+                            "offsetInTicks": 35500000.0,
+                            "durationInTicks": 4400000.0,
+                            "confidence": 0.890868
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT3.99S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 39900000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.935458
+                        },
+                        {
+                            "word": "us",
+                            "offset": "PT4.13S",
+                            "duration": "PT0.35S",
+                            "offsetInTicks": 41300000.0,
+                            "durationInTicks": 3500000.0,
+                            "confidence": 0.948321
                         }
                     ]
                 }

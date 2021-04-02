@@ -2,7 +2,6 @@
 // File:        tessdatamanager.h
 // Description: Functions to handle loading/combining tesseract data files.
 // Author:      Daria Antonova
-// Created:     Wed Jun 03 11:26:43 PST 2009
 //
 // (C) Copyright 2009, Google Inc.
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +20,7 @@
 #define TESSERACT_CCUTIL_TESSDATAMANAGER_H_
 
 #include "genericvector.h"
+#include "strngs.h"             // for STRING
 
 static const char kTrainedDataSuffix[] = "traineddata";
 
@@ -214,6 +214,11 @@ class TessdataManager {
    */
   bool ExtractToFile(const char *filename);
 
+ private:
+
+  // Use libarchive.
+  bool LoadArchiveFile(const char *filename);
+
   /**
    * Fills type with TessdataType of the tessdata component represented by the
    * given file name. E.g. tessdata/eng.unicharset -> TESSDATA_UNICHARSET.
@@ -230,7 +235,6 @@ class TessdataManager {
   static bool TessdataTypeFromFileName(const char *filename,
                                        TessdataType *type);
 
- private:
   // Name of file it came from.
   STRING data_file_name_;
   // Function to load the file when we need it.
