@@ -15,6 +15,7 @@ the job property will be used.
 - `ACS_URL`: URL for the Azure Cognitive Services Endpoint. Multiple Read API versions exist for text detection
    and can be specified through the URL as follows:
 
+   - `https://{endpoint}/vision/v3.0/read/analyze`            - v3.0 Read OCR analysis.
    - `https://{endpoint}/vision/v3.1/read/analyze`            - v3.1 Read OCR analysis.
    - `https://{endpoint}/vision/v3.2-preview.3/read/analyze`  - v3.2 Read OCR analysis (preview).
 
