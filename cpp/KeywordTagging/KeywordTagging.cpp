@@ -36,7 +36,6 @@
 
 #include <log4cxx/logmanager.h>
 
-#include <log4cxx/xml/domconfigurator.h>
 #include <Utils.h>
 #include <MPFDetectionException.h>
 #include "JSON.h"
@@ -45,7 +44,6 @@ using namespace MPF;
 using namespace COMPONENT;
 
 using log4cxx::Logger;
-using log4cxx::xml::DOMConfigurator;
 
 using namespace std;
 
@@ -372,21 +370,8 @@ bool KeywordTagging::Init() {
     locale loc = gen("");
     locale::global(loc);
 
-    string run_dir = GetRunDirectory();
-
-    if (run_dir.empty()) {
-        run_dir = ".";
-    }
-
-    string plugin_path = run_dir + "/KeywordTagging";
-    string config_path = plugin_path + "/config";
-
-    log4cxx::xml::DOMConfigurator::configure(plugin_path + "/config/Log4cxxConfig.xml");
     hw_logger_ = log4cxx::Logger::getLogger("KeywordTagging");
-
-    LOG4CXX_DEBUG(hw_logger_, "Plugin path: " << plugin_path);
     LOG4CXX_INFO(hw_logger_, "Initializing keyword tagging");
-
     return true;
 }
 

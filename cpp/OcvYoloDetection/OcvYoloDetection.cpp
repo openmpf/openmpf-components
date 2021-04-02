@@ -35,8 +35,6 @@
 
 #include <opencv2/core.hpp>
 
-#include <log4cxx/xml/domconfigurator.h>
-
 // MPF-SDK header files
 #include <MPFAsyncVideoCapture.h>
 #include <MPFImageReader.h>
@@ -235,12 +233,10 @@ namespace {
 
 
 bool OcvYoloDetection::Init() {
-    auto pluginPath = GetRunDirectory() + "/OcvYoloDetection";
-
-    log4cxx::xml::DOMConfigurator::configure(pluginPath + "/config/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("OcvYoloDetection");
     LOG_DEBUG("Initializing OcvYoloDetector");
 
+    auto pluginPath = GetRunDirectory() + "/OcvYoloDetection";
     modelsParser_.Init(pluginPath + "/models")
             .RegisterPathField("network_config", &ModelSettings::networkConfigFile)
             .RegisterPathField("names", &ModelSettings::namesFile)

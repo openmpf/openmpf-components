@@ -25,6 +25,8 @@
  ******************************************************************************/
 
 #include <gtest/gtest.h>
+#include <log4cxx/basicconfigurator.h>
+
 #include "KeywordTagging.h"
 
 using namespace MPF::COMPONENT;
@@ -98,6 +100,13 @@ void runKeywordTagging(const std::string &uri_path, KeywordTagging &tagger,
 
     ASSERT_FALSE(text_tags.empty());
 }
+
+bool init_logging() {
+    log4cxx::BasicConfigurator::configure();
+    return true;
+}
+bool logging_initialized = init_logging();
+
 
 TEST(KEYWORDTAGGING, TaggingTest) {
     KeywordTagging tagger;

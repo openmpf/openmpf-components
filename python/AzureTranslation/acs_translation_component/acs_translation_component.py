@@ -40,7 +40,8 @@ from typing import Callable, Dict, Iterator, List, Literal, Mapping, Match, Name
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-log = mpf.configure_logging('acs-translation.log', __name__ == '__main__')
+
+log = logging.getLogger('AcsTranslationComponent')
 
 
 class AcsTranslationComponent:

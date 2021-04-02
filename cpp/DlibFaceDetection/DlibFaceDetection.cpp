@@ -30,9 +30,6 @@
 #include <unistd.h>
 #include <fstream>
 
-#include <log4cxx/logmanager.h>
-#include <log4cxx/xml/domconfigurator.h>
-
 #include <QFile>
 #include <QFileInfo>
 
@@ -95,8 +92,6 @@ bool DlibFaceDetection::Init() {
     string plugin_path = run_dir + "/DlibFaceDetection";
     string config_path = plugin_path + "/config";
 
-    // Configure logger
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("DlibFaceDetection");
 
     // uncommenting this line will cause all log statements to go to the detection log

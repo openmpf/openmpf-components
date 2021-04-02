@@ -30,21 +30,19 @@
 #include <MPFDetectionComponent.h>
 #include <unistd.h>
 #include <gtest/gtest.h>
+#include <log4cxx/basicconfigurator.h>
 #include <fstream>
 
 #define BOOST_NO_CXX11_SCOPED_ENUMS
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
-#include <log4cxx/xml/domconfigurator.h>
 
 #undef BOOST_NO_CXX11_SCOPED_ENUMS
 
 #include "TesseractOCRTextDetection.h"
 
 using namespace MPF::COMPONENT;
-using log4cxx::Logger;
-using log4cxx::xml::DOMConfigurator;
 
 /**
  * Helper function for setting standard job properties for each test.
@@ -316,6 +314,13 @@ void loadWordList(const std::string &wordlist_file,
     }
     in.close();
 }
+
+
+bool init_logging() {
+    log4cxx::BasicConfigurator::configure();
+    return true;
+}
+bool logging_initialized = init_logging();
 
 
 TEST(TESSERACTOCR, CustomModelTest) {

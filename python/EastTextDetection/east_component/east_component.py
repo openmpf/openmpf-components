@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import logging
+
 import numpy as np
 
 import mpf_component_api as mpf
@@ -31,7 +33,7 @@ import mpf_component_util as mpf_util
 
 from .east_processor import EastProcessor
 
-logger = mpf.configure_logging('east-text-detection.log', __name__ == '__main__')
+logger = logging.getLogger('EastComponent')
 
 
 class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
@@ -98,13 +100,14 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         image = image_reader.get_image()
 
         try:
-            logger.info('[%s] Loading model', image_job.job_name)
+            logger.info('[%s] Loading model...', image_job.job_name)
             self.processor.load_model(
                 frame_width=image.shape[1],
                 frame_height=image.shape[0],
                 max_side_len=kwargs['max_side_len'],
                 rotate_on=kwargs['rotate_on']
             )
+            logger.info('[%s] Model loaded.', image_job.job_name)
         except Exception as e:
             error_str = "[{:s}] Exception occurred while loading model: {:s}".format(
                 image_job.job_name,
@@ -151,7 +154,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
 
         try:
             frame_width, frame_height = video_capture.frame_size
-            logger.info('[%s] Loading model', video_job.job_name)
+            logger.info('[%s] Loading model...', video_job.job_name)
             self.processor.load_model(
                 frame_width=frame_width,
                 frame_height=frame_height,
@@ -159,6 +162,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
                 rotate_on=kwargs['rotate_on'],
                 batch_size=kwargs['batch_size']
             )
+            logger.info('[%s] Model loaded.', video_job.job_name)
         except Exception as e:
             error_str = "[{:s}] Exception occurred while loading model: {:s}".format(
                 video_job.job_name,
