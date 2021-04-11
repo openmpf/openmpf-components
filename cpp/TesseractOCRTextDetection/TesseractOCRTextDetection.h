@@ -71,6 +71,8 @@ namespace MPF {
 
             std::vector<MPFGenericTrack> GetDetections(const MPFGenericJob &job) override;
 
+            std::vector<MPFVideoTrack> GetDetections(const MPFVideoJob &job) override;
+
             std::string GetDetectionType() override;
 
             bool Supports(MPFDetectionDataType data_type) override;
@@ -201,7 +203,13 @@ namespace MPF {
                 }
             };
 
-            bool process_ocr_text(Properties &detection_properties, const MPFImageJob &job, const OCR_output &ocr_out,
+            std::vector<MPFImageLocation> process_image_job(const MPFJob &job,
+                                                            TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
+                                                            cv::Mat &image_data,
+                                                            const std::string &run_dir,
+                                                            MPFDetectionError &job_status);
+
+            bool process_ocr_text(Properties &detection_properties, const MPFJob &job, const OCR_output &ocr_out,
                     const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                     int page_num = -1);
 
@@ -222,8 +230,8 @@ namespace MPF {
             static void process_parallel_image_runs(OCR_job_inputs &inputs, Image_results &results);
             static void process_serial_image_runs(OCR_job_inputs &inputs, Image_results &results);
 
-            void preprocess_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset);
-            void rescale_image(const MPFImageJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset);
+            void preprocess_image(const MPFJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset);
+            void rescale_image(const MPFJob &job, cv::Mat &input_image, const OCR_filter_settings &ocr_fset);
 
             static void process_tesseract_lang_model(OCR_job_inputs &input, OCR_results  &result);
 
@@ -238,13 +246,13 @@ namespace MPF {
             static std::string process_osd_lang(const std::string &script_type,
                                                 const OCR_filter_settings &ocr_fset);
 
-            void get_OSD(OSBestResult &best_result, cv::Mat &imi, const MPFImageJob &job,
+            void get_OSD(OSBestResult &best_result, cv::Mat &imi, const MPFJob &job,
                          OCR_filter_settings &ocr_fset,
                          Properties &detection_properties,
                          std::string &tessdata_script_dir, std::set<std::string> &missing_languages);
 
             bool get_OSD_rotation(OSResults *results, cv::Mat &imi_scaled, cv::Mat &imi_original,
-                                  int &rotation, const MPFImageJob &job, OCR_filter_settings &ocr_fset);
+                                  int &rotation, const MPFJob &job, OCR_filter_settings &ocr_fset);
 
             static std::string return_valid_tessdir(const std::string &job_name,
                                                     const std::string &lang_str,

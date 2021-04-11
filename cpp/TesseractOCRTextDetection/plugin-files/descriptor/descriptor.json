@@ -32,6 +32,12 @@
           "propertiesKey": "detection.confidence.threshold"
         },
         {
+          "name": "FRAME_INTERVAL",
+          "description": "Controls whether the component performs detection on every frame in the video segment, or skips some frames at a regular interval. Must be greater than or equal to 0. If the frame_interval is set to a value less than 1, a frame_interval of 1 will be used, so that detections are performed on every frame. For a frame interval N > 1, every N-1 frames will be skipped.",
+          "type": "INT",
+          "defaultValue": "1"
+        },
+        {
           "name": "MODELS_DIR_PATH",
           "description": "Path to models directory",
           "type": "STRING",
