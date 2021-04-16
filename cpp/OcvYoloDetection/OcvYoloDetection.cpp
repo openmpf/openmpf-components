@@ -366,6 +366,20 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
         }
 
         for (MPFVideoTrack &mpfTrack : completedTracks) {
+            // Remove detections below the confidence threshold.
+            std::vector<int> detections_to_erase;
+            for (const auto &loc : mpfTrack.frame_locations) {
+                if (loc.second.confidence < config.confidenceThreshold) {
+                    detections_to_erase.push_back(loc.first);
+                }
+            }
+            for (int idx : detections_to_erase) {
+                mpfTrack.frame_locations.erase(idx);
+            }
+            // Adjust start and stop frames in case detections were removed at
+            // the beginning or end of the track.
+            mpfTrack.start_frame = mpfTrack.frame_locations.begin()->first;
+            mpfTrack.stop_frame = mpfTrack.frame_locations.rbegin()->first;
             videoCapture.ReverseTransform(mpfTrack);
         }
 
