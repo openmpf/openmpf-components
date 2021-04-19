@@ -34,22 +34,30 @@ import java.util.ArrayList;
 
 public class TextExtractionContentHandler extends ToTextContentHandler {
     private String pageTag = "div";
+    private String paragraphTag = "p";
     protected int pageNumber = 0;
+    protected int sectionNumber = 0;
     public StringBuilder textResults;
-    public ArrayList<StringBuilder> pageMap;
+    public ArrayList<ArrayList<StringBuilder>> pageMap;
+    private ArrayList<StringBuilder> sectionMap;
     private boolean skipTitle;
+    private boolean skipBlankParagraphs;
 
     public TextExtractionContentHandler(){
         super();
-        pageTag = "div";
         pageNumber = 0;
+        sectionNumber = 0;
         // Enable to avoid storing metadata/title text from ppt document.
         skipTitle = true;
 
-        textResults = new StringBuilder();
-        pageMap = new ArrayList<StringBuilder>();
-        pageMap.add(new StringBuilder());
+        // Disable to skip recording empty paragraphs (warning: could produce an excessive number of empty tracks).
+        skipBlankParagraphs = true;
 
+        textResults = new StringBuilder();
+        pageMap = new ArrayList<ArrayList<StringBuilder>>();
+        sectionMap = new ArrayList<StringBuilder>();
+        pageMap.add(sectionMap);
+        sectionMap.add(new StringBuilder());
     }
 
     public void startElement (String uri, String localName, String qName, Attributes atts) throws SAXException  {
@@ -67,6 +75,8 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
                     startPage();
                 }
             }
+        } else if (paragraphTag.equals(qName)) {
+            newSection();
         }
     }
 
@@ -80,13 +90,16 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     public void characters(char[] ch, int start, int length) throws SAXException {
         if (length > 0) {
             textResults.append(ch, start, length);
-            pageMap.get(pageNumber).append(ch, start, length);
+            pageMap.get(pageNumber).get(sectionNumber).append(ch, start, length);
         }
     }
 
     protected void startPage() throws SAXException {
         pageNumber ++;
-        pageMap.add(new StringBuilder());
+        sectionNumber = 0;
+        sectionMap = new ArrayList<StringBuilder>();
+        sectionMap.add(new StringBuilder());
+        pageMap.add(sectionMap);
     }
 
     protected void endPage() throws SAXException {
@@ -95,16 +108,27 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
 
     protected void resetPage() throws SAXException {
         pageNumber = 0;
+        sectionNumber = 0;
         pageMap.clear();
-        pageMap.add(new StringBuilder());
+        sectionMap.clear();
+        pageMap.add(sectionMap);
+        sectionMap.add(new StringBuilder());
+    }
+
+    protected void newSection() throws SAXException {
+        if (skipBlankParagraphs && sectionMap.get(sectionNumber).toString().trim().length() == 0){
+            return;
+        }
+        sectionNumber++;
+        sectionMap.add(new StringBuilder());
     }
 
     public String toString(){
         return textResults.toString();
     }
 
-    // Returns the text detections, subdivided by page number.
-    public ArrayList<StringBuilder> getPages(){
+    // Returns the text detections, subdivided by page number and section.
+    public ArrayList<ArrayList<StringBuilder>> getPages(){
         return pageMap;
     }
 }

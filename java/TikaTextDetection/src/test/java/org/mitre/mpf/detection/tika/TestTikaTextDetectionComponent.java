@@ -75,26 +75,26 @@ public class TestTikaTextDetectionComponent {
         boolean debug = false;
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        assertEquals("Number of expected tracks does not match.", 11 ,tracks.size());
+        assertEquals("Number of expected tracks does not match.", 23 ,tracks.size());
         // Test each output type.
 
         MPFGenericTrack testTrack = tracks.get(0);
         assertEquals("Expected language does not match.", "English", testTrack.getDetectionProperties().get("TEXT_LANGUAGE"));
-        assertEquals("Expected text does not match.", "Testing Text Detection\nSlide 1", testTrack.getDetectionProperties().get("TEXT"));
+        assertEquals("Expected text does not match.", "Testing Text Detection", testTrack.getDetectionProperties().get("TEXT"));
 
         // Test language extraction.
-        testTrack = tracks.get(1);
+        testTrack = tracks.get(3);
         assertEquals("Expected language does not match.", "Japanese", testTrack.getDetectionProperties().get("TEXT_LANGUAGE"));
 
         // Test no detections.
-        testTrack = tracks.get(4);
+        testTrack = tracks.get(9);
         assertEquals("Text should be empty", "", testTrack.getDetectionProperties().get("TEXT"));
         assertEquals("Language should be empty", "Unknown", testTrack.getDetectionProperties().get("TEXT_LANGUAGE"));
 
-        testTrack = tracks.get(9);
+        testTrack = tracks.get(20);
         assertThat(testTrack.getDetectionProperties().get("TEXT"), containsString("All human beings are born free"));
 
-        testTrack = tracks.get(10);
+        testTrack = tracks.get(22);
         assertThat(testTrack.getDetectionProperties().get("TEXT"), containsString("End slide test text"));
 
         // For human testing.
@@ -122,7 +122,28 @@ public class TestTikaTextDetectionComponent {
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        assertEquals("Number of expected tracks does not match.", 11, tracks.size());
+        assertEquals("Number of expected tracks does not match.", 23, tracks.size());
+    }
+
+    @Test
+    public void testGetDetectionsDocumentFile() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.docx").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "true");
+
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        assertEquals("Number of expected tracks does not match.", 6, tracks.size());
+        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"),
+                containsString("first section"));
+        assertThat(tracks.get(1).getDetectionProperties().get("TEXT"),
+                containsString("second section"));
+        assertThat(tracks.get(2).getDetectionProperties().get("TEXT"),
+                containsString("third section"));
     }
 
     @Test
