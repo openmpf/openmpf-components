@@ -26,6 +26,7 @@
 
 import sys
 import os
+import logging
 from collections import Counter
 
 # Add east_component to path.
@@ -35,6 +36,7 @@ from east_component.east_component import EastComponent
 import unittest
 import mpf_component_api as mpf
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestEast(unittest.TestCase):
 

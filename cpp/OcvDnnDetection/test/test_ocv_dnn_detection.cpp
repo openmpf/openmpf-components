@@ -28,6 +28,7 @@
 #include <MPFDetectionComponent.h>
 
 #include <gtest/gtest.h>
+#include <log4cxx/basicconfigurator.h>
 
 #include "OcvDnnDetection.h"
 
@@ -98,6 +99,12 @@ void assertObjectDetectedInImage(const std::string &expected_object,
     ASSERT_TRUE(containsObject(expected_object, image_locations))
                 << "Expected GoogleNet to detect a \"" << expected_object << "\" in " << image_path;
 }
+
+bool init_logging() {
+    log4cxx::BasicConfigurator::configure();
+    return true;
+}
+bool logging_initialized = init_logging();
 
 TEST(OCVDNN, GoogleNetImageTest) {
 

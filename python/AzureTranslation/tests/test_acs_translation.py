@@ -27,6 +27,7 @@
 
 import http.server
 import json
+import logging
 import os
 import pathlib
 import sys
@@ -41,9 +42,9 @@ from unittest import mock
 import mpf_component_api as mpf
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent / '../acs_translation_component'))
-from acs_translation_component import AcsTranslationComponent, TranslationClient, \
-    NewLineBehavior, ChineseAndJapaneseCodePoints, AcsTranslateUrlBuilder, BreakSentenceClient, \
-    SentenceBreakGuesser
+from acs_translation_component import AcsTranslationComponent, get_azure_char_count, \
+    TranslationClient, NewLineBehavior, ChineseAndJapaneseCodePoints, AcsTranslateUrlBuilder, \
+    BreakSentenceClient, SentenceBreakGuesser, get_n_azure_chars
 
 
 
@@ -57,6 +58,7 @@ SPANISH_SAMPLE_TEXT_ENG_TRANSLATE = 'Where\'s the library?'
 
 TEST_DATA = pathlib.Path(__file__).parent / 'data'
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestAcsTranslation(unittest.TestCase):
 
@@ -918,13 +920,69 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertIn('from=zh-Hans', translate_url)
 
 
+
+    def test_get_n_chars(self):
+        self.assertEqual('123', get_n_azure_chars('12345', 0, 3))
+
+        text = '😀' * 5 + '👍' * 5
+        self.assertEqual('😀' * 5, get_n_azure_chars(text, 0, 10))
+        self.assertEqual('👍' * 5, get_n_azure_chars(text, 5, 10))
+
+        text = '😀😀12345'
+        self.assertEqual('😀😀1', get_n_azure_chars(text, 0, 5))
+        self.assertEqual('😀', get_n_azure_chars(text, 0, 2))
+        self.assertEqual('😀', get_n_azure_chars(text, 0, 3))
+
+        text = '😀😀😀😀😀12345'
+        self.assertEqual('😀😀', get_n_azure_chars(text, 0, 5))
+        self.assertEqual('😀😀😀', get_n_azure_chars(text, 0, 6))
+        self.assertEqual('😀😀😀', get_n_azure_chars(text, 0, 7))
+
+        self.assertEqual('😀😀', get_n_azure_chars(text, 2, 5))
+        self.assertEqual('😀😀😀', get_n_azure_chars(text, 2, 6))
+        self.assertEqual('😀😀😀1', get_n_azure_chars(text, 2, 7))
+        self.assertEqual('😀😀😀12', get_n_azure_chars(text, 2, 8))
+        self.assertEqual('😀😀😀123', get_n_azure_chars(text, 2, 9))
+        self.assertEqual('😀😀😀1234', get_n_azure_chars(text, 2, 10))
+        self.assertEqual('😀😀😀12345', get_n_azure_chars(text, 2, 11))
+        self.assertEqual('😀😀😀12345', get_n_azure_chars(text, 2, 12))
+
+        text = '12345😀😀😀😀😀'
+        self.assertEqual('12345', get_n_azure_chars(text, 0, 5))
+        self.assertEqual('12345', get_n_azure_chars(text, 0, 6))
+        self.assertEqual('12345😀', get_n_azure_chars(text, 0, 7))
+        self.assertEqual('12345😀', get_n_azure_chars(text, 0, 8))
+        self.assertEqual('12345😀😀', get_n_azure_chars(text, 0, 9))
+        self.assertEqual(text, get_n_azure_chars(text, 0, 15))
+
+        self.assertEqual('345😀', get_n_azure_chars(text, 2, 5))
+        self.assertEqual('345😀', get_n_azure_chars(text, 2, 6))
+        self.assertEqual('345😀😀', get_n_azure_chars(text, 2, 7))
+        self.assertEqual('345😀😀', get_n_azure_chars(text, 2, 8))
+        self.assertEqual('345😀😀😀', get_n_azure_chars(text, 2, 9))
+        self.assertEqual('345😀😀😀', get_n_azure_chars(text, 2, 10))
+        self.assertEqual('345😀😀😀😀', get_n_azure_chars(text, 2, 11))
+        self.assertEqual('345😀😀😀😀', get_n_azure_chars(text, 2, 12))
+
+        self.assertEqual('', get_n_azure_chars('', 0, 100))
+        self.assertEqual('', get_n_azure_chars('', 10, 100))
+        self.assertEqual('', get_n_azure_chars('Hello, world!', 5, 0))
+        self.assertEqual('', get_n_azure_chars('Hello, world!', 0, 0))
+        self.assertEqual('', get_n_azure_chars('Hello, world!', 20, 0))
+        self.assertEqual('', get_n_azure_chars('Hello, world!', 20, 20))
+
+    def test_azure_char_count(self):
+        self.assertEqual(5, get_azure_char_count('12345'))
+        self.assertEqual(15, get_azure_char_count('😀😀😀😀😀12345'))
+        self.assertEqual(20, get_azure_char_count('😀' * 5 + '👍' * 5))
+
+
 def get_test_properties(**extra_properties):
     return {
         'ACS_URL': os.getenv('ACS_URL', 'http://localhost:10670/translator'),
         'ACS_SUBSCRIPTION_KEY': os.getenv('ACS_SUBSCRIPTION_KEY', 'test_key'),
         **extra_properties
     }
-
 
 
 class AcsRequestEntry(TypedDict):

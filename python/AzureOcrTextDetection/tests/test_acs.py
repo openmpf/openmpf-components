@@ -25,6 +25,7 @@
 #############################################################################
 
 import http.server
+import logging
 import os
 import queue
 import shutil
@@ -53,6 +54,7 @@ rights. They are endowed with reason and conscience
 and should act towards one another in a spirit of
 brotherhood.'''
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestAcs(unittest.TestCase):
 

@@ -25,7 +25,6 @@
 #############################################################################
 
 import bisect
-import io
 import json
 import logging
 import pathlib
@@ -35,13 +34,14 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from typing import Callable, Dict, Iterator, List, Literal, Mapping, Match, NamedTuple, Optional, \
-    Sequence, TypedDict, TypeVar, Union
+from typing import Callable, Dict, Iterator, List, Literal, Mapping, Match, NamedTuple, \
+    Optional, Sequence, TypedDict, TypeVar, Union
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-log = mpf.configure_logging('acs-translation.log', __name__ == '__main__')
+
+log = logging.getLogger('AcsTranslationComponent')
 
 
 class AcsTranslationComponent:
@@ -373,7 +373,7 @@ class TranslationClient:
 
     def _send_detect_request(self, text) -> 'AcsResponses.Detect':
         request_body = [
-            {'Text': text[:self.DETECT_MAX_CHARS]}
+            {'Text': get_n_azure_chars(text, 0, self.DETECT_MAX_CHARS)}
         ]
         encoded_body = json.dumps(request_body).encode('utf-8')
         request = urllib.request.Request(self._detect_url, encoded_body,
@@ -397,7 +397,7 @@ class BreakSentenceClient:
     # Taken from https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-translate
     TRANSLATION_MAX_CHARS = 10_000
 
-    # ACS limits the number of characters that can be translated in a single /breaksentence call.
+    # ACS limits the number of characters that can be processed in a single /breaksentence call.
     # Taken from https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-break-sentence
     BREAK_SENTENCE_MAX_CHARS = 50_000
 
@@ -415,17 +415,18 @@ class BreakSentenceClient:
         Breaks up the given text in to chunks that are under TRANSLATION_MAX_CHARS. Each chunk
         will contain one or more complete sentences as reported by the break sentence endpoint.
         """
-        if len(text) <= self.TRANSLATION_MAX_CHARS:
+        azure_char_count = get_azure_char_count(text)
+        if azure_char_count <= self.TRANSLATION_MAX_CHARS:
             return SplitTextResult([text], from_lang, from_lang_confidence)
 
         log.info('Splitting input text because the translation endpoint allows a maximum of '
-                 f'{self.TRANSLATION_MAX_CHARS} characters, but the text contained '
-                 f'{len(text)} characters.')
+                 f'{self.TRANSLATION_MAX_CHARS} Azure characters, but the text contained '
+                 f'{azure_char_count} Azure characters.')
 
-        if len(text) > self.BREAK_SENTENCE_MAX_CHARS:
+        if azure_char_count > self.BREAK_SENTENCE_MAX_CHARS:
             log.warning('Guessing sentence breaks because the break sentence endpoint allows a '
-                        f'maximum of {self.BREAK_SENTENCE_MAX_CHARS} characters, but the text '
-                        f'contained {len(text)} characters.')
+                        f'maximum of {self.BREAK_SENTENCE_MAX_CHARS} Azure characters, but the text '
+                        f'contained {azure_char_count} Azure characters.')
             chunks = list(SentenceBreakGuesser.guess_breaks(text))
             log.warning(f'Broke text up in to {len(chunks)} chunks. Each chunk will be sent to '
                         'the break sentence endpoint.')
@@ -478,14 +479,46 @@ class BreakSentenceClient:
     def _process_break_sentence_response(
             cls, text: str, response_body: 'AcsResponses.BreakSentence') -> Iterator[str]:
         current_chunk_length = 0
-        with io.StringIO(text) as sio:
-            for length in response_body[0]['sentLen']:
-                if length + current_chunk_length <= cls.TRANSLATION_MAX_CHARS:
-                    current_chunk_length += length
-                else:
-                    yield sio.read(current_chunk_length)
-                    current_chunk_length = length
-            yield sio.read(current_chunk_length)
+        current_chunk_begin = 0
+        current_chunk_azure_char_count = 0
+        for length in response_body[0]['sentLen']:
+            sentence_begin = current_chunk_begin + current_chunk_length
+            sentence = text[sentence_begin: sentence_begin + length]
+            sentence_azure_char_count = get_azure_char_count(sentence)
+            # The /breaksentence endpoint will return sentences <= 1000 characters, so the following condition will be
+            # true at least once.
+            if sentence_azure_char_count + current_chunk_azure_char_count <= cls.TRANSLATION_MAX_CHARS:
+                current_chunk_length += len(sentence)
+                current_chunk_azure_char_count += sentence_azure_char_count
+            else:
+                current_chunk_end = current_chunk_begin + current_chunk_length
+                yield text[current_chunk_begin:current_chunk_end]
+                current_chunk_begin = current_chunk_end
+                current_chunk_length = len(sentence)
+                current_chunk_azure_char_count = sentence_azure_char_count
+        yield text[current_chunk_begin:]
+
+
+def get_n_azure_chars(input_str: str, begin: int, count: int) -> str:
+    substr = input_str[begin: begin + count]
+    extra = get_azure_char_count(substr) - count
+    if extra <= 0:
+        return substr
+
+    num_chars_to_remove = 0
+    while extra > 0:
+        num_chars_to_remove += 1
+        last = substr[-num_chars_to_remove]
+        extra -= 2 if is_emoji(last) else 1
+    return substr[:-num_chars_to_remove]
+
+def get_azure_char_count(input_str: str) -> int:
+    # Azure counts most emoji as two characters
+    return len(input_str) + sum(1 for ch in input_str if is_emoji(ch))
+
+def is_emoji(char: str) -> bool:
+    category = unicodedata.category(char)
+    return category == 'So' or category == 'Sk'
 
 
 def create_url(base_url: str, path: str, query_params: Mapping[str, str]) -> str:
@@ -531,9 +564,8 @@ class SentenceBreakGuesser:
         current_pos = 0
         max_chars = BreakSentenceClient.BREAK_SENTENCE_MAX_CHARS
         while True:
-            chunk_end = current_pos + max_chars
-            chunk = text[current_pos:chunk_end]
-            is_last_chunk = len(text) <= chunk_end
+            chunk = get_n_azure_chars(text, current_pos, max_chars)
+            is_last_chunk = len(text) <= current_pos + len(chunk)
             if is_last_chunk:
                 yield chunk
                 return
@@ -563,6 +595,10 @@ class SentenceBreakGuesser:
             -1)
         if last_punctuation_pos > 0:
             return last_punctuation_pos + 1
+
+        single_newline_pos = text.rfind('\n')
+        if single_newline_pos > 0:
+            return single_newline_pos + 1
 
         # Look for last punctuation character in the text.
         # This will catch non-sentence breaking punctuation, but we already made our best effort

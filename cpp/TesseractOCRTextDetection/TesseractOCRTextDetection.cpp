@@ -40,8 +40,6 @@
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 
-#include <log4cxx/xml/domconfigurator.h>
-
 #include <Magick++.h>
 
 #include <opencv2/imgproc/imgproc.hpp>
@@ -59,7 +57,6 @@ using namespace MPF;
 using namespace COMPONENT;
 using namespace std;
 using log4cxx::Logger;
-using log4cxx::xml::DOMConfigurator;
 typedef boost::multi_index::multi_index_container<string,
         boost::multi_index::indexed_by<
                 boost::multi_index::sequenced<>,
@@ -111,8 +108,6 @@ bool TesseractOCRTextDetection::Init() {
     }
     string plugin_path = run_dir + "/TesseractOCRTextDetection";
     string config_path = plugin_path + "/config";
-    cout << "looking for logger at " << plugin_path + "/config/Log4cxxConfig.xml" << endl;
-    log4cxx::xml::DOMConfigurator::configure(plugin_path + "/config/Log4cxxConfig.xml");
     hw_logger_ = log4cxx::Logger::getLogger("TesseractOCRTextDetection");
 
     LOG4CXX_DEBUG(hw_logger_, "Plugin path: " << plugin_path);

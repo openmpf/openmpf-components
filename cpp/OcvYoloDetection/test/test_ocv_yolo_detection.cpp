@@ -29,6 +29,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <log4cxx/basicconfigurator.h>
 #include <MPFDetectionObjects.h>
 #include <MPFImageReader.h>
 #include <MPFVideoCapture.h>
@@ -48,6 +49,11 @@ using namespace MPF::COMPONENT;
   std::cout << GTEST_BOX << MSG << std::endl;                                 \
 }
 
+bool init_logging() {
+    log4cxx::BasicConfigurator::configure();
+    return true;
+}
+bool logging_initialized = init_logging();
 
 OcvYoloDetection initComponent() {
     OcvYoloDetection component;

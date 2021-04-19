@@ -25,6 +25,7 @@
 #############################################################################
 
 import sys
+import logging
 import os
 import json
 import unittest
@@ -63,6 +64,7 @@ def get_test_properties(**extra_properties):
         **extra_properties
     )
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestAcsSpeech(unittest.TestCase):
     mock_server: ClassVar['MockServer']

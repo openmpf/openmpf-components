@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -29,26 +31,28 @@ ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
 
-RUN yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
     && yum --enablerepo=remi install -y ImageMagick ImageMagick-c++ \
          ImageMagick-c++-devel ImageMagick-devel ImageMagick-libs \
          libjpeg libpng libtiff zlib ghostscript \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*
+    && yum clean all;
 
 
-RUN mkdir -p /tmp/leptonica \
+RUN --mount=type=tmpfs,target=/tmp \
+    mkdir -p /tmp/leptonica \
     && cd /tmp/leptonica \
     && curl -SL 'https://github.com/DanBloomberg/leptonica/archive/1.75.0.tar.gz' \
         | tar --extract --gzip \
     && mkdir -p leptonica-1.75.0/build \
     && cd leptonica-1.75.0/build \
     && cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local .. \
-    && make install -j $(nproc) \
-    && rm -rf /tmp/leptonica
+    && make install -j $(nproc);
 
 
-RUN mkdir -p /tmp/tesseract \
+RUN --mount=type=tmpfs,target=/tmp \
+    mkdir -p /tmp/tesseract \
     && cd /tmp/tesseract \
     && curl -SL 'https://github.com/tesseract-ocr/tesseract/archive/4.1.1.tar.gz' \
         | tar --extract --gzip \
@@ -59,12 +63,9 @@ RUN mkdir -p /tmp/tesseract \
     && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/unicharset.h /usr/local/include/tesseract/ \
     && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/errcode.h /usr/local/include/tesseract/ \
     && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/unicharmap.h /usr/local/include/tesseract/ \
-    && cp /tmp/tesseract/tesseract-4.1.1/src/arch/intsimdmatrix.h /usr/local/include/tesseract/ \
-    && rm -rf /tmp/tesseract
+    && cp /tmp/tesseract/tesseract-4.1.1/src/arch/intsimdmatrix.h /usr/local/include/tesseract/
 
-COPY . .
-
-RUN build-component.sh
+RUN --mount=target=. build-component.sh
 
 ARG RUN_TESTS=false
 RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./TesseractOCRTextDetectionTest; fi
@@ -73,12 +74,13 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./TesseractOCRTe
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-RUN yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
     && yum --enablerepo=remi install -y ImageMagick \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*
+    && yum clean all
 
-ENV COMPONENT_LOG_NAME tesseract-ocr-text-detection.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/TesseractOCRTextDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/TesseractOCRTextDetection $PLUGINS_DIR/TesseractOCRTextDetection
 

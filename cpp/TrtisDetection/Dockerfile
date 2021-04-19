@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -28,19 +30,22 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 ARG MODELS_REGISTRY=openmpf/
 
-FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:6.0 as models
+FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:6.1 as models
 
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-RUN yum -y --nogpgcheck install git openssl-devel curl-devel cuda-cufft-10-2 cuda-npp-10-2 \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum -y --nogpgcheck install git openssl-devel curl-devel cuda-cufft-10-2 cuda-npp-10-2 \
+    && yum clean all
 
 # Install cares, protobuf, zlib, gRPC
 WORKDIR /tmp
 
-RUN git clone -b v1.20.0 https://github.com/grpc/grpc  && cd grpc && git submodule update --init --recursive \
+RUN --mount=type=tmpfs,target=/tmp \
+git clone -b v1.20.0 --depth 1 --recurse-submodules https://github.com/grpc/grpc \
+&& cd grpc \
 && mkdir -p /tmp/grpc/third_party/protobuf/cmake/build \
 && cd /tmp/grpc/third_party/protobuf/cmake/build \
 && cmake3 -DCMAKE_POSITION_INDEPENDENT_CODE=ON -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release .. \
@@ -75,7 +80,9 @@ RUN git clone -b v1.20.0 https://github.com/grpc/grpc  && cd grpc && git submodu
 
 # Install AWS SDK for C++ so we can use S3 storage.
 # Do this before installing newer curl.
-RUN mkdir /tmp/aws-sdk-cpp \
+RUN --mount=type=tmpfs,target=/tmp \
+    mkdir /tmp/aws-sdk-cpp \
+    && cd /tmp/aws-sdk-cpp \
     && curl --location 'https://github.com/aws/aws-sdk-cpp/archive/1.8.48.tar.gz' \
         | tar --extract --gzip \
     && cd aws-sdk-cpp-1.8.48 \
@@ -91,16 +98,20 @@ RUN mkdir /tmp/aws-sdk-cpp \
 
 # Install curl
 # Newer version needed for TRTIS.
-RUN cd /tmp/ \
-&& git clone -b curl-7_67_0 https://github.com/curl/curl.git \
+RUN --mount=type=tmpfs,target=/tmp \
+cd /tmp/ \
+&& git clone -b curl-7_67_0 --depth 1 https://github.com/curl/curl.git \
 && cd curl \
-&& mkdir build && cd build && cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -DBUILD_SHARED_LIBS=ON .. && make install \
+&& mkdir build && cd build \
+&& cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -DBUILD_SHARED_LIBS=ON .. \
+&& make --jobs "$(nproc)" install \
 && cp /usr/local/lib64/libcurl.so /usr/local/lib/libcurl.so \
 && ldconfig
 
 # Install TensorRT-Inference-Server client libs.
-RUN cd /tmp/ \
-&& git clone -b v1.7.0 https://github.com/NVIDIA/tensorrt-inference-server.git tensorrt-inference-server \
+RUN --mount=type=tmpfs,target=/tmp \
+cd /tmp/ \
+&& git clone -b v1.7.0 --depth 1 https://github.com/NVIDIA/tensorrt-inference-server.git tensorrt-inference-server \
 # Disable building TRTIS python client.
 && sed -i '/add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/d' /tmp/tensorrt-inference-server/build/trtis-clients/CMakeLists.txt \
 # Set version number.
@@ -153,7 +164,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; \
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-ENV COMPONENT_LOG_NAME trtis-detection.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/TrtisDetection/lib
 
 # Must copy from openmpf_trtis_test_server so that Docker BuildKit does not skip test stage.
 COPY --from=openmpf_trtis_test_server /Testing_MPF_FILES/plugin/TrtisDetection \

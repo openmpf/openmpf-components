@@ -28,6 +28,7 @@
 #include <gtest/gtest.h>
 
 #include <opencv2/core.hpp>
+#include <log4cxx/basicconfigurator.h>
 
 #include <MPFDetectionComponent.h>
 #include <MPFVideoCapture.h>
@@ -88,6 +89,11 @@ bool object_found(const std::string &expected_object_name, int frame_number, con
     return object_found(expected_object_name, frame_number, std::vector<MPFVideoTrack>{ track });
 }
 
+bool init_logging() {
+    log4cxx::BasicConfigurator::configure();
+    return true;
+}
+bool logging_initialized = init_logging();
 
 DarknetDetection init_component() {
     DarknetDetection component;

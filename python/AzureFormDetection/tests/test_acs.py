@@ -25,6 +25,7 @@
 #############################################################################
 
 import http.server
+import logging
 import os
 import queue
 import shutil
@@ -44,6 +45,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../acs_form_detectio
 import acs_form_detection_component
 from acs_form_detection_component import AcsFormDetectionComponent, FrameEncoder
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestAcs(unittest.TestCase):
 
