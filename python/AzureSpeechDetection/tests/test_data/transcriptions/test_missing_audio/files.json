@@ -1,0 +1,28 @@
+{
+    "values": [
+        {
+            "self": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_missing_audio/files/hash0.json",
+            "name": "contenturl_0.json",
+            "kind": "Transcription",
+            "properties": {
+                "size": 354
+            },
+            "createdDateTime": "2021-01-22T17:02:44Z",
+            "links": {
+                "contentUrl": "http://localhost:10669/speechtotext/v3.0/outputs/test_missing_audio.json"
+            }
+        },
+        {
+            "self": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_missing_audio/files/hash1.json",
+            "name": "report.json",
+            "kind": "TranscriptionReport",
+            "properties": {
+                "size": 337
+            },
+            "createdDateTime": "2021-01-22T17:02:44Z",
+            "links": {
+                "contentUrl": "dummy_file.json"
+            }
+        }
+    ]
+}

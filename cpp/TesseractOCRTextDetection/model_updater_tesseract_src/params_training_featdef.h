@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////
 // File:        params_training_featdef.h
-// Description: Feature definitions for params model_updater_tesseract_src.
+// Description: Feature definitions for params training.
 // Author:      Rika Antonova
 // Created:     Mon Nov 28 11:26:42 PDT 2011
 //

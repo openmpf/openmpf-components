@@ -1,0 +1,28 @@
+{
+    "values": [
+        {
+            "self": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_audio/files/hash0.json",
+            "name": "report.json",
+            "kind": "TranscriptionReport",
+            "properties": {
+                "size": 334
+            },
+            "createdDateTime": "2021-01-21T20:10:56Z",
+            "links": {
+                "contentUrl": "dummy_file.json"
+            }
+        },
+        {
+            "self": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_audio/files/hash1.json",
+            "name": "contenturl_0.json",
+            "kind": "Transcription",
+            "properties": {
+                "size": 4492
+            },
+            "createdDateTime": "2021-01-21T20:10:56Z",
+            "links": {
+                "contentUrl": "http://localhost:10669/speechtotext/v3.0/outputs/test_audio.json"
+            }
+        }
+    ]
+}

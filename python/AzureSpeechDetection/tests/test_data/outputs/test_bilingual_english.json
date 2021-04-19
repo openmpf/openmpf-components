@@ -1,1051 +1,1729 @@
 {
-    "AudioFileResults": [
+    "source": "http://localhost:10669/speechtotext/v3.0/recordings/bilingual.mp3",
+    "timestamp": "2021-01-22T16:44:33Z",
+    "durationInTicks": 886100000,
+    "duration": "PT1M28.61S",
+    "combinedRecognizedPhrases": [
         {
-            "AudioFileName": "Channel.0.wav",
-            "AudioFileUrl": null,
-            "AudioLengthInSeconds": 88.61,
-            "CombinedResults": [
+            "channel": 0,
+            "lexical": "mecum unico phone B versus performance and english and espanol or mask a lando amber language i tenderness harness your logo for ornamental solidarity for mercy vanessa community comma custom brava if any special logo al cruzar la frontera metaphorical programming sister rachel mary quinta i've learn differently salpicon murdered so to conversation comparison english people cannot and noise facility for get retired E low pressure elaine theon mucho mas portal experience at any of those to sonia 's elago parrot retarded but another different comma considering but there is a community there i do all the time at school with my colleagues usually when i'm teaching don't mix as much try to speak more of the more spanish in my spanish classes 'cause we're teaching spanish but I I will mix if i'm working with people that are friends of mine that are that are bilinguals bolt say the word in the language that comes easiest",
+            "itn": "mecum unico phone B versus performance and english and espanol or mask a lando amber language I tenderness harness your logo for ornamental solidarity for mercy vanessa community comma custom brava if any special logo al cruzar la frontera metaphorical programming sister rachel mary quinta I've learn differently salpicon murdered so to conversation comparison english people cannot and noise facility for get retired E low pressure elaine theon mucho mas portal experience at any of those to sonia's elago parrot retarded but another different comma considering but there is a community there I do all the time at school with my colleagues usually when I'm teaching don't mix as much try to speak more of the more spanish in my spanish classes 'cause we're teaching spanish but II will mix if I'm working with people that are friends of mine that are that are bilinguals bolt say the word in the language that comes easiest",
+            "maskedITN": "Mecum Unico Phone B versus performance and English and espanol or mask a Lando Amber Language I tenderness Harness Your logo For ornamental solidarity for mercy Vanessa community  Custom Brava if any special logo Al Cruzar La Frontera Metaphorical programming sister Rachel Mary Quinta I've learn differently Salpicon murdered So To conversation comparison English people cannot and noise facility For get retired E Low pressure Elaine Theon Mucho mas portal experience at any of those to Sonia's Elago Parrot retarded but another different considering But there is a community there I do all the time at school with my colleagues Usually when I'm teaching don't mix as much try to speak more of the more Spanish in my Spanish classes 'cause we're teaching Spanish but II will mix if I'm working with people that are friends of mine that are that are bilinguals Bolt Say the word in the language that comes easiest",
+            "display": "Mecum Unico. Phone B versus performance and English and espanol or mask a Lando Amber Language. I tenderness. Harness. Your logo. For ornamental solidarity for mercy, Vanessa community. , Custom Brava if any, special logo. Al Cruzar La Frontera Metaphorical programming sister Rachel. Mary Quinta I've learn differently. Salpicon murdered. So. To conversation comparison, English people cannot and noise facility. For get retired. E. Low pressure Elaine Theon Mucho mas portal experience at any of those to Sonia's. Elago. Parrot retarded, but another different, considering. But there is a community there. I do all the time at school with my colleagues. Usually, when I'm teaching don't mix, as much try to speak more of the more Spanish in my Spanish classes 'cause we're teaching Spanish but. II will mix if I'm working with people that are friends of mine that are that are bilinguals, Bolt. Say, the word in the language that comes easiest."
+        }
+    ],
+    "recognizedPhrases": [
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT0.83S",
+            "duration": "PT1.28S",
+            "offsetInTicks": 8300000.0,
+            "durationInTicks": 12800000.0,
+            "nBest": [
                 {
-                    "ChannelNumber": null,
-                    "Lexical": "niko niko colombia versus performance in english in espanol mister lando uh uh um alt mary quinta so so no but i know there are different i do all the time uh at school with my colleagues uhm usually when i'm teaching i don't mix as much i try to speak more of the more spanish in my spanish classes 'cause we're teaching spanish but UM I I will mix uh if i'm working with people that are friends of mine say the word in the language that comes easiest",
-                    "ITN": "niko niko colombia versus performance in english in espanol Mr lando uh uh um alt mary quinta so so no but I know there are different I do all the time uh at school with my colleagues uhm usually when I'm teaching I don't mix as much I try to speak more of the more spanish in my spanish classes 'cause we're teaching spanish but UM II will mix uh if I'm working with people that are friends of mine say the word in the language that comes easiest",
-                    "MaskedITN": "Niko Niko Colombia versus performance in English in espanol Mr lando Uh uh Um Alt Mary Quinta So So No But I know there are different I do all the time uh at school with my colleagues uhm usually when I'm teaching I don't mix as much I Try to speak more of the more Spanish in my Spanish classes 'cause we're teaching Spanish but UM II will mix uh if I'm working with People that are friends of mine Say the word in the language that comes easiest",
-                    "Display": "Niko Niko. Colombia versus performance in English in espanol. Mr. lando. Uh uh. Um. Alt. Mary Quinta. So. So. No. But I know there are different. I do all the time uh at school with my colleagues uhm usually when I'm teaching I don't mix as much I. Try to speak more of the more Spanish in my Spanish classes 'cause we're teaching Spanish but. UM II will mix uh if I'm working with People that are friends of mine. Say the word in the language that comes easiest."
+                    "confidence": 0.39474735,
+                    "lexical": "mecum unico",
+                    "itn": "mecum unico",
+                    "maskedITN": "Mecum Unico",
+                    "display": "Mecum Unico.",
+                    "words": [
+                        {
+                            "word": "mecum",
+                            "offset": "PT0.83S",
+                            "duration": "PT0.5S",
+                            "offsetInTicks": 8300000.0,
+                            "durationInTicks": 5000000.0,
+                            "confidence": 0.317046
+                        },
+                        {
+                            "word": "unico",
+                            "offset": "PT1.33S",
+                            "duration": "PT0.78S",
+                            "offsetInTicks": 13300000.0,
+                            "durationInTicks": 7800000.0,
+                            "confidence": 0.444556
+                        }
+                    ]
                 }
-            ],
-            "SegmentResults": [
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT3.12S",
+            "duration": "PT6.81S",
+            "offsetInTicks": 31200000.0,
+            "durationInTicks": 68100000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 8600000,
-                    "Duration": 12400000,
-                    "OffsetInSeconds": 0.86,
-                    "DurationInSeconds": 1.24,
-                    "NBest": [
+                    "confidence": 0.7369809,
+                    "lexical": "phone B versus performance and english and espanol or mask a lando amber language",
+                    "itn": "phone B versus performance and english and espanol or mask a lando amber language",
+                    "maskedITN": "Phone B versus performance and English and espanol or mask a Lando Amber Language",
+                    "display": "Phone B versus performance and English and espanol or mask a Lando Amber Language.",
+                    "words": [
                         {
-                            "Confidence": 0.591277361,
-                            "Lexical": "niko niko",
-                            "ITN": "niko niko",
-                            "MaskedITN": "Niko Niko",
-                            "Display": "Niko Niko.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "niko",
-                                    "Offset": 8600000,
-                                    "Duration": 5400000,
-                                    "OffsetInSeconds": 0.86,
-                                    "DurationInSeconds": 0.54,
-                                    "Confidence": 0.500606
-                                },
-                                {
-                                    "Word": "niko",
-                                    "Offset": 14000000,
-                                    "Duration": 7000000,
-                                    "OffsetInSeconds": 1.4,
-                                    "DurationInSeconds": 0.7,
-                                    "Confidence": 0.970314
-                                }
-                            ]
+                            "word": "phone",
+                            "offset": "PT3.12S",
+                            "duration": "PT0.36S",
+                            "offsetInTicks": 31200000.0,
+                            "durationInTicks": 3600000.0,
+                            "confidence": 0.722113
+                        },
+                        {
+                            "word": "B",
+                            "offset": "PT3.48S",
+                            "duration": "PT0.16S",
+                            "offsetInTicks": 34800000.0,
+                            "durationInTicks": 1600000.0,
+                            "confidence": 0.450073
+                        },
+                        {
+                            "word": "versus",
+                            "offset": "PT3.64S",
+                            "duration": "PT0.56S",
+                            "offsetInTicks": 36400000.0,
+                            "durationInTicks": 5600000.0,
+                            "confidence": 0.759637
+                        },
+                        {
+                            "word": "performance",
+                            "offset": "PT4.2S",
+                            "duration": "PT0.81S",
+                            "offsetInTicks": 42000000.0,
+                            "durationInTicks": 8100000.0,
+                            "confidence": 0.959459
+                        },
+                        {
+                            "word": "and",
+                            "offset": "PT5.08S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 50800000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.85756
+                        },
+                        {
+                            "word": "english",
+                            "offset": "PT5.32S",
+                            "duration": "PT0.48S",
+                            "offsetInTicks": 53200000.0,
+                            "durationInTicks": 4800000.0,
+                            "confidence": 0.891949
+                        },
+                        {
+                            "word": "and",
+                            "offset": "PT5.8S",
+                            "duration": "PT0.16S",
+                            "offsetInTicks": 58000000.0,
+                            "durationInTicks": 1600000.0,
+                            "confidence": 0.756179
+                        },
+                        {
+                            "word": "espanol",
+                            "offset": "PT5.96S",
+                            "duration": "PT0.75S",
+                            "offsetInTicks": 59600000.0,
+                            "durationInTicks": 7500000.0,
+                            "confidence": 0.900612
+                        },
+                        {
+                            "word": "or",
+                            "offset": "PT6.76S",
+                            "duration": "PT0.75S",
+                            "offsetInTicks": 67600000.0,
+                            "durationInTicks": 7500000.0,
+                            "confidence": 0.598516
+                        },
+                        {
+                            "word": "mask",
+                            "offset": "PT7.92S",
+                            "duration": "PT0.42S",
+                            "offsetInTicks": 79200000.0,
+                            "durationInTicks": 4200000.0,
+                            "confidence": 0.464327
+                        },
+                        {
+                            "word": "a",
+                            "offset": "PT8.34S",
+                            "duration": "PT0.06S",
+                            "offsetInTicks": 83400000.0,
+                            "durationInTicks": 600000.0,
+                            "confidence": 0.821856
+                        },
+                        {
+                            "word": "lando",
+                            "offset": "PT8.4S",
+                            "duration": "PT0.53S",
+                            "offsetInTicks": 84000000.0,
+                            "durationInTicks": 5300000.0,
+                            "confidence": 0.633473
+                        },
+                        {
+                            "word": "amber",
+                            "offset": "PT8.95S",
+                            "duration": "PT0.51S",
+                            "offsetInTicks": 89500000.0,
+                            "durationInTicks": 5100000.0,
+                            "confidence": 0.534259
+                        },
+                        {
+                            "word": "language",
+                            "offset": "PT9.46S",
+                            "duration": "PT0.47S",
+                            "offsetInTicks": 94600000.0,
+                            "durationInTicks": 4700000.0,
+                            "confidence": 0.738604
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 1,
+            "offset": "PT10.62S",
+            "duration": "PT0.88S",
+            "offsetInTicks": 106200000.0,
+            "durationInTicks": 8800000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 31300000,
-                    "Duration": 36700000,
-                    "OffsetInSeconds": 3.13,
-                    "DurationInSeconds": 3.67,
-                    "NBest": [
+                    "confidence": 0.5667369,
+                    "lexical": "i tenderness",
+                    "itn": "I tenderness",
+                    "maskedITN": "I tenderness",
+                    "display": "I tenderness.",
+                    "words": [
                         {
-                            "Confidence": 0.7519504,
-                            "Lexical": "colombia versus performance in english in espanol",
-                            "ITN": "colombia versus performance in english in espanol",
-                            "MaskedITN": "Colombia versus performance in English in espanol",
-                            "Display": "Colombia versus performance in English in espanol.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "colombia",
-                                    "Offset": 31300000,
-                                    "Duration": 5400000,
-                                    "OffsetInSeconds": 3.13,
-                                    "DurationInSeconds": 0.54,
-                                    "Confidence": 0.751635
-                                },
-                                {
-                                    "Word": "versus",
-                                    "Offset": 36700000,
-                                    "Duration": 5400000,
-                                    "OffsetInSeconds": 3.67,
-                                    "DurationInSeconds": 0.54,
-                                    "Confidence": 0.91146
-                                },
-                                {
-                                    "Word": "performance",
-                                    "Offset": 42100000,
-                                    "Duration": 7900000,
-                                    "OffsetInSeconds": 4.21,
-                                    "DurationInSeconds": 0.79,
-                                    "Confidence": 0.890276
-                                },
-                                {
-                                    "Word": "in",
-                                    "Offset": 50900000,
-                                    "Duration": 2400000,
-                                    "OffsetInSeconds": 5.09,
-                                    "DurationInSeconds": 0.24,
-                                    "Confidence": 0.872478
-                                },
-                                {
-                                    "Word": "english",
-                                    "Offset": 53300000,
-                                    "Duration": 4800000,
-                                    "OffsetInSeconds": 5.33,
-                                    "DurationInSeconds": 0.48,
-                                    "Confidence": 0.86306
-                                },
-                                {
-                                    "Word": "in",
-                                    "Offset": 58100000,
-                                    "Duration": 1500000,
-                                    "OffsetInSeconds": 5.81,
-                                    "DurationInSeconds": 0.15,
-                                    "Confidence": 0.434867
-                                },
-                                {
-                                    "Word": "espanol",
-                                    "Offset": 59600000,
-                                    "Duration": 8400000,
-                                    "OffsetInSeconds": 5.96,
-                                    "DurationInSeconds": 0.84,
-                                    "Confidence": 0.968524
-                                }
-                            ]
+                            "word": "i",
+                            "offset": "PT10.62S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 106200000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.903248
+                        },
+                        {
+                            "word": "tenderness",
+                            "offset": "PT10.86S",
+                            "duration": "PT0.64S",
+                            "offsetInTicks": 108600000.0,
+                            "durationInTicks": 6400000.0,
+                            "confidence": 0.187912
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT11.5S",
+            "duration": "PT0.57S",
+            "offsetInTicks": 115000000.0,
+            "durationInTicks": 5700000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 79400000,
-                    "Duration": 9900000,
-                    "OffsetInSeconds": 7.94,
-                    "DurationInSeconds": 0.99,
-                    "NBest": [
+                    "confidence": 0.5667369,
+                    "lexical": "harness",
+                    "itn": "harness",
+                    "maskedITN": "Harness",
+                    "display": "Harness.",
+                    "words": [
                         {
-                            "Confidence": 0.5060201,
-                            "Lexical": "mister lando",
-                            "ITN": "Mr lando",
-                            "MaskedITN": "Mr lando",
-                            "Display": "Mr. lando.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "mister",
-                                    "Offset": 79400000,
-                                    "Duration": 4700000,
-                                    "OffsetInSeconds": 7.94,
-                                    "DurationInSeconds": 0.47,
-                                    "Confidence": 0.682268
-                                },
-                                {
-                                    "Word": "lando",
-                                    "Offset": 84100000,
-                                    "Duration": 5200000,
-                                    "OffsetInSeconds": 8.41,
-                                    "DurationInSeconds": 0.52,
-                                    "Confidence": 0.87496
-                                }
-                            ]
+                            "word": "harness",
+                            "offset": "PT11.5S",
+                            "duration": "PT0.57S",
+                            "offsetInTicks": 115000000.0,
+                            "durationInTicks": 5700000.0,
+                            "confidence": 0.674351
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 1,
+            "offset": "PT12.5S",
+            "duration": "PT0.64S",
+            "offsetInTicks": 125000000.0,
+            "durationInTicks": 6400000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 136200000,
-                    "Duration": 65500000,
-                    "OffsetInSeconds": 13.62,
-                    "DurationInSeconds": 6.55,
-                    "NBest": [
+                    "confidence": 0.5667369,
+                    "lexical": "your logo",
+                    "itn": "your logo",
+                    "maskedITN": "Your logo",
+                    "display": "Your logo.",
+                    "words": [
                         {
-                            "Confidence": 0.230684459,
-                            "Lexical": "uh uh",
-                            "ITN": "uh uh",
-                            "MaskedITN": "Uh uh",
-                            "Display": "Uh uh.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "uh",
-                                    "Offset": 136200000,
-                                    "Duration": 4700000,
-                                    "OffsetInSeconds": 13.62,
-                                    "DurationInSeconds": 0.47,
-                                    "Confidence": 0.874218
-                                },
-                                {
-                                    "Word": "uh",
-                                    "Offset": 196400000,
-                                    "Duration": 5300000,
-                                    "OffsetInSeconds": 19.64,
-                                    "DurationInSeconds": 0.53,
-                                    "Confidence": 0.829185
-                                }
-                            ]
+                            "word": "your",
+                            "offset": "PT12.5S",
+                            "duration": "PT0.31S",
+                            "offsetInTicks": 125000000.0,
+                            "durationInTicks": 3100000.0,
+                            "confidence": 0.689463
+                        },
+                        {
+                            "word": "logo",
+                            "offset": "PT12.81S",
+                            "duration": "PT0.33S",
+                            "offsetInTicks": 128100000.0,
+                            "durationInTicks": 3300000.0,
+                            "confidence": 0.617123
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT13.14S",
+            "duration": "PT5.69S",
+            "offsetInTicks": 131400000.0,
+            "durationInTicks": 56900000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 267300000,
-                    "Duration": 5000000,
-                    "OffsetInSeconds": 26.73,
-                    "DurationInSeconds": 0.5,
-                    "NBest": [
+                    "confidence": 0.5667369,
+                    "lexical": "for ornamental solidarity for mercy vanessa community",
+                    "itn": "for ornamental solidarity for mercy vanessa community",
+                    "maskedITN": "For ornamental solidarity for mercy Vanessa community",
+                    "display": "For ornamental solidarity for mercy, Vanessa community.",
+                    "words": [
                         {
-                            "Confidence": 0.0798756555,
-                            "Lexical": "um",
-                            "ITN": "um",
-                            "MaskedITN": "Um",
-                            "Display": "Um.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "um",
-                                    "Offset": 267300000,
-                                    "Duration": 5000000,
-                                    "OffsetInSeconds": 26.73,
-                                    "DurationInSeconds": 0.5,
-                                    "Confidence": 0.210241
-                                }
-                            ]
+                            "word": "for",
+                            "offset": "PT13.14S",
+                            "duration": "PT0.46S",
+                            "offsetInTicks": 131400000.0,
+                            "durationInTicks": 4600000.0,
+                            "confidence": 0.924091
+                        },
+                        {
+                            "word": "ornamental",
+                            "offset": "PT13.62S",
+                            "duration": "PT1.25S",
+                            "offsetInTicks": 136200000.0,
+                            "durationInTicks": 12500000.0,
+                            "confidence": 0.497571
+                        },
+                        {
+                            "word": "solidarity",
+                            "offset": "PT14.89S",
+                            "duration": "PT0.72S",
+                            "offsetInTicks": 148900000.0,
+                            "durationInTicks": 7200000.0,
+                            "confidence": 0.792424
+                        },
+                        {
+                            "word": "for",
+                            "offset": "PT15.85S",
+                            "duration": "PT0.57S",
+                            "offsetInTicks": 158500000.0,
+                            "durationInTicks": 5700000.0,
+                            "confidence": 0.533133
+                        },
+                        {
+                            "word": "mercy",
+                            "offset": "PT16.9S",
+                            "duration": "PT0.78S",
+                            "offsetInTicks": 169000000.0,
+                            "durationInTicks": 7800000.0,
+                            "confidence": 0.253446
+                        },
+                        {
+                            "word": "vanessa",
+                            "offset": "PT17.68S",
+                            "duration": "PT0.56S",
+                            "offsetInTicks": 176800000.0,
+                            "durationInTicks": 5600000.0,
+                            "confidence": 0.42184
+                        },
+                        {
+                            "word": "community",
+                            "offset": "PT18.24S",
+                            "duration": "PT0.59S",
+                            "offsetInTicks": 182400000.0,
+                            "durationInTicks": 5900000.0,
+                            "confidence": 0.820832
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT20.51S",
+            "duration": "PT0.36S",
+            "offsetInTicks": 205100000.0,
+            "durationInTicks": 3600000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 280000000,
-                    "Duration": 3100000,
-                    "OffsetInSeconds": 28.0,
-                    "DurationInSeconds": 0.31,
-                    "NBest": [
+                    "confidence": 0.6932008,
+                    "lexical": "comma",
+                    "itn": "comma",
+                    "maskedITN": "",
+                    "display": ",",
+                    "words": [
                         {
-                            "Confidence": 0.392352134,
-                            "Lexical": "alt",
-                            "ITN": "alt",
-                            "MaskedITN": "Alt",
-                            "Display": "Alt.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "alt",
-                                    "Offset": 280000000,
-                                    "Duration": 3100000,
-                                    "OffsetInSeconds": 28.0,
-                                    "DurationInSeconds": 0.31,
-                                    "Confidence": 0.847226
-                                }
-                            ]
+                            "word": "comma",
+                            "offset": "PT20.51S",
+                            "duration": "PT0.36S",
+                            "offsetInTicks": 205100000.0,
+                            "durationInTicks": 3600000.0,
+                            "confidence": 0.693201
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT22.76S",
+            "duration": "PT3.54S",
+            "offsetInTicks": 227600000.0,
+            "durationInTicks": 35400000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 326500000,
-                    "Duration": 11500000,
-                    "OffsetInSeconds": 32.65,
-                    "DurationInSeconds": 1.15,
-                    "NBest": [
+                    "confidence": 0.56957334,
+                    "lexical": "custom brava if any special logo",
+                    "itn": "custom brava if any special logo",
+                    "maskedITN": "Custom Brava if any special logo",
+                    "display": "Custom Brava if any, special logo.",
+                    "words": [
                         {
-                            "Confidence": 0.454280436,
-                            "Lexical": "mary quinta",
-                            "ITN": "mary quinta",
-                            "MaskedITN": "Mary Quinta",
-                            "Display": "Mary Quinta.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "mary",
-                                    "Offset": 326500000,
-                                    "Duration": 4800000,
-                                    "OffsetInSeconds": 32.65,
-                                    "DurationInSeconds": 0.48,
-                                    "Confidence": 0.855503
-                                },
-                                {
-                                    "Word": "quinta",
-                                    "Offset": 331300000,
-                                    "Duration": 6700000,
-                                    "OffsetInSeconds": 33.13,
-                                    "DurationInSeconds": 0.67,
-                                    "Confidence": 0.813632
-                                }
-                            ]
+                            "word": "custom",
+                            "offset": "PT22.76S",
+                            "duration": "PT0.42S",
+                            "offsetInTicks": 227600000.0,
+                            "durationInTicks": 4200000.0,
+                            "confidence": 0.47596
+                        },
+                        {
+                            "word": "brava",
+                            "offset": "PT23.18S",
+                            "duration": "PT0.55S",
+                            "offsetInTicks": 231800000.0,
+                            "durationInTicks": 5500000.0,
+                            "confidence": 0.626992
+                        },
+                        {
+                            "word": "if",
+                            "offset": "PT23.82S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 238200000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.643622
+                        },
+                        {
+                            "word": "any",
+                            "offset": "PT24.08S",
+                            "duration": "PT0.32S",
+                            "offsetInTicks": 240800000.0,
+                            "durationInTicks": 3200000.0,
+                            "confidence": 0.513751
+                        },
+                        {
+                            "word": "special",
+                            "offset": "PT24.4S",
+                            "duration": "PT0.8S",
+                            "offsetInTicks": 244000000.0,
+                            "durationInTicks": 8000000.0,
+                            "confidence": 0.752964
+                        },
+                        {
+                            "word": "logo",
+                            "offset": "PT25.54S",
+                            "duration": "PT0.76S",
+                            "offsetInTicks": 255400000.0,
+                            "durationInTicks": 7600000.0,
+                            "confidence": 0.384883
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT28S",
+            "duration": "PT3.33S",
+            "offsetInTicks": 280000000.0,
+            "durationInTicks": 33300000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 364200000,
-                    "Duration": 4300000,
-                    "OffsetInSeconds": 36.42,
-                    "DurationInSeconds": 0.43,
-                    "NBest": [
+                    "confidence": 0.64724106,
+                    "lexical": "al cruzar la frontera metaphorical programming sister rachel",
+                    "itn": "al cruzar la frontera metaphorical programming sister rachel",
+                    "maskedITN": "Al Cruzar La Frontera Metaphorical programming sister Rachel",
+                    "display": "Al Cruzar La Frontera Metaphorical programming sister Rachel.",
+                    "words": [
                         {
-                            "Confidence": 0.220826671,
-                            "Lexical": "so",
-                            "ITN": "so",
-                            "MaskedITN": "So",
-                            "Display": "So.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "so",
-                                    "Offset": 364200000,
-                                    "Duration": 4300000,
-                                    "OffsetInSeconds": 36.42,
-                                    "DurationInSeconds": 0.43,
-                                    "Confidence": 0.792575
-                                }
-                            ]
+                            "word": "al",
+                            "offset": "PT28S",
+                            "duration": "PT0.3S",
+                            "offsetInTicks": 280000000.0,
+                            "durationInTicks": 3000000.0,
+                            "confidence": 0.544498
+                        },
+                        {
+                            "word": "cruzar",
+                            "offset": "PT28.3S",
+                            "duration": "PT0.48S",
+                            "offsetInTicks": 283000000.0,
+                            "durationInTicks": 4800000.0,
+                            "confidence": 0.351993
+                        },
+                        {
+                            "word": "la",
+                            "offset": "PT28.78S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 287800000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.689565
+                        },
+                        {
+                            "word": "frontera",
+                            "offset": "PT28.92S",
+                            "duration": "PT0.52S",
+                            "offsetInTicks": 289200000.0,
+                            "durationInTicks": 5200000.0,
+                            "confidence": 0.911733
+                        },
+                        {
+                            "word": "metaphorical",
+                            "offset": "PT29.44S",
+                            "duration": "PT0.65S",
+                            "offsetInTicks": 294400000.0,
+                            "durationInTicks": 6500000.0,
+                            "confidence": 0.725033
+                        },
+                        {
+                            "word": "programming",
+                            "offset": "PT30.09S",
+                            "duration": "PT0.42S",
+                            "offsetInTicks": 300900000.0,
+                            "durationInTicks": 4200000.0,
+                            "confidence": 0.395455
+                        },
+                        {
+                            "word": "sister",
+                            "offset": "PT30.51S",
+                            "duration": "PT0.38S",
+                            "offsetInTicks": 305100000.0,
+                            "durationInTicks": 3800000.0,
+                            "confidence": 0.637096
+                        },
+                        {
+                            "word": "rachel",
+                            "offset": "PT30.89S",
+                            "duration": "PT0.44S",
+                            "offsetInTicks": 308900000.0,
+                            "durationInTicks": 4400000.0,
+                            "confidence": 0.847515
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT32.63S",
+            "duration": "PT2.94S",
+            "offsetInTicks": 326300000.0,
+            "durationInTicks": 29400000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "1",
-                    "Offset": 388200000,
-                    "Duration": 5800000,
-                    "OffsetInSeconds": 38.82,
-                    "DurationInSeconds": 0.58,
-                    "NBest": [
+                    "confidence": 0.6386395,
+                    "lexical": "mary quinta i've learn differently",
+                    "itn": "mary quinta I've learn differently",
+                    "maskedITN": "Mary Quinta I've learn differently",
+                    "display": "Mary Quinta I've learn differently.",
+                    "words": [
                         {
-                            "Confidence": 0.204854757,
-                            "Lexical": "so",
-                            "ITN": "so",
-                            "MaskedITN": "So",
-                            "Display": "So.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "so",
-                                    "Offset": 388200000,
-                                    "Duration": 5800000,
-                                    "OffsetInSeconds": 38.82,
-                                    "DurationInSeconds": 0.58,
-                                    "Confidence": 0.759478
-                                }
-                            ]
+                            "word": "mary",
+                            "offset": "PT32.63S",
+                            "duration": "PT0.5S",
+                            "offsetInTicks": 326300000.0,
+                            "durationInTicks": 5000000.0,
+                            "confidence": 0.737435
+                        },
+                        {
+                            "word": "quinta",
+                            "offset": "PT33.13S",
+                            "duration": "PT0.66S",
+                            "offsetInTicks": 331300000.0,
+                            "durationInTicks": 6600000.0,
+                            "confidence": 0.38657
+                        },
+                        {
+                            "word": "i've",
+                            "offset": "PT34.36S",
+                            "duration": "PT0.31S",
+                            "offsetInTicks": 343600000.0,
+                            "durationInTicks": 3100000.0,
+                            "confidence": 0.472004
+                        },
+                        {
+                            "word": "learn",
+                            "offset": "PT34.67S",
+                            "duration": "PT0.18S",
+                            "offsetInTicks": 346700000.0,
+                            "durationInTicks": 1800000.0,
+                            "confidence": 0.544849
+                        },
+                        {
+                            "word": "differently",
+                            "offset": "PT34.85S",
+                            "duration": "PT0.72S",
+                            "offsetInTicks": 348500000.0,
+                            "durationInTicks": 7200000.0,
+                            "confidence": 0.896288
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT36.41S",
+            "duration": "PT1.71S",
+            "offsetInTicks": 364100000.0,
+            "durationInTicks": 17100000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 448000000,
-                    "Duration": 4300000,
-                    "OffsetInSeconds": 44.8,
-                    "DurationInSeconds": 0.43,
-                    "NBest": [
+                    "confidence": 0.51437396,
+                    "lexical": "salpicon murdered",
+                    "itn": "salpicon murdered",
+                    "maskedITN": "Salpicon murdered",
+                    "display": "Salpicon murdered.",
+                    "words": [
                         {
-                            "Confidence": 0.256389171,
-                            "Lexical": "no",
-                            "ITN": "no",
-                            "MaskedITN": "No",
-                            "Display": "No.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "no",
-                                    "Offset": 448000000,
-                                    "Duration": 4300000,
-                                    "OffsetInSeconds": 44.8,
-                                    "DurationInSeconds": 0.43,
-                                    "Confidence": 0.821312
-                                }
-                            ]
+                            "word": "salpicon",
+                            "offset": "PT36.41S",
+                            "duration": "PT0.92S",
+                            "offsetInTicks": 364100000.0,
+                            "durationInTicks": 9200000.0,
+                            "confidence": 0.116541
+                        },
+                        {
+                            "word": "murdered",
+                            "offset": "PT37.33S",
+                            "duration": "PT0.79S",
+                            "offsetInTicks": 373300000.0,
+                            "durationInTicks": 7900000.0,
+                            "confidence": 0.479014
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 1,
+            "offset": "PT38.75S",
+            "duration": "PT0.66S",
+            "offsetInTicks": 387500000.0,
+            "durationInTicks": 6600000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "2",
-                    "Offset": 586000000,
-                    "Duration": 13500000,
-                    "OffsetInSeconds": 58.6,
-                    "DurationInSeconds": 1.35,
-                    "NBest": [
+                    "confidence": 0.51437396,
+                    "lexical": "so",
+                    "itn": "so",
+                    "maskedITN": "So",
+                    "display": "So.",
+                    "words": [
                         {
-                            "Confidence": 0.8157145,
-                            "Lexical": "but i know there are different",
-                            "ITN": "but I know there are different",
-                            "MaskedITN": "But I know there are different",
-                            "Display": "But I know there are different.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "but",
-                                    "Offset": 586000000,
-                                    "Duration": 2800000,
-                                    "OffsetInSeconds": 58.6,
-                                    "DurationInSeconds": 0.28,
-                                    "Confidence": 0.948879
-                                },
-                                {
-                                    "Word": "i",
-                                    "Offset": 588800000,
-                                    "Duration": 400000,
-                                    "OffsetInSeconds": 58.88,
-                                    "DurationInSeconds": 0.04,
-                                    "Confidence": 0.823714
-                                },
-                                {
-                                    "Word": "know",
-                                    "Offset": 589200000,
-                                    "Duration": 1800000,
-                                    "OffsetInSeconds": 58.92,
-                                    "DurationInSeconds": 0.18,
-                                    "Confidence": 0.901105
-                                },
-                                {
-                                    "Word": "there",
-                                    "Offset": 591000000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 59.1,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.242368
-                                },
-                                {
-                                    "Word": "are",
-                                    "Offset": 592200000,
-                                    "Duration": 700000,
-                                    "OffsetInSeconds": 59.22,
-                                    "DurationInSeconds": 0.07,
-                                    "Confidence": 0.808895
-                                },
-                                {
-                                    "Word": "different",
-                                    "Offset": 592900000,
-                                    "Duration": 6600000,
-                                    "OffsetInSeconds": 59.29,
-                                    "DurationInSeconds": 0.66,
-                                    "Confidence": 0.977363
-                                }
-                            ]
+                            "word": "so",
+                            "offset": "PT38.75S",
+                            "duration": "PT0.66S",
+                            "offsetInTicks": 387500000.0,
+                            "durationInTicks": 6600000.0,
+                            "confidence": 0.257714
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT39.78S",
+            "duration": "PT6.08S",
+            "offsetInTicks": 397800000.0,
+            "durationInTicks": 60800000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "1",
-                    "Offset": 652400000,
-                    "Duration": 80200000,
-                    "OffsetInSeconds": 65.24,
-                    "DurationInSeconds": 8.02,
-                    "NBest": [
+                    "confidence": 0.51437396,
+                    "lexical": "to conversation comparison english people cannot and noise facility",
+                    "itn": "to conversation comparison english people cannot and noise facility",
+                    "maskedITN": "To conversation comparison English people cannot and noise facility",
+                    "display": "To conversation comparison, English people cannot and noise facility.",
+                    "words": [
                         {
-                            "Confidence": 0.8559984,
-                            "Lexical": "i do all the time uh at school with my colleagues uhm usually when i'm teaching i don't mix as much i",
-                            "ITN": "I do all the time uh at school with my colleagues uhm usually when I'm teaching I don't mix as much I",
-                            "MaskedITN": "I do all the time uh at school with my colleagues uhm usually when I'm teaching I don't mix as much I",
-                            "Display": "I do all the time uh at school with my colleagues uhm usually when I'm teaching I don't mix as much I.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "i",
-                                    "Offset": 652400000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 65.24,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.966809
-                                },
-                                {
-                                    "Word": "do",
-                                    "Offset": 653600000,
-                                    "Duration": 2400000,
-                                    "OffsetInSeconds": 65.36,
-                                    "DurationInSeconds": 0.24,
-                                    "Confidence": 0.933403
-                                },
-                                {
-                                    "Word": "all",
-                                    "Offset": 656000000,
-                                    "Duration": 1800000,
-                                    "OffsetInSeconds": 65.6,
-                                    "DurationInSeconds": 0.18,
-                                    "Confidence": 0.973175
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 657800000,
-                                    "Duration": 1000000,
-                                    "OffsetInSeconds": 65.78,
-                                    "DurationInSeconds": 0.1,
-                                    "Confidence": 0.976158
-                                },
-                                {
-                                    "Word": "time",
-                                    "Offset": 658800000,
-                                    "Duration": 4800000,
-                                    "OffsetInSeconds": 65.88,
-                                    "DurationInSeconds": 0.48,
-                                    "Confidence": 0.990606
-                                },
-                                {
-                                    "Word": "uh",
-                                    "Offset": 669100000,
-                                    "Duration": 3900000,
-                                    "OffsetInSeconds": 66.91,
-                                    "DurationInSeconds": 0.39,
-                                    "Confidence": 0.914606
-                                },
-                                {
-                                    "Word": "at",
-                                    "Offset": 673000000,
-                                    "Duration": 3800000,
-                                    "OffsetInSeconds": 67.3,
-                                    "DurationInSeconds": 0.38,
-                                    "Confidence": 0.909389
-                                },
-                                {
-                                    "Word": "school",
-                                    "Offset": 676800000,
-                                    "Duration": 3400000,
-                                    "OffsetInSeconds": 67.68,
-                                    "DurationInSeconds": 0.34,
-                                    "Confidence": 0.970452
-                                },
-                                {
-                                    "Word": "with",
-                                    "Offset": 680200000,
-                                    "Duration": 1600000,
-                                    "OffsetInSeconds": 68.02,
-                                    "DurationInSeconds": 0.16,
-                                    "Confidence": 0.988423
-                                },
-                                {
-                                    "Word": "my",
-                                    "Offset": 681800000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 68.18,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.914731
-                                },
-                                {
-                                    "Word": "colleagues",
-                                    "Offset": 683000000,
-                                    "Duration": 8600000,
-                                    "OffsetInSeconds": 68.3,
-                                    "DurationInSeconds": 0.86,
-                                    "Confidence": 0.995481
-                                },
-                                {
-                                    "Word": "uhm",
-                                    "Offset": 693000000,
-                                    "Duration": 7000000,
-                                    "OffsetInSeconds": 69.3,
-                                    "DurationInSeconds": 0.7,
-                                    "Confidence": 0.960922
-                                },
-                                {
-                                    "Word": "usually",
-                                    "Offset": 704500000,
-                                    "Duration": 5300000,
-                                    "OffsetInSeconds": 70.45,
-                                    "DurationInSeconds": 0.53,
-                                    "Confidence": 0.875185
-                                },
-                                {
-                                    "Word": "when",
-                                    "Offset": 709800000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 70.98,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.878857
-                                },
-                                {
-                                    "Word": "i'm",
-                                    "Offset": 711000000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 71.1,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.961734
-                                },
-                                {
-                                    "Word": "teaching",
-                                    "Offset": 712200000,
-                                    "Duration": 5600000,
-                                    "OffsetInSeconds": 71.22,
-                                    "DurationInSeconds": 0.56,
-                                    "Confidence": 0.994163
-                                },
-                                {
-                                    "Word": "i",
-                                    "Offset": 718000000,
-                                    "Duration": 1000000,
-                                    "OffsetInSeconds": 71.8,
-                                    "DurationInSeconds": 0.1,
-                                    "Confidence": 0.944575
-                                },
-                                {
-                                    "Word": "don't",
-                                    "Offset": 719000000,
-                                    "Duration": 4200000,
-                                    "OffsetInSeconds": 71.9,
-                                    "DurationInSeconds": 0.42,
-                                    "Confidence": 0.962226
-                                },
-                                {
-                                    "Word": "mix",
-                                    "Offset": 723200000,
-                                    "Duration": 2600000,
-                                    "OffsetInSeconds": 72.32,
-                                    "DurationInSeconds": 0.26,
-                                    "Confidence": 0.866062
-                                },
-                                {
-                                    "Word": "as",
-                                    "Offset": 725800000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 72.58,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.94883
-                                },
-                                {
-                                    "Word": "much",
-                                    "Offset": 727000000,
-                                    "Duration": 3800000,
-                                    "OffsetInSeconds": 72.7,
-                                    "DurationInSeconds": 0.38,
-                                    "Confidence": 0.981042
-                                },
-                                {
-                                    "Word": "i",
-                                    "Offset": 730800000,
-                                    "Duration": 1800000,
-                                    "OffsetInSeconds": 73.08,
-                                    "DurationInSeconds": 0.18,
-                                    "Confidence": 0.977132
-                                }
-                            ]
+                            "word": "to",
+                            "offset": "PT39.78S",
+                            "duration": "PT0.21S",
+                            "offsetInTicks": 397800000.0,
+                            "durationInTicks": 2100000.0,
+                            "confidence": 0.545857
+                        },
+                        {
+                            "word": "conversation",
+                            "offset": "PT39.99S",
+                            "duration": "PT0.96S",
+                            "offsetInTicks": 399900000.0,
+                            "durationInTicks": 9600000.0,
+                            "confidence": 0.670107
+                        },
+                        {
+                            "word": "comparison",
+                            "offset": "PT40.95S",
+                            "duration": "PT0.84S",
+                            "offsetInTicks": 409500000.0,
+                            "durationInTicks": 8400000.0,
+                            "confidence": 0.654729
+                        },
+                        {
+                            "word": "english",
+                            "offset": "PT41.79S",
+                            "duration": "PT0.54S",
+                            "offsetInTicks": 417900000.0,
+                            "durationInTicks": 5400000.0,
+                            "confidence": 0.914494
+                        },
+                        {
+                            "word": "people",
+                            "offset": "PT42.88S",
+                            "duration": "PT0.39S",
+                            "offsetInTicks": 428800000.0,
+                            "durationInTicks": 3900000.0,
+                            "confidence": 0.503188
+                        },
+                        {
+                            "word": "cannot",
+                            "offset": "PT43.27S",
+                            "duration": "PT0.43S",
+                            "offsetInTicks": 432700000.0,
+                            "durationInTicks": 4300000.0,
+                            "confidence": 0.691568
+                        },
+                        {
+                            "word": "and",
+                            "offset": "PT44.03S",
+                            "duration": "PT0.3S",
+                            "offsetInTicks": 440300000.0,
+                            "durationInTicks": 3000000.0,
+                            "confidence": 0.775532
+                        },
+                        {
+                            "word": "noise",
+                            "offset": "PT44.79S",
+                            "duration": "PT0.62S",
+                            "offsetInTicks": 447900000.0,
+                            "durationInTicks": 6200000.0,
+                            "confidence": 0.353594
+                        },
+                        {
+                            "word": "facility",
+                            "offset": "PT45.41S",
+                            "duration": "PT0.45S",
+                            "offsetInTicks": 454100000.0,
+                            "durationInTicks": 4500000.0,
+                            "confidence": 0.564961
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT47.21S",
+            "duration": "PT1.08S",
+            "offsetInTicks": 472100000.0,
+            "durationInTicks": 10800000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "1",
-                    "Offset": 733800000,
-                    "Duration": 47200000,
-                    "OffsetInSeconds": 73.38,
-                    "DurationInSeconds": 4.72,
-                    "NBest": [
+                    "confidence": 0.7296407,
+                    "lexical": "for get retired",
+                    "itn": "for get retired",
+                    "maskedITN": "For get retired",
+                    "display": "For get retired.",
+                    "words": [
                         {
-                            "Confidence": 0.8807433,
-                            "Lexical": "try to speak more of the more spanish in my spanish classes 'cause we're teaching spanish but",
-                            "ITN": "try to speak more of the more spanish in my spanish classes 'cause we're teaching spanish but",
-                            "MaskedITN": "Try to speak more of the more Spanish in my Spanish classes 'cause we're teaching Spanish but",
-                            "Display": "Try to speak more of the more Spanish in my Spanish classes 'cause we're teaching Spanish but.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "try",
-                                    "Offset": 733800000,
-                                    "Duration": 1000000,
-                                    "OffsetInSeconds": 73.38,
-                                    "DurationInSeconds": 0.1,
-                                    "Confidence": 0.680014
-                                },
-                                {
-                                    "Word": "to",
-                                    "Offset": 734800000,
-                                    "Duration": 900000,
-                                    "OffsetInSeconds": 73.48,
-                                    "DurationInSeconds": 0.09,
-                                    "Confidence": 0.762529
-                                },
-                                {
-                                    "Word": "speak",
-                                    "Offset": 735700000,
-                                    "Duration": 2700000,
-                                    "OffsetInSeconds": 73.57,
-                                    "DurationInSeconds": 0.27,
-                                    "Confidence": 0.966185
-                                },
-                                {
-                                    "Word": "more",
-                                    "Offset": 738400000,
-                                    "Duration": 1800000,
-                                    "OffsetInSeconds": 73.84,
-                                    "DurationInSeconds": 0.18,
-                                    "Confidence": 0.937871
-                                },
-                                {
-                                    "Word": "of",
-                                    "Offset": 740200000,
-                                    "Duration": 1000000,
-                                    "OffsetInSeconds": 74.02,
-                                    "DurationInSeconds": 0.1,
-                                    "Confidence": 0.961101
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 741200000,
-                                    "Duration": 4900000,
-                                    "OffsetInSeconds": 74.12,
-                                    "DurationInSeconds": 0.49,
-                                    "Confidence": 0.957016
-                                },
-                                {
-                                    "Word": "more",
-                                    "Offset": 746300000,
-                                    "Duration": 2300000,
-                                    "OffsetInSeconds": 74.63,
-                                    "DurationInSeconds": 0.23,
-                                    "Confidence": 0.916747
-                                },
-                                {
-                                    "Word": "spanish",
-                                    "Offset": 748600000,
-                                    "Duration": 3800000,
-                                    "OffsetInSeconds": 74.86,
-                                    "DurationInSeconds": 0.38,
-                                    "Confidence": 0.958425
-                                },
-                                {
-                                    "Word": "in",
-                                    "Offset": 752400000,
-                                    "Duration": 1100000,
-                                    "OffsetInSeconds": 75.24,
-                                    "DurationInSeconds": 0.11,
-                                    "Confidence": 0.96825
-                                },
-                                {
-                                    "Word": "my",
-                                    "Offset": 753500000,
-                                    "Duration": 1100000,
-                                    "OffsetInSeconds": 75.35,
-                                    "DurationInSeconds": 0.11,
-                                    "Confidence": 0.961564
-                                },
-                                {
-                                    "Word": "spanish",
-                                    "Offset": 754600000,
-                                    "Duration": 4000000,
-                                    "OffsetInSeconds": 75.46,
-                                    "DurationInSeconds": 0.4,
-                                    "Confidence": 0.981374
-                                },
-                                {
-                                    "Word": "classes",
-                                    "Offset": 758600000,
-                                    "Duration": 5200000,
-                                    "OffsetInSeconds": 75.86,
-                                    "DurationInSeconds": 0.52,
-                                    "Confidence": 0.978036
-                                },
-                                {
-                                    "Word": "'cause",
-                                    "Offset": 763800000,
-                                    "Duration": 2200000,
-                                    "OffsetInSeconds": 76.38,
-                                    "DurationInSeconds": 0.22,
-                                    "Confidence": 0.89483
-                                },
-                                {
-                                    "Word": "we're",
-                                    "Offset": 766000000,
-                                    "Duration": 2000000,
-                                    "OffsetInSeconds": 76.6,
-                                    "DurationInSeconds": 0.2,
-                                    "Confidence": 0.898443
-                                },
-                                {
-                                    "Word": "teaching",
-                                    "Offset": 768200000,
-                                    "Duration": 4600000,
-                                    "OffsetInSeconds": 76.82,
-                                    "DurationInSeconds": 0.46,
-                                    "Confidence": 0.920429
-                                },
-                                {
-                                    "Word": "spanish",
-                                    "Offset": 772800000,
-                                    "Duration": 5000000,
-                                    "OffsetInSeconds": 77.28,
-                                    "DurationInSeconds": 0.5,
-                                    "Confidence": 0.983006
-                                },
-                                {
-                                    "Word": "but",
-                                    "Offset": 777800000,
-                                    "Duration": 3200000,
-                                    "OffsetInSeconds": 77.78,
-                                    "DurationInSeconds": 0.32,
-                                    "Confidence": 0.983294
-                                }
-                            ]
+                            "word": "for",
+                            "offset": "PT47.21S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 472100000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.876442
+                        },
+                        {
+                            "word": "get",
+                            "offset": "PT47.45S",
+                            "duration": "PT0.34S",
+                            "offsetInTicks": 474500000.0,
+                            "durationInTicks": 3400000.0,
+                            "confidence": 0.664028
+                        },
+                        {
+                            "word": "retired",
+                            "offset": "PT47.79S",
+                            "duration": "PT0.5S",
+                            "offsetInTicks": 477900000.0,
+                            "durationInTicks": 5000000.0,
+                            "confidence": 0.703793
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 1,
+            "offset": "PT49.8S",
+            "duration": "PT0.49S",
+            "offsetInTicks": 498000000.0,
+            "durationInTicks": 4900000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "1",
-                    "Offset": 786200000,
-                    "Duration": 56000000,
-                    "OffsetInSeconds": 78.62,
-                    "DurationInSeconds": 5.6,
-                    "NBest": [
+                    "confidence": 0.60392636,
+                    "lexical": "E",
+                    "itn": "E",
+                    "maskedITN": "E",
+                    "display": "E.",
+                    "words": [
                         {
-                            "Confidence": 0.7828635,
-                            "Lexical": "UM I I will mix uh if i'm working with people that are friends of mine",
-                            "ITN": "UM II will mix uh if I'm working with people that are friends of mine",
-                            "MaskedITN": "UM II will mix uh if I'm working with People that are friends of mine",
-                            "Display": "UM II will mix uh if I'm working with People that are friends of mine.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "UM",
-                                    "Offset": 786200000,
-                                    "Duration": 5100000,
-                                    "OffsetInSeconds": 78.62,
-                                    "DurationInSeconds": 0.51,
-                                    "Confidence": 0.882848
-                                },
-                                {
-                                    "Word": "I",
-                                    "Offset": 795900000,
-                                    "Duration": 5500000,
-                                    "OffsetInSeconds": 79.59,
-                                    "DurationInSeconds": 0.55,
-                                    "Confidence": 0.945815
-                                },
-                                {
-                                    "Word": "I",
-                                    "Offset": 801400000,
-                                    "Duration": 1600000,
-                                    "OffsetInSeconds": 80.14,
-                                    "DurationInSeconds": 0.16,
-                                    "Confidence": 0.959609
-                                },
-                                {
-                                    "Word": "will",
-                                    "Offset": 803000000,
-                                    "Duration": 1800000,
-                                    "OffsetInSeconds": 80.3,
-                                    "DurationInSeconds": 0.18,
-                                    "Confidence": 0.927152
-                                },
-                                {
-                                    "Word": "mix",
-                                    "Offset": 804800000,
-                                    "Duration": 4900000,
-                                    "OffsetInSeconds": 80.48,
-                                    "DurationInSeconds": 0.49,
-                                    "Confidence": 0.941978
-                                },
-                                {
-                                    "Word": "uh",
-                                    "Offset": 813200000,
-                                    "Duration": 4600000,
-                                    "OffsetInSeconds": 81.32,
-                                    "DurationInSeconds": 0.46,
-                                    "Confidence": 0.927187
-                                },
-                                {
-                                    "Word": "if",
-                                    "Offset": 817800000,
-                                    "Duration": 2000000,
-                                    "OffsetInSeconds": 81.78,
-                                    "DurationInSeconds": 0.2,
-                                    "Confidence": 0.835883
-                                },
-                                {
-                                    "Word": "i'm",
-                                    "Offset": 819800000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 81.98,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.897485
-                                },
-                                {
-                                    "Word": "working",
-                                    "Offset": 821000000,
-                                    "Duration": 2500000,
-                                    "OffsetInSeconds": 82.1,
-                                    "DurationInSeconds": 0.25,
-                                    "Confidence": 0.975417
-                                },
-                                {
-                                    "Word": "with",
-                                    "Offset": 823500000,
-                                    "Duration": 1500000,
-                                    "OffsetInSeconds": 82.35,
-                                    "DurationInSeconds": 0.15,
-                                    "Confidence": 0.989823
-                                },
-                                {
-                                    "Word": "people",
-                                    "Offset": 825000000,
-                                    "Duration": 6600000,
-                                    "OffsetInSeconds": 82.5,
-                                    "DurationInSeconds": 0.66,
-                                    "Confidence": 0.978525
-                                },
-                                {
-                                    "Word": "that",
-                                    "Offset": 832400000,
-                                    "Duration": 3800000,
-                                    "OffsetInSeconds": 83.24,
-                                    "DurationInSeconds": 0.38,
-                                    "Confidence": 0.87365
-                                },
-                                {
-                                    "Word": "are",
-                                    "Offset": 836200000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 83.62,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.908487
-                                },
-                                {
-                                    "Word": "friends",
-                                    "Offset": 837000000,
-                                    "Duration": 2600000,
-                                    "OffsetInSeconds": 83.7,
-                                    "DurationInSeconds": 0.26,
-                                    "Confidence": 0.925448
-                                },
-                                {
-                                    "Word": "of",
-                                    "Offset": 839600000,
-                                    "Duration": 800000,
-                                    "OffsetInSeconds": 83.96,
-                                    "DurationInSeconds": 0.08,
-                                    "Confidence": 0.975973
-                                },
-                                {
-                                    "Word": "mine",
-                                    "Offset": 840400000,
-                                    "Duration": 1800000,
-                                    "OffsetInSeconds": 84.04,
-                                    "DurationInSeconds": 0.18,
-                                    "Confidence": 0.981685
-                                }
-                            ]
+                            "word": "E",
+                            "offset": "PT49.8S",
+                            "duration": "PT0.49S",
+                            "offsetInTicks": 498000000.0,
+                            "durationInTicks": 4900000.0,
+                            "confidence": 0.693771
                         }
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT50.31S",
+            "duration": "PT5.41S",
+            "offsetInTicks": 503100000.0,
+            "durationInTicks": 54100000.0,
+            "nBest": [
                 {
-                    "RecognitionStatus": "Success",
-                    "ChannelNumber": null,
-                    "SpeakerId": "1",
-                    "Offset": 867200000,
-                    "Duration": 18700000,
-                    "OffsetInSeconds": 86.72,
-                    "DurationInSeconds": 1.87,
-                    "NBest": [
+                    "confidence": 0.60392636,
+                    "lexical": "low pressure elaine theon mucho mas portal experience at any of those to sonia 's",
+                    "itn": "low pressure elaine theon mucho mas portal experience at any of those to sonia's",
+                    "maskedITN": "Low pressure Elaine Theon Mucho mas portal experience at any of those to Sonia's",
+                    "display": "Low pressure Elaine Theon Mucho mas portal experience at any of those to Sonia's.",
+                    "words": [
                         {
-                            "Confidence": 0.8279873,
-                            "Lexical": "say the word in the language that comes easiest",
-                            "ITN": "say the word in the language that comes easiest",
-                            "MaskedITN": "Say the word in the language that comes easiest",
-                            "Display": "Say the word in the language that comes easiest.",
-                            "Sentiment": null,
-                            "Words": [
-                                {
-                                    "Word": "say",
-                                    "Offset": 867200000,
-                                    "Duration": 2300000,
-                                    "OffsetInSeconds": 86.72,
-                                    "DurationInSeconds": 0.23,
-                                    "Confidence": 0.92029
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 869500000,
-                                    "Duration": 1000000,
-                                    "OffsetInSeconds": 86.95,
-                                    "DurationInSeconds": 0.1,
-                                    "Confidence": 0.744779
-                                },
-                                {
-                                    "Word": "word",
-                                    "Offset": 870500000,
-                                    "Duration": 1800000,
-                                    "OffsetInSeconds": 87.05,
-                                    "DurationInSeconds": 0.18,
-                                    "Confidence": 0.965502
-                                },
-                                {
-                                    "Word": "in",
-                                    "Offset": 872300000,
-                                    "Duration": 700000,
-                                    "OffsetInSeconds": 87.23,
-                                    "DurationInSeconds": 0.07,
-                                    "Confidence": 0.856568
-                                },
-                                {
-                                    "Word": "the",
-                                    "Offset": 873000000,
-                                    "Duration": 900000,
-                                    "OffsetInSeconds": 87.3,
-                                    "DurationInSeconds": 0.09,
-                                    "Confidence": 0.855074
-                                },
-                                {
-                                    "Word": "language",
-                                    "Offset": 873900000,
-                                    "Duration": 3400000,
-                                    "OffsetInSeconds": 87.39,
-                                    "DurationInSeconds": 0.34,
-                                    "Confidence": 0.980558
-                                },
-                                {
-                                    "Word": "that",
-                                    "Offset": 877300000,
-                                    "Duration": 1200000,
-                                    "OffsetInSeconds": 87.73,
-                                    "DurationInSeconds": 0.12,
-                                    "Confidence": 0.876093
-                                },
-                                {
-                                    "Word": "comes",
-                                    "Offset": 878500000,
-                                    "Duration": 2400000,
-                                    "OffsetInSeconds": 87.85,
-                                    "DurationInSeconds": 0.24,
-                                    "Confidence": 0.964276
-                                },
-                                {
-                                    "Word": "easiest",
-                                    "Offset": 880900000,
-                                    "Duration": 5000000,
-                                    "OffsetInSeconds": 88.09,
-                                    "DurationInSeconds": 0.5,
-                                    "Confidence": 0.942225
-                                }
-                            ]
+                            "word": "low",
+                            "offset": "PT50.31S",
+                            "duration": "PT0.37S",
+                            "offsetInTicks": 503100000.0,
+                            "durationInTicks": 3700000.0,
+                            "confidence": 0.457207
+                        },
+                        {
+                            "word": "pressure",
+                            "offset": "PT50.68S",
+                            "duration": "PT0.56S",
+                            "offsetInTicks": 506800000.0,
+                            "durationInTicks": 5600000.0,
+                            "confidence": 0.93554
+                        },
+                        {
+                            "word": "elaine",
+                            "offset": "PT51.26S",
+                            "duration": "PT0.5S",
+                            "offsetInTicks": 512600000.0,
+                            "durationInTicks": 5000000.0,
+                            "confidence": 0.28277
+                        },
+                        {
+                            "word": "theon",
+                            "offset": "PT51.76S",
+                            "duration": "PT0.46S",
+                            "offsetInTicks": 517600000.0,
+                            "durationInTicks": 4600000.0,
+                            "confidence": 0.370918
+                        },
+                        {
+                            "word": "mucho",
+                            "offset": "PT52.22S",
+                            "duration": "PT0.28S",
+                            "offsetInTicks": 522200000.0,
+                            "durationInTicks": 2800000.0,
+                            "confidence": 0.609796
+                        },
+                        {
+                            "word": "mas",
+                            "offset": "PT52.5S",
+                            "duration": "PT0.49S",
+                            "offsetInTicks": 525000000.0,
+                            "durationInTicks": 4900000.0,
+                            "confidence": 0.792625
+                        },
+                        {
+                            "word": "portal",
+                            "offset": "PT53.01S",
+                            "duration": "PT0.36S",
+                            "offsetInTicks": 530100000.0,
+                            "durationInTicks": 3600000.0,
+                            "confidence": 0.634913
+                        },
+                        {
+                            "word": "experience",
+                            "offset": "PT53.37S",
+                            "duration": "PT0.55S",
+                            "offsetInTicks": 533700000.0,
+                            "durationInTicks": 5500000.0,
+                            "confidence": 0.822929
+                        },
+                        {
+                            "word": "at",
+                            "offset": "PT53.92S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 539200000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.427165
+                        },
+                        {
+                            "word": "any",
+                            "offset": "PT54.18S",
+                            "duration": "PT0.16S",
+                            "offsetInTicks": 541800000.0,
+                            "durationInTicks": 1600000.0,
+                            "confidence": 0.762055
+                        },
+                        {
+                            "word": "of",
+                            "offset": "PT54.34S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 543400000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.85515
+                        },
+                        {
+                            "word": "those",
+                            "offset": "PT54.46S",
+                            "duration": "PT0.46S",
+                            "offsetInTicks": 544600000.0,
+                            "durationInTicks": 4600000.0,
+                            "confidence": 0.763286
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT54.92S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 549200000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.726996
+                        },
+                        {
+                            "word": "sonia",
+                            "offset": "PT55.04S",
+                            "duration": "PT0.42S",
+                            "offsetInTicks": 550400000.0,
+                            "durationInTicks": 4200000.0,
+                            "confidence": 0.458858
+                        },
+                        {
+                            "word": "'s",
+                            "offset": "PT55.46S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 554600000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.90425
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 1,
+            "offset": "PT55.77S",
+            "duration": "PT0.81S",
+            "offsetInTicks": 557700000.0,
+            "durationInTicks": 8100000.0,
+            "nBest": [
+                {
+                    "confidence": 0.60392636,
+                    "lexical": "elago",
+                    "itn": "elago",
+                    "maskedITN": "Elago",
+                    "display": "Elago.",
+                    "words": [
+                        {
+                            "word": "elago",
+                            "offset": "PT55.77S",
+                            "duration": "PT0.81S",
+                            "offsetInTicks": 557700000.0,
+                            "durationInTicks": 8100000.0,
+                            "confidence": 0.116919
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT56.6S",
+            "duration": "PT4.8S",
+            "offsetInTicks": 566000000.0,
+            "durationInTicks": 48000000.0,
+            "nBest": [
+                {
+                    "confidence": 0.60392636,
+                    "lexical": "parrot retarded but another different comma considering",
+                    "itn": "parrot retarded but another different comma considering",
+                    "maskedITN": "Parrot retarded but another different considering",
+                    "display": "Parrot retarded, but another different, considering.",
+                    "words": [
+                        {
+                            "word": "parrot",
+                            "offset": "PT56.6S",
+                            "duration": "PT0.68S",
+                            "offsetInTicks": 566000000.0,
+                            "durationInTicks": 6800000.0,
+                            "confidence": 0.137656
+                        },
+                        {
+                            "word": "retarded",
+                            "offset": "PT57.28S",
+                            "duration": "PT0.55S",
+                            "offsetInTicks": 572800000.0,
+                            "durationInTicks": 5500000.0,
+                            "confidence": 0.625232
+                        },
+                        {
+                            "word": "but",
+                            "offset": "PT58.58S",
+                            "duration": "PT0.3S",
+                            "offsetInTicks": 585800000.0,
+                            "durationInTicks": 3000000.0,
+                            "confidence": 0.821927
+                        },
+                        {
+                            "word": "another",
+                            "offset": "PT58.88S",
+                            "duration": "PT0.41S",
+                            "offsetInTicks": 588800000.0,
+                            "durationInTicks": 4100000.0,
+                            "confidence": 0.858153
+                        },
+                        {
+                            "word": "different",
+                            "offset": "PT59.29S",
+                            "duration": "PT0.71S",
+                            "offsetInTicks": 592900000.0,
+                            "durationInTicks": 7100000.0,
+                            "confidence": 0.901546
+                        },
+                        {
+                            "word": "comma",
+                            "offset": "PT1M0.41S",
+                            "duration": "PT0.29S",
+                            "offsetInTicks": 604100000.0,
+                            "durationInTicks": 2900000.0,
+                            "confidence": 0.343709
+                        },
+                        {
+                            "word": "considering",
+                            "offset": "PT1M0.7S",
+                            "duration": "PT0.7S",
+                            "offsetInTicks": 607000000.0,
+                            "durationInTicks": 7000000.0,
+                            "confidence": 0.812827
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 2,
+            "offset": "PT1M2.92S",
+            "duration": "PT1.6S",
+            "offsetInTicks": 629200000.0,
+            "durationInTicks": 16000000.0,
+            "nBest": [
+                {
+                    "confidence": 0.71498454,
+                    "lexical": "but there is a community there",
+                    "itn": "but there is a community there",
+                    "maskedITN": "But there is a community there",
+                    "display": "But there is a community there.",
+                    "words": [
+                        {
+                            "word": "but",
+                            "offset": "PT1M2.92S",
+                            "duration": "PT0.31S",
+                            "offsetInTicks": 629200000.0,
+                            "durationInTicks": 3100000.0,
+                            "confidence": 0.537686
+                        },
+                        {
+                            "word": "there",
+                            "offset": "PT1M3.23S",
+                            "duration": "PT0.17S",
+                            "offsetInTicks": 632300000.0,
+                            "durationInTicks": 1700000.0,
+                            "confidence": 0.87474
+                        },
+                        {
+                            "word": "is",
+                            "offset": "PT1M3.4S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 634000000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.899015
+                        },
+                        {
+                            "word": "a",
+                            "offset": "PT1M3.52S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 635200000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.937687
+                        },
+                        {
+                            "word": "community",
+                            "offset": "PT1M3.62S",
+                            "duration": "PT0.46S",
+                            "offsetInTicks": 636200000.0,
+                            "durationInTicks": 4600000.0,
+                            "confidence": 0.676676
+                        },
+                        {
+                            "word": "there",
+                            "offset": "PT1M4.08S",
+                            "duration": "PT0.44S",
+                            "offsetInTicks": 640800000.0,
+                            "durationInTicks": 4400000.0,
+                            "confidence": 0.717422
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 1,
+            "offset": "PT1M5.15S",
+            "duration": "PT4.01S",
+            "offsetInTicks": 651500000.0,
+            "durationInTicks": 40100000.0,
+            "nBest": [
+                {
+                    "confidence": 0.81630707,
+                    "lexical": "i do all the time at school with my colleagues",
+                    "itn": "I do all the time at school with my colleagues",
+                    "maskedITN": "I do all the time at school with my colleagues",
+                    "display": "I do all the time at school with my colleagues.",
+                    "words": [
+                        {
+                            "word": "i",
+                            "offset": "PT1M5.15S",
+                            "duration": "PT0.2S",
+                            "offsetInTicks": 651500000.0,
+                            "durationInTicks": 2000000.0,
+                            "confidence": 0.931437
+                        },
+                        {
+                            "word": "do",
+                            "offset": "PT1M5.35S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 653500000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.882102
+                        },
+                        {
+                            "word": "all",
+                            "offset": "PT1M5.59S",
+                            "duration": "PT0.18S",
+                            "offsetInTicks": 655900000.0,
+                            "durationInTicks": 1800000.0,
+                            "confidence": 0.859824
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT1M5.77S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 657700000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.942105
+                        },
+                        {
+                            "word": "time",
+                            "offset": "PT1M5.87S",
+                            "duration": "PT0.41S",
+                            "offsetInTicks": 658700000.0,
+                            "durationInTicks": 4100000.0,
+                            "confidence": 0.946767
+                        },
+                        {
+                            "word": "at",
+                            "offset": "PT1M6.91S",
+                            "duration": "PT0.76S",
+                            "offsetInTicks": 669100000.0,
+                            "durationInTicks": 7600000.0,
+                            "confidence": 0.452854
+                        },
+                        {
+                            "word": "school",
+                            "offset": "PT1M7.67S",
+                            "duration": "PT0.36S",
+                            "offsetInTicks": 676700000.0,
+                            "durationInTicks": 3600000.0,
+                            "confidence": 0.90321
+                        },
+                        {
+                            "word": "with",
+                            "offset": "PT1M8.03S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 680300000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.933451
+                        },
+                        {
+                            "word": "my",
+                            "offset": "PT1M8.17S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 681700000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.870945
+                        },
+                        {
+                            "word": "colleagues",
+                            "offset": "PT1M8.31S",
+                            "duration": "PT0.85S",
+                            "offsetInTicks": 683100000.0,
+                            "durationInTicks": 8500000.0,
+                            "confidence": 0.943568
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 1,
+            "offset": "PT1M10.58S",
+            "duration": "PT7.56S",
+            "offsetInTicks": 705800000.0,
+            "durationInTicks": 75600000.0,
+            "nBest": [
+                {
+                    "confidence": 0.8529907,
+                    "lexical": "usually when i'm teaching don't mix as much try to speak more of the more spanish in my spanish classes 'cause we're teaching spanish but",
+                    "itn": "usually when I'm teaching don't mix as much try to speak more of the more spanish in my spanish classes 'cause we're teaching spanish but",
+                    "maskedITN": "Usually when I'm teaching don't mix as much try to speak more of the more Spanish in my Spanish classes 'cause we're teaching Spanish but",
+                    "display": "Usually, when I'm teaching don't mix, as much try to speak more of the more Spanish in my Spanish classes 'cause we're teaching Spanish but.",
+                    "words": [
+                        {
+                            "word": "usually",
+                            "offset": "PT1M10.58S",
+                            "duration": "PT0.4S",
+                            "offsetInTicks": 705800000.0,
+                            "durationInTicks": 4000000.0,
+                            "confidence": 0.593398
+                        },
+                        {
+                            "word": "when",
+                            "offset": "PT1M10.98S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 709800000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.905748
+                        },
+                        {
+                            "word": "i'm",
+                            "offset": "PT1M11.1S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 711000000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.92714
+                        },
+                        {
+                            "word": "teaching",
+                            "offset": "PT1M11.22S",
+                            "duration": "PT0.58S",
+                            "offsetInTicks": 712200000.0,
+                            "durationInTicks": 5800000.0,
+                            "confidence": 0.952835
+                        },
+                        {
+                            "word": "don't",
+                            "offset": "PT1M12.01S",
+                            "duration": "PT0.31S",
+                            "offsetInTicks": 720100000.0,
+                            "durationInTicks": 3100000.0,
+                            "confidence": 0.782079
+                        },
+                        {
+                            "word": "mix",
+                            "offset": "PT1M12.32S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 723200000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.798591
+                        },
+                        {
+                            "word": "as",
+                            "offset": "PT1M12.58S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 725800000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.768337
+                        },
+                        {
+                            "word": "much",
+                            "offset": "PT1M12.7S",
+                            "duration": "PT0.52S",
+                            "offsetInTicks": 727000000.0,
+                            "durationInTicks": 5200000.0,
+                            "confidence": 0.949835
+                        },
+                        {
+                            "word": "try",
+                            "offset": "PT1M13.24S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 732400000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.578964
+                        },
+                        {
+                            "word": "to",
+                            "offset": "PT1M13.48S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 734800000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.915234
+                        },
+                        {
+                            "word": "speak",
+                            "offset": "PT1M13.58S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 735800000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.922417
+                        },
+                        {
+                            "word": "more",
+                            "offset": "PT1M13.84S",
+                            "duration": "PT0.18S",
+                            "offsetInTicks": 738400000.0,
+                            "durationInTicks": 1800000.0,
+                            "confidence": 0.876427
+                        },
+                        {
+                            "word": "of",
+                            "offset": "PT1M14.02S",
+                            "duration": "PT0.1S",
+                            "offsetInTicks": 740200000.0,
+                            "durationInTicks": 1000000.0,
+                            "confidence": 0.89085
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT1M14.12S",
+                            "duration": "PT0.48S",
+                            "offsetInTicks": 741200000.0,
+                            "durationInTicks": 4800000.0,
+                            "confidence": 0.887909
+                        },
+                        {
+                            "word": "more",
+                            "offset": "PT1M14.62S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 746200000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.756579
+                        },
+                        {
+                            "word": "spanish",
+                            "offset": "PT1M14.86S",
+                            "duration": "PT0.38S",
+                            "offsetInTicks": 748600000.0,
+                            "durationInTicks": 3800000.0,
+                            "confidence": 0.877403
+                        },
+                        {
+                            "word": "in",
+                            "offset": "PT1M15.24S",
+                            "duration": "PT0.11S",
+                            "offsetInTicks": 752400000.0,
+                            "durationInTicks": 1100000.0,
+                            "confidence": 0.899234
+                        },
+                        {
+                            "word": "my",
+                            "offset": "PT1M15.35S",
+                            "duration": "PT0.11S",
+                            "offsetInTicks": 753500000.0,
+                            "durationInTicks": 1100000.0,
+                            "confidence": 0.890671
+                        },
+                        {
+                            "word": "spanish",
+                            "offset": "PT1M15.46S",
+                            "duration": "PT0.4S",
+                            "offsetInTicks": 754600000.0,
+                            "durationInTicks": 4000000.0,
+                            "confidence": 0.882721
+                        },
+                        {
+                            "word": "classes",
+                            "offset": "PT1M15.86S",
+                            "duration": "PT0.54S",
+                            "offsetInTicks": 758600000.0,
+                            "durationInTicks": 5400000.0,
+                            "confidence": 0.94766
+                        },
+                        {
+                            "word": "'cause",
+                            "offset": "PT1M16.4S",
+                            "duration": "PT0.2S",
+                            "offsetInTicks": 764000000.0,
+                            "durationInTicks": 2000000.0,
+                            "confidence": 0.594778
+                        },
+                        {
+                            "word": "we're",
+                            "offset": "PT1M16.6S",
+                            "duration": "PT0.21S",
+                            "offsetInTicks": 766000000.0,
+                            "durationInTicks": 2100000.0,
+                            "confidence": 0.917079
+                        },
+                        {
+                            "word": "teaching",
+                            "offset": "PT1M16.83S",
+                            "duration": "PT0.45S",
+                            "offsetInTicks": 768300000.0,
+                            "durationInTicks": 4500000.0,
+                            "confidence": 0.719107
+                        },
+                        {
+                            "word": "spanish",
+                            "offset": "PT1M17.28S",
+                            "duration": "PT0.5S",
+                            "offsetInTicks": 772800000.0,
+                            "durationInTicks": 5000000.0,
+                            "confidence": 0.949295
+                        },
+                        {
+                            "word": "but",
+                            "offset": "PT1M17.78S",
+                            "duration": "PT0.36S",
+                            "offsetInTicks": 777800000.0,
+                            "durationInTicks": 3600000.0,
+                            "confidence": 0.950902
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 1,
+            "offset": "PT1M19.58S",
+            "duration": "PT6.08S",
+            "offsetInTicks": 795800000.0,
+            "durationInTicks": 60800000.0,
+            "nBest": [
+                {
+                    "confidence": 0.7974986,
+                    "lexical": "I I will mix if i'm working with people that are friends of mine that are that are bilinguals bolt",
+                    "itn": "II will mix if I'm working with people that are friends of mine that are that are bilinguals bolt",
+                    "maskedITN": "II will mix if I'm working with people that are friends of mine that are that are bilinguals Bolt",
+                    "display": "II will mix if I'm working with people that are friends of mine that are that are bilinguals, Bolt.",
+                    "words": [
+                        {
+                            "word": "I",
+                            "offset": "PT1M19.58S",
+                            "duration": "PT0.58S",
+                            "offsetInTicks": 795800000.0,
+                            "durationInTicks": 5800000.0,
+                            "confidence": 0.903842
+                        },
+                        {
+                            "word": "I",
+                            "offset": "PT1M20.16S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 801600000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.928508
+                        },
+                        {
+                            "word": "will",
+                            "offset": "PT1M20.3S",
+                            "duration": "PT0.18S",
+                            "offsetInTicks": 803000000.0,
+                            "durationInTicks": 1800000.0,
+                            "confidence": 0.913328
+                        },
+                        {
+                            "word": "mix",
+                            "offset": "PT1M20.48S",
+                            "duration": "PT0.49S",
+                            "offsetInTicks": 804800000.0,
+                            "durationInTicks": 4900000.0,
+                            "confidence": 0.790485
+                        },
+                        {
+                            "word": "if",
+                            "offset": "PT1M21.58S",
+                            "duration": "PT0.4S",
+                            "offsetInTicks": 815800000.0,
+                            "durationInTicks": 4000000.0,
+                            "confidence": 0.509754
+                        },
+                        {
+                            "word": "i'm",
+                            "offset": "PT1M21.98S",
+                            "duration": "PT0.11S",
+                            "offsetInTicks": 819800000.0,
+                            "durationInTicks": 1100000.0,
+                            "confidence": 0.839586
+                        },
+                        {
+                            "word": "working",
+                            "offset": "PT1M22.09S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 820900000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.896994
+                        },
+                        {
+                            "word": "with",
+                            "offset": "PT1M22.35S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 823500000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.949001
+                        },
+                        {
+                            "word": "people",
+                            "offset": "PT1M22.49S",
+                            "duration": "PT0.66S",
+                            "offsetInTicks": 824900000.0,
+                            "durationInTicks": 6600000.0,
+                            "confidence": 0.922482
+                        },
+                        {
+                            "word": "that",
+                            "offset": "PT1M23.24S",
+                            "duration": "PT0.38S",
+                            "offsetInTicks": 832400000.0,
+                            "durationInTicks": 3800000.0,
+                            "confidence": 0.874546
+                        },
+                        {
+                            "word": "are",
+                            "offset": "PT1M23.62S",
+                            "duration": "PT0.08S",
+                            "offsetInTicks": 836200000.0,
+                            "durationInTicks": 800000.0,
+                            "confidence": 0.895694
+                        },
+                        {
+                            "word": "friends",
+                            "offset": "PT1M23.7S",
+                            "duration": "PT0.26S",
+                            "offsetInTicks": 837000000.0,
+                            "durationInTicks": 2600000.0,
+                            "confidence": 0.819592
+                        },
+                        {
+                            "word": "of",
+                            "offset": "PT1M23.96S",
+                            "duration": "PT0.09S",
+                            "offsetInTicks": 839600000.0,
+                            "durationInTicks": 900000.0,
+                            "confidence": 0.94954
+                        },
+                        {
+                            "word": "mine",
+                            "offset": "PT1M24.05S",
+                            "duration": "PT0.19S",
+                            "offsetInTicks": 840500000.0,
+                            "durationInTicks": 1900000.0,
+                            "confidence": 0.896255
+                        },
+                        {
+                            "word": "that",
+                            "offset": "PT1M24.24S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 842400000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.772786
+                        },
+                        {
+                            "word": "are",
+                            "offset": "PT1M24.36S",
+                            "duration": "PT0.18S",
+                            "offsetInTicks": 843600000.0,
+                            "durationInTicks": 1800000.0,
+                            "confidence": 0.887492
+                        },
+                        {
+                            "word": "that",
+                            "offset": "PT1M24.54S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 845400000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.545018
+                        },
+                        {
+                            "word": "are",
+                            "offset": "PT1M24.68S",
+                            "duration": "PT0.08S",
+                            "offsetInTicks": 846800000.0,
+                            "durationInTicks": 800000.0,
+                            "confidence": 0.900204
+                        },
+                        {
+                            "word": "bilinguals",
+                            "offset": "PT1M24.76S",
+                            "duration": "PT0.54S",
+                            "offsetInTicks": 847600000.0,
+                            "durationInTicks": 5400000.0,
+                            "confidence": 0.461085
+                        },
+                        {
+                            "word": "bolt",
+                            "offset": "PT1M25.3S",
+                            "duration": "PT0.36S",
+                            "offsetInTicks": 853000000.0,
+                            "durationInTicks": 3600000.0,
+                            "confidence": 0.807786
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "recognitionStatus": "Success",
+            "channel": 0,
+            "speaker": 1,
+            "offset": "PT1M26.7S",
+            "duration": "PT1.89S",
+            "offsetInTicks": 867000000.0,
+            "durationInTicks": 18900000.0,
+            "nBest": [
+                {
+                    "confidence": 0.85787636,
+                    "lexical": "say the word in the language that comes easiest",
+                    "itn": "say the word in the language that comes easiest",
+                    "maskedITN": "Say the word in the language that comes easiest",
+                    "display": "Say, the word in the language that comes easiest.",
+                    "words": [
+                        {
+                            "word": "say",
+                            "offset": "PT1M26.7S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 867000000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.738962
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT1M26.94S",
+                            "duration": "PT0.12S",
+                            "offsetInTicks": 869400000.0,
+                            "durationInTicks": 1200000.0,
+                            "confidence": 0.829189
+                        },
+                        {
+                            "word": "word",
+                            "offset": "PT1M27.06S",
+                            "duration": "PT0.17S",
+                            "offsetInTicks": 870600000.0,
+                            "durationInTicks": 1700000.0,
+                            "confidence": 0.921077
+                        },
+                        {
+                            "word": "in",
+                            "offset": "PT1M27.23S",
+                            "duration": "PT0.07S",
+                            "offsetInTicks": 872300000.0,
+                            "durationInTicks": 700000.0,
+                            "confidence": 0.856143
+                        },
+                        {
+                            "word": "the",
+                            "offset": "PT1M27.3S",
+                            "duration": "PT0.09S",
+                            "offsetInTicks": 873000000.0,
+                            "durationInTicks": 900000.0,
+                            "confidence": 0.90189
+                        },
+                        {
+                            "word": "language",
+                            "offset": "PT1M27.39S",
+                            "duration": "PT0.33S",
+                            "offsetInTicks": 873900000.0,
+                            "durationInTicks": 3300000.0,
+                            "confidence": 0.913321
+                        },
+                        {
+                            "word": "that",
+                            "offset": "PT1M27.72S",
+                            "duration": "PT0.14S",
+                            "offsetInTicks": 877200000.0,
+                            "durationInTicks": 1400000.0,
+                            "confidence": 0.871149
+                        },
+                        {
+                            "word": "comes",
+                            "offset": "PT1M27.86S",
+                            "duration": "PT0.24S",
+                            "offsetInTicks": 878600000.0,
+                            "durationInTicks": 2400000.0,
+                            "confidence": 0.922394
+                        },
+                        {
+                            "word": "easiest",
+                            "offset": "PT1M28.1S",
+                            "duration": "PT0.49S",
+                            "offsetInTicks": 881000000.0,
+                            "durationInTicks": 4900000.0,
+                            "confidence": 0.82065
                         }
                     ]
                 }

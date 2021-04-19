@@ -27,6 +27,7 @@
 
 import http.server
 import json
+import logging
 import os
 import pathlib
 import sys
@@ -41,8 +42,10 @@ from unittest import mock
 import mpf_component_api as mpf
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent / '../acs_translation_component'))
-from acs_translation_component import AcsTranslationComponent, TranslationClient, \
-    NewLineBehavior, ChineseAndJapaneseCodePoints, AcsTranslateUrlBuilder, BreakSentenceClient
+from acs_translation_component import AcsTranslationComponent, get_azure_char_count, \
+    TranslationClient, NewLineBehavior, ChineseAndJapaneseCodePoints, AcsTranslateUrlBuilder, \
+    BreakSentenceClient, SentenceBreakGuesser, get_n_azure_chars
+
 
 
 SEEN_TRACE_IDS = set()
@@ -55,6 +58,7 @@ SPANISH_SAMPLE_TEXT_ENG_TRANSLATE = 'Where\'s the library?'
 
 TEST_DATA = pathlib.Path(__file__).parent / 'data'
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestAcsTranslation(unittest.TestCase):
 
@@ -99,42 +103,60 @@ class TestAcsTranslation(unittest.TestCase):
                 self.assertEqual('zh-Hans', result.detection_properties['TRANSLATION SOURCE LANGUAGE'])
                 self.assertAlmostEqual(
                     1.0, float(result.detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+                self.assertNotIn('SKIPPED TRANSLATION', result.detection_properties)
 
-                request_body = self.get_request_body()
-                self.assertEqual(1, len(request_body))
-                self.assertEqual(CHINESE_SAMPLE_TEXT, request_body[0]['Text'])
+                detect_request_body = self.get_request_body()
+                self.assertEqual(1, len(detect_request_body))
+                self.assertEqual(CHINESE_SAMPLE_TEXT, detect_request_body[0]['Text'])
+
+                translate_url, translate_request_body = self.get_request()
+                translate_query_string: str = urllib.parse.urlparse(translate_url).query
+                translate_query_dict = urllib.parse.parse_qs(translate_query_string)
+                self.assertEqual(['3.0'], translate_query_dict['api-version'])
+                self.assertEqual(['en'], translate_query_dict['to'])
+                self.assertEqual(['zh-Hans'], translate_query_dict['from'])
+
+                self.assertEqual(1, len(translate_request_body))
+                self.assertEqual(CHINESE_SAMPLE_TEXT, translate_request_body[0]['Text'])
             finally:
                 self.mock_server.drain_queues()
 
-        results_file = 'results-chinese.json'
+        detect_results_file = 'chinese-detect-result.json'
+        translate_results_file = 'results-chinese.json'
 
         with self.subTest('Image'):
-            self.set_results_file(results_file)
+            self.set_results_file(detect_results_file)
+            self.set_results_file(translate_results_file)
             ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=CHINESE_SAMPLE_TEXT))
             job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {}, ff_loc)
             validate_results(list(AcsTranslationComponent().get_detections_from_image(job)))
 
         with self.subTest('Audio'):
-            self.set_results_file(results_file)
+            self.set_results_file(detect_results_file)
+            self.set_results_file(translate_results_file)
             ff_track = mpf.AudioTrack(0, 1, -1, dict(TEXT=CHINESE_SAMPLE_TEXT))
             job = mpf.AudioJob('Test', 'test.wav', 0, 1, get_test_properties(), {}, ff_track)
             validate_results(list(AcsTranslationComponent().get_detections_from_audio(job)))
 
         with self.subTest('Generic'):
-            self.set_results_file(results_file)
+            self.set_results_file(detect_results_file)
+            self.set_results_file(translate_results_file)
             ff_track = mpf.GenericTrack(-1, dict(TEXT=CHINESE_SAMPLE_TEXT))
             job = mpf.GenericJob('Test', 'test.pdf', get_test_properties(), {}, ff_track)
             validate_results(list(AcsTranslationComponent().get_detections_from_generic(job)))
 
         with self.subTest('Plain text file'):
-            self.set_results_file(results_file)
+            self.set_results_file(detect_results_file)
+            self.set_results_file(translate_results_file)
             job = mpf.GenericJob('Test', str(TEST_DATA / 'chinese-text.txt'),
                                  get_test_properties(), {})
             validate_results(list(AcsTranslationComponent().get_detections_from_generic(job)))
 
 
     def test_video_job(self):
+        self.set_results_file('chinese-detect-result.json')
         self.set_results_file('results-chinese.json')
+        self.set_results_file('spanish-detect-result.json')
         self.set_results_file('results-spanish.json')
         ff_track = mpf.VideoTrack(
             0, 1, -1,
@@ -184,17 +206,55 @@ class TestAcsTranslation(unittest.TestCase):
             1.0,
             float(result.frame_locations[1].detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
 
-
         request_body1 = self.get_request_body()
         self.assertEqual(1, len(request_body1))
         self.assertEqual(CHINESE_SAMPLE_TEXT, request_body1[0]['Text'])
 
         request_body2 = self.get_request_body()
         self.assertEqual(1, len(request_body2))
-        self.assertEqual(SPANISH_SAMPLE_TEXT, request_body2[0]['Text'])
+        self.assertEqual(CHINESE_SAMPLE_TEXT, request_body2[0]['Text'])
 
-        with self.assertRaises(queue.Empty, msg='Only two requests should have been sent.'):
+        request_body3 = self.get_request_body()
+        self.assertEqual(1, len(request_body3))
+        self.assertEqual(SPANISH_SAMPLE_TEXT, request_body3[0]['Text'])
+
+        request_body4 = self.get_request_body()
+        self.assertEqual(1, len(request_body4))
+        self.assertEqual(SPANISH_SAMPLE_TEXT, request_body4[0]['Text'])
+
+        with self.assertRaises(queue.Empty, msg='Only four requests should have been sent.'):
             self.get_request_body()
+
+
+    def test_detect_lang_disabled(self):
+        self.set_results_file('results-chinese-with-auto-detect.json')
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=CHINESE_SAMPLE_TEXT))
+        job = mpf.ImageJob('Test', 'test.jpg',
+                           get_test_properties(DETECT_BEFORE_TRANSLATE='FALSE'), {}, ff_loc)
+        results = list(AcsTranslationComponent().get_detections_from_image(job))
+
+        self.assertEqual(1, len(results))
+        result = results[0]
+        self.assertEqual(CHINESE_SAMPLE_TEXT, result.detection_properties['TEXT'])
+
+        self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
+                         result.detection_properties['TRANSLATION'])
+        self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
+
+        self.assertEqual('zh-Hans', result.detection_properties['TRANSLATION SOURCE LANGUAGE'])
+        self.assertAlmostEqual(
+            1.0, float(result.detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+
+
+        translate_url, translate_request_body = self.get_request()
+        translate_query_string: str = urllib.parse.urlparse(translate_url).query
+        translate_query_dict = urllib.parse.parse_qs(translate_query_string)
+        self.assertEqual(['3.0'], translate_query_dict['api-version'])
+        self.assertEqual(['en'], translate_query_dict['to'])
+        self.assertIsNone(translate_query_dict.get('from'))
+
+        self.assertEqual(1, len(translate_request_body))
+        self.assertEqual(CHINESE_SAMPLE_TEXT, translate_request_body[0]['Text'])
 
 
     def test_no_feed_forward_location(self):
@@ -211,7 +271,8 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(mpf.DetectionError.UNSUPPORTED_DATA_TYPE, cm.exception.error_code)
 
 
-    def test_reports_error_when_server_error(self):
+    @mock.patch('time.sleep')
+    def test_reports_error_when_server_error(self, _):
         ff_track = mpf.VideoTrack(
             0, 1, -1,
             {0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=CHINESE_SAMPLE_TEXT))},
@@ -257,8 +318,8 @@ class TestAcsTranslation(unittest.TestCase):
             self.assertEqual(mpf.DetectionError.MISSING_PROPERTY, cm.exception.error_code)
 
 
-
     def test_translate_multiple_properties(self):
+        self.set_results_file('spanish-detect-result.json')
         self.set_results_file('results-spanish.json')
 
         ff_loc = mpf.ImageLocation(
@@ -281,11 +342,16 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(1, len(request_body1))
         self.assertEqual(SPANISH_SAMPLE_TEXT, request_body1[0]['Text'])
 
-        with self.assertRaises(queue.Empty, msg='Only one request should have been sent.'):
+        request_body2 = self.get_request_body()
+        self.assertEqual(1, len(request_body2))
+        self.assertEqual(SPANISH_SAMPLE_TEXT, request_body2[0]['Text'])
+
+        with self.assertRaises(queue.Empty, msg='Only two requests should have been sent.'):
             self.get_request_body()
 
 
     def test_translation_cache(self):
+        self.set_results_file('chinese-detect-result.json')
         self.set_results_file('results-chinese.json')
         ff_track = mpf.VideoTrack(
             0, 1, -1,
@@ -322,11 +388,16 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(1, len(request_body))
         self.assertEqual(CHINESE_SAMPLE_TEXT, request_body[0]['Text'])
 
-        with self.assertRaises(queue.Empty, msg='Only one request should have been sent.'):
+        request_body = self.get_request_body()
+        self.assertEqual(1, len(request_body))
+        self.assertEqual(CHINESE_SAMPLE_TEXT, request_body[0]['Text'])
+
+        with self.assertRaises(queue.Empty, msg='Only two requests should have been sent.'):
             self.get_request_body()
 
 
     def test_different_to_language(self):
+        self.set_results_file('eng-detect-result.json')
         self.set_results_file('results-eng-to-russian.json')
         eng_text = 'Do you speak English?'
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=eng_text))
@@ -341,9 +412,13 @@ class TestAcsTranslation(unittest.TestCase):
                          result.detection_properties['TRANSLATION'])
         self.assertEqual('RU', result.detection_properties['TRANSLATION TO LANGUAGE'])
 
-        request_body = self.get_request_body()
-        self.assertEqual(1, len(request_body))
-        self.assertEqual(eng_text, request_body[0]['Text'])
+        detect_request_body = self.get_request_body()
+        self.assertEqual(1, len(detect_request_body))
+        self.assertEqual(eng_text, detect_request_body[0]['Text'])
+
+        translate_request_body = self.get_request_body()
+        self.assertEqual(1, len(translate_request_body))
+        self.assertEqual(eng_text, translate_request_body[0]['Text'])
 
 
     def test_url_formation(self):
@@ -434,6 +509,7 @@ class TestAcsTranslation(unittest.TestCase):
 
     @mock.patch.object(BreakSentenceClient, 'TRANSLATION_MAX_CHARS', new_callable=lambda: 150)
     def test_split_text(self, _):
+        self.set_results_file('traditional-chinese-detect-result.json')
         self.set_results_file('break-sentence/break-sentence-art-of-war-results.json')
         self.set_results_file('break-sentence/art-of-war-translation-1.json')
         self.set_results_file('break-sentence/art-of-war-translation-2.json')
@@ -454,8 +530,12 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual('zh-Hant', detection_props['TRANSLATION SOURCE LANGUAGE'])
         self.assertAlmostEqual(1.0, float(detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
 
+        detect_request_text = self.get_request_body()[0]['Text']
+        self.assertEqual(text, detect_request_text)
 
-        break_sentence_request_text = self.get_request_body()[0]['Text']
+        break_sentence_url, break_sentence_response = self.get_request()
+        self.assertIn('language=zh-Hant', break_sentence_url)
+        break_sentence_request_text = break_sentence_response[0]['Text']
 
         self.assertNotIn('\n', break_sentence_request_text, 'Newlines were not properly removed')
         self.assertNotIn(' ', break_sentence_request_text,
@@ -469,12 +549,10 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertTrue(translation_request1.startswith('兵者，'))
         self.assertTrue(translation_request1.endswith('主用也。'))
 
-
         translation_request2 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[1], len(translation_request2))
         self.assertTrue(translation_request2.startswith('凡此五'))
         self.assertTrue(translation_request2.endswith('詭道也。'))
-
 
         translation_request3 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[2], len(translation_request3))
@@ -482,12 +560,65 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertTrue(translation_request3.endswith('勝負見矣。'))
 
 
+    @mock.patch.object(BreakSentenceClient, 'TRANSLATION_MAX_CHARS', new_callable=lambda: 100)
+    @mock.patch.object(BreakSentenceClient, 'BREAK_SENTENCE_MAX_CHARS', new_callable=lambda: 150)
+    @mock.patch.object(TranslationClient, 'DETECT_MAX_CHARS', new_callable=lambda: 20)
+    def test_guess_break_with_break_sentence(self, _, __, ___):
+        self.set_results_file('traditional-chinese-detect-result.json')
+        for i in range(1, 4):
+            self.set_results_file(
+                f'break-sentence/with-guessing/art-of-war-break-sentence-{i}.json')
+        for i in range(1, 7):
+            self.set_results_file(f'break-sentence/with-guessing/art-of-war-translation-{i}.json')
+
+        text = (TEST_DATA / 'break-sentence/art-of-war.txt').read_text()
+        detection_props = dict(TEXT=text)
+        TranslationClient(get_test_properties()).add_translations(detection_props)
+
+        self.assertEqual(5, len(detection_props))
+        self.assertEqual(text, detection_props['TEXT'])
+
+        expected_translation = (TEST_DATA / 'break-sentence/art-war-translation.txt') \
+            .read_text().strip()
+        self.assertEqual(expected_translation, detection_props['TRANSLATION'])
+        self.assertEqual('EN', detection_props['TRANSLATION TO LANGUAGE'])
+
+        self.assertEqual('zh-Hant', detection_props['TRANSLATION SOURCE LANGUAGE'])
+        self.assertAlmostEqual(1.0,
+                               float(detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+
+        detect_request_text = self.get_request_body()[0]['Text']
+        self.assertEqual(text[:TranslationClient.DETECT_MAX_CHARS], detect_request_text)
+
+        for i in range(3):
+            break_sentence_url, break_sentence_request = self.get_request()
+            self.assertIn('language=zh-Hant', break_sentence_url)
+            break_sentence_request_text = break_sentence_request[0]['Text']
+            self.assertNotIn('\n', break_sentence_request_text,
+                             'Newlines were not properly removed')
+            self.assertNotIn(' ', break_sentence_request_text,
+                             'Spaces should not be added to Chinese text.')
+            self.assertEqual('。', break_sentence_request_text[-1])
+
+        for i in range(6):
+            translate_url, translate_request = self.get_request()
+            self.assertIn('from=zh-Hant', translate_url)
+            translate_request_text = translate_request[0]['Text']
+            self.assertNotIn('\n', translate_request_text,
+                             'Newlines were not properly removed')
+            self.assertNotIn(' ', translate_request_text,
+                             'Spaces should not be added to Chinese text.')
+            self.assertEqual('。', translate_request_text[-1])
+
+
     def test_newline_removal(self):
 
         def replace(text):
             # Just use a random result file. We are only interested in the request content.
             self.set_results_file('results-chinese.json')
-            TranslationClient(get_test_properties()).add_translations(dict(TEXT=text))
+
+            props = get_test_properties(DETECT_BEFORE_TRANSLATE='FALSE')
+            TranslationClient(props).add_translations(dict(TEXT=text))
             return self.get_request_body()[0]['Text']
 
         with self.subTest('English'):
@@ -534,65 +665,65 @@ class TestAcsTranslation(unittest.TestCase):
 
     def test_job_prop_newline_behavior(self):
         with self.subTest('default'):
-            behavior = NewLineBehavior.get({}, None)
-            self.assertEqual('My name is John.', behavior('My name is John.'))
-            self.assertEqual('My name is John.', behavior('My name\nis John.'))
+            behavior = NewLineBehavior.get({})
+            self.assertEqual('My name is John.', behavior('My name is John.', None))
+            self.assertEqual('My name is John.', behavior('My name\nis John.', None))
 
-            self.assertEqual('我叫约翰。', behavior('我叫约翰。'))
-            self.assertEqual('我叫约翰。', behavior('我叫\n约翰。'))
+            self.assertEqual('我叫约翰。', behavior('我叫约翰。', None))
+            self.assertEqual('我叫约翰。', behavior('我叫\n约翰。', None))
 
         with self.subTest('GUESS'):
-            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='GUESS'), None)
-            self.assertEqual('My name is John.', behavior('My name is John.'))
-            self.assertEqual('My name is John.', behavior('My name\nis John.'))
+            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='GUESS'))
+            self.assertEqual('My name is John.', behavior('My name is John.', None))
+            self.assertEqual('My name is John.', behavior('My name\nis John.', None))
 
-            self.assertEqual('我叫约翰。', behavior('我叫约翰。'))
-            self.assertEqual('我叫约翰。', behavior('我叫\n约翰。'))
+            self.assertEqual('我叫约翰。', behavior('我叫约翰。', None))
+            self.assertEqual('我叫约翰。', behavior('我叫\n约翰。', None))
 
         with self.subTest('REMOVE'):
-            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='REMOVE'), None)
-            self.assertEqual('My name is John.', behavior('My name is John.'))
-            self.assertEqual('My nameis John.', behavior('My name\nis John.'))
+            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='REMOVE'))
+            self.assertEqual('My name is John.', behavior('My name is John.', None))
+            self.assertEqual('My nameis John.', behavior('My name\nis John.', None))
 
-            self.assertEqual('我叫约翰。', behavior('我叫约翰。'))
-            self.assertEqual('我叫约翰。', behavior('我叫\n约翰。'))
+            self.assertEqual('我叫约翰。', behavior('我叫约翰。', None))
+            self.assertEqual('我叫约翰。', behavior('我叫\n约翰。', None))
 
         with self.subTest('SPACE'):
-            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='SPACE'), None)
-            self.assertEqual('My name is John.', behavior('My name is John.'))
-            self.assertEqual('My name is John.', behavior('My name\nis John.'))
+            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='SPACE'))
+            self.assertEqual('My name is John.', behavior('My name is John.', None))
+            self.assertEqual('My name is John.', behavior('My name\nis John.', None))
 
-            self.assertEqual('我叫约翰。', behavior('我叫约翰。'))
-            self.assertEqual('我叫 约翰。', behavior('我叫\n约翰。'))
+            self.assertEqual('我叫约翰。', behavior('我叫约翰。', None))
+            self.assertEqual('我叫 约翰。', behavior('我叫\n约翰。', None))
 
         with self.subTest('NONE'):
-            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='NONE'), None)
-            self.assertEqual('My name is John.', behavior('My name is John.'))
-            self.assertEqual('My name\nis John.', behavior('My name\nis John.'))
+            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='NONE'))
+            self.assertEqual('My name is John.', behavior('My name is John.', None))
+            self.assertEqual('My name\nis John.', behavior('My name\nis John.', None))
 
-            self.assertEqual('我叫约翰。', behavior('我叫约翰。'))
-            self.assertEqual('我叫\n约翰。', behavior('我叫\n约翰。'))
+            self.assertEqual('我叫约翰。', behavior('我叫约翰。', None))
+            self.assertEqual('我叫\n约翰。', behavior('我叫\n约翰。', None))
 
         with self.subTest('INVALID'):
             with self.assertRaises(mpf.DetectionException) as cm:
-                NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='INVALID'), None)
+                NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='INVALID'))
             self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
 
 
     def test_newline_behavior_with_from_lang(self):
-        behavior = NewLineBehavior.get({}, 'zh-Hans')
-        self.assertEqual('我叫约翰。', behavior('我叫\n约翰。'))
-        self.assertEqual('My nameis John.', behavior('My name\nis John.'))
+        behavior = NewLineBehavior.get({})
+        self.assertEqual('我叫约翰。', behavior('我叫\n约翰。', 'zh-Hans'))
+        self.assertEqual('My nameis John.', behavior('My name\nis John.', 'zh-Hans'))
 
-        behavior = NewLineBehavior.get({}, 'en')
-        self.assertEqual('我叫 约翰。', behavior('我叫\n约翰。'))
-        self.assertEqual('My name is John.', behavior('My name\nis John.'))
+        behavior = NewLineBehavior.get({})
+        self.assertEqual('我叫 约翰。', behavior('我叫\n约翰。', 'en'))
+        self.assertEqual('My name is John.', behavior('My name\nis John.', 'en'))
 
 
     def test_job_prop_overrides_from_lang(self):
-        behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='SPACE'), 'zh-Hans')
-        self.assertEqual('我叫 约翰。', behavior('我叫\n约翰。'))
-        self.assertEqual('My name is John.', behavior('My name\nis John.'))
+        behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='SPACE'))
+        self.assertEqual('我叫 约翰。', behavior('我叫\n约翰。', 'zh-Hans'))
+        self.assertEqual('My name is John.', behavior('My name\nis John.', 'zh-Hans'))
 
 
     def test_chinese_japanese_char_detection(self):
@@ -641,17 +772,21 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(1, len(results))
         result = results[0]
 
-        self.assertEqual(3, len(result.detection_properties))
+        self.assertEqual(5, len(result.detection_properties))
         self.assertEqual(CHINESE_SAMPLE_TEXT, result.detection_properties['TEXT'])
         self.assertEqual(CHINESE_SAMPLE_TEXT_ENG_TRANSLATE,
                          result.detection_properties['TRANSLATION'])
         self.assertEqual('EN', result.detection_properties['TRANSLATION TO LANGUAGE'])
+        self.assertEqual('zh-Hans', result.detection_properties['TRANSLATION SOURCE LANGUAGE'])
+        self.assertAlmostEqual(
+            1.0,
+            float(result.detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
 
         request_url, request_body = self.get_request()
         self.assertEqual(1, len(request_body))
         self.assertEqual(CHINESE_SAMPLE_TEXT, request_body[0]['Text'])
 
-        query_string = urllib.parse.urlparse(request_url).query
+        query_string: str = urllib.parse.urlparse(request_url).query
         query_dict = urllib.parse.parse_qs(query_string)
         self.assertEqual(4, len(query_dict))
         self.assertEqual(['zh-Hans'], query_dict['from'])
@@ -666,8 +801,8 @@ class TestAcsTranslation(unittest.TestCase):
         input_text = '!@$%'
 
         ff_loc = mpf.ImageLocation(0, 0, 10, 20, -1, dict(TEXT=input_text))
-        job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(SUGGESTED_FROM_LANGUAGE='ja'),
-                           {}, ff_loc)
+        props = get_test_properties(SUGGESTED_FROM_LANGUAGE='ja', DETECT_BEFORE_TRANSLATE='false')
+        job = mpf.ImageJob('Test', 'test.jpg', props, {}, ff_loc)
         results = list(AcsTranslationComponent.get_detections_from_image(job))
         self.assertEqual(1, len(results))
         result = results[0]
@@ -690,6 +825,157 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(['en'], query_dict['to'])
 
 
+    @mock.patch.object(BreakSentenceClient, 'BREAK_SENTENCE_MAX_CHARS', new_callable=lambda: 5)
+    def test_guess_breaks_all_types(self, _):
+        input_text = 'a.bc,d.efg,hij kl\n\nmnopqrs.tu'
+        actual = list(SentenceBreakGuesser.guess_breaks(input_text))
+        self.assertEqual(input_text, ''.join(actual))
+        self.assertEqual(7, len(actual))
+
+        # a.bc,
+        self.assertEqual('a.', actual[0])
+        # bc,d.
+        self.assertEqual('bc,d.', actual[1])
+        # efg,h
+        self.assertEqual('efg,', actual[2])
+        # hij k
+        self.assertEqual('hij ', actual[3])
+        # kl\n\nm
+        self.assertEqual('kl\n\n', actual[4])
+        # mnopq
+        self.assertEqual('mnopq', actual[5])
+        # rs.tu
+        self.assertEqual('rs.tu', actual[6], 'Should not divide final segment of text.')
+
+
+    @mock.patch.object(BreakSentenceClient, 'BREAK_SENTENCE_MAX_CHARS', new_callable=lambda: 20)
+    def test_guess_breaks_actual_sentence(self, _):
+        input_text = 'Hello, what is your name? My name is John.'
+        actual = list(SentenceBreakGuesser.guess_breaks(input_text))
+        self.assertEqual(input_text, ''.join(actual))
+        self.assertEqual(3, len(actual))
+
+        # "Hello, what is your "
+        self.assertEqual('Hello,', actual[0])
+        # " what is your name? "
+        self.assertEqual(' what is your name?', actual[1])
+        # " My name is John."
+        self.assertEqual(' My name is John.', actual[2])
+
+
+    @mock.patch.object(BreakSentenceClient, 'BREAK_SENTENCE_MAX_CHARS', new_callable=lambda: 20)
+    def test_sentence_end_punctuation(self, _):
+        input_text = 'Hello. How are you? asdfasdf'
+        actual = list(SentenceBreakGuesser.guess_breaks(input_text))
+        self.assertEqual(input_text, ''.join(actual))
+        self.assertEqual(2, len(actual))
+
+        self.assertEqual('Hello. How are you?', actual[0])
+        self.assertEqual(' asdfasdf', actual[1])
+
+
+    def test_does_not_translate_when_to_and_from_are_same(self):
+        self.set_results_file('eng-detect-result.json')
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT='Hello'))
+        job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {}, ff_loc)
+        results = list(AcsTranslationComponent().get_detections_from_image(job))
+        self.assertEqual(1, len(results))
+
+        result_props = results[0].detection_properties
+        self.assertNotIn('TRANSLATION', result_props)
+        self.assertEqual('EN', result_props['TRANSLATION TO LANGUAGE'])
+        self.assertEqual('en', result_props['TRANSLATION SOURCE LANGUAGE'])
+        self.assertAlmostEqual(0.95, float(result_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+        self.assertEqual('TRUE', result_props['SKIPPED TRANSLATION'])
+
+        request_body = self.get_request_body()
+        self.assertEqual('Hello', request_body[0]['Text'])
+
+        with self.assertRaises(queue.Empty,
+                               msg='Only one request (for /detect) should have been sent. '
+                                   'No /translate should be sent.'):
+            self.get_request_body()
+
+
+    def test_multiple_detected_languages(self):
+        self.set_results_file('eng-chinese-detect-result.json')
+        self.set_results_file('eng-chinese-translate-results.json')
+        input_text = 'What is your name? 你好'
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=input_text))
+        job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {}, ff_loc)
+        results = list(AcsTranslationComponent().get_detections_from_image(job))
+        self.assertEqual(1, len(results))
+
+        result_props = results[0].detection_properties
+        self.assertEqual('What is your name? Hello', result_props['TRANSLATION'])
+        self.assertEqual('EN', result_props['TRANSLATION TO LANGUAGE'])
+        self.assertEqual('en; zh-Hans', result_props['TRANSLATION SOURCE LANGUAGE'])
+        self.assertEqual('0.67; 0.33', result_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE'])
+
+        detect_request_body = self.get_request_body()
+        self.assertEqual(input_text, detect_request_body[0]['Text'])
+
+        translate_url, translate_request_body = self.get_request()
+        self.assertEqual(input_text, translate_request_body[0]['Text'])
+        self.assertIn('from=zh-Hans', translate_url)
+
+
+
+    def test_get_n_chars(self):
+        self.assertEqual('123', get_n_azure_chars('12345', 0, 3))
+
+        text = '😀' * 5 + '👍' * 5
+        self.assertEqual('😀' * 5, get_n_azure_chars(text, 0, 10))
+        self.assertEqual('👍' * 5, get_n_azure_chars(text, 5, 10))
+
+        text = '😀😀12345'
+        self.assertEqual('😀😀1', get_n_azure_chars(text, 0, 5))
+        self.assertEqual('😀', get_n_azure_chars(text, 0, 2))
+        self.assertEqual('😀', get_n_azure_chars(text, 0, 3))
+
+        text = '😀😀😀😀😀12345'
+        self.assertEqual('😀😀', get_n_azure_chars(text, 0, 5))
+        self.assertEqual('😀😀😀', get_n_azure_chars(text, 0, 6))
+        self.assertEqual('😀😀😀', get_n_azure_chars(text, 0, 7))
+
+        self.assertEqual('😀😀', get_n_azure_chars(text, 2, 5))
+        self.assertEqual('😀😀😀', get_n_azure_chars(text, 2, 6))
+        self.assertEqual('😀😀😀1', get_n_azure_chars(text, 2, 7))
+        self.assertEqual('😀😀😀12', get_n_azure_chars(text, 2, 8))
+        self.assertEqual('😀😀😀123', get_n_azure_chars(text, 2, 9))
+        self.assertEqual('😀😀😀1234', get_n_azure_chars(text, 2, 10))
+        self.assertEqual('😀😀😀12345', get_n_azure_chars(text, 2, 11))
+        self.assertEqual('😀😀😀12345', get_n_azure_chars(text, 2, 12))
+
+        text = '12345😀😀😀😀😀'
+        self.assertEqual('12345', get_n_azure_chars(text, 0, 5))
+        self.assertEqual('12345', get_n_azure_chars(text, 0, 6))
+        self.assertEqual('12345😀', get_n_azure_chars(text, 0, 7))
+        self.assertEqual('12345😀', get_n_azure_chars(text, 0, 8))
+        self.assertEqual('12345😀😀', get_n_azure_chars(text, 0, 9))
+        self.assertEqual(text, get_n_azure_chars(text, 0, 15))
+
+        self.assertEqual('345😀', get_n_azure_chars(text, 2, 5))
+        self.assertEqual('345😀', get_n_azure_chars(text, 2, 6))
+        self.assertEqual('345😀😀', get_n_azure_chars(text, 2, 7))
+        self.assertEqual('345😀😀', get_n_azure_chars(text, 2, 8))
+        self.assertEqual('345😀😀😀', get_n_azure_chars(text, 2, 9))
+        self.assertEqual('345😀😀😀', get_n_azure_chars(text, 2, 10))
+        self.assertEqual('345😀😀😀😀', get_n_azure_chars(text, 2, 11))
+        self.assertEqual('345😀😀😀😀', get_n_azure_chars(text, 2, 12))
+
+        self.assertEqual('', get_n_azure_chars('', 0, 100))
+        self.assertEqual('', get_n_azure_chars('', 10, 100))
+        self.assertEqual('', get_n_azure_chars('Hello, world!', 5, 0))
+        self.assertEqual('', get_n_azure_chars('Hello, world!', 0, 0))
+        self.assertEqual('', get_n_azure_chars('Hello, world!', 20, 0))
+        self.assertEqual('', get_n_azure_chars('Hello, world!', 20, 20))
+
+    def test_azure_char_count(self):
+        self.assertEqual(5, get_azure_char_count('12345'))
+        self.assertEqual(15, get_azure_char_count('😀😀😀😀😀12345'))
+        self.assertEqual(20, get_azure_char_count('😀' * 5 + '👍' * 5))
+
 
 def get_test_properties(**extra_properties):
     return {
@@ -697,7 +983,6 @@ def get_test_properties(**extra_properties):
         'ACS_SUBSCRIPTION_KEY': os.getenv('ACS_SUBSCRIPTION_KEY', 'test_key'),
         **extra_properties
     }
-
 
 
 class AcsRequestEntry(TypedDict):
@@ -761,15 +1046,22 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         url_parts = urllib.parse.urlparse(self.path)
 
+        is_detect = url_parts.path == '/translator/detect'
         is_translate = url_parts.path == '/translator/translate'
         is_break_sentence = url_parts.path == '/translator/breaksentence'
-        if not is_translate and not is_break_sentence:
+        if not is_detect and not is_translate and not is_break_sentence:
             self.send_error(404)
             return
 
         self._validate_headers()
         self._validate_query_string(url_parts.query, is_translate)
-        self._validate_body(is_translate)
+        if is_detect:
+            max_chars = TranslationClient.DETECT_MAX_CHARS
+        elif is_translate:
+            max_chars = BreakSentenceClient.TRANSLATION_MAX_CHARS
+        else:
+            max_chars = BreakSentenceClient.BREAK_SENTENCE_MAX_CHARS
+        self._validate_body(max_chars)
 
         self.send_response(200)
         self.end_headers()
@@ -810,7 +1102,7 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
             raise Exception()
 
 
-    def _validate_body(self, is_translate) -> None:
+    def _validate_body(self, max_chars) -> None:
         content_len = int(self.headers['Content-Length'])
         body = json.loads(self.rfile.read(content_len))
         full_url = f'http://{self.server.server_name}:{self.server.server_port}{self.path}'
@@ -825,7 +1117,7 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
             if len(request_text) == 0:
                 self.send_error(430, 'Translation request did not contain text.')
                 raise Exception()
-            if is_translate and len(request_text) > BreakSentenceClient.TRANSLATION_MAX_CHARS:
+            elif len(request_text) > max_chars:
                 self.send_error(429, 'The server rejected the request because the client has '
                                      'exceeded request limits.')
                 raise Exception()

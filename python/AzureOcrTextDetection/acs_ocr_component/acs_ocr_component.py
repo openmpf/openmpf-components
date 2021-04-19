@@ -26,6 +26,7 @@
 
 import collections
 import json
+import logging
 import math
 import os
 import urllib
@@ -40,7 +41,7 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 
-logger = mpf.configure_logging('acs-ocr-text-detection.log', __name__ == '__main__')
+logger = logging.getLogger('AcsOcrComponent')
 
 
 class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
@@ -89,6 +90,7 @@ class JobRunner(object):
         subscription_key = self._get_acs_property_or_env_value('ACS_SUBSCRIPTION_KEY', job_properties)
         self._acs_headers = {'Ocp-Apim-Subscription-Key': subscription_key,
                              'Content-Type': 'application/octet-stream'}
+        self._http_retry = mpf_util.HttpRetry.from_properties(job_properties, logger.warning)
 
         merge_regions_enabled = mpf_util.get_property(job_properties, 'MERGE_REGIONS', False)
         # Select the merge mode for this job
@@ -119,13 +121,8 @@ class JobRunner(object):
 
     def _post_to_acs(self, encoded_frame):
         request = urllib.request.Request(self._acs_url, bytes(encoded_frame), self._acs_headers)
-        try:
-            response = urllib.request.urlopen(request)
+        with self._http_retry.urlopen(request) as response:
             return json.load(response)
-        except urllib.error.HTTPError as e:
-            response_content = e.read().decode('utf-8', errors='replace')
-            raise mpf.DetectionException('Request failed with HTTP status {} and message: {}'
-                                         .format(e.code, response_content), mpf.DetectionError.DETECTION_FAILED)
 
     @classmethod
     def get_acs_url(cls, job_properties):

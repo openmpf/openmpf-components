@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -28,9 +30,7 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-COPY . .
-
-RUN build-component.sh
+RUN --mount=target=. build-component.sh
 
 ARG RUN_TESTS=false
 RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvDnnDetectionTest; fi
@@ -38,7 +38,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvDnnDetectio
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as ocv_dnn_component
 
-ENV COMPONENT_LOG_NAME ocv-dnn-detection.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvDnnDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/OcvDnnDetection $PLUGINS_DIR/OcvDnnDetection
 

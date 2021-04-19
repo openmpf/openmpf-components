@@ -29,6 +29,7 @@
 #include <utility>
 #include <vector>
 
+#include <log4cxx/basicconfigurator.h>
 #include <gtest/gtest.h>
 #include <MPFDetectionComponent.h>
 #include <QDir>
@@ -68,6 +69,13 @@ static string GetCurrentWorkingDirectory() {
         return "";
     }
 }
+
+bool init_logging() {
+    log4cxx::BasicConfigurator::configure();
+    return true;
+}
+bool logging_initialized = init_logging();
+
 
 TEST(Detection, Init) {
 

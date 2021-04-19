@@ -1,11 +1,8 @@
 {
-    "AudioFileResults": [
-        {
-            "AudioFileName": "Channel.0.wav",
-            "AudioFileUrl": null,
-            "AudioLengthInSeconds": 60.0,
-            "CombinedResults": [],
-            "SegmentResults": []
-        }
-    ]
+    "source": "http://localhost:10669/speechtotext/v3.0/recordings/silence.mp3",
+    "timestamp": "2021-01-22T17:02:10Z",
+    "durationInTicks": 600000000,
+    "duration": "PT1M",
+    "combinedRecognizedPhrases": [],
+    "recognizedPhrases": []
 }

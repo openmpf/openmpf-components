@@ -78,10 +78,10 @@ class RecodedCharID {
   }
   // Hash functor for RecodedCharID.
   struct RecodedCharIDHash {
-    size_t operator()(const RecodedCharID& code) const {
-      size_t result = 0;
+    uint64_t operator()(const RecodedCharID& code) const {
+      uint64_t result = 0;
       for (int i = 0; i < code.length_; ++i) {
-        result ^= code(i) << (7 * i);
+        result ^= static_cast<uint64_t>(code(i)) << (7 * i);
       }
       return result;
     }
@@ -143,7 +143,7 @@ class UnicharCompress {
   static const int kTCount = 28;
 
   // Computes the encoding for the given unicharset. It is a requirement that
-  // the file model_updater_tesseract_src/langdata/radical-stroke.txt have been read into the
+  // the file training/langdata/radical-stroke.txt have been read into the
   // input string radical_stroke_table.
   // Returns false if the encoding cannot be constructed.
   bool ComputeEncoding(const UNICHARSET& unicharset, int null_id,

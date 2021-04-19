@@ -14,7 +14,11 @@ when it isn't the first element of a pipeline.
 When a detection property is translated, the translation is put in to a new 
 detection property named `TRANSLATION`. The original detection property is not 
 modified. A property named `TRANSLATION TO LANGUAGE` containing the BCP-47 
-language code of the translated text will also be added.
+language code of the translated text will also be added. If the language
+of the input text is detected to be the same as the `TO_LANGUAGE` job property,
+then no translation will occur. When translation is skipped because of 
+matching languages, the `TRANSLATION` detection property will be omitted and 
+`SKIPPED TRANSLATION=TRUE` will be added to the detection properties.
 
 When the source text is multiple languages, the translation endpoint will only
 translate one of the languages. For example, translating 
