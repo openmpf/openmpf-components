@@ -120,18 +120,17 @@ class JobRunner(object):
         curr_dir = Path(__file__).absolute().parent.parent
 
         # load custom dictionary if one is specified in the job properties
-        if custom_dictionary_path != "":
+        if custom_dictionary_path:
             full_custom_dict_path = os.path.join(curr_dir, "plugin-files/config/" + custom_dictionary_path)
-            self._sym_spell.load_dictionary(full_custom_dict_path, term_index=0,
-                                            count_index=1)
+            self._sym_spell.load_dictionary(full_custom_dict_path, term_index=0, count_index=1)
 
     # Adds corrected text to detection_properties.
     # Detection_properties is modified in place.
     def get_suggestions(self, original_text: str, detection_properties):
-        log.info(f'Attempting to correct text {original_text}')
+        log.debug(f'Attempting to correct text: \"{original_text}\"')
         suggestions = self._sym_spell.lookup_compound(
             original_text, max_edit_distance=2)
 
         detection_properties["CORRECTED TEXT"] = suggestions[0].term
-        log.info("Successfully corrected text")
+        log.debug(f'Successfully corrected text to: \"{suggestions[0].term}\"')
         return suggestions[0].term

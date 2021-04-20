@@ -24,11 +24,13 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import logging
 import unittest
 import mpf_component_api as mpf
 import os
 from nlp_correction_component.nlp_correction_component import NlpCorrectionComponent
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestNlpCorrection(unittest.TestCase):
 
@@ -65,5 +67,8 @@ class TestNlpCorrection(unittest.TestCase):
         results = list(NlpCorrectionComponent().get_detections_from_generic(job))
         self.assertEqual(1, len(results))
 
-        expected_text = "this is some sample text explan is misspelled"
+        expected_text = "this is some sample text explane is misspelled"
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
