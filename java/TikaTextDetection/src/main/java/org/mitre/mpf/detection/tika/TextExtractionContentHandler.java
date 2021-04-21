@@ -33,8 +33,8 @@ import java.lang.StringBuilder;
 import java.util.ArrayList;
 
 public class TextExtractionContentHandler extends ToTextContentHandler {
-    private String pageTag = "div";
-    private String paragraphTag = "p";
+    private static String pageTag = "div";
+    private static String paragraphTag = "p";
     protected int pageNumber = 0;
     protected int sectionNumber = 0;
     public StringBuilder textResults;
@@ -109,14 +109,15 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     protected void resetPage() throws SAXException {
         pageNumber = 0;
         sectionNumber = 0;
-        pageMap.clear();
         sectionMap.clear();
-        pageMap.add(sectionMap);
         sectionMap.add(new StringBuilder());
+        pageMap.clear();
+        pageMap.add(sectionMap);
+
     }
 
     protected void newSection() throws SAXException {
-        if (skipBlankParagraphs && sectionMap.get(sectionNumber).toString().trim().length() == 0){
+        if (skipBlankParagraphs && sectionMap.get(sectionNumber).toString().trim().isEmpty()){
             return;
         }
         sectionNumber++;

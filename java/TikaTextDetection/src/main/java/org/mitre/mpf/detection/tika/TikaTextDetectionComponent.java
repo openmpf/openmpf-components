@@ -127,26 +127,23 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             // Load language identifier.
             OptimaizeLangDetector identifier = new OptimaizeLangDetector();
 
+            identifier.loadModels();
 
-            try {
-                identifier.loadModels();
-            } catch (IOException e) {
-                String errorMsg = "Failed to load language models.";
-                LOG.error(errorMsg, e);
-                throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg, e);
+            int maxIDLength = (int) (java.lang.Math.log10(pageOutput.size())) + 1;
+            int paragraphIDLength = (int) (java.lang.Math.log10(pageOutput.get(0).size())) + 1;
+            if (paragraphIDLength > maxIDLength) {
+                maxIDLength = paragraphIDLength;
             }
-
-            int pageIDLen = (int) (java.lang.Math.log10(pageOutput.size())) + 1;
             for (int p = 0; p < pageOutput.size(); p++) {
 
-                if (pageOutput.get(p).size() == 1 && pageOutput.get(p).get(0).toString().trim().length() == 0 ) {
+                if (pageOutput.get(p).size() == 1 && pageOutput.get(p).get(0).toString().trim().isEmpty()) {
                     // If LIST_ALL_PAGES is true, create empty tracks for empty pages.
                     if (listAllPages) {
                         Map<String, String> genericDetectionProperties = new HashMap<String, String>();
                         genericDetectionProperties.put("TEXT", "");
                         genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                        genericDetectionProperties.put("PAGE_NUM", String.format("%0" + String.valueOf(pageIDLen) + "d", p + 1));
-                        genericDetectionProperties.put("PARAGRAPH_NUM", String.format("%0" + String.valueOf(pageIDLen) + "d", 1));
+                        genericDetectionProperties.put("PAGE_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", p + 1));
+                        genericDetectionProperties.put("PARAGRAPH_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", 1));
                         MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                         tracks.add(genericTrack);
                     }
@@ -162,12 +159,11 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                         // By default, trim out detected text.
                         textDetect = textDetect.trim();
-                        genericDetectionProperties.put("TEXT", textDetect);
-
-                        if (textDetect.length() == 0) {
+                        if (textDetect.isEmpty()) {
                             continue;
                         }
 
+                        genericDetectionProperties.put("TEXT", textDetect);
 
                         // Process text languages.
                         if (textDetect.length() >= charLimit) {
@@ -197,15 +193,15 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                     }
 
 
-                    genericDetectionProperties.put("PAGE_NUM", String.format("%0" + String.valueOf(pageIDLen) + "d", p + 1));
-                    genericDetectionProperties.put("PARAGRAPH_NUM", String.format("%0" + String.valueOf(pageIDLen) + "d", s + 1));
+                    genericDetectionProperties.put("PAGE_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", p + 1));
+                    genericDetectionProperties.put("PARAGRAPH_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", s + 1));
                     MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                     tracks.add(genericTrack);
                 }
             }
         }
         // If entire document is empty, generate a single track reporting no detections.
-        if (tracks.size() == 0) {
+        if (tracks.isEmpty()) {
             LOG.warn("Empty or invalid document. No extracted text.");
         }
 

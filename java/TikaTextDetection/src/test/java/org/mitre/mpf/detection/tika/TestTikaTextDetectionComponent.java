@@ -63,7 +63,7 @@ public class TestTikaTextDetectionComponent {
     }
 
     @Test
-    public void testGetDetectionsGeneric() throws MPFComponentDetectionError {
+    public void testGetDetectionsPowerPointFile() throws MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-tika-detection.pptx").getPath();
 
         Map<String, String> jobProperties = new HashMap<>();
@@ -88,7 +88,7 @@ public class TestTikaTextDetectionComponent {
 
         // Test no detections.
         testTrack = tracks.get(9);
-        assertEquals("Text should be empty", "", testTrack.getDetectionProperties().get("TEXT"));
+        assertTrue("Text should be empty", testTrack.getDetectionProperties().get("TEXT").isEmpty());
         assertEquals("Language should be empty", "Unknown", testTrack.getDetectionProperties().get("TEXT_LANGUAGE"));
 
         testTrack = tracks.get(20);
@@ -108,21 +108,6 @@ public class TestTikaTextDetectionComponent {
                 assertEquals("Confidence does not match.", -1.0f, track.getConfidence(), 0.1f);
             }
         }
-    }
-
-    @Test
-    public void testGetDetectionsPowerPointFile() throws MPFComponentDetectionError {
-        String mediaPath = this.getClass().getResource("/data/test-tika-detection.pptx").getPath();
-
-        Map<String, String> jobProperties = new HashMap<>();
-        Map<String, String> mediaProperties = new HashMap<>();
-        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
-        jobProperties.put("LIST_ALL_PAGES", "true");
-
-        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
-
-        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        assertEquals("Number of expected tracks does not match.", 23, tracks.size());
     }
 
     @Test
