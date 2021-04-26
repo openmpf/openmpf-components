@@ -130,9 +130,17 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             identifier.loadModels();
 
             int maxIDLength = (int) (java.lang.Math.log10(pageOutput.size())) + 1;
-            int paragraphIDLength = (int) (java.lang.Math.log10(pageOutput.get(0).size())) + 1;
-            if (paragraphIDLength > maxIDLength) {
-                maxIDLength = paragraphIDLength;
+            int sectionIDLength = (int) (java.lang.Math.log10(pageOutput.get(0).size())) + 1;
+
+            for (int i = 1; i < pageOutput.size(); i++) {
+                int sectionLength = (int) (java.lang.Math.log10(pageOutput.get(i).size())) + 1;
+                if (sectionLength > sectionIDLength) {
+                    sectionIDLength = sectionLength;
+                }
+            }
+
+            if (sectionIDLength > maxIDLength) {
+                maxIDLength = sectionIDLength;
             }
             for (int p = 0; p < pageOutput.size(); p++) {
 
@@ -143,7 +151,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                         genericDetectionProperties.put("TEXT", "");
                         genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
                         genericDetectionProperties.put("PAGE_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", p + 1));
-                        genericDetectionProperties.put("PARAGRAPH_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", 1));
+                        genericDetectionProperties.put("SECTION_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", 1));
                         MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                         tracks.add(genericTrack);
                     }
@@ -194,7 +202,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
 
                     genericDetectionProperties.put("PAGE_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", p + 1));
-                    genericDetectionProperties.put("PARAGRAPH_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", s + 1));
+                    genericDetectionProperties.put("SECTION_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", s + 1));
                     MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                     tracks.add(genericTrack);
                 }

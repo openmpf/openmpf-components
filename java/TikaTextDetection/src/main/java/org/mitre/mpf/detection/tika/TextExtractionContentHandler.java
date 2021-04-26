@@ -34,14 +34,14 @@ import java.util.ArrayList;
 
 public class TextExtractionContentHandler extends ToTextContentHandler {
     private static String pageTag = "div";
-    private static String paragraphTag = "p";
+    private static String sectionTag = "p";
     protected int pageNumber = 0;
     protected int sectionNumber = 0;
     public StringBuilder textResults;
     public ArrayList<ArrayList<StringBuilder>> pageMap;
     private ArrayList<StringBuilder> sectionMap;
     private boolean skipTitle;
-    private boolean skipBlankParagraphs;
+    private boolean skipBlankSections;
 
     public TextExtractionContentHandler(){
         super();
@@ -50,8 +50,8 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
         // Enable to avoid storing metadata/title text from ppt document.
         skipTitle = true;
 
-        // Disable to skip recording empty paragraphs (warning: could produce an excessive number of empty tracks).
-        skipBlankParagraphs = true;
+        // Disable to skip recording empty sections (warning: could produce an excessive number of empty tracks).
+        skipBlankSections = true;
 
         textResults = new StringBuilder();
         pageMap = new ArrayList<ArrayList<StringBuilder>>();
@@ -75,7 +75,7 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
                     startPage();
                 }
             }
-        } else if (paragraphTag.equals(qName)) {
+        } else if (sectionTag.equals(qName)) {
             newSection();
         }
     }
@@ -117,7 +117,7 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     }
 
     protected void newSection() throws SAXException {
-        if (skipBlankParagraphs && sectionMap.get(sectionNumber).toString().trim().isEmpty()){
+        if (skipBlankSections && sectionMap.get(sectionNumber).toString().trim().isEmpty()){
             return;
         }
         sectionNumber++;
