@@ -28,7 +28,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <fstream>
 #include <future>
 #include <iostream>
 
@@ -57,7 +56,9 @@
 using namespace MPF;
 using namespace COMPONENT;
 using namespace std;
+
 using log4cxx::Logger;
+
 typedef boost::multi_index::multi_index_container<string,
         boost::multi_index::indexed_by<
                 boost::multi_index::sequenced<>,
@@ -67,9 +68,9 @@ typedef boost::multi_index::multi_index_container<string,
 
 class TempDirectory {
 public:
-    const std::string path;
+    const string path;
 
-    explicit TempDirectory(const std::string &path)
+    explicit TempDirectory(const string &path)
             : path(path) {
         bool created = boost::filesystem::create_directories(path);
         if (!created) {
@@ -141,8 +142,13 @@ string TesseractOCRTextDetection::GetDetectionType() {
 }
 
 bool TesseractOCRTextDetection::Supports(MPFDetectionDataType data_type) {
-    // Supports images and documents, no audio or video data types.
-    return data_type == MPFDetectionDataType::IMAGE || data_type == MPFDetectionDataType::UNKNOWN;
+    return data_type == MPFDetectionDataType::IMAGE
+        || data_type == MPFDetectionDataType::VIDEO
+        || data_type == MPFDetectionDataType::UNKNOWN;
+}
+
+vector<MPFAudioTrack> TesseractOCRTextDetection::GetDetections(const MPFAudioJob &job) {
+    throw MPFDetectionException(MPF_UNSUPPORTED_DATA_TYPE);
 }
 
 /*
@@ -454,10 +460,10 @@ void TesseractOCRTextDetection::preprocess_image(const MPFJob &job, cv::Mat &ima
             cv::subtract(tmp_imb, image_data, image_data);
         }
     }
-    catch (const std::exception& ex) {
+    catch (const exception& ex) {
         throw MPFDetectionException(
                 MPF_OTHER_DETECTION_ERROR_TYPE,
-                std::string("Error during image preprocessing: ") + ex.what());
+                string("Error during image preprocessing: ") + ex.what());
     }
 }
 
@@ -482,12 +488,12 @@ void TesseractOCRTextDetection::rescale_image(const MPFJob &job, cv::Mat &image_
 
     if (im_height < ocr_fset.invalid_min_image_size) {
         throw MPFDetectionException(MPF_BAD_FRAME_SIZE,
-                                    "Invalid image height, image too short: " + std::to_string(im_height));
+                                    "Invalid image height, image too short: " + to_string(im_height));
     }
 
     if (im_width < ocr_fset.invalid_min_image_size) {
         throw MPFDetectionException(MPF_BAD_FRAME_SIZE,
-                                    "Invalid image width, image too narrow: " + std::to_string(im_width));
+                                    "Invalid image width, image too narrow: " + to_string(im_width));
     }
 
     int min_dim = im_width;
@@ -531,7 +537,7 @@ void TesseractOCRTextDetection::rescale_image(const MPFJob &job, cv::Mat &image_
         // If rescale still exceeds pixel limits, decrease further.
         if (ocr_fset.max_pixels > 0 &&
             (default_rescale * im_width) * (im_height * default_rescale) > ocr_fset.max_pixels) {
-            default_rescale = std::sqrt((double)ocr_fset.max_pixels / (double)(im_height * im_width));
+            default_rescale = sqrt((double)ocr_fset.max_pixels / (double)(im_height * im_width));
         }
 
         if (min_dim * default_rescale < ocr_fset.invalid_min_image_size) {
@@ -578,9 +584,9 @@ void TesseractOCRTextDetection::rescale_image(const MPFJob &job, cv::Mat &image_
         if (ocr_fset.sharpen > 0) {
             sharpen(image_data, ocr_fset.sharpen);
         }
-    } catch (const std::exception& ex) {
+    } catch (const exception& ex) {
         throw MPFDetectionException(MPF_OTHER_DETECTION_ERROR_TYPE,
-                                    std::string("Error during image rescaling: ") + ex.what());
+                                    string("Error during image rescaling: ") + ex.what());
     }
 }
 
@@ -595,7 +601,7 @@ void TesseractOCRTextDetection::process_tesseract_lang_model(OCR_job_inputs &inp
 
     bool tess_api_in_map = inputs.tess_api_map->find(tess_api_key) != inputs.tess_api_map->end();
     string tessdata_dir;
-    std::unique_ptr<TessApiWrapper> tess_api_for_parallel;
+    unique_ptr<TessApiWrapper> tess_api_for_parallel;
     set<string> languages_found, missing_languages;
     // If running OSD scripts, set tessdata_dir to the location found during OSD processing.
     // Otherwise, for each individual language setting, locate the appropriate tessdata directory.
@@ -625,9 +631,9 @@ void TesseractOCRTextDetection::process_tesseract_lang_model(OCR_job_inputs &inp
         }
         else if (!tess_api_in_map) {
             inputs.tess_api_map->emplace(
-                    std::piecewise_construct,
-                    std::forward_as_tuple(tess_api_key),
-                    std::forward_as_tuple(tessdata_dir, results.lang, (tesseract::OcrEngineMode) inputs.ocr_fset->oem));
+                    piecewise_construct,
+                    forward_as_tuple(tess_api_key),
+                    forward_as_tuple(tessdata_dir, results.lang, (tesseract::OcrEngineMode) inputs.ocr_fset->oem));
         }
     } else if (!missing_languages.empty()) {
         LOG4CXX_WARN(inputs.hw_logger_, "[" + *inputs.job_name + "] Tesseract language models no longer found in " +
@@ -641,14 +647,14 @@ void TesseractOCRTextDetection::process_tesseract_lang_model(OCR_job_inputs &inp
 
     tess_api.SetPageSegMode((tesseract::PageSegMode) inputs.ocr_fset->psm);
     tess_api.SetImage(*inputs.imi);
-    std::string text = tess_api.GetUTF8Text();
+    string text = tess_api.GetUTF8Text();
     results.confidence = tess_api.MeanTextConf();
 
     // Free up recognition results and any stored image data.
     tess_api.Clear();
 
     if (!text.empty()) {
-        results.text_result = std::move(text);
+        results.text_result = move(text);
     } else {
         LOG4CXX_WARN(inputs.hw_logger_, "[" + *inputs.job_name + "] OCR processing unsuccessful, no outputs.");
     }
@@ -658,26 +664,26 @@ void TesseractOCRTextDetection::process_parallel_image_runs(OCR_job_inputs &inpu
                                                             Image_results &results) {
 
     OCR_results ocr_results[inputs.ocr_lang_inputs.size()];
-    std::future<void> ocr_threads[inputs.ocr_lang_inputs.size()];
+    future<void> ocr_threads[inputs.ocr_lang_inputs.size()];
     int index = 0;
-    std::set<int> active_threads;
+    set<int> active_threads;
 
     // Initialize a new track for each language specified.
     for (const string &lang: inputs.ocr_lang_inputs) {
         ocr_results[index].job_status = results.job_status;
         ocr_results[index].lang = lang;
-        ocr_threads[index] = std::async(launch::async,
+        ocr_threads[index] = async(launch::async,
                                         &process_tesseract_lang_model,
-                                        std::ref(inputs),
-                                        std::ref(ocr_results[index]));
+                                        ref(inputs),
+                                        ref(ocr_results[index]));
         active_threads.insert(index);
         index++;
         while (active_threads.size() >= inputs.ocr_fset->max_parallel_ocr_threads) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            this_thread::sleep_for(chrono::seconds(1));
             for (auto active_thread_iter = active_threads.begin(); active_thread_iter != active_threads.end();
                 /* Intentionally no ++ to support erasing. */) {
                 int i = *active_thread_iter;
-                if (ocr_threads[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+                if (ocr_threads[i].wait_for(chrono::milliseconds(0)) == future_status::ready) {
                     // Will re-throw exception from thread.
                     ocr_threads[i].get();
                     active_thread_iter = active_threads.erase(active_thread_iter);
@@ -972,9 +978,9 @@ void TesseractOCRTextDetection::get_OSD(OSBestResult &best_result, cv::Mat &imi,
         }
 
         tess_api_map.emplace(
-                std::piecewise_construct,
-                std::forward_as_tuple(tess_api_key),
-                std::forward_as_tuple(tessdata_dir, "osd", (tesseract::OcrEngineMode) oem));
+                piecewise_construct,
+                forward_as_tuple(tess_api_key),
+                forward_as_tuple(tessdata_dir, "osd", (tesseract::OcrEngineMode) oem));
 
         LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] OSD model ready.");
     }
@@ -1262,7 +1268,7 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, OCR_filter_settings 
     ocr_fset.adaptive_thrs_pixel = DetectionComponentUtils::GetProperty<int>(job.job_properties,"ADAPTIVE_THRS_BLOCKSIZE", default_ocr_fset.adaptive_thrs_pixel);
 
     // OCR and OSD Engine Settings.
-    ocr_fset.tesseract_lang  = DetectionComponentUtils::GetProperty<std::string>(job.job_properties,"TESSERACT_LANGUAGE", default_ocr_fset.tesseract_lang);
+    ocr_fset.tesseract_lang  = DetectionComponentUtils::GetProperty<string>(job.job_properties,"TESSERACT_LANGUAGE", default_ocr_fset.tesseract_lang);
     ocr_fset.psm = DetectionComponentUtils::GetProperty<int>(job.job_properties,"TESSERACT_PSM", default_ocr_fset.psm);
     ocr_fset.oem = DetectionComponentUtils::GetProperty<int>(job.job_properties,"TESSERACT_OEM", default_ocr_fset.oem);
 
@@ -1283,8 +1289,8 @@ TesseractOCRTextDetection::load_settings(const MPFJob &job, OCR_filter_settings 
     ocr_fset.max_parallel_pdf_threads = DetectionComponentUtils::GetProperty<int>(job.job_properties, "MAX_PARALLEL_PAGE_THREADS", default_ocr_fset.max_parallel_pdf_threads);
 
     // Tessdata setup
-    ocr_fset.model_dir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "MODELS_DIR_PATH", default_ocr_fset.model_dir);
-    ocr_fset.tessdata_models_subdir =  DetectionComponentUtils::GetProperty<std::string>(job.job_properties, "TESSDATA_MODELS_SUBDIRECTORY", default_ocr_fset.tessdata_models_subdir);
+    ocr_fset.model_dir =  DetectionComponentUtils::GetProperty<string>(job.job_properties, "MODELS_DIR_PATH", default_ocr_fset.model_dir);
+    ocr_fset.tessdata_models_subdir =  DetectionComponentUtils::GetProperty<string>(job.job_properties, "TESSDATA_MODELS_SUBDIRECTORY", default_ocr_fset.tessdata_models_subdir);
     if (ocr_fset.model_dir != "") {
         ocr_fset.model_dir = ocr_fset.model_dir + "/" + ocr_fset.tessdata_models_subdir;
     } else {
@@ -1343,9 +1349,7 @@ inline void set_coordinates(int &xLeftUpper, int &yLeftUpper, int &width, int &h
  */
 void TesseractOCRTextDetection::check_default_languages(const OCR_filter_settings &ocr_fset,
                                                         const string &job_name,
-                                                        const string &run_dir,
-                                                        MPFDetectionError &job_status) {
-
+                                                        const string &run_dir) {
     set<string> languages_found, missing_languages;
     set<string> lang_list = generate_lang_set(ocr_fset.tesseract_lang);
     bool tess_api_in_map = true;
@@ -1373,119 +1377,101 @@ void TesseractOCRTextDetection::check_default_languages(const OCR_filter_setting
     }
 }
 
-vector<MPFVideoTrack> TesseractOCRTextDetection::GetDetections(const MPFVideoJob &job)
-{
+vector<MPFVideoTrack> TesseractOCRTextDetection::GetDetections(const MPFVideoJob &job) {
+    try {
+        LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Starting job.");
 
-    int frame_interval = parameters.contains("FRAME_INTERVAL") ? parameters["FRAME_INTERVAL"].toInt() : 1;
-    frame_interval = DetectionComponentUtils::GetProperty<int>(job.job_properties, "FRAME_INTERVAL", frame_interval);
-    frame_interval = frame_interval <= 0 ? 1 : frame_interval;
+        MPFVideoCapture cap(job);
 
-    MPFVideoCapture cap(job);
+        MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
+        OCR_filter_settings ocr_fset;
 
-    int total_frames = cap.GetFrameCount();
+        string run_dir = GetRunDirectory();
+        cv::Mat frame;
+        vector<MPFVideoTrack> tracks;
 
-    // Make sure the start and stop frames defined for this segment are
-    // not beyond the end of the video.
-    if (job.start_frame >= total_frames) {
-        throw MPFDetectionException(MPF_INVALID_START_FRAME,
-                "Requested start_frame is greater than the number of frames in the video");
-    }
+        int frame_index = 0;
+        while (cap.Read(frame)) {
+            Text_type text_type = Unknown;
+            if (job.has_feed_forward_track &&
+                job.feed_forward_track.frame_locations.count(frame_index) &&
+                job.feed_forward_track.frame_locations.at(frame_index).detection_properties.count("TEXT_TYPE")) {
+                string job_text_type = job.feed_forward_track.frame_locations.at(frame_index).detection_properties.at(
+                        "TEXT_TYPE");
+                if (job_text_type == "UNSTRUCTURED") {
+                    text_type = Unstructured;
+                } else if (job_text_type == "STRUCTURED") {
+                    text_type = Structured;
+                }
 
-    if (job.stop_frame >= total_frames) {
-        throw MPFDetectionException(MPF_INVALID_STOP_FRAME,
-                "Requested stop_frame is greater than the number of frames in the video");
-    }
-
-    // Here, we first do some sanity checking to make sure that the
-    // start and stop frame positions requested in the job are within
-    // the bounds of the video being captured. We then set the
-    // position of the next frame to be captured to the start frame.
-    int frame_index = 0;
-    // Try to set start frame if start_frame != 0
-    if (job.start_frame > 0 && job.stop_frame < total_frames) {
-        cap.SetFramePosition(job.start_frame);
-        frame_index = job.start_frame;
-    }
-
-    MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
-    OCR_filter_settings ocr_fset;
-
-    Text_type text_type = Unknown;
-
-    string run_dir = GetRunDirectory();
-    cv::Mat frame;
-    bool wasRead = false;
-    std::vector<MPFVideoTrack> tracks;
-
-    while (frame_index <= job.stop_frame) {
-        if (job.has_feed_forward_track &&
-            job.feed_forward_track.frame_locations.count(frame_index) &&
-            job.feed_forward_track.frame_locations.at(frame_index).detection_properties.count("TEXT_TYPE")) {
-            string job_text_type = job.feed_forward_track.frame_locations.at(frame_index).detection_properties.at("TEXT_TYPE");
-            if ( job_text_type == "UNSTRUCTURED") {
-                text_type = Unstructured;
-            } else if (job_text_type == "STRUCTURED") {
-                text_type = Structured;
+                LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Identified text type:  \"" +
+                                          job_text_type + "\".");
             }
 
-            LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Identified text type:  \"" +
-                                      job_text_type + "\".");
-        }
+            load_settings(job, ocr_fset, text_type);
 
-        load_settings(job, ocr_fset, text_type);
-
-
-        cap.SetFramePosition(frame_index);
-        wasRead = cap.Read(frame);
-        if (wasRead && !frame.empty()) {
-            check_default_languages(ocr_fset, job.job_name, run_dir, job_status);
+            check_default_languages(ocr_fset, job.job_name, run_dir);
             vector<MPFImageLocation> locations = process_image_job(job, ocr_fset, frame, run_dir, job_status);
             for (auto location: locations) {
                 MPFVideoTrack video_track(frame_index, frame_index);
                 video_track.confidence = location.confidence;
                 video_track.frame_locations[frame_index] = location;
-                cap.ReverseTransform(video_track);
                 tracks.push_back(video_track);
             }
+
+            frame_index++;
         }
-        frame_index += frame_interval;
+
+        for (MPFVideoTrack &track : tracks) {
+            cap.ReverseTransform(track);
+        }
+
+        LOG4CXX_INFO(hw_logger_,
+                     "[" + job.job_name + "] Processing complete. Found " + to_string(tracks.size()) + " tracks.");
+
+        return tracks;
     }
-    std::cout << "[" << job.job_name << "] Processing complete. Generated " << tracks.size() << " tracks." << std::endl;
-    return tracks;
+    catch (...) {
+        Utils::LogAndReThrowException(job, hw_logger_);
+    }
 }
 
 
 vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImageJob &job) {
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
     try{
-            MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
-            OCR_filter_settings ocr_fset;
-            Text_type text_type = Unknown;
+        LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Starting job.");
 
-            if (job.has_feed_forward_location && job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
-                if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "UNSTRUCTURED") {
-                    text_type = Unstructured;
-                } else if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "STRUCTURED") {
-                    text_type = Structured;
-                }
+        MPFDetectionError job_status = MPF_DETECTION_SUCCESS;
+        OCR_filter_settings ocr_fset;
+        Text_type text_type = Unknown;
 
-                LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Identified text type:  \"" +
-                                          job.feed_forward_location.detection_properties.at("TEXT_TYPE") + "\".");
+        if (job.has_feed_forward_location && job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
+            if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "UNSTRUCTURED") {
+                text_type = Unstructured;
+            } else if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "STRUCTURED") {
+                text_type = Structured;
             }
-            load_settings(job, ocr_fset, text_type);
+
+            LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Identified text type:  \"" +
+                                      job.feed_forward_location.detection_properties.at("TEXT_TYPE") + "\".");
+        }
+        load_settings(job, ocr_fset, text_type);
 
 
-            MPFImageReader image_reader(job);
-            cv::Mat image_data = image_reader.GetImage();
-            string run_dir = GetRunDirectory();
+        MPFImageReader image_reader(job);
+        cv::Mat image_data = image_reader.GetImage();
+        string run_dir = GetRunDirectory();
 
 
-            check_default_languages(ocr_fset, job.job_name, run_dir, job_status);
-            vector<MPFImageLocation> locations = process_image_job(job, ocr_fset, image_data, run_dir, job_status);
+        check_default_languages(ocr_fset, job.job_name, run_dir);
+        vector<MPFImageLocation> locations = process_image_job(job, ocr_fset, image_data, run_dir, job_status);
 
-            for (auto &location : locations) {
-                image_reader.ReverseTransform(location);
-            }
+        for (auto &location : locations) {
+            image_reader.ReverseTransform(location);
+        }
+
+        LOG4CXX_INFO(hw_logger_,
+                     "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) + " locations.");
 
         return locations;
     }
@@ -1498,7 +1484,7 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
 vector<MPFImageLocation> TesseractOCRTextDetection::process_image_job(const MPFJob &job,
                                                                       OCR_filter_settings &ocr_fset,
                                                                       cv::Mat &image_data,
-                                                                      const std::string &run_dir,
+                                                                      const string &run_dir,
                                                                       MPFDetectionError &job_status) {
 
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to run tesseract");
@@ -1674,15 +1660,13 @@ vector<MPFImageLocation> TesseractOCRTextDetection::process_image_job(const MPFJ
         }
     }
 
-    LOG4CXX_INFO(hw_logger_,
-                 "[" + job.job_name + "] Processing complete. Found " + to_string(locations.size()) + " tracks.");
     return locations;
 }
 
 void TesseractOCRTextDetection::process_parallel_pdf_pages(PDF_page_inputs &page_inputs,
                                                            PDF_page_results &page_results) {
     PDF_thread_variables thread_var[page_inputs.filelist.size()];
-    std::future<void> pdf_threads[page_inputs.filelist.size()];
+    future<void> pdf_threads[page_inputs.filelist.size()];
     int index = 0;
     set<int> active_threads;
 
@@ -1720,18 +1704,18 @@ void TesseractOCRTextDetection::process_parallel_pdf_pages(PDF_page_inputs &page
         thread_var[index].ocr_input.process_pdf = true;
         thread_var[index].ocr_input.hw_logger_ = hw_logger_;
         thread_var[index].ocr_input.tess_api_map = &tess_api_map;
-        pdf_threads[index] = std::async(launch::async,
+        pdf_threads[index] = async(launch::async,
                                         &get_tesseract_detections,
-                                        std::ref(thread_var[index].ocr_input),
-                                        std::ref(thread_var[index].page_thread_res));
+                                        ref(thread_var[index].ocr_input),
+                                        ref(thread_var[index].page_thread_res));
         active_threads.insert(index);
         index ++;
         while (active_threads.size() >= page_inputs.ocr_fset.max_parallel_pdf_threads) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            this_thread::sleep_for(chrono::seconds(1));
             for (auto active_thread_iter = active_threads.begin(); active_thread_iter != active_threads.end();
                 /* Intentionally no ++ to support erasing. */) {
                 int i = *active_thread_iter;
-                if (pdf_threads[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+                if (pdf_threads[i].wait_for(chrono::milliseconds(0)) == future_status::ready) {
                     // Will re-throw exception from thread.
                     pdf_threads[i].get();
                     active_thread_iter = active_threads.erase(active_thread_iter);
@@ -1811,7 +1795,6 @@ void TesseractOCRTextDetection::process_serial_pdf_pages(PDF_page_inputs &page_i
             rescale_image(c_job, image_data, page_inputs.ocr_fset);
         }
 
-
         OCR_job_inputs ocr_job_inputs;
         ocr_job_inputs.job_name = &c_job.job_name;
         ocr_job_inputs.lang = &page_inputs.ocr_fset.tesseract_lang;
@@ -1854,12 +1837,12 @@ void TesseractOCRTextDetection::process_serial_pdf_pages(PDF_page_inputs &page_i
 
 vector<MPFGenericTrack> TesseractOCRTextDetection::GetDetections(const MPFGenericJob &job) {
     try {
-        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
+        LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Starting job.");
 
         PDF_page_inputs page_inputs;
         PDF_page_results page_results;
 
-        std::vector<MPFGenericTrack> tracks;
+        vector<MPFGenericTrack> tracks;
         page_results.tracks = &tracks;
         page_inputs.job = &job;
 
@@ -1877,7 +1860,7 @@ vector<MPFGenericTrack> TesseractOCRTextDetection::GetDetections(const MPFGeneri
             page_inputs.run_dir = ".";
         }
 
-        check_default_languages(page_inputs.ocr_fset, job.job_name, page_inputs.run_dir, page_results.job_status);
+        check_default_languages(page_inputs.ocr_fset, job.job_name, page_inputs.run_dir);
 
         string plugin_path = page_inputs.run_dir + "/TesseractOCRTextDetection";
         TempDirectory temp_im_directory(plugin_path + "/tmp-" + job_name + "-" + random_string(20));
@@ -1925,12 +1908,12 @@ vector<MPFGenericTrack> TesseractOCRTextDetection::GetDetections(const MPFGeneri
 }
 
 
-TessApiWrapper::TessApiWrapper(const std::string& data_path, const std::string& language, tesseract::OcrEngineMode oem) {
+TessApiWrapper::TessApiWrapper(const string& data_path, const string& language, tesseract::OcrEngineMode oem) {
     int rc = tess_api_.Init(data_path.c_str(), language.c_str(), oem);
     if (rc != 0) {
         throw MPFDetectionException(
                 MPF_DETECTION_NOT_INITIALIZED,
-                "Failed to initialize Tesseract! Error code: " + std::to_string(rc));
+                "Failed to initialize Tesseract! Error code: " + to_string(rc));
     }
 }
 
@@ -1943,12 +1926,12 @@ void TessApiWrapper::SetImage(const cv::Mat &image) {
                        static_cast<int>(image.step));
 }
 
-std::string TessApiWrapper::GetUTF8Text() {
-    std::unique_ptr<char[]> text{tess_api_.GetUTF8Text()};
+string TessApiWrapper::GetUTF8Text() {
+    unique_ptr<char[]> text{tess_api_.GetUTF8Text()};
     if (text == nullptr) {
         return "";
     }
-    return std::string(text.get());
+    return string(text.get());
 }
 
 int TessApiWrapper::MeanTextConf() {

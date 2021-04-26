@@ -194,10 +194,11 @@ int main(int argc, char *argv[]) {
             MPFVideoJob job(job_name, uri, start_frame, end_frame, algorithm_properties, media_properties);
             int count = 0;
             for (auto track: im.GetDetections(job)) {
-                std::cout << "Track number : " << count << std::endl;
+                std::cout << "Track number: " << count << std::endl;
                 std::map<int, MPFImageLocation> locations = track.frame_locations;
                 std::cout << "Number of image locations: " << locations.size() << std::endl << std::endl;
                 for (const auto &location: locations) {
+                    std::cout << "Frame number: " << location.first << std::endl;
                     print_detection_properties(location.second.detection_properties, location.second.confidence);
                 }
                 count ++;

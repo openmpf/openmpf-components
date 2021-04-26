@@ -60,7 +60,7 @@ namespace MPF {
 
         class TessApiWrapper;
 
-        class TesseractOCRTextDetection : public MPFImageDetectionComponentAdapter {
+        class TesseractOCRTextDetection : public MPFDetectionComponent {
 
         public:
             bool Init() override;
@@ -72,6 +72,8 @@ namespace MPF {
             std::vector<MPFGenericTrack> GetDetections(const MPFGenericJob &job) override;
 
             std::vector<MPFVideoTrack> GetDetections(const MPFVideoJob &job) override;
+
+            std::vector<MPFAudioTrack> GetDetections(const MPFAudioJob &job) override;
 
             std::string GetDetectionType() override;
 
@@ -273,8 +275,7 @@ namespace MPF {
 
             void check_default_languages(const OCR_filter_settings &ocr_fset,
                                          const std::string &job_name,
-                                         const std::string &run_dir,
-                                         MPFDetectionError &job_status);
+                                         const std::string &run_dir);
         };
 
         // The primary reason this class exists is that tesseract::TessBaseAPI segfaults when copying or moving.
