@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.*;
 
 public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
@@ -61,15 +60,10 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
             mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
 
-        // =========================
-        // Tika Detection
-        // =========================
-
         // Specify filename for tika parsers here.
         File file = new File(mpfGenericJob.getDataUri());
 
-
-        ArrayList<ArrayList<StringBuilder>> pageOutput = new ArrayList<>();
+        ArrayList<ArrayList<StringBuilder>> pageOutput;
         Metadata metadata = new Metadata();
         try (FileInputStream inputstream = new FileInputStream(file)) {
             // Init parser with custom content handler for parsing text per page (PDF/PPTX).
@@ -82,13 +76,13 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             pageOutput = handler.getPages();
 
         } catch (Exception e) {
-            String errorMsg = String.format("Error parsing file. Filepath = %s", file.toString());
+            String errorMsg = String.format("Error parsing file. Filepath = %s", file);
             LOG.error(errorMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, errorMsg);
         }
 
         float confidence = -1.0f;
-        List<MPFGenericTrack> tracks = new LinkedList<MPFGenericTrack>();
+        List<MPFGenericTrack> tracks = new LinkedList<>();
 
         Map<String,String> properties = mpfGenericJob.getJobProperties();
 
@@ -99,8 +93,8 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         // Store metadata as a unique track.
         // Disabled by default for format consistency.
         if (MapUtils.getBooleanValue(properties, "STORE_METADATA")) {
-            Map<String, String> genericDetectionProperties = new HashMap<String, String>();
-            Map<String, String> metadataMap = new HashMap<String, String>();
+            Map<String, String> genericDetectionProperties = new HashMap<>();
+            Map<String, String> metadataMap = new HashMap<>();
 
             String[] metadataKeys = metadata.names();
             for (String s: metadataKeys) {
@@ -123,21 +117,16 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         boolean listAllPages = MapUtils.getBooleanValue(properties, "LIST_ALL_PAGES", false);
         // If output exists, separate all output into separate pages.
         // Tag each page by detected language.
-        if (pageOutput.size() >= 1) {
+        if (!pageOutput.isEmpty()) {
             // Load language identifier.
             OptimaizeLangDetector identifier = new OptimaizeLangDetector();
 
             identifier.loadModels();
 
-            int maxIDLength = (int) (java.lang.Math.log10(pageOutput.size())) + 1;
-            int sectionIDLength = (int) (java.lang.Math.log10(pageOutput.get(0).size())) + 1;
+            int maxIDLength = (int) (Math.log10(pageOutput.size())) + 1;
 
-            for (int i = 1; i < pageOutput.size(); i++) {
-                int sectionLength = (int) (java.lang.Math.log10(pageOutput.get(i).size())) + 1;
-                if (sectionLength > sectionIDLength) {
-                    sectionIDLength = sectionLength;
-                }
-            }
+            int maxSectionsOnPage = pageOutput.stream().mapToInt(ArrayList::size).max().getAsInt();
+            int sectionIDLength = (int) (Math.log10(maxSectionsOnPage)) + 1;
 
             if (sectionIDLength > maxIDLength) {
                 maxIDLength = sectionIDLength;
@@ -147,11 +136,11 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                 if (pageOutput.get(p).size() == 1 && pageOutput.get(p).get(0).toString().trim().isEmpty()) {
                     // If LIST_ALL_PAGES is true, create empty tracks for empty pages.
                     if (listAllPages) {
-                        Map<String, String> genericDetectionProperties = new HashMap<String, String>();
+                        Map<String, String> genericDetectionProperties = new HashMap<>();
                         genericDetectionProperties.put("TEXT", "");
                         genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                        genericDetectionProperties.put("PAGE_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", p + 1));
-                        genericDetectionProperties.put("SECTION_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", 1));
+                        genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIDLength + "d", p + 1));
+                        genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIDLength + "d", 1));
                         MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                         tracks.add(genericTrack);
                     }
@@ -160,7 +149,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                 for (int s = 0; s < pageOutput.get(p).size(); s++) {
 
-                    Map<String, String> genericDetectionProperties = new HashMap<String, String>();
+                    Map<String, String> genericDetectionProperties = new HashMap<>();
 
                     try {
                         String textDetect = pageOutput.get(p).get(s).toString();
@@ -195,14 +184,14 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
 
                     } catch (Exception e) {
-                        String errorMsg = String.format("Failed to process text detections.");
+                        String errorMsg = "Failed to process text detections.";
                         LOG.error(errorMsg, e);
                         throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg);
                     }
 
 
-                    genericDetectionProperties.put("PAGE_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", p + 1));
-                    genericDetectionProperties.put("SECTION_NUM", String.format("%0" + String.valueOf(maxIDLength) + "d", s + 1));
+                    genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIDLength + "d", p + 1));
+                    genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIDLength + "d", s + 1));
                     MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                     tracks.add(genericTrack);
                 }
@@ -220,7 +209,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
     // Map for translating from ISO 639-2 code to english description.
     private static Map<String,String> initLangMap() {
-        Map<String,String> map = new HashMap<String,String>();
+        Map<String,String> map = new HashMap<>();
         map.put("af", "Afrikaans");
         map.put("an", "Aragonese");
         map.put("ar", "Arabic");
