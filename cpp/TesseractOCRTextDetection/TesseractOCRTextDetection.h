@@ -162,13 +162,11 @@ namespace MPF {
 
             struct Image_results{
                 std::vector<OCR_output> detections_by_lang;
-                MPFDetectionError job_status;
             };
 
             struct OCR_results {
                 std::string text_result;
                 std::string lang;
-                MPFDetectionError job_status;
                 double confidence;
             };
 
@@ -184,7 +182,6 @@ namespace MPF {
 
             struct PDF_page_results {
                 std::set<std::string> all_missing_languages;
-                MPFDetectionError job_status;
                 std::vector<MPFGenericTrack> *tracks;
             };
 
@@ -208,8 +205,7 @@ namespace MPF {
             std::vector<MPFImageLocation> process_image_job(const MPFJob &job,
                                                             TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
                                                             cv::Mat &image_data,
-                                                            const std::string &run_dir,
-                                                            MPFDetectionError &job_status);
+                                                            const std::string &run_dir);
 
             bool process_ocr_text(Properties &detection_properties, const MPFJob &job, const OCR_output &ocr_out,
                     const TesseractOCRTextDetection::OCR_filter_settings &ocr_fset,
@@ -241,7 +237,10 @@ namespace MPF {
 
             void set_read_config_parameters();
 
-            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset, const Text_type &text_type = Unknown);
+            void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset);
+            void load_image_preprocessing_settings(const MPFJob &job,
+                                                   OCR_filter_settings &ocr_fset,
+                                                   const Text_type &text_type = Unknown);
 
             void sharpen(cv::Mat &image, double weight);
 
