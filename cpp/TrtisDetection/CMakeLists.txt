@@ -40,13 +40,16 @@ set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
 message("Package in ${PACKAGE_DIR}")
 
 find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0
-    COMPONENTS opencv_core)
+             COMPONENTS opencv_core)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
-find_package(request REQUIRED)
+
+set(CMAKE_PREFIX_PATH /opt/triton)
 find_package(CURL REQUIRED)
+find_package(TritonCommon PATH_SUFFIXES 64 REQUIRED)
+find_package(TRITON REQUIRED)
 
 set(BUILD_SHARED_LIBS ON)  # make AWS use shared linking
 find_package(AWSSDK REQUIRED COMPONENTS core s3)
@@ -57,13 +60,26 @@ set(TRTIS_DETECTION_SOURCE_FILES
         S3FeatureStorage.cpp S3FeatureStorage.h S3StorageUtil.cpp S3StorageUtil.h base64.h uri.h)
 
 add_library(mpfTrtisDetection SHARED ${TRTIS_DETECTION_SOURCE_FILES})
-target_link_libraries(mpfTrtisDetection request mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils
-        ${OpenCV_LIBS} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES} ${AWSSDK_LINK_LIBRARIES})
+target_link_libraries(mpfTrtisDetection
+                       mpfComponentInterface
+                       mpfDetectionComponentApi
+                       mpfComponentUtils
+                       TRITON::grpcclient_static
+                       ${OpenCV_LIBS}
+                       ${PROTOBUF_LIBRARY}
+                       ${CURL_LIBRARIES}
+                       ${AWSSDK_LINK_LIBRARIES})
+# add seperate dynamic libcurl for aws
+target_link_libraries(mpfTrtisDetection /usr/local/lib64/libcurl.so)
+
 
 configure_mpf_component(TrtisDetection TARGETS mpfTrtisDetection)
 
 add_subdirectory(test)
 
 # Build sample executable
-add_executable(sample_trtis_detector sample_trtis_detector.cpp)
-target_link_libraries(sample_trtis_detector mpfTrtisDetection)
+include_directories(/home/mpf/mpf-sdk-install/include /opt/triton/include)
+add_executable(sample_trtis_detector
+               sample_trtis_detector.cpp)
+target_link_libraries(sample_trtis_detector
+                       mpfTrtisDetection)

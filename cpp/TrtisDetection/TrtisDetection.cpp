@@ -114,8 +114,22 @@ T get(const Properties &p, const string &k, const T def) {
     return DetectionComponentUtils::GetProperty<T>(p, k, def);
 }
 
+
 /** ****************************************************************************
-* Parse TRTIS setting out of MPFJob
+* get vector of raw pointers from vector of unique pointers
+***************************************************************************** */
+template<typename T>
+vector<T*> getRaw(const vector<unique_ptr<T>> &v){
+  vector<T*> raw;
+  for(const auto& i : v){
+    raw.push_back(i.get());
+  }
+  return raw;
+}
+
+
+/** ****************************************************************************
+* Parse TRTIS setting  MPFJob
 ***************************************************************************** */
 TrtisJobConfig::TrtisJobConfig(const MPFJob &job,
                                const log4cxx::LoggerPtr &log) :
@@ -133,6 +147,9 @@ TrtisJobConfig::TrtisJobConfig(const MPFJob &job,
 
     maxInferConcurrency = get<int>(jpr, "MAX_INFER_CONCURRENCY", 5);
     LOG4CXX_TRACE(log, "MAX_INFER_CONCURRENCY: " << maxInferConcurrency);
+
+    clientTimeout = get<uint32_t>(jpr, "INFER_TIMEOUT_US",0);
+    LOG4CXX_TRACE(log, "INFER_TIMEOUT_US: " << clientTimeout);
 }
 
 /** ****************************************************************************
@@ -157,7 +174,9 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
         : TrtisJobConfig(job, log),
           image_x_max(image_width - 1),
           image_y_max(image_height - 1),
-          userBBoxNorm({0.0f, 0.0f, 1.0f, 1.0f}) {
+          userBBoxNorm({0.0f, 0.0f, 1.0f, 1.0f}),
+          userBBoxNormShape({4})
+{
     const Properties jpr = job.job_properties;
     userFeatEnabled = get<bool>(jpr, "USER_FEATURE_ENABLE", false);
     frameFeatEnabled = get<bool>(jpr, "FRAME_FEATURE_ENABLE", true);
@@ -258,7 +277,7 @@ void TrtisDetection::_readClassNames(const string &model,
 *
 * \returns A continuous RGB data vector ready for inference server
 ***************************************************************************** */
-BytVec TrtisDetection::_cvRGBBytes(const cv::Mat &img, LngVec &shape) {
+vector<uint8_t> TrtisDetection::_cvRGBBytes(const cv::Mat &img, vector<int64_t> &shape) {
     cv::Mat rgbImg;
     if (img.channels() == 3) {
         cv::cvtColor(img, rgbImg, cv::COLOR_BGR2RGB);
@@ -279,7 +298,7 @@ BytVec TrtisDetection::_cvRGBBytes(const cv::Mat &img, LngVec &shape) {
     }
 
     // return continuous chunk of image data in a byte vector
-    BytVec data;
+    vector<uint8_t> data;
     size_t img_byte_size = rgbImg.total() * rgbImg.elemSize();
     data.resize(img_byte_size);
 
@@ -337,137 +356,64 @@ cv::Mat TrtisDetection::_cvResize(const cv::Mat &img,
 /** ****************************************************************************
 * Scale image colorspace and dimensions and prep for inference server
 *
-* \param      cfg     configuration settings
-* \param      img     OpenCV image to prep for inferencing
-* \param      ctx     shared pointer to an inference context
-* \param[out] shape   shape of the imgDat tensor
-* \param[out] imgDat  image tensor data
+* \param       cfg     configuration settings
+* \param       img     OpenCV image to prep for inferencing
+* \param[out]  shape   tensor shape vector output
+* \param[out]  imgDat  tensor byte data output
 *
-* \note shape and imgDat need to persist till inference call
+* \returns vector of prepared inputs for inferencing
+*
 ***************************************************************************** */
-void TrtisDetection::_ip_irv2_coco_prepImageData(
-        const TrtisIpIrv2CocoJobConfig &cfg,
-        const cv::Mat &img,
-        const sPtrInferCtx &ctx,
-        LngVec &shape,
-        BytVec &imgDat) {
+vector<unique_ptr<nic::InferInput>>
+TrtisDetection::_ip_irv2_coco_prepInputData(const TrtisIpIrv2CocoJobConfig &cfg,
+                                            const cv::Mat &img,
+                                            vector<int64_t> &imgShape,
+                                            vector<uint8_t> &imgDat) {
+
     double scaleFactor = 1.0;
     LOG4CXX_TRACE(_log, "Preparing image data for inferencing");
     if (cfg.clientScaleEnabled) {
-        imgDat = _cvRGBBytes(_cvResize(img, scaleFactor, 1024, 600), shape);
+        imgDat = _cvRGBBytes(_cvResize(img, scaleFactor, 1024, 600), imgShape);
         LOG4CXX_TRACE(_log, "using client side image scaling");
     } else {
-        imgDat = _cvRGBBytes(img, shape);
+        imgDat = _cvRGBBytes(img, imgShape);
         LOG4CXX_TRACE(_log, "using TRTIS model's image scaling");
     }
 
-    // Initialize the inputs with the data.
-    sPtrInferCtxInp inImgDat, inBBox;
-    NI_CHECK_OK(ctx->GetInput("image_input", &inImgDat),
-                "unable to get image_input");
-    NI_CHECK_OK(ctx->GetInput("bbox_input", &inBBox),
-                "unable to get bbox_input");
-    NI_CHECK_OK(inImgDat->Reset(),
-                "unable to reset image_input");
-    NI_CHECK_OK(inBBox->Reset(),
-                "unable to reset bbox_input");
-    NI_CHECK_OK(inImgDat->SetShape(shape),
-                "failed setting image_input shape");
-    NI_CHECK_OK(inImgDat->SetRaw(imgDat),
-                "failed setting image_input");
-    NI_CHECK_OK(inBBox->SetRaw((uint8_t * )(&(cfg.userBBoxNorm[0])),
-                               cfg.userBBoxNorm.size() * sizeof(float)),
-                "failed setting bbox_input");
-    LOG4CXX_TRACE(_log, "Prepped data for inferencing");
+    vector<unique_ptr<nic::InferInput>> inferInputs;
+    nic::InferInput *tmp;
+
+    NI_CHECK_OK(nic::InferInput::Create(&tmp,"image_input",imgShape,"UINT8"),
+                "unable to create 'image_input'");
+    inferInputs.push_back(unique_ptr<nic::InferInput>(tmp));
+    NI_CHECK_OK(inferInputs.back()->AppendRaw(imgDat),
+                "unable to set data for 'image_input");
+
+    NI_CHECK_OK(nic::InferInput::Create(&tmp,"bbox_input",cfg.userBBoxNormShape,"FP32"),
+                "unable to create 'bbox_input'");
+    inferInputs.push_back(unique_ptr<nic::InferInput>(tmp));
+    NI_CHECK_OK(inferInputs.back()->AppendRaw((uint8_t*)(&(cfg.userBBoxNorm[0])),
+                                          cfg.userBBoxNorm.size()*sizeof(float)),
+                "unable to set data for 'bbox_input'");
+
+    return inferInputs;
 }
 
 /** ****************************************************************************
-* Create an inference context for a model.
+* Create an inference client for a model.
 *
-* \param cfg  job configuration settings containing TRTIS server info
+* \param cfg  job configuration settings containing TRITON server info
 *
-* \returns shared pointer to an inferencing context
+* \returns unique pointer to an inferencing client
 *          to use for inferencing requests
 ***************************************************************************** */
-sPtrInferCtx TrtisDetection::_niGetInferContext(const TrtisJobConfig &cfg, int ctxId) {
-    uPtrInferCtx ctx;
-    NI_CHECK_OK(nic::InferGrpcContext::Create(&ctx, ctxId, cfg.trtis_server, cfg.model_name, cfg.model_version),
-                "unable to create TRTIS inference context for \"" + cfg.trtis_server + "\"");
+unique_ptr<nic::InferenceServerGrpcClient>
+TrtisDetection::_niGetInferenceClient(const TrtisJobConfig &cfg) {
+    unique_ptr<nic::InferenceServerGrpcClient> client;
 
-    // Configure context for 'batch_size'=1  and return all outputs
-    uPtrInferCtxOpt options;
-    NI_CHECK_OK(nic::InferContext::Options::Create(&options),
-                "failed initializing TRTIS inference options");
-    options->SetBatchSize(1);
-    for (const auto &output : ctx->Outputs()) {
-        options->AddRawResult(output);
-    }
-    NI_CHECK_OK(ctx->SetRunOptions(*options),
-                "failed initializing TRTIS batch size and outputs");
-
-    LOG4CXX_TRACE(_log, "Created context[" << ctx->CorrelationId() << "]");
-
-    return move(ctx);
-}
-
-/** ****************************************************************************
-* Create inference contexts for a model.
-*
-* \param cfg  job configuration settings containing TRTIS server info
-*
-* \returns map of context ids to shared pointers to inferencing contexts
-***************************************************************************** */
-unordered_map<int, sPtrInferCtx> TrtisDetection::_niGetInferContexts(const TrtisJobConfig &cfg) {
-    unordered_map<int, sPtrInferCtx> ctxMap;
-
-    nic::Error err;
-    for (int i = 0; i < cfg.maxInferConcurrency; i++) {
-        ctxMap[i] = move(_niGetInferContext(cfg, i));
-    }
-
-    return ctxMap;
-}
-
-/** ****************************************************************************
-* convert ni::DataType enum to string for logging
-*
-* \param dt  NVIDIA DataType enum
-*
-* \returns string descriptor of enum value
-***************************************************************************** */
-string TrtisDetection::_niType2Str(ni::DataType dt) {
-    switch (dt) {
-        case ni::TYPE_INVALID:
-            return "INVALID";
-        case ni::TYPE_BOOL:
-            return "BOOL";
-        case ni::TYPE_UINT8:
-            return "UINT8";
-        case ni::TYPE_UINT16:
-            return "UINT16";
-        case ni::TYPE_UINT32:
-            return "UINT32";
-        case ni::TYPE_UINT64:
-            return "UINT64";
-        case ni::TYPE_INT8:
-            return "INT8";
-        case ni::TYPE_INT16:
-            return "INT16";
-        case ni::TYPE_INT32:
-            return "INT32";
-        case ni::TYPE_INT64:
-            return "INT64";
-        case ni::TYPE_FP16:
-            return "FP16";
-        case ni::TYPE_FP32:
-            return "FP32";
-        case ni::TYPE_FP64:
-            return "FP64";
-        case ni::TYPE_STRING:
-            return "STRING";
-        default:
-            return "UNKNOWN";
-    }
+    NI_CHECK_OK(nic::InferenceServerGrpcClient::Create(&client, cfg.trtis_server, false ),
+                "unable to create TRTIS inference client for \"" + cfg.trtis_server + "\"");
+    return client;
 }
 
 /** ****************************************************************************
@@ -482,19 +428,18 @@ string TrtisDetection::_niType2Str(ni::DataType dt) {
 ***************************************************************************** */
 cv::Mat TrtisDetection::_niResult2CVMat(const int batch_idx,
                                         const string &name,
-                                        StrUPtrInferCtxResMap &results) {
+                                        const unique_ptr<nic::InferResult> &res) {
 
     // get raw data pointer and size
     const uint8_t *ptrRaw;
     size_t cntRaw;
-    uPtrInferCtxRes *res = &results.at(name);
-    NI_CHECK_OK((*res)->GetRaw(batch_idx, &ptrRaw, &cntRaw),
-                "Failed to get inference server result raw data");
+    NI_CHECK_OK(res->RawData(name, &ptrRaw, &cntRaw),
+                "Failed to get inference server result raw data  for '" + name +"'");
 
     // get raw data shape
-    LngVec shape;
-    NI_CHECK_OK((*res)->GetRawShape(&shape),
-                "Failed to get inference server result shape");
+    vector<int64_t> shape;
+    NI_CHECK_OK(res->Shape(name, &shape),
+                "Failed to get inference server result shape for '" + name +"'");
     size_t ndim = shape.size();
     if (ndim < 2) { // force matrix for vector with single col?!
         ndim = 2;
@@ -502,7 +447,7 @@ cv::Mat TrtisDetection::_niResult2CVMat(const int batch_idx,
     }
 
     // calculate num elements from shape
-    IntVec iShape;
+    vector<int> iShape;
     int64 numElementsFromShape = 1;
     for (const auto &d: shape) {
         numElementsFromShape *= d;
@@ -512,53 +457,42 @@ cv::Mat TrtisDetection::_niResult2CVMat(const int batch_idx,
     // determine opencv type and calculate num elements from raw size and data type
     size_t cvType;
     size_t sizeofEl;
-    ni::DataType niType = (*res)->GetOutput()->DType();
-    switch (niType) {
-        case ni::TYPE_UINT8:
-            cvType = CV_8UC(ndim - 1);
-            sizeofEl = sizeof(uint8_t);
-            break;
-        case ni::TYPE_UINT16:
-            cvType = CV_16UC(ndim - 1);
-            sizeofEl = sizeof(uint16_t);
-            break;
-        case ni::TYPE_INT8:
-            cvType = CV_8SC(ndim - 1);
-            sizeofEl = sizeof(int8_t);
-            break;
-        case ni::TYPE_INT16:
-            cvType = CV_16SC(ndim - 1);
-            sizeofEl = sizeof(int16_t);
-            break;
-        case ni::TYPE_INT32:
-            cvType = CV_32SC(ndim - 1);
-            sizeofEl = sizeof(int32_t);
-            break;
-        case ni::TYPE_FP32:
-            cvType = CV_32FC(ndim - 1);
-            sizeofEl = sizeof(float);
-            break;
-        case ni::TYPE_FP64:
-            cvType = CV_64FC(ndim - 1);
-            sizeofEl = sizeof(double);
-            break;
-            // OpenCV does not support these types ?!
-        case ni::TYPE_UINT32: //cvType = CV_32UC(ndim-1); sizeofEl=sizeof(uint32_t);  break;
-        case ni::TYPE_UINT64: //cvType = CV_64UC(ndim-1); sizeofEl=sizeof(uint64_t);  break;
-        case ni::TYPE_INT64:  //cvType = CV_64SC(ndim-1); sizeofEl=sizeof(int64_t);   break;
-        case ni::TYPE_FP16:   //cvType = CV_16FC(ndim-1); sizeofEl=sizeof(float16_t); break;
-        case ni::TYPE_BOOL:
-        case ni::TYPE_STRING:
-        case ni::TYPE_INVALID:
-        default: THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
-                                      "Unsupported data_type " + _niType2Str(niType) + " in cv:Mat conversion");
+    string datType;
+    NI_CHECK_OK(res->Datatype(name, &datType),
+                "Failed to get inference server result data type for '" + name +"'");
+    if(datType == "FP32"){
+      cvType = CV_32FC(ndim - 1);
+      sizeofEl = sizeof(float);
+    }else if(datType == "UINT8"){
+      cvType = CV_8UC(ndim - 1);
+      sizeofEl = sizeof(uint8_t);
+    }else if(datType == "UINT16"){
+      cvType = CV_16UC(ndim - 1);
+      sizeofEl = sizeof(uint16_t);
+    }else if(datType == "INT8"){
+      cvType = CV_8SC(ndim - 1);
+      sizeofEl = sizeof(int8_t);
+    }else if(datType == "INT16"){
+      cvType = CV_16SC(ndim - 1);
+      sizeofEl = sizeof(int16_t);
+    }else if(datType == "INT32"){
+      cvType = CV_32SC(ndim - 1);
+      sizeofEl = sizeof(int32_t);
+    }else if(datType == "FP64"){
+      cvType = CV_64FC(ndim - 1);
+      sizeofEl = sizeof(double);
+    }else{  // OpenCV does not support these types
+            //   UINT32, UINT64, INT64, FP16, BOOL, BYTES:
+      THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
+                           "Unsupported data_type '" + datType
+                           + "' in cv:Mat conversion");
     }
 
     if (cntRaw / sizeofEl == numElementsFromShape) {
         return cv::Mat(ndim, iShape.data(), cvType, (void *) ptrRaw);
     } else {
         stringstream ss("Shape ");
-        ss << shape << " and data-type " << _niType2Str(niType) << "are inconsistent with buffer size " << cntRaw;
+        ss << shape << " and data-type '" << datType << "' are inconsistent with buffer size " << cntRaw;
         THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED, ss.str());
     }
 }
@@ -614,8 +548,8 @@ bool TrtisDetection::Init() {
 ***************************************************************************** */
 void TrtisDetection::_ip_irv2_coco_getDetections(
         const TrtisIpIrv2CocoJobConfig &cfg,
-        StrUPtrInferCtxResMap &res,
-        MPFImageLocationVec &locations) {
+        const unique_ptr<nic::InferResult> &res,
+        vector<MPFImageLocation> &locations) {
 
     if (cfg.frameFeatEnabled) {
         LOG4CXX_TRACE(_log, "processing global feature");
@@ -795,7 +729,7 @@ void TrtisDetection::_ip_irv2_coco_tracker(
         const TrtisIpIrv2CocoJobConfig &cfg,
         MPFImageLocation &loc,
         const int frameIdx,
-        MPFVideoTrackVec &tracks) {
+        vector<MPFVideoTrack> &tracks) {
 
     MPFVideoTrack *bestTrackPtr = nullptr;
     float minFeatureGap = FLT_MAX;
@@ -858,6 +792,9 @@ void TrtisDetection::_ip_irv2_coco_tracker(
 *
 * \returns Tracks collection to which detections will be added
 ***************************************************************************** */
+// vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job){
+//   return vector<MPFVideoTrack> {};
+// }
 vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
     try {
         LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
@@ -885,71 +822,69 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
         // frames per milli-sec if available
         double fp_ms = get<double>(job.media_properties, "FPS", 0.0) / 1000.0;
 
-        unordered_map<int, sPtrInferCtx> ctxMap = _niGetInferContexts(cfg);
-        size_t initialCtxPoolSize = ctxMap.size();
-        LOG4CXX_TRACE(_log, "Retrieved inferencing context pool of size " << initialCtxPoolSize << " for model '"
-                                                                          << cfg.model_name << "' from server "
-                                                                          << cfg.trtis_server);
-
-        unordered_set<int> freeCtxPool;
-        for (const auto &pair : ctxMap) {
-            freeCtxPool.insert(pair.first);
+        unique_ptr<nic::InferenceServerGrpcClient> client = _niGetInferenceClient(cfg);
+        nic::InferOptions inferOptions(cfg.model_name);
+        if(cfg.model_version > 0){
+          inferOptions.model_version_ = to_string(cfg.model_version);
         }
+        inferOptions.client_timeout_ = cfg.clientTimeout;
+
+        LOG4CXX_TRACE(_log, "created inferencing client for model '"
+                             << cfg.model_name << "' for server "
+                             << cfg.trtis_server);
+
+
+        int freeCtxPool = cfg.maxInferConcurrency;
 
         mutex freeCtxMtx, nextRxFrameMtx, tracksMtx, errorMtx;
         condition_variable freeCtxCv, nextRxFrameCv;
 
         exception_ptr eptr; // first exception thrown
 
+        int frameIdx = 0;
+        int nextRxFrameIdx = 0;
         try {
-            LOG4CXX_TRACE(_log, "Main thread_id:" << this_thread::get_id());
-
-            int frameIdx = 0;
-            int nextRxFrameIdx = 0;
+            LOG4CXX_TRACE(_log, "Main thread_id:" << hex << this_thread::get_id());
 
             do {
                 // Wait for an available inference context.
                 LOG4CXX_TRACE(_log, "requesting inference from TRTIS server for frame[" << frameIdx << "]");
-
-                int ctxId;
                 {
                     unique_lock <mutex> lk(freeCtxMtx);
-                    if (freeCtxPool.empty()) {
+                    if (freeCtxPool <= 0) {
                         LOG4CXX_TRACE(_log, "wait for an infer context to become available");
-                        freeCtxCv.wait(lk, [&freeCtxPool] { return !freeCtxPool.empty(); });
+                        freeCtxCv.wait(lk, [&freeCtxPool] { return freeCtxPool > 0; });
                     }
                     {
                         lock_guard <mutex> lk(errorMtx);
                         if (eptr) {
+                            LOG4CXX_ERROR(_log,"Error: an exception occured");
                             break; // stop processing frames
                         }
                     }
-                    auto it = freeCtxPool.begin();
-                    ctxId = *it;
-                    freeCtxPool.erase(it);
-                    LOG4CXX_TRACE(_log, "removing context[" << ctxId << "] from pool");
+                    LOG4CXX_TRACE(_log, "using request context[" << freeCtxPool << "]");
+                    freeCtxPool--;
                 }
 
-                sPtrInferCtx &ctx = ctxMap[ctxId];
-
-                LngVec shape;
-                BytVec imgDat;
-                _ip_irv2_coco_prepImageData(cfg, frame, ctx, shape, imgDat);
+                vector<int64_t> shape;
+                vector<uint8_t> frameDat;
+                auto inferInputs = _ip_irv2_coco_prepInputData(cfg, frame, shape, frameDat);
                 LOG4CXX_TRACE(_log, "Loaded data into inference context");
                 LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] sending");
 
                 // Send inference request to the inference server.
                 NI_CHECK_OK(
-                        ctx->AsyncRun([frameIdx, &job, &cfg, &freeCtxCv, &nextRxFrameCv,
+                        client->AsyncInfer([frameIdx, &job, &cfg, &freeCtxCv, &nextRxFrameCv,
                                               &nextRxFrameMtx, &tracksMtx, &freeCtxMtx, &errorMtx,
                                               &nextRxFrameIdx, &freeCtxPool, &eptr,
                                               &class_extra_tracks, &frame_track, &user_track,
-                                              this](nic::InferContext *c, sPtrInferCtxReq req) {
+                                              this](nic::InferResult* tmpResult) {
                             // NOTE: When this callback is invoked, the frame has already been processed by the TRTIS server.
-                            LOG4CXX_DEBUG(_log, "Async run callback for frame[" << frameIdx << "] with context["
-                                                                                << c->CorrelationId()
-                                                                                << "] and thread_id:"
-                                                                                << this_thread::get_id());
+                            LOG4CXX_DEBUG(_log, "Async run callback for frame[" << frameIdx << "] "
+                                                                                << "and thread_id:"
+                                                                                << hex << this_thread::get_id());
+                            // stuff raw results pointer into a smart pointer
+                            unique_ptr<nic::InferResult> inferResults(tmpResult);
 
                             // Ensure tracking is performed on the frames in the proper order.
                             {
@@ -969,21 +904,15 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
 
                             // Retrieve the results from the TRTIS server and update tracks.
                             try {
-                                StrUPtrInferCtxResMap res;
-                                bool is_ready = false;
-                                NI_CHECK_OK(
-                                        c->GetAsyncRunResults(&res, &is_ready, req, true),
-                                        "Failed to retrieve inference results for context " +
-                                        to_string(c->CorrelationId()));
-                                if (!is_ready) {
-                                    THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
-                                                         "Inference results not ready during callback for context " +
-                                                         to_string(c->CorrelationId()));
+                                if(!inferResults->RequestStatus().IsOk()){
+                                   THROW_TRTISEXCEPTION(MPF_DETECTION_FAILED,
+                                     "Inference failed for frame[" + to_string(frameIdx) + "]: "
+                                     + inferResults->RequestStatus().Message());
                                 }
 
-                                LOG4CXX_TRACE(_log, "inference complete");
-                                MPFImageLocationVec locations;
-                                _ip_irv2_coco_getDetections(cfg, res, locations);
+                                LOG4CXX_TRACE(_log, "inference succeeded");
+                                vector<MPFImageLocation> locations;
+                                _ip_irv2_coco_getDetections(cfg, inferResults, locations);
                                 LOG4CXX_TRACE(_log, "inferenced frame[" << frameIdx << "]");
                                 {
                                     lock_guard <mutex> lk(tracksMtx);
@@ -1003,6 +932,7 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
                                     LOG4CXX_TRACE(_log, "tracked objects in frame[" << frameIdx << "]");
                                 }
                             } catch (...) {
+                                LOG4CXX_ERROR(_log,"Error: an exception occured");
                                 try {
                                     Utils::LogAndReThrowException(job, _log);
                                 } catch (MPFDetectionException &e) {
@@ -1026,12 +956,13 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
                             // We're done with the context. Add it back to the pool so it can be used for another frame.
                             {
                                 lock_guard <mutex> lk(freeCtxMtx);
-                                freeCtxPool.insert(c->CorrelationId());
+                                LOG4CXX_TRACE(_log, "returning context[" << freeCtxPool << "] to pool");
+                                freeCtxPool++;
                                 freeCtxCv.notify_all();
-                                LOG4CXX_TRACE(_log, "returned context[" << c->CorrelationId() << "] to pool");
                             }
                             LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] complete");
-                        }),
+                        },
+                        inferOptions,getRaw(inferInputs)),
                         "unable to inference '" + cfg.model_name + "' ver."
                         + to_string(cfg.model_version));
                 LOG4CXX_DEBUG(_log, "Inference request sent for frame[" << frameIdx << "] sent");
@@ -1039,8 +970,8 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
                 frameIdx++;
                 LOG4CXX_TRACE(_log, "frameIdx++ to " << frameIdx);
             } while (video_cap.Read(frame));
-
         } catch (...) {
+          LOG4CXX_ERROR(_log,"Error: an exception occured");
             try {
                 Utils::LogAndReThrowException(job, _log);
             } catch (MPFDetectionException &e) {
@@ -1053,22 +984,26 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
             }
         }
 
-        // Always wait for async threads to complete.
-        if (freeCtxPool.size() < initialCtxPoolSize) {
-            LOG4CXX_TRACE(_log,
-                          "wait for inference context pool size to return to initial size of " << initialCtxPoolSize);
-            unique_lock <mutex> lk(freeCtxMtx);
-            freeCtxCv.wait(lk,
-                           [&freeCtxPool, &initialCtxPoolSize] { return freeCtxPool.size() == initialCtxPoolSize; });
-        }
-
         // Abort now if an error occurred.
         if (eptr) {
             LOG4CXX_ERROR(_log, "[" << job.job_name << "] An error occurred. Aborting job.")
             rethrow_exception(eptr);
         }
 
-        LOG4CXX_DEBUG(_log, "all frames complete");
+        // Always wait for async threads to complete.
+        int initialCtxPoolSize = cfg.maxInferConcurrency;
+        {
+          unique_lock <mutex> lk(freeCtxMtx);
+          if (freeCtxPool < cfg.maxInferConcurrency) {
+              LOG4CXX_TRACE(_log,
+                            "wait for inference context pool size to return to initial size of " << cfg.maxInferConcurrency);
+              freeCtxCv.wait(lk,
+                            [&freeCtxPool, &initialCtxPoolSize] { return freeCtxPool == initialCtxPoolSize; });
+          }
+        }
+        LOG4CXX_DEBUG(_log, "all " << frameIdx << " [" << job.start_frame << "..." << job.stop_frame <<"] frames complete");
+
+
 
         vector <MPFVideoTrack> tracks = move(class_extra_tracks);
         if (!frame_track.frame_locations.empty()) {
@@ -1129,23 +1064,33 @@ vector <MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &job) 
         LOG4CXX_TRACE(_log, "parsed job configuration settings");
 
         cfg.maxInferConcurrency = 1;
-        sPtrInferCtx ctx = _niGetInferContext(cfg);
-        LOG4CXX_TRACE(_log, "retrieved inferencing context for model '" << cfg.model_name << "' from server "
-                                                                        << cfg.trtis_server);
+        unique_ptr<nic::InferenceServerGrpcClient> client = _niGetInferenceClient(cfg);
+        nic::InferOptions inferOptions(cfg.model_name);
+        if(cfg.model_version > 0){
+          inferOptions.model_version_ = to_string(cfg.model_version);
+        }
+        inferOptions.client_timeout_ = cfg.clientTimeout;
 
-        LngVec shape;
-        BytVec imgDat;
-        _ip_irv2_coco_prepImageData(cfg, img, ctx, shape, imgDat);
-        LOG4CXX_TRACE(_log, "loaded data into inference context");
+        LOG4CXX_TRACE(_log, "created inferencing client for model '"
+                             << cfg.model_name << "' for server "
+                             << cfg.trtis_server);
+
+        vector<uint8_t> imgDat;
+        vector<int64_t> imgShape;
+        auto inferInputs = _ip_irv2_coco_prepInputData(cfg, img, imgShape, imgDat);
+
+        LOG4CXX_TRACE(_log, "prepared inference input data");
 
         // Send inference request to the inference server.
-        StrUPtrInferCtxResMap res;
-        NI_CHECK_OK(ctx->Run(&res), "unable to inference '" + cfg.model_name
-                                    + "' ver." + to_string(cfg.model_version));
+        nic::InferResult *tmp;
+        NI_CHECK_OK(client->Infer(&tmp,inferOptions,getRaw(inferInputs)),
+                    "unable to inference '" + cfg.model_name
+                  + "' ver." + to_string(cfg.model_version));
+        unique_ptr<nic::InferResult> inferResults(tmp);
         LOG4CXX_TRACE(_log, "inference complete");
 
         size_t next_idx = locations.size();
-        _ip_irv2_coco_getDetections(cfg, res, locations);
+        _ip_irv2_coco_getDetections(cfg, inferResults, locations);
         LOG4CXX_TRACE(_log, "parsed detections into locations vector");
 
         for (auto &location : locations) {
