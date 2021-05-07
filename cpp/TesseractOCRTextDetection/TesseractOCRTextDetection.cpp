@@ -412,7 +412,7 @@ string random_string(size_t length) {
 void TesseractOCRTextDetection::preprocess_image(const MPFImageJob &job, cv::Mat &image_data,
                                                  const OCR_filter_settings &ocr_fset) {
     if (image_data.empty()) {
-        throw MPFDetectionException(MPF_IMAGE_READ_ERROR,
+        throw MPFDetectionException(MPF_COULD_NOT_READ_MEDIA,
                                     "Could not open transformed image and will not return detections.");
     }
     LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Transformed image opened.");

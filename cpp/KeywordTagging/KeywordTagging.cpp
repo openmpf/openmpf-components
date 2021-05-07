@@ -397,7 +397,7 @@ vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) 
         LOG4CXX_INFO(hw_logger_, "Generic job is not feed forward. Performing tagging on text file.");
         wifstream file {job.data_uri};
         if (!file.is_open()) {
-            throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, "Cannot open: " + job.data_uri);
+            throw MPFDetectionException(MPF_COULD_NOT_READ_MEDIA, "Cannot open: " + job.data_uri);
         }
         wstring file_contents((istreambuf_iterator<wchar_t>(file)), (istreambuf_iterator<wchar_t>()));
         text = move(file_contents);
