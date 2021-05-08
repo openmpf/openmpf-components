@@ -10,7 +10,8 @@ Contains public domain text from the following sources:
     Declaration of Human Rights.
     Public Domain
 
-
+# test-tika-detection.docx
+Contains custom text for testing Tika text detection.
 
 # test-tika-detection.xlsx
 Contains custom text for testing Tika text detection.
