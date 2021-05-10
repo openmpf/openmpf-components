@@ -115,8 +115,8 @@ namespace MPF{
                            const string &class_label_file,
                            int    class_label_count);                           ///< read in class labels for a model from a file
 
-      unique_ptr<nic::InferenceServerGrpcClient>
-      _niGetInferenceClient(const TrtisJobConfig &cfg);
+      unordered_map<int, unique_ptr<nic::InferenceServerGrpcClient>>
+      _niGetInferenceClients(const TrtisJobConfig &cfg);
 
 
       static cv::Mat _niResult2CVMat(const int batch_idx,

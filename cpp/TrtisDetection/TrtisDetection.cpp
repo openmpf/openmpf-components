@@ -400,20 +400,29 @@ TrtisDetection::_ip_irv2_coco_prepInputData(const TrtisIpIrv2CocoJobConfig &cfg,
 }
 
 /** ****************************************************************************
-* Create an inference client for a model.
+* Create a pool of inference clients for a model.
 *
 * \param cfg  job configuration settings containing TRITON server info
 *
-* \returns unique pointer to an inferencing client
-*          to use for inferencing requests
+* \returns pointers to inferencing clients to use for inferencing requests
+*
 ***************************************************************************** */
-unique_ptr<nic::InferenceServerGrpcClient>
-TrtisDetection::_niGetInferenceClient(const TrtisJobConfig &cfg) {
-    unique_ptr<nic::InferenceServerGrpcClient> client;
+unordered_map<int, unique_ptr<nic::InferenceServerGrpcClient>>
+TrtisDetection::_niGetInferenceClients(const TrtisJobConfig &cfg) {
 
-    NI_CHECK_OK(nic::InferenceServerGrpcClient::Create(&client, cfg.trtis_server, false ),
-                "unable to create TRTIS inference client for \"" + cfg.trtis_server + "\"");
-    return client;
+    unordered_map<int, unique_ptr<nic::InferenceServerGrpcClient>> clients;
+    string server_url = cfg.trtis_server;
+    bool verbose = false; // keep client logging silent
+    bool use_ssl = false; // skip encryption overhead
+    auto ssl_options = nic::SslOptions();
+
+    for(int i=0; i < cfg.maxInferConcurrency; i++){
+      unique_ptr<nic::InferenceServerGrpcClient> client;
+      NI_CHECK_OK(nic::InferenceServerGrpcClient::Create(&client, server_url, verbose, use_ssl, ssl_options),
+                 "unable to create TRTIS inference client for \"" + server_url + "\"");
+      clients[i] = move(client);
+    }
+    return clients;
 }
 
 /** ****************************************************************************
@@ -792,9 +801,10 @@ void TrtisDetection::_ip_irv2_coco_tracker(
 *
 * \returns Tracks collection to which detections will be added
 ***************************************************************************** */
-// vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job){
-//   return vector<MPFVideoTrack> {};
-// }
+/*vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job){
+   return vector<MPFVideoTrack> {};
+}
+/**/
 vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
     try {
         LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
@@ -822,49 +832,59 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
         // frames per milli-sec if available
         double fp_ms = get<double>(job.media_properties, "FPS", 0.0) / 1000.0;
 
-        unique_ptr<nic::InferenceServerGrpcClient> client = _niGetInferenceClient(cfg);
-        nic::InferOptions inferOptions(cfg.model_name);
-        if(cfg.model_version > 0){
-          inferOptions.model_version_ = to_string(cfg.model_version);
+        unordered_map<int, unique_ptr<nic::InferenceServerGrpcClient>> clients = _niGetInferenceClients(cfg);
+        int initialClientPoolSize = clients.size();
+        LOG4CXX_TRACE(_log, "Retrieved inferencing client pool of size " << initialClientPoolSize << " for model '"
+                                                                         << cfg.model_name << "' from server "
+                                                                         << cfg.trtis_server);
+
+        unordered_set<int> freeClients;
+        for (const auto &pair : clients) {
+            freeClients.insert(pair.first);
         }
-        inferOptions.client_timeout_ = cfg.clientTimeout;
 
-        LOG4CXX_TRACE(_log, "created inferencing client for model '"
-                             << cfg.model_name << "' for server "
-                             << cfg.trtis_server);
-
-
-        int freeCtxPool = cfg.maxInferConcurrency;
-
-        mutex freeCtxMtx, nextRxFrameMtx, tracksMtx, errorMtx;
+        mutex freeClientsMtx, nextRxFrameMtx, tracksMtx, errorMtx;
         condition_variable freeCtxCv, nextRxFrameCv;
 
         exception_ptr eptr; // first exception thrown
 
-        int frameIdx = 0;
-        int nextRxFrameIdx = 0;
         try {
             LOG4CXX_TRACE(_log, "Main thread_id:" << hex << this_thread::get_id());
+
+            int frameIdx = 0;
+            int nextRxFrameIdx = 0;
+
+            nic::InferOptions inferOptions(cfg.model_name);
+            if(cfg.model_version > 0){
+              inferOptions.model_version_ = to_string(cfg.model_version);
+            }
+            inferOptions.client_timeout_ = cfg.clientTimeout;
 
             do {
                 // Wait for an available inference context.
                 LOG4CXX_TRACE(_log, "requesting inference from TRTIS server for frame[" << frameIdx << "]");
+
+                int clientId;
                 {
-                    unique_lock <mutex> lk(freeCtxMtx);
-                    if (freeCtxPool <= 0) {
-                        LOG4CXX_TRACE(_log, "wait for an infer context to become available");
-                        freeCtxCv.wait(lk, [&freeCtxPool] { return freeCtxPool > 0; });
+                    unique_lock <mutex> lk(freeClientsMtx);
+                    if (freeClients.empty()) {
+                        LOG4CXX_TRACE(_log, "wait for an infer client to become available");
+                        freeCtxCv.wait(lk, [&freeClients] { return !freeClients.empty(); });
                     }
                     {
                         lock_guard <mutex> lk(errorMtx);
                         if (eptr) {
-                            LOG4CXX_ERROR(_log,"Error: an exception occured");
+                            LOG4CXX_ERROR(_log,"Error: an exception occurred");
                             break; // stop processing frames
                         }
                     }
-                    LOG4CXX_TRACE(_log, "using request context[" << freeCtxPool << "]");
-                    freeCtxPool--;
+                    auto it = freeClients.begin();
+                    clientId = *it;
+                    freeClients.erase(it);
+                    LOG4CXX_TRACE(_log, "using request client[" << clientId << "]");
                 }
+
+                unique_ptr<nic::InferenceServerGrpcClient> &client = clients[clientId];
 
                 vector<int64_t> shape;
                 vector<uint8_t> frameDat;
@@ -874,9 +894,9 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
 
                 // Send inference request to the inference server.
                 NI_CHECK_OK(
-                        client->AsyncInfer([frameIdx, &job, &cfg, &freeCtxCv, &nextRxFrameCv,
-                                              &nextRxFrameMtx, &tracksMtx, &freeCtxMtx, &errorMtx,
-                                              &nextRxFrameIdx, &freeCtxPool, &eptr,
+                        client->AsyncInfer([clientId, frameIdx, &job, &cfg, &freeCtxCv, &nextRxFrameCv,
+                                              &nextRxFrameMtx, &tracksMtx, &freeClientsMtx, &errorMtx,
+                                              &nextRxFrameIdx, &freeClients, &eptr,
                                               &class_extra_tracks, &frame_track, &user_track,
                                               this](nic::InferResult* tmpResult) {
                             // NOTE: When this callback is invoked, the frame has already been processed by the TRTIS server.
@@ -953,12 +973,12 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
                                 nextRxFrameCv.notify_all();
                             }
 
-                            // We're done with the context. Add it back to the pool so it can be used for another frame.
+                            // We're done with the client. Add it back to the pool so it can be used for another frame.
                             {
-                                lock_guard <mutex> lk(freeCtxMtx);
-                                LOG4CXX_TRACE(_log, "returning context[" << freeCtxPool << "] to pool");
-                                freeCtxPool++;
+                                lock_guard <mutex> lk(freeClientsMtx);
+                                freeClients.insert(clientId);
                                 freeCtxCv.notify_all();
+                                LOG4CXX_TRACE(_log, "returning client[" << clientId << "] to pool");
                             }
                             LOG4CXX_DEBUG(_log, "frame[" << frameIdx << "] complete");
                         },
@@ -984,26 +1004,23 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
             }
         }
 
+
+
+        // Always wait for async threads to complete.
+        if (freeClients.size() < initialClientPoolSize) {
+            LOG4CXX_TRACE(_log,
+                          "wait for inference context pool size to return to initial size of " << initialClientPoolSize);
+            unique_lock<mutex> lk(freeClientsMtx);
+            freeCtxCv.wait(lk,
+                          [&freeClients, &initialClientPoolSize] { return freeClients.size() == initialClientPoolSize; });
+        }
+        LOG4CXX_DEBUG(_log, "all frames [" << job.start_frame << "..." << job.stop_frame <<"] frames complete");
+
         // Abort now if an error occurred.
         if (eptr) {
             LOG4CXX_ERROR(_log, "[" << job.job_name << "] An error occurred. Aborting job.")
             rethrow_exception(eptr);
         }
-
-        // Always wait for async threads to complete.
-        int initialCtxPoolSize = cfg.maxInferConcurrency;
-        {
-          unique_lock <mutex> lk(freeCtxMtx);
-          if (freeCtxPool < cfg.maxInferConcurrency) {
-              LOG4CXX_TRACE(_log,
-                            "wait for inference context pool size to return to initial size of " << cfg.maxInferConcurrency);
-              freeCtxCv.wait(lk,
-                            [&freeCtxPool, &initialCtxPoolSize] { return freeCtxPool == initialCtxPoolSize; });
-          }
-        }
-        LOG4CXX_DEBUG(_log, "all " << frameIdx << " [" << job.start_frame << "..." << job.stop_frame <<"] frames complete");
-
-
 
         vector <MPFVideoTrack> tracks = move(class_extra_tracks);
         if (!frame_track.frame_locations.empty()) {
@@ -1064,7 +1081,6 @@ vector <MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &job) 
         LOG4CXX_TRACE(_log, "parsed job configuration settings");
 
         cfg.maxInferConcurrency = 1;
-        unique_ptr<nic::InferenceServerGrpcClient> client = _niGetInferenceClient(cfg);
         nic::InferOptions inferOptions(cfg.model_name);
         if(cfg.model_version > 0){
           inferOptions.model_version_ = to_string(cfg.model_version);
@@ -1083,7 +1099,7 @@ vector <MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &job) 
 
         // Send inference request to the inference server.
         nic::InferResult *tmp;
-        NI_CHECK_OK(client->Infer(&tmp,inferOptions,getRaw(inferInputs)),
+        NI_CHECK_OK(_niGetInferenceClients(cfg)[0]->Infer(&tmp,inferOptions,getRaw(inferInputs)),
                     "unable to inference '" + cfg.model_name
                   + "' ver." + to_string(cfg.model_version));
         unique_ptr<nic::InferResult> inferResults(tmp);
