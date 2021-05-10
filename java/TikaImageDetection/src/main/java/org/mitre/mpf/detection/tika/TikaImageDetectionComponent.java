@@ -109,7 +109,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         } catch (FileNotFoundException e) {
             errMsg = "Error opening file at : " + docPath;
             log.error(errMsg, e);
-            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, errMsg);
+            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_OPEN_MEDIA, errMsg);
         } catch (SAXException | IOException | TikaException e) {
             errMsg = "Error processing file at : " + docPath;
             log.error(errMsg, e);
