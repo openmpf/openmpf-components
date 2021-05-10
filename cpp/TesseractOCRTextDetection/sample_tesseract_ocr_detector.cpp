@@ -45,10 +45,10 @@ using std::to_string;
 void print_usage(char *argv[]) {
 
     std::cout << "Usage: " << argv[0] <<
-                 " <-i | -g> [--osd] [--oem TESSERACT_OEM] <IMAGE_URI | GENERIC_URI> [TESSERACT_LANGUAGE]" <<
+                 " <-i | -v | -g> [--osd] [--oem TESSERACT_OEM] <IMAGE_URI | VIDEO_URI <START_FRAME> <END_FRAME> | GENERIC_URI>  [TESSERACT_LANGUAGE]" <<
                  std::endl << std::endl;
     std::cout << "Notes: " << std::endl << std::endl;
-    std::cout << " -i | -g : Specifies whether to process an image (-i <IMAGE_URI>) or generic document (-g <GENERIC_URI>)." <<
+    std::cout << " <-i | -v | -g>  : Specifies whether to process an image (-i <IMAGE_URI>), video (-v <VIDEO_URI>  <START_FRAME> <END_FRAME>), or generic document (-g <GENERIC_URI>)." <<
                  std::endl << std::endl;
     std::cout << " --osd   : When provided, runs the job with automatic orientation and script detection (OSD). " <<
                  std::endl;
@@ -102,8 +102,8 @@ bool check_options(const std::string &next_option,  const int &argc, char *argv[
     if (next_option == "--osd") {
         algorithm_properties["ENABLE_OSD_AUTOMATION"] = "true";
         uri_index++;
-    } else if (next_option == "--oem" || argc - uri_index > 2) {
-        std::cout << "Updating OEM MODE " << argv[uri_index + 1];
+    } else if (next_option == "--oem" && argc - uri_index > 2) {
+        std::cout << "Updating OEM MODE " << argv[uri_index + 1] << std::endl;
         algorithm_properties["TESSERACT_OEM"] = argv[uri_index + 1];
         uri_index += 2;
     } else {
@@ -131,18 +131,30 @@ int main(int argc, char *argv[]) {
         algorithm_properties["SHARPEN"] = "1.0";
         algorithm_properties["ENABLE_OSD_AUTOMATION"] = "false";
 
-        int uri_index = 2;
+        int uri_index = 2, video_params = 0, start_frame = 0, end_frame = 1;
+
         std::string next_option = std::string(argv[uri_index]);
         if (check_options(next_option, argc, argv, algorithm_properties, uri_index)) {
             next_option = std::string(argv[uri_index]);
             check_options(next_option, argc, argv, algorithm_properties, uri_index);
         }
 
-        if (argc - uri_index == 1) {
+        if (media_option == "-v") {
+            video_params = 2;
+            if (argc - uri_index < 3) {
+                print_usage(argv);
+                return 0;
+
+            }
+            start_frame = std::stoi(argv[uri_index+1]);
+            end_frame = std::stoi(argv[uri_index+2]);
+        }
+
+        if (argc - uri_index - video_params == 1) {
             uri = argv[uri_index];
-        } else if (argc - uri_index == 2) {
+        } else if (argc - uri_index - video_params == 2) {
             uri = argv[uri_index];
-            algorithm_properties["TESSERACT_LANGUAGE"] = argv[uri_index + 1];
+            algorithm_properties["TESSERACT_LANGUAGE"] = argv[uri_index + video_params + 1];
         } else {
              print_usage(argv);
              return 0;
@@ -174,6 +186,22 @@ int main(int argc, char *argv[]) {
             std::cout << "Number of image locations: " << locations.size() << std::endl << std::endl;
             for (int i = 0; i < locations.size(); i++) {
                 print_detection_properties(locations[i].detection_properties, locations[i].confidence);
+            }
+        }
+        else if (media_option == "-v") {
+            // Run uri as an image data file.
+            std::cout << "Running job on video data uri: " << uri << std::endl;
+            MPFVideoJob job(job_name, uri, start_frame, end_frame, algorithm_properties, media_properties);
+            int count = 0;
+            for (auto track: im.GetDetections(job)) {
+                std::cout << "Track number: " << count << std::endl;
+                std::map<int, MPFImageLocation> locations = track.frame_locations;
+                std::cout << "Number of image locations: " << locations.size() << std::endl << std::endl;
+                for (const auto &location: locations) {
+                    std::cout << "Frame number: " << location.first << std::endl;
+                    print_detection_properties(location.second.detection_properties, location.second.confidence);
+                }
+                count ++;
             }
         }
         else {

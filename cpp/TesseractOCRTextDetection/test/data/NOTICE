@@ -82,6 +82,19 @@ Custom generated pdf for testing document text extraction.
 # test-backslash.png
 Custom generated image for testing escaped backslash tagging.
 
+# test-video-detection.avi
+Short clip of three separate image frames for testing video detection capability.
+Contains public domain text from the following sources:
+
+    https://en.wikipedia.org/wiki/Diazepam
+    (Japanese Translation)
+    Public Domain
+
+    http://www.un.org/en/universal-declaration-human-rights/
+    English text from the Universal
+    Declaration of Human Rights.
+    Public Domain
+
 # text-demo.png
 Text extracted from open source project https://github.com/tesseract-ocr/tesseract.
 
