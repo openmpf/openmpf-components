@@ -284,7 +284,7 @@ class TestAcsTranslation(unittest.TestCase):
 
         with self.assertRaises(mpf.DetectionException) as cm:
             AcsTranslationComponent.get_detections_from_video(job)
-        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertEqual(mpf.DetectionError.NETWORK_ERROR, cm.exception.error_code)
 
 
     def test_reports_error_when_missing_acs_props(self):
