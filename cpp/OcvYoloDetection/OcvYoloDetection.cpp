@@ -356,13 +356,10 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             }
         }
 
-        // convert any remaining active tracks to MPFVideoTracks
+        // Convert any remaining active tracks to MPFVideoTracks. Remove any detections
+        // that are below the confidence threshold, and drop empty tracks, if any.
         for (Track &track : inProgressTracks) {
-            completedTracks.push_back(Track::toMpfTrack(std::move(track)));
-        }
-
-        for (MPFVideoTrack &mpfTrack : completedTracks) {
-            // Remove detections below the confidence threshold.
+            MPFVideoTrack mpfTrack = Track::toMpfTrack(std::move(track));
             std::vector<int> detections_to_erase;
             for (const auto &loc : mpfTrack.frame_locations) {
                 if (loc.second.confidence < config.confidenceThreshold) {
@@ -372,12 +369,16 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             for (int idx : detections_to_erase) {
                 mpfTrack.frame_locations.erase(idx);
             }
-            // Adjust start and stop frames in case detections were removed at
-            // the beginning or end of the track.
-            mpfTrack.start_frame = mpfTrack.frame_locations.begin()->first;
-            mpfTrack.stop_frame = mpfTrack.frame_locations.rbegin()->first;
-            videoCapture.ReverseTransform(mpfTrack);
+            if (!mpfTrack.frame_locations.empty()) {
+                // Adjust start and stop frames in case detections were removed at
+                // the beginning or end of the track.
+                mpfTrack.start_frame = mpfTrack.frame_locations.begin()->first;
+                mpfTrack.stop_frame = mpfTrack.frame_locations.rbegin()->first;
+                videoCapture.ReverseTransform(mpfTrack);
+                completedTracks.push_back(mpfTrack);
+            }
         }
+
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << completedTracks.size()
                      << " tracks.");
