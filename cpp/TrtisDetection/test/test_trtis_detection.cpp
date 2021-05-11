@@ -164,7 +164,7 @@ TEST(TRTIS, VideoTest) {
     ASSERT_TRUE(trtisDet.Close());
 }
 //------------------------------------------------------------------------------
-TEST(TRTIS, VideoTest2) {
+TEST(TRTIS, DISABLED_VideoTest2) {
     TrtisDetection trtisDet;
     trtisDet.SetRunDirectory("../plugin");
 
@@ -177,14 +177,10 @@ TEST(TRTIS, VideoTest2) {
     job_props["MAX_INFER_CONCURRENCY"] = "10";
     job_props["CONTEXT_WAIT_TIMEOUT_SEC"] = "60";
     MPFVideoJob job("TEST",
-                    //"test/big_buck_bunny.mp4",
                     "test/ped_short.mp4",
                         0,
                       50,
-                     //144,
-                     //1440,
                      job_props,
-                     //{{"FPS","23.96"}});
                      {{"FPS","24.0"}});
 
     vector<MPFVideoTrack> tracks;
@@ -202,7 +198,7 @@ TEST(TRTIS, VideoTest2) {
     GOUT("\tWriting detected video to files.");
     VideoGeneration video_generation;
     video_generation.WriteTrackOutputVideo(job.data_uri, tracks, "tracks.avi");
-    //write_track_output_video(inVideoFile, found_tracks, (test_output_dir + "/" + outVideoFile), videoJob);
+
     GOUT("\tWriting test tracks to files.");
     WriteDetectionsToFile::WriteVideoTracks("tracks.txt", tracks);
 
