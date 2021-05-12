@@ -78,7 +78,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         } catch (Exception e) {
             String errorMsg = String.format("Error parsing file. Filepath = %s", file);
             LOG.error(errorMsg, e);
-            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, errorMsg);
+            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, errorMsg);
         }
 
         float confidence = -1.0f;
