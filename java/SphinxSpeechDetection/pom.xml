@@ -32,7 +32,7 @@
 
     <groupId>org.mitre.mpf</groupId>
     <artifactId>mpf-sphinx-speech-detection-component</artifactId>
-    <version>6.1</version>
+    <version>6.2</version>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
@@ -44,7 +44,7 @@
         <dependency>
             <groupId>org.mitre.mpf</groupId>
             <artifactId>mpf-java-component-api</artifactId>
-            <version>6.1</version>
+            <version>6.2</version>
         </dependency>
         <dependency>
             <groupId>edu.cmu.sphinx</groupId>
