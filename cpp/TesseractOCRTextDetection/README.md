@@ -3,8 +3,11 @@
 This repository contains source code and model data for the OpenMPF Tesseract
 OCR text detection component.
 
-The component extracts text found in an image, reported as a single track
-detection. PDF documents can also be processed with one track detection per
+The component extracts text found in an image, video, or generic document.
+Image results are reported as a single track
+detection [per specified language setting](#detecting-multiple-languages).
+Video results are reported as single track detections per frame and language setting.
+PDF documents can also be processed with one track detection per
 page. The first page corresponds to the detection property `PAGE_NUM=1`. For
 debugging purposes, images converted from documents are stored in a temporary
 job directory under `plugin/TesseractOCR/tmp-[job-id]-[random tag]`. This

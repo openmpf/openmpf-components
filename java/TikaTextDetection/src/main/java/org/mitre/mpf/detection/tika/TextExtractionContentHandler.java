@@ -26,33 +26,40 @@
 
 package org.mitre.mpf.detection.tika;
 
-import org.xml.sax.SAXException;
-import org.xml.sax.Attributes;
 import org.apache.tika.sax.ToTextContentHandler;
-import java.lang.StringBuilder;
+import org.xml.sax.Attributes;
+
 import java.util.ArrayList;
 
 public class TextExtractionContentHandler extends ToTextContentHandler {
-    private String pageTag = "div";
-    protected int pageNumber = 0;
+    private static final String pageTag = "div";
+    private static final String sectionTag = "p";
+    protected int pageNumber;
+    protected int sectionNumber;
     public StringBuilder textResults;
-    public ArrayList<StringBuilder> pageMap;
+    public ArrayList<ArrayList<StringBuilder>> pageMap;
+    private ArrayList<StringBuilder> sectionMap;
     private boolean skipTitle;
+    private boolean skipBlankSections;
 
     public TextExtractionContentHandler(){
         super();
-        pageTag = "div";
         pageNumber = 0;
+        sectionNumber = 0;
         // Enable to avoid storing metadata/title text from ppt document.
         skipTitle = true;
 
-        textResults = new StringBuilder();
-        pageMap = new ArrayList<StringBuilder>();
-        pageMap.add(new StringBuilder());
+        // Disable to skip recording empty sections (warning: could produce an excessive number of empty tracks).
+        skipBlankSections = true;
 
+        textResults = new StringBuilder();
+        pageMap = new ArrayList<>();
+        sectionMap = new ArrayList<>();
+        pageMap.add(sectionMap);
+        sectionMap.add(new StringBuilder());
     }
 
-    public void startElement (String uri, String localName, String qName, Attributes atts) throws SAXException  {
+    public void startElement (String uri, String localName, String qName, Attributes atts) {
         if (atts.getValue("class") != null) {
             if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) {
                 startPage();
@@ -67,44 +74,59 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
                     startPage();
                 }
             }
+        } else if (sectionTag.equals(qName)) {
+            newSection();
         }
     }
 
 
-    public void endElement (String uri, String localName, String qName) throws SAXException {
+    public void endElement (String uri, String localName, String qName) {
         if (pageTag.equals(qName)) {
             endPage();
         }
     }
 
-    public void characters(char[] ch, int start, int length) throws SAXException {
+    public void characters(char[] ch, int start, int length) {
         if (length > 0) {
             textResults.append(ch, start, length);
-            pageMap.get(pageNumber).append(ch, start, length);
+            pageMap.get(pageNumber).get(sectionNumber).append(ch, start, length);
         }
     }
 
-    protected void startPage() throws SAXException {
+    protected void startPage() {
         pageNumber ++;
-        pageMap.add(new StringBuilder());
+        sectionNumber = 0;
+        sectionMap = new ArrayList<>();
+        sectionMap.add(new StringBuilder());
+        pageMap.add(sectionMap);
     }
 
-    protected void endPage() throws SAXException {
-        return;
-    }
+    protected void endPage() {}
 
-    protected void resetPage() throws SAXException {
+    protected void resetPage() {
         pageNumber = 0;
+        sectionNumber = 0;
+        sectionMap.clear();
+        sectionMap.add(new StringBuilder());
         pageMap.clear();
-        pageMap.add(new StringBuilder());
+        pageMap.add(sectionMap);
+
+    }
+
+    protected void newSection() {
+        if (skipBlankSections && sectionMap.get(sectionNumber).toString().trim().isEmpty()){
+            return;
+        }
+        sectionNumber++;
+        sectionMap.add(new StringBuilder());
     }
 
     public String toString(){
         return textResults.toString();
     }
 
-    // Returns the text detections, subdivided by page number.
-    public ArrayList<StringBuilder> getPages(){
+    // Returns the text detections, subdivided by page number and section.
+    public ArrayList<ArrayList<StringBuilder>> getPages(){
         return pageMap;
     }
 }

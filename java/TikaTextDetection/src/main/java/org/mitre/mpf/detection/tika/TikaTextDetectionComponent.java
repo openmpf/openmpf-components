@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.*;
 
 public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
@@ -61,15 +60,10 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
             mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
 
-        // =========================
-        // Tika Detection
-        // =========================
-
         // Specify filename for tika parsers here.
         File file = new File(mpfGenericJob.getDataUri());
 
-
-        List<StringBuilder> pageOutput = new ArrayList<StringBuilder>();
+        ArrayList<ArrayList<StringBuilder>> pageOutput;
         Metadata metadata = new Metadata();
         try (FileInputStream inputstream = new FileInputStream(file)) {
             // Init parser with custom content handler for parsing text per page (PDF/PPTX).
@@ -82,13 +76,13 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             pageOutput = handler.getPages();
 
         } catch (Exception e) {
-            String errorMsg = String.format("Error parsing file. Filepath = %s", file.toString());
+            String errorMsg = String.format("Error parsing file. Filepath = %s", file);
             LOG.error(errorMsg, e);
-            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, errorMsg);
+            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, errorMsg);
         }
 
         float confidence = -1.0f;
-        List<MPFGenericTrack> tracks = new LinkedList<MPFGenericTrack>();
+        List<MPFGenericTrack> tracks = new LinkedList<>();
 
         Map<String,String> properties = mpfGenericJob.getJobProperties();
 
@@ -99,8 +93,8 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         // Store metadata as a unique track.
         // Disabled by default for format consistency.
         if (MapUtils.getBooleanValue(properties, "STORE_METADATA")) {
-            Map<String, String> genericDetectionProperties = new HashMap<String, String>();
-            Map<String, String> metadataMap = new HashMap<String, String>();
+            Map<String, String> genericDetectionProperties = new HashMap<>();
+            Map<String, String> metadataMap = new HashMap<>();
 
             String[] metadataKeys = metadata.names();
             for (String s: metadataKeys) {
@@ -120,81 +114,91 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             tracks.add(metadataTrack);
         }
 
+        boolean listAllPages = MapUtils.getBooleanValue(properties, "LIST_ALL_PAGES", false);
         // If output exists, separate all output into separate pages.
         // Tag each page by detected language.
-        if (pageOutput.size() >= 1) {
+        if (!pageOutput.isEmpty()) {
             // Load language identifier.
             OptimaizeLangDetector identifier = new OptimaizeLangDetector();
 
+            identifier.loadModels();
 
-            try {
-                identifier.loadModels();
-            } catch (IOException e) {
-                String errorMsg = "Failed to load language models.";
-                LOG.error(errorMsg, e);
-                throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg, e);
+            int maxIDLength = (int) (Math.log10(pageOutput.size())) + 1;
+
+            int maxSectionsOnPage = pageOutput.stream().mapToInt(ArrayList::size).max().getAsInt();
+            int sectionIDLength = (int) (Math.log10(maxSectionsOnPage)) + 1;
+
+            if (sectionIDLength > maxIDLength) {
+                maxIDLength = sectionIDLength;
             }
+            for (int p = 0; p < pageOutput.size(); p++) {
 
-            int pageIDLen = (int) (java.lang.Math.log10(pageOutput.size())) + 1;
-            for (int i = 0; i < pageOutput.size(); i++) {
-
-                Map<String, String> genericDetectionProperties = new HashMap<String, String>();
-
-
-                try {
-                    String textDetect = pageOutput.get(i).toString();
-
-                    // By default, trim out detected text.
-                    textDetect = textDetect.trim();
-
-
-                    if (textDetect.length() > 0) {
-                        genericDetectionProperties.put("TEXT", textDetect);
+                if (pageOutput.get(p).size() == 1 && pageOutput.get(p).get(0).toString().trim().isEmpty()) {
+                    // If LIST_ALL_PAGES is true, create empty tracks for empty pages.
+                    if (listAllPages) {
+                        Map<String, String> genericDetectionProperties = new HashMap<>();
+                        genericDetectionProperties.put("TEXT", "");
+                        genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                        genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIDLength + "d", p + 1));
+                        genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIDLength + "d", 1));
+                        MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
+                        tracks.add(genericTrack);
                     }
-                    else{
-                        if (!MapUtils.getBooleanValue(properties, "LIST_ALL_PAGES", false)) {
+                    continue;
+                }
+
+                for (int s = 0; s < pageOutput.get(p).size(); s++) {
+
+                    Map<String, String> genericDetectionProperties = new HashMap<>();
+
+                    try {
+                        String textDetect = pageOutput.get(p).get(s).toString();
+
+                        // By default, trim out detected text.
+                        textDetect = textDetect.trim();
+                        if (textDetect.isEmpty()) {
                             continue;
                         }
-                        genericDetectionProperties.put("TEXT", "");
-                        genericDetectionProperties.put("TEXT_LANGUAGE",  "Unknown");
-                    }
 
-                    // Process text languages.
-                    if (textDetect.length() >= charLimit) {
-                        LanguageResult langResult = identifier.detect(textDetect);
-                        String language = langResult.getLanguage();
+                        genericDetectionProperties.put("TEXT", textDetect);
 
-                        if (langMap.containsKey(language)) {
-                            language = langMap.get(language);
-                        }
-                        if (!langResult.isReasonablyCertain()) {
-                            language = null;
-                        }
-                        if (language != null && language.length() > 0) {
-                            genericDetectionProperties.put("TEXT_LANGUAGE", language);
+                        // Process text languages.
+                        if (textDetect.length() >= charLimit) {
+                            LanguageResult langResult = identifier.detect(textDetect);
+                            String language = langResult.getLanguage();
+
+                            if (langMap.containsKey(language)) {
+                                language = langMap.get(language);
+                            }
+                            if (!langResult.isReasonablyCertain()) {
+                                language = null;
+                            }
+                            if (language != null && language.length() > 0) {
+                                genericDetectionProperties.put("TEXT_LANGUAGE", language);
+                            } else {
+                                genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                            }
                         } else {
                             genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
                         }
-                    } else {
-                        genericDetectionProperties.put("TEXT_LANGUAGE",  "Unknown");
+
+
+                    } catch (Exception e) {
+                        String errorMsg = "Failed to process text detections.";
+                        LOG.error(errorMsg, e);
+                        throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg);
                     }
 
 
-                } catch (Exception e) {
-                    String errorMsg = String.format("Failed to process text detections.");
-                    LOG.error(errorMsg, e);
-                    throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg);
+                    genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIDLength + "d", p + 1));
+                    genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIDLength + "d", s + 1));
+                    MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
+                    tracks.add(genericTrack);
                 }
-
-
-
-                genericDetectionProperties.put("PAGE_NUM",String.format("%0" + String.valueOf(pageIDLen) + "d", i + 1));
-                MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
-                tracks.add(genericTrack);
             }
         }
         // If entire document is empty, generate a single track reporting no detections.
-        if (tracks.size() == 0) {
+        if (tracks.isEmpty()) {
             LOG.warn("Empty or invalid document. No extracted text.");
         }
 
@@ -205,7 +209,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
     // Map for translating from ISO 639-2 code to english description.
     private static Map<String,String> initLangMap() {
-        Map<String,String> map = new HashMap<String,String>();
+        Map<String,String> map = new HashMap<>();
         map.put("af", "Afrikaans");
         map.put("an", "Aragonese");
         map.put("ar", "Arabic");
