@@ -34,7 +34,8 @@ setuptools.setup(
         'mpf_component_api>=6.1',
         'mpf_component_util>=6.1',
         'symspellpy>=6.7.0',
-        'setuptools>=8.1'
+        'setuptools>=8.1',
+        'nltk>=3.5'
     ),
     entry_points={
         'mpf.exported_component': 'component = nlp_correction_component.nlp_correction_component:NlpCorrectionComponent'
