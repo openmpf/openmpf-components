@@ -24,10 +24,13 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import logging
 import unittest
 import mpf_component_api as mpf
 import os
 from nlp_correction_component.nlp_correction_component import NlpCorrectionComponent
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 class TestNlpCorrection(unittest.TestCase):

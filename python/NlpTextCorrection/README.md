@@ -1,7 +1,6 @@
 # Overview
  
-This repository contains source code for the OpenMPF NLP Text Correction component. This component utilizes the
-symspellpy library, which is a Python port of SymSpell, to perform post-processing correction of OCR text.
+This repository contains source code and model data for the Natural Language Processing (NLP) text correction component. This component utilizes the symspellpy library, which is a Python port of SymSpell, to perform post-processing correction of OCR text. SymSpell uses Damerau-Levenshtein distance and Baysian probability to correct misspelled text.
 Symspellpy can be found at https://github.com/mammothb/symspellpy and SymSpell can be found at https://github.com/wolfgarbe/SymSpell.
 
 # Custom Dictionary
@@ -18,5 +17,4 @@ for 345
 is 1
 on 387
 ```
-
 
