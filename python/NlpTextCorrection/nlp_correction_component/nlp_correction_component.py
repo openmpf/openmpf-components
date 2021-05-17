@@ -29,8 +29,8 @@ import mpf_component_api as mpf
 import pkg_resources
 from symspellpy import SymSpell
 from typing import Mapping, Sequence
+import nltk
 import os
-from pathlib import Path
 
 import logging
 
@@ -39,9 +39,10 @@ log = logging.getLogger('NlpCorrectionComponent')
 
 class NlpCorrectionComponent(object):
     detection_type = 'TEXT'
+    initialized = False
+    wrapper = None
 
-    @staticmethod
-    def get_detections_from_image(image_job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
+    def get_detections_from_image(self, image_job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         try:
             ff_track = image_job.feed_forward_location
             detection_properties = ff_track.detection_properties
@@ -53,9 +54,17 @@ class NlpCorrectionComponent(object):
                 )
 
             text = detection_properties.get("TEXT")
+            custom_dictionary_path = image_job.job_properties.get('CUSTOM_DICTIONARY', "")
 
-            runner = JobRunner(image_job.job_properties)
-            runner.get_suggestions(text, detection_properties)
+            if not self.initialized:
+                self.wrapper = SymspellWrapper(image_job.job_properties, image_job.job_name)
+                self.initialized = True
+            else:
+                if custom_dictionary_path != \
+                        self.wrapper.get_custom_dictionary_path():
+                    self.wrapper = SymspellWrapper(image_job.job_properties, image_job.job_name)
+
+            self.wrapper.get_suggestions(text, detection_properties)
 
             log.info(f'[{image_job.job_name}] Processing complete.')
             return ff_track,
@@ -66,18 +75,26 @@ class NlpCorrectionComponent(object):
             )
             raise
 
-    @staticmethod
-    def get_detections_from_generic(job: mpf.GenericJob) -> Iterable[mpf.GenericTrack]:
+    def get_detections_from_generic(self, job: mpf.GenericJob) -> Iterable[mpf.GenericTrack]:
         try:
             log.info(f'[{job.job_name}] Received generic job: {job}')
             ff_track = job.feed_forward_track
+
+            custom_dictionary_path = job.job_properties.get('CUSTOM_DICTIONARY', "")
+
+            if not self.initialized:
+                self.wrapper = SymspellWrapper(job.job_properties, job.job_name)
+                self.initialized = True
+            else:
+                if custom_dictionary_path != \
+                        self.wrapper.get_custom_dictionary_path():
+                    self.wrapper = SymspellWrapper(job.job_properties, job.job_name)
 
             if ff_track is not None:
                 detection_properties = ff_track.detection_properties
                 text = detection_properties.get("TEXT")
 
-                runner = JobRunner(job.job_properties)
-                runner.get_suggestions(text, detection_properties)
+                self.wrapper.get_suggestions(text, detection_properties)
 
                 return ff_track,
 
@@ -89,9 +106,7 @@ class NlpCorrectionComponent(object):
 
                 detection_properties = dict(TEXT=text)
 
-                runner = JobRunner(job.job_properties)
-                runner.get_suggestions(text, detection_properties)
-
+                self.wrapper.get_suggestions(text, detection_properties)
                 generic_track = mpf.GenericTrack(detection_properties=detection_properties)
 
                 log.info(f'[{job.job_name}] Processing complete.')
@@ -103,35 +118,103 @@ class NlpCorrectionComponent(object):
             raise
 
 
-class JobRunner(object):
+class SymspellWrapper(object):
 
-    def __init__(self, job_properties: Mapping[str, str]):
+    def __init__(self, job_properties: Mapping[str, str], job_name):
         self._job_properties = job_properties
+
         self._sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
 
-        custom_dictionary_path = job_properties.get('CUSTOM_DICTIONARY', "")
+        self._custom_dictionary_path = job_properties.get('CUSTOM_DICTIONARY', "")
 
-        dictionary_path = pkg_resources.resource_filename("symspellpy", "frequency_dictionary_en_82_765.txt")
-        bigram_path = pkg_resources.resource_filename("symspellpy", "frequency_bigramdictionary_en_243_342.txt")
+        self._dictionary_path = pkg_resources.resource_filename("symspellpy", "frequency_dictionary_en_82_765.txt")
+        self._bigram_path = pkg_resources.resource_filename(
+                "symspellpy", "frequency_bigramdictionary_en_243_342.txt")
 
-        self._sym_spell.load_dictionary(dictionary_path, term_index=0, count_index=1)
-        self._sym_spell.load_bigram_dictionary(bigram_path, term_index=0, count_index=0)
-
-        curr_dir = Path(__file__).absolute().parent.parent
+        self._sym_spell.load_dictionary(self._dictionary_path, term_index=0, count_index=1)
+        self._sym_spell.load_bigram_dictionary(self._bigram_path, term_index=0, count_index=0)
 
         # load custom dictionary if one is specified in the job properties
-        if custom_dictionary_path != "":
-            full_custom_dict_path = os.path.join(curr_dir, "plugin-files/config/" + custom_dictionary_path)
-            self._sym_spell.load_dictionary(full_custom_dict_path, term_index=0,
-                                            count_index=1)
+        if self._custom_dictionary_path != "":
+            if os.path.exists(self._custom_dictionary_path):
+                self._sym_spell.load_dictionary(self._custom_dictionary_path, term_index=0,
+                                                count_index=1)
+            else:
+                log.exception(f'[{job_name}] '
+                              f'Failed to complete job due incorrect file path for the custom dictionary:')
+                raise mpf.DetectionException(
+                    'The custom dicitonary property must be provided as a full file path',
+                    mpf.DetectionError.COULD_NOT_READ_DATAFILE)
 
     # Adds corrected text to detection_properties.
     # Detection_properties is modified in place.
-    def get_suggestions(self, original_text: str, detection_properties):
+    def get_suggestions(self, original_text, detection_properties):
         log.info(f'Attempting to correct text {original_text}')
-        suggestions = self._sym_spell.lookup_compound(
-            original_text, max_edit_distance=2)
 
-        detection_properties["CORRECTED TEXT"] = suggestions[0].term
+        suggestions = ""
+        punctuation = self.get_punctuation(original_text)
+
+        split = original_text.rsplit("\n\n")
+        split_cleaned = [x.rstrip("\n") for x in split if x != ""]
+
+        # item for sublist in t for item in sublist
+        tokenized_sentences = [nltk.sent_tokenize(x) for x in split_cleaned]
+        tokenized_sentences = [x for sent in tokenized_sentences for x in sent]
+
+        for sentence, punctuation in zip(tokenized_sentences, punctuation):
+            corrected = self._sym_spell.lookup_compound(
+                sentence, max_edit_distance=2, transfer_casing=True,
+                ignore_non_words=True, ignore_term_with_digits=True)[0].term
+            suggestions = suggestions + corrected + punctuation
+
+        detection_properties["CORRECTED TEXT"] = suggestions
         log.info("Successfully corrected text")
-        return suggestions[0].term
+        return True
+
+    def get_custom_dictionary_path(self):
+        return self._custom_dictionary_path
+
+    def get_punctuation(self, original_text: str):
+        split = original_text.rsplit("\n\n")
+
+        punctuation = []
+        newline_counter = 0
+
+        first_block = True
+
+        for block in reversed(split):
+            first_sent = True
+            newline = ""
+
+            if block == '':
+                newline_counter += 2
+            else:
+                newline_count = len(block) - len(block.rstrip("\n"))
+                newline_string = "\n" * (newline_counter + newline_count)
+
+                if first_block:
+                    newline = newline_string
+                    first_block = False
+                else:
+                    newline = "\n\n" + newline_string
+
+                newline_counter = 0
+
+            sentences = nltk.sent_tokenize(block)
+
+            for sentence in reversed(sentences):
+                if sentence[-1] not in "!?.":
+                    if sentence[-1] in ")\"" and sentence[-2] in "!?.":
+                        punc = sentence[-2]
+                    else:
+                        punc = " "
+                else:
+                    punc = sentence[-1]
+
+                if first_sent:
+                    punctuation.append(punc + newline)
+                    first_sent = False
+                else:
+                    punctuation.append(punc + " ")
+
+        return punctuation[::-1]

@@ -33,7 +33,6 @@ setuptools.setup(
     install_requires=(
         'mpf_component_api>=6.1',
         'mpf_component_util>=6.1',
-        'numpy>=1.11'
         'symspellpy>=6.7.0',
         'setuptools >=8.1'
     ),

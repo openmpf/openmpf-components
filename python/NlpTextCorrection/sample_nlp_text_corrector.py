@@ -26,21 +26,26 @@
 
 import sys
 
-from nlp_correction_component import JobRunner
+from nlp_correction_component import NlpCorrectionComponent
+import mpf_component_api as mpf
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.exit('Error: Invalid number of arguments. \nUsage: {} <text>'
+    # custom dictionary can just be ""
+    if len(sys.argv) != 3:
+        sys.exit('Error: Invalid number of arguments. \n' 
+                 'Usage: {} <file_path> <custom_dictionary_path>'
                  .format(sys.argv[0]))
-    _, text = sys.argv
+    _, file, custom_dictionary = sys.argv
 
-    job_props = dict(CUSTOM_DICTIONARY='sample_dict.txt')
+    job_props = dict(CUSTOM_DICTIONARY=custom_dictionary)
 
-    detection_props = dict(TEXT=text)
-    corrected_text = JobRunner(job_props).get_suggestions(text, detection_props)
+    component = NlpCorrectionComponent()
 
-    print(corrected_text)
+    job = mpf.GenericJob("Sample job", file, job_props, {}, None)
+
+    detections = list(component.get_detections_from_generic(job))
+    print(detections)
 
 
 if __name__ == '__main__':

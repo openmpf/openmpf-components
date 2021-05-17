@@ -41,7 +41,7 @@ class TestNlpCorrection(unittest.TestCase):
         job = mpf.GenericJob(
             job_name='test-file',
             data_uri=self._get_test_file("sample.txt"),
-            job_properties=dict(),
+            job_properties={},
             media_properties={},
             feed_forward_track=None
         )
@@ -49,7 +49,7 @@ class TestNlpCorrection(unittest.TestCase):
         results = list(NlpCorrectionComponent().get_detections_from_generic(job))
         self.assertEqual(1, len(results))
 
-        expected_text = "this is some sample text explain is misspelled"
+        expected_text = "this is some sample text explain is misspelled "
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
 
     # test that the component works with a custom dictionary
@@ -57,7 +57,8 @@ class TestNlpCorrection(unittest.TestCase):
         job = mpf.GenericJob(
             job_name='test-file',
             data_uri=self._get_test_file("sample.txt"),
-            job_properties=dict(CUSTOM_DICTIONARY='sample_dict.txt'),
+            job_properties=dict(CUSTOM_DICTIONARY='/home/mpf/openmpf-projects/openmpf-components/python'
+                                                  '/NlpTextCorrection/plugin-files/config/sample_dict.txt'),
             media_properties={},
             feed_forward_track=None
         )
@@ -65,5 +66,29 @@ class TestNlpCorrection(unittest.TestCase):
         results = list(NlpCorrectionComponent().get_detections_from_generic(job))
         self.assertEqual(1, len(results))
 
-        expected_text = "this is some sample text explan is misspelled"
+        expected_text = "this is some sample text explane is misspelled "
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
+    def test_preservation_of_punctuation(self):
+        job = mpf.GenericJob(
+            job_name='test-file',
+            data_uri=self._get_test_file("sample_newlines.txt"),
+            job_properties={},
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        expected_text = (
+            "This is to test that punctuation is preserved. Single newline characters are lost as are quotation marks "
+            "and parenthesis. Is punctuation preserved with these? They should be!\n\nTwo or more newlines are "
+            "preserve heres a misspelling for good measure.\n\n\n\n\nTesting that larger gaps between blocks of text "
+            "are preserved.\n")
+
+        results = list(NlpCorrectionComponent().get_detections_from_generic(job))
+        self.assertEqual(1, len(results))
+
+        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

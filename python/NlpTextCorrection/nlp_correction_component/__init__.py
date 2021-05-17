@@ -24,4 +24,4 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from .nlp_correction_component import NlpCorrectionComponent, JobRunner
+from .nlp_correction_component import NlpCorrectionComponent
