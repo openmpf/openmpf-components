@@ -143,7 +143,7 @@ class SymspellWrapper(object):
                 log.exception(f'[{job_name}] '
                               f'Failed to complete job due incorrect file path for the custom dictionary:')
                 raise mpf.DetectionException(
-                    'The custom dicitonary property must be provided as a full file path',
+                    'Invalid path provided for custom dictionary',
                     mpf.DetectionError.COULD_NOT_READ_DATAFILE)
 
     # Adds corrected text to detection_properties.
