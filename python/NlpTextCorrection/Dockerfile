@@ -30,14 +30,14 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
+
 RUN pip3 install --no-cache-dir 'nltk>=3.5'
+RUN python3 -c "import nltk; nltk.download('punkt')"
 
 ARG RUN_TESTS=false
 
 RUN --mount=target=. install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_nlp_correction.py; fi
-
-RUN python -c "import nltk; nltk.download('punkt')"
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF NLP Text Correction" \

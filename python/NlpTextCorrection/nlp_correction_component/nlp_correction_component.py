@@ -151,6 +151,8 @@ class SymspellWrapper(object):
     def get_suggestions(self, original_text, detection_properties):
         log.info(f'Attempting to correct text {original_text}')
 
+        print(self._sym_spell.words["the"])
+
         suggestions = ""
         punctuation = self.get_punctuation(original_text)
 

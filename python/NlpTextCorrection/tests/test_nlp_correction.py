@@ -37,13 +37,13 @@ class TestNlpCorrection(unittest.TestCase):
 
     @staticmethod
     def _get_test_file(filename):
-        return os.path.join(os.path.dirname(__file__), 'data', filename)
+        return os.path.join(os.path.dirname(__file__), filename)
 
     # test that the component works when passed a text file
     def test_text_file(self):
         job = mpf.GenericJob(
             job_name='test-file',
-            data_uri=self._get_test_file("sample.txt"),
+            data_uri=self._get_test_file("data/sample.txt"),
             job_properties={},
             media_properties={},
             feed_forward_track=None
@@ -57,11 +57,11 @@ class TestNlpCorrection(unittest.TestCase):
 
     # test that the component works with a custom dictionary
     def test_custom_dictionary(self):
+        custom_dictionary_path = self._get_test_file('sample_dict.txt')
         job = mpf.GenericJob(
             job_name='test-file',
-            data_uri=self._get_test_file("sample.txt"),
-            job_properties=dict(CUSTOM_DICTIONARY='/home/mpf/openmpf-projects/openmpf-components/python'
-                                                  '/NlpTextCorrection/plugin-files/config/sample_dict.txt'),
+            data_uri=self._get_test_file("data/sample.txt"),
+            job_properties=dict(CUSTOM_DICTIONARY=custom_dictionary_path),
             media_properties={},
             feed_forward_track=None
         )
@@ -75,7 +75,7 @@ class TestNlpCorrection(unittest.TestCase):
     def test_preservation_of_punctuation(self):
         job = mpf.GenericJob(
             job_name='test-file',
-            data_uri=self._get_test_file("sample_newlines.txt"),
+            data_uri=self._get_test_file("data/sample_newlines.txt"),
             job_properties={},
             media_properties={},
             feed_forward_track=None

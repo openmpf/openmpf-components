@@ -31,8 +31,8 @@ setuptools.setup(
     version='6.1',
     packages=setuptools.find_packages(exclude=('*test*',)),
     install_requires=(
-        'mpf_component_api>=6.1',
-        'mpf_component_util>=6.1',
+        'mpf_component_api>=6.2',
+        'mpf_component_util>=6.2',
         'symspellpy>=6.7.0',
         'setuptools>=8.1',
         'nltk>=3.5'

@@ -32,13 +32,17 @@ import mpf_component_api as mpf
 
 def main():
     # custom dictionary can just be ""
-    if len(sys.argv) != 3:
+    if len(sys.argv) == 3:
+        _, file, custom_dictionary = sys.argv
+        job_props = dict(CUSTOM_DICTIONARY=custom_dictionary)
+    elif len(sys.argv) == 2:
+        _, file = sys.argv
+        job_props = {}
+    else:
         sys.exit('Error: Invalid number of arguments. \n' 
-                 'Usage: {} <file_path> <custom_dictionary_path>'
-                 .format(sys.argv[0]))
-    _, file, custom_dictionary = sys.argv
-
-    job_props = dict(CUSTOM_DICTIONARY=custom_dictionary)
+                 'Usage: {} <file_path> or '
+                 '{} <file_path> <custom_dictionary_path>'
+                 .format(sys.argv[0], sys.argv[0]))
 
     component = NlpCorrectionComponent()
 
