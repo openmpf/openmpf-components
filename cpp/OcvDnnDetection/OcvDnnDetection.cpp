@@ -294,12 +294,19 @@ std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &
         }
 
         if (job.has_feed_forward_location) {
+            bool output_merge_with_previous_task =
+                    DetectionComponentUtils::GetProperty(job.job_properties, "OUTPUT_MERGE_WITH_PREVIOUS_TASK", false);
+
             // Update location props with feed-forward props
             const Properties &feed_forward_props = job.feed_forward_location.detection_properties;
             for (MPFImageLocation &location : locations) {
                 Properties &props = location.detection_properties;
                 for (const auto& feed_forward_prop : feed_forward_props) {
                     props.insert(feed_forward_prop);
+                }
+                // Determine if we should copy feed-forward confidence
+                if (output_merge_with_previous_task) {
+                    location.confidence = job.feed_forward_location.confidence;
                 }
             }
         }
