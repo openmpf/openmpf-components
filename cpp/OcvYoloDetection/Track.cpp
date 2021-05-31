@@ -183,10 +183,10 @@ void Track::kalmanCorrect(const float edgeSnap) {
         LOG_TRACE("kf meas:" << back().getRect());
         kalmanFilterTracker_->correct(back().getRect());
         cv::Rect2i corrected = snapToEdges(back().getRect(), kalmanFilterTracker_->correctedBBox(),
-                                    back().frame.data.size(), edgeSnap);
+                                           back().frame.data.size(), edgeSnap);
         if ((corrected.width == 0) || (corrected.height == 0)) {
             kalmanFilterTracker_->setStatePostFromBBox(snapToEdges(back().getRect(), back().getRect(),
-                                               back().frame.data.size(), edgeSnap));
+                                                                   back().frame.data.size(), edgeSnap));
         }
         else {
             kalmanFilterTracker_->setStatePostFromBBox(corrected);
