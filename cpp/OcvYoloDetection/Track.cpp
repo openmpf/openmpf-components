@@ -185,8 +185,7 @@ void Track::kalmanCorrect(const float edgeSnap) {
         cv::Rect2i corrected = snapToEdges(back().getRect(), kalmanFilterTracker_->correctedBBox(),
                                     back().frame.data.size(), edgeSnap);
         if ((corrected.width == 0) || (corrected.height == 0)) {
-            kalmanFilterTracker_->setStatePostFromBBox(snapToEdges(back().getRect(), back().getRect(),
-                                               back().frame.data.size(), edgeSnap));
+            kalmanFilterTracker_->setStatePostFromBBox(back().getRect());
         }
         else {
             kalmanFilterTracker_->setStatePostFromBBox(corrected);
