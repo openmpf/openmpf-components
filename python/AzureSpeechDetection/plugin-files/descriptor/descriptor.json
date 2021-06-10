@@ -26,6 +26,12 @@
           "defaultValue": "-1"
         },
         {
+          "name": "VFR_TARGET_SEGMENT_LENGTH",
+          "description": "If this value is less than or equal to 0, no segmenting will be performed on variable frame rate videos.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
           "name": "ACS_URL",
           "description": "URL for the Azure Cognitive Services Endpoint. e.g. https://virginia.cris.azure.us/api/speechtotext/v2.0/transcriptions. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.  Note that the component was only tested against v2.0 of the API.",
           "type": "STRING",
