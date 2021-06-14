@@ -24,9 +24,9 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import logging
 import json
 import math
-import os
 import time
 import urllib
 import urllib.error
@@ -39,7 +39,7 @@ import numpy as np
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-logger = mpf.configure_logging('acs-read-detection.log', __name__ == '__main__')
+logger = logging.getLogger('AcsReadComponent')
 
 
 class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReaderMixin, object):
@@ -105,7 +105,7 @@ class JobRunner(object):
         self._is_image = is_image
         self._merge_lines = mpf_util.get_property(job_properties, 'MERGE_LINES', True)
         self._max_attempts = mpf_util.get_property(job_properties, 'MAX_GET_READ_RESULT_ATTEMPTS', -1)
-        subscription_key = self._get_acs_property_or_env_value('ACS_SUBSCRIPTION_KEY', job_properties)
+        subscription_key = self._get_required_property('ACS_SUBSCRIPTION_KEY', job_properties)
 
         if self._is_image:
             self._acs_headers = {'Ocp-Apim-Subscription-Key': subscription_key,
@@ -136,11 +136,11 @@ class JobRunner(object):
                                           resize_scale_factor,
                                           self._merge_lines).process_read_results(read_results_json, is_video)
         return detections
-            
+
     def get_pdf_detections(self, data_uri):
         with open(data_uri, 'rb') as f:
             pdf_content = f.read()
-        
+
         read_results_json = self._post_to_acs(pdf_content)
         return ReadResultsProcessor(self._is_image, 1, self._merge_lines).process_read_results(read_results_json)
 
@@ -198,7 +198,7 @@ class JobRunner(object):
     @classmethod
     def get_acs_url(cls, job_properties):
         """ Adds query string parameters to the ACS URL if needed. """
-        url = cls._get_acs_property_or_env_value('ACS_URL', job_properties)
+        url = cls._get_required_property('ACS_URL', job_properties)
         language = job_properties.get('LANGUAGE')
         url_parts = urllib.parse.urlparse(url)
         query_dict = urllib.parse.parse_qs(url_parts.query)
@@ -209,18 +209,12 @@ class JobRunner(object):
         return urllib.parse.urlunparse(url_parts._replace(query=query_string))
 
     @staticmethod
-    def _get_acs_property_or_env_value(property_name, job_properties):
-        property_value = job_properties.get(property_name)
-        if property_value:
+    def _get_required_property(property_name, job_properties):
+        if property_value := job_properties.get(property_name):
             return property_value
-
-        env_value = os.getenv(property_name)
-        if env_value:
-            return env_value
-
-        raise mpf.DetectionException(
-            'The "{}" property must be provided as a job property or environment variable.'.format(property_name),
-            mpf.DetectionError.MISSING_PROPERTY)
+        else:
+            raise mpf.DetectionError.MISSING_PROPERTY.exception(
+                f'The "{property_name}" property must be provided as a job property.')
 
 
 class FrameEncoder(object):

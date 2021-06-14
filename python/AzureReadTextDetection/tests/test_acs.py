@@ -25,6 +25,7 @@
 #############################################################################
 
 import http.server
+import logging
 import os
 import queue
 import shutil
@@ -32,6 +33,8 @@ import sys
 import threading
 from typing import ClassVar
 import unittest
+from unittest import mock
+
 
 import cv2
 import numpy as np
@@ -53,6 +56,7 @@ rights. They are endowed with reason and conscience
 and should act towards one another in a spirit of
 brotherhood.'''
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestAcs(unittest.TestCase):
 
@@ -121,11 +125,10 @@ class TestAcs(unittest.TestCase):
             FrameEncoder().resize_and_encode(frame)
         self.assertEqual(mpf.DetectionError.BAD_FRAME_SIZE, cm.exception.error_code)
 
-    def test_resize_due_to_compression(self):
+    # Set the class max file size limit to a smaller value to force resizing.
+    @mock.patch.object(FrameEncoder, 'MAX_FILE_SIZE', new_callable=lambda: 20 * 1024 * 1024)
+    def test_resize_due_to_compression(self, _):
         img = cv2.imread(get_test_file('downsampling/noise.png'))
-
-        # Set the class max file size limit to a smaller value to force resizing.
-        FrameEncoder.MAX_FILE_SIZE = 20 * 1024 * 1024
 
         original_size = mpf_util.Size.from_frame(img)
         encoded_frame, new_size = FrameEncoder().resize_and_encode(img)

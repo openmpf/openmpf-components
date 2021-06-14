@@ -26,26 +26,14 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} as build_component
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-# Manually install packages before COPY so they don't need to be re-installed every time the source code changes.
 RUN pip3 install --no-cache-dir 'opencv-python>=4.4.0'
 
-COPY . .
-
-RUN install-component.sh
-
-
 ARG RUN_TESTS=false
-RUN if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs.py; fi
 
-
-FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
-
-COPY --from=build_component $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
-
-COPY --from=build_component $PLUGINS_DIR/AzureReadTextDetection $PLUGINS_DIR/AzureReadTextDetection
-
+RUN --mount=target=. install-component.sh; \
+    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs.py; fi
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Azure Read Text Detection" \

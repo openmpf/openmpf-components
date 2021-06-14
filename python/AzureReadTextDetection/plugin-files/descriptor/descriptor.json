@@ -21,13 +21,13 @@
       "properties": [
         {
           "name": "ACS_URL",
-          "description": "URL for the Azure Cognitive Services Endpoint. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "description": "URL for the Azure Cognitive Services Endpoint.",
           "type": "STRING",
           "defaultValue": ""
         },
         {
           "name": "ACS_SUBSCRIPTION_KEY",
-          "description": "Azure Cognitive Services subscription key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "description": "Azure Cognitive Services subscription key.",
           "type": "STRING",
           "defaultValue": ""
         },
