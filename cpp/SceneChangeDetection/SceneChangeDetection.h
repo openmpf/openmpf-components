@@ -28,26 +28,24 @@
 #ifndef OPENMPF_COMPONENTS_SceneChangeDetection_H
 #define OPENMPF_COMPONENTS_SceneChangeDetection_H
 
+#include <map>
+#include <string>
+#include <vector>
 
 #include <log4cxx/logger.h>
+
+#include <opencv2/core.hpp>
+
 #include <QHash>
 #include <QString>
 
-
 #include <adapters/MPFVideoDetectionComponentAdapter.h>
+#include <MPFDetectionObjects.h>
 #include <MPFDetectionComponent.h>
-#include <MPFVideoCapture.h>
-#include <MPFImageReader.h>
 
 
 class SceneChangeDetection : public MPF::COMPONENT::MPFVideoDetectionComponentAdapter {
-    QHash<QString, QString> parameters;
 public:
-
-    SceneChangeDetection();
-
-    ~SceneChangeDetection();
-
     bool Init();
 
     bool Close();
@@ -56,9 +54,8 @@ public:
 
     std::string GetDetectionType();
 
-
 private:
-
+    QHash<QString, QString> parameters;
     log4cxx::LoggerPtr logger_;
     cv::Mat dilateKernel;
     int numPixels;

@@ -1,7 +1,7 @@
 {
   "componentName": "OcvYoloDetection",
-  "componentVersion": "6.0",
-  "middlewareVersion": "6.0",
+  "componentVersion": "6.2",
+  "middlewareVersion": "6.2",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/OcvYoloDetection/lib/libmpfOcvYoloDetection.so",
   "environmentVariables": [

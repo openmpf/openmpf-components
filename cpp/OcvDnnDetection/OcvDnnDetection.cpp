@@ -36,8 +36,6 @@
 #include <opencv2/core/cuda.hpp>
 
 
-#include <log4cxx/logmanager.h>
-#include <log4cxx/xml/domconfigurator.h>
 #include <boost/algorithm/string.hpp>
 
 #include <Utils.h>
@@ -63,11 +61,7 @@ bool OcvDnnDetection::Init() {
         run_dir = ".";
     }
     std::string plugin_path = run_dir + "/OcvDnnDetection";
-    std::string config_path = plugin_path + "/config";
 
-    // Configure logger
-
-    log4cxx::xml::DOMConfigurator::configure(config_path + "/Log4cxxConfig.xml");
     logger_ = log4cxx::Logger::getLogger("OcvDnnDetection");
 
     LOG4CXX_DEBUG(logger_, "Plugin path: " << plugin_path);
@@ -200,11 +194,18 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
 
         std::vector<MPFVideoTrack> tracks = getDetections(job, feedForwardTracker);
 
+        bool output_merge_with_previous_task =
+                DetectionComponentUtils::GetProperty(job.job_properties, "OUTPUT_MERGE_WITH_PREVIOUS_TASK", false);
+
         for (MPFVideoTrack &track : tracks) {
             // Update track props with feed-forward props
             Properties &track_props = track.detection_properties;
             for (const auto& feed_forward_track_prop : feed_forward_track_props) {
                 track_props.insert(feed_forward_track_prop);
+            }
+            // Determine if we should copy feed-forward confidence
+            if (output_merge_with_previous_task) {
+                track.confidence = job.feed_forward_track.confidence;
             }
             // Update location props with corresponding feed-forward props
             for (auto& pair : track.frame_locations) {
@@ -215,6 +216,10 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
                     Properties &loc_props = pair.second.detection_properties;
                     for (const auto& feed_forward_prop : feed_forward_loc_props) {
                         loc_props.insert(feed_forward_prop);
+                    }
+                    // Determine if we should copy feed-forward confidence
+                    if (output_merge_with_previous_task) {
+                        pair.second.confidence = feed_forward_loc_iter->second.confidence;
                     }
                 }
             }
@@ -289,12 +294,19 @@ std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &
         }
 
         if (job.has_feed_forward_location) {
+            bool output_merge_with_previous_task =
+                    DetectionComponentUtils::GetProperty(job.job_properties, "OUTPUT_MERGE_WITH_PREVIOUS_TASK", false);
+
             // Update location props with feed-forward props
             const Properties &feed_forward_props = job.feed_forward_location.detection_properties;
             for (MPFImageLocation &location : locations) {
                 Properties &props = location.detection_properties;
                 for (const auto& feed_forward_prop : feed_forward_props) {
                     props.insert(feed_forward_prop);
+                }
+                // Determine if we should copy feed-forward confidence
+                if (output_merge_with_previous_task) {
+                    location.confidence = job.feed_forward_location.confidence;
                 }
             }
         }
@@ -672,7 +684,7 @@ std::vector<std::string> OcvDnnDetection::OcvDnnJobConfig::readClassNames(const 
     fp.close();
 
     if (class_names.empty()) {
-        throw MPFDetectionException(MPF_DETECTION_FAILED, "No network class labels found.");
+        throw MPFDetectionException(MPF_COULD_NOT_READ_DATAFILE, "No network class labels found.");
     }
     return class_names;
 }

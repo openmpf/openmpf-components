@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -32,9 +34,8 @@ FROM ${BUILD_REGISTRY}openmpf_build:${BUILD_TAG} as openmpf_build
 
 FROM ${BUILD_REGISTRY}openmpf_java_component_build:${BUILD_TAG} as build_component
 
-COPY --from=openmpf_build /home/mpf/openmpf-projects/openmpf-build-tools/mpf-maven-deps.tar.gz /root/mpf-maven-deps.tar.gz
-
-RUN tar --extract --file /root/mpf-maven-deps.tar.gz --directory /root/.m2/repository/
+RUN --mount=from=openmpf_build,source=/home/mpf/openmpf-projects/openmpf-build-tools/mpf-maven-deps.tar.gz,target=/root/mpf-maven-deps.tar.gz \
+    tar --extract --file /root/mpf-maven-deps.tar.gz --directory /root/.m2/repository/
 
 COPY pom.xml pom.xml
 

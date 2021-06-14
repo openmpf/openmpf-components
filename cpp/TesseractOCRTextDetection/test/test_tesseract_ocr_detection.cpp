@@ -30,21 +30,19 @@
 #include <MPFDetectionComponent.h>
 #include <unistd.h>
 #include <gtest/gtest.h>
+#include <log4cxx/basicconfigurator.h>
 #include <fstream>
 
 #define BOOST_NO_CXX11_SCOPED_ENUMS
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
-#include <log4cxx/xml/domconfigurator.h>
 
 #undef BOOST_NO_CXX11_SCOPED_ENUMS
 
 #include "TesseractOCRTextDetection.h"
 
 using namespace MPF::COMPONENT;
-using log4cxx::Logger;
-using log4cxx::xml::DOMConfigurator;
 
 /**
  * Helper function for setting standard job properties for each test.
@@ -103,6 +101,25 @@ MPFGenericJob createPDFJob(const std::string &uri, const std::map<std::string, s
 }
 
 /**
+ * Helper function for creating a video job
+ * @param uri - Path to existing input media.
+ * @param start - Video start frame.
+ * @param end - Video end frame.
+ * @param custom - Custom job algorithm properties.
+ *
+ * @return - An MPF video job with the specified algorithm properties.
+ */
+MPFVideoJob createVideoJob(const std::string &uri, const int &start, const int &end,
+                             const std::map<std::string, std::string> &custom = {}) {
+    Properties algorithm_properties;
+    Properties media_properties;
+    std::string job_name("OCR_test");
+    setAlgorithmProperties(algorithm_properties, custom);
+    MPFVideoJob job(job_name, uri, start, end, algorithm_properties, media_properties);
+    return job;
+}
+
+/**
  * Helper function for running given image job. Checks if job results is not empty.
  *
  * @param image_path - Path of image
@@ -137,6 +154,27 @@ void runDocumentDetection(const std::string &doc_path, TesseractOCRTextDetection
     generic_tracks = ocr.GetDetections(job);
     ASSERT_FALSE(generic_tracks.empty());
 }
+
+
+/**
+ * Helper function for running given video job. Checks if job results is not empty.
+ *
+ * @param vid_path - Path of given video.
+ * @param ocr - TesseractOCRTextDetection component for running given job.
+ * @param video_tracks - Output vector of video detection tracks for given job.
+ * @param start - Video start frame.
+ * @param end - Video end frame.
+ * @param custom - Mapping of input job properties.
+ */
+void runVideoDetection(const std::string &vid_path, TesseractOCRTextDetection &ocr,
+                       std::vector<MPFVideoTrack> &video_tracks,
+                       const int &start, const int &end,
+                       const std::map<std::string, std::string> &custom = {}) {
+    MPFVideoJob job = createVideoJob(vid_path, start, end, custom);
+    video_tracks = ocr.GetDetections(job);
+    ASSERT_FALSE(video_tracks.empty());
+}
+
 
 /**
  * Helper function for checking if running given image job will return no results.
@@ -318,6 +356,13 @@ void loadWordList(const std::string &wordlist_file,
 }
 
 
+bool init_logging() {
+    log4cxx::BasicConfigurator::configure();
+    return true;
+}
+bool logging_initialized = init_logging();
+
+
 TEST(TESSERACTOCR, CustomModelTest) {
 
     // Ensure custom model generation works as intended.
@@ -480,6 +525,40 @@ TEST(TESSERACTOCR, CustomModelTest) {
     ASSERT_TRUE(ocr.Close());
 }
 
+TEST(TESSERACTOCR, VideoProcessingTest) {
+
+    // Ensure video processing works as expected.
+
+    TesseractOCRTextDetection ocr;
+    ocr.SetRunDirectory("../plugin");
+    std::vector<MPFVideoTrack> track_results;
+    std::vector<MPFImageLocation> results;
+    ASSERT_TRUE(ocr.Init());
+
+    std::map<std::string,std::string> custom_properties = {{"TESSERACT_LANGUAGE",    "eng"},
+                                                           {"ENABLE_OSD_AUTOMATION","TRUE"}};
+
+    ASSERT_NO_FATAL_FAILURE(runVideoDetection("data/test-video-detection.avi", ocr, track_results, 0, 2, custom_properties));
+
+    for (auto track_result: track_results) {
+        for (auto result: track_result.frame_locations) {
+            results.push_back(result.second);
+        }
+    }
+
+    assertInImage("data/test-video-detection.avi", "Testing Text Detection", results, "TEXT", 0);
+    assertInImage("data/test-video-detection.avi", "eng", results, "TEXT_LANGUAGE", 0);
+
+    assertInImage("data/test-video-detection.avi", "Japanese", results, "OSD_PRIMARY_SCRIPT", 1);
+    assertInImage("data/test-video-detection.avi", "Japanese", results, "MISSING_LANGUAGE_MODELS", 1);
+
+    assertInImage("data/test-video-detection.avi", "All human beings", results, "TEXT", 2);
+    assertInImage("data/test-video-detection.avi", "Latin", results, "TEXT_LANGUAGE", 2);
+
+
+    ASSERT_TRUE(ocr.Close());
+}
+
 TEST(TESSERACTOCR, ImageProcessingTest) {
 
     // Ensure contrast and unstructured image processing settings are enabled.
@@ -540,8 +619,6 @@ TEST(TESSERACTOCR, ImageProcessingTest) {
 
     ASSERT_TRUE(ocr.Close());
 }
-
-
 
 TEST(TESSERACTOCR, ModelTest) {
 

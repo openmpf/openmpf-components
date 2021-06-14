@@ -27,6 +27,7 @@
 import csv
 import io
 import json
+import logging
 import math
 import os
 import time
@@ -41,7 +42,8 @@ import numpy as np
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-logger = mpf.configure_logging('acs-form-detection.log', __name__ == '__main__')
+
+logger = logging.getLogger('AcsFormDetectionComponent')
 
 
 class AcsFormDetectionComponent(mpf_util.ImageReaderMixin, object):

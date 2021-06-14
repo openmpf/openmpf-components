@@ -27,6 +27,7 @@
 
 import http.server
 import json
+import logging
 import os
 import pathlib
 import sys
@@ -57,6 +58,7 @@ SPANISH_SAMPLE_TEXT_ENG_TRANSLATE = 'Where\'s the library?'
 
 TEST_DATA = pathlib.Path(__file__).parent / 'data'
 
+logging.basicConfig(level=logging.DEBUG)
 
 class TestAcsTranslation(unittest.TestCase):
 
@@ -282,7 +284,7 @@ class TestAcsTranslation(unittest.TestCase):
 
         with self.assertRaises(mpf.DetectionException) as cm:
             AcsTranslationComponent.get_detections_from_video(job)
-        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertEqual(mpf.DetectionError.NETWORK_ERROR, cm.exception.error_code)
 
 
     def test_reports_error_when_missing_acs_props(self):

@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -28,31 +30,33 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-RUN yum install --assumeyes libjpeg-devel libpng-devel libtiff-devel zlib; \
-    yum clean all; \
-    rm --recursive /var/cache/yum/*
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum install --assumeyes libjpeg-devel libpng-devel libtiff-devel zlib; \
+    yum clean all;
 
-RUN mkdir /tmp/leptonica; \
+RUN --mount=type=tmpfs,target=/tmp \
+    mkdir /tmp/leptonica; \
     cd /tmp/leptonica; \
     curl --location 'https://github.com/DanBloomberg/leptonica/archive/1.75.0.tar.gz' \
         | tar --extract --gzip; \
     mkdir leptonica-1.75.0/build; \
     cd leptonica-1.75.0/build; \
     cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local ..; \
-    make install --jobs "$(nproc)"; \
-    rm --recursive /tmp/leptonica;
+    make install --jobs "$(nproc)";
 
-RUN mkdir /tmp/tesseract; \
+RUN --mount=type=tmpfs,target=/tmp \
+    mkdir /tmp/tesseract; \
     cd /tmp/tesseract; \
     curl --location 'https://github.com/tesseract-ocr/tesseract/archive/4.0.0.tar.gz' \
         | tar --extract --gzip; \
     mkdir tesseract-4.0.0/build; \
     cd tesseract-4.0.0/build; \
     PKG_CONFIG_PATH=/usr/local/lib/pkgconfig cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local ..; \
-    make install --jobs "$(nproc)"; \
-    rm --recursive /tmp/tesseract;
+    make install --jobs "$(nproc)";
 
-RUN mkdir /tmp/oalpr; \
+RUN --mount=type=tmpfs,target=/tmp \
+    mkdir /tmp/oalpr; \
     cd /tmp/oalpr; \
     curl --location 'https://github.com/openalpr/openalpr/archive/386895386781f04ef056e93dd70d9ec36f72d350.tar.gz' \
         | tar --extract --gzip; \
@@ -66,12 +70,9 @@ RUN mkdir /tmp/oalpr; \
     cd build; \
     cmake3 -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DWITH_DAEMON=OFF -DWITH_GPU_DETECTOR=false \
            -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -DLeptonica_LIB=/usr/local/lib/libleptonica.so ..; \
-    make install -j "$(nproc)"; \
-    rm --recursive /tmp/oalpr
+    make install -j "$(nproc)";
 
-COPY . .
-
-RUN build-component.sh
+RUN --mount=target=. build-component.sh
 
 ARG RUN_TESTS=false
 RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OalprLicensePlateTextDetectionTest; fi
@@ -80,7 +81,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OalprLicensePl
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-ENV COMPONENT_LOG_NAME oalpr-text-detection.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/OalprLicensePlateTextDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/OalprLicensePlateTextDetection \
                             $PLUGINS_DIR/OalprLicensePlateTextDetection

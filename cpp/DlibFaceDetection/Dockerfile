@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -30,9 +32,10 @@ ARG BUILD_TAG=latest
 # Download library source code so it doesn't need to be re-downloaded when base images change
 FROM centos:7 as download_library_source
 
-RUN yum install --assumeyes bzip2 \
-    && yum clean all \
-    && rm --recursive /var/cache/yum/*
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum install --assumeyes bzip2; \
+    yum clean all
 
 RUN mkdir --parents /apps/source/dlib-sources; \
     curl --location 'http://dlib.net/files/dlib-19.20.tar.bz2' \
@@ -41,11 +44,9 @@ RUN mkdir --parents /apps/source/dlib-sources; \
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
-COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
-
-COPY . .
-
-RUN build-component.sh
+RUN --mount=target=. \
+    --mount=from=download_library_source,source=/apps/source/dlib-sources,target=/apps/source/dlib-sources \
+    build-component.sh
 
 ARG RUN_TESTS=false
 RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./DlibFaceDetectionTest; fi
@@ -54,7 +55,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./DlibFaceDetect
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-ENV COMPONENT_LOG_NAME dlib-face-detection.log
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/DlibFaceDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/DlibFaceDetection $PLUGINS_DIR/DlibFaceDetection
 
