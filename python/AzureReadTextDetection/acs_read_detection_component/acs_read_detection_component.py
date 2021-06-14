@@ -88,7 +88,7 @@ class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReader
                 detections = JobRunner(video_job.job_name, video_job.job_properties, True).get_image_detections(frame,
                                                                                                                 True)
                 for detection in detections:
-                     yield mpf.VideoTrack(frame_idx, frame_idx, -1, {frame_idx: detection}, detection.detection_properties)
+                     yield mpf.VideoTrack(frame_idx, frame_idx, detection.confidence, {frame_idx: detection}, detection.detection_properties)
                      num_tracks += 1
 
             logger.info('[%s] Processing complete. Found %s tracks.', video_job.job_name, num_tracks)
@@ -367,17 +367,17 @@ class ReadResultsProcessor(object):
         self._resize_scale_factor = resize_scale_factor
         self._merge_lines = merge_lines
 
-    def _create_detection(self, detection_properties, bounding_box):
+    def _create_detection(self, detection_properties, bounding_box, confidence = -1):
         if self._is_image:
             if len(bounding_box) > 0:
                 corrected_bounding_box = self._correct_region_bounding_box(bounding_box)
                 return mpf.ImageLocation(int(corrected_bounding_box.x), int(corrected_bounding_box.y),
                                          int(corrected_bounding_box.width), int(corrected_bounding_box.height),
-                                         -1, detection_properties)
+                                         confidence, detection_properties)
             else:
-                return mpf.ImageLocation(0, 0, 0, 0, -1, detection_properties)
+                return mpf.ImageLocation(0, 0, 0, 0, confidence, detection_properties)
         else:
-            return mpf.GenericTrack(-1, detection_properties)
+            return mpf.GenericTrack(confidence, detection_properties)
 
     def _correct_region_bounding_box(self, bounding_box):
         """
@@ -467,6 +467,8 @@ class ReadResultsProcessor(object):
             read_results = read_results_json['analyzeResult']['readResults']
             for page in read_results:
                 page_num = page['page']
+                total_confidence = 0.0
+                num_words = 0
                 if 'lines' in page:
                     line_num = 1
                     lines = []
@@ -474,6 +476,10 @@ class ReadResultsProcessor(object):
                     bounding_boxes = []
 
                     for line in page['lines']:
+                        for word in line['words']:
+                            total_confidence += word['confidence']
+                            num_words += 1
+
                         if not self._merge_lines:
                             detection_properties = dict(OUTPUT_TYPE='LINE',
                                                         LINE_NUM=str(line_num),
@@ -488,7 +494,11 @@ class ReadResultsProcessor(object):
                             if self._is_image:
                                 bounding_box, angle = self._convert_to_rect(line['boundingBox'])
                                 detection_properties['ROTATION'] = str(mpf_util.normalize_angle(angle))
-                            detections.append(self._create_detection(detection_properties, bounding_box))
+                            detections.append(self._create_detection(detection_properties,
+                                                                     bounding_box,
+                                                                     total_confidence / num_words))
+                            total_confidence = 0.0
+                            num_words = 0
                             line_num += 1
                         else:
                             lines.append(line['text'])
@@ -510,7 +520,9 @@ class ReadResultsProcessor(object):
 
                         if not(is_video):
                             detection_properties["PAGE_NUM"] = str(page_num)
-                        detections.append(self._create_detection(detection_properties, bounding_box))
+                        detections.append(self._create_detection(detection_properties,
+                                                                 bounding_box,
+                                                                 total_confidence / num_words))
 
         return detections
 

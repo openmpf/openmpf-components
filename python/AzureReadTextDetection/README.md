@@ -39,6 +39,8 @@ Currently the component provides text outputs in separate detection tracks.
 
 Detection tracks with `OUTPUT_TYPE` set to `LINE` or `MERGED_LINES` will include `TEXT` results. `MERGED_LINES`
 contains `TEXT` output where each line is separated by a newline character.
+Confidence scores are calculated as the average confidence of individual words detected in a single `LINE`
+or across all `MERGED_LINES`.
 
 Results are organized by `PAGE_NUM` and output indexes (`LINE_NUM`) with 1 as the starting index.
 For images, the bounding box information for lines or merged lines is also provided in the detection track.

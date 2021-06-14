@@ -149,6 +149,7 @@ class TestAcs(unittest.TestCase):
         self.assertEqual(1, len(detections))
 
         line_detection = detections[0]
+        self.assertAlmostEqual(1.0, line_detection.confidence)
         self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
         self.assertEqual('1', line_detection.detection_properties['PAGE_NUM'])
         self.assertTrue('Phone: 432-555-0189' in line_detection.detection_properties['TEXT'])
@@ -164,6 +165,7 @@ class TestAcs(unittest.TestCase):
         self.assertEqual(1, len(detections))
 
         line_detection = detections[0]
+        self.assertAlmostEqual(0.9586029411764704, line_detection.confidence)
         self.assertEqual('MERGED_LINES', line_detection.detection_properties['OUTPUT_TYPE'])
         self.assertEqual('1', line_detection.detection_properties['PAGE_NUM'])
         self.assertTrue('Contoso, Ltd.' in line_detection.detection_properties['TEXT'])
