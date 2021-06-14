@@ -152,48 +152,40 @@ class JobRunner(object):
             logger.info('[%s] Attempting to retrieve layout Analysis results from %s',
                         self._job_name, result_request.get_full_url())
 
-            try:
-                with self._http_retry.urlopen(result_request) as results:
-                    json_results = json.load(results)
-                    if results.status != 200:
-                        raise mpf.DetectionError.DETECTION_FAILED.exception('GET request failed with HTTP status {}\n'
-                                                                            .format(results.status) +
-                                                                            '\nHTTP request body:\n{}'
-                                                                            .format(json_results))
+            with self._http_retry.urlopen(result_request) as results:
+                json_results = json.load(results)
+                if results.status != 200:
+                    raise mpf.DetectionError.NETWORK_ERROR.exception(
+                        f'GET request failed with HTTP status {results.status} and HTTP '
+                        f'response body: {json_results}')
 
-                status = json_results["status"]
-                if status == "succeeded":
-                    logger.info('[%s] Layout Analysis succeeded. Processing read results.', self._job_name)
-                    return json_results
-                if status == "failed":
-                    raise mpf.DetectionError.DETECTION_FAILED.exception('GET request failed. HTTP request body:\n{}'
-                                                                        .format(json_results))
-                # Analysis still running. Wait and then retry GET request.
-                logger.info('[%s] Layout Analysis results not available yet. Recontacting server in %s seconds.',
-                            self._job_name, wait_sec)
+            status = json_results["status"]
+            if status == "succeeded":
+                logger.info('[%s] Layout Analysis succeeded. Processing read results.', self._job_name)
+                return json_results
+            if status == "failed":
+                raise mpf.DetectionError.DETECTION_FAILED.exception(
+                    f'Layout Analysis failed. HTTP response body: {json_results}')
+            # Analysis still running. Wait and then retry GET request.
+            logger.info('[%s] Layout Analysis results not available yet. Recontacting server in %s seconds.',
+                        self._job_name, wait_sec)
 
-                time.sleep(wait_sec)
-                attempt_num += 1
-            except urllib.error.HTTPError as e:
-                response_content = e.read().decode('utf-8', errors='replace')
-                raise mpf.DetectionException('GET Request failed with HTTP status {} and message: {}'
-                                             .format(e.code, response_content), mpf.DetectionError.DETECTION_FAILED)
+            time.sleep(wait_sec)
+            attempt_num += 1
+
         logger.error('[%s] Max attempts exceeded. Unable to retrieve server results. Ending job.', self._job_name)
-        raise mpf.DetectionException('Unable to retrieve results from ACS server.')
+        raise mpf.DetectionError.NETWORK_ERROR.exception(
+            'Unable to retrieve results from ACS server.')
+
 
     def _post_to_acs(self, encoded_frame):
         logger.info('[%s] Sending POST request to %s', self._job_name, self._acs_url)
         request = urllib.request.Request(self._acs_url, bytes(encoded_frame), self._acs_headers)
-        try:
-            with self._http_retry.urlopen(request) as response:
-                results_url = response.headers['operation-location']
-            result_request = urllib.request.Request(results_url, None, self._acs_headers)
-            logger.info('[%s] Received response from ACS server. Obtained read results url.', self._job_name)
-            return self._get_acs_result(result_request)
-        except urllib.error.HTTPError as e:
-            response_content = e.read().decode('utf-8', errors='replace')
-            raise mpf.DetectionException('Request failed with HTTP status {} and message: {}'
-                                         .format(e.code, response_content), mpf.DetectionError.DETECTION_FAILED)
+        with self._http_retry.urlopen(request) as response:
+            results_url = response.headers['operation-location']
+        result_request = urllib.request.Request(results_url, None, self._acs_headers)
+        logger.info('[%s] Received response from ACS server. Obtained read results url.', self._job_name)
+        return self._get_acs_result(result_request)
 
     @classmethod
     def get_acs_url(cls, job_properties):
