@@ -24,6 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import enum
 import logging
 import json
 import math
@@ -51,7 +52,7 @@ class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReader
             logger.info('[%s] Received generic job: %s', generic_job.job_name, generic_job)
             detections = JobRunner(generic_job.job_name,
                                    generic_job.job_properties,
-                                   False).get_pdf_detections(generic_job.data_uri)
+                                   MediaType.PDF).get_pdf_detections(generic_job.data_uri)
             num_detections = len(detections)
             logger.info('[%s] Processing complete. Found %s detections.', generic_job.job_name, num_detections)
 
@@ -68,7 +69,8 @@ class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReader
 
             num_detections = 0
             image = image_reader.get_image()
-            detections = JobRunner(image_job.job_name, image_job.job_properties, True).get_image_detections(image)
+            detections = JobRunner(image_job.job_name, image_job.job_properties, MediaType.IMAGE
+                                   ).get_frame_detections(image)
             for detection in detections:
                 yield detection
                 num_detections += 1
@@ -85,29 +87,40 @@ class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReader
             num_tracks = 0
 
             for frame_idx, frame in enumerate(video_capture):
-                detections = JobRunner(video_job.job_name, video_job.job_properties, True).get_image_detections(frame,
-                                                                                                                True)
+                detections = JobRunner(video_job.job_name, video_job.job_properties,
+                                       MediaType.VIDEO).get_frame_detections(frame)
                 for detection in detections:
-                     yield mpf.VideoTrack(frame_idx, frame_idx, detection.confidence, {frame_idx: detection}, detection.detection_properties)
-                     num_tracks += 1
+                    yield mpf.VideoTrack(frame_idx, frame_idx, detection.confidence,
+                                         {frame_idx: detection}, detection.detection_properties)
+                    num_tracks += 1
 
             logger.info('[%s] Processing complete. Found %s tracks.', video_job.job_name, num_tracks)
         except Exception:
             logger.exception('[%s] Failed to complete job due to the following exception:', video_job.job_name)
             raise
 
+
+class MediaType(enum.Enum):
+    IMAGE = enum.auto()
+    VIDEO = enum.auto()
+    PDF = enum.auto()
+
+def is_image_or_video(media_type: MediaType) -> bool:
+    return media_type == MediaType.IMAGE or media_type == MediaType.VIDEO
+
+
 class JobRunner(object):
     """ Class process a single job and hold its configuration info. """
 
-    def __init__(self, job_name, job_properties, is_image):
+    def __init__(self, job_name, job_properties, media_type):
         self._job_name = job_name
         self._acs_url = self.get_acs_url(job_properties)
-        self._is_image = is_image
+        self._media_type = media_type
         self._merge_lines = mpf_util.get_property(job_properties, 'MERGE_LINES', True)
         self._max_attempts = mpf_util.get_property(job_properties, 'MAX_GET_READ_RESULT_ATTEMPTS', -1)
         subscription_key = self._get_required_property('ACS_SUBSCRIPTION_KEY', job_properties)
 
-        if self._is_image:
+        if is_image_or_video(media_type):
             self._acs_headers = {'Ocp-Apim-Subscription-Key': subscription_key,
                                  'Content-Type': 'application/octet-stream'}
         else:
@@ -116,10 +129,9 @@ class JobRunner(object):
                                  'Content-Type': 'application/pdf'}
         self._http_retry = mpf_util.HttpRetry.from_properties(job_properties, logger.warning)
 
-    def get_image_detections(self, frame, is_video=False):
+    def get_frame_detections(self, frame):
         """
         :param frame: A numpy.ndarray with shape (h, w, 3)
-        :param is_video: A boolean setting for processing images (False) or videos (True).
         :return: An iterable of mpf.ImageLocation
         """
         encoder = FrameEncoder()
@@ -132,9 +144,9 @@ class JobRunner(object):
         resize_scale_factor = initial_frame_size.width / resized_frame_dimensions.width
 
         # Convert the results from the ACS JSON to mpf.ImageLocations
-        detections = ReadResultsProcessor(self._is_image,
+        detections = ReadResultsProcessor(self._media_type,
                                           resize_scale_factor,
-                                          self._merge_lines).process_read_results(read_results_json, is_video)
+                                          self._merge_lines).process_read_results(read_results_json)
         return detections
 
     def get_pdf_detections(self, data_uri):
@@ -142,7 +154,8 @@ class JobRunner(object):
             pdf_content = f.read()
 
         read_results_json = self._post_to_acs(pdf_content)
-        return ReadResultsProcessor(self._is_image, 1, self._merge_lines).process_read_results(read_results_json)
+        return ReadResultsProcessor(self._media_type, 1, self._merge_lines
+                                    ).process_read_results(read_results_json)
 
     def _get_acs_result(self, result_request):
         logger.info('[%s] Contacting ACS server for read results.', self._job_name)
@@ -362,13 +375,13 @@ class ReadResultsProcessor(object):
     Class to convert results from Azure Cognitive Services in to the format used by MPF.
     This involves extracting information from the JSON and converting the bounding boxes in to the format used by MPF.
     """
-    def __init__(self, is_image, resize_scale_factor, merge_lines):
-        self._is_image = is_image
+    def __init__(self, media_type, resize_scale_factor, merge_lines):
+        self._media_type = media_type
         self._resize_scale_factor = resize_scale_factor
         self._merge_lines = merge_lines
 
-    def _create_detection(self, detection_properties, bounding_box, confidence = -1):
-        if self._is_image:
+    def _create_detection(self, detection_properties, bounding_box, confidence):
+        if is_image_or_video(self._media_type):
             if len(bounding_box) > 0:
                 corrected_bounding_box = self._correct_region_bounding_box(bounding_box)
                 return mpf.ImageLocation(int(corrected_bounding_box.x), int(corrected_bounding_box.y),
@@ -460,7 +473,7 @@ class ReadResultsProcessor(object):
         return translated_bounding_box
 
 
-    def process_read_results(self, read_results_json, is_video = False):
+    def process_read_results(self, read_results_json):
         detections = []
         # Extract text results.
         if 'readResults' in read_results_json['analyzeResult']:
@@ -487,11 +500,10 @@ class ReadResultsProcessor(object):
                                                         )
 
 
-                            if not(is_video):
+                            if self._media_type == MediaType.IMAGE or self._media_type == MediaType.PDF:
                                 detection_properties["PAGE_NUM"] = str(page_num)
 
-
-                            if self._is_image:
+                            if is_image_or_video(self._media_type):
                                 bounding_box, angle = self._convert_to_rect(line['boundingBox'])
                                 detection_properties['ROTATION'] = str(mpf_util.normalize_angle(angle))
                             detections.append(self._create_detection(detection_properties,
@@ -503,7 +515,7 @@ class ReadResultsProcessor(object):
                         else:
                             lines.append(line['text'])
 
-                            if self._is_image:
+                            if is_image_or_video(self._media_type):
                                 for i in range(4):
                                     bounding_boxes.append([line['boundingBox'][2*i],line['boundingBox'][2*i+1]])
 
@@ -511,14 +523,14 @@ class ReadResultsProcessor(object):
                         detection_properties = dict(OUTPUT_TYPE='MERGED_LINES',
                                                     TEXT='\n'.join(lines),
                                                     )
-                        if self._is_image:
+                        if is_image_or_video(self._media_type):
                             bounding_boxes = np.array(bounding_boxes).reshape((-1,1,2)).astype(np.int32)
                             bounding_box = cv2.boxPoints(cv2.minAreaRect(bounding_boxes)).astype(np.int32)
                             bounding_box = self._orient_bounding_box(bounding_box, mpf_util.normalize_angle(page['angle']))
                             bounding_box, angle = self._convert_to_rect(bounding_box)
                             detection_properties['ROTATION'] = str(mpf_util.normalize_angle(angle))
 
-                        if not(is_video):
+                        if self._media_type == MediaType.IMAGE or self._media_type == MediaType.PDF:
                             detection_properties["PAGE_NUM"] = str(page_num)
                         detections.append(self._create_detection(detection_properties,
                                                                  bounding_box,
