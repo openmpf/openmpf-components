@@ -474,87 +474,81 @@ class ReadResultsProcessor(object):
 
 
     def process_read_results(self, read_results_json):
+        if 'readResults' not in read_results_json['analyzeResult']:
+            return ()
+        elif self._merge_lines:
+            return self._process_results_with_line_merging(read_results_json)
+        else:
+            return self._process_results_no_line_merging(read_results_json)
+
+
+    def _process_results_with_line_merging(self, read_results_json):
         detections = []
         # Extract text results.
-        if 'readResults' in read_results_json['analyzeResult']:
-            read_results = read_results_json['analyzeResult']['readResults']
-            for page in read_results:
-                page_num = page['page']
-                total_confidence = 0.0
-                num_words = 0
-                if 'lines' in page:
-                    line_num = 1
-                    lines = []
-                    bounding_box = []
-                    bounding_boxes = []
+        read_results = read_results_json['analyzeResult']['readResults']
+        for page in read_results:
+            if not page.get('lines'):
+                continue
+            page_num = page['page']
+            total_confidence = 0.0
+            num_words = 0
+            lines = []
+            bounding_box = []
+            bounding_boxes = []
 
-                    for line in page['lines']:
-                        for word in line['words']:
-                            total_confidence += word['confidence']
-                            num_words += 1
+            for line in page['lines']:
+                total_confidence += sum(w['confidence'] for w in line['words'])
+                num_words += len(line['words'])
 
-                        if not self._merge_lines:
-                            detection_properties = dict(OUTPUT_TYPE='LINE',
-                                                        LINE_NUM=str(line_num),
-                                                        TEXT=line['text'],
-                                                        )
+                lines.append(line['text'])
 
+                if is_image_or_video(self._media_type):
+                    for i in range(4):
+                        bounding_boxes.append([line['boundingBox'][2 * i],
+                                               line['boundingBox'][2 * i + 1]])
 
-                            if self._media_type == MediaType.IMAGE or self._media_type == MediaType.PDF:
-                                detection_properties["PAGE_NUM"] = str(page_num)
+            detection_properties = dict(OUTPUT_TYPE='MERGED_LINES', TEXT='\n'.join(lines))
+            if is_image_or_video(self._media_type):
+                bounding_boxes = np.array(bounding_boxes).reshape((-1, 1, 2)).astype(np.int32)
+                bounding_box = cv2.boxPoints(cv2.minAreaRect(bounding_boxes)).astype(np.int32)
+                bounding_box = self._orient_bounding_box(
+                    bounding_box, mpf_util.normalize_angle(page['angle']))
+                bounding_box, angle = self._convert_to_rect(bounding_box)
+                detection_properties['ROTATION'] = str(mpf_util.normalize_angle(angle))
 
-                            if is_image_or_video(self._media_type):
-                                bounding_box, angle = self._convert_to_rect(line['boundingBox'])
-                                detection_properties['ROTATION'] = str(mpf_util.normalize_angle(angle))
-                            detections.append(self._create_detection(detection_properties,
-                                                                     bounding_box,
-                                                                     total_confidence / num_words))
-                            total_confidence = 0.0
-                            num_words = 0
-                            line_num += 1
-                        else:
-                            lines.append(line['text'])
-
-                            if is_image_or_video(self._media_type):
-                                for i in range(4):
-                                    bounding_boxes.append([line['boundingBox'][2*i],line['boundingBox'][2*i+1]])
-
-                    if self._merge_lines and len(lines) > 0:
-                        detection_properties = dict(OUTPUT_TYPE='MERGED_LINES',
-                                                    TEXT='\n'.join(lines),
-                                                    )
-                        if is_image_or_video(self._media_type):
-                            bounding_boxes = np.array(bounding_boxes).reshape((-1,1,2)).astype(np.int32)
-                            bounding_box = cv2.boxPoints(cv2.minAreaRect(bounding_boxes)).astype(np.int32)
-                            bounding_box = self._orient_bounding_box(bounding_box, mpf_util.normalize_angle(page['angle']))
-                            bounding_box, angle = self._convert_to_rect(bounding_box)
-                            detection_properties['ROTATION'] = str(mpf_util.normalize_angle(angle))
-
-                        if self._media_type == MediaType.IMAGE or self._media_type == MediaType.PDF:
-                            detection_properties["PAGE_NUM"] = str(page_num)
-                        detections.append(self._create_detection(detection_properties,
-                                                                 bounding_box,
-                                                                 total_confidence / num_words))
-
+            if self._media_type == MediaType.IMAGE or self._media_type == MediaType.PDF:
+                detection_properties["PAGE_NUM"] = str(page_num)
+            detections.append(self._create_detection(detection_properties,
+                                                     bounding_box,
+                                                     total_confidence / num_words))
         return detections
 
 
+    def _process_results_no_line_merging(self, read_results_json):
+        detections = []
+        # Extract text results.
+        read_results = read_results_json['analyzeResult']['readResults']
+        for page in read_results:
+            if 'lines' not in page:
+                continue
+            page_num = page['page']
+            line_num = 1
+            bounding_box = []
 
-    def _remove_elements(self, json_object, bounding_box_list):
-        if 'fields' in json_object:
-            for key in json_object['fields']:
-                self._remove_elements(json_object['fields'][key], bounding_box_list)
-        if 'type' in json_object:
-            if json_object['type'] == 'array':
-                for obj in json_object['valueArray']:
-                    self._remove_elements(obj, bounding_box_list)
-            if json_object['type'] == 'object':
-                for key in json_object['valueObject']:
-                    self._remove_elements((json_object['valueObject'][key]), bounding_box_list)
+            for line in page['lines']:
+                confidence = sum(w['confidence'] for w in line['words']) / len(line['words'])
+                detection_properties = dict(OUTPUT_TYPE='LINE',
+                                            LINE_NUM=str(line_num),
+                                            TEXT=line['text'])
 
-        box = json_object.pop('boundingBox', None)
-        json_object.pop('elements', None)
-        if box is not None:
-            bounding_box_list.append(box)
+                if self._media_type == MediaType.IMAGE or self._media_type == MediaType.PDF:
+                    detection_properties["PAGE_NUM"] = str(page_num)
 
+                if is_image_or_video(self._media_type):
+                    bounding_box, angle = self._convert_to_rect(line['boundingBox'])
+                    detection_properties['ROTATION'] = str(mpf_util.normalize_angle(angle))
+                detections.append(self._create_detection(detection_properties,
+                                                         bounding_box, confidence))
+                line_num += 1
+        return detections
 
