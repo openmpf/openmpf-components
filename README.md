@@ -49,10 +49,15 @@ This repository contains source code for Open Media Processing Framework (OpenMP
 
 ### Building a Component Using Docker
 
+The following steps apply to components implemented in any language:
+
 - `cd` into the component directory that contains the `Dockerfile`.
-- Run the following command where "openmpf_component_name" is the name of the component image you want to generate. For a list of component image names, refer to [docker-compose.components.yml](https://github.com/openmpf/openmpf-docker/blob/master/docker-compose.components.yml):
+- Run the following command where:
+    - `<openmpf_component_name>` is the name of the component image you want to generate. For example, "openmpf_ocv_face_detection". For a list of component image names, refer to [docker-compose.components.yml](https://github.com/openmpf/openmpf-docker/blob/master/docker-compose.components.yml).
+    - `<tag-name>` is the tag applied to the generated image. If you're unsure, set this to "latest".
+    - `<version>` is the version of the component base image that will be pulled from [Docker Hub](https://hub.docker.com/u/openmpf). If you're unsure, set this to "latest".
 ```
-DOCKER_BUILDKIT=1 docker build . -t openmpf_component_name
+DOCKER_BUILDKIT=1 docker build . -t <openmpf_component_name>:<tag-name> --build-arg BUILD_REGISTRY=openmpf/ --build-arg BUILD_TAG=<version>
 ```
 
 ### Building C++ Components Outside of Docker
