@@ -1,0 +1,22 @@
+
+# downsampling/noise.png
+Custom generated image, contains random pixels.
+
+# upsampling/tiny-image.png
+Custom generated image, contains beginning of "A Tale of Two Cities" by Charles Dickens (Public Domain).
+
+# no-results/black.png
+Custom generated image, just black pixels.
+
+# regular/contoso-invoice.png
+Demo PNG image from Microsoft Azure Cognitive Services.
+URL: "https://docs.microsoft.com/en-us/azure/cognitive-services/form-recognizer/media/contoso-invoice.png"
+
+# regular/form-recognizer-demo-sample1.pdf
+Demo PDF file from Microsoft Azure Cognitive Services.
+URL: "https://azure.microsoft.com/en-us/services/cognitive-services/form-recognizer/#overview"
+
+# foreign/chinese-two-cities.png
+Custom generated image, Google translate of
+"It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness."
+which is the beginning of "A Tale of Two Cities" by Charles Dickens (Public Domain).

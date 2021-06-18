@@ -1,0 +1,712 @@
+{
+  "status": "succeeded",
+  "createdDateTime": "2021-01-26T08:12:00Z",
+  "lastUpdatedDateTime": "2021-01-26T08:12:01Z",
+  "analyzeResult": {
+    "version": "3.0.0",
+    "readResults": [
+      {
+        "page": 1,
+        "angle": 70.0808,
+        "width": 642,
+        "height": 1193,
+        "unit": "pixel",
+        "lines": [
+          {
+            "boundingBox": [
+              408,
+              129,
+              635,
+              754,
+              600,
+              765,
+              378,
+              141
+            ],
+            "text": "Human Rights. Bulgarian and English.",
+            "words": [
+              {
+                "boundingBox": [
+                  409,
+                  130,
+                  453,
+                  253,
+                  420,
+                  263,
+                  378,
+                  140
+                ],
+                "text": "Human",
+                "confidence": 0.986
+              },
+              {
+                "boundingBox": [
+                  456,
+                  260,
+                  498,
+                  375,
+                  463,
+                  386,
+                  422,
+                  270
+                ],
+                "text": "Rights.",
+                "confidence": 0.983
+              },
+              {
+                "boundingBox": [
+                  500,
+                  382,
+                  559,
+                  543,
+                  523,
+                  553,
+                  465,
+                  393
+                ],
+                "text": "Bulgarian",
+                "confidence": 0.982
+              },
+              {
+                "boundingBox": [
+                  561,
+                  550,
+                  585,
+                  616,
+                  550,
+                  626,
+                  526,
+                  560
+                ],
+                "text": "and",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  588,
+                  622,
+                  636,
+                  754,
+                  603,
+                  765,
+                  553,
+                  633
+                ],
+                "text": "English.",
+                "confidence": 0.982
+              }
+            ]
+          },
+          {
+            "boundingBox": [
+              290,
+              181,
+              571,
+              953,
+              540,
+              965,
+              259,
+              192
+            ],
+            "text": "UNIVERSAL DECLARATION OF HUMAN RIGHTS",
+            "words": [
+              {
+                "boundingBox": [
+                  291,
+                  182,
+                  360,
+                  370,
+                  328,
+                  381,
+                  260,
+                  193
+                ],
+                "text": "UNIVERSAL",
+                "confidence": 0.98
+              },
+              {
+                "boundingBox": [
+                  362,
+                  377,
+                  449,
+                  617,
+                  418,
+                  627,
+                  330,
+                  388
+                ],
+                "text": "DECLARATION",
+                "confidence": 0.98
+              },
+              {
+                "boundingBox": [
+                  452,
+                  625,
+                  470,
+                  672,
+                  438,
+                  683,
+                  421,
+                  636
+                ],
+                "text": "OF",
+                "confidence": 0.988
+              },
+              {
+                "boundingBox": [
+                  472,
+                  679,
+                  523,
+                  819,
+                  492,
+                  830,
+                  440,
+                  689
+                ],
+                "text": "HUMAN",
+                "confidence": 0.986
+              },
+              {
+                "boundingBox": [
+                  526,
+                  828,
+                  571,
+                  952,
+                  540,
+                  963,
+                  495,
+                  838
+                ],
+                "text": "RIGHTS",
+                "confidence": 0.985
+              }
+            ]
+          },
+          {
+            "boundingBox": [
+              254,
+              236,
+              306,
+              379,
+              273,
+              391,
+              221,
+              247
+            ],
+            "text": "Article 1",
+            "words": [
+              {
+                "boundingBox": [
+                  254,
+                  237,
+                  296,
+                  350,
+                  263,
+                  361,
+                  222,
+                  247
+                ],
+                "text": "Article",
+                "confidence": 0.984
+              },
+              {
+                "boundingBox": [
+                  299,
+                  357,
+                  306,
+                  378,
+                  273,
+                  390,
+                  265,
+                  368
+                ],
+                "text": "1",
+                "confidence": 0.987
+              }
+            ]
+          },
+          {
+            "boundingBox": [
+              189,
+              217,
+              526,
+              1152,
+              492,
+              1163,
+              156,
+              229
+            ],
+            "text": "All human beings are born free and equal in dignity and",
+            "words": [
+              {
+                "boundingBox": [
+                  190,
+                  218,
+                  205,
+                  259,
+                  172,
+                  269,
+                  157,
+                  229
+                ],
+                "text": "All",
+                "confidence": 0.985
+              },
+              {
+                "boundingBox": [
+                  207,
+                  266,
+                  251,
+                  386,
+                  217,
+                  397,
+                  174,
+                  277
+                ],
+                "text": "human",
+                "confidence": 0.986
+              },
+              {
+                "boundingBox": [
+                  253,
+                  393,
+                  293,
+                  504,
+                  260,
+                  515,
+                  220,
+                  404
+                ],
+                "text": "beings",
+                "confidence": 0.969
+              },
+              {
+                "boundingBox": [
+                  296,
+                  512,
+                  317,
+                  568,
+                  283,
+                  579,
+                  262,
+                  523
+                ],
+                "text": "are",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  319,
+                  576,
+                  349,
+                  657,
+                  314,
+                  668,
+                  285,
+                  586
+                ],
+                "text": "born",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  351,
+                  664,
+                  377,
+                  734,
+                  342,
+                  745,
+                  317,
+                  675
+                ],
+                "text": "free",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  379,
+                  742,
+                  403,
+                  807,
+                  368,
+                  818,
+                  345,
+                  752
+                ],
+                "text": "and",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  406,
+                  815,
+                  439,
+                  907,
+                  404,
+                  918,
+                  371,
+                  825
+                ],
+                "text": "equal",
+                "confidence": 0.985
+              },
+              {
+                "boundingBox": [
+                  442,
+                  915,
+                  454,
+                  948,
+                  419,
+                  959,
+                  407,
+                  925
+                ],
+                "text": "in",
+                "confidence": 0.976
+              },
+              {
+                "boundingBox": [
+                  457,
+                  956,
+                  499,
+                  1073,
+                  464,
+                  1084,
+                  422,
+                  966
+                ],
+                "text": "dignity",
+                "confidence": 0.981
+              },
+              {
+                "boundingBox": [
+                  502,
+                  1081,
+                  527,
+                  1151,
+                  492,
+                  1161,
+                  467,
+                  1091
+                ],
+                "text": "and",
+                "confidence": 0.983
+              }
+            ]
+          },
+          {
+            "boundingBox": [
+              137,
+              237,
+              463,
+              1137,
+              431,
+              1148,
+              103,
+              249
+            ],
+            "text": "rights. They are endowed with reason and conscience",
+            "words": [
+              {
+                "boundingBox": [
+                  138,
+                  238,
+                  177,
+                  345,
+                  143,
+                  357,
+                  103,
+                  250
+                ],
+                "text": "rights.",
+                "confidence": 0.982
+              },
+              {
+                "boundingBox": [
+                  180,
+                  351,
+                  210,
+                  433,
+                  176,
+                  445,
+                  145,
+                  363
+                ],
+                "text": "They",
+                "confidence": 0.983
+              },
+              {
+                "boundingBox": [
+                  212,
+                  439,
+                  233,
+                  499,
+                  200,
+                  510,
+                  178,
+                  451
+                ],
+                "text": "are",
+                "confidence": 0.988
+              },
+              {
+                "boundingBox": [
+                  236,
+                  505,
+                  293,
+                  664,
+                  261,
+                  675,
+                  202,
+                  516
+                ],
+                "text": "endowed",
+                "confidence": 0.985
+              },
+              {
+                "boundingBox": [
+                  296,
+                  670,
+                  323,
+                  747,
+                  291,
+                  757,
+                  263,
+                  681
+                ],
+                "text": "with",
+                "confidence": 0.983
+              },
+              {
+                "boundingBox": [
+                  326,
+                  753,
+                  368,
+                  872,
+                  337,
+                  881,
+                  293,
+                  763
+                ],
+                "text": "reason",
+                "confidence": 0.983
+              },
+              {
+                "boundingBox": [
+                  371,
+                  878,
+                  394,
+                  943,
+                  363,
+                  952,
+                  339,
+                  888
+                ],
+                "text": "and",
+                "confidence": 0.986
+              },
+              {
+                "boundingBox": [
+                  396,
+                  949,
+                  463,
+                  1137,
+                  433,
+                  1146,
+                  365,
+                  959
+                ],
+                "text": "conscience",
+                "confidence": 0.981
+              }
+            ]
+          },
+          {
+            "boundingBox": [
+              88,
+              256,
+              385,
+              1072,
+              350,
+              1085,
+              55,
+              268
+            ],
+            "text": "and should act towards one another in a spirit of",
+            "words": [
+              {
+                "boundingBox": [
+                  88,
+                  256,
+                  108,
+                  313,
+                  77,
+                  325,
+                  56,
+                  268
+                ],
+                "text": "and",
+                "confidence": 0.983
+              },
+              {
+                "boundingBox": [
+                  111,
+                  320,
+                  153,
+                  437,
+                  122,
+                  449,
+                  79,
+                  332
+                ],
+                "text": "should",
+                "confidence": 0.983
+              },
+              {
+                "boundingBox": [
+                  156,
+                  444,
+                  176,
+                  499,
+                  144,
+                  511,
+                  125,
+                  456
+                ],
+                "text": "act",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  178,
+                  506,
+                  228,
+                  644,
+                  197,
+                  656,
+                  147,
+                  518
+                ],
+                "text": "towards",
+                "confidence": 0.984
+              },
+              {
+                "boundingBox": [
+                  231,
+                  651,
+                  255,
+                  717,
+                  224,
+                  730,
+                  200,
+                  663
+                ],
+                "text": "one",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  258,
+                  725,
+                  308,
+                  860,
+                  275,
+                  872,
+                  226,
+                  737
+                ],
+                "text": "another",
+                "confidence": 0.985
+              },
+              {
+                "boundingBox": [
+                  310,
+                  867,
+                  323,
+                  901,
+                  290,
+                  914,
+                  278,
+                  880
+                ],
+                "text": "in",
+                "confidence": 0.988
+              },
+              {
+                "boundingBox": [
+                  326,
+                  909,
+                  333,
+                  929,
+                  300,
+                  941,
+                  292,
+                  921
+                ],
+                "text": "a",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  336,
+                  936,
+                  368,
+                  1023,
+                  333,
+                  1036,
+                  302,
+                  949
+                ],
+                "text": "spirit",
+                "confidence": 0.985
+              },
+              {
+                "boundingBox": [
+                  371,
+                  1031,
+                  386,
+                  1071,
+                  351,
+                  1084,
+                  336,
+                  1043
+                ],
+                "text": "of",
+                "confidence": 0.988
+              }
+            ]
+          },
+          {
+            "boundingBox": [
+              38,
+              272,
+              120,
+              499,
+              85,
+              511,
+              5,
+              284
+            ],
+            "text": "brotherhood.",
+            "words": [
+              {
+                "boundingBox": [
+                  39,
+                  273,
+                  120,
+                  498,
+                  85,
+                  509,
+                  5,
+                  285
+                ],
+                "text": "brotherhood.",
+                "confidence": 0.979
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
