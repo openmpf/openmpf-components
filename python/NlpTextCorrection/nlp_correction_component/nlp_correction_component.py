@@ -38,8 +38,10 @@ log = logging.getLogger('NlpCorrectionComponent')
 
 class NlpCorrectionComponent(object):
     detection_type = 'TEXT'
-    initialized = False
-    wrapper = None
+
+    def __init__(self):
+        self.initialized = False
+        self.wrapper = None
 
     def get_detections_from_image(self, image_job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         try:
@@ -123,12 +125,11 @@ class HunspellWrapper(object):
         self._job_properties = job_properties
 
         self._hunspell = Hunspell('en_US')
+        self._hunspell.clear_cache()
 
         self._custom_dictionary_path = job_properties.get('CUSTOM_DICTIONARY', "")
 
         # load custom dictionary if one is specified in the job properties
-
-
         if self._custom_dictionary_path != "":
             if os.path.exists(self._custom_dictionary_path):
                 self._hunspell.add_dic(self._custom_dictionary_path)

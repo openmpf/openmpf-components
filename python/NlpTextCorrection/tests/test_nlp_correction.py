@@ -52,7 +52,7 @@ class TestNlpCorrection(unittest.TestCase):
         results = list(NlpCorrectionComponent().get_detections_from_generic(job))
         self.assertEqual(1, len(results))
 
-        expected_text = "this is some sample text explane is misspelled "
+        expected_text = "this is some sample text explain is misspelled "
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
 
     # test that the component works with a custom dictionary
