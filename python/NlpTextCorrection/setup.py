@@ -33,7 +33,7 @@ setuptools.setup(
     install_requires=(
         'mpf_component_api>=6.2',
         'mpf_component_util>=6.2',
-        'symspellpy>=6.7.0',
+        'cyhunspell>=2.0.2',
         'setuptools>=8.1',
         'nltk>=3.5'
     ),

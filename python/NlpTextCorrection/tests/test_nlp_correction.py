@@ -52,12 +52,13 @@ class TestNlpCorrection(unittest.TestCase):
         results = list(NlpCorrectionComponent().get_detections_from_generic(job))
         self.assertEqual(1, len(results))
 
-        expected_text = "this is some sample text explain is misspelled "
+        expected_text = "this is some sample text explane is misspelled "
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
 
     # test that the component works with a custom dictionary
     def test_custom_dictionary(self):
-        custom_dictionary_path = self._get_test_file('sample_dict.txt')
+        custom_dictionary_path = self._get_test_file('sample_dict.dic')
+
         job = mpf.GenericJob(
             job_name='test-file',
             data_uri=self._get_test_file("data/sample.txt"),
@@ -84,7 +85,7 @@ class TestNlpCorrection(unittest.TestCase):
         expected_text = (
             "This is to test that punctuation is preserved. Single newline characters are lost as are quotation marks "
             "and parenthesis. Is punctuation preserved with these? They should be!\n\nTwo or more newlines are "
-            "preserve heres a misspelling for good measure.\n\n\n\n\nTesting that larger gaps between blocks of text "
+            "preserved here's a misspelling for good measure.\n\n\n\n\nTesting that larger gaps between blocks of text "
             "are preserved.\n")
 
         results = list(NlpCorrectionComponent().get_detections_from_generic(job))

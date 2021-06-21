@@ -26,9 +26,8 @@
 from typing import Iterable
 
 import mpf_component_api as mpf
-import pkg_resources
-from symspellpy import SymSpell
 from typing import Mapping, Sequence
+from hunspell import Hunspell
 import nltk
 import os
 
@@ -57,12 +56,12 @@ class NlpCorrectionComponent(object):
             custom_dictionary_path = image_job.job_properties.get('CUSTOM_DICTIONARY', "")
 
             if not self.initialized:
-                self.wrapper = SymspellWrapper(image_job.job_properties, image_job.job_name)
+                self.wrapper = HunspellWrapper(image_job.job_properties, image_job.job_name)
                 self.initialized = True
             else:
                 if custom_dictionary_path != \
                         self.wrapper.get_custom_dictionary_path():
-                    self.wrapper = SymspellWrapper(image_job.job_properties, image_job.job_name)
+                    self.wrapper = HunspellWrapper(image_job.job_properties, image_job.job_name)
 
             self.wrapper.get_suggestions(text, detection_properties)
 
@@ -83,12 +82,12 @@ class NlpCorrectionComponent(object):
             custom_dictionary_path = job.job_properties.get('CUSTOM_DICTIONARY', "")
 
             if not self.initialized:
-                self.wrapper = SymspellWrapper(job.job_properties, job.job_name)
+                self.wrapper = HunspellWrapper(job.job_properties, job.job_name)
                 self.initialized = True
             else:
                 if custom_dictionary_path != \
-                        self.wrapper.get_custom_dictionary_path():
-                    self.wrapper = SymspellWrapper(job.job_properties, job.job_name)
+                        self.wrapper.get_custom_dictionary_path():\
+                    self.wrapper = HunspellWrapper(job.job_properties, job.job_name)
 
             if ff_track is not None:
                 detection_properties = ff_track.detection_properties
@@ -118,27 +117,21 @@ class NlpCorrectionComponent(object):
             raise
 
 
-class SymspellWrapper(object):
+class HunspellWrapper(object):
 
     def __init__(self, job_properties: Mapping[str, str], job_name):
         self._job_properties = job_properties
 
-        self._sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
+        self._hunspell = Hunspell('en_US')
 
         self._custom_dictionary_path = job_properties.get('CUSTOM_DICTIONARY', "")
 
-        self._dictionary_path = pkg_resources.resource_filename("symspellpy", "frequency_dictionary_en_82_765.txt")
-        self._bigram_path = pkg_resources.resource_filename(
-                "symspellpy", "frequency_bigramdictionary_en_243_342.txt")
-
-        self._sym_spell.load_dictionary(self._dictionary_path, term_index=0, count_index=1)
-        self._sym_spell.load_bigram_dictionary(self._bigram_path, term_index=0, count_index=0)
-
         # load custom dictionary if one is specified in the job properties
+
+
         if self._custom_dictionary_path != "":
             if os.path.exists(self._custom_dictionary_path):
-                self._sym_spell.load_dictionary(self._custom_dictionary_path, term_index=0,
-                                                count_index=1)
+                self._hunspell.add_dic(self._custom_dictionary_path)
             else:
                 log.exception(f'[{job_name}] '
                               f'Failed to complete job due incorrect file path for the custom dictionary:')
@@ -151,8 +144,6 @@ class SymspellWrapper(object):
     def get_suggestions(self, original_text, detection_properties):
         log.info(f'Attempting to correct text {original_text}')
 
-        print(self._sym_spell.words["the"])
-
         suggestions = ""
         punctuation = self.get_punctuation(original_text)
 
@@ -162,12 +153,31 @@ class SymspellWrapper(object):
         # item for sublist in t for item in sublist
         tokenized_sentences = [nltk.sent_tokenize(x) for x in split_cleaned]
         tokenized_sentences = [x for sent in tokenized_sentences for x in sent]
+        tokenized_sentences = [x.rstrip("\".?!") for x in tokenized_sentences]
 
         for sentence, punctuation in zip(tokenized_sentences, punctuation):
-            corrected = self._sym_spell.lookup_compound(
-                sentence, max_edit_distance=2, transfer_casing=True,
-                ignore_non_words=True, ignore_term_with_digits=True)[0].term
-            suggestions = suggestions + corrected + punctuation
+            words = sentence.split(" ")
+            words = [x.split('\n') for x in words]
+            words = [item for sublist in words for item in sublist if item != '']
+
+            for word in words:
+                # if word == "explan":
+                #    print(self._hunspell.suggest("explan"))
+                #    print(self._hunspell.spell("explane"))
+
+                if self._hunspell.spell(word):
+                    suggestions += word
+                else:
+                    temp = self._hunspell.suggest(word)
+                    if len(temp) > 0:
+                        suggestions += self._hunspell.suggest(word)[0]
+                    else:
+                        suggestions += word
+
+                suggestions += " "
+
+            suggestions = suggestions.rstrip(" ")
+            suggestions += punctuation
 
         detection_properties["CORRECTED TEXT"] = suggestions
         log.info("Successfully corrected text")
