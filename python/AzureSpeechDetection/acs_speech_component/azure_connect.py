@@ -107,20 +107,21 @@ class AzureConnection(object):
 
     def upload_file_to_blob(self, filepath, recording_id, blob_access_time,
                             start_time=0, stop_time=None):
+        audio_bytes = mpf_util.transcode_to_wav(
+            filepath,
+            start_time,
+            stop_time
+        )
         try:
             blob_client = self.get_blob_client(recording_id)
-            audio_bytes = mpf_util.transcode_to_wav(
-                filepath,
-                start_time,
-                stop_time
-            )
             blob_client.upload_blob(audio_bytes)
         except Exception as e:
             if 'blob already exists' in str(e):
                 self.logger.info('Blob exists for file {}'.format(recording_id))
             else:
                 self.logger.error('Uploading file to blob failed for file {}'.format(recording_id))
-                raise
+                raise mpf.DetectionError.NETWORK_ERROR.exception(
+                    'Uploading file to blob failed due to: ' + str(e)) from e
 
         time_limit = timedelta(minutes=blob_access_time)
         return '{url:s}/{recording_id:s}?{sas_url:s}'.format(
