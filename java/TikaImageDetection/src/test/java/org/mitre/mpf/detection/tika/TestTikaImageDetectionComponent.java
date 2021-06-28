@@ -115,54 +115,30 @@ public class TestTikaImageDetectionComponent {
                 MPFGenericTrack track = tracks.get(i);
                 System.out.println(String.format("Generic track number %d", i));
                 System.out.println(String.format("  Confidence = %f", track.getConfidence()));
-                System.out.println(String.format("  Page = %s", track.getDetectionProperties().get("PAGE_NUM")));
-                System.out.println(String.format("  Images = %s", track.getDetectionProperties().get("SAVED_IMAGES")));
+                System.out.println(String.format("  Image URI = %s", track.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
+                System.out.println(String.format("  Pages = %s", track.getDetectionProperties().get("PAGE_NUM")));
+
             }
         }
 
-        assertEquals("Number of expected tracks does not match.", 5 ,tracks.size());
+        assertEquals("Number of expected tracks does not match.", 3 ,tracks.size());
         // Test each output type.
 
-        //Test extraction of image 0, page 0.
-        //Image 0 stored multiple times, should only be reported once.
+        //Test extraction of image 0.
         MPFGenericTrack testTrack = tracks.get(0);
-        assertEquals("Page number not correct", "1", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue("Expected image0.jpg in page 1.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
-        assertTrue("Invalid file paths for page 1.", pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
+        assertEquals("Page number not correct", "1; 2; 3", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue("Expected image0.jpg.", testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI").contains("image0.jpg"));
+        assertTrue("Invalid file path for image0.jpg.", pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
 
-        //Test extraction of image 1, page 1.
-        //Image 0 should be listed again.
         testTrack = tracks.get(1);
-        assertEquals("Page number not correct", "2", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue("Expected image0.jpg in page 2.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
-        assertTrue("Expected image1.jpg in page 2.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.jpg"));
-        assertTrue("Invalid file paths for page 2.", pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
+        assertEquals("Page number not correct", "2; 3", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue("Expected image1.jpg.", testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI").contains("image1.jpg"));
+        assertTrue("Invalid file path for image1.jpg.", pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
 
-        //Test extraction of page 2.
-        //Images 0 and 1 should be listed again.
         testTrack = tracks.get(2);
-        assertEquals("Page number not correct", "3", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue("Expected image0.jpg in page 3.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
-        assertTrue("Expected image1.jpg in page 3.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.jpg"));
-        assertTrue("Invalid file paths for page 3.", pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
-
-
-        //Test empty page.
-        testTrack = tracks.get(3);
-        assertEquals("Page number not correct", "4", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertEquals("No images should have been reported.", "", testTrack.getDetectionProperties().get("SAVED_IMAGES"));
-
-        //Test extraction of image 2, page 5.
-        testTrack = tracks.get(4);
         assertEquals("Page number not correct", "5", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue("Expected image2.jpg in page 5.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image2.jpg"));
-        assertTrue("Invalid file paths for page 5.", pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
-
-        //Check that images were saved correctly, then clean up test folder.
-        assertTrue("Test run directory not created." + testDir.toString() + "./TestRun", Files.exists(Paths.get(testDir.toString() + "/TestRun")));
-        assertTrue("Expected image not found (tika-extracted/image0.jpg).", Files.exists(Paths.get(testDir.toString() + "/TestRun/tika-extracted/image0.jpg")));
-        assertTrue("Expected image not found (tika-extracted/image1.jpg).", Files.exists((Paths.get(testDir.toString() + "/TestRun/tika-extracted/image1.jpg"))));
-        assertTrue("Expected image not found (tika-extracted/image2.jpg).", Files.exists((Paths.get(testDir.toString() + "/TestRun/tika-extracted/image2.jpg"))));
+        assertTrue("Expected image2.jpg.", testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI").contains("image2.jpg"));
+        assertTrue("Invalid file path for image2.jpg.", pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
 
         Files.walk(Paths.get(testDir.toString()))
                 .sorted(Comparator.reverseOrder())

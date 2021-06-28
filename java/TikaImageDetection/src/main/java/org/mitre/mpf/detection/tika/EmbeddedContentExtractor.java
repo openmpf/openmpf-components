@@ -42,6 +42,8 @@ import java.nio.file.Paths;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.TreeSet;
 
 
 
@@ -52,6 +54,7 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
     private boolean separatePages;
     private int id, pagenum;
     private ArrayList<ArrayList<String>> imageMap;
+    private LinkedHashMap<String, TreeSet<String>> imagePageMap;
     private ArrayList<String> current;
     private Path outputDir;
     private Path commonImgDir;
@@ -63,6 +66,7 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
         imagesFound = new HashMap<String, String>();
         imagesIndex = new HashMap<String, String>();
         commonImages = new ArrayList<String>();
+        imagePageMap = new LinkedHashMap<String, TreeSet<String>>();
         separatePages = separate;
         id = 0;
         imageMap = new ArrayList<ArrayList<String>>();
@@ -92,6 +96,10 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
 
     }
 
+    public LinkedHashMap<String, TreeSet<String>> getImageMap() {
+        return imagePageMap;
+    }
+
     public ArrayList<String> getImageList() {
         ArrayList<String> results = new ArrayList<String>();
         for (ArrayList<String> pageResults: imageMap) {
@@ -110,6 +118,8 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
                 pageList.set(pageList.indexOf(originalLocation), newLocation);
             }
         }
+        TreeSet<String> pageMap = imagePageMap.remove(originalLocation);
+        imagePageMap.put(newLocation, pageMap);
     }
 
     public void parseEmbedded(InputStream stream, ContentHandler imHandler, Metadata metadata, boolean outputHtml)
@@ -146,7 +156,7 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
                 }
 
                 Files.move(originalFile, outputPath);
-                updateFileLocation(originalFile.toString(), outputPath.toString());
+                updateFileLocation(originalFile.toAbsolutePath().toString(), outputPath.toAbsolutePath().toString());
 
                 filename = outputPath.toAbsolutePath().toString();
                 imagesFound.put(cosID, filename);
@@ -168,6 +178,15 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
             imagesFound.put(cosID, filename);
             id++;
         }
+
+        if (imagePageMap.containsKey(filename)) {
+            imagePageMap.get(filename).add(String.valueOf(pagenum+1));
+        } else {
+            TreeSet<String> pageSet = new TreeSet<String>();
+            pageSet.add(String.valueOf(pagenum+1));
+            imagePageMap.put(filename, pageSet);
+        }
+
         current.add(filename);
     }
 }

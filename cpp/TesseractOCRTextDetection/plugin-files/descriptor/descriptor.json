@@ -91,7 +91,6 @@
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
-
         {
           "name": "MIN_OSD_TEXT_ORIENTATION_CONFIDENCE",
           "description": "Specifies the minimum confidence value (>= 0) required to use the detected text orientation when OSD automation is enabled. Top rotation confidence is calculated based on comparison of top-detected rotation score against secondary (lower confidence) rotation scores.",
@@ -271,6 +270,12 @@
           "description": "The fill color to use when doing non-orthogonal rotation. Must either be BLACK or WHITE. When doing a non-orthogonal rotation, some pixels will need to be included that were not in the original image. This property controls the color of those undefined pixels.",
           "type": "STRING",
           "defaultValue": "WHITE"
+        },
+        {
+          "name": "PASS_FEED_FORWARD_TEXT_TRACKS",
+          "description": "When set to true, any feed-forward track with an existing TEXT property skips component processing and is passed along to the next sub-job.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
         }
       ]
     }
@@ -281,6 +286,17 @@
       "description": "Performs Tesseract OCR.",
       "algorithm": "TESSERACTOCR",
       "properties": []
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION SKIP TEXT TRACKS ACTION",
+      "description": "Performs Tesseract OCR, skips DERIVATIVE_MEDIA tracks.",
+      "algorithm": "TESSERACTOCR",
+      "properties": [
+        {
+          "name": "PASS_FEED_FORWARD_TEXT_TRACKS",
+          "value": "true"
+        }
+      ]
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT",
@@ -335,6 +351,13 @@
       "description": "Performs Tesseract OCR.",
       "actions": [
         "TESSERACT OCR TEXT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION SKIP TEXT TRACKS TASK",
+      "description": "Performs Tesseract OCR, skips DERIVATIVE_MEDIA tracks.",
+      "actions": [
+        "TESSERACT OCR TEXT DETECTION SKIP TEXT TRACKS ACTION"
       ]
     },
     {

@@ -36,7 +36,7 @@ RUN mvn org.apache.maven.plugins:maven-dependency-plugin:3.1.1:go-offline;
 
 COPY . .
 
-ARG RUN_TESTS=false
+ARG RUN_TESTS=true
 
 RUN if [ "${RUN_TESTS,,}" == true ]; then \
         mvn package -Dmpf.assembly.format=dir; \

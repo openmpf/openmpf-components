@@ -60,6 +60,17 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
             mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
 
+        float confidence = -1.0f;
+        List<MPFGenericTrack> tracks = new LinkedList<>();
+        Map<String, String> properties = mpfGenericJob.getJobProperties();
+
+        if (MapUtils.getBooleanValue(properties, "PASS_FEED_FORWARD_DERIVATIVE_MEDIA_TRACKS", false) &&
+            mpfGenericJob.getFeedForwardTrack() != null &&
+            mpfGenericJob.getFeedForwardTrack().getDetectionProperties().containsKey("DERIVATIVE_MEDIA_URI")) {
+            tracks.add(mpfGenericJob.getFeedForwardTrack());
+            return tracks;
+        }
+
         // Specify filename for tika parsers here.
         File file = new File(mpfGenericJob.getDataUri());
 
@@ -80,12 +91,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             LOG.error(errorMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, errorMsg);
         }
-
-        float confidence = -1.0f;
-        List<MPFGenericTrack> tracks = new LinkedList<>();
-
-        Map<String,String> properties = mpfGenericJob.getJobProperties();
-
 
         // Set language filtering limit.
         int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);
@@ -295,6 +300,15 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
     }
 
     public List<MPFImageLocation> getDetections(MPFImageJob job) throws MPFComponentDetectionError {
+        List<MPFImageLocation>  locations = new LinkedList<>();
+        Map<String, String> properties = job.getJobProperties();
+
+        if (MapUtils.getBooleanValue(properties, "PASS_FEED_FORWARD_DERIVATIVE_MEDIA_TRACKS", false) &&
+                job.getFeedForwardLocation() != null &&
+                job.getFeedForwardLocation().getDetectionProperties().containsKey("DERIVATIVE_MEDIA_URI")) {
+            locations.add(job.getFeedForwardLocation());
+            return locations;
+        }
         throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Image detection not supported.");
     }
 
