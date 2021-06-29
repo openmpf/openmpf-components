@@ -505,12 +505,8 @@ void OcvDnnDetection::getNetworkOutput(OcvDnnDetection::OcvDnnJobConfig &config,
                                        std::vector<std::pair<std::string, cv::Mat>> &activation_layer_info,
                                        std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_info) {
     cv::Mat frame;
-    try {
-        cv::resize(input_frame, frame, config.resize_size);
-    }
-    catch (const cv::Exception &err) {
-        throw MPFDetectionException(MPFDetectionError::MPF_BAD_FRAME_SIZE, err.what());
-    }
+    cv::resize(input_frame, frame, config.resize_size);
+
     cv::Rect roi(config.crop_size, frame.size() - (config.crop_size * 2));
     frame = frame(roi);
 
