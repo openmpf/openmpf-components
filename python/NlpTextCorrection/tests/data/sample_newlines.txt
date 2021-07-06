@@ -1,5 +1,5 @@
 This is to test that punctuation is preserved.
-Single newline characters are lost, as are "quotation marks" and (parenthesis.)
+Single newline characters are not lost, and neither are "quotation marks" and (parenthesis.)
 Is punctuation preserved with "these?" They should be!
 
 Two or more newlines are preservd, here's a misspelling for good measure.

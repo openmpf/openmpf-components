@@ -30,10 +30,6 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-
-RUN pip3 install --no-cache-dir 'nltk>=3.5'
-RUN python -c "import nltk; nltk.download('punkt')"
-
 ARG RUN_TESTS=false
 
 RUN --mount=target=. install-component.sh; \

@@ -28,7 +28,7 @@ from typing import Iterable
 import mpf_component_api as mpf
 from typing import Mapping, Sequence
 from hunspell import Hunspell
-import nltk
+import re
 import os
 
 import logging
@@ -127,7 +127,12 @@ class HunspellWrapper(object):
         self._hunspell = Hunspell('en_US')
         self._hunspell.clear_cache()
 
+        self._unicode_error = False
+
+        self._full_output = job_properties.get("FULL_TEXT_CORRECTION_OUTPUT", False)
+
         self._custom_dictionary_path = job_properties.get('CUSTOM_DICTIONARY', "")
+
 
         # load custom dictionary if one is specified in the job properties
         if self._custom_dictionary_path != "":
@@ -135,7 +140,8 @@ class HunspellWrapper(object):
                 self._hunspell.add_dic(self._custom_dictionary_path)
             else:
                 log.exception(f'[{job_name}] '
-                              f'Failed to complete job due incorrect file path for the custom dictionary:')
+                              f'Failed to complete job due incorrect file path for the custom dictionary:'
+                              f'[{self._custom_dictionary_path}]')
                 raise mpf.DetectionException(
                     'Invalid path provided for custom dictionary',
                     mpf.DetectionError.COULD_NOT_READ_DATAFILE)
@@ -143,91 +149,38 @@ class HunspellWrapper(object):
     # Adds corrected text to detection_properties.
     # Detection_properties is modified in place.
     def get_suggestions(self, original_text, detection_properties):
-        log.info(f'Attempting to correct text {original_text}')
+        log.debug(f'Attempting to correct text {original_text}')
 
-        suggestions = ""
-        punctuation = self.get_punctuation(original_text)
+        suggestions = re.sub(r'[a-zA-Z]+\'?[a-zA-Z]*', self.correct_text, original_text)
 
-        split = original_text.rsplit("\n\n")
-        split_cleaned = [x.rstrip("\n") for x in split if x != ""]
-
-        # item for sublist in t for item in sublist
-        tokenized_sentences = [nltk.sent_tokenize(x) for x in split_cleaned]
-        tokenized_sentences = [x for sent in tokenized_sentences for x in sent]
-        tokenized_sentences = [x.rstrip("\".?!") for x in tokenized_sentences]
-
-        for sentence, punctuation in zip(tokenized_sentences, punctuation):
-            words = sentence.split(" ")
-            words = [x.split('\n') for x in words]
-            words = [item for sublist in words for item in sublist if item != '']
-
-            for word in words:
-                # if word == "explan":
-                #    print(self._hunspell.suggest("explan"))
-                #    print(self._hunspell.spell("explane"))
-
-                if self._hunspell.spell(word):
-                    suggestions += word
-                else:
-                    temp = self._hunspell.suggest(word)
-                    if len(temp) > 0:
-                        suggestions += self._hunspell.suggest(word)[0]
-                    else:
-                        suggestions += word
-
-                suggestions += " "
-
-            suggestions = suggestions.rstrip(" ")
-            suggestions += punctuation
+        if self._unicode_error:
+            log.warning("Encountered words with unsupported errors")
 
         detection_properties["CORRECTED TEXT"] = suggestions
-        log.info("Successfully corrected text")
+        log.debug("Successfully corrected text")
+        log.debug(f'Corrected text: {suggestions}')
         return True
+
+    def correct_text(self, word_match):
+        word = word_match.group(0)
+
+        try:
+            if self._hunspell.spell(word):
+                return word
+
+            temp = self._hunspell.suggest(word)
+            if len(temp) > 0:
+                if self._full_output:
+                    return '[' + ', '.join(temp) + ']'
+                else:
+                    return temp[0]
+            else:
+                return word
+        except UnicodeEncodeError:
+            self._unicode_error = True
+            return word
 
     def get_custom_dictionary_path(self):
         return self._custom_dictionary_path
 
-    def get_punctuation(self, original_text: str):
-        split = original_text.rsplit("\n\n")
 
-        punctuation = []
-        newline_counter = 0
-
-        first_block = True
-
-        for block in reversed(split):
-            first_sent = True
-            newline = ""
-
-            if block == '':
-                newline_counter += 2
-            else:
-                newline_count = len(block) - len(block.rstrip("\n"))
-                newline_string = "\n" * (newline_counter + newline_count)
-
-                if first_block:
-                    newline = newline_string
-                    first_block = False
-                else:
-                    newline = "\n\n" + newline_string
-
-                newline_counter = 0
-
-            sentences = nltk.sent_tokenize(block)
-
-            for sentence in reversed(sentences):
-                if sentence[-1] not in "!?.":
-                    if sentence[-1] in ")\"" and sentence[-2] in "!?.":
-                        punc = sentence[-2]
-                    else:
-                        punc = " "
-                else:
-                    punc = sentence[-1]
-
-                if first_sent:
-                    punctuation.append(punc + newline)
-                    first_sent = False
-                else:
-                    punctuation.append(punc + " ")
-
-        return punctuation[::-1]

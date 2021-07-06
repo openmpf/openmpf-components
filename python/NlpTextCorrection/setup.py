@@ -34,8 +34,7 @@ setuptools.setup(
         'mpf_component_api>=6.2',
         'mpf_component_util>=6.2',
         'cyhunspell>=2.0.2',
-        'setuptools>=8.1',
-        'nltk>=3.5'
+        'setuptools>=8.1'
     ),
     entry_points={
         'mpf.exported_component': 'component = nlp_correction_component.nlp_correction_component:NlpCorrectionComponent'

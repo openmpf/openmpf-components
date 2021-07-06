@@ -7,7 +7,7 @@
   "environmentVariables": [],
   "algorithm": {
     "name": "NLPTEXTCORRECTION",
-    "description": "Uses the SymSpellPy library to correct text output.",
+    "description": "Uses the Hunspell library to correct text output.",
     "actionType": "DETECTION",
     "requiresCollection": {
       "states": []
@@ -23,6 +23,12 @@
           "description": "Name of a text file used to add custom words to the dictionary",
           "type": "STRING",
           "defaultValue": ""
+        },
+        {
+          "name": "FULL_TEXT_CORRECTION_OUTPUT",
+          "description": "When enabled, returns the full list of suggestions for corrected text. Default behavior is to use just the first suggestions",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
         }
       ]
     }
