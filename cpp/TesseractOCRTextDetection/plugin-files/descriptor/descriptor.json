@@ -382,6 +382,14 @@
         "TESSERACT OCR TEXT DETECTION TASK",
         "AZURE TRANSLATION (WITH FF REGION) TASK"
       ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION WITH NLP TEXT CORRECTION PIPELINE",
+      "description": "Performs Tesseract OCR and runs post-processing text correction.",
+      "tasks": [
+        "TESSERACT OCR TEXT DETECTION TASK",
+        "NLP TEXT CORRECTION (WITH FF REGION) TASK"
+      ]
     }
   ]
 }
