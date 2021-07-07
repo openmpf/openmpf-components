@@ -1447,6 +1447,22 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
         OCR_filter_settings ocr_fset;
         Text_type text_type = Unknown;
 
+        MPFImageReader image_reader(job);
+
+        bool skip_text_tracks = DetectionComponentUtils::GetProperty<bool>(job.job_properties,
+                                                                           "PASS_FEED_FORWARD_TEXT_TRACKS",
+                                                                           false);
+        if (job.has_feed_forward_location &&
+            skip_text_tracks &&
+            job.feed_forward_location.detection_properties.count("TEXT")) {
+
+            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Skipping track as TEXT property exists.");
+
+            vector<MPFImageLocation> past_location;
+            past_location.push_back(job.feed_forward_location);
+            return past_location;
+        }
+
         if (job.has_feed_forward_location && job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
             if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "UNSTRUCTURED") {
                 text_type = Unstructured;
@@ -1460,8 +1476,6 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
         load_settings(job, ocr_fset);
         load_image_preprocessing_settings(job, ocr_fset, text_type);
 
-
-        MPFImageReader image_reader(job);
         cv::Mat image_data = image_reader.GetImage();
         string run_dir = GetRunDirectory();
 
@@ -1837,6 +1851,20 @@ vector<MPFGenericTrack> TesseractOCRTextDetection::GetDetections(const MPFGeneri
         vector<MPFGenericTrack> tracks;
         page_results.tracks = &tracks;
         page_inputs.job = &job;
+
+
+        bool skip_text_tracks = DetectionComponentUtils::GetProperty<bool>(job.job_properties,
+                                                                           "PASS_FEED_FORWARD_TEXT_TRACKS",
+                                                                           false);
+        if (job.has_feed_forward_track &&
+            skip_text_tracks &&
+            job.feed_forward_track.detection_properties.count("TEXT")) {
+
+            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Skipping track as TEXT property exists.");
+
+            tracks.push_back(job.feed_forward_track);
+            return tracks;
+        }
 
         load_settings(job, page_inputs.ocr_fset);
         load_image_preprocessing_settings(job, page_inputs.ocr_fset);

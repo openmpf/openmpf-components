@@ -44,8 +44,21 @@ import mpf_component_util as mpf_util
 logger = logging.getLogger('AcsOcrComponent')
 
 
-class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
+class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
     detection_type = 'TEXT'
+
+    def get_detections_from_generic(self, generic_job):
+        if generic_job.feed_forward_track != None and \
+           mpf_util.get_property(generic_job.job_properties, 'PASS_FEED_FORWARD_TEXT_TRACKS', False) and \
+           "TEXT" in generic_job.feed_forward_track.detection_properties:
+
+            logger.exception('Skipping track as TEXT property exists.', generic_job.job_name)
+            yield generic_job.feed_forward_track
+        else:
+            raise mpf.DetectionException(
+                'Generic detection not supported.',
+                mpf.DetectionError.MPF_UNSUPPORTED_DATA_TYPE
+            )
 
     def get_detections_from_image_reader(self, image_job, image_reader):
         try:

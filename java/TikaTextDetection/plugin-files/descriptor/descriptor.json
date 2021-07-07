@@ -31,7 +31,6 @@
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
-
         {
           "name": "LIST_ALL_PAGES",
           "description": "Specifies whether or not to store each page as a track, even if no text is extracted.",
@@ -43,6 +42,12 @@
           "description": "Specifies minimum length of detected text before language filtering is applied.",
           "type": "INT",
           "defaultValue": "20"
+        },
+        {
+          "name": "PASS_FEED_FORWARD_DERIVATIVE_MEDIA_TRACKS",
+          "description": "When set to true, any feed-forward track with an existing DERIVATIVE_MEDIA property skips component processing and is passed along to the next sub-job.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
         }
 
       ]
@@ -54,6 +59,21 @@
       "description": "Executes the Tika text detection algorithm using the default parameters.",
       "algorithm": "TIKATEXT",
       "properties": []
+    },
+    {
+      "name": "TIKA TEXT DETECTION SKIP DERIVATIVE MEDIA ACTION",
+      "description": "Executes the Tika text detection algorithm using the default parameters. Skips DERIVATIVE_MEDIA tracks.",
+      "algorithm": "TIKATEXT",
+      "properties": [
+        {
+          "name": "PASS_FEED_FORWARD_DERIVATIVE_MEDIA_TRACKS",
+          "value": "true"
+        },
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "FRAME"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -62,6 +82,13 @@
       "description": "Performs Tika text detection.",
       "actions": [
         "TIKA TEXT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "TIKA TEXT DETECTION SKIP DERIVATIVE MEDIA TASK",
+      "description": "Performs Tika text detection.",
+      "actions": [
+        "TIKA TEXT DETECTION SKIP DERIVATIVE MEDIA ACTION"
       ]
     }
   ],
