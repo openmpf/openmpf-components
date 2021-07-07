@@ -289,9 +289,13 @@
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION SKIP TEXT TRACKS ACTION",
-      "description": "Performs Tesseract OCR, skips DERIVATIVE_MEDIA tracks.",
+      "description": "Performs Tesseract OCR, skips TEXT tracks.",
       "algorithm": "TESSERACTOCR",
       "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "FRAME"
+        },
         {
           "name": "PASS_FEED_FORWARD_TEXT_TRACKS",
           "value": "true"

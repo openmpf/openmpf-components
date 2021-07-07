@@ -1456,8 +1456,7 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
             skip_text_tracks &&
             job.feed_forward_location.detection_properties.count("TEXT")) {
 
-            // Skip feed-forward tracks which contain an existing TEXT detection property.
-            // Pass existing text track to next sub-job.
+            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Skipping track as TEXT property exists.");
 
             vector<MPFImageLocation> past_location;
             past_location.push_back(job.feed_forward_location);
@@ -1861,8 +1860,8 @@ vector<MPFGenericTrack> TesseractOCRTextDetection::GetDetections(const MPFGeneri
             skip_text_tracks &&
             job.feed_forward_track.detection_properties.count("TEXT")) {
 
-            // Skip feed-forward tracks which contain an existing TEXT detection property.
-            // Pass existing text track to next sub-job.
+            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Skipping track as TEXT property exists.");
+
             tracks.push_back(job.feed_forward_track);
             return tracks;
         }
