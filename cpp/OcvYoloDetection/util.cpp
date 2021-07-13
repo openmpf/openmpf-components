@@ -159,3 +159,15 @@ std::ostream &cv::operator<<(std::ostream &os, const cv::Rect &r) {
     os << "[" << r.x << "," << r.y << "]-(" << r.width << "," << r.height << ")";
     return os;
 }
+
+
+/// get machine hostname
+const std::string hostname(){
+  static std::string hostname;
+  if(hostname.empty()){
+    char h[64];
+    gethostname(h,sizeof(h));
+    hostname.assign(h);
+  }
+  return hostname;
+}

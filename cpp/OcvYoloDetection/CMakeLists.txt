@@ -29,6 +29,11 @@ cmake_minimum_required(VERSION 3.6)
 project(ocv-yolo-detection)
 
 set(CMAKE_CXX_STANDARD 11)
+#ADD_DEFINITIONS("-std=c++11")
+add_definitions(-Wfatal-errors)
+
+# set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
+set(CMAKE_BUILD_TYPE Debug)           # build debug version
 
 include(../ComponentSetup.cmake)
 
@@ -51,8 +56,17 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
+set(CMAKE_PREFIX_PATH /opt/triton)
+find_package(CURL REQUIRED)
+find_package(TritonCommon PATH_SUFFIXES 64 REQUIRED)
+find_package(TRITON REQUIRED)
 
 set(OCV_YOLO_DETECTION_SOURCE_FILES
+        TritonExceptionMacros.h
+        TritonInferencer.cpp TritonInferencer.h
+        TritonClient.cpp TritonClient.h
+        TritonTensorMeta.cpp TritonTensorMeta.h
+        shm_utils.cc shm_utils.h
         util.cpp util.h
         Config.cpp Config.h
         Frame.h
@@ -69,8 +83,10 @@ target_link_libraries(mpfOcvYoloDetection
                       mpfComponentInterface
                       mpfDetectionComponentApi
                       mpfComponentUtils
+                      TRITON::grpcclient_static
                       ${OpenCV_LIBS}
-                      dlib)
+                      dlib
+                      explain)
 
 configure_mpf_component(OcvYoloDetection TARGETS mpfOcvYoloDetection)
 
@@ -78,4 +94,3 @@ add_subdirectory(test)
 
 add_executable(sample_ocv_yolo_detector sample_ocv_yolo_detector.cpp)
 target_link_libraries(sample_ocv_yolo_detector mpfOcvYoloDetection)
-

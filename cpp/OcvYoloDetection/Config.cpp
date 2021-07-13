@@ -73,6 +73,17 @@ Config::Config(const Properties &jobProps)
         , cudaDeviceId(GetProperty(jobProps, "CUDA_DEVICE_ID", -1))
         , classWhiteListPath(GetProperty(jobProps, "CLASS_WHITELIST_FILE", ""))
         , enableDebug(GetProperty(jobProps, "ENABLE_DEBUG", false))
+        , trtisEnabled(GetProperty(jobProps, "ENABLE_TRTIS", false))
+        , trtisServer(GetProperty(jobProps, "TRTIS_SERVER", "example.org:8001"))
+        , trtisModelName(GetProperty(jobProps,  "MODEL_NAME", "yolo"))
+        , trtisModelVersion(GetProperty(jobProps, "TRTIS_MODEL_VERSION", -1))
+        , trtisMaxInferConcurrency(GetProperty(jobProps, "MAX_INFER_CONCURRENCY", 1))
+        , trtisClientTimeout(GetProperty(jobProps, "INFER_TIMEOUT_US",0))
+        , trtisMaxConnectionSetupAttempts(GetProperty(jobProps, "TRTIS_MAX_CONNECTION_SETUP_ATTEMPTS",3))
+        , trtisVerboseClient(GetProperty(jobProps, "TRTIS_VERBOSE_CLIENT", false))
+        , trtisUseSSL(GetProperty(jobProps, "TRTIS_USE_SSL",false))
+        , trtisUseShm(GetProperty(jobProps, "TRTIS_USE_SHM",true))
+
 {
 }
 
@@ -99,9 +110,19 @@ std::ostream &operator<<(std::ostream &out, const Config &cfg) {
         << "\"mosseTrackerDisabled\":" << (cfg.mosseTrackerDisabled ? "1" : "0") << ","
         << "\"fallback2CpuWhenGpuProblem\":" << (cfg.fallback2CpuWhenGpuProblem ? "1" : "0") << ","
         << "\"cudaDeviceId\":" << cfg.cudaDeviceId << ","
+        << "\"classWhiteListPath\":" << cfg.classWhiteListPath << ","
+        << "\"enabledDebug\":" << cfg.enableDebug << ","
+        << "\"trtisServer\":" << cfg.trtisModelVersion << ","
+        << "\"trtisModelName\":" << cfg.trtisModelName << ","
+        << "\"trtisModelVersion\":" << cfg.trtisModelVersion << ","
+        << "\"trtisMaxInferConcurrency\":" << cfg.trtisMaxInferConcurrency << ","
+        << "\"trtisClientTimeout\":" << cfg.trtisClientTimeout << ","
+        << "\"trtisMaxConnectionsSetupAttempts\":" << cfg.trtisMaxConnectionSetupAttempts << ","
+        << "\"trtisVerboseClient\":" << cfg.trtisVerboseClient << ","
+        << "\"trtisUseSSL\":" << cfg.trtisUseSSL << ","
+        << "\"trtisUseSSL\":" << cfg.trtisUseShm << ","
         << "\"kfProcessVar\":" << format(cfg.QN) << ","
         << "\"kfMeasurementVar\":" << format(cfg.RN)
         << "}";
     return out;
 }
-

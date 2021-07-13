@@ -36,15 +36,18 @@
 #include <MPFDetectionObjects.h>
 
 
+
 /** ****************************************************************************
 * logging shorthand macros
 ****************************************************************************** */
-#define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log, MSG) }
-#define LOG_DEBUG(MSG){ LOG4CXX_DEBUG(Config::log, MSG) }
-#define LOG_INFO(MSG){ LOG4CXX_INFO (Config::log, MSG) }
-#define LOG_WARN(MSG){ LOG4CXX_WARN (Config::log, MSG) }
-#define LOG_ERROR(MSG){ LOG4CXX_ERROR(Config::log, MSG) }
-#define LOG_FATAL(MSG){ LOG4CXX_FATAL(Config::log, MSG) }
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define LOG_PREFIX "./" << __FILENAME__ << ":" << __LINE__ << " - "
+#define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log,LOG_PREFIX << MSG) }
+#define LOG_DEBUG(MSG){ LOG4CXX_DEBUG(Config::log,LOG_PREFIX << MSG) }
+#define LOG_INFO(MSG){ LOG4CXX_INFO (Config::log,LOG_PREFIX << MSG) }
+#define LOG_WARN(MSG){ LOG4CXX_WARN (Config::log,LOG_PREFIX << MSG) }
+#define LOG_ERROR(MSG){ LOG4CXX_ERROR(Config::log,LOG_PREFIX << MSG) }
+#define LOG_FATAL(MSG){ LOG4CXX_FATAL(Config::log,LOG_PREFIX << MSG) }
 
 
 class Config {
@@ -53,8 +56,8 @@ public:
     float confidenceThreshold;
 
     /// non-maximum suppression threshold to remove redundant bounding boxes
-    float nmsThresh;                
-    
+    float nmsThresh;
+
     /// number of class labels and confidence scores to return for a bbox
     int numClassPerRegion;
 
@@ -112,6 +115,36 @@ public:
 
     bool enableDebug;
 
+    /// enable inference server use
+    bool trtisEnabled;
+
+    /// triton inference server to use
+    std::string trtisServer;
+
+    /// triton inference server model to use
+    std::string trtisModelName;
+
+    /// version of model (e.g. -1 for latest)
+    int trtisModelVersion;
+
+    /// inference server maximum number of concurrent video frame inferencing request
+    int trtisMaxInferConcurrency;
+
+    /// inference server lient request timeout in micro-seconds
+    uint32_t trtisClientTimeout;
+
+    /// max setup attempts for inference server connection
+    int trtisMaxConnectionSetupAttempts;
+
+    /// verbose inference server client mode
+    bool trtisVerboseClient;
+
+    /// use ssl encryption with inference server client
+    bool trtisUseSSL;
+
+    /// use shared memory for client-server communication
+    bool trtisUseShm;
+
     /// shared log object
     static const log4cxx::LoggerPtr log;
 
@@ -120,7 +153,7 @@ public:
 };
 
 /// Dump Config to a stream
-std::ostream &operator<<(std::ostream &out, const Config &cfg);  
+std::ostream &operator<<(std::ostream &out, const Config &cfg);
 
 
 #endif //OPENMPF_COMPONENTS_CONFIG_H

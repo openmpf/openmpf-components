@@ -24,7 +24,6 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include "OcvYoloDetection.h"
 
 #include <functional>
 #include <list>
@@ -44,6 +43,11 @@
 #include "Config.h"
 #include "DetectionLocation.h"
 #include "Track.h"
+#include "grpc_client.h"
+#include "TritonTensorMeta.h"
+#include "TritonClient.h"
+#include "TritonInferencer.h"
+#include "OcvYoloDetection.h"
 
 
 using namespace MPF::COMPONENT;
@@ -334,6 +338,16 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
 
         Config config(job.job_properties);
         auto& yoloNetwork = GetYoloNetwork(job.job_properties, config);
+
+        if(config.trtisEnabled){  // force efficient batch size
+          if(config.frameBatchSize > yoloNetwork.tritonInferencer.maxBatchSize){
+            throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY,
+               std::string("job parameter'DETECTION_FRAME_BATCH_SIZE' cannot be ")
+               + std::string(" greater than inference server's max batch size = ")
+               + std::to_string(yoloNetwork.tritonInferencer.maxBatchSize));
+          }
+        }
+
         MPFAsyncVideoCapture videoCapture(job);
 
         while (true) {
@@ -345,15 +359,30 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
                                             << frameBatch.back().idx << "]");
 
             // look for new detections
-            std::vector<std::vector<DetectionLocation>> detectionsVec
-                    = yoloNetwork.GetDetections(frameBatch, config);
+            // std::vector<std::vector<DetectionLocation>> detectionsVec
+            //         = yoloNetwork.GetDetections(frameBatch, config);
+            // assert(frameBatch.size() == detectionsVec.size());
+            // for (int i = 0; i < frameBatch.size(); i++) {
+            //     ProcessFrameDetections(config, frameBatch.at(i), std::move(detectionsVec.at(i)),
+            //                            inProgressTracks,
+            //                            completedTracks);
+            // }
 
-            assert(frameBatch.size() == detectionsVec.size());
-            for (int i = 0; i < frameBatch.size(); i++) {
-                ProcessFrameDetections(config, frameBatch.at(i), std::move(detectionsVec.at(i)),
-                                       inProgressTracks,
-                                       completedTracks);
-            }
+            yoloNetwork.GetDetections(
+              frameBatch,
+              [&config, &frameBatch, &inProgressTracks, &completedTracks](std::vector<std::vector<DetectionLocation>> detectionsVec){
+
+                assert(frameBatch.size() == detectionsVec.size());
+                for (int i = 0; i < frameBatch.size(); i++) {
+                  ProcessFrameDetections(config, frameBatch.at(i), std::move(detectionsVec.at(i)),
+                                         inProgressTracks,
+                                         completedTracks);
+
+                }
+              },
+              config);
+
+
         }
 
         // convert any remaining active tracks to MPFVideoTracks

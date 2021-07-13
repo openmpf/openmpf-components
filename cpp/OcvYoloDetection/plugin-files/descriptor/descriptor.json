@@ -34,7 +34,7 @@
           "name": "MODEL_NAME",
           "description": "Name of YOLO model to run.",
           "type": "STRING",
-          "defaultValue": "tiny yolo"
+          "defaultValue": "yolo"
         },
         {
           "name": "MODELS_DIR_PATH",
@@ -46,7 +46,7 @@
           "name": "NET_INPUT_IMAGE_SIZE",
           "description": "Scaled image width and height for detection network input (e.g. 320, 416, or 608).",
           "type": "INT",
-          "defaultValue": "416"
+          "defaultValue": "608"
         },
         {
           "name": "DETECTION_NMS_THRESHOLD",
@@ -167,6 +167,60 @@
           "description": "If true will fallback to CPU only when GPU fails to initialize.",
           "type": "BOOLEAN",
           "propertiesKey": "detection.use.cpu.when.gpu.problem"
+        },
+        {
+          "name": "ENABLE_TRTIS",
+          "description": "If true, inferencing will be performed via a configured inference server.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "TRTIS_SERVER",
+          "description": "NVIDIA Triton inference server url and port to use for inferencing.",
+          "type": "string",
+          "defaultValue": ""
+        },
+        {
+          "name": "TRTIS_MODEL_VERSION",
+          "description": "Inference server model version to use for inferencing.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "MAX_INFER_CONCURRENCY",
+          "descriptions": "Simultaneous client connections to inference server, should be set to number of GPUs available on inference server",
+          "type": "INT",
+          "defaultValue": "4"
+        },
+        {
+          "name": "INFER_TIMEOUT_US",
+          "description": "Time in micro-sec after which inference server client requests timeout.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "TRTIS_MAX_CONNECTION_SETUP_ATTEMPTS",
+          "description": "Maximum numer of retry attempts for establishing a connection to the inference server",
+          "type": "INT",
+          "defaultValue": "3"
+        },
+        {
+          "name": "TRTIS_VERBOSE_CLIENT",
+          "description": "Inference server client messaging generates verbose log messages",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "TRTIS_USE_SSL",
+          "description": "Inference server client connection uses SSL",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "TRTIS_USE_SHM",
+          "description": "Inference server client communication uses shared memory (requires client and server to be on same machine)",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
         }
       ]
     }

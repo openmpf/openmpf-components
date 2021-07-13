@@ -57,7 +57,18 @@ public:
             const std::vector<Frame> &frames,
             const Config &config);
 
+    using ProcessFrameDetectionsFunc =
+      std::function<void(std::vector<std::vector<DetectionLocation>>)>;
+
+    void GetDetections(
+            std::vector<Frame> &frames,
+            ProcessFrameDetectionsFunc pFun,
+            const Config &config);
+
+
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
+
+    TritonInferencer tritonInferencer;
 
 private:
     log4cxx::LoggerPtr log_ = log4cxx::Logger::getLogger("OcvYoloDetection");
@@ -77,14 +88,37 @@ private:
     std::function<bool(const std::string&)> classFilter_;
 
 
-    std::vector<DetectionLocation> ExtractFrameDetections(
+    std::vector<std::vector<DetectionLocation>> GetDetectionsCvdnn(
+        const std::vector<Frame> &frames,
+        const Config &config);
+
+    std::vector<DetectionLocation> ExtractFrameDetectionsCvdnn(
             int frameIdx, const Frame &frame, const std::vector<cv::Mat> &layerOutputs,
             const Config &config) const;
 
-    DetectionLocation CreateDetectionLocation(const Frame &frame,
-                                              const cv::Rect2d &boundingBox,
-                                              const cv::Mat1f &scores,
-                                              const Config &config) const;
+    DetectionLocation CreateDetectionLocationCvdnn(
+      const Frame &frame,
+      const cv::Rect2d &boundingBox,
+      const cv::Mat1f &scores,
+      const Config &config) const;
+
+
+    std::vector<std::vector<DetectionLocation>> GetDetectionsTrtis(
+        const std::vector<Frame> &frames,
+        const Config &config);
+
+    std::vector<DetectionLocation> ExtractFrameDetectionsTrtis(
+        const Frame &frame, float* data,
+        const Config &config) const;
+
+    DetectionLocation CreateDetectionLocationTrtis(
+      const Frame &frame,
+      const cv::Rect2d &boundingBox,
+      const float score,
+      const int classIdx,
+      const Config &config) const;
+
+
 };
 
 

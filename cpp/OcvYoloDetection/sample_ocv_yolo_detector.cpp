@@ -24,15 +24,22 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include "OcvYoloDetection.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string>
 #include <iostream>
 
+#include <grpc_client.h>
 #include <QCoreApplication>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
+
+#include "Config.h"
+#include "TritonTensorMeta.h"
+#include "TritonClient.h"
+#include "TritonInferencer.h"
+
+#include "OcvYoloDetection.h"
 
 using namespace std;
 using namespace MPF;

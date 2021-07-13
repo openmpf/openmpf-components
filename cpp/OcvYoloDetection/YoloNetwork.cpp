@@ -24,23 +24,33 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include "YoloNetwork.h"
 
 #include <algorithm>
 #include <fstream>
 #include <list>
 #include <utility>
-
+#include <grpc_client.h>
 #include <MPFDetectionException.h>
 #include <Utils.h>
 
+#include "util.h"
+#include "Config.h"
+#include "TritonTensorMeta.h"
+#include "TritonClient.h"
+#include "TritonInferencer.h"
+#include "YoloNetwork.h"
 #include "WhitelistFilter.h"
 
 
 using namespace MPF::COMPONENT;
 
-namespace {
+// match triton yololayer.h  constant
+static constexpr int MAX_OUTPUT_BBOX_COUNT = 1000;
+static constexpr int OUTPUT_BLOB_DIM_1 = MAX_OUTPUT_BBOX_COUNT * 7 + 1;
 
+namespace {
+/** ****************************************************************************
+***************************************************************************** */
     int ConfigureCudaDeviceIfNeeded(const Config &config, log4cxx::LoggerPtr& log) {
         if (config.cudaDeviceId < 0) {
             if (cv::cuda::getCudaEnabledDeviceCount() > 0) {
@@ -75,7 +85,8 @@ namespace {
         }
     }
 
-
+/** ****************************************************************************
+***************************************************************************** */
     cv::dnn::Net LoadNetwork(const ModelSettings &modelSettings, int cudaDeviceId,
                              log4cxx::LoggerPtr& log) {
 
@@ -103,7 +114,8 @@ namespace {
         return net;
     }
 
-
+/** ****************************************************************************
+***************************************************************************** */
     int GetNumClasses(const cv::dnn::Net &net, const Config &config) {
         int outLayerId = net.getUnconnectedOutLayers().front();
         std::vector<cv::dnn::MatShape> inShapes;
@@ -119,7 +131,8 @@ namespace {
         return numOutputFeatures - 5;
     }
 
-
+/** ****************************************************************************
+***************************************************************************** */
     std::vector<std::string> LoadNames(const cv::dnn::Net &net,
                                        const ModelSettings &modelSettings,
                                        const Config &config) {
@@ -159,7 +172,8 @@ namespace {
         throw MPFDetectionException(MPF_COULD_NOT_READ_DATAFILE, error.str());
     }
 
-
+/** ****************************************************************************
+***************************************************************************** */
     cv::Mat1f LoadConfusionMatrix(const std::string &path, int numNames) {
         if (path.empty()) {
             return {};
@@ -212,7 +226,8 @@ namespace {
         return confusionMatrix;
     }
 
-
+/** ****************************************************************************
+***************************************************************************** */
     std::function<bool(const std::string&)> GetClassFilter(
             const std::string& whiteListPath, const std::vector<std::string> &names) {
         if (whiteListPath.empty()) {
@@ -223,7 +238,8 @@ namespace {
         }
     }
 
-
+/** ****************************************************************************
+***************************************************************************** */
     cv::Mat ResizeFrame(const Frame &frame, const Config &config) {
         int maxDimension = std::max(frame.data.rows, frame.data.cols);
         cv::Mat resizedFrame;
@@ -247,12 +263,15 @@ namespace {
         return resizedFrame;
     }
 
-
-    cv::Mat ConvertToBlob(const std::vector<Frame> &frames, const Config &config) {
+/** ****************************************************************************
+***************************************************************************** */
+//    cv::Mat ConvertToBlob(const std::vector<Frame> &frames, const Config &config) {
+  cv::Mat ConvertToBlob(std::vector<Frame>::const_iterator start, std::vector<Frame>::const_iterator stop, const Config &config) {
         std::vector<cv::Mat> resizedFrames;
-        resizedFrames.reserve(frames.size());
-        for (const auto& frame : frames) {
-            resizedFrames.push_back(ResizeFrame(frame, config));
+        resizedFrames.reserve(stop - start);
+        while(start != stop){
+            resizedFrames.push_back(ResizeFrame(*start, config));
+            start++;
         }
         return cv::dnn::blobFromImages(
                 resizedFrames,
@@ -262,7 +281,8 @@ namespace {
                 true);
     }
 
-
+/** ****************************************************************************
+***************************************************************************** */
     std::vector<int> GetTopScoreIndicesDesc(const cv::Mat1f &scores, int numScoresToGet,
                                             float confidenceThreshold) {
         auto scoreIsGreater = [&scores](int i1, int i2) {
@@ -286,8 +306,8 @@ namespace {
     }
 } // end anonymous namespace
 
-
-
+/** ****************************************************************************
+***************************************************************************** */
 YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
         : modelSettings_(std::move(model_settings))
         , cudaDeviceId_(ConfigureCudaDeviceIfNeeded(config, log_))
@@ -296,14 +316,70 @@ YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
         , confusionMatrix_(LoadConfusionMatrix(modelSettings_.confusionMatrixFile, names_.size()))
         , classWhiteListPath_(config.classWhiteListPath)
         , classFilter_(GetClassFilter(classWhiteListPath_, names_))
-{
+        , tritonInferencer(config) {
+  if(config.trtisEnabled){
+    if( tritonInferencer.inputsMeta.size() != 1){
+      std::stringstream ss;
+      ss << "configured yolo inference server model \"" << tritonInferencer.modelName
+         << "\" Ver. " << tritonInferencer.modelVersion << " has "
+         << tritonInferencer.inputsMeta.size() << " inputs, only one is expected";
+      throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
+    }
+    if(   tritonInferencer.inputsMeta.at(0).shape[0] != 3
+       || tritonInferencer.inputsMeta.at(0).shape[1] != tritonInferencer.inputsMeta.at(0).shape[2]
+       || tritonInferencer.inputsMeta.at(0).shape[2] != config.netInputImageSize){
+      std::stringstream ss;
+      ss << "configured yolo inference server model \"" << tritonInferencer.modelName
+         << "\" Ver. " << tritonInferencer.modelVersion << " has 1st input shape "
+         << tritonInferencer.inputsMeta.at(0).shape << ", but data has shape "
+         << std::vector<int>{3,config.netInputImageSize,config.netInputImageSize};
+      throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
+    }
+    if(  tritonInferencer.outputsMeta.at(0).shape[0] != OUTPUT_BLOB_DIM_1
+      || tritonInferencer.outputsMeta.at(0).shape[1] != 1
+      || tritonInferencer.outputsMeta.at(0).shape[2] != 1){
+      std::stringstream ss;
+      ss << "configured yolo inference server model \"" << tritonInferencer.modelName
+         << "\" Ver. " << tritonInferencer.modelVersion << " has 1st output shape "
+         << tritonInferencer.outputsMeta.at(0).shape << ", but data has shape "
+         << std::vector<int>{OUTPUT_BLOB_DIM_1,1,1} << " was expected.";
+      throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
 
+    }
+  }
 }
 
-
+/** ****************************************************************************
+***************************************************************************** */
 std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetections(
+        const std::vector<Frame> &frames, const Config &config){
+    if(!config.trtisEnabled){
+      return GetDetectionsCvdnn(frames, config);
+    }else{
+      return GetDetectionsTrtis(frames, config);
+    }
+ }
+
+/** ****************************************************************************
+***************************************************************************** */
+void YoloNetwork::GetDetections(
+        std::vector<Frame> &frames,
+        ProcessFrameDetectionsFunc pFunc,
+        const Config &config){
+    if(!config.trtisEnabled){
+      pFunc(GetDetectionsCvdnn(frames, config));
+    }else{
+      pFunc(GetDetectionsTrtis(frames, config));
+    }
+ }
+
+
+/** ****************************************************************************
+***************************************************************************** */
+std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetectionsCvdnn(
         const std::vector<Frame> &frames, const Config &config) {
-    net_.setInput(ConvertToBlob(frames, config));
+
+    net_.setInput(ConvertToBlob(frames.begin(),frames.end(), config));
 
     // There are different output layers for different scales, e.g. yolo_82, yolo_94, yolo_106 for yolo v3.
     // Each result is a row vector like: [center_x, center_y, width, height, objectness, ...class_scores]
@@ -316,13 +392,14 @@ std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetections(
     detectionsGroupedByFrame.reserve(frames.size());
     for (int frameIdx = 0; frameIdx < frames.size(); ++frameIdx)  {
         detectionsGroupedByFrame.push_back(
-                ExtractFrameDetections(frameIdx, frames.at(frameIdx), layerOutputs, config));
+                ExtractFrameDetectionsCvdnn(frameIdx, frames.at(frameIdx), layerOutputs, config));
     }
     return detectionsGroupedByFrame;
 }
 
-
-std::vector<DetectionLocation> YoloNetwork::ExtractFrameDetections(
+/** ****************************************************************************
+***************************************************************************** */
+std::vector<DetectionLocation> YoloNetwork::ExtractFrameDetectionsCvdnn(
         int frameIdx, const Frame &frame, const std::vector<cv::Mat> &layerOutputs,
         const Config &config) const {
 
@@ -382,17 +459,20 @@ std::vector<DetectionLocation> YoloNetwork::ExtractFrameDetections(
     std::vector<DetectionLocation> detections;
     detections.reserve(keepIndices.size());
     for (int keepIdx : keepIndices) {
-        detections.push_back(CreateDetectionLocation(frame, boundingBoxes.at(keepIdx),
+        detections.push_back(CreateDetectionLocationCvdnn(frame, boundingBoxes.at(keepIdx),
                                                      scoreMats.at(keepIdx), config));
     }
     return detections;
 }
 
+/** ****************************************************************************
+***************************************************************************** */
+DetectionLocation YoloNetwork::CreateDetectionLocationCvdnn(
+  const Frame &frame,
+  const cv::Rect2d &boundingBox,
+  const cv::Mat1f &scores,
+  const Config &config) const {
 
-DetectionLocation YoloNetwork::CreateDetectionLocation(const Frame &frame,
-                                                       const cv::Rect2d &boundingBox,
-                                                       const cv::Mat1f &scores,
-                                                       const Config &config) const {
     std::vector<int> topScoreIndices = GetTopScoreIndicesDesc(scores, config.numClassPerRegion,
                                                               config.confidenceThreshold);
     auto topScoreIdxIter = topScoreIndices.begin();
@@ -415,7 +495,6 @@ DetectionLocation YoloNetwork::CreateDetectionLocation(const Frame &frame,
         cv::normalize(scores, classFeature);
     }
     else {
-        // TODO Should confusionMatrix_ be applied prior to selecting the top class?
         cv::normalize(scores * confusionMatrix_, classFeature);
     }
 
@@ -427,7 +506,163 @@ DetectionLocation YoloNetwork::CreateDetectionLocation(const Frame &frame,
     return detection;
 }
 
+/** ****************************************************************************
+***************************************************************************** */
+// std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetectionsTrtis(
+//         const std::vector<Frame> &frames, const Config &config) {
 
+//   std::vector<std::vector<DetectionLocation>> detectionsGroupedByFrame;
+//   detectionsGroupedByFrame.reserve(frames.size());
+
+//   std::ptrdiff_t maxBatchSize = 3;
+//   //std::ptrdiff_t maxBatchSize = tritonInferencer.getMaxBatchSize();
+//   std::vector<Frame>::const_iterator startFrame = frames.begin();
+
+//   while(startFrame != frames.end()){
+//     std::ptrdiff_t batchSize = std::min(maxBatchSize, frames.end() - startFrame);
+//     std::vector<Frame>::const_iterator stopFrame = startFrame + batchSize;
+//     //LOG_TRACE("Sending " << batchSize << " frame inference batch");
+
+//     // inference blob to get output blob  N x OUTPUT_BLOB_DIM_1 x 1 x 1
+//     // 1st float is number of detections, subsequent numbers are up to OUTPUT_BLOB_DIM_1 detections[7]
+
+//     cv::Mat outBlob = tritonInferencer.infer(std::vector<cv::Mat>{ConvertToBlob(startFrame, stopFrame, config)}).at(0);
+//     //cv::Mat outBlob = tritonInferencer.getOutput("prob");
+
+//     //LOG_TRACE("received outBlob[" << outBlob.size[0] << "," <<outBlob.size[1] << "," << outBlob.size[2] << "," << outBlob.size[3] <<"]");
+//     assert(outBlob.size[0] == batchSize
+//         && outBlob.size[1] == OUTPUT_BLOB_DIM_1
+//         && outBlob.size[2] == 1
+//         && outBlob.size[3] == 1);
+
+//     // parse output blob
+//     for(int frameIdx = 0; startFrame != stopFrame; ++startFrame,++frameIdx){
+//       //LOG_TRACE("processing batch_frame[" << frameIdx << "]");
+//       detectionsGroupedByFrame.push_back(
+//         ExtractFrameDetectionsTrtis(*startFrame, outBlob.ptr<float>(frameIdx,0),
+//          config));
+//     }
+
+//     startFrame = stopFrame;
+//     stopFrame = startFrame + std::min(maxBatchSize, frames.end() - startFrame);
+//   }
+
+//   return detectionsGroupedByFrame;
+// }
+
+/** ****************************************************************************
+***************************************************************************** */
+std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetectionsTrtis(
+        const std::vector<Frame> &frames, const Config &config) {
+
+  std::vector<std::vector<DetectionLocation>> detectionsGroupedByFrame;
+  detectionsGroupedByFrame.reserve(frames.size());
+
+  // inference blob to get output blob  N x OUTPUT_BLOB_DIM_1 x 1 x 1
+  // 1st float is number of detections, subsequent numbers are up to OUTPUT_BLOB_DIM_1 detections[7]
+  // trtis yolo only has one output "prob" so .at(0)
+  cv::Mat outBlob = tritonInferencer.infer(std::vector<cv::Mat>{ConvertToBlob(frames.begin(), frames.end(), config)}).at(0);
+
+  //LOG_TRACE("received outBlob[" << outBlob.size[0] << "," <<outBlob.size[1] << "," << outBlob.size[2] << "," << outBlob.size[3] <<"]");
+  assert(outBlob.size[0] == frames.size()
+      && outBlob.size[1] == OUTPUT_BLOB_DIM_1
+      && outBlob.size[2] == 1
+      && outBlob.size[3] == 1);
+
+  // parse output blob
+  int frameIdx = 0;
+  for(const Frame& frame : frames){
+      //LOG_TRACE("processing batch_frame[" << frameIdx << "]");
+    detectionsGroupedByFrame.push_back(
+      ExtractFrameDetectionsTrtis(frame, outBlob.ptr<float>(frameIdx,0), config));
+    frameIdx++;
+  }
+
+  return detectionsGroupedByFrame;
+}
+
+/** ****************************************************************************
+***************************************************************************** */
+
+
+std::vector<DetectionLocation> YoloNetwork::ExtractFrameDetectionsTrtis(
+        const Frame &frame, float* data, const Config &config) const {
+
+  float maxFrameDim = std::max(frame.data.cols, frame.data.rows);
+  int horizontalPadding = (maxFrameDim - frame.data.cols) / 2;
+  int verticalPadding = (maxFrameDim - frame.data.rows) / 2;
+  cv::Vec2f paddingPerSide(horizontalPadding, verticalPadding);
+
+  // cv::dnn::NMSBoxes requires a std::vector<cv::Rect2d> and a std::vector<float>
+  std::vector<cv::Rect2d> boundingBoxes;
+  std::vector<float> topConfidences;
+  std::vector<int> classifications;
+
+  int numDetections = static_cast<int>(data[0]);
+  LOG_TRACE("extracting " << numDetections << " detections");
+  // dmat[d,0...6] = [x_center, y_center, width, height, det_score, class, class_score]
+  cv::Mat dmat(OUTPUT_BLOB_DIM_1 - 1, 7, CV_32F, &data[1]);
+
+  float rescale2Frame = maxFrameDim / config.netInputImageSize;
+  cv::Size scoreVecSize(1,names_.size());
+  for(int det = 0; det < numDetections; ++det){
+    float maxConfidence = dmat.at<float>(det, 6);
+    int classIdx = static_cast<int>(dmat.at<float>(det, 5));
+    const std::string &maxClass = names_.at(classIdx);
+
+    if(maxConfidence >= config.confidenceThreshold && classFilter_(maxClass)){
+      auto center = cv::Vec2f(dmat.at<float>(det,0),
+                              dmat.at<float>(det,1)) * rescale2Frame;
+      auto size = cv::Vec2f(dmat.at<float>(det,2),
+                            dmat.at<float>(det,3)) * rescale2Frame;
+      auto topLeft = (center - size / 2.0) - paddingPerSide;
+
+      boundingBoxes.emplace_back(topLeft(0), topLeft(1), size(0), size(1));
+      topConfidences.push_back(maxConfidence);
+      classifications.push_back(classIdx);
+    }
+  }
+
+  std::vector<int> keepIndecies;
+  cv::dnn::NMSBoxes(boundingBoxes, topConfidences, config.confidenceThreshold,
+    config.nmsThresh, keepIndecies);
+
+  std::vector<DetectionLocation> detections;
+  detections.reserve(keepIndecies.size());
+  for(int keepIdx : keepIndecies){
+    detections.push_back(
+      CreateDetectionLocationTrtis(frame, boundingBoxes.at(keepIdx),
+             topConfidences.at(keepIdx), classifications.at(keepIdx), config));
+  }
+  return detections;
+}
+
+/** ****************************************************************************
+***************************************************************************** */
+DetectionLocation YoloNetwork::CreateDetectionLocationTrtis(
+  const Frame &frame,
+  const cv::Rect2d &boundingBox,
+  const float score,
+  const int classIdx,
+  const Config &config) const {
+
+  cv::Mat1f classFeature(cv::Size(1,names_.size()), 0.0);
+  classFeature.at<float>(0, classIdx) = 1.0;
+  if (! confusionMatrix_.empty()) {
+     classFeature = classFeature * confusionMatrix_;
+  }
+
+  DetectionLocation detection(config, frame, boundingBox, score,
+                              std::move(classFeature), cv::Mat());
+  detection.detection_properties.emplace("CLASSIFICATION", names_.at(classIdx));
+  detection.detection_properties.emplace("CLASSIFICATION LIST", names_.at(classIdx));
+  detection.detection_properties.emplace("CLASSIFICATION CONFIDENCE LIST", std::to_string(score));
+  return detection;
+
+}
+
+/** ****************************************************************************
+***************************************************************************** */
 bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
     return modelSettings_.networkConfigFile == modelSettings.networkConfigFile
             && modelSettings_.namesFile == modelSettings.namesFile
@@ -436,4 +671,3 @@ bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config 
             && config.cudaDeviceId == cudaDeviceId_
             && config.classWhiteListPath == classWhiteListPath_;
 }
-
