@@ -105,9 +105,32 @@ public class TestTikaTextDetectionComponent {
                 System.out.println(String.format("  Confidence = %f", track.getConfidence()));
                 System.out.println(String.format("  Text = %s", track.getDetectionProperties().get("TEXT")));
                 System.out.println(String.format("  Language = %s", track.getDetectionProperties().get("TEXT_LANGUAGE")));
+                System.out.println(String.format("  Page = %s", track.getDetectionProperties().get("PAGE_NUM")));
+                System.out.println(String.format("  Section = %s", track.getDetectionProperties().get("SECTION_NUM")));
                 assertEquals("Confidence does not match.", -1.0f, track.getConfidence(), 0.1f);
             }
         }
+    }
+
+    @Test
+    public void testGetDetectionsPDFFile() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.pdf").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "false");
+
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        assertEquals("Number of expected tracks does not match.", 4, tracks.size());
+        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"),
+                containsString("OpenMPF"));
+        assertThat(tracks.get(3).getDetectionProperties().get("PAGE_NUM"),
+                containsString("3"));
+        assertThat(tracks.get(3).getDetectionProperties().get("TEXT"),
+                containsString("page 3"));
     }
 
     @Test

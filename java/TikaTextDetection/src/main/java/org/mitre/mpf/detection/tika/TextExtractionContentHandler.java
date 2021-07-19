@@ -62,13 +62,19 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     public void startElement (String uri, String localName, String qName, Attributes atts) {
         if (atts.getValue("class") != null) {
             if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) {
-                startPage();
+                if (skipTitle) {
+                    // Skip metadata section of pdf.
+                    skipTitle = false;
+                    resetPage();
+                } else {
+                    startPage();
+                }
             }
             if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
                 if (skipTitle) {
-                    //Skip metadata section of pptx.
+                    // Skip metadata section of pptx.
                     skipTitle = false;
-                    //Discard title text. (not part of slide text nor master slide content).
+                    // Discard title text. (not part of slide text nor master slide content).
                     resetPage();
                 } else {
                     startPage();

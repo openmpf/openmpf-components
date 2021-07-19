@@ -10,6 +10,14 @@ Contains public domain text from the following sources:
     Declaration of Human Rights.
     Public Domain
 
+# test-tika-detection.pdf
+Contains text and images from the following sources (OpenMPF One Pager):
+
+    https://openmpf.github.io/pdf/OpenMPF%20One-Pager.pdf
+    OpenMPF: Bridging the Gap in Media Analytics
+    @2018 The MITRE Corporation.
+    All rights reserved. Approved for Public Release 16-3034.
+
 # test-tika-detection.docx
 Contains custom text for testing Tika text detection.
 
