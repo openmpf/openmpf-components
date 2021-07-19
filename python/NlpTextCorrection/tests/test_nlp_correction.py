@@ -94,6 +94,58 @@ class TestNlpCorrection(unittest.TestCase):
 
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
 
+    def test_unicode_error(self):
+        job = mpf.GenericJob(
+            job_name='test-file',
+            data_uri=self._get_test_file("data/unicode_error.txt"),
+            job_properties={},
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        expected_text = "你好"
+
+        results = list(NlpCorrectionComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
+        job = mpf.GenericJob(
+            job_name='test-file',
+            data_uri=self._get_test_file("data/unicode_no_error.txt"),
+            job_properties={},
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        expected_text = "Hello, no Unicode errors here."
+
+        results = list(NlpCorrectionComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
+    def test_full_suggestions_output(self):
+        job = mpf.GenericJob(
+            job_name='test-file',
+            data_uri=self._get_test_file("data/full_output.txt"),
+            job_properties=dict(FULL_TEXT_CORRECTION_OUTPUT=True),
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        expected_text = "This [sentence, sentience, entrance, stance, senescent] ends in a [conman, comma, command, " \
+                        "commas, common, cowman, com man, com-man, comm an, comm-an, comma n, coma] ," \
+                        "\nAnd this one two periods .." \
+                        "\n\'\' Begin with quotes here" \
+                        "\n\n** stars **stars ..periods commas,, periods .." \
+                        "\n\ninfinite: : a thing,"
+
+        results = list(NlpCorrectionComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

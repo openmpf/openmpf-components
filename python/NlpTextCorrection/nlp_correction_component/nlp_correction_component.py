@@ -88,7 +88,7 @@ class NlpCorrectionComponent(object):
                 self.initialized = True
             else:
                 if custom_dictionary_path != \
-                        self.wrapper.get_custom_dictionary_path():\
+                        self.wrapper.get_custom_dictionary_path():
                     self.wrapper = HunspellWrapper(job.job_properties, job.job_name)
 
             if ff_track is not None:
@@ -133,54 +133,61 @@ class HunspellWrapper(object):
 
         self._custom_dictionary_path = job_properties.get('CUSTOM_DICTIONARY', "")
 
-
         # load custom dictionary if one is specified in the job properties
         if self._custom_dictionary_path != "":
             if os.path.exists(self._custom_dictionary_path):
                 self._hunspell.add_dic(self._custom_dictionary_path)
             else:
                 log.exception(f'[{job_name}] '
-                              f'Failed to complete job due incorrect file path for the custom dictionary:'
-                              f'[{self._custom_dictionary_path}]')
+                              f'Failed to complete job due incorrect file path for the custom dictionary: '
+                              f'"{self._custom_dictionary_path}"')
                 raise mpf.DetectionException(
-                    'Invalid path provided for custom dictionary',
+                    f'Invalid path provided for custom dictionary: '
+                    f'"{self._custom_dictionary_path}"',
                     mpf.DetectionError.COULD_NOT_READ_DATAFILE)
 
     # Adds corrected text to detection_properties.
     # Detection_properties is modified in place.
     def get_suggestions(self, original_text, detection_properties):
-        log.debug(f'Attempting to correct text {original_text}')
+        log.debug(f'Attempting to correct text: "{original_text}"')
+        self._unicode_error = False
 
-        suggestions = re.sub(r'[a-zA-Z]+\'?[a-zA-Z]*', self.correct_text, original_text)
+        def repl(match: re.Match) -> str:
+            spacer = match.group(1)
+            leading_punc = match.group(2)
+            word = match.group(3)
+            trailing_punc = match.group(4)
+
+            try:
+                if self._hunspell.spell(word):
+                    corrected_text = word
+                else:
+                    temp = self._hunspell.suggest(word)
+                    if len(temp) > 0:
+                        if self._full_output:
+                            corrected_text = '[' + ', '.join(temp) + ']'
+                        else:
+                            corrected_text = temp[0]
+                    else:
+                        corrected_text = word
+
+            except UnicodeEncodeError:
+                self._unicode_error = True
+                corrected_text = word
+
+            return spacer + leading_punc + corrected_text + trailing_punc
+
+        punc = r'!"#$%&\'()*+,-./:;<=>?@[\]^_`{|}~'  # based on string.punctuation.
+
+        suggestions = re.sub(fr'(\s|^)([{punc}]*)([^\s]*\w)([{punc}]*)', repl, original_text)
 
         if self._unicode_error:
-            log.warning("Encountered words with unsupported errors")
+            log.warning("Encountered words with unsupported characters")
 
         detection_properties["CORRECTED TEXT"] = suggestions
         log.debug("Successfully corrected text")
-        log.debug(f'Corrected text: {suggestions}')
+        log.debug(f'Corrected text: "{suggestions}"')
         return True
-
-    def correct_text(self, word_match):
-        word = word_match.group(0)
-
-        try:
-            if self._hunspell.spell(word):
-                return word
-
-            temp = self._hunspell.suggest(word)
-            if len(temp) > 0:
-                if self._full_output:
-                    return '[' + ', '.join(temp) + ']'
-                else:
-                    return temp[0]
-            else:
-                return word
-        except UnicodeEncodeError:
-            self._unicode_error = True
-            return word
 
     def get_custom_dictionary_path(self):
         return self._custom_dictionary_path
-
-
