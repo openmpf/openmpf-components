@@ -93,7 +93,7 @@ public class TestTikaImageDetectionComponent {
 
     @Test
     public void testGetDetectionsGeneric() throws IOException, MPFComponentDetectionError {
-        String mediaPath = this.getClass().getResource("/data/TestImageExtraction.pdf").getPath();
+        String mediaPath = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
         Map<String, String> jobProperties = new HashMap<>();
         Map<String, String> mediaProperties = new HashMap<>();
 
@@ -123,14 +123,14 @@ public class TestTikaImageDetectionComponent {
         assertEquals("Number of expected tracks does not match.", 5 ,tracks.size());
         // Test each output type.
 
-        //Test extraction of image 0, page 0.
+        //Test extraction of image 0, page 1.
         //Image 0 stored multiple times, should only be reported once.
         MPFGenericTrack testTrack = tracks.get(0);
         assertEquals("Page number not correct", "1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue("Expected image0.jpg in page 1.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
         assertTrue("Invalid file paths for page 1.", pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
 
-        //Test extraction of image 1, page 1.
+        //Test extraction of image 1, page 2.
         //Image 0 should be listed again.
         testTrack = tracks.get(1);
         assertEquals("Page number not correct", "2", testTrack.getDetectionProperties().get("PAGE_NUM"));
@@ -138,7 +138,7 @@ public class TestTikaImageDetectionComponent {
         assertTrue("Expected image1.jpg in page 2.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.jpg"));
         assertTrue("Invalid file paths for page 2.", pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
 
-        //Test extraction of page 2.
+        //Test extraction of page 3.
         //Images 0 and 1 should be listed again.
         testTrack = tracks.get(2);
         assertEquals("Page number not correct", "3", testTrack.getDetectionProperties().get("PAGE_NUM"));
@@ -163,6 +163,41 @@ public class TestTikaImageDetectionComponent {
         assertTrue("Expected image not found (tika-extracted/image0.jpg).", Files.exists(Paths.get(testDir.toString() + "/TestRun/tika-extracted/image0.jpg")));
         assertTrue("Expected image not found (tika-extracted/image1.jpg).", Files.exists((Paths.get(testDir.toString() + "/TestRun/tika-extracted/image1.jpg"))));
         assertTrue("Expected image not found (tika-extracted/image2.jpg).", Files.exists((Paths.get(testDir.toString() + "/TestRun/tika-extracted/image2.jpg"))));
+
+        Files.walk(Paths.get(testDir.toString()))
+                .sorted(Comparator.reverseOrder())
+                .map(Path::toFile)
+                .forEach(File::delete);
+    }
+
+    @Test
+    public void testGetDetectionsFirstPageImagesOnly() throws IOException, MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-first-page-images.pdf").getPath();
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+
+        Path testDir = Files.createTempDirectory("tmp");
+        testDir.toFile().deleteOnExit();
+
+        jobProperties.put("SAVE_PATH", testDir.toString());
+        jobProperties.put("ORGANIZE_BY_PAGE", "false");
+        jobProperties.put("ALLOW_EMPTY_PAGES", "false");
+        MPFGenericJob genericJob = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        markTempFiles(testDir.toFile());
+
+        assertEquals("Number of expected tracks does not match.", 1 ,tracks.size());
+
+        // Test extraction of images 0-3, page 1.
+        // Three images should be stored in one track as the first page output. No other tracks should exist.
+        MPFGenericTrack testTrack = tracks.get(0);
+        assertEquals("Page number not correct", "1", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue("Expected image0.jpg in page 1.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
+        assertTrue("Expected image1.jpg in page 1.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.png"));
+        assertTrue("Expected image2.jpg in page 1.", testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image2.jpg"));
+        assertTrue("Invalid file paths for page 1.", pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
+
 
         Files.walk(Paths.get(testDir.toString()))
                 .sorted(Comparator.reverseOrder())
