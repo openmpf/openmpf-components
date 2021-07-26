@@ -40,6 +40,7 @@
 #include <ImageGeneration.h>
 
 #include "Config.h"
+#include "Frame.h"
 #include "TritonTensorMeta.h"
 #include "TritonClient.h"
 #include "TritonInferencer.h"
@@ -93,8 +94,17 @@ TEST(OcvYoloDetection, TestCorrelator) {
     modelSettings.networkConfigFile = "OcvYoloDetection/models/yolov4-tiny.cfg";
     modelSettings.weightsFile = "OcvYoloDetection/models/yolov4-tiny.weights";
     modelSettings.namesFile = "OcvYoloDetection/models/coco.names";
-    std::vector<std::vector<DetectionLocation>> detections
-            = YoloNetwork(modelSettings, cfg).GetDetections({frame1}, cfg);
+
+    std::vector<Frame> frameBatch = {frame1};
+    std::vector<std::vector<DetectionLocation>> detections;
+    YoloNetwork(modelSettings, cfg).GetDetections(
+      frameBatch,
+      [&detections](std::vector<std::vector<DetectionLocation>> detectionsVec,
+        std::vector<Frame>::const_iterator,
+        std::vector<Frame>::const_iterator){
+        detections = detectionsVec;
+      },
+      cfg);
 
     EXPECT_FALSE(detections[0].empty());
 
@@ -414,6 +424,11 @@ bool comp_xy(const DetectionLocation& l1, const DetectionLocation& l2){
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#define SHOW_DETECTIONS
+#define SHOW_LIMIT 1
+//#define OCV_TEST
+//#define GRPC_TEST
+#define SHM_TEST
 TEST(OcvYoloDetection, TestTritonClient) {
   auto component = initComponent();
 
@@ -422,6 +437,7 @@ TEST(OcvYoloDetection, TestTritonClient) {
                                           {"MAX_INFER_CONCURRENCY", "2"},
                                           {"DETECTION_FRAME_BATCH_SIZE", "3"},
                                           {"NET_INPUT_IMAGE_SIZE", "416"},
+                                          //{"TRTIS_VERBOSE_CLIENT", "true"},
                                           {"TRTIS_USE_SHM","false"}
                                          }, { });
   ImageGeneration iGen;
@@ -441,8 +457,10 @@ TEST(OcvYoloDetection, TestTritonClient) {
                                         "data/dog.jpg","data/dog.jpg","data/dog.jpg","data/dog.jpg"};
 */
   std:vector<Frame> frames;
+  int idx = 0;
   for(auto& file : testFiles){
     frames.emplace_back(cv::imread(file));
+    frames.back().idx = idx++;
     EXPECT_FALSE(frames.back().data.empty()) << "Could not load '" << file << "' test images";
   }
 
@@ -452,104 +470,157 @@ TEST(OcvYoloDetection, TestTritonClient) {
   modelSettings.namesFile = "OcvYoloDetection/models/coco.names";
   YoloNetwork yolo(modelSettings, cfg);
 
-  GOUT("cv::dnn detections:\t");
 
   std::vector<std::vector<DetectionLocation>> detections;
+  std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+  start_time = chrono::high_resolution_clock::now();
+  #ifdef OCV_TEST
+  GOUT("cv::dnn detections:\t");
   auto start_time = chrono::high_resolution_clock::now();
   for(int i=0; i<samples; i++){
-    detections = yolo.GetDetections(frames, cfg);
+    detections.clear();
+    yolo.GetDetections(
+      frames,
+      [&detections](std::vector<std::vector<DetectionLocation>> dets, int){
+        detections.insert(detections.end(), dets.begin(), dets.end());
+     },
+     cfg);
   }
-  auto end_time = chrono::high_resolution_clock::now();
+  #endif
+  std::chrono::time_point<std::chrono::high_resolution_clock> end_time = chrono::high_resolution_clock::now();
   double time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() / (float)samples * 1e-9;
 
   for(int f = 0; f < detections.size(); f++){
-    GOUT("\tframe["<< f << "]");
     std::sort(detections[f].begin(),detections[f].end(),comp_xy);
     iGen.WriteDetectionOutputImage(testFiles[f], mpfImageLocations(detections[f]),
        std::string("frame"+std::to_string(f)+"_OCV.jpg"));
-    for(int d = 0; d < detections[f].size(); d++){
-      GOUT("\t\tdet[" << d <<"]:" << detections[f][d]);
-    }
+    #ifdef SHOW_DETECTIONS
+      if(f < SHOW_LIMIT) {
+        GOUT("\tframe["<< f << "]");
+        for(int d = 0; d < detections[f].size(); d++){
+          GOUT("\t\tdet[" << d <<"]:" << detections[f][d]);
+        }
+      }
+    #endif
   }
 
-
-  cfg.trtisEnabled = true;
-  GOUT("triton detections:\t");
-  component.Init();
-
+  // use Triton via GRPC
   std::vector<std::vector<DetectionLocation>> detectionsTritonGRPC;
+  #ifdef GRPC_TEST
+  GOUT("triton detections:\t");
+  cfg.trtisEnabled = true;
+  component.Init();
   start_time = chrono::high_resolution_clock::now();
   for(int i=0; i<samples; i++){
-    detectionsTritonGRPC = yolo.GetDetections(frames, cfg);
+    detectionsTritonGRPC.clear();
+    yolo.GetDetections(
+      frames,
+      [&detectionsTritonGRPC](std::vector<std::vector<DetectionLocation>> dets, int){
+        detectionsTritonGRPC.insert(detectionsTritonGRPC.end(), dets.begin(), dets.end());
+     },
+     cfg);
   }
+  yolo.tritonInferencer.waitTillAllClientsReleased();
+  #endif
   end_time = chrono::high_resolution_clock::now();
   double grpc_time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() / (float)samples * 1e-9;
 
   for(int f = 0; f < detectionsTritonGRPC.size(); f++){
-    GOUT("\tframe["<< f << "]");
     std::sort(detectionsTritonGRPC[f].begin(),detectionsTritonGRPC[f].end(),comp_xy);
     iGen.WriteDetectionOutputImage(testFiles[f], mpfImageLocations(detectionsTritonGRPC[f]),
        std::string("frame"+std::to_string(f)+"_GRPC.jpg"));
-    for(int d = 0; d < detectionsTritonGRPC[f].size(); d++){
-      GOUT("\t\tdet[" << d <<"]:" << detectionsTritonGRPC[f][d]);
-    }
+    #ifdef SHOW_DETECTIONS
+      if(f < SHOW_LIMIT) {
+        GOUT("\tframe["<< f << "]");
+        for(int d = 0; d < detectionsTritonGRPC[f].size(); d++){
+          GOUT("\t\tdet[" << d <<"]:" << detectionsTritonGRPC[f][d]);
+        }
+      }
+    #endif
   }
 
 
-  cfg.trtisUseShm = true;
-  GOUT("triton shm detections:\t");
-  component.Init();
-
+  // use Triton via Shared Memory
   std::vector<std::vector<DetectionLocation>> detectionsTritonSHM;
+  #ifdef SHM_TEST
+  GOUT("triton shm detections:\t");
+  cfg.trtisEnabled = true;
+  cfg.trtisUseShm = true;
+  component.Init();
   start_time = chrono::high_resolution_clock::now();
   for(int i=0; i<samples; i++){
-    detectionsTritonSHM = yolo.GetDetections(frames, cfg);
+    detectionsTritonSHM.clear();
+    yolo.GetDetections(
+      frames,
+      [&detectionsTritonSHM](std::vector<std::vector<DetectionLocation>> dets,
+        std::vector<Frame>::const_iterator,
+        std::vector<Frame>::const_iterator){
+        detectionsTritonSHM.insert(detectionsTritonSHM.end(), dets.begin(), dets.end());
+     },
+     cfg);
   }
+  yolo.tritonInferencer.waitTillAllClientsReleased();
+  #endif
   end_time = chrono::high_resolution_clock::now();
   double shm_time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count() / (float)samples * 1e-9;
 
   for(int f = 0; f < detectionsTritonSHM.size(); f++){
-     GOUT("\tframe["<< f << "]");
     std::sort(detectionsTritonSHM[f].begin(),detectionsTritonSHM[f].end(),comp_xy);
     iGen.WriteDetectionOutputImage(testFiles[f], mpfImageLocations(detectionsTritonSHM[f]),
        std::string("frame"+std::to_string(f)+"_SHM.jpg"));
-    for(int d = 0; d < detectionsTritonSHM[f].size(); d++){
-      GOUT("\t\tdet[" << d <<"]:" << detectionsTritonSHM[f][d]);
-    }
+    #ifdef SHOW_DETECTIONS
+      if(f < SHOW_LIMIT) {
+        GOUT("\tframe["<< f << "]");
+        for(int d = 0; d < detectionsTritonSHM[f].size(); d++){
+          GOUT("\t\tdet[" << d <<"]:" << detectionsTritonSHM[f][d]);
+        }
+      }
+    #endif
   }
 
 
-
-  GOUT("OCVDNN inferencing time time: " << fixed << setprecision(5) << time_taken/frames.size() << "[sec] or " << frames.size()/time_taken << "[FPS]");
+  #ifdef OCV_TEST
+    GOUT("OCVDNN inferencing time time: " << fixed << setprecision(5) << time_taken/frames.size() << "[sec] or " << frames.size()/time_taken << "[FPS]");
+  #endif
+  #ifdef GRPC_TEST
   GOUT("Triton inferencing time time: " << fixed << setprecision(5) << grpc_time_taken/frames.size() << "[sec] or " << frames.size()/grpc_time_taken << "[FPS]");
+  #endif
+  #ifdef SHM_TEST
   GOUT("Triton Shm inferencing time time: " << fixed << setprecision(5) << shm_time_taken/frames.size() << "[sec] or " << frames.size()/shm_time_taken << "[FPS]");
-
+  #endif
   // make sure corresponding detections match
   for(int f = 0; f < frames.size(); f++){
-    ASSERT_EQ(detections[f].size(), detectionsTritonGRPC[f].size()) << "GRPC detection count for frame[" << f <<"] doesn't match ocvdnn";
-    ASSERT_EQ(detections[f].size(), detectionsTritonSHM[f].size()) << "SHM detection count for frame[" << f <<"] doesn't match ocvdnn";
-    const float minIOU = 0.85;
-    std::vector<DetectionLocation> poorMatches;
-    for(int d = 0; d < detections[f].size(); d++){
-      float max_iou;
-      DetectionLocation& best = detections[f][0];
-      maxIOU(detectionsTritonGRPC[f][d],detections[f], best, max_iou);
-      if(max_iou < minIOU){
-        GOUT("iou = " << max_iou << " GRPC detection {" << detectionsTritonGRPC[f][d] << "} in frame[" << f <<"] doesn't match ocvdnn {" << best << "}");
-        poorMatches.push_back(detectionsTritonGRPC[f][d]);
-        poorMatches.push_back(best);
+    if(   detections.size() > f
+       && detectionsTritonGRPC.size() > f
+       && detectionsTritonSHM.size() > f){
+
+      ASSERT_EQ(detections[f].size(), detectionsTritonGRPC[f].size()) << "GRPC detection count for frame[" << f <<"] doesn't match ocvdnn";
+      ASSERT_EQ(detections[f].size(), detectionsTritonSHM[f].size()) << "SHM detection count for frame[" << f <<"] doesn't match ocvdnn";
+      const float minIOU = 0.85;
+      std::vector<DetectionLocation> poorMatches;
+      for(int d = 0; d < detections[f].size(); d++){
+        float max_iou;
+        DetectionLocation& best = detections[f][0];
+        maxIOU(detectionsTritonGRPC[f][d],detections[f], best, max_iou);
+        if(max_iou < minIOU){
+          GOUT("iou = " << max_iou << " GRPC detection {" << detectionsTritonGRPC[f][d] << "} in frame[" << f <<"] doesn't match ocvdnn {" << best << "}");
+          poorMatches.push_back(detectionsTritonGRPC[f][d]);
+          poorMatches.push_back(best);
+        }
+        maxIOU(detectionsTritonSHM[f][d],detections[f], best, max_iou);
+        if(max_iou < minIOU){
+          GOUT("iou = " << max_iou << " SHM detection {" << detectionsTritonSHM[f][d] << "} in frame[" << f <<"] doesn't match ocvdnn {" << best << "}");
+          poorMatches.push_back(detectionsTritonSHM[f][d]);
+          poorMatches.push_back(best);
+        }
       }
-      maxIOU(detectionsTritonSHM[f][d],detections[f], best, max_iou);
-      if(max_iou < minIOU){
-        GOUT("iou = " << max_iou << " SHM detection {" << detectionsTritonSHM[f][d] << "} in frame[" << f <<"] doesn't match ocvdnn {" << best << "}");
-        poorMatches.push_back(detectionsTritonSHM[f][d]);
-        poorMatches.push_back(best);
+      if(!poorMatches.empty()){
+        iGen.WriteDetectionOutputImage(testFiles[f], mpfImageLocations(poorMatches),
+          std::string("frame"+std::to_string(f)+"_bad.jpg"));
       }
+
     }
-    if(!poorMatches.empty()){
-      iGen.WriteDetectionOutputImage(testFiles[f], mpfImageLocations(poorMatches),
-        std::string("frame"+std::to_string(f)+"_bad.jpg"));
-    }
+
   }
 
 }
@@ -573,10 +644,12 @@ void write_track_output_video(string inVideoFileName, vector<MPFVideoTrack>& tra
                 cap.GetFrameRate(), cap.GetFrameSize());
   GOUT("\tSorting tracks into frames");
    map<int,vector<MPFVideoTrack*>> frameTracks;
+   int trackIdx = 0;
    for(auto& track:tracks){
+     track.detection_properties.emplace("idx",std::to_string(trackIdx++));
      for(auto& det:track.frame_locations){
        if(det.first < track.start_frame || det.first > track.stop_frame){
-         GOUT("\tdetection index" + to_string(det.first) + " outside of track frame range [" + to_string(track.start_frame) + "," + to_string(track.stop_frame) + "]");
+         GOUT("\tdetection index " + to_string(det.first) + " outside of track frame range [" + to_string(track.start_frame) + "," + to_string(track.stop_frame) + "]");
        }
      }
     for(int fr = track.start_frame; fr <= track.stop_frame; fr++){
@@ -588,7 +661,11 @@ void write_track_output_video(string inVideoFileName, vector<MPFVideoTrack>& tra
    cv::Mat frame;
    int frameIdx = cap.GetCurrentFramePosition();
    int calFrameIdx = round(cap.GetCurrentTimeInMillis() * cap.GetFrameRate() / 1000.0);
-
+   int numColors = 16;
+   std::vector<cv::Scalar> randomPalette;
+   for(int i = 0; i < numColors; ++i){
+     randomPalette.emplace_back(rand() % 255,rand() % 255,rand() % 255);
+   }
    while(cap.Read(frame)){
      if(frameIdx > videoJob.stop_frame) break;
      if(frameIdx >= videoJob.start_frame){
@@ -598,7 +675,12 @@ void write_track_output_video(string inVideoFileName, vector<MPFVideoTrack>& tra
           map<int,MPFImageLocation>::iterator detItr = trackPtr->frame_locations.find(frameIdx);
           if(detItr != trackPtr->frame_locations.end()){
             cv::Rect detection_rect(detItr->second.x_left_upper, detItr->second.y_left_upper, detItr->second.width, detItr->second.height);
-            cv::rectangle(frame, detection_rect, {255, 0, 0}, 2);
+
+
+            cv::rectangle(frame, detection_rect, randomPalette.at(atoi(trackPtr->detection_properties["idx"].c_str()) % numColors), 2);
+            std::stringstream ss;
+            ss << trackPtr->detection_properties["idx"] << ":" <<  detItr->second.detection_properties["CLASSIFICATION"] << ":" << std::setprecision(3) << detItr->second.confidence;
+            cv::putText(frame, ss.str(), detection_rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 200, 200), 1);
           }
         }
       }
@@ -620,6 +702,7 @@ TEST(OcvYoloDetection, TestTritonClientVideo) {
   int  stop = 336;
   int  rate = 1;
   string inVideoFile  = "data/Stockholm_Marathon_9_km.webm";
+  //string inVideoFile  = "data/lp-ferrari-texas-shortened.mp4";
   string outTrackFile = "ocv_yolo_found_tracks.txt";
   string outVideoFile = "ocv_yolo_found_tracks.avi";
   float comparison_score_threshold = 0.6;
@@ -636,12 +719,13 @@ TEST(OcvYoloDetection, TestTritonClientVideo) {
 
   MPFVideoJob videoJob("Testing", inVideoFile, start, stop,
      {{"KF_DISABLED","1"},
+      //{"DETECTION_FRAME_BATCH_SIZE","4"},
       {"DETECTION_FRAME_BATCH_SIZE","16"},
       {"MAX_INFER_CONCURRENCY", "4"},
       {"ENABLE_TRTIS", "true"},
       {"TRACKING_DISABLE_MOSSE_TRACKER","0"},
       {"TRTIS_SERVER","triton:8001"},
-      {"TRTIS_USE_SHM", "true"},
+      {"TRTIS_USE_SHM", "false"},
       {"MODEL_NAME", "yolo"},
       {"NET_INPUT_IMAGE_SIZE", "416"}
      }, { });

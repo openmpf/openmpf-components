@@ -37,17 +37,30 @@ class TritonClient {
     TritonClient(
       const int id,
       const Config& cfg,
-      const TritonInferencer& inferencer);
+      const TritonInferencer *inferencer);
 
     ~TritonClient();
 
     void infer(const std::vector<cv::Mat> &inputBlobs);
+
+    using CallbackFunc = std::function<void()>;
+    void inferAsync(const std::vector<cv::Mat> &inputBlobs, CallbackFunc inferencerLambda);
+
     cv::Mat getOutput(const TritonTensorMeta& om);
     static const std::string& shm_key_prefix();
 
+    //void check(){LOG_TRACE("client[" << id << "]->inferencer: " << std::hex << inferencer_);}
+
+    void setWait();
+
   private:
+
+    std::mutex mtx_;
+    std::condition_variable cv_;
+    int dependantOnClientId;
+
     //const Config& cfg_;
-    const TritonInferencer& inferencer_;
+    const TritonInferencer *inferencer_;
     const size_t inputs_byte_size_;
     const size_t outputs_byte_size_;
 

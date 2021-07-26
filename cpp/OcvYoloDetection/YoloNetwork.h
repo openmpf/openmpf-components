@@ -53,18 +53,19 @@ class YoloNetwork {
 public:
     YoloNetwork(ModelSettings modelSettings, const Config &config);
 
-    std::vector<std::vector<DetectionLocation>> GetDetections(
-            const std::vector<Frame> &frames,
-            const Config &config);
+    // std::vector<std::vector<DetectionLocation>> GetDetections(
+    //         const std::vector<Frame> &frames,
+    //         const Config &config);
 
     using ProcessFrameDetectionsFunc =
-      std::function<void(std::vector<std::vector<DetectionLocation>>)>;
+      std::function<void(std::vector<std::vector<DetectionLocation>>&& dets,
+                         std::vector<Frame>::const_iterator begin,
+                         std::vector<Frame>::const_iterator end)>;
 
     void GetDetections(
             std::vector<Frame> &frames,
-            ProcessFrameDetectionsFunc pFun,
+            ProcessFrameDetectionsFunc componentProcessLambda,
             const Config &config);
-
 
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
 
@@ -103,8 +104,9 @@ private:
       const Config &config) const;
 
 
-    std::vector<std::vector<DetectionLocation>> GetDetectionsTrtis(
+     void GetDetectionsTrtis(
         const std::vector<Frame> &frames,
+        ProcessFrameDetectionsFunc pFun,
         const Config &config);
 
     std::vector<DetectionLocation> ExtractFrameDetectionsTrtis(

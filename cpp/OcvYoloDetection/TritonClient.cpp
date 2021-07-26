@@ -31,11 +31,13 @@
 #include "util.h"
 #include "shm_utils.h"
 #include "Config.h"
-
+#include "Frame.h"
 #include "TritonTensorMeta.h"
 #include "TritonExceptionMacros.h"
 #include "TritonClient.h"
 #include "TritonInferencer.h"
+
+#define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log,LOG_PREFIX << MSG) }
 
 using namespace MPF::COMPONENT;
 
@@ -75,7 +77,7 @@ void TritonClient::setupShmRegions(){
         "failed ot close shared memory region " + inputs_shm_key_ + " on host");
     // Register shared memory region with server
     NI_CHECK_OK(grpc_->RegisterSystemSharedMemory(inputs_shm_key_, inputs_shm_key_, inputs_byte_size_),
-      "unable to register " + inputs_shm_key_ + " shared memory with server \"" + inferencer_.serverUrl + "\"");
+      "unable to register " + inputs_shm_key_ + " shared memory with server \"" + inferencer_->serverUrl + "\"");
     LOG_TRACE("registered shared memory with key " << inputs_shm_key_ << " of size " << inputs_byte_size_ << " at address " << std::hex << (void*)inputs_shm_);
   }
   if(!outputs_shm_key_.empty()){
@@ -88,7 +90,7 @@ void TritonClient::setupShmRegions(){
         "failed ot close shared memory region " + outputs_shm_key_ + " on host");
     // Register shared memory region with server
     NI_CHECK_OK(grpc_->RegisterSystemSharedMemory(outputs_shm_key_, outputs_shm_key_, outputs_byte_size_),
-      "unable to register " + outputs_shm_key_ + " shared memory with server \"" + inferencer_.serverUrl + "\"");
+      "unable to register " + outputs_shm_key_ + " shared memory with server \"" + inferencer_->serverUrl + "\"");
     LOG_TRACE("registered shared memory with key " <<  outputs_shm_key_ << " of size " << outputs_byte_size_ << " at address " << std::hex << (void*)outputs_shm_);
   }
 }
@@ -99,7 +101,7 @@ void TritonClient::setupShmRegions(){
 void TritonClient::removeShmRegions(){
   if(!inputs_shm_key_.empty()){
     NI_CHECK_OK(grpc_->UnregisterSystemSharedMemory(inputs_shm_key_),
-      "unable to unregister shared memory region " + inputs_shm_key_ + " from server \"" + inferencer_.serverUrl + "\"");
+      "unable to unregister shared memory region " + inputs_shm_key_ + " from server \"" + inferencer_->serverUrl + "\"");
     NI_CHECK_OK(nic::UnmapSharedMemory((void*) inputs_shm_, inputs_byte_size_),
       "unable to unmap shared memory region " + inputs_shm_key_ + " from client address space");
     NI_CHECK_OK(nic::UnlinkSharedMemoryRegion(inputs_shm_key_),
@@ -107,7 +109,7 @@ void TritonClient::removeShmRegions(){
   }
   if(!outputs_shm_key_.empty()){
     NI_CHECK_OK(grpc_->UnregisterSystemSharedMemory(outputs_shm_key_),
-      "unable to unregister shared memory region " + outputs_shm_key_ + " from server \"" + inferencer_.serverUrl + "\"");
+      "unable to unregister shared memory region " + outputs_shm_key_ + " from server \"" + inferencer_->serverUrl + "\"");
     NI_CHECK_OK(nic::UnmapSharedMemory((void*) outputs_shm_, outputs_byte_size_),
       "unable to unmap shared memory region " + outputs_shm_key_ + " from client address space");
     NI_CHECK_OK(nic::UnlinkSharedMemoryRegion(outputs_shm_key_),
@@ -168,14 +170,13 @@ cv::Mat TritonClient::getOutput(const TritonTensorMeta& om) {
 ***************************************************************************** */
 void TritonClient::prepareInferRequestedOutputs(){
 
-  LOG_TRACE("Preparing all model outputs as requested outputs");
-  for(auto &om : inferencer_.outputsMeta){
+  for(auto &om : inferencer_->outputsMeta){
     nic::InferRequestedOutput *tmp;
     NI_CHECK_OK(nic::InferRequestedOutput::Create(&tmp, om.name),
       "unable to create requested output '" + om.name + "'");
 
     if(!outputs_shm_key_.empty()){
-      NI_CHECK_OK(tmp->SetSharedMemory(outputs_shm_key_, om.byte_size * inferencer_.maxBatchSize , om.shm_offset),
+      NI_CHECK_OK(tmp->SetSharedMemory(outputs_shm_key_, om.byte_size * inferencer_->maxBatchSize , om.shm_offset),
         "unable to associate output \"" + om.name+ "\" with shared memory at offset" + std::to_string(om.shm_offset));
     }
 
@@ -189,10 +190,8 @@ void TritonClient::prepareInferRequestedOutputs(){
 ***************************************************************************** */
 void TritonClient::prepareInferInputs(){
 
-    LOG_TRACE("Preparing all model inputs");
-
     inferInputs_.clear();
-    for(auto& im : inferencer_.inputsMeta){
+    for(auto& im : inferencer_->inputsMeta){
       nic::InferInput *tmp;
       NI_CHECK_OK(nic::InferInput::Create(&tmp, im.name, im.shape, im.type),
                  "unable to create input '" + im.name + "'");
@@ -205,19 +204,23 @@ void TritonClient::prepareInferInputs(){
  * set input data blob for a inferencing
 ***************************************************************************** */
 void TritonClient::setInferInputsData(const std::vector<cv::Mat> &blobs){
-    LOG_TRACE("Preparing data for inferencing");
+    // LOG_TRACE("Preparing data for inferencing");
+    // LOG_TRACE("blobs size: " << blobs.size());
+    // LOG_TRACE("blobs[0] shape " << std::vector<int>(blobs[0].size.p, blobs[0].size.p + blobs[0].dims));
+    // LOG_TRACE("inferencer: " << std::hex << (void*) inferencer_);
+    // LOG_TRACE("inpusMeta size: " << inferencer_->inputsMeta.size());
 
-    assert(("All inputs have to be specified" , blobs.size() == inferencer_.inputsMeta.size()));
+    assert(("All inputs have to be specified" , blobs.size() == inferencer_->inputsMeta.size()));
 
     for(int i = 0; i < blobs.size(); ++i){
 
       // check batch size is ok for model
       int64_t inputBatchSize = *(blobs[i].size.p);
-      if(inputBatchSize > inferencer_.maxBatchSize){
+      if(inputBatchSize > inferencer_->maxBatchSize){
           THROW_TRTISEXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
-          "input \"" + inferencer_.inputsMeta[i].name + "\" blob's batch dimension of "
+          "input \"" + inferencer_->inputsMeta[i].name + "\" blob's batch dimension of "
           + std::to_string(inputBatchSize)
-          + "is greater than the maximum of "+ std::to_string(inferencer_.maxBatchSize)
+          + "is greater than the maximum of "+ std::to_string(inferencer_->maxBatchSize)
           + " supported by the model");
       }
 
@@ -225,12 +228,12 @@ void TritonClient::setInferInputsData(const std::vector<cv::Mat> &blobs){
       if(!blobs[i].isContinuous()){
         THROW_TRTISEXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
          "blob is not stored in continuous memory for conversion to inference client input \""
-          + inferencer_.inputsMeta[i].name + "\".");
+          + inferencer_->inputsMeta[i].name + "\".");
       }
 
       // clear out input
       NI_CHECK_OK(inferInputs_.at(i)->Reset(),
-        "unable to reset input \"" + inferencer_.inputsMeta.at(i).name + "\" to receive new tensor data");
+        "unable to reset input \"" + inferencer_->inputsMeta.at(i).name + "\" to receive new tensor data");
 
       // set input shape
       std::vector<int64_t> shape;
@@ -238,29 +241,29 @@ void TritonClient::setInferInputsData(const std::vector<cv::Mat> &blobs){
       NI_CHECK_OK(inferInputs_[i]->SetShape(shape),
         "unable to set shape" +
         [&shape]{std::stringstream ss; ss << shape; return ss.str();}()
-        + " for input \"" + inferencer_.inputsMeta[i].name + "\"");
+        + " for input \"" + inferencer_->inputsMeta[i].name + "\"");
 
       // set input data
       size_t num_bytes = blobs[i].total() * blobs[i].elemSize();
       if(!inputs_shm_key_.empty()){
-        if(num_bytes <= inferencer_.inputsMeta[i].byte_size * inferencer_.maxBatchSize){
+        if(num_bytes <= inferencer_->inputsMeta[i].byte_size * inferencer_->maxBatchSize){
 
-          LOG_TRACE("memcpy " << num_bytes << " bytes from blob of size " << shape << " to shm at address " << std::hex << (void*)(inputs_shm_ + inferencer_.inputsMeta[i].shm_offset));
+          LOG_TRACE("memcpy " << num_bytes << " bytes from blob of size " << shape << " to shm at address " << std::hex << (void*)(inputs_shm_ + inferencer_->inputsMeta[i].shm_offset));
 
-          std::memcpy(inputs_shm_ + inferencer_.inputsMeta[i].shm_offset, blobs[i].data , num_bytes);
+          std::memcpy(inputs_shm_ + inferencer_->inputsMeta[i].shm_offset, blobs[i].data , num_bytes);
 
-          NI_CHECK_OK(inferInputs_.at(i)->SetSharedMemory(inputs_shm_key_, num_bytes , inferencer_.inputsMeta[i].shm_offset),
-            "unable to associate input \"" + inferencer_.inputsMeta[i].name+ "\" with shared memory at offset" + std::to_string(inferencer_.inputsMeta[i].shm_offset));
+          NI_CHECK_OK(inferInputs_.at(i)->SetSharedMemory(inputs_shm_key_, num_bytes , inferencer_->inputsMeta[i].shm_offset),
+            "unable to associate input \"" + inferencer_->inputsMeta[i].name+ "\" with shared memory at offset" + std::to_string(inferencer_->inputsMeta[i].shm_offset));
 
         }else{
           THROW_TRTISEXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
             "attempted to set shared input memory buffer with "
              + std::to_string(num_bytes) + " but there is only room for "
-             + std::to_string(inferencer_.inputsMeta[i].byte_size * inferencer_.maxBatchSize) + " bytes.");
+             + std::to_string(inferencer_->inputsMeta[i].byte_size * inferencer_->maxBatchSize) + " bytes.");
         }
       }else{
         NI_CHECK_OK(inferInputs_.at(i)->AppendRaw(blobs[i].data, num_bytes),
-              "unable to set data for \"" + inferencer_.inputsMeta[i].name + "\"");
+              "unable to set data for \"" + inferencer_->inputsMeta[i].name + "\"");
       }
 
     }
@@ -276,10 +279,34 @@ void TritonClient::infer(const std::vector<cv::Mat> &inputBlobs){
   setInferInputsData(inputBlobs);
 
   nic::InferResult* tmp;
-  NI_CHECK_OK( grpc_->Infer(&tmp, inferencer_.inferOptions, getRaw(inferInputs_), getRaw(inferReqestedOutputs_) ),
+  NI_CHECK_OK( grpc_->Infer(&tmp, inferencer_->inferOptions, getRaw(inferInputs_), getRaw(inferReqestedOutputs_) ),
     "unable to inference on server");
   inferResult_.reset(tmp);
 }
+
+
+/** ****************************************************************************
+ * inference input specified in vector of 4D data blobs
+***************************************************************************** */
+void TritonClient::inferAsync(const std::vector<cv::Mat> &inputBlobs, CallbackFunc inferencerLambda){
+  LOG_TRACE("inferAsync start");
+  setInferInputsData(inputBlobs);
+
+  NI_CHECK_OK(
+    grpc_->AsyncInfer(
+    [inferencerLambda, this](nic::InferResult* tmp){
+      LOG_TRACE("inferAsync lambda start");
+      inferResult_.reset(tmp);
+      inferencerLambda();
+      LOG_TRACE("inferAsync lambda end");
+    },
+    inferencer_->inferOptions,
+    getRaw(inferInputs_),
+    getRaw(inferReqestedOutputs_)),
+    "unable to async inference on server");
+    LOG_TRACE("inferAsync end");
+}
+
 
 /** ****************************************************************************
  * inference input specified in vector of 4D data blobs
@@ -291,7 +318,7 @@ void TritonClient::infer(const std::vector<cv::Mat> &inputBlobs){
 
 //   nic::InferResult* tmp;
 //   grpc_->AsyncInfer(
-//   NI_CHECK_OK( grpc_->Infer(&tmp, inferencer_.inferOptions, getRaw(inferInputs_), getRaw(inferReqestedOutputs_) ),
+//   NI_CHECK_OK( grpc_->Infer(&tmp, inferencer_->inferOptions, getRaw(inferInputs_), getRaw(inferReqestedOutputs_) ),
 //     "unable to inference on server");
 
 //   inferResult_.reset(tmp);
@@ -301,6 +328,7 @@ void TritonClient::infer(const std::vector<cv::Mat> &inputBlobs){
  * Destructor to cleanup share memory regions
 ***************************************************************************** */
 TritonClient::~TritonClient(){
+  LOG_TRACE("~TritonClient " << id);
   removeShmRegions();
 
 }
@@ -311,16 +339,16 @@ TritonClient::~TritonClient(){
 TritonClient::TritonClient(
   const int id,
   const Config& cfg,
-  const TritonInferencer& inferencer)
+  const TritonInferencer *inferencer)
  : id(id)
  , inferencer_(inferencer)
- , inputs_byte_size_(inferencer.inputsMeta.back().shm_offset + inferencer_.inputsMeta.back().byte_size * inferencer_.maxBatchSize)
- , outputs_byte_size_(inferencer.outputsMeta.back().shm_offset + inferencer.outputsMeta.back().byte_size * inferencer_.maxBatchSize)
+ , inputs_byte_size_(inferencer->inputsMeta.back().shm_offset + inferencer->inputsMeta.back().byte_size * inferencer->maxBatchSize)
+ , outputs_byte_size_(inferencer->outputsMeta.back().shm_offset + inferencer->outputsMeta.back().byte_size * inferencer->maxBatchSize)
  , inputs_shm_key_(cfg.trtisUseShm ? shm_key_prefix() + "_" + std::to_string(id) + "_inputs" : "")
  , outputs_shm_key_(cfg.trtisUseShm ? shm_key_prefix() + "_" + std::to_string(id) + "_outputs" : "")
 {
   NI_CHECK_OK(nic::InferenceServerGrpcClient::Create(
-    &grpc_, inferencer_.serverUrl, cfg.trtisVerboseClient, cfg.trtisUseSSL, inferencer_.sslOptions),
+    &grpc_, inferencer->serverUrl, cfg.trtisVerboseClient, cfg.trtisUseSSL, inferencer->sslOptions),
       "unable to create TRTIS inference client for \"" + cfg.trtisServer + "\"");
 
   setupShmRegions();

@@ -35,6 +35,7 @@
 
 #include "util.h"
 #include "Config.h"
+#include "Frame.h"
 #include "TritonTensorMeta.h"
 #include "TritonClient.h"
 #include "TritonInferencer.h"
@@ -240,14 +241,14 @@ namespace {
 
 /** ****************************************************************************
 ***************************************************************************** */
-    cv::Mat ResizeFrame(const Frame &frame, const Config &config) {
+    cv::Mat ResizeFrame(const Frame &frame, const int imageSize) {
         int maxDimension = std::max(frame.data.rows, frame.data.cols);
         cv::Mat resizedFrame;
         cv::resize(frame.data, resizedFrame,
-                   frame.data.size() * config.netInputImageSize / maxDimension);
+                   frame.data.size() * imageSize / maxDimension);
 
-        int leftPadding = (config.netInputImageSize - resizedFrame.cols) / 2;
-        int topPadding = (config.netInputImageSize - resizedFrame.rows) / 2;
+        int leftPadding = (imageSize - resizedFrame.cols) / 2;
+        int topPadding = (imageSize - resizedFrame.rows) / 2;
 
         // Convert rectangular image to square image by adding grey bars to the smaller dimensions.
         // Grey was chosen because that is what the Darknet library does.
@@ -255,9 +256,9 @@ namespace {
                 resizedFrame,
                 resizedFrame,
                 topPadding,
-                config.netInputImageSize - resizedFrame.rows - topPadding,
+                imageSize - resizedFrame.rows - topPadding,
                 leftPadding,
-                config.netInputImageSize - resizedFrame.cols - leftPadding,
+                imageSize - resizedFrame.cols - leftPadding,
                 cv::BORDER_CONSTANT,
                 {127, 127, 127});
         return resizedFrame;
@@ -265,18 +266,17 @@ namespace {
 
 /** ****************************************************************************
 ***************************************************************************** */
-//    cv::Mat ConvertToBlob(const std::vector<Frame> &frames, const Config &config) {
-  cv::Mat ConvertToBlob(std::vector<Frame>::const_iterator start, std::vector<Frame>::const_iterator stop, const Config &config) {
+  cv::Mat ConvertToBlob(std::vector<Frame>::const_iterator start, std::vector<Frame>::const_iterator stop, const int netInputImageSize) {
         std::vector<cv::Mat> resizedFrames;
         resizedFrames.reserve(stop - start);
         while(start != stop){
-            resizedFrames.push_back(ResizeFrame(*start, config));
+            resizedFrames.push_back(ResizeFrame(*start, netInputImageSize));
             start++;
         }
         return cv::dnn::blobFromImages(
                 resizedFrames,
                 1 / 255.0,  // Make pixels values be 0.0 - 1.0
-                cv::Size(config.netInputImageSize, config.netInputImageSize),
+                cv::Size(netInputImageSize, netInputImageSize),
                 cv::Scalar(0, 0, 0),
                 true);
     }
@@ -351,26 +351,30 @@ YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
 
 /** ****************************************************************************
 ***************************************************************************** */
-std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetections(
-        const std::vector<Frame> &frames, const Config &config){
-    if(!config.trtisEnabled){
-      return GetDetectionsCvdnn(frames, config);
-    }else{
-      return GetDetectionsTrtis(frames, config);
-    }
- }
+// std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetections(
+//         const std::vector<Frame> &frames, const Config &config){
+//     if(!config.trtisEnabled){
+//       return GetDetectionsCvdnn(frames, config);
+//     }else{
+//       return GetDetectionsTrtis(frames, config);
+//     }
+//  }
 
 /** ****************************************************************************
 ***************************************************************************** */
 void YoloNetwork::GetDetections(
         std::vector<Frame> &frames,
-        ProcessFrameDetectionsFunc pFunc,
+        ProcessFrameDetectionsFunc processFrameDetectionsFun,
         const Config &config){
+
+    LOG_TRACE("start");
     if(!config.trtisEnabled){
-      pFunc(GetDetectionsCvdnn(frames, config));
+      processFrameDetectionsFun(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
     }else{
-      pFunc(GetDetectionsTrtis(frames, config));
+      LOG_TRACE("using trtis");
+      GetDetectionsTrtis(frames, processFrameDetectionsFun, config);
     }
+    LOG_TRACE("end");
  }
 
 
@@ -379,7 +383,7 @@ void YoloNetwork::GetDetections(
 std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetectionsCvdnn(
         const std::vector<Frame> &frames, const Config &config) {
 
-    net_.setInput(ConvertToBlob(frames.begin(),frames.end(), config));
+    net_.setInput(ConvertToBlob(frames.begin(),frames.end(), config.netInputImageSize));
 
     // There are different output layers for different scales, e.g. yolo_82, yolo_94, yolo_106 for yolo v3.
     // Each result is a row vector like: [center_x, center_y, width, height, objectness, ...class_scores]
@@ -552,33 +556,48 @@ DetectionLocation YoloNetwork::CreateDetectionLocationCvdnn(
 
 /** ****************************************************************************
 ***************************************************************************** */
-std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetectionsTrtis(
-        const std::vector<Frame> &frames, const Config &config) {
+void YoloNetwork::GetDetectionsTrtis(
+    const std::vector<Frame> &frames,
+    ProcessFrameDetectionsFunc componentProcessLambda,
+    const Config &config) {
 
-  std::vector<std::vector<DetectionLocation>> detectionsGroupedByFrame;
-  detectionsGroupedByFrame.reserve(frames.size());
+  LOG_TRACE("start");
+  std::vector<cv::Mat> inputBlobs = {ConvertToBlob(frames.begin(), frames.end(), config.netInputImageSize)};
+  tritonInferencer.infer(frames, inputBlobs,
+    [&config, &frames, componentProcessLambda, this] (std::vector<cv::Mat> outBlobs,
+                                                      std::vector<Frame>::const_iterator begin,
+                                                      std::vector<Frame>::const_iterator end){
 
-  // inference blob to get output blob  N x OUTPUT_BLOB_DIM_1 x 1 x 1
-  // 1st float is number of detections, subsequent numbers are up to OUTPUT_BLOB_DIM_1 detections[7]
-  // trtis yolo only has one output "prob" so .at(0)
-  cv::Mat outBlob = tritonInferencer.infer(std::vector<cv::Mat>{ConvertToBlob(frames.begin(), frames.end(), config)}).at(0);
+      cv::Mat outBlob = outBlobs.at(0); // yolo only has one output tensor
+      int numFrames = end - begin;
 
-  //LOG_TRACE("received outBlob[" << outBlob.size[0] << "," <<outBlob.size[1] << "," << outBlob.size[2] << "," << outBlob.size[3] <<"]");
-  assert(outBlob.size[0] == frames.size()
-      && outBlob.size[1] == OUTPUT_BLOB_DIM_1
-      && outBlob.size[2] == 1
-      && outBlob.size[3] == 1);
+      LOG_TRACE("frameCount = " << numFrames << " outBlob.size() = " << std::vector<int>(outBlob.size.p, outBlob.size.p + outBlob.dims));
+      assert(outBlob.size[0] == numFrames);
 
-  // parse output blob
-  int frameIdx = 0;
-  for(const Frame& frame : frames){
-      //LOG_TRACE("processing batch_frame[" << frameIdx << "]");
-    detectionsGroupedByFrame.push_back(
-      ExtractFrameDetectionsTrtis(frame, outBlob.ptr<float>(frameIdx,0), config));
-    frameIdx++;
-  }
+      LOG_TRACE("received outBlob[" << outBlob.size[0] << "," <<outBlob.size[1] << "," << outBlob.size[2] << "," << outBlob.size[3] <<"]");
+      assert(outBlob.size[0] <= tritonInferencer.maxBatchSize
+          && outBlob.size[1] == OUTPUT_BLOB_DIM_1
+          && outBlob.size[2] == 1
+          && outBlob.size[3] == 1);
 
-  return detectionsGroupedByFrame;
+      // parse output blob into detections
+      std::vector<std::vector<DetectionLocation>> detectionsGroupedByFrame;
+      detectionsGroupedByFrame.reserve(numFrames);
+
+      LOG_TRACE("extracting detections for frames["<< begin->idx << ".." << (end - 1)->idx << "]");
+      int i = 0;
+      for(auto frameIt = begin; frameIt != end; ++i,++frameIt){
+        //LOG_TRACE("outBlob[" << i << "] corresponds to frame[" << frameIt->idx <<"]" );
+        detectionsGroupedByFrame.push_back(
+          ExtractFrameDetectionsTrtis(*frameIt, outBlob.ptr<float>(i,0), config));
+      }
+      //exact frame sequency needed from here on due to tracking...
+      {
+
+      }
+      componentProcessLambda(std::move(detectionsGroupedByFrame), begin, end);
+    });
+  LOG_TRACE("end");
 }
 
 /** ****************************************************************************
@@ -600,13 +619,14 @@ std::vector<DetectionLocation> YoloNetwork::ExtractFrameDetectionsTrtis(
 
   int numDetections = static_cast<int>(data[0]);
   LOG_TRACE("extracting " << numDetections << " detections");
+  //                      0        1        2      3         4        5         6
   // dmat[d,0...6] = [x_center, y_center, width, height, det_score, class, class_score]
   cv::Mat dmat(OUTPUT_BLOB_DIM_1 - 1, 7, CV_32F, &data[1]);
 
   float rescale2Frame = maxFrameDim / config.netInputImageSize;
   cv::Size scoreVecSize(1,names_.size());
   for(int det = 0; det < numDetections; ++det){
-    float maxConfidence = dmat.at<float>(det, 6);
+    float maxConfidence = dmat.at<float>(det, 4);
     int classIdx = static_cast<int>(dmat.at<float>(det, 5));
     const std::string &maxClass = names_.at(classIdx);
 

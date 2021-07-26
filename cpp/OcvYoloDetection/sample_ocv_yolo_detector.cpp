@@ -35,6 +35,7 @@
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
 
 #include "Config.h"
+#include "Frame.h"
 #include "TritonTensorMeta.h"
 #include "TritonClient.h"
 #include "TritonInferencer.h"

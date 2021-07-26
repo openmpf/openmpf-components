@@ -32,6 +32,7 @@ class TritonInferencer {
   public:
 
     TritonInferencer(const Config &cfg);
+    ~TritonInferencer(){LOG_TRACE("~TritonInferencer");}
 
     const std::string& serverUrl;
     const std::string  modelName;
@@ -42,10 +43,21 @@ class TritonInferencer {
     nvidia::inferenceserver::client::InferOptions inferOptions;
     nvidia::inferenceserver::client::SslOptions sslOptions;
 
-    std::vector<cv::Mat> infer(const std::vector<cv::Mat> &inputBlobs);
+    //std::vector<cv::Mat> infer(const std::vector<cv::Mat> &inputBlobs);
 
-    TritonClient& aquireClientBlocking();
-    void releaseClient(TritonClient& client);
+    using ExtractDetectionsFunc =
+      std::function<void(std::vector<cv::Mat> outBlobs,
+                         std::vector<Frame>::const_iterator begin,
+                         std::vector<Frame>::const_iterator end)>;
+
+    void infer(const std::vector<Frame> &frames,
+               const std::vector<cv::Mat> &inputBlobs,
+               ExtractDetectionsFunc extractDetectionsFun);
+
+
+
+    int aquireClientIdBlocking();
+    void releaseClientId(int clientId);
     void waitTillAllClientsReleased();
 
   private:
@@ -56,6 +68,13 @@ class TritonInferencer {
     std::unordered_set<int> freeClientIdxs_;
     std::vector<std::unique_ptr<TritonClient>> clients_;
 
+    //int batchCompleted_;
+    //std::mutex batchCompletedMtx_;
+    //std::condition_variable batchCompletedCv_;
+
+    int frameIdxComplete_;
+    std::mutex frameIdxCompleteMtx_;
+    std::condition_variable frameIdxCompleteCv_;
 
 
     void checkServerIsAlive(int maxAttempts) const;

@@ -296,22 +296,46 @@ std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob 
         auto& yoloNetwork = GetYoloNetwork(job.job_properties, config);
 
         MPFImageReader imageReader(job);
-        std::vector<std::vector<DetectionLocation>> detections = yoloNetwork.GetDetections(
-                { Frame(imageReader.GetImage()) }, config);
-
-        std::vector<MPFImageLocation> results;
-        for (std::vector<DetectionLocation> &locationList : detections) {
-            for (DetectionLocation &location : locationList) {
-                results.emplace_back(
-                        location.x_left_upper,
-                        location.y_left_upper,
-                        location.width,
-                        location.height,
-                        location.confidence,
-                        std::move(location.detection_properties));
-                imageReader.ReverseTransform(results.back());
+        // std::vector<std::vector<DetectionLocation>> detections = yoloNetwork.GetDetections(
+        //         { Frame(imageReader.GetImage()) }, config);
+        //
+        // std::vector<MPFImageLocation> results;
+        // for (std::vector<DetectionLocation> &locationList : detections) {
+        //     for (DetectionLocation &location : locationList) {
+        //         results.emplace_back(
+        //                 location.x_left_upper,
+        //                 location.y_left_upper,
+        //                 location.width,
+        //                 location.height,
+        //                 location.confidence,
+        //                 std::move(location.detection_properties));
+        //         imageReader.ReverseTransform(results.back());
+        //     }
+        // }
+      std::vector<MPFImageLocation> results;
+      std::vector<Frame> frameBatch = { Frame(imageReader.GetImage()) };
+       yoloNetwork.GetDetections(
+         frameBatch,
+         [&imageReader, &results]
+         (std::vector<std::vector<DetectionLocation>> detectionsVec,
+          std::vector<Frame>::const_iterator begin,
+          std::vector<Frame>::const_iterator end){
+            for (std::vector<DetectionLocation> &locationList : detectionsVec) {
+                for (DetectionLocation &location : locationList) {
+                    results.emplace_back(
+                            location.x_left_upper,
+                            location.y_left_upper,
+                            location.width,
+                            location.height,
+                            location.confidence,
+                            std::move(location.detection_properties));
+                    imageReader.ReverseTransform(results.back());
+                }
             }
-        }
+         },
+         config);
+
+
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << results.size()
                                 << " detections.");
         return results;
@@ -339,57 +363,79 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
         Config config(job.job_properties);
         auto& yoloNetwork = GetYoloNetwork(job.job_properties, config);
 
-        if(config.trtisEnabled){  // force efficient batch size
-          if(config.frameBatchSize > yoloNetwork.tritonInferencer.maxBatchSize){
-            throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY,
-               std::string("job parameter'DETECTION_FRAME_BATCH_SIZE' cannot be ")
-               + std::string(" greater than inference server's max batch size = ")
-               + std::to_string(yoloNetwork.tritonInferencer.maxBatchSize));
-          }
-        }
+        // if(config.trtisEnabled){  // force efficient batch size
+        //   if(config.frameBatchSize > yoloNetwork.tritonInferencer.maxBatchSize){
+        //     throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY,
+        //        std::string("job parameter'DETECTION_FRAME_BATCH_SIZE' cannot be ")
+        //        + std::string(" greater than inference server's max batch size = ")
+        //        + std::to_string(yoloNetwork.tritonInferencer.maxBatchSize));
+        //   }
+        // }
 
         MPFAsyncVideoCapture videoCapture(job);
 
+       //place to hold on to frames till callbacks are done
+       std::unordered_map<int,std::vector<Frame>> frameBatches;
+
         while (true) {
-            auto frameBatch = GetVideoFrames(videoCapture, config.frameBatchSize);
-            if (frameBatch.empty()) {
+            auto tmp = GetVideoFrames(videoCapture, config.frameBatchSize);
+            if (tmp.empty()) {
+                yoloNetwork.tritonInferencer.waitTillAllClientsReleased();
                 break;
             }
-            LOG_TRACE("processing frames [" << frameBatch.front().idx << "..."
-                                            << frameBatch.back().idx << "]");
+            int frameBatchKey = tmp.back().idx;
+            frameBatches.insert(std::make_pair(frameBatchKey,std::move(tmp)));
 
-            // look for new detections
-            // std::vector<std::vector<DetectionLocation>> detectionsVec
-            //         = yoloNetwork.GetDetections(frameBatch, config);
-            // assert(frameBatch.size() == detectionsVec.size());
-            // for (int i = 0; i < frameBatch.size(); i++) {
-            //     ProcessFrameDetections(config, frameBatch.at(i), std::move(detectionsVec.at(i)),
-            //                            inProgressTracks,
-            //                            completedTracks);
-            // }
-
+            LOG_TRACE("\n");
+            LOG_TRACE("processing frames [" << frameBatches.at(frameBatchKey).front().idx << "..."
+                                            << frameBatches.at(frameBatchKey).back().idx << "]");
             yoloNetwork.GetDetections(
-              frameBatch,
-              [&config, &frameBatch, &inProgressTracks, &completedTracks](std::vector<std::vector<DetectionLocation>> detectionsVec){
+              frameBatches.at(frameBatchKey),
+              [&config,
+               &frameBatches,
+               frameBatchKey,
+               &inProgressTracks,
+               &completedTracks]  // this callback gets called MULTIPE times, depending on trtid server maxBatchSize
+              (std::vector<std::vector<DetectionLocation>>&& detectionsVec,
+               std::vector<Frame>::const_iterator begin,
+               std::vector<Frame>::const_iterator end){
 
-                assert(frameBatch.size() == detectionsVec.size());
-                for (int i = 0; i < frameBatch.size(); i++) {
-                  ProcessFrameDetections(config, frameBatch.at(i), std::move(detectionsVec.at(i)),
+
+                LOG_TRACE("detectionsVec["<<detectionsVec.size()<<"]  end-begin = " << (size_t)(end-begin));
+                //assert(detectionsVec.size() == end - begin);
+
+                int backFrameIdx = (end - 1)->idx;
+                int frameIdx;
+                int i = 0;
+                int prev = -1;
+                for(std::vector<Frame>::const_iterator it = begin; it != end; ++it,++i){
+                  LOG_TRACE("xyz: " << (*it).idx << " prev=" << prev );
+                  assert( prev < static_cast<int>((*it).idx) );
+                  prev = (*it).idx;
+                  ProcessFrameDetections(config,
+                                         *it,
+                                         std::move(detectionsVec.at(i)),
                                          inProgressTracks,
                                          completedTracks);
-
+                }
+                if(frameBatchKey == backFrameIdx){  // last frame in batch, release frame batch
+                  LOG_TRACE("releasing frames[" << frameBatches[frameBatchKey].front().idx << " .." << frameBatches[frameBatchKey].back().idx << "]");
+                  frameBatches.erase(frameBatchKey);
                 }
               },
               config);
-
-
         }
 
+        // all frame batches should have bee processed
+        assert(frameBatches.empty());
+
+        LOG_TRACE("Converting remaining active tracks to MPF tracks");
         // convert any remaining active tracks to MPFVideoTracks
         for (Track &track : inProgressTracks) {
             completedTracks.push_back(Track::toMpfTrack(std::move(track)));
         }
 
+        LOG_TRACE("Reverse transforming MPF tracks");
         for (MPFVideoTrack &mpfTrack : completedTracks) {
             videoCapture.ReverseTransform(mpfTrack);
         }

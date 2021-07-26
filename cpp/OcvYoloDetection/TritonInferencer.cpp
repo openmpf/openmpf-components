@@ -30,6 +30,7 @@
 
 #include "util.h"
 #include "Config.h"
+#include "Frame.h"
 #include "TritonTensorMeta.h"
 #include "TritonClient.h"
 #include "TritonInferencer.h"
@@ -120,8 +121,8 @@ void TritonInferencer::getModelInputOutputMetaData(){
 
   // get model inputs and outputs data from server
   maxBatchSize = modelConfigResponse.config().max_batch_size();
-//maxBatchSize = 3;  //for testing
-  LOG_INFO("max batch size = " << std::to_string(maxBatchSize));
+  //maxBatchSize = 3;  //for testing
+  LOG_INFO("model max supported batch size = " << std::to_string(maxBatchSize));
 
   // get inputs meta data in inputsMeta TensorMeta vector
   inputsMeta.reserve(modelConfigResponse.config().input_size());
@@ -175,81 +176,164 @@ void TritonInferencer::removeAllShmRegions(const std::string prefix){
 /** ****************************************************************************
  * inference input specified in vector of 4D data blobs
 ***************************************************************************** */
-std::vector<cv::Mat> TritonInferencer::infer(const std::vector<cv::Mat> &inputBlobs){
+void TritonInferencer::infer(
+  const std::vector<Frame> &frames,
+  const std::vector<cv::Mat> &inputBlobs,
+  ExtractDetectionsFunc extractDetectionsFun){
 
-  // pre allocate results vector
-  std::vector<cv::Mat> results;
-  for(TritonTensorMeta& om : outputsMeta){
-    std::vector<int> shape({inputBlobs[0].size[0]});
-    shape.insert(shape.end(),om.shape.begin(),om.shape.end());
-    LOG_TRACE("Preallocation results ocv matrix of type \"" << om.type << "\" and size " << shape);
-    results.emplace_back(shape, om.cvType);
-  }
+  #define MYASYNC
+  #ifdef MYASYNC
+    LOG_TRACE("start async");
+    //int total = inputBlobs.at(0).size[0];
+    //int batchBegin = 0;
+    //int batchEnd = 0;
+    //batchCompleted_ = -1;
 
-  int total = inputBlobs.at(0).size[0];
-  int batchBegin = 0;
-  int batchEnd = 0;
+    frameIdxComplete_ = frames.front().idx - 1;
+    std::vector<Frame>::const_iterator begin;
+    std::vector<Frame>::const_iterator end(frames.begin());
 
-  while(batchEnd < total){
-    batchBegin = batchEnd;
-    batchEnd = std::min(batchBegin + maxBatchSize, total);
-    int batchSize = batchEnd - batchBegin;
+    while(end != frames.end()){
 
-    // create matrix headers as window into inputBlobs allocated data
-    std::vector<cv::Mat> batchInputBlobs;
-    for(auto& inputBlob : inputBlobs){
-      std::vector<int> shape(inputBlob.size.p, inputBlob.size.p + inputBlob.dims);
-      shape[0] = batchSize;
-      LOG_TRACE("inferencing batch blob with shape "<< shape);
-      batchInputBlobs.emplace_back(shape.size(), shape.data(),
-        inputBlob.type(), (void*)inputBlob.ptr(batchBegin));
+      begin = end;
+      int size = std::min(maxBatchSize, static_cast<int>(frames.end() - begin));
+      end = end + size;
+
+      // create matrix headers as window into inputBlobs allocated data
+      std::vector<cv::Mat> batchInputBlobs;
+      for(auto& inputBlob : inputBlobs){
+        std::vector<int> shape(inputBlob.size.p, inputBlob.size.p + inputBlob.dims);
+        shape[0] = size;
+        //LOG_TRACE("TritonInferencer::infer inferencing batch blob with shape "<< shape);
+        batchInputBlobs.emplace_back(shape.size(), shape.data(),
+                                     inputBlob.type(),
+                                     (void*)inputBlob.ptr(begin - frames.begin()));
+      }
+
+      int clientId =  aquireClientIdBlocking();
+      LOG_TRACE("inferencing frames[" << begin->idx << ".." << (end - 1)->idx << "] with client[" << clientId << "]");
+
+      clients_[clientId]->inferAsync(
+        batchInputBlobs,
+        [this, extractDetectionsFun, clientId, begin, end](){
+          std::vector<cv::Mat> results; // popoulate in loop
+          // copy to results
+          for(int i = 0; i < outputsMeta.size(); ++i){
+            cv::Mat result = clients_[clientId]->getOutput(outputsMeta[i]);
+            results.push_back(result);
+            //LOG_TRACE("TritonInferencer::infer  got result of shape " << std::vector<int>(result.size.p,result.size.p+result.dims));
+            //std::memcpy(results[i].ptr(batchBegin), result.ptr(0), result.total() * result.elemSize());
+          }
+
+          { // block till prior blobs/frames have been processed
+            int frameIdxToWaitFor = begin->idx - 1;
+            std::unique_lock<std::mutex> lk(frameIdxCompleteMtx_);
+            LOG_TRACE("waiting for frame[" << frameIdxToWaitFor << "] to complete");
+            frameIdxCompleteCv_.wait(lk,
+              //[this, frameIdxToWaitFor]{return frameIdxComplete_ >= frameIdxToWaitFor;});
+              [this, frameIdxToWaitFor]{return frameIdxComplete_ >= frameIdxToWaitFor;});
+            LOG_TRACE("done waiting for frame[" << frameIdxToWaitFor << "]");
+          //}
+
+          // extract detections and move frames (invalidates iterators)
+          int firstFrameIdx = begin->idx;
+          int lastFrameIdx = (end - 1)->idx;
+          extractDetectionsFun(results, begin, end);
+
+          releaseClientId(clientId);
+
+          //{ // update frameIdxComplete
+          //  std::lock_guard<std::mutex> lk(frameIdxCompleteMtx_);
+            frameIdxComplete_ = lastFrameIdx;
+            LOG_TRACE("completed frames["<< firstFrameIdx << ".." << lastFrameIdx << "] with client[" << clientId << "]");
+          }
+          frameIdxCompleteCv_.notify_all();
+
+        });
+
+    }
+    LOG_TRACE("end async");
+  #else
+    // pre allocate results vector
+    std::vector<cv::Mat> results;
+    for(TritonTensorMeta& om : outputsMeta){
+      std::vector<int> shape({inputBlobs[0].size[0]});
+      shape.insert(shape.end(), om.shape.begin(), om.shape.end());
+      LOG_TRACE("Preallocation results ocv matrix of type \"" << om.type << "\" and size " << shape);
+      results.emplace_back(shape, om.cvType);
     }
 
-    // inference batch
-    clients_[0]->infer(batchInputBlobs);
+    int total = inputBlobs.at(0).size[0];
+    int batchBegin = 0;
+    int batchEnd = 0;
 
-    // copy to results
-    for(int i = 0; i < results.size(); ++i){
-      cv::Mat result = clients_[0]->getOutput(outputsMeta[i]);
-      std::memcpy(results[i].ptr(batchBegin), result.ptr(0), result.total() * result.elemSize());
+    while(batchEnd < total){
+      batchBegin = batchEnd;
+      batchEnd = std::min(batchBegin + maxBatchSize, total);
+      int batchSize = batchEnd - batchBegin;
+
+      // create matrix headers as window into inputBlobs allocated data
+      std::vector<cv::Mat> batchInputBlobs;
+      for(auto& inputBlob : inputBlobs){
+        std::vector<int> shape(inputBlob.size.p, inputBlob.size.p + inputBlob.dims);
+        shape[0] = batchSize;
+        LOG_TRACE("inferencing batch blob with shape "<< shape);
+        batchInputBlobs.emplace_back(shape.size(), shape.data(),
+          inputBlob.type(), (void*)inputBlob.ptr(batchBegin));
+      }
+
+      // inference batch
+        LOG_DEBUG("inferencing: batch [" << batchBegin << "..." << batchEnd << "]");
+        clients_[0]->infer(batchInputBlobs);
+        for(int i = 0; i < results.size(); ++i){
+          cv::Mat result = clients_[0]->getOutput(outputsMeta[i]);
+          std::memcpy(results[i].ptr(batchBegin), result.ptr(0), result.total() * result.elemSize());
+        }
     }
 
-  }
+    dFun(results);
+  #endif
 
-  return results;
 }
 
 /** ****************************************************************************
 ***************************************************************************** */
-void TritonInferencer::releaseClient(TritonClient& client){
-  std::lock_guard<std::mutex> lk(freeClientIdxsMtx_);
-  freeClientIdxs_.insert(client.id);
+void TritonInferencer::releaseClientId(int clientId){
+  {
+    std::lock_guard<std::mutex> lk(freeClientIdxsMtx_);
+    freeClientIdxs_.insert(clientId);
+    LOG_TRACE("freeing client["<< clientId <<"]");
+  }
   freeClientIdxCv_.notify_all();
-  LOG_TRACE("returned titon client["<< client.id <<"] to free pool");
 }
 
 /** ****************************************************************************
 ***************************************************************************** */
 void TritonInferencer::waitTillAllClientsReleased(){
-  std::unique_lock<std::mutex> lk(freeClientIdxsMtx_);
   if(freeClientIdxs_.size() != clients_.size()){
-    LOG_TRACE("wait for all triton infer client to finish");
-    freeClientIdxCv_.wait(lk, [this] { return freeClientIdxs_.size() == clients_.size(); });
+    std::unique_lock<std::mutex> lk(freeClientIdxsMtx_);
+    LOG_TRACE("waiting till all clients freed");
+    freeClientIdxCv_.wait(lk,
+      [this]{ return freeClientIdxs_.size() == clients_.size();});
   }
+  LOG_TRACE("all clients were freed");
+
 }
 
 /** ****************************************************************************
 ***************************************************************************** */
-TritonClient& TritonInferencer::aquireClientBlocking(){
+int TritonInferencer::aquireClientIdBlocking(){
+
   std::unique_lock<std::mutex> lk(freeClientIdxsMtx_);
   if(freeClientIdxs_.empty()){
-    LOG_TRACE("wait for an triton infer client to become available");
+    LOG_TRACE("wait for a free client");
     freeClientIdxCv_.wait(lk, [this] { return !freeClientIdxs_.empty(); });
   }
   auto it = freeClientIdxs_.begin();
+  int id = *it;
   freeClientIdxs_.erase(it);
-  LOG_TRACE("using triton client[" << *it << "]");
-  return *clients_[*it];
+  //LOG_TRACE("using triton client[" << id << "]");
+  return id;
 }
 
 /** ****************************************************************************
@@ -287,10 +371,10 @@ TritonInferencer::TritonInferencer(const Config &cfg)
   }
 
   // create max number of clients for concurrent inferencing
-  LOG_TRACE("Creating concurrent" << cfg.trtisMaxInferConcurrency << " clients for inferencing");
+  LOG_TRACE("Creating " << cfg.trtisMaxInferConcurrency << " clients for concurrent inferencing");
   for(int i = 0; i < cfg.trtisMaxInferConcurrency; i++){
     clients_.emplace_back(std::unique_ptr<TritonClient>(
-      new TritonClient(i, cfg, *this )));
+      new TritonClient(i, cfg, this )));
     freeClientIdxs_.insert(i);
 
   }
