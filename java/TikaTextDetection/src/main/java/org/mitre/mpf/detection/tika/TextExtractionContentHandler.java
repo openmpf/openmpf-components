@@ -46,7 +46,7 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
         super();
         pageNumber = 0;
         sectionNumber = 0;
-        // Enable to avoid storing metadata/title text from ppt document.
+        // Enable to avoid storing metadata/title text from pdf and ppt documents.
         skipTitle = true;
 
         // Disable to skip recording empty sections (warning: could produce an excessive number of empty tracks).
