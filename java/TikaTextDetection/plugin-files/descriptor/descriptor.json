@@ -31,7 +31,6 @@
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
-
         {
           "name": "LIST_ALL_PAGES",
           "description": "Specifies whether or not to store each page as a track, even if no text is extracted.",

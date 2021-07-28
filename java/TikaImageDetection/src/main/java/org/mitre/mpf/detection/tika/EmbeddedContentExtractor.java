@@ -42,7 +42,7 @@ import java.nio.file.Paths;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-
+import java.util.UUID;
 
 
 public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
@@ -68,8 +68,9 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
         imageMap = new ArrayList<ArrayList<String>>();
         current = new ArrayList<String>();
 
-        outputDir = Paths.get(path + "/tika-extracted");
-        commonImgDir = Paths.get(path + "/tika-extracted/common");
+        String unique_id = UUID.randomUUID().toString();
+        outputDir = Paths.get(path + "/tika-extracted/" + unique_id);
+        commonImgDir = Paths.get(path + "/tika-extracted/" + unique_id + "/common");
 
     }
 
