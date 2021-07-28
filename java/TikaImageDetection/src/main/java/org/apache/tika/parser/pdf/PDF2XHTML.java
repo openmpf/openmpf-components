@@ -1,68 +1,46 @@
-/******************************************************************************
- * NOTICE                                                                     *
- *                                                                            *
- * This software (or technical data) was produced for the U.S. Government     *
- * under contract, and is subject to the Rights in Data-General Clause        *
- * 52.227-14, Alt. IV (DEC 2007).                                             *
- *                                                                            *
- * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
- ******************************************************************************/
-
-/******************************************************************************
- * Copyright 2021 The MITRE Corporation                                       *
- *                                                                            *
- * Licensed under the Apache License, Version 2.0 (the "License");            *
- * you may not use this file except in compliance with the License.           *
- * You may obtain a copy of the License at                                    *
- *                                                                            *
- *    http://www.apache.org/licenses/LICENSE-2.0                              *
- *                                                                            *
- * Unless required by applicable law or agreed to in writing, software        *
- * distributed under the License is distributed on an "AS IS" BASIS,          *
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   *
- * See the License for the specific language governing permissions and        *
- * limitations under the License.                                             *
- ******************************************************************************/
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.tika.parser.pdf;
 
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.Writer;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.pdfbox.cos.COSBase;
+import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSStream;
-import org.apache.pdfbox.filter.MissingImageReaderException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDResources;
-import org.apache.pdfbox.pdmodel.graphics.PDXObject;
-import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceGray;
-import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
-import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
-import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
-import org.apache.pdfbox.tools.imageio.ImageIOUtil;
+import org.apache.pdfbox.util.Matrix;
 import org.apache.tika.exception.TikaException;
-import org.apache.tika.extractor.EmbeddedDocumentUtil;
-import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
-import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.ParseContext;
-import org.apache.tika.sax.EmbeddedContentHandler;
+import org.apache.tika.sax.WriteOutContentHandler;
+
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
-import org.xml.sax.helpers.AttributesImpl;
 
 /**
  * Utility class that overrides the {@link PDFTextStripper} functionality
@@ -71,16 +49,6 @@ import org.xml.sax.helpers.AttributesImpl;
  */
 class PDF2XHTML extends AbstractPDF2XHTML {
 
-
-    private static final List<String> JPEG = Arrays.asList(
-            COSName.DCT_DECODE.getName(),
-            COSName.DCT_DECODE_ABBREVIATION.getName());
-
-    private static final List<String> JP2 =
-            Arrays.asList(COSName.JPX_DECODE.getName());
-
-    private static final List<String> JB2 = Arrays.asList(
-            COSName.JBIG2_DECODE.getName());
 
     /**
      * This keeps track of the pdf object ids for inline
@@ -94,8 +62,8 @@ class PDF2XHTML extends AbstractPDF2XHTML {
      * TIKA-1742, we're limiting the export to one image per page.
      */
     private Map<COSStream, Integer> processedInlineImages = new HashMap<>();
-    private int inlineImageCounter = 0;
-    private PDF2XHTML(PDDocument document, ContentHandler handler, ParseContext context, Metadata metadata,
+    private AtomicInteger inlineImageCounter = new AtomicInteger(0);
+    PDF2XHTML(PDDocument document, ContentHandler handler, ParseContext context, Metadata metadata,
                       PDFParserConfig config)
             throws IOException {
         super(document, handler, context, metadata, config);
@@ -120,7 +88,11 @@ class PDF2XHTML extends AbstractPDF2XHTML {
             // Extract text using a dummy Writer as we override the
             // key methods to output to the given content
             // handler.
-            pdf2XHTML = new PDF2XHTML(document, handler, context, metadata, config);
+            if (config.getDetectAngles()) {
+                pdf2XHTML = new AngleDetectingPDF2XHTML(document, handler, context, metadata, config);
+            } else {
+                pdf2XHTML = new PDF2XHTML(document, handler, context, metadata, config);
+            }
             config.configure(pdf2XHTML);
 
             pdf2XHTML.writeText(document, new Writer() {
@@ -149,13 +121,13 @@ class PDF2XHTML extends AbstractPDF2XHTML {
         }
     }
 
-
     @Override
     public void processPage(PDPage page) throws IOException {
         try {
             super.processPage(page);
         } catch (IOException e) {
             handleCatchableIOE(e);
+            endPage(page);
         }
     }
 
@@ -164,7 +136,7 @@ class PDF2XHTML extends AbstractPDF2XHTML {
         try {
             writeParagraphEnd();
             try {
-                extractImages(page.getResources(), new HashSet<COSBase>());
+                extractImages(page);
             } catch (IOException e) {
                 handleCatchableIOE(e);
             }
@@ -172,150 +144,27 @@ class PDF2XHTML extends AbstractPDF2XHTML {
         } catch (SAXException e) {
             throw new IOException("Unable to end a page", e);
         } catch (IOException e) {
-            exceptions.add(e);
+            handleCatchableIOE(e);
         }
     }
 
-    private void extractImages(PDResources resources, Set<COSBase> seenThisPage) throws SAXException, IOException {
-        if (resources == null || config.getExtractInlineImages() == false) {
+    void extractImages(PDPage page) throws SAXException, IOException {
+        if (config.getExtractInlineImages() == false
+                && config.getExtractInlineImageMetadataOnly() == false) {
             return;
         }
 
-        for (COSName name : resources.getXObjectNames()) {
-
-            PDXObject object = null;
-            try {
-                object = resources.getXObject(name);
-            } catch (MissingImageReaderException e) {
-                EmbeddedDocumentUtil.recordException(e, metadata);
-                continue;
-            } catch (IOException e) {
-                EmbeddedDocumentUtil.recordEmbeddedStreamException(e, metadata);
-                continue;
+        ImageGraphicsEngine engine = new ImageGraphicsEngine(page, embeddedDocumentExtractor,
+                config, processedInlineImages, inlineImageCounter, xhtml, metadata, context);
+        engine.run();
+        List<IOException> engineExceptions = engine.getExceptions();
+        if (engineExceptions.size() > 0) {
+            IOException first = engineExceptions.remove(0);
+            if (config.getCatchIntermediateIOExceptions()) {
+                exceptions.addAll(engineExceptions);
             }
-
-            if (object == null) {
-                continue;
-            }
-            COSStream cosStream = object.getCOSObject();
-            if (seenThisPage.contains(cosStream)) {
-                //avoid infinite recursion TIKA-1742
-                continue;
-            }
-            seenThisPage.add(cosStream);
-
-            if (object instanceof PDFormXObject) {
-                extractImages(((PDFormXObject) object).getResources(), seenThisPage);
-            } else if (object instanceof PDImageXObject) {
-
-                PDImageXObject image = (PDImageXObject) object;
-
-                Metadata embeddedMetadata = new Metadata();
-                String extension = image.getSuffix();
-
-                if (extension == null || extension.equals("png")) {
-                    embeddedMetadata.set(Metadata.CONTENT_TYPE, "image/png");
-                    extension = "png";
-                } else if (extension.equals("jpg")) {
-                    embeddedMetadata.set(Metadata.CONTENT_TYPE, "image/jpeg");
-                } else if (extension.equals("tiff")) {
-                    embeddedMetadata.set(Metadata.CONTENT_TYPE, "image/tiff");
-                    extension = "tif";
-                } else if (extension.equals("jpx")) {
-                    embeddedMetadata.set(Metadata.CONTENT_TYPE, "image/jp2");
-                } else if (extension.equals("jb2")) {
-                    embeddedMetadata.set(
-                            Metadata.CONTENT_TYPE, "image/x-jbig2");
-                } else {
-                    //TODO: determine if we need to add more image types
-//                    throw new RuntimeException("EXTEN:" + extension);
-                }
-
-                embeddedMetadata.set(Metadata.EMBEDDED_RELATIONSHIP_ID, cosStream.toString());
-                Integer imageNumber = processedInlineImages.get(cosStream);
-                if (imageNumber == null) {
-                    imageNumber = inlineImageCounter++;
-                }
-                String fileName = "image" + imageNumber + "." + extension;
-                embeddedMetadata.set(Metadata.RESOURCE_NAME_KEY, fileName);
-                embeddedMetadata.set(Metadata.CONTENT_TYPE, extension);
-
-                // Output the img tag
-                AttributesImpl attr = new AttributesImpl();
-                attr.addAttribute("", "src", "src", "CDATA", "embedded:" + fileName);
-                attr.addAttribute("", "alt", "alt", "CDATA", fileName);
-                xhtml.startElement("img", attr);
-                xhtml.endElement("img");
-
-                //Do we only want to process unique COSObject ids?
-                //If so, have we already processed this one?
-                if (config.getExtractUniqueInlineImagesOnly() == true) {
-                    if (processedInlineImages.containsKey(cosStream)) {
-                        continue;
-                    }
-                    processedInlineImages.put(cosStream, imageNumber);
-                }
-
-                embeddedMetadata.set(TikaCoreProperties.EMBEDDED_RESOURCE_TYPE,
-                        TikaCoreProperties.EmbeddedResourceType.INLINE.toString());
-
-                if (embeddedDocumentExtractor.shouldParseEmbedded(embeddedMetadata)) {
-                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                    try {
-                        //TODO: handle image.getMetadata()?
-                        try {
-                            writeToBuffer(image, extension, buffer);
-                        } catch (IOException e) {
-                            EmbeddedDocumentUtil.recordEmbeddedStreamException(e, metadata);
-                            continue;
-                        }
-                        try (InputStream embeddedIs = TikaInputStream.get(buffer.toByteArray())) {
-                            embeddedDocumentExtractor.parseEmbedded(
-                                    embeddedIs,
-                                    new EmbeddedContentHandler(xhtml),
-                                    embeddedMetadata, false);
-                        }
-                    } catch (IOException e) {
-                        handleCatchableIOE(e);
-                    }
-                }
-            }
+            throw first;
         }
-    }
-
-    //nearly directly copied from PDFBox ExtractImages
-    private void writeToBuffer(PDImageXObject pdImage, String suffix, OutputStream out)
-            throws IOException {
-
-        BufferedImage image = pdImage.getImage();
-        if (image != null) {
-            if ("jpg".equals(suffix)) {
-                String colorSpaceName = pdImage.getColorSpace().getName();
-                //TODO: figure out if we want directJPEG as a configuration
-                //previously: if (directJPeg || PDDeviceGray....
-                if (PDDeviceGray.INSTANCE.getName().equals(colorSpaceName) ||
-                        PDDeviceRGB.INSTANCE.getName().equals(colorSpaceName)) {
-                    // RGB or Gray colorspace: get and write the unmodifiedJPEG stream
-                    InputStream data = pdImage.getStream().createInputStream(JPEG);
-                    org.apache.pdfbox.io.IOUtils.copy(data, out);
-                    org.apache.pdfbox.io.IOUtils.closeQuietly(data);
-                } else {
-                    // for CMYK and other "unusual" colorspaces, the JPEG will be converted
-                    ImageIOUtil.writeImage(image, suffix, out);
-                }
-            } else if ("jp2".equals(suffix) || "jpx".equals(suffix)) {
-                InputStream data = pdImage.createInputStream(JP2);
-                org.apache.pdfbox.io.IOUtils.copy(data, out);
-                org.apache.pdfbox.io.IOUtils.closeQuietly(data);
-            } else if ("jb2".equals(suffix)) {
-                InputStream data = pdImage.createInputStream(JB2);
-                org.apache.pdfbox.io.IOUtils.copy(data, out);
-                org.apache.pdfbox.io.IOUtils.closeQuietly(data);
-            } else{
-                ImageIOUtil.writeImage(image, suffix, out);
-            }
-        }
-        out.flush();
     }
 
     @Override
@@ -378,4 +227,106 @@ class PDF2XHTML extends AbstractPDF2XHTML {
         }
     }
 
+    class AngleCollector extends PDFTextStripper {
+        Set<Integer> angles = new HashSet<>();
+
+        public Set<Integer> getAngles() {
+            return angles;
+        }
+
+        /**
+         * Instantiate a new PDFTextStripper object.
+         *
+         * @throws IOException If there is an error loading the properties.
+         */
+        AngleCollector() throws IOException {
+        }
+
+        @Override
+        protected void processTextPosition(TextPosition text) {
+            Matrix m = text.getTextMatrix();
+            m.concatenate(text.getFont().getFontMatrix());
+            int angle = (int) Math.round(Math.toDegrees(Math.atan2(m.getShearY(), m.getScaleY())));
+            angle = (angle + 360) % 360;
+            angles.add(angle);
+        }
+    }
+
+    private static class AngleDetectingPDF2XHTML extends PDF2XHTML {
+
+        private AngleDetectingPDF2XHTML(PDDocument document, ContentHandler handler, ParseContext context, Metadata metadata, PDFParserConfig config) throws IOException {
+            super(document, handler, context, metadata, config);
+        }
+
+        @Override
+        protected void startPage(PDPage page) throws IOException {
+            //no-op
+        }
+
+        @Override
+        protected void endPage(PDPage page) throws IOException {
+            //no-op
+        }
+
+        @Override
+        public void processPage(PDPage page) throws IOException {
+            try {
+                super.startPage(page);
+                detectAnglesAndProcessPage(page);
+            } catch (IOException e) {
+                handleCatchableIOE(e);
+            } finally {
+                super.endPage(page);
+            }
+        }
+
+        private void detectAnglesAndProcessPage(PDPage page) throws IOException {
+            //copied and pasted from https://issues.apache.org/jira/secure/attachment/12947452/ExtractAngledText.java
+            //PDFBOX-4371
+            AngleCollector angleCollector = new AngleCollector(); // alternatively, reset angles
+            angleCollector.setStartPage(getCurrentPageNo());
+            angleCollector.setEndPage(getCurrentPageNo());
+            angleCollector.getText(document);
+
+            int rotation = page.getRotation();
+            page.setRotation(0);
+
+            for (Integer angle : angleCollector.getAngles()) {
+                if (angle == 0) {
+                    try {
+                        super.processPage(page);
+                    } catch (IOException e) {
+                        handleCatchableIOE(e);
+                    }
+                } else {
+                    // prepend a transformation
+                    try (PDPageContentStream cs = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.PREPEND, false)) {
+                        cs.transform(Matrix.getRotateInstance(-Math.toRadians(angle), 0, 0));
+                    }
+
+                    try {
+                        super.processPage(page);
+                    } catch (IOException e) {
+                        handleCatchableIOE(e);
+                    }
+
+                    // remove transformation
+                    COSArray contents = (COSArray) page.getCOSObject().getItem(COSName.CONTENTS);
+                    contents.remove(0);
+                }
+            }
+            page.setRotation(rotation);
+        }
+
+        @Override
+        protected void processTextPosition(TextPosition text) {
+            Matrix m = text.getTextMatrix();
+            m.concatenate(text.getFont().getFontMatrix());
+            int angle = (int) Math.round(Math.toDegrees(Math.atan2(m.getShearY(), m.getScaleY())));
+            if (angle == 0) {
+                super.processTextPosition(text);
+            }
+        }
+    }
 }
+
