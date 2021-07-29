@@ -99,7 +99,7 @@ public class TestTikaTextDetectionComponent {
     }
 
     @Test
-    public void testGetDetectionsPdfFile() throws MPFComponentDetectionError {
+    public void testGetDetectionsPDFFile() throws MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-tika-detection.pdf").getPath();
 
         Map<String, String> jobProperties = new HashMap<>();
@@ -110,13 +110,13 @@ public class TestTikaTextDetectionComponent {
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        assertEquals(5, tracks.size());
+        assertEquals(30, tracks.size());
 
-        assertSection(tracks.get(0), "1", "1", "Unknown", "OpenMPF"); // Not enough text.
-        assertSection(tracks.get(1), "1", "2", "English", "Media Analytics");
-        assertSection(tracks.get(2), "1", "3", "English", "web-friendly platform");
-        assertSection(tracks.get(3), "1", "4", "English", "The MITRE Corporation");
-        assertSection(tracks.get(4), "3", "1", "Unknown", "page 3"); // cannot determine language
+        assertSection(tracks.get(0), "01", "01", "English", "OpenMPF"); // Not enough text.
+        assertSection(tracks.get(0), "01", "01", "English", "Bridging the Gap in Media Analytics");
+        assertSection(tracks.get(2), "01", "03", "Unknown", "Data Filtering");
+        assertSection(tracks.get(23), "01", "24", "English", "The MITRE Corporation");
+        assertSection(tracks.get(29), "03", "01", "Unknown", "page 3"); // cannot determine language
     }
 
     @Test

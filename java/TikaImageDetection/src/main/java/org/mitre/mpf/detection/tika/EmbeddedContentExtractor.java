@@ -68,9 +68,9 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
         imageMap = new ArrayList<ArrayList<String>>();
         current = new ArrayList<String>();
 
-        String unique_id = UUID.randomUUID().toString();
-        outputDir = Paths.get(path + "/tika-extracted/" + unique_id);
-        commonImgDir = Paths.get(path + "/tika-extracted/" + unique_id + "/common");
+        String uniqueID = UUID.randomUUID().toString();
+        outputDir = Paths.get(path + "/tika-extracted/" + uniqueID);
+        commonImgDir = Paths.get(path + "/tika-extracted/" + uniqueID + "/common");
 
     }
 

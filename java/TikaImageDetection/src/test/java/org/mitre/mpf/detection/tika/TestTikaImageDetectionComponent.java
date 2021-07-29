@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class TestTikaImageDetectionComponent {
@@ -83,46 +84,6 @@ public class TestTikaImageDetectionComponent {
        }
        return filesFound;
     }
-
-    @Test
-    public void testMultiMediaJob() throws IOException, MPFComponentDetectionError {
-        String mediaPath1 = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
-        String mediaPath2 = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
-        Map<String, String> jobProperties = new HashMap<>();
-        Map<String, String> mediaProperties = new HashMap<>();
-
-        Path testDir = Files.createTempDirectory("tmp");
-        testDir.toFile().deleteOnExit();
-
-        jobProperties.put("SAVE_PATH", testDir.toString());
-        jobProperties.put("ORGANIZE_BY_PAGE", "false");
-        jobProperties.put("ALLOW_EMPTY_PAGES", "true");
-
-        // Test that multiple documents submitted under one job ID are processed properly.
-        MPFGenericJob genericSubJob1 = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath1, jobProperties, mediaProperties);
-        MPFGenericJob genericSubJob2 = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath2, jobProperties, mediaProperties);
-
-        List<MPFGenericTrack> tracks1 = tikaComponent.getDetections(genericSubJob1);
-        List<MPFGenericTrack> tracks2 = tikaComponent.getDetections(genericSubJob2);
-
-        String uuid1 = tracks1.get(0).getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
-        String uuid2 = tracks2.get(0).getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
-
-        assertTrue(uuid1 != uuid2);
-
-        // Check that images were saved correctly, then clean up test folder.
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image0.jpg")));
-        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image1.jpg"))));
-        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image2.jpg"))));
-
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image0.jpg")));
-        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image1.jpg"))));
-        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image2.jpg"))));
-
-        FileUtils.deleteDirectory(testDir.toFile());
-    }
-
 
     @Test
     public void testGetDetectionsGeneric() throws IOException, MPFComponentDetectionError {
@@ -223,10 +184,45 @@ public class TestTikaImageDetectionComponent {
         // Three images should be stored in one track as the first page output. No other tracks should exist.
         MPFGenericTrack testTrack = tracks.get(0);
         assertEquals("1", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
-        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.png"));
-        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image2.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.png"));
         assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
+
+        FileUtils.deleteDirectory(testDir.toFile());
+    }
+
+    @Test
+    public void testMultiMediaJob() throws IOException, MPFComponentDetectionError {
+        String mediaPath1 = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
+        String mediaPath2 = this.getClass().getResource("/data/test-first-page-images.pdf").getPath();
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+
+        Path testDir = Files.createTempDirectory("tmp");
+        testDir.toFile().deleteOnExit();
+
+        jobProperties.put("SAVE_PATH", testDir.toString());
+        jobProperties.put("ORGANIZE_BY_PAGE", "false");
+        jobProperties.put("ALLOW_EMPTY_PAGES", "true");
+
+        // Test that multiple documents submitted under one job ID are processed properly.
+        MPFGenericJob genericSubJob1 = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath1, jobProperties, mediaProperties);
+        MPFGenericJob genericSubJob2 = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath2, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks1 = tikaComponent.getDetections(genericSubJob1);
+        List<MPFGenericTrack> tracks2 = tikaComponent.getDetections(genericSubJob2);
+
+        String uuid1 = tracks1.get(0).getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
+        String uuid2 = tracks2.get(0).getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
+
+        assertNotEquals(uuid1, uuid2);
+
+        // Check that images were saved correctly, then clean up test folder.
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image0.jpg")));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image1.jpg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image2.jpg"))));
+
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image0.png")));
 
         FileUtils.deleteDirectory(testDir.toFile());
     }
