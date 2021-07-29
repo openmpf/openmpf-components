@@ -273,9 +273,9 @@
         },
         {
           "name": "PASS_FEED_FORWARD_TEXT_TRACKS",
-          "description": "When set to true, any feed-forward track with an existing TEXT property skips component processing and is passed along to the next sub-job.",
+          "description": "When set to true, any feed-forward track for an with an existing TEXT property is returned without modification. Only applies to image and generic jobs.",
           "type": "BOOLEAN",
-          "defaultValue": "false"
+          "defaultValue": "true"
         }
       ]
     }
@@ -289,7 +289,7 @@
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION SKIP TEXT TRACKS ACTION",
-      "description": "Performs Tesseract OCR, skips TEXT tracks.",
+      "description": "Performs Tesseract OCR. Skips TEXT tracks.",
       "algorithm": "TESSERACTOCR",
       "properties": [
         {

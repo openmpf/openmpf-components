@@ -45,7 +45,7 @@
         },
         {
           "name": "PASS_FEED_FORWARD_DERIVATIVE_MEDIA_TRACKS",
-          "description": "When set to true, any feed-forward track with an existing DERIVATIVE_MEDIA property skips component processing and is passed along to the next sub-job.",
+          "description": "When set to true, any feed-forward track with an existing DERIVATIVE_MEDIA property is returned without modification. Only applies to image jobs. Normally, images are not supported and would result in an error.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         }
@@ -86,7 +86,7 @@
     },
     {
       "name": "TIKA TEXT DETECTION SKIP DERIVATIVE MEDIA TASK",
-      "description": "Performs Tika text detection.",
+      "description": "Performs Tika text detection. Skips DERIVATIVE_MEDIA tracks.",
       "actions": [
         "TIKA TEXT DETECTION SKIP DERIVATIVE MEDIA ACTION"
       ]

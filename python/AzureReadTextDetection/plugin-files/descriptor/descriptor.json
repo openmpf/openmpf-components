@@ -51,9 +51,9 @@
         },
         {
           "name": "PASS_FEED_FORWARD_TEXT_TRACKS",
-          "description": "When set to true, any feed-forward track with an existing TEXT property skips component processing and is passed along to the next sub-job.",
+          "description": "When set to true, any feed-forward track with an existing TEXT property is returned without modification. Only applies to generic jobs.",
           "type": "BOOLEAN",
-          "defaultValue": "false"
+          "defaultValue": "true"
         }
       ]
     }
@@ -78,7 +78,7 @@
     },
     {
       "name": "AZURE READ DETECTION FF SKIP TEXT TRACKS ACTION",
-      "description": "Performs Azure Read API OCR detection with feed forwarding, skips TEXT tracks.",
+      "description": "Performs Azure Read API OCR detection with feed forwarding. Skips TEXT tracks.",
       "algorithm": "AZUREREAD",
       "properties": [
         {
@@ -109,7 +109,7 @@
     },
     {
       "name": "AZURE READ DETECTION FF SKIP TEXT TRACKS TASK",
-      "description": "Performs Azure Read API OCR detection with feed forwarding, skips TEXT tracks.",
+      "description": "Performs Azure Read API OCR detection with feed forwarding. Skips TEXT tracks.",
       "actions": [
         "AZURE READ DETECTION FF SKIP TEXT TRACKS ACTION"
       ]

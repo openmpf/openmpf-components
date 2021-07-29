@@ -49,9 +49,8 @@ class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, obj
 
     def get_detections_from_generic(self, generic_job):
         if generic_job.feed_forward_track != None and \
-           mpf_util.get_property(generic_job.job_properties, 'PASS_FEED_FORWARD_TEXT_TRACKS', False) and \
-           "TEXT" in generic_job.feed_forward_track.detection_properties:
-
+                "TEXT" in generic_job.feed_forward_track.detection_properties and \
+                mpf_util.get_property(generic_job.job_properties, 'PASS_FEED_FORWARD_TEXT_TRACKS', True):
             logger.exception('Skipping track as TEXT property exists.', generic_job.job_name)
             yield generic_job.feed_forward_track
         else:

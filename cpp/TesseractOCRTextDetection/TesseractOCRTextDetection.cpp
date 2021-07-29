@@ -1444,26 +1444,24 @@ vector<MPFVideoTrack> TesseractOCRTextDetection::GetDetections(const MPFVideoJob
 vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImageJob &job) {
     try{
         LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Starting job.");
+
+        bool skip_text_tracks = DetectionComponentUtils::GetProperty<bool>(job.job_properties,
+                                                                           "PASS_FEED_FORWARD_TEXT_TRACKS",
+                                                                           true);
+        if (job.has_feed_forward_location &&
+            job.feed_forward_location.detection_properties.count("TEXT") &&
+            skip_text_tracks) {
+            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Skipping track because TEXT property exists.");
+            return { job.feed_forward_location };
+        }
+
         OCR_filter_settings ocr_fset;
         Text_type text_type = Unknown;
 
         MPFImageReader image_reader(job);
 
-        bool skip_text_tracks = DetectionComponentUtils::GetProperty<bool>(job.job_properties,
-                                                                           "PASS_FEED_FORWARD_TEXT_TRACKS",
-                                                                           false);
         if (job.has_feed_forward_location &&
-            skip_text_tracks &&
-            job.feed_forward_location.detection_properties.count("TEXT")) {
-
-            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Skipping track as TEXT property exists.");
-
-            vector<MPFImageLocation> past_location;
-            past_location.push_back(job.feed_forward_location);
-            return past_location;
-        }
-
-        if (job.has_feed_forward_location && job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
+            job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
             if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "UNSTRUCTURED") {
                 text_type = Unstructured;
             } else if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "STRUCTURED") {
@@ -1845,26 +1843,22 @@ vector<MPFGenericTrack> TesseractOCRTextDetection::GetDetections(const MPFGeneri
     try {
         LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Starting job.");
 
+        bool skip_text_tracks = DetectionComponentUtils::GetProperty<bool>(job.job_properties,
+                                                                           "PASS_FEED_FORWARD_TEXT_TRACKS",
+                                                                           true);
+        if (job.has_feed_forward_track &&
+            job.feed_forward_track.detection_properties.count("TEXT") &&
+            skip_text_tracks) {
+            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Skipping track because TEXT property exists.");
+            return { job.feed_forward_track };
+        }
+
         PDF_page_inputs page_inputs;
         PDF_page_results page_results;
 
         vector<MPFGenericTrack> tracks;
         page_results.tracks = &tracks;
         page_inputs.job = &job;
-
-
-        bool skip_text_tracks = DetectionComponentUtils::GetProperty<bool>(job.job_properties,
-                                                                           "PASS_FEED_FORWARD_TEXT_TRACKS",
-                                                                           false);
-        if (job.has_feed_forward_track &&
-            skip_text_tracks &&
-            job.feed_forward_track.detection_properties.count("TEXT")) {
-
-            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Skipping track as TEXT property exists.");
-
-            tracks.push_back(job.feed_forward_track);
-            return tracks;
-        }
 
         load_settings(job, page_inputs.ocr_fset);
         load_image_preprocessing_settings(job, page_inputs.ocr_fset);

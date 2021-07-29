@@ -54,21 +54,18 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
     }
 
     // Handles the case where the media is a generic type.
-    public List<MPFGenericTrack>  getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
+    public List<MPFGenericTrack> getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
         LOG.info("[{}] Starting job.", mpfGenericJob.getJobName());
         LOG.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
             mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
 
-        float confidence = -1.0f;
-        List<MPFGenericTrack> tracks = new LinkedList<>();
-        Map<String, String> properties = mpfGenericJob.getJobProperties();
+        Map<String,String> properties = mpfGenericJob.getJobProperties();
 
-        if (MapUtils.getBooleanValue(properties, "PASS_FEED_FORWARD_DERIVATIVE_MEDIA_TRACKS", false) &&
-            mpfGenericJob.getFeedForwardTrack() != null &&
-            mpfGenericJob.getFeedForwardTrack().getDetectionProperties().containsKey("DERIVATIVE_MEDIA_URI")) {
-            tracks.add(mpfGenericJob.getFeedForwardTrack());
-            return tracks;
+        if (mpfGenericJob.getFeedForwardTrack() != null &&
+                mpfGenericJob.getFeedForwardTrack().getDetectionProperties().containsKey("DERIVATIVE_MEDIA_URI") &&
+                MapUtils.getBooleanValue(properties, "PASS_FEED_FORWARD_DERIVATIVE_MEDIA_TRACKS", false)) {
+            return List.of(mpfGenericJob.getFeedForwardTrack());
         }
 
         // Specify filename for tika parsers here.
@@ -91,6 +88,9 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             LOG.error(errorMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, errorMsg);
         }
+
+        float confidence = -1.0f;
+        List<MPFGenericTrack> tracks = new LinkedList<>();
 
         // Set language filtering limit.
         int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);
@@ -290,7 +290,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         return map;
     }
 
-    // The TikeDetection component supports generic file types (pdfs, documents, txt, etc.).
+    // The TikaDetection component supports generic file types (pdfs, documents, txt, etc.).
     public boolean supports(MPFDataType mpfDataType) {
         return MPFDataType.UNKNOWN.equals(mpfDataType);
     }
@@ -300,14 +300,10 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
     }
 
     public List<MPFImageLocation> getDetections(MPFImageJob job) throws MPFComponentDetectionError {
-        List<MPFImageLocation>  locations = new LinkedList<>();
-        Map<String, String> properties = job.getJobProperties();
-
-        if (MapUtils.getBooleanValue(properties, "PASS_FEED_FORWARD_DERIVATIVE_MEDIA_TRACKS", false) &&
-                job.getFeedForwardLocation() != null &&
-                job.getFeedForwardLocation().getDetectionProperties().containsKey("DERIVATIVE_MEDIA_URI")) {
-            locations.add(job.getFeedForwardLocation());
-            return locations;
+        if (job.getFeedForwardLocation() != null &&
+                job.getFeedForwardLocation().getDetectionProperties().containsKey("DERIVATIVE_MEDIA_URI") &&
+                MapUtils.getBooleanValue(job.getJobProperties(), "PASS_FEED_FORWARD_DERIVATIVE_MEDIA_TRACKS", false)) {
+            return List.of(job.getFeedForwardLocation());
         }
         throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Image detection not supported.");
     }
