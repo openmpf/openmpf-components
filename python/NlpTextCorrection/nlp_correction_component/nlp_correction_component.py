@@ -194,10 +194,6 @@ class HunspellWrapper(object):
                         f'The first three (or less) words with the issue are:'
                         f' ' + ' '.join(map(str, unicode_error_words)))
 
-            #print()
-            #print(' '.join(map(str, unicode_error_words)))
-            #print()
-
         detection_properties["CORRECTED TEXT"] = suggestions
         log.debug("Successfully corrected text")
         log.debug(f'Corrected text: "{suggestions}"')
