@@ -30,7 +30,7 @@
 /** ****************************************************************************
 * Macro for throwing exception so we can see where in the code it happened
 ***************************************************************************** */
-#define THROW_TRTISEXCEPTION(X, MSG) {                                         \
+#define THROW_TRITON_EXCEPTION(X, MSG) {                                         \
     MPF::COMPONENT::MPFDetectionError e = (X);                                 \
     throw MPF::COMPONENT::MPFDetectionException(e,                             \
        "Error in " + std::string(__FILENAME__)                                 \
@@ -40,11 +40,11 @@
 /** ****************************************************************************
 * Macro for error checking / logging of inference server client lib
 ***************************************************************************** */
-#define NI_CHECK_OK(X, MSG) {                                                  \
-  nvidia::inferenceserver::client::Error e = (X);                              \
+#define TR_CHECK_OK(X, MSG) {                                                  \
+  triton::client::Error e = (X);                              \
   if (!e.IsOk()) {                                                             \
     throw MPF::COMPONENT::MPFDetectionException(MPF_OTHER_DETECTION_ERROR_TYPE \
-      , std::string("NVIDIA inference server error")                           \
+      , std::string("Triton inference server error")                           \
         + " in " + std::string(__FILENAME__)                                   \
         + "[" + std::to_string( __LINE__) + "]"                                \
         + ": " + (MSG) + ": " + e.Message());                                  \

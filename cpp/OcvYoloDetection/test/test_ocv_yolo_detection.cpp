@@ -718,14 +718,13 @@ TEST(OcvYoloDetection, TestTritonClientVideo) {
   auto component = initComponent();
 
   MPFVideoJob videoJob("Testing", inVideoFile, start, stop,
-     {{"KF_DISABLED","1"},
-      //{"DETECTION_FRAME_BATCH_SIZE","4"},
+     {
       {"DETECTION_FRAME_BATCH_SIZE","16"},
-      {"MAX_INFER_CONCURRENCY", "4"},
+      {"FRAME_QUEUE_CAPACITY","64"},
+      {"MAX_INFER_CONCURRENCY", "2"},
       {"ENABLE_TRTIS", "true"},
-      {"TRACKING_DISABLE_MOSSE_TRACKER","0"},
       {"TRTIS_SERVER","triton:8001"},
-      {"TRTIS_USE_SHM", "false"},
+      {"TRTIS_USE_SHM", "true"},
       {"MODEL_NAME", "yolo"},
       {"NET_INPUT_IMAGE_SIZE", "416"}
      }, { });
@@ -740,7 +739,7 @@ TEST(OcvYoloDetection, TestTritonClientVideo) {
   EXPECT_FALSE(found_tracks.empty());
   double time_taken = chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count();
   time_taken = time_taken * 1e-9;
-  GOUT("\tVideoJob processing time: " << fixed << setprecision(5) << time_taken << "[sec] or "  << (stop - start)/time_taken << "[FPS]");
+  GOUT("\tVideoJob processing time: " << fixed << setprecision(5) << time_taken << "[sec] for " << stop-start << " frames or "  << (stop - start)/time_taken << "[FPS]");
 
   GOUT("\tWriting detected video to files.");
   VideoGeneration video_generation;

@@ -363,18 +363,9 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
         Config config(job.job_properties);
         auto& yoloNetwork = GetYoloNetwork(job.job_properties, config);
 
-        // if(config.trtisEnabled){  // force efficient batch size
-        //   if(config.frameBatchSize > yoloNetwork.tritonInferencer.maxBatchSize){
-        //     throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY,
-        //        std::string("job parameter'DETECTION_FRAME_BATCH_SIZE' cannot be ")
-        //        + std::string(" greater than inference server's max batch size = ")
-        //        + std::to_string(yoloNetwork.tritonInferencer.maxBatchSize));
-        //   }
-        // }
-
         MPFAsyncVideoCapture videoCapture(job);
 
-       //place to hold on to frames till callbacks are done
+       //place to hold frames till callbacks are done
        std::unordered_map<int,std::vector<Frame>> frameBatches;
 
         while (true) {
@@ -386,48 +377,36 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             int frameBatchKey = tmp.back().idx;
             frameBatches.insert(std::make_pair(frameBatchKey,std::move(tmp)));
 
-            LOG_TRACE("\n");
             LOG_TRACE("processing frames [" << frameBatches.at(frameBatchKey).front().idx << "..."
                                             << frameBatches.at(frameBatchKey).back().idx << "]");
             yoloNetwork.GetDetections(
               frameBatches.at(frameBatchKey),
-              [&config,
-               &frameBatches,
-               frameBatchKey,
-               &inProgressTracks,
-               &completedTracks]  // this callback gets called MULTIPE times, depending on trtid server maxBatchSize
+
+              // this callback gets called MULTIPE times
+              [&config, &frameBatches, &inProgressTracks, &completedTracks, frameBatchKey]
               (std::vector<std::vector<DetectionLocation>>&& detectionsVec,
                std::vector<Frame>::const_iterator begin,
-               std::vector<Frame>::const_iterator end){
-
-
-                LOG_TRACE("detectionsVec["<<detectionsVec.size()<<"]  end-begin = " << (size_t)(end-begin));
-                //assert(detectionsVec.size() == end - begin);
+               std::vector<Frame>::const_iterator end) {
 
                 int backFrameIdx = (end - 1)->idx;
-                int frameIdx;
                 int i = 0;
-                int prev = -1;
                 for(std::vector<Frame>::const_iterator it = begin; it != end; ++it,++i){
-                  LOG_TRACE("xyz: " << (*it).idx << " prev=" << prev );
-                  assert( prev < static_cast<int>((*it).idx) );
-                  prev = (*it).idx;
-                  ProcessFrameDetections(config,
-                                         *it,
+                  ProcessFrameDetections(config, *it,
                                          std::move(detectionsVec.at(i)),
                                          inProgressTracks,
                                          completedTracks);
                 }
-                if(frameBatchKey == backFrameIdx){  // last frame in batch, release frame batch
-                  LOG_TRACE("releasing frames[" << frameBatches[frameBatchKey].front().idx << " .." << frameBatches[frameBatchKey].back().idx << "]");
+
+                // last frame in batch, release frame batch
+                if(frameBatchKey == backFrameIdx){
                   frameBatches.erase(frameBatchKey);
                 }
               },
+
               config);
         }
 
-        // all frame batches should have bee processed
-        assert(frameBatches.empty());
+        assert(("all frame batches should have been processed", frameBatches.empty()));
 
         LOG_TRACE("Converting remaining active tracks to MPF tracks");
         // convert any remaining active tracks to MPFVideoTracks

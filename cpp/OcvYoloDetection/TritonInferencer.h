@@ -32,18 +32,22 @@ class TritonInferencer {
   public:
 
     TritonInferencer(const Config &cfg);
-    ~TritonInferencer(){LOG_TRACE("~TritonInferencer");}
 
     const std::string& serverUrl;
-    const std::string  modelName;
-    const std::string  modelVersion;
-    int maxBatchSize;
-    std::vector<TritonTensorMeta> inputsMeta;
-    std::vector<TritonTensorMeta> outputsMeta;
-    nvidia::inferenceserver::client::InferOptions inferOptions;
-    nvidia::inferenceserver::client::SslOptions sslOptions;
 
-    //std::vector<cv::Mat> infer(const std::vector<cv::Mat> &inputBlobs);
+    const std::string  modelName;
+
+    const std::string  modelVersion;
+
+    int maxBatchSize;
+
+    std::vector<TritonTensorMeta> inputsMeta;
+
+    std::vector<TritonTensorMeta> outputsMeta;
+
+    triton::client::InferOptions inferOptions;
+
+    triton::client::SslOptions sslOptions;
 
     using ExtractDetectionsFunc =
       std::function<void(std::vector<cv::Mat> outBlobs,
@@ -54,33 +58,32 @@ class TritonInferencer {
                const std::vector<cv::Mat> &inputBlobs,
                ExtractDetectionsFunc extractDetectionsFun);
 
+    int acquireClientIdBlocking();
 
-
-    int aquireClientIdBlocking();
     void releaseClientId(int clientId);
+
     void waitTillAllClientsReleased();
 
   private:
 
-    std::unique_ptr<nvidia::inferenceserver::client::InferenceServerGrpcClient> statusClient_;
-    std::mutex freeClientIdxsMtx_;
-    std::condition_variable freeClientIdxCv_;
-    std::unordered_set<int> freeClientIdxs_;
+    std::unique_ptr<triton::client::InferenceServerGrpcClient> statusClient_;
+
     std::vector<std::unique_ptr<TritonClient>> clients_;
 
-    //int batchCompleted_;
-    //std::mutex batchCompletedMtx_;
-    //std::condition_variable batchCompletedCv_;
+    std::unordered_set<int> freeClientIds_;
 
-    int frameIdxComplete_;
-    std::mutex frameIdxCompleteMtx_;
-    std::condition_variable frameIdxCompleteCv_;
+    std::mutex freeClientIdsMtx_;
 
+    std::condition_variable freeClientIdsCv_;
 
     void checkServerIsAlive(int maxAttempts) const;
+
     void checkServerIsReady(int maxAttempts) const;
+
     void checkModelIsReady(int maxAttempts) const;
+
     void getModelInputOutputMetaData();
+
     void removeAllShmRegions(const std::string prefix);
 
 };

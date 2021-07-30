@@ -53,10 +53,6 @@ class YoloNetwork {
 public:
     YoloNetwork(ModelSettings modelSettings, const Config &config);
 
-    // std::vector<std::vector<DetectionLocation>> GetDetections(
-    //         const std::vector<Frame> &frames,
-    //         const Config &config);
-
     using ProcessFrameDetectionsFunc =
       std::function<void(std::vector<std::vector<DetectionLocation>>&& dets,
                          std::vector<Frame>::const_iterator begin,
@@ -88,6 +84,11 @@ private:
 
     std::function<bool(const std::string&)> classFilter_;
 
+    int frameIdxComplete_;
+
+    std::mutex frameIdxCompleteMtx_;
+
+    std::condition_variable frameIdxCompleteCv_;
 
     std::vector<std::vector<DetectionLocation>> GetDetectionsCvdnn(
         const std::vector<Frame> &frames,

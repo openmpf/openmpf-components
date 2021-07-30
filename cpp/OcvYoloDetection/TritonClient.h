@@ -44,41 +44,60 @@ class TritonClient {
     void infer(const std::vector<cv::Mat> &inputBlobs);
 
     using CallbackFunc = std::function<void()>;
-    void inferAsync(const std::vector<cv::Mat> &inputBlobs, CallbackFunc inferencerLambda);
+
+    void inferAsync(const std::vector<cv::Mat> &inputBlobs,
+                    CallbackFunc inferencerLambda);
 
     cv::Mat getOutput(const TritonTensorMeta& om);
+
     static const std::string& shm_key_prefix();
-
-    //void check(){LOG_TRACE("client[" << id << "]->inferencer: " << std::hex << inferencer_);}
-
-    void setWait();
 
   private:
 
     std::mutex mtx_;
+
     std::condition_variable cv_;
+
     int dependantOnClientId;
 
-    //const Config& cfg_;
     const TritonInferencer *inferencer_;
+
     const size_t inputs_byte_size_;
+
     const size_t outputs_byte_size_;
 
     const std::string inputs_shm_key_;
+
     const std::string outputs_shm_key_;
+
     uint8_t* inputs_shm_;
+
     uint8_t* outputs_shm_;
 
-    std::vector<std::unique_ptr<nvidia::inferenceserver::client::InferInput>> inferInputs_;
-    std::vector<std::unique_ptr<const nvidia::inferenceserver::client::InferRequestedOutput>> inferReqestedOutputs_;
+    std::vector<std::unique_ptr<triton::client::InferInput>>
+      inferInputs_;
 
-    std::unique_ptr<nvidia::inferenceserver::client::InferResult> inferResult_;
-    std::unique_ptr<nvidia::inferenceserver::client::InferenceServerGrpcClient> grpc_;
+    std::vector<std::unique_ptr<const triton::client::InferRequestedOutput>>
+      inferRequestedOutputs_;
 
-    void setupShmRegions();
-    void removeShmRegions();
+    std::unique_ptr<triton::client::InferResult>
+      inferResult_;
+
+    std::unique_ptr<triton::client::InferenceServerGrpcClient>
+      grpc_;
+
+    void setupShmRegion(const std::string shm_key,
+                        const size_t byte_size,
+                        uint8_t* &shm_addr);
+
+    void removeShmRegion(const std::string shm_key,
+                         const size_t byte_size,
+                        uint8_t* shm_addr);
+
     void prepareInferInputs();
+
     void prepareInferRequestedOutputs();
+
     void setInferInputsData(const std::vector<cv::Mat> &blobs);
 
 };

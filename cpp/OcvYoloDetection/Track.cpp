@@ -57,12 +57,16 @@ void Track::add(DetectionLocation detectionLocation) {
     if (!locations_.empty()) {
         // old tail's image no longer needed
         back().frame.data.release();
+        assert(("track frames have to be in sequence",
+          back().frame.idx < detectionLocation.frame.idx));
     }
     locations_.push_back(std::move(detectionLocation));
 }
 
 
 MPFVideoTrack Track::toMpfTrack(Track track) {
+    assert(("track start frame has to come before end frame ",
+      track.front().frame.idx <= track.back().frame.idx));
     MPFVideoTrack mpfTrack(
             track.front().frame.idx,
             track.back().frame.idx,
@@ -74,6 +78,9 @@ MPFVideoTrack Track::toMpfTrack(Track track) {
             mpfTrack.confidence = detection.confidence;
             topClassItr = detection.detection_properties.find("CLASSIFICATION");
         }
+        assert(("all track frames have to fall between start and end frames",
+                  track.front().frame.idx <= detection.frame.idx
+                && detection.frame.idx <= track.back().frame.idx));
         mpfTrack.frame_locations.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(detection.frame.idx),
@@ -212,5 +219,3 @@ std::ostream& operator<<(std::ostream &out, const Track &t) {
         << ">(" << t.locations_.size() << ")";
     return out;
 }
-
-

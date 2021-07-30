@@ -32,8 +32,9 @@ set(CMAKE_CXX_STANDARD 11)
 #ADD_DEFINITIONS("-std=c++11")
 add_definitions(-Wfatal-errors)
 
-# set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
-set(CMAKE_BUILD_TYPE Debug)           # build debug version
+set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
+#set(CMAKE_BUILD_TYPE Release)         # build release version
+#set(CMAKE_BUILD_TYPE Debug)           # build debug version
 
 include(../ComponentSetup.cmake)
 
@@ -48,7 +49,6 @@ set(DLIB_DIR /apps/source/dlib-sources/dlib-19.20/dlib)
 include(${DLIB_DIR}/cmake)
 set_property(TARGET dlib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-
 find_package(OpenCV 4.5.0 EXACT REQUIRED COMPONENTS opencv_dnn opencv_videoio opencv_tracking)
 
 find_package(mpfComponentInterface REQUIRED)
@@ -56,10 +56,12 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
-set(CMAKE_PREFIX_PATH /opt/triton)
-find_package(CURL REQUIRED)
-find_package(TritonCommon PATH_SUFFIXES 64 REQUIRED)
-find_package(TRITON REQUIRED)
+
+find_package(gRPC REQUIRED)
+find_package(CUDAToolkit REQUIRED)
+find_package(TritonCommon REQUIRED)
+find_package(TritonClient REQUIRED)
+
 
 set(OCV_YOLO_DETECTION_SOURCE_FILES
         TritonExceptionMacros.h
@@ -83,7 +85,7 @@ target_link_libraries(mpfOcvYoloDetection
                       mpfComponentInterface
                       mpfDetectionComponentApi
                       mpfComponentUtils
-                      TRITON::grpcclient_static
+                      TritonClient::grpcclient_static
                       ${OpenCV_LIBS}
                       dlib
                       explain)
@@ -92,5 +94,5 @@ configure_mpf_component(OcvYoloDetection TARGETS mpfOcvYoloDetection)
 
 add_subdirectory(test)
 
-add_executable(sample_ocv_yolo_detector sample_ocv_yolo_detector.cpp)
-target_link_libraries(sample_ocv_yolo_detector mpfOcvYoloDetection)
+#add_executable(sample_ocv_yolo_detector sample_ocv_yolo_detector.cpp)
+#target_link_libraries(sample_ocv_yolo_detector mpfOcvYoloDetection})

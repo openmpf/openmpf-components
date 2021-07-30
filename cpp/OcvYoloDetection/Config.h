@@ -41,7 +41,7 @@
 * logging shorthand macros
 ****************************************************************************** */
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#define LOG_PREFIX "./" << __FILENAME__ << ":" << __LINE__ << " - "
+#define LOG_PREFIX "." <<  std::setw(20) << std::string(__FUNCTION__).substr(0,20) << ":" << std::setw(4) << __LINE__ <<" - "
 #define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log,LOG_PREFIX << MSG) }
 #define LOG_DEBUG(MSG){ LOG4CXX_DEBUG(Config::log,LOG_PREFIX << MSG) }
 #define LOG_INFO(MSG){ LOG4CXX_INFO (Config::log,LOG_PREFIX << MSG) }

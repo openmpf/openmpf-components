@@ -45,13 +45,12 @@
 
 using namespace MPF::COMPONENT;
 
-// match triton yololayer.h  constant
+// match triton yololayer.h constant
 static constexpr int MAX_OUTPUT_BBOX_COUNT = 1000;
 static constexpr int OUTPUT_BLOB_DIM_1 = MAX_OUTPUT_BBOX_COUNT * 7 + 1;
 
 namespace {
-/** ****************************************************************************
-***************************************************************************** */
+
     int ConfigureCudaDeviceIfNeeded(const Config &config, log4cxx::LoggerPtr& log) {
         if (config.cudaDeviceId < 0) {
             if (cv::cuda::getCudaEnabledDeviceCount() > 0) {
@@ -86,8 +85,7 @@ namespace {
         }
     }
 
-/** ****************************************************************************
-***************************************************************************** */
+
     cv::dnn::Net LoadNetwork(const ModelSettings &modelSettings, int cudaDeviceId,
                              log4cxx::LoggerPtr& log) {
 
@@ -115,8 +113,7 @@ namespace {
         return net;
     }
 
-/** ****************************************************************************
-***************************************************************************** */
+
     int GetNumClasses(const cv::dnn::Net &net, const Config &config) {
         int outLayerId = net.getUnconnectedOutLayers().front();
         std::vector<cv::dnn::MatShape> inShapes;
@@ -132,8 +129,7 @@ namespace {
         return numOutputFeatures - 5;
     }
 
-/** ****************************************************************************
-***************************************************************************** */
+
     std::vector<std::string> LoadNames(const cv::dnn::Net &net,
                                        const ModelSettings &modelSettings,
                                        const Config &config) {
@@ -173,8 +169,7 @@ namespace {
         throw MPFDetectionException(MPF_COULD_NOT_READ_DATAFILE, error.str());
     }
 
-/** ****************************************************************************
-***************************************************************************** */
+
     cv::Mat1f LoadConfusionMatrix(const std::string &path, int numNames) {
         if (path.empty()) {
             return {};
@@ -227,8 +222,7 @@ namespace {
         return confusionMatrix;
     }
 
-/** ****************************************************************************
-***************************************************************************** */
+
     std::function<bool(const std::string&)> GetClassFilter(
             const std::string& whiteListPath, const std::vector<std::string> &names) {
         if (whiteListPath.empty()) {
@@ -239,8 +233,7 @@ namespace {
         }
     }
 
-/** ****************************************************************************
-***************************************************************************** */
+
     cv::Mat ResizeFrame(const Frame &frame, const int imageSize) {
         int maxDimension = std::max(frame.data.rows, frame.data.cols);
         cv::Mat resizedFrame;
@@ -264,9 +257,8 @@ namespace {
         return resizedFrame;
     }
 
-/** ****************************************************************************
-***************************************************************************** */
-  cv::Mat ConvertToBlob(std::vector<Frame>::const_iterator start, std::vector<Frame>::const_iterator stop, const int netInputImageSize) {
+
+   cv::Mat ConvertToBlob(std::vector<Frame>::const_iterator start, std::vector<Frame>::const_iterator stop, const int netInputImageSize) {
         std::vector<cv::Mat> resizedFrames;
         resizedFrames.reserve(stop - start);
         while(start != stop){
@@ -281,8 +273,7 @@ namespace {
                 true);
     }
 
-/** ****************************************************************************
-***************************************************************************** */
+
     std::vector<int> GetTopScoreIndicesDesc(const cv::Mat1f &scores, int numScoresToGet,
                                             float confidenceThreshold) {
         auto scoreIsGreater = [&scores](int i1, int i2) {
@@ -306,8 +297,7 @@ namespace {
     }
 } // end anonymous namespace
 
-/** ****************************************************************************
-***************************************************************************** */
+
 YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
         : modelSettings_(std::move(model_settings))
         , cudaDeviceId_(ConfigureCudaDeviceIfNeeded(config, log_))
@@ -349,19 +339,7 @@ YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
   }
 }
 
-/** ****************************************************************************
-***************************************************************************** */
-// std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetections(
-//         const std::vector<Frame> &frames, const Config &config){
-//     if(!config.trtisEnabled){
-//       return GetDetectionsCvdnn(frames, config);
-//     }else{
-//       return GetDetectionsTrtis(frames, config);
-//     }
-//  }
 
-/** ****************************************************************************
-***************************************************************************** */
 void YoloNetwork::GetDetections(
         std::vector<Frame> &frames,
         ProcessFrameDetectionsFunc processFrameDetectionsFun,
@@ -378,8 +356,6 @@ void YoloNetwork::GetDetections(
  }
 
 
-/** ****************************************************************************
-***************************************************************************** */
 std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetectionsCvdnn(
         const std::vector<Frame> &frames, const Config &config) {
 
@@ -401,8 +377,7 @@ std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetectionsCvdnn(
     return detectionsGroupedByFrame;
 }
 
-/** ****************************************************************************
-***************************************************************************** */
+
 std::vector<DetectionLocation> YoloNetwork::ExtractFrameDetectionsCvdnn(
         int frameIdx, const Frame &frame, const std::vector<cv::Mat> &layerOutputs,
         const Config &config) const {
@@ -469,8 +444,7 @@ std::vector<DetectionLocation> YoloNetwork::ExtractFrameDetectionsCvdnn(
     return detections;
 }
 
-/** ****************************************************************************
-***************************************************************************** */
+
 DetectionLocation YoloNetwork::CreateDetectionLocationCvdnn(
   const Frame &frame,
   const cv::Rect2d &boundingBox,
@@ -510,75 +484,34 @@ DetectionLocation YoloNetwork::CreateDetectionLocationCvdnn(
     return detection;
 }
 
-/** ****************************************************************************
-***************************************************************************** */
-// std::vector<std::vector<DetectionLocation>> YoloNetwork::GetDetectionsTrtis(
-//         const std::vector<Frame> &frames, const Config &config) {
 
-//   std::vector<std::vector<DetectionLocation>> detectionsGroupedByFrame;
-//   detectionsGroupedByFrame.reserve(frames.size());
-
-//   std::ptrdiff_t maxBatchSize = 3;
-//   //std::ptrdiff_t maxBatchSize = tritonInferencer.getMaxBatchSize();
-//   std::vector<Frame>::const_iterator startFrame = frames.begin();
-
-//   while(startFrame != frames.end()){
-//     std::ptrdiff_t batchSize = std::min(maxBatchSize, frames.end() - startFrame);
-//     std::vector<Frame>::const_iterator stopFrame = startFrame + batchSize;
-//     //LOG_TRACE("Sending " << batchSize << " frame inference batch");
-
-//     // inference blob to get output blob  N x OUTPUT_BLOB_DIM_1 x 1 x 1
-//     // 1st float is number of detections, subsequent numbers are up to OUTPUT_BLOB_DIM_1 detections[7]
-
-//     cv::Mat outBlob = tritonInferencer.infer(std::vector<cv::Mat>{ConvertToBlob(startFrame, stopFrame, config)}).at(0);
-//     //cv::Mat outBlob = tritonInferencer.getOutput("prob");
-
-//     //LOG_TRACE("received outBlob[" << outBlob.size[0] << "," <<outBlob.size[1] << "," << outBlob.size[2] << "," << outBlob.size[3] <<"]");
-//     assert(outBlob.size[0] == batchSize
-//         && outBlob.size[1] == OUTPUT_BLOB_DIM_1
-//         && outBlob.size[2] == 1
-//         && outBlob.size[3] == 1);
-
-//     // parse output blob
-//     for(int frameIdx = 0; startFrame != stopFrame; ++startFrame,++frameIdx){
-//       //LOG_TRACE("processing batch_frame[" << frameIdx << "]");
-//       detectionsGroupedByFrame.push_back(
-//         ExtractFrameDetectionsTrtis(*startFrame, outBlob.ptr<float>(frameIdx,0),
-//          config));
-//     }
-
-//     startFrame = stopFrame;
-//     stopFrame = startFrame + std::min(maxBatchSize, frames.end() - startFrame);
-//   }
-
-//   return detectionsGroupedByFrame;
-// }
-
-/** ****************************************************************************
-***************************************************************************** */
 void YoloNetwork::GetDetectionsTrtis(
     const std::vector<Frame> &frames,
     ProcessFrameDetectionsFunc componentProcessLambda,
     const Config &config) {
 
-  LOG_TRACE("start");
   std::vector<cv::Mat> inputBlobs = {ConvertToBlob(frames.begin(), frames.end(), config.netInputImageSize)};
+  frameIdxComplete_ = frames.front().idx - 1;
+
   tritonInferencer.infer(frames, inputBlobs,
-    [&config, &frames, componentProcessLambda, this] (std::vector<cv::Mat> outBlobs,
-                                                      std::vector<Frame>::const_iterator begin,
-                                                      std::vector<Frame>::const_iterator end){
+
+    [this, &config, &frames, componentProcessLambda]
+    (std::vector<cv::Mat> outBlobs,
+     std::vector<Frame>::const_iterator begin,
+     std::vector<Frame>::const_iterator end) {
 
       cv::Mat outBlob = outBlobs.at(0); // yolo only has one output tensor
       int numFrames = end - begin;
 
       LOG_TRACE("frameCount = " << numFrames << " outBlob.size() = " << std::vector<int>(outBlob.size.p, outBlob.size.p + outBlob.dims));
-      assert(outBlob.size[0] == numFrames);
+      assert(("blob's 1st dim should equal number of frames", outBlob.size[0] == numFrames));
 
       LOG_TRACE("received outBlob[" << outBlob.size[0] << "," <<outBlob.size[1] << "," << outBlob.size[2] << "," << outBlob.size[3] <<"]");
-      assert(outBlob.size[0] <= tritonInferencer.maxBatchSize
+      assert(("output blob shape should be [frames, detections, 1, 1]",
+             outBlob.size[0] <= tritonInferencer.maxBatchSize
           && outBlob.size[1] == OUTPUT_BLOB_DIM_1
           && outBlob.size[2] == 1
-          && outBlob.size[3] == 1);
+          && outBlob.size[3] == 1));
 
       // parse output blob into detections
       std::vector<std::vector<DetectionLocation>> detectionsGroupedByFrame;
@@ -587,21 +520,31 @@ void YoloNetwork::GetDetectionsTrtis(
       LOG_TRACE("extracting detections for frames["<< begin->idx << ".." << (end - 1)->idx << "]");
       int i = 0;
       for(auto frameIt = begin; frameIt != end; ++i,++frameIt){
-        //LOG_TRACE("outBlob[" << i << "] corresponds to frame[" << frameIt->idx <<"]" );
         detectionsGroupedByFrame.push_back(
           ExtractFrameDetectionsTrtis(*frameIt, outBlob.ptr<float>(i,0), config));
       }
-      //exact frame sequency needed from here on due to tracking...
-      {
+
+      {//exact frame sequencing needed from here on due to tracking...
+        int frameIdxToWaitFor = begin->idx - 1;
+        int frameIdxLast = (end - 1)->idx;
+        std::unique_lock<std::mutex> lk(frameIdxCompleteMtx_);
+        LOG_TRACE("waiting for frame[" << frameIdxToWaitFor << "] to complete");
+        frameIdxCompleteCv_.wait(lk,
+          [this, frameIdxToWaitFor] {
+            return frameIdxComplete_ >= frameIdxToWaitFor;
+          });
+        LOG_TRACE("done waiting for frame[" << frameIdxToWaitFor << "]");
+
+        componentProcessLambda(std::move(detectionsGroupedByFrame), begin, end);
+
+        frameIdxComplete_ = frameIdxLast;
+        LOG_TRACE("completed frames["<< begin->idx << ".." << frameIdxComplete_ << "]");
 
       }
-      componentProcessLambda(std::move(detectionsGroupedByFrame), begin, end);
-    });
-  LOG_TRACE("end");
-}
+      frameIdxCompleteCv_.notify_all();
 
-/** ****************************************************************************
-***************************************************************************** */
+    });
+}
 
 
 std::vector<DetectionLocation> YoloNetwork::ExtractFrameDetectionsTrtis(
@@ -612,14 +555,11 @@ std::vector<DetectionLocation> YoloNetwork::ExtractFrameDetectionsTrtis(
   int verticalPadding = (maxFrameDim - frame.data.rows) / 2;
   cv::Vec2f paddingPerSide(horizontalPadding, verticalPadding);
 
-  // cv::dnn::NMSBoxes requires a std::vector<cv::Rect2d> and a std::vector<float>
   std::vector<cv::Rect2d> boundingBoxes;
   std::vector<float> topConfidences;
   std::vector<int> classifications;
 
   int numDetections = static_cast<int>(data[0]);
-  LOG_TRACE("extracting " << numDetections << " detections");
-  //                      0        1        2      3         4        5         6
   // dmat[d,0...6] = [x_center, y_center, width, height, det_score, class, class_score]
   cv::Mat dmat(OUTPUT_BLOB_DIM_1 - 1, 7, CV_32F, &data[1]);
 
@@ -657,8 +597,7 @@ std::vector<DetectionLocation> YoloNetwork::ExtractFrameDetectionsTrtis(
   return detections;
 }
 
-/** ****************************************************************************
-***************************************************************************** */
+
 DetectionLocation YoloNetwork::CreateDetectionLocationTrtis(
   const Frame &frame,
   const cv::Rect2d &boundingBox,
@@ -681,8 +620,7 @@ DetectionLocation YoloNetwork::CreateDetectionLocationTrtis(
 
 }
 
-/** ****************************************************************************
-***************************************************************************** */
+
 bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
     return modelSettings_.networkConfigFile == modelSettings.networkConfigFile
             && modelSettings_.namesFile == modelSettings.namesFile
