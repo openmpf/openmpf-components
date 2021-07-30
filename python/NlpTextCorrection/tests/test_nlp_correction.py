@@ -73,6 +73,21 @@ class TestNlpCorrection(unittest.TestCase):
         expected_text = "this is some sample text explane is misspelled"
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
 
+
+        job = mpf.GenericJob(
+            job_name='test-file',
+            data_uri=self._get_test_file("data/sample.txt"),
+            job_properties={},
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        results = list(NlpCorrectionComponent().get_detections_from_generic(job))
+        self.assertEqual(1, len(results))
+
+        expected_text = "this is some sample text explain is misspelled"
+        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
     def test_preservation_of_punctuation(self):
         job = mpf.GenericJob(
             job_name='test-file',
@@ -142,6 +157,55 @@ class TestNlpCorrection(unittest.TestCase):
                         "\n\ninfinite: : a thing,"
 
         results = list(NlpCorrectionComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
+    def test_acronyms(self):
+        job = mpf.GenericJob(
+            job_name='test-file',
+            data_uri=self._get_test_file("data/acronym.txt"),
+            job_properties={},
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        expected_text = "I live in NYC., but grew up in DC.\nI live in NYC, but grew up in DC."
+
+        results = list(NlpCorrectionComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
+    def test_custom_acronym(self):
+        custom_dictionary_path = self._get_test_file('sample_dict_acronym.dic')
+
+        job = mpf.GenericJob(
+            job_name='test-file',
+            data_uri=self._get_test_file("data/custom_acronym.txt"),
+            job_properties={},
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        expected_text = "Hun spell doesn\'t recognize SQ or D.Q. as words."
+
+        results = list(NlpCorrectionComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
+        job_2 = mpf.GenericJob(
+            job_name='test-file',
+            data_uri=self._get_test_file("data/custom_acronym.txt"),
+            job_properties=dict(CUSTOM_DICTIONARY=custom_dictionary_path),
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        expected_text = "Hun spell doesn\'t recognize DQ or DQ. as words."
+
+        results = list(NlpCorrectionComponent().get_detections_from_generic(job_2))
 
         self.assertEqual(1, len(results))
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))

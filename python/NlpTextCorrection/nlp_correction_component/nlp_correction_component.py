@@ -30,7 +30,7 @@ from typing import Mapping, Sequence
 from hunspell import Hunspell
 import re
 import os
-
+import string
 import logging
 
 log = logging.getLogger('NlpCorrectionComponent')
@@ -151,6 +151,7 @@ class HunspellWrapper(object):
     def get_suggestions(self, original_text, detection_properties):
         log.debug(f'Attempting to correct text: "{original_text}"')
         self._unicode_error = False
+        unicode_error_words = []
 
         def repl(match: re.Match) -> str:
             spacer = match.group(1)
@@ -160,20 +161,27 @@ class HunspellWrapper(object):
 
             try:
                 if self._hunspell.spell(word):
-                    corrected_text = word
-                else:
-                    temp = self._hunspell.suggest(word)
-                    if len(temp) > 0:
-                        if self._full_output:
-                            corrected_text = '[' + ', '.join(temp) + ']'
-                        else:
-                            corrected_text = temp[0]
+                    return spacer + leading_punc + word + trailing_punc
+
+                word_no_inner_punc = word.translate(str.maketrans("", "", string.punctuation))
+                if self._hunspell.spell(word_no_inner_punc):
+                    return spacer + leading_punc + word_no_inner_punc + trailing_punc
+
+                temp = self._hunspell.suggest(word)
+                if len(temp) > 0:
+                    if self._full_output:
+                        corrected_text = '[' + ', '.join(temp) + ']'
                     else:
-                        corrected_text = word
+                        corrected_text = temp[0]
+                else:
+                    corrected_text = word
 
             except UnicodeEncodeError:
                 self._unicode_error = True
                 corrected_text = word
+
+                if len(unicode_error_words) < 3:
+                    unicode_error_words.append(word)
 
             return spacer + leading_punc + corrected_text + trailing_punc
 
@@ -182,7 +190,13 @@ class HunspellWrapper(object):
         suggestions = re.sub(fr'(\s|^)([{punc}]*)([^\s]*\w)([{punc}]*)', repl, original_text)
 
         if self._unicode_error:
-            log.warning("Encountered words with unsupported characters")
+            log.warning(f'Encountered words with unsupported characters. '
+                        f'The first three (or less) words with the issue are:'
+                        f' ' + ' '.join(map(str, unicode_error_words)))
+
+            #print()
+            #print(' '.join(map(str, unicode_error_words)))
+            #print()
 
         detection_properties["CORRECTED TEXT"] = suggestions
         log.debug("Successfully corrected text")

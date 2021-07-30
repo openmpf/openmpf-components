@@ -18,8 +18,9 @@ try
 work
 ```
 
-You may also use an affix file (.aff) to specify flags used during spell checking. 
+Acroymns and abbreviations should be added without periods. For example add NYC, not N.Y.C.
 
+You may also use an affix file (.aff) to specify flags used during spell checking. 
 For more information on dictionary files and affix files for hunspell, see https://linux.die.net/man/4/hunspell.
 
 # Full suggestions output
