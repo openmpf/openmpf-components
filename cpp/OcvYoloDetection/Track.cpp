@@ -174,7 +174,6 @@ cv::Rect2i Track::predictedBox() const {
 void Track::kalmanPredict(const float t, const float edgeSnap) {
     if (kalmanFilterTracker_) {
         kalmanFilterTracker_->predict(t);
-
         // make frame edges "sticky"
         kalmanFilterTracker_->setStatePreFromBBox(
                 snapToEdges(back().getRect(), kalmanFilterTracker_->predictedBBox(),
@@ -190,12 +189,15 @@ void Track::kalmanCorrect(const float edgeSnap) {
     if (kalmanFilterTracker_) {
         LOG_TRACE("kf meas:" << back().getRect());
         kalmanFilterTracker_->correct(back().getRect());
-
-        kalmanFilterTracker_->setStatePostFromBBox(
-                snapToEdges(back().getRect(), kalmanFilterTracker_->correctedBBox(),
-                            back().frame.data.size(), edgeSnap));
-
-        back().setRect(kalmanFilterTracker_->correctedBBox());
+        cv::Rect2i corrected = snapToEdges(back().getRect(), kalmanFilterTracker_->correctedBBox(),
+                                           back().frame.data.size(), edgeSnap);
+        if ((corrected.width == 0) || (corrected.height == 0)) {
+            kalmanFilterTracker_->setStatePostFromBBox(back().getRect());
+        }
+        else {
+            kalmanFilterTracker_->setStatePostFromBBox(corrected);
+            back().setRect(corrected);
+        }
         LOG_TRACE("kf corr:" << back().getRect());
     }
 }

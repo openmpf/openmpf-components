@@ -1,0 +1,202 @@
+{
+  "status": "succeeded",
+  "createdDateTime": "2021-01-21T07:23:33Z",
+  "lastUpdatedDateTime": "2021-01-21T07:23:34Z",
+  "analyzeResult": {
+    "version": "3.0.0",
+    "readResults": [
+      {
+        "page": 1,
+        "angle": 0,
+        "width": 1020,
+        "height": 50,
+        "unit": "pixel",
+        "lines": [
+          {
+            "boundingBox": [
+              27,
+              6,
+              629,
+              6,
+              629,
+              31,
+              27,
+              31
+            ],
+            "text": "It was the best of times, it was the worst of times",
+            "words": [
+              {
+                "boundingBox": [
+                  28,
+                  7,
+                  45,
+                  7,
+                  44,
+                  30,
+                  27,
+                  30
+                ],
+                "text": "It",
+                "confidence": 0.951
+              },
+              {
+                "boundingBox": [
+                  49,
+                  7,
+                  102,
+                  7,
+                  101,
+                  31,
+                  48,
+                  30
+                ],
+                "text": "was",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  107,
+                  7,
+                  148,
+                  7,
+                  147,
+                  31,
+                  106,
+                  31
+                ],
+                "text": "the",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  152,
+                  7,
+                  210,
+                  7,
+                  209,
+                  31,
+                  151,
+                  31
+                ],
+                "text": "best",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  214,
+                  7,
+                  240,
+                  7,
+                  239,
+                  32,
+                  213,
+                  31
+                ],
+                "text": "of",
+                "confidence": 0.983
+              },
+              {
+                "boundingBox": [
+                  244,
+                  7,
+                  322,
+                  7,
+                  321,
+                  32,
+                  244,
+                  32
+                ],
+                "text": "times,",
+                "confidence": 0.985
+              },
+              {
+                "boundingBox": [
+                  326,
+                  7,
+                  346,
+                  7,
+                  345,
+                  32,
+                  326,
+                  32
+                ],
+                "text": "it",
+                "confidence": 0.988
+              },
+              {
+                "boundingBox": [
+                  350,
+                  7,
+                  402,
+                  7,
+                  401,
+                  32,
+                  350,
+                  32
+                ],
+                "text": "was",
+                "confidence": 0.988
+              },
+              {
+                "boundingBox": [
+                  406,
+                  7,
+                  449,
+                  7,
+                  448,
+                  31,
+                  406,
+                  32
+                ],
+                "text": "the",
+                "confidence": 0.987
+              },
+              {
+                "boundingBox": [
+                  453,
+                  7,
+                  524,
+                  7,
+                  524,
+                  31,
+                  453,
+                  31
+                ],
+                "text": "worst",
+                "confidence": 0.986
+              },
+              {
+                "boundingBox": [
+                  529,
+                  7,
+                  555,
+                  7,
+                  554,
+                  31,
+                  529,
+                  31
+                ],
+                "text": "of",
+                "confidence": 0.988
+              },
+              {
+                "boundingBox": [
+                  559,
+                  7,
+                  629,
+                  7,
+                  629,
+                  30,
+                  559,
+                  31
+                ],
+                "text": "times",
+                "confidence": 0.986
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "componentName": "AzureReadTextDetection",
+  "componentVersion": "6.0",
+  "middlewareVersion": "6.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "AzureReadTextDetection",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "AZUREREAD",
+    "description": "Uses Azure Cognitive Services to perform optical character recognition using the Azure Read API.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TEXT",
+        "DETECTION_TEXT_AZURE_READ"
+      ],
+      "properties": [
+        {
+          "name": "ACS_URL",
+          "description": "URL for the Azure Cognitive Services Endpoint.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_SUBSCRIPTION_KEY",
+          "description": "Azure Cognitive Services subscription key.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "LANGUAGE",
+          "description": "When provided, this disables automatic language detection. The BCP-47 language code of the text to be detected in the image. This value is case-sensitive.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "MERGE_LINES",
+          "description": "Whether or not to combine detected lines into a single detection. When true, all lines within a given page will be combined into one detection output with a newline in between each output. Enabling this property can avoid an excessive number of detections.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "MAX_GET_READ_RESULT_ATTEMPTS",
+          "description": "Maximum number of GET requests to retrieve read detection results. When set to 0 or below, allow unlimited retries until server finishes processing.",
+          "type": "INT",
+          "defaultValue": "-1"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "AZURE READ DETECTION ACTION",
+      "description": "Uses Azure Cognitive Services to perform Read API OCR detection.",
+      "algorithm": "AZUREREAD",
+      "properties": []
+    },
+    {
+      "name": "AZURE READ DETECTION ACTION (WITH LINE MERGING)",
+      "description": "Uses Azure Cognitive Services to perform Read API OCR detection with merged line outputs.",
+      "algorithm": "AZUREREAD",
+      "properties": [
+        {
+          "name": "MERGE_LINES",
+          "value": "true"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "AZURE READ DETECTION TASK",
+      "description": "Uses Azure Cognitive Services to perform Read API OCR detection.",
+      "actions": [
+        "AZURE READ DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "AZURE READ DETECTION TASK (WITH LINE MERGING)",
+      "description": "Uses Azure Cognitive Services to perform Read API OCR detection with merged line outputs.",
+      "actions": [
+        "AZURE READ DETECTION ACTION (WITH LINE MERGING)"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "AZURE READ DETECTION PIPELINE",
+      "description": "Uses Azure Cognitive Services to perform Read API OCR detection.",
+      "tasks": [
+        "AZURE READ DETECTION TASK"
+      ]
+    },
+    {
+      "name": "AZURE READ DETECTION (WITH MARKUP) PIPELINE ",
+      "description": "Uses Azure Cognitive Services to perform Read API OCR detection and performs markup.",
+      "tasks": [
+        "AZURE READ DETECTION TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    },
+    {
+      "name": "AZURE READ DETECTION PIPELINE (WITH LINE MERGING)",
+      "description": "Uses Azure Cognitive Services to perform Read API OCR detection with merged line outputs.",
+      "tasks": [
+        "AZURE READ DETECTION TASK (WITH LINE MERGING)"
+      ]
+    },
+    {
+      "name": "AZURE READ DETECTION (WITH MARKUP AND LINE MERGING) PIPELINE ",
+      "description": "Uses Azure Cognitive Services to perform Read API OCR detection and performs markup with merged line outputs.",
+      "tasks": [
+        "AZURE READ DETECTION TASK (WITH LINE MERGING)",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    }
+  ]
+}

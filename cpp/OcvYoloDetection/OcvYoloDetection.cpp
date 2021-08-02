@@ -409,15 +409,45 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
         assert(("all frame batches should have been processed", frameBatches.empty()));
 
         LOG_TRACE("Converting remaining active tracks to MPF tracks");
-        // convert any remaining active tracks to MPFVideoTracks
+        // Convert any remaining active tracks to MPFVideoTracks. Remove any detections
+        // that are below the confidence threshold, and drop empty tracks, if any.
         for (Track &track : inProgressTracks) {
             completedTracks.push_back(Track::toMpfTrack(std::move(track)));
         }
 
-        LOG_TRACE("Reverse transforming MPF tracks");
-        for (MPFVideoTrack &mpfTrack : completedTracks) {
-            videoCapture.ReverseTransform(mpfTrack);
+        std::vector<std::vector<MPFVideoTrack>::iterator> tracks_to_erase;
+        for (std::vector<MPFVideoTrack>::iterator it = completedTracks.begin();
+             it != completedTracks.end();
+             it++) {
+            MPFVideoTrack &mpfTrack = *it;
+            // Remove detections below the confidence threshold.
+            std::vector<int> detections_to_erase;
+            for (const auto &loc : mpfTrack.frame_locations) {
+                if (loc.second.confidence < config.confidenceThreshold) {
+                    detections_to_erase.push_back(loc.first);
+                }
+            }
+            for (int idx : detections_to_erase) {
+                mpfTrack.frame_locations.erase(idx);
+            }
+
+            if (!mpfTrack.frame_locations.empty()) {
+                // Adjust start and stop frames in case detections were removed at
+                // the beginning or end of the track.
+                mpfTrack.start_frame = mpfTrack.frame_locations.begin()->first;
+                mpfTrack.stop_frame = mpfTrack.frame_locations.rbegin()->first;
+                videoCapture.ReverseTransform(mpfTrack);
+            }
+            else {
+                // The frame locations map is empty, so discard this track.
+                // This is unlikely to happen, but we need to handle it just in case.
+                tracks_to_erase.push_back(it);
+            }
         }
+        for (auto it : tracks_to_erase) {
+            completedTracks.erase(it);
+        }
+
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << completedTracks.size()
                      << " tracks.");

@@ -1,7 +1,7 @@
 {
   "componentName": "AzureSpeechDetection",
-  "componentVersion": "6.1",
-  "middlewareVersion": "6.1",
+  "componentVersion": "6.2",
+  "middlewareVersion": "6.2",
   "sourceLanguage": "python",
   "batchLibrary": "AzureSpeechDetection",
   "environmentVariables": [],
@@ -22,6 +22,12 @@
         {
           "name": "TARGET_SEGMENT_LENGTH",
           "description": "If this value is less than or equal to 0, no segmenting will be performed.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "VFR_TARGET_SEGMENT_LENGTH",
+          "description": "If this value is less than or equal to 0, no segmenting will be performed on variable frame rate videos.",
           "type": "INT",
           "defaultValue": "-1"
         },
