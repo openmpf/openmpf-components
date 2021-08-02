@@ -15,9 +15,17 @@ Contains public domain images from the following sources:
 
 
 # test-first-page-images.pdf
-Contains text and images from the following sources (OpenMPF One Pager):
+Contains custom text and public domain images.
+Public domain images are from the following sources:
 
-    https://openmpf.github.io/pdf/OpenMPF%20One-Pager.pdf
-    OpenMPF: Bridging the Gap in Media Analytics
-    @2018 The MITRE Corporation.
-    All rights reserved. Approved for Public Release 16-3034.
+    # Ambrosius_Bosschaert_the_Elder_(Dutch_-_Flower_Still_Life_-_Google_Art_Project.jpg
+    https://en.wikipedia.org/wiki/Flower#/media/File:Ambrosius_Bosschaert_the_Elder_(Dutch_-_Flower_Still_Life_-_Google_Art_Project.jpg
+    Public Domain
+
+    # Cosmea_2_-_24.08.2007.jpg
+    https://en.wikipedia.org/wiki/Cosmos_bipinnatus#/media/File:Cosmea_2_-_24.08.2007.jpg
+    Public Domain
+
+    # Flower_selfmade.png
+    https://commons.wikimedia.org/wiki/File:Flower_selfmade.png
+    Public Domain

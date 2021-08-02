@@ -68,9 +68,9 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
         imageMap = new ArrayList<ArrayList<String>>();
         current = new ArrayList<String>();
 
-        String uniqueID = UUID.randomUUID().toString();
-        outputDir = Paths.get(path + "/tika-extracted/" + uniqueID);
-        commonImgDir = Paths.get(path + "/tika-extracted/" + uniqueID + "/common");
+        String uniqueId = UUID.randomUUID().toString();
+        outputDir = Paths.get(path + "/tika-extracted/" + uniqueId);
+        commonImgDir = Paths.get(path + "/tika-extracted/" + uniqueId + "/common");
 
     }
 
@@ -127,15 +127,15 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
             }
         }
 
-        String cosID = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
+        String cosId = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
         String filename = "image" + String.valueOf(id) + "." + metadata.get(Metadata.CONTENT_TYPE);
-        if (imagesFound.containsKey(cosID) ) {
-            if (separatePages && !commonImages.contains(cosID)) {
+        if (imagesFound.containsKey(cosId) ) {
+            if (separatePages && !commonImages.contains(cosId)) {
                 // For images already encountered, save into a common images folder.
                 // Save each image only once in the common images folder.
-                commonImages.add(cosID);
-                String imageFile = imagesIndex.get(cosID);
-                Path originalFile = Paths.get(imagesFound.get(cosID));
+                commonImages.add(cosId);
+                String imageFile = imagesIndex.get(cosId);
+                Path originalFile = Paths.get(imagesFound.get(cosId));
                 Path outputPath = Paths.get(commonImgDir.toString() + "/" + imageFile);
 
 
@@ -150,12 +150,12 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
                 updateFileLocation(originalFile.toString(), outputPath.toString());
 
                 filename = outputPath.toAbsolutePath().toString();
-                imagesFound.put(cosID, filename);
+                imagesFound.put(cosId, filename);
             } else {
-                filename = imagesFound.get(cosID);
+                filename = imagesFound.get(cosId);
             }
         } else {
-            imagesIndex.put(cosID, filename);
+            imagesIndex.put(cosId, filename);
             Path outputPath = Paths.get(outputDir.toString() + "/" + filename);
 
             if (Files.exists(outputPath)) {
@@ -166,7 +166,7 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
             }
             Files.copy(stream, outputPath);
             filename = outputPath.toAbsolutePath().toString();
-            imagesFound.put(cosID, filename);
+            imagesFound.put(cosId, filename);
             id++;
         }
         current.add(filename);

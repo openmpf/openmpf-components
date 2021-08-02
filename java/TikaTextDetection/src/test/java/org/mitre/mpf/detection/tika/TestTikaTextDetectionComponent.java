@@ -99,7 +99,7 @@ public class TestTikaTextDetectionComponent {
     }
 
     @Test
-    public void testGetDetectionsPDFFile() throws MPFComponentDetectionError {
+    public void testGetDetectionsPdfFile() throws MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-tika-detection.pdf").getPath();
 
         Map<String, String> jobProperties = new HashMap<>();

@@ -162,7 +162,7 @@ public class TestTikaImageDetectionComponent {
     }
 
     @Test
-    public void testGetDetectionsFirstPageImagesOnly() throws IOException, MPFComponentDetectionError {
+    public void testGetDetectionsMultipleImageFormats() throws IOException, MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-first-page-images.pdf").getPath();
         Map<String, String> jobProperties = new HashMap<>();
         Map<String, String> mediaProperties = new HashMap<>();
@@ -182,9 +182,12 @@ public class TestTikaImageDetectionComponent {
 
         // Test extraction of images 0-2, page 1.
         // Three images should be stored in one track as the first page output. No other tracks should exist.
+        // First two images are JPEGs and the last one is PNG.
         MPFGenericTrack testTrack = tracks.get(0);
         assertEquals("1", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.png"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image2.png"));
         assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
 
         FileUtils.deleteDirectory(testDir.toFile());
@@ -222,7 +225,9 @@ public class TestTikaImageDetectionComponent {
         assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image1.jpg"))));
         assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image2.jpg"))));
 
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image0.png")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image0.jpg")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image1.jpg")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image2.png")));
 
         FileUtils.deleteDirectory(testDir.toFile());
     }
