@@ -125,6 +125,7 @@ class TestNlpCorrection(unittest.TestCase):
         self.assertEqual(1, len(results))
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
 
+
         job = mpf.GenericJob(
             job_name='test-file',
             data_uri=self._get_test_file("data/unicode_no_error.txt"),
@@ -144,7 +145,7 @@ class TestNlpCorrection(unittest.TestCase):
         job = mpf.GenericJob(
             job_name='test-file',
             data_uri=self._get_test_file("data/full_output.txt"),
-            job_properties=dict(FULL_TEXT_CORRECTION_OUTPUT=True),
+            job_properties=dict(FULL_TEXT_CORRECTION_OUTPUT='True'),
             media_properties={},
             feed_forward_track=None
         )
@@ -169,7 +170,6 @@ class TestNlpCorrection(unittest.TestCase):
             media_properties={},
             feed_forward_track=None
         )
-
         expected_text = "I live in NYC., but grew up in DC.\nI live in NYC, but grew up in DC."
 
         results = list(NlpCorrectionComponent().get_detections_from_generic(job))
@@ -178,8 +178,6 @@ class TestNlpCorrection(unittest.TestCase):
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
 
     def test_custom_acronym(self):
-        custom_dictionary_path = self._get_test_file('sample_dict_acronym.dic')
-
         job = mpf.GenericJob(
             job_name='test-file',
             data_uri=self._get_test_file("data/custom_acronym.txt"),
@@ -195,6 +193,9 @@ class TestNlpCorrection(unittest.TestCase):
         self.assertEqual(1, len(results))
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
 
+
+        custom_dictionary_path = self._get_test_file('sample_dict_acronym.dic')
+
         job_2 = mpf.GenericJob(
             job_name='test-file',
             data_uri=self._get_test_file("data/custom_acronym.txt"),
@@ -206,6 +207,24 @@ class TestNlpCorrection(unittest.TestCase):
         expected_text = "Hun spell doesn\'t recognize DQ or DQ. as words."
 
         results = list(NlpCorrectionComponent().get_detections_from_generic(job_2))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
+
+    def test_ignore_unicode(self):
+        job = mpf.GenericJob(
+            job_name='test-file',
+            data_uri=self._get_test_file("data/chinese.txt"),
+            job_properties={},
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        expected_text = "Do you speak Chinese? 你好， 你叫什么名字？ I said: 你好， 你叫什么名字？ " \
+                        "It means, \"Hello, what is your name?\""
+
+        results = list(NlpCorrectionComponent().get_detections_from_generic(job))
 
         self.assertEqual(1, len(results))
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))

@@ -153,6 +153,11 @@ class HunspellWrapper(object):
         self._unicode_error = False
         unicode_error_words = []
 
+        trans_table = str.maketrans("", "", string.punctuation)  # for removing punctuation
+
+        # regex groups: (spacer)(leading_punc)(word)(trailing_punc)
+        word_regex = fr'(\s|^)([{string.punctuation}]*)([^\s]*\w)([{string.punctuation}]*)'
+
         def repl(match: re.Match) -> str:
             spacer = match.group(1)
             leading_punc = match.group(2)
@@ -163,7 +168,7 @@ class HunspellWrapper(object):
                 if self._hunspell.spell(word):
                     return spacer + leading_punc + word + trailing_punc
 
-                word_no_inner_punc = word.translate(str.maketrans("", "", string.punctuation))
+                word_no_inner_punc = word.translate(trans_table)
                 if self._hunspell.spell(word_no_inner_punc):
                     return spacer + leading_punc + word_no_inner_punc + trailing_punc
 
@@ -185,9 +190,7 @@ class HunspellWrapper(object):
 
             return spacer + leading_punc + corrected_text + trailing_punc
 
-        punc = r'!"#$%&\'()*+,-./:;<=>?@[\]^_`{|}~'  # based on string.punctuation.
-
-        suggestions = re.sub(fr'(\s|^)([{punc}]*)([^\s]*\w)([{punc}]*)', repl, original_text)
+        suggestions = re.sub(word_regex, repl, original_text)
 
         if self._unicode_error:
             log.warning(f'Encountered words with unsupported characters. '
