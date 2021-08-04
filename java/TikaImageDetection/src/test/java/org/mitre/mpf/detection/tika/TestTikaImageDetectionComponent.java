@@ -86,7 +86,7 @@ public class TestTikaImageDetectionComponent {
     }
 
     @Test
-    public void testGetDetectionsGeneric() throws IOException, MPFComponentDetectionError {
+    public void testGetDetectionsPdf() throws IOException, MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
         Map<String, String> jobProperties = new HashMap<>();
         Map<String, String> mediaProperties = new HashMap<>();
@@ -157,7 +157,8 @@ public class TestTikaImageDetectionComponent {
         assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image3.png"));
         assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
 
-        String uuid = testTrack.getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
+        String[] splitAddress = testTrack.getDetectionProperties().get("SAVED_IMAGES").split("/");
+        String uuid = splitAddress[splitAddress.length - 2];
 
         // Check that images were saved correctly, then clean up test folder.
         assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
@@ -170,9 +171,115 @@ public class TestTikaImageDetectionComponent {
     }
 
     @Test
+    public void testGetDetectionsPptx() throws IOException, MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-image-extraction.pptx").getPath();
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+
+        Path testDir = Files.createTempDirectory("tmp");
+        testDir.toFile().deleteOnExit();
+
+        jobProperties.put("SAVE_PATH", testDir.toString());
+        jobProperties.put("ORGANIZE_BY_PAGE", "false");
+        jobProperties.put("ALLOW_EMPTY_PAGES", "true");
+        MPFGenericJob genericJob = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        markTempFiles(testDir.toFile());
+
+        assertEquals(4 ,tracks.size());
+
+        // Test extraction of images from *.pptx format.
+        // All images will be embedded on last track.
+        MPFGenericTrack testTrack = tracks.get(0);
+        assertEquals("1", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("", testTrack.getDetectionProperties().get("SAVED_IMAGES"));
+
+        testTrack = tracks.get(1);
+        assertEquals("2", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("", testTrack.getDetectionProperties().get("SAVED_IMAGES"));;
+
+        testTrack = tracks.get(2);
+        assertEquals("3", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("", testTrack.getDetectionProperties().get("SAVED_IMAGES"));
+
+        // All three images should be embedded after the slide content and therefore appear on last track.
+        testTrack = tracks.get(3);
+        assertEquals("4", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.emf"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.emf"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image2.png"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image3.jpeg"));
+        assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
+
+        String[] splitAddress = testTrack.getDetectionProperties().get("SAVED_IMAGES").split("/");
+        String uuid = splitAddress[splitAddress.length - 2];
+
+        // Check that images were saved correctly, then clean up test folder.
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image0.emf")));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image1.emf"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image2.png"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image3.jpeg"))));
+
+        FileUtils.deleteDirectory(testDir.toFile());
+    }
+
+
+    @Test
+    public void testGetDetectionsDocx() throws IOException, MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-image-extraction.docx").getPath();
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+
+        Path testDir = Files.createTempDirectory("tmp");
+        testDir.toFile().deleteOnExit();
+
+        jobProperties.put("SAVE_PATH", testDir.toString());
+        jobProperties.put("ORGANIZE_BY_PAGE", "false");
+        jobProperties.put("ALLOW_EMPTY_PAGES", "true");
+        MPFGenericJob genericJob = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        markTempFiles(testDir.toFile());
+
+        assertEquals(1, tracks.size());
+
+        // Test extraction of images from *.docx format.
+        // Six extracted images should be present in one track:
+        MPFGenericTrack testTrack = tracks.get(0);
+        assertEquals("1", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.png"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image2.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image3.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image4.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image5.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image6.jpeg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image7.jpeg"));
+        assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
+
+        String[] splitAddress = testTrack.getDetectionProperties().get("SAVED_IMAGES").split("/");
+        String uuid = splitAddress[splitAddress.length - 2];
+
+        // Check that images were saved correctly, then clean up test folder.
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image0.jpg")));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image1.png"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image2.jpg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image3.jpg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image4.jpg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image5.jpg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image6.jpeg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image7.jpeg"))));
+
+        FileUtils.deleteDirectory(testDir.toFile());
+    }
+
+    @Test
     public void testMultiMediaJob() throws IOException, MPFComponentDetectionError {
         String mediaPath1 = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
-        String mediaPath2 = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
+        String mediaPath2 = this.getClass().getResource("/data/test-tika-image-extraction.pptx").getPath();
         Map<String, String> jobProperties = new HashMap<>();
         Map<String, String> mediaProperties = new HashMap<>();
 
@@ -189,9 +296,12 @@ public class TestTikaImageDetectionComponent {
 
         List<MPFGenericTrack> tracks1 = tikaComponent.getDetections(genericSubJob1);
         List<MPFGenericTrack> tracks2 = tikaComponent.getDetections(genericSubJob2);
+        
+        String[] splitAddress1 = tracks1.get(0).getDetectionProperties().get("SAVED_IMAGES").split("/");
+        String uuid1 = splitAddress1[splitAddress1.length - 2];
 
-        String uuid1 = tracks1.get(0).getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
-        String uuid2 = tracks2.get(0).getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
+        String[] splitAddress2 = tracks2.get(3).getDetectionProperties().get("SAVED_IMAGES").split("/");
+        String uuid2 = splitAddress2[splitAddress2.length - 2];
 
         assertNotEquals(uuid1, uuid2);
 
@@ -202,10 +312,10 @@ public class TestTikaImageDetectionComponent {
         assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image2.jpg"))));
         assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image3.png"))));
 
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image0.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image1.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image2.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image3.png")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image0.emf")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image1.emf")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image2.png")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image3.jpeg")));
 
         FileUtils.deleteDirectory(testDir.toFile());
     }

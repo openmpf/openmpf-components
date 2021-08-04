@@ -41,8 +41,6 @@ public class ImageExtractionContentHandler extends ToTextContentHandler{
         super();
         pageTag = "div";
         pageNumber = 0;
-        // Enable to avoid storing metadata/title text from ppt document.
-        skipTitle = true;
     }
 
     public void startElement (String uri, String localName, String qName, Attributes atts) {
@@ -50,14 +48,7 @@ public class ImageExtractionContentHandler extends ToTextContentHandler{
            startPage();
         }
         if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
-            if (skipTitle) {
-                //Skip metadata section of pptx.
-                skipTitle = false;
-                //Discard title text. (not part of slide text nor master slide content).
-                resetPage();
-            } else {
-                startPage();
-            }
+            startPage();
         }
     }
 
@@ -76,10 +67,6 @@ public class ImageExtractionContentHandler extends ToTextContentHandler{
     }
 
     protected void endPage() {}
-
-    protected void resetPage() {
-        pageNumber = 0;
-    }
 
     public String toString(){
         return String.valueOf(pageNumber);

@@ -49,8 +49,8 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
     private String path;
     private HashMap<String, String> imagesFound, imagesIndex;
     private ArrayList<String> commonImages;
-    private boolean separatePages;
-    private int id, pagenum;
+    private boolean separatePages, startingPage;
+    private int id, pageNum;
     private ArrayList<ArrayList<String>> imageMap;
     private ArrayList<String> current;
     private Path outputDir;
@@ -59,7 +59,8 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
 
     public EmbeddedContentExtractor(String savePath, boolean separate) {
         path = savePath;
-        pagenum = -1;
+        pageNum = -1;
+        startingPage = true;
         imagesFound = new HashMap<String, String>();
         imagesIndex = new HashMap<String, String>();
         commonImages = new ArrayList<String>();
@@ -115,20 +116,35 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
 
     public void parseEmbedded(InputStream stream, ContentHandler imHandler, Metadata metadata, boolean outputHtml)
             throws IOException {
-        //Create a new page
-        int nextpage = Integer.parseInt(imHandler.toString()) - 1;
-        while (pagenum < nextpage) {
-            pagenum++;
+        // Create a new page
+        int nextPage = Integer.parseInt(imHandler.toString()) - 1;
+        if (startingPage) {
+            startingPage = false;
+            // For documents that do not support page breaks (i.e. docx format) create one page and store all results there.
+            if (pageNum >= nextPage) {
+                pageNum++;
+                current = new ArrayList<String>();
+                imageMap.add(current);
+                if (separatePages) {
+                    outputDir = Paths.get(path + "/tika-extracted/page-" + String.valueOf(pageNum + 1));
+                    Files.createDirectories(outputDir);
+                }
+            }
+        }
+        while (pageNum < nextPage) {
+            pageNum++;
             current = new ArrayList<String>();
             imageMap.add(current);
             if (separatePages) {
-                outputDir = Paths.get(path + "/tika-extracted/page-" + String.valueOf(pagenum + 1));
+                outputDir = Paths.get(path + "/tika-extracted/page-" + String.valueOf(pageNum + 1));
                 Files.createDirectories(outputDir);
             }
         }
 
         String cosId = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
-        String filename = "image" + String.valueOf(id) + "." + metadata.get(Metadata.CONTENT_TYPE);
+        String[] filenameSplit = metadata.get(Metadata.RESOURCE_NAME_KEY).split("\\.");
+        String extension = filenameSplit[filenameSplit.length - 1];
+        String filename = "image" + String.valueOf(id) + "." + extension;
         if (imagesFound.containsKey(cosId) ) {
             if (separatePages && !commonImages.contains(cosId)) {
                 // For images already encountered, save into a common images folder.

@@ -387,7 +387,6 @@ class ImageGraphicsEngine extends PDFGraphicsStreamEngine {
         PDImageXObject xobject = (PDImageXObject) pdImage;
         COSStream cosStream = xobject.getCOSObject();
         metadata.set(Metadata.EMBEDDED_RELATIONSHIP_ID, cosStream.toString());
-        metadata.set(Metadata.CONTENT_TYPE, suffix);
 
         if (hasMasks(pdImage)) {
             // TIKA-3040, PDFBOX-4771: can't save ARGB as JPEG
