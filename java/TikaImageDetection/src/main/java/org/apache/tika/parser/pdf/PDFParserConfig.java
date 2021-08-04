@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.tika.parser.pdf;
 
 import java.io.IOException;
@@ -48,6 +47,7 @@ public class PDFParserConfig implements Serializable {
 
 
     public enum OCR_STRATEGY {
+        AUTO,
         NO_OCR,
         OCR_ONLY,
         OCR_AND_TEXT_EXTRACTION;
@@ -61,6 +61,8 @@ public class PDFParserConfig implements Serializable {
                 return OCR_ONLY;
             } else if (s.toLowerCase(Locale.ROOT).contains("ocr_and_text")) {
                 return OCR_AND_TEXT_EXTRACTION;
+            } else if ("auto".equals(s.toLowerCase(Locale.ROOT))) {
+                return AUTO;
             }
             StringBuilder sb = new StringBuilder();
             sb.append("I regret that I don't recognize '").append(s);
@@ -91,7 +93,6 @@ public class PDFParserConfig implements Serializable {
 
     // True if we should sort text tokens by position
     // (necessary for some PDFs, but messes up other PDFs):
-    @Field
     private boolean sortByPosition = false;
 
     //True if acroform content should be extracted
@@ -103,15 +104,29 @@ public class PDFParserConfig implements Serializable {
     //True if inline PDXImage objects should be extracted
     private boolean extractInlineImages = false;
 
+    //True if inline images should only have their metadata
+    //extracted.
+    private boolean extractInlineImageMetadataOnly = false;
+
     //True if inline images (as identified by their object id within
     //a pdf file) should only be extracted once.
     private boolean extractUniqueInlineImagesOnly = true;
 
+    //Should the PDFParser _try_ to extract marked content/structure tags (backoff to regular
+    //text extraction if the given PDF doesn't have marked content)
+    private boolean extractMarkedContent = false;
+
     //The character width-based tolerance value used to estimate where spaces in text should be added
-    private Float averageCharTolerance;
+    //Default taken from PDFBox.
+    private Float averageCharTolerance = 0.3f;
 
     //The space width-based tolerance value used to estimate where spaces in text should be added
-    private Float spacingTolerance;
+    //Default taken from PDFBox.
+    private Float spacingTolerance = 0.5f;
+
+    // The multiplication factor for line height to decide when a new paragraph starts.
+    //Default taken from PDFBox.
+    private Float dropThreshold = 2.5f;
 
     //If the PDF has an XFA element, process only that and skip extracting
     //content from elsewhere in the document.
@@ -123,6 +138,9 @@ public class PDFParserConfig implements Serializable {
     private ImageType ocrImageType = ImageType.GRAY;
     private String ocrImageFormatName = "png";
     private float ocrImageQuality = 1.0f;
+    /**
+     * deprecated ... use OCRDPI instead
+     */
     private float ocrImageScale = 2.0f;
 
     private AccessChecker accessChecker;
@@ -135,9 +153,13 @@ public class PDFParserConfig implements Serializable {
 
     private boolean extractActions = false;
 
+    private boolean extractFontNames = false;
+
     private long maxMainMemoryBytes = -1;
 
     private boolean setKCMS = false;
+
+    private boolean detectAngles = false;
 
     public PDFParserConfig() {
         init(this.getClass().getResourceAsStream("PDFParser.properties"));
@@ -196,6 +218,14 @@ public class PDFParserConfig implements Serializable {
         setExtractUniqueInlineImagesOnly(
                 getBooleanProp(props.getProperty("extractUniqueInlineImagesOnly"),
                         getExtractUniqueInlineImagesOnly()));
+        setExtractInlineImageMetadataOnly(
+                getBooleanProp(props.getProperty("extractInlineImageMetadataOnly"),
+                        getExtractInlineImageMetadataOnly())
+        );
+        setExtractFontNames(
+                getBooleanProp(props.getProperty("extractFontNames"),
+                        getExtractFontNames()));
+
 
         setIfXFAExtractOnlyXFA(
             getBooleanProp(props.getProperty("ifXFAExtractOnlyXFA"),
@@ -217,7 +247,13 @@ public class PDFParserConfig implements Serializable {
 
         setExtractActions(getBooleanProp(props.getProperty("extractActions"), false));
 
+        setExtractMarkedContent(getBooleanProp(props.getProperty("extractMarkedContent"), false));
+
         setSetKCMS(getBooleanProp(props.getProperty("setKCMS"), false));
+
+        setAverageCharTolerance(getFloatProp(props.getProperty("averageCharTolerance"), averageCharTolerance));
+        setSpacingTolerance(getFloatProp(props.getProperty("spacingTolerance"), spacingTolerance));
+        setDropThreshold(getFloatProp(props.getProperty("dropThreshold"), dropThreshold));
 
         boolean checkExtractAccessPermission = getBooleanProp(props.getProperty("checkExtractAccessPermission"), false);
         boolean allowExtractionForAccessibility = getBooleanProp(props.getProperty("allowExtractionForAccessibility"), true);
@@ -230,7 +266,47 @@ public class PDFParserConfig implements Serializable {
             accessChecker = new AccessChecker(allowExtractionForAccessibility);
         }
 
-        maxMainMemoryBytes = getIntProp(props.getProperty("maxMainMemoryBytes"), -1);
+        maxMainMemoryBytes = getLongProp(props.getProperty("maxMainMemoryBytes"), -1);
+        detectAngles = getBooleanProp(props.getProperty("detectAngles"), false);
+    }
+
+    /**
+     * Use this when you want to know how many images of what formats are in a PDF
+     * but you don't need to render the images (e.g. for OCR).  This is far
+     * faster than {@link #extractInlineImages} because it doesn't have to render the
+     * images, which can be very slow.  This does not extract metadata from
+     * within each image, rather it extracts the XMP that may be stored
+     * external to an image in PDImageXObjects.
+     *
+     * @param extractInlineImageMetadataOnly
+     * @since 1.25
+     */
+    void setExtractInlineImageMetadataOnly(boolean extractInlineImageMetadataOnly) {
+        this.extractInlineImageMetadataOnly = extractInlineImageMetadataOnly;
+    }
+
+    /**
+     *
+     * @return whether or not to extract only inline image metadata and not render the images
+     */
+    boolean getExtractInlineImageMetadataOnly() {
+        return extractInlineImageMetadataOnly;
+    }
+
+    /**
+     * If the PDF contains marked content, try to extract text and its marked structure.
+     * If the PDF does not contain marked content, backoff to the regular PDF2XHTML for
+     * text extraction.  As of 1.24, this is an "alpha" version.
+     *
+     * @param extractMarkedContent
+     * @since 1.24
+     */
+    public void setExtractMarkedContent(boolean extractMarkedContent) {
+        this.extractMarkedContent = extractMarkedContent;
+    }
+
+    public boolean getExtractMarkedContent() {
+        return extractMarkedContent;
     }
 
     /**
@@ -250,6 +326,9 @@ public class PDFParserConfig implements Serializable {
         }
         if (getSpacingTolerance() != null) {
             pdf2XHTML.setSpacingTolerance(getSpacingTolerance());
+        }
+        if (getDropThreshold() != null) {
+            pdf2XHTML.setDropThreshold(dropThreshold);
         }
         pdf2XHTML.setSuppressDuplicateOverlappingText(getSuppressDuplicateOverlappingText());
     }
@@ -309,6 +388,17 @@ public class PDFParserConfig implements Serializable {
 		this.extractBookmarksText = extractBookmarksText;
 	}
 
+    /**
+     * Extract font names into a metadata field
+     * @param extractFontNames
+     */
+	public void setExtractFontNames(boolean extractFontNames) {
+	    this.extractFontNames = extractFontNames;
+    }
+
+    public boolean getExtractFontNames() {
+	    return extractFontNames;
+    }
 	/**
      * @see #setExtractInlineImages(boolean)
      */
@@ -319,15 +409,16 @@ public class PDFParserConfig implements Serializable {
     /**
      * If true, extract inline embedded OBXImages.
      * <b>Beware:</b> some PDF documents of modest size (~4MB) can contain
-     * thousands of embedded images totaling > 2.5 GB.  Also, at least as of PDFBox 1.8.5,
+     * thousands of embedded images totaling &gt; 2.5 GB.  Also, at least as of PDFBox 1.8.5,
      * there can be surprisingly large memory consumption and/or out of memory errors.
      * Set to <code>true</code> with caution.
      * <p/>
      * The default is <code>false</code>.
      * <p/>
-     * See also: {@see #setExtractUniqueInlineImagesOnly(boolean)};
      *
      * @param extractInlineImages
+     *
+     * @see #setExtractUniqueInlineImagesOnly(boolean)
      */
     public void setExtractInlineImages(boolean extractInlineImages) {
         this.extractInlineImages = extractInlineImages;
@@ -463,6 +554,14 @@ public class PDFParserConfig implements Serializable {
      */
     public void setSpacingTolerance(Float spacingTolerance) {
         this.spacingTolerance = spacingTolerance;
+    }
+
+    public Float getDropThreshold() {
+        return dropThreshold;
+    }
+
+    public void setDropThreshold(float dropThreshold) {
+        this.dropThreshold = dropThreshold;
     }
 
     public AccessChecker getAccessChecker() {
@@ -639,7 +738,6 @@ public class PDFParserConfig implements Serializable {
     /**
      * Image quality used to render the page image for OCR.
      * This does not apply to all image formats
-     * @return
      */
     public void setOcrImageQuality(float ocrImageQuality) {
         this.ocrImageQuality = ocrImageQuality;
@@ -648,12 +746,17 @@ public class PDFParserConfig implements Serializable {
     /**
      * Scale to use if rendering a page and then running OCR on that rendered image.
      * Default is 2.0f.
-     * @return
+     * @deprecated as of Tika 1.23, this is no longer used in rendering page images; use {@link #setOcrDPI(int)}
      */
     public float getOcrImageScale() {
         return ocrImageScale;
     }
 
+    /**
+     *
+     * @param ocrImageScale
+     * @deprecated (as of Tika 1.23, this is no longer used in rendering page images)
+     */
     public void setOcrImageScale(float ocrImageScale) {
         this.ocrImageScale = ocrImageScale;
     }
@@ -687,7 +790,16 @@ public class PDFParserConfig implements Serializable {
         return maxMainMemoryBytes;
     }
 
+    /**
+     * @deprecated use {@link #setMaxMainMemoryBytes(long)}
+     * @param maxMainMemoryBytes
+     */
+    @Deprecated
     public void setMaxMainMemoryBytes(int maxMainMemoryBytes) {
+        this.maxMainMemoryBytes = maxMainMemoryBytes;
+    }
+
+    public void setMaxMainMemoryBytes(long maxMainMemoryBytes) {
         this.maxMainMemoryBytes = maxMainMemoryBytes;
     }
 
@@ -735,6 +847,14 @@ public class PDFParserConfig implements Serializable {
         throw new IllegalArgumentException(sb.toString());
     }
 
+    public void setDetectAngles(boolean detectAngles) {
+        this.detectAngles = detectAngles;
+    }
+
+    public boolean getDetectAngles() {
+        return detectAngles;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -752,9 +872,10 @@ public class PDFParserConfig implements Serializable {
         if (getExtractUniqueInlineImagesOnly() != config.getExtractUniqueInlineImagesOnly()) return false;
         if (getIfXFAExtractOnlyXFA() != config.getIfXFAExtractOnlyXFA()) return false;
         if (getOcrDPI() != config.getOcrDPI()) return false;
-        if (isCatchIntermediateIOExceptions() != config.isCatchIntermediateIOExceptions()) return false;
+        if (getCatchIntermediateIOExceptions() != config.getCatchIntermediateIOExceptions()) return false;
         if (!getAverageCharTolerance().equals(config.getAverageCharTolerance())) return false;
         if (!getSpacingTolerance().equals(config.getSpacingTolerance())) return false;
+        if (!getDropThreshold().equals(config.getDropThreshold())) return false;
         if (!getOcrStrategy().equals(config.getOcrStrategy())) return false;
         if (getOcrImageType() != config.getOcrImageType()) return false;
         if (!getOcrImageFormatName().equals(config.getOcrImageFormatName())) return false;
@@ -775,13 +896,14 @@ public class PDFParserConfig implements Serializable {
         result = 31 * result + (getExtractUniqueInlineImagesOnly() ? 1 : 0);
         result = 31 * result + getAverageCharTolerance().hashCode();
         result = 31 * result + getSpacingTolerance().hashCode();
+        result = 31 * result + getDropThreshold().hashCode();
         result = 31 * result + (getIfXFAExtractOnlyXFA() ? 1 : 0);
         result = 31 * result + ocrStrategy.hashCode();
         result = 31 * result + getOcrDPI();
         result = 31 * result + getOcrImageType().hashCode();
         result = 31 * result + getOcrImageFormatName().hashCode();
         result = 31 * result + getAccessChecker().hashCode();
-        result = 31 * result + (isCatchIntermediateIOExceptions() ? 1 : 0);
+        result = 31 * result + (getCatchIntermediateIOExceptions() ? 1 : 0);
         result = 31 * result + (getExtractActions() ? 1 : 0);
         result = 31 * result + Long.valueOf(getMaxMainMemoryBytes()).hashCode();
         return result;
@@ -800,6 +922,7 @@ public class PDFParserConfig implements Serializable {
                 ", extractUniqueInlineImagesOnly=" + extractUniqueInlineImagesOnly +
                 ", averageCharTolerance=" + averageCharTolerance +
                 ", spacingTolerance=" + spacingTolerance +
+                ", dropThreshold=" + dropThreshold +
                 ", ifXFAExtractOnlyXFA=" + ifXFAExtractOnlyXFA +
                 ", ocrStrategy=" + ocrStrategy +
                 ", ocrDPI=" + ocrDPI +

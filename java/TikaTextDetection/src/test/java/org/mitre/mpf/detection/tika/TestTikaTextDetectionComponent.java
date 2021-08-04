@@ -40,12 +40,6 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.*;
 
-/**
- * The test class provides the framework for developing Java components.  Test cases can be prepared for a variety
- * of input conditions, and can cover successful executions as well as error conditions.  In most cases, if the
- * getDetections() and support() methods are correctly implemented, the component will work properly.  In cases where
- * the init() or close() methods are overridden, those also should be tested.
- */
 public class TestTikaTextDetectionComponent {
 
     private TikaTextDetectionComponent tikaComponent;
@@ -75,39 +69,54 @@ public class TestTikaTextDetectionComponent {
         boolean debug = false;
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        assertEquals("Number of expected tracks does not match.", 23 ,tracks.size());
-        // Test each output type.
 
-        MPFGenericTrack testTrack = tracks.get(0);
-        assertEquals("Expected language does not match.", "English", testTrack.getDetectionProperties().get("TEXT_LANGUAGE"));
-        assertEquals("Expected text does not match.", "Testing Text Detection", testTrack.getDetectionProperties().get("TEXT"));
-
-        // Test language extraction.
-        testTrack = tracks.get(3);
-        assertEquals("Expected language does not match.", "Japanese", testTrack.getDetectionProperties().get("TEXT_LANGUAGE"));
-
-        // Test no detections.
-        testTrack = tracks.get(9);
-        assertTrue("Text should be empty", testTrack.getDetectionProperties().get("TEXT").isEmpty());
-        assertEquals("Language should be empty", "Unknown", testTrack.getDetectionProperties().get("TEXT_LANGUAGE"));
-
-        testTrack = tracks.get(20);
-        assertThat(testTrack.getDetectionProperties().get("TEXT"), containsString("All human beings are born free"));
-
-        testTrack = tracks.get(22);
-        assertThat(testTrack.getDetectionProperties().get("TEXT"), containsString("End slide test text"));
-
-        // For human testing.
+        // For human testing
         if (debug) {
             for (int i = 0; i < tracks.size(); i++) {
                 MPFGenericTrack track = tracks.get(i);
-                System.out.println(String.format("  Generic track number %d", i));
-                System.out.println(String.format("  Confidence = %f", track.getConfidence()));
-                System.out.println(String.format("  Text = %s", track.getDetectionProperties().get("TEXT")));
-                System.out.println(String.format("  Language = %s", track.getDetectionProperties().get("TEXT_LANGUAGE")));
+                System.out.printf("  Generic track number %d%n", i);
+                System.out.printf("  Confidence = %f%n", track.getConfidence());
+                System.out.printf("  Text = %s%n", track.getDetectionProperties().get("TEXT"));
+                System.out.printf("  Language = %s%n", track.getDetectionProperties().get("TEXT_LANGUAGE"));
+                System.out.printf("  Page = %s%n", track.getDetectionProperties().get("PAGE_NUM"));
+                System.out.printf("  Section = %s%n", track.getDetectionProperties().get("SECTION_NUM"));
                 assertEquals("Confidence does not match.", -1.0f, track.getConfidence(), 0.1f);
             }
         }
+
+        assertEquals(23 ,tracks.size());
+
+        // Test language extraction
+        assertSection(tracks.get(0), "01", "01", "English", "Testing Text Detection");
+        assertSection(tracks.get(3), "02", "02", "Japanese", "ジアゼパム");
+
+        // Test no detections
+        assertTrue(tracks.get(9).getDetectionProperties().get("TEXT").isEmpty());
+        assertEquals("Unknown", tracks.get(9).getDetectionProperties().get("TEXT_LANGUAGE"));
+
+        assertSection(tracks.get(20), "10", "04", "English", "All human beings are born free");
+        assertSection(tracks.get(22), "11", "02", "Unknown", "End slide test text"); // cannot determine language
+    }
+
+    @Test
+    public void testGetDetectionsPdfFile() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.pdf").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "false");
+
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        assertEquals(30, tracks.size());
+
+        assertSection(tracks.get(0), "01", "01", "English", "OpenMPF"); // Not enough text.
+        assertSection(tracks.get(0), "01", "01", "English", "Bridging the Gap in Media Analytics");
+        assertSection(tracks.get(2), "01", "03", "Unknown", "Data Filtering");
+        assertSection(tracks.get(23), "01", "24", "English", "The MITRE Corporation");
+        assertSection(tracks.get(29), "03", "01", "Unknown", "page 3"); // cannot determine language
     }
 
     @Test
@@ -122,13 +131,17 @@ public class TestTikaTextDetectionComponent {
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        assertEquals("Number of expected tracks does not match.", 6, tracks.size());
-        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"),
-                containsString("first section"));
-        assertThat(tracks.get(1).getDetectionProperties().get("TEXT"),
-                containsString("second section"));
-        assertThat(tracks.get(2).getDetectionProperties().get("TEXT"),
-                containsString("third section"));
+        assertEquals(6, tracks.size());
+
+        assertSection(tracks.get(0), "1", "1", "English", "first section of page 1");
+        assertSection(tracks.get(1), "1", "2", "English", "second section of page 1");
+        assertSection(tracks.get(2), "1", "3", "English", "third section of page 1");
+
+        // Can't detect page numbers in documents, so page 1 is used for every track,
+        // and the section numbers continue across actual pages.
+        assertSection(tracks.get(3), "1", "4", "English", "first section of page 2");
+        assertSection(tracks.get(4), "1", "5", "English", "second section of page 2");
+        assertSection(tracks.get(5), "1", "6", "English", "third section of page 2");
     }
 
     @Test
@@ -143,14 +156,18 @@ public class TestTikaTextDetectionComponent {
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        assertEquals("Number of expected tracks does not match.", 1, tracks.size());
-        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"),
-                containsString("Test"));
-        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"),
-                containsString("1"));
-        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"),
-                containsString("3"));
-        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"),
-                containsString("6"));
+        assertEquals(1, tracks.size());
+
+        assertSection(tracks.get(0), "1", "1", "Unknown", "Test"); // cannot determine language
+        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"), containsString("1"));
+        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"), containsString("3"));
+        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"), containsString("6"));
+    }
+
+    private void assertSection(MPFGenericTrack track, String page, String section, String language, String text) {
+        assertEquals(page, track.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals(section, track.getDetectionProperties().get("SECTION_NUM"));
+        assertEquals(language, track.getDetectionProperties().get("TEXT_LANGUAGE"));
+        assertThat(track.getDetectionProperties().get("TEXT"), containsString(text));
     }
 }
