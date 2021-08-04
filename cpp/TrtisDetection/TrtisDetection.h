@@ -35,45 +35,25 @@
 // Nvidia TensorRT Inference Server (trtis) client lib includes
 // (see https://github.com/NVIDIA/tensorrt-inference-server)
 
-#include "request_grpc.h"
-#include "request_http.h"
-#include "model_config.pb.h"
+//#include "request_grpc.h"
+//#include "request_http.h"
+//#include "model_config.pb.h"
+
+#include "grpc_client.h"
 
 #include "IFeatureStorage.h"
 
 namespace MPF{
  namespace COMPONENT{
 
-  namespace       ni   = nvidia::inferenceserver;             ///< namespace alias for inference server
   namespace       nic  = nvidia::inferenceserver::client;
 
   using namespace std;
 
-  typedef vector<uint8_t>              BytVec;                ///< vector of bytes
-  typedef vector<int>                  IntVec;                ///< vector of integers
-  typedef vector<int64_t>              LngVec;                ///< vector of 64bit integers
-  typedef vector<float>                FltVec;                ///< vector of floats
-
-  typedef vector<MPFVideoTrack>        MPFVideoTrackVec;
-  typedef vector<MPFImageLocation>     MPFImageLocationVec;
-
-  typedef nic::InferContext            InferCtx;              ///< trtis inferencing message context
-  typedef nic::InferContext::Input     InferCtxInp;           ///< inferencing message input context
-  typedef nic::InferContext::Result    InferCtxRes;           ///< inferencing message output context
-  typedef nic::InferContext::Options   InferCtxOpt;           ///< inferencing message context options
-  typedef nic::InferContext::Request   InferCtxReq;           ///< inferencing context request
-  typedef unique_ptr<InferCtx>         uPtrInferCtx;          ///< inferencing message context pointer
-  typedef shared_ptr<InferCtx>         sPtrInferCtx;          ///< inferencing message context pointer
-  typedef unique_ptr<InferCtxOpt>      uPtrInferCtxOpt;       ///< inference options pointer
-  typedef unique_ptr<InferCtxRes>      uPtrInferCtxRes;       ///< inference results pointer
-  typedef shared_ptr<InferCtxInp>      sPtrInferCtxInp;       ///< inference input context pointer
-  typedef shared_ptr<InferCtxReq>      sPtrInferCtxReq;       ///< inference request context pointer
-  typedef map<string,uPtrInferCtxRes>  StrUPtrInferCtxResMap; ///< map of inference outputs keyed by output name
-
   class TrtisJobConfig {
     private:
-      static IFeatureStorage::uPtrFeatureStorage _getFeatureStorage(const MPFJob &job,
-                                                             const log4cxx::LoggerPtr &log);
+      static IFeatureStorage::uPtrFeatureStorage
+      _getFeatureStorage(const MPFJob &job, const log4cxx::LoggerPtr &log);
 
     public:
       string data_uri;                    ///< media to process
@@ -81,6 +61,7 @@ namespace MPF{
       string model_name;                  ///< name of model as served by trtis
       int model_version;                  ///< version of model (e.g. -1 for latest)
       int maxInferConcurrency;            ///< maximum number of concurrent video frame inferencing request
+      uint32_t clientTimeout;             ///< client request timeout in micro-seconds
       IFeatureStorage::uPtrFeatureStorage featureStorage;  ///< helper for storing FEATUREs
 
       TrtisJobConfig(const MPFJob &job, const log4cxx::LoggerPtr &log);
@@ -99,8 +80,9 @@ namespace MPF{
       int    userBBox_y;                  ///< user bounding box upper left y1
       int    userBBox_width;              ///< user bounding box width
       int    userBBox_height;             ///< user bounding box height
-      LngVec userBBox;                    ///< user bounding box as [y1,x1,x2,x2]
-      FltVec userBBoxNorm;                ///< user bounding box normalized with image dimensions
+      vector<int64_t> userBBox;           ///< user bounding box as [y1,x1,x2,x2]
+      vector<float> userBBoxNorm;         ///< user bounding box normalized with image dimensions
+      vector<int64_t> userBBoxNormShape;  ///< normalized user bounding box shape
       bool   recognitionEnroll;           ///< enroll features in recognition framework
 
       float  classConfThreshold;          ///< class detection confidence threshold
@@ -133,38 +115,36 @@ namespace MPF{
                            const string &class_label_file,
                            int    class_label_count);                           ///< read in class labels for a model from a file
 
-      sPtrInferCtx _niGetInferContext(const TrtisJobConfig &cfg,
-                                      int ctxId = 0);                           ///< get cached inference contexts
+      unordered_map<int, unique_ptr<nic::InferenceServerGrpcClient>>
+      _niGetInferenceClients(const TrtisJobConfig &cfg);
 
-      unordered_map<int, sPtrInferCtx> _niGetInferContexts(const TrtisJobConfig &cfg);  ///< get cached inference contexts
 
-      static string  _niType2Str(ni::DataType dt);                              ///< nvidia data type to string
       static cv::Mat _niResult2CVMat(const int batch_idx,
                                      const string &name,
-                                     StrUPtrInferCtxResMap &results);           ///< make an openCV mat header for nvidia tensor
+                                     const unique_ptr<nic::InferResult> &res);   ///< make an openCV mat header for nvidia tensor
 
       cv::Mat _cvResize(const cv::Mat &img,
                         double        &scaleFactor,
                         const int     target_width,
                         const int     target_height);                           ///< aspect preserving resize image to ~[target_width, target_height]
 
-      BytVec  _cvRGBBytes(const cv::Mat &img,
-                          LngVec        &shape);                                ///< convert image to 8-bit RGB
+      vector<uint8_t>  _cvRGBBytes(const cv::Mat &img,
+                                   vector<int64_t> &shape);                     ///< convert image to 8-bit RGB
 
-      void _ip_irv2_coco_prepImageData(const TrtisIpIrv2CocoJobConfig &cfg,
-                                       const cv::Mat                  &img,
-                                       const sPtrInferCtx             &ctx,
-                                       LngVec                         &shape,
-                                       BytVec                         &imgDat); ///< prep image for inferencing
+      vector<unique_ptr<nic::InferInput>>
+      _ip_irv2_coco_prepInputData(const TrtisIpIrv2CocoJobConfig &cfg,
+                                  const cv::Mat                  &img,
+                                  vector<int64_t>                &imgShape,
+                                  vector<uint8_t>                &imgDat);      ///< prep input data for inferencing
 
       void _ip_irv2_coco_getDetections(const TrtisIpIrv2CocoJobConfig &cfg,
-                                       StrUPtrInferCtxResMap          &res,
-                                       MPFImageLocationVec       &locations);   ///< parse inference results and get detections
+                                       const unique_ptr<nic::InferResult> &res,
+                                       vector<MPFImageLocation>       &locations);   ///< parse inference results and get detections
 
       void _ip_irv2_coco_tracker(const TrtisIpIrv2CocoJobConfig &cfg,
                                  MPFImageLocation               &loc,
                                  const int                      frameIdx,
-                                 MPFVideoTrackVec               &tracks);       ///< tracking using time, space and feature proximity
+                                 vector<MPFVideoTrack>          &tracks);       ///< tracking using time, space and feature proximity
 
       void _addToTrack(MPFImageLocation &location,
                        int              frame_index,

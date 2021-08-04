@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
     Properties media_properties;
     string job_name("Testing TRTIS");
 
-    MPFImageLocationVec detections;
+    vector<MPFImageLocation> detections;
     MPFImageJob job(job_name, uri, algorithm_properties, media_properties);
 
     cout << "Running job..." << endl;
