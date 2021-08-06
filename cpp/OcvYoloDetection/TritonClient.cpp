@@ -70,7 +70,7 @@ cv::Mat TritonClient::getOutput(const TritonTensorMeta& om) {
     // get raw data pointer and size
     const uint8_t *ptrRaw;
     size_t cntRaw;
-    if(!outputs_shm_key_.empty()){
+    if(usingShmOutput()){
       // calc some values since RawData() doesn't seem to work for shm
       ptrRaw = outputs_shm_ + om.shm_offset;
       cntRaw = inferInputs_[0]->Shape()[0] * om.byte_size;  // batch size * byte_size
@@ -110,8 +110,8 @@ void TritonClient::prepareInferRequestedOutputs(){
     TR_CHECK_OK(triton::client::InferRequestedOutput::Create(&tmp, om.name),
       "unable to create requested output '" + om.name + "'");
 
-    if(!outputs_shm_key_.empty()){
-      TR_CHECK_OK(tmp->SetSharedMemory(outputs_shm_key_,
+    if(usingShmOutput()){
+      TR_CHECK_OK(tmp->SetSharedMemory(outputs_shm_key,
                                        om.byte_size * inferencer_->maxBatchSize,
                                        om.shm_offset),
        "unable to associate output \"" + om.name+ "\" with shared memory at offset"
@@ -175,10 +175,10 @@ void TritonClient::setInferInputsData(const std::vector<cv::Mat> &blobs){
 
       // set input data
       size_t num_bytes = blobs[i].total() * blobs[i].elemSize();
-      if(!inputs_shm_key_.empty()){
+      if(usingShmInput()){
         if(num_bytes <= inferencer_->inputsMeta[i].byte_size * inferencer_->maxBatchSize){
           std::memcpy(inputs_shm_ + inferencer_->inputsMeta[i].shm_offset, blobs[i].data , num_bytes);
-          TR_CHECK_OK(inferInputs_.at(i)->SetSharedMemory(inputs_shm_key_,
+          TR_CHECK_OK(inferInputs_.at(i)->SetSharedMemory(inputs_shm_key,
                                                           num_bytes ,
                                                           inferencer_->inputsMeta[i].shm_offset),
             "unable to associate input \"" + inferencer_->inputsMeta[i].name
@@ -217,19 +217,55 @@ void TritonClient::inferAsync(const std::vector<cv::Mat> &inputBlobs,
                               CallbackFunc inferencerLambda){
 
   setInferInputsData(inputBlobs);
+  inferAsync_(inferencerLambda);
+}
 
+
+void TritonClient::inferAsync(int inferInputIdx, const cv::Mat& blob, CallbackFunc inferencerLambda){
+
+  // clear out input
+  TR_CHECK_OK(inferInputs_.at(inferInputIdx)->Reset(),
+    "unable to reset input \"" + inferencer_->inputsMeta.at(inferInputIdx).name
+      + "\" to receive new tensor data");
+
+  // set input shape
+  std::vector<int64_t> shape;
+  shape.assign(blob.size.p, blob.size.p + blob.dims);
+  if(inferInputs_[inferInputIdx]->Shape()[0] != shape[0]){
+    TR_CHECK_OK(inferInputs_[inferInputIdx]->SetShape(shape),
+      "unable to set shape" +
+      [&shape]{std::stringstream ss; ss << shape; return ss.str();}()
+      + " for input \"" + inferencer_->inputsMeta[inferInputIdx].name + "\"");
+  }
+  // set input data
+  size_t numBytes = blob.total() * blob.elemSize();
+  if(usingShmInput()){
+    TR_CHECK_OK(inferInputs_.at(inferInputIdx)->SetSharedMemory(
+      inputs_shm_key, numBytes, inferencer_->inputsMeta[inferInputIdx].shm_offset),
+      "unable to associate input \"" + inferencer_->inputsMeta[inferInputIdx].name
+      + "\" with shared memory at offset"
+      + std::to_string(inferencer_->inputsMeta[inferInputIdx].shm_offset));
+  }else{
+    TR_CHECK_OK(inferInputs_.at(inferInputIdx)->AppendRaw(blob.data, numBytes),
+          "unable to set data for \"" + inferencer_->inputsMeta[inferInputIdx].name + "\"");
+  }
+
+  inferAsync_(inferencerLambda);
+}
+
+void TritonClient::inferAsync_(CallbackFunc inferencerLambda){
   TR_CHECK_OK(
-    grpc_->AsyncInfer(
+      grpc_->AsyncInfer(
 
-    [inferencerLambda, this](triton::client::InferResult* tmp) {
-      inferResult_.reset(tmp);
-      inferencerLambda();
-    },
+      [inferencerLambda, this](triton::client::InferResult* tmp) {
+        inferResult_.reset(tmp);
+        inferencerLambda();
+      },
 
-    inferencer_->inferOptions,
-    getRaw(inferInputs_),
-    getRaw(inferRequestedOutputs_)),
-    "unable to async inference on server");
+      inferencer_->inferOptions,
+      getRaw(inferInputs_),
+      getRaw(inferRequestedOutputs_)),
+      "unable to async inference on server");
 }
 
 
@@ -262,11 +298,11 @@ void TritonClient::removeShmRegion(const std::string shm_key, const size_t byte_
 
 TritonClient::~TritonClient(){
   LOG_TRACE("~TritonClient " << id);
-  if(!inputs_shm_key_.empty()){
-    removeShmRegion(inputs_shm_key_,  inputs_byte_size_,  inputs_shm_);
+  if(usingShmInput()){
+    removeShmRegion(inputs_shm_key,  inputs_byte_size,  inputs_shm_);
   }
-  if(!outputs_shm_key_.empty()){
-    removeShmRegion(outputs_shm_key_, outputs_byte_size_, outputs_shm_);
+  if(usingShmOutput()){
+    removeShmRegion(outputs_shm_key, outputs_byte_size, outputs_shm_);
   }
 }
 
@@ -277,12 +313,12 @@ TritonClient::TritonClient(
   const TritonInferencer *inferencer)
  : id(id)
  , inferencer_(inferencer)
- , inputs_byte_size_(inferencer->inputsMeta.back().shm_offset
+ , inputs_byte_size(inferencer->inputsMeta.back().shm_offset
                    + inferencer->inputsMeta.back().byte_size * inferencer->maxBatchSize)
- , outputs_byte_size_(inferencer->outputsMeta.back().shm_offset
+ , outputs_byte_size(inferencer->outputsMeta.back().shm_offset
                     + inferencer->outputsMeta.back().byte_size * inferencer->maxBatchSize)
- , inputs_shm_key_(cfg.trtisUseShm ? shm_key_prefix() + "_" + std::to_string(id) + "_inputs" : "")
- , outputs_shm_key_(cfg.trtisUseShm ? shm_key_prefix() + "_" + std::to_string(id) + "_outputs" : "")
+ , inputs_shm_key(cfg.trtisUseShm ? shm_key_prefix() + "_" + std::to_string(id) + "_inputs" : "")
+ , outputs_shm_key(cfg.trtisUseShm ? shm_key_prefix() + "_" + std::to_string(id) + "_outputs" : "")
 {
   TR_CHECK_OK(triton::client::InferenceServerGrpcClient::Create(
     &grpc_,
@@ -292,11 +328,11 @@ TritonClient::TritonClient(
     inferencer->sslOptions),
       "unable to create TRTIS inference client for \"" + cfg.trtisServer + "\"");
 
-  if(!inputs_shm_key_.empty()){
-    setupShmRegion(inputs_shm_key_,  inputs_byte_size_,  inputs_shm_);
+  if(usingShmInput()){
+    setupShmRegion(inputs_shm_key,  inputs_byte_size,  inputs_shm_);
   }
-  if(!outputs_shm_key_.empty()){
-    setupShmRegion(outputs_shm_key_, outputs_byte_size_, outputs_shm_);
+  if(usingShmOutput()){
+    setupShmRegion(outputs_shm_key, outputs_byte_size, outputs_shm_);
   }
   prepareInferInputs();
   prepareInferRequestedOutputs();

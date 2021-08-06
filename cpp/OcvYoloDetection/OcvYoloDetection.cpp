@@ -382,7 +382,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             yoloNetwork.GetDetections(
               frameBatches.at(frameBatchKey),
 
-              // this callback gets called MULTIPE times
+              // this callback gets called MULTIPLE times
               [&config, &frameBatches, &inProgressTracks, &completedTracks, frameBatchKey]
               (std::vector<std::vector<DetectionLocation>>&& detectionsVec,
                std::vector<Frame>::const_iterator begin,

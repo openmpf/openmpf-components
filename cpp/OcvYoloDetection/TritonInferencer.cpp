@@ -158,6 +158,7 @@ void TritonInferencer::removeAllShmRegions(const std::string prefix){
 }
 
 
+/// inference if there are multiple input tensors
 void TritonInferencer::infer(
   const std::vector<Frame> &frames,
   const std::vector<cv::Mat> &inputBlobs,
@@ -187,6 +188,69 @@ void TritonInferencer::infer(
 
     clients_[clientId]->inferAsync(
       batchInputBlobs,
+
+      [this, extractDetectionsFun, clientId, begin, end](){
+        std::vector<cv::Mat> results;
+        for(int i = 0; i < outputsMeta.size(); ++i){
+          results.push_back(clients_[clientId]->getOutput(outputsMeta[i]));
+        }
+        extractDetectionsFun(results, begin, end);
+        releaseClientId(clientId);
+      }
+
+    );
+  }
+}
+
+
+/// inference single frame batch using 1st input tensor
+void TritonInferencer::infer(
+  const std::vector<Frame> &frames,
+  const TritonTensorMeta &inputMeta,
+  ExtractDetectionsFunc extractDetectionsFun){
+
+  assert(("input blob is expected to be a 4D tensor",inputMeta.shape.size() == 3));
+  assert(("2nd input tensor dim is expected to be 3 color channels", inputMeta.shape[0] == 3));
+  int shape[] = {-1, 3, static_cast<int>(inputMeta.shape[1]), static_cast<int>(inputMeta.shape[2])};
+
+  std::vector<Frame>::const_iterator begin;
+  std::vector<Frame>::const_iterator end(frames.begin());
+
+  while(end != frames.end()){
+
+    begin = end;
+    int size = std::min(maxBatchSize, static_cast<int>(frames.end() - begin));
+    end = end + size;
+
+    // update batch size in input shape
+    shape[0] = size;
+
+    // get a client from pool
+    int clientId = acquireClientIdBlocking();
+    TritonClient& client = *clients_[clientId];
+
+    // create blob directly, in client input shm region if appropriate,
+    //   with code similar to opencv's blobFromImages
+    cv::Mat blob;
+    if(client.usingShmInput()){
+      LOG_TRACE("creating shm blob of shape:" << shape << "at address " << std::hex << (void*)client.inputs_shm());
+      blob = cv::Mat(4, shape, CV_32F, (void*)client.inputs_shm());
+    }else{
+      blob = cv::Mat(4, shape, CV_32F);
+    }
+    cv::Mat ch[shape[1]];
+    int i = 0;
+    for(auto fit = begin; fit != end; ++fit,++i){
+      cv::Mat resizedImage = fit->getDataAsResizedFloat(cv::Size2i(shape[2], shape[3]));
+      for(int j = 0; j < shape[1]; j++){
+        ch[j] = cv::Mat(resizedImage.rows, resizedImage.cols, CV_32F, blob.ptr(i,j));
+      }
+      cv::split(resizedImage, ch);
+    }
+
+    LOG_TRACE("inferencing frames[" << begin->idx << ".."
+      << (end - 1)->idx << "] with client[" << client.id << "]");
+    client.inferAsync(0, blob,
 
       [this, extractDetectionsFun, clientId, begin, end](){
         std::vector<cv::Mat> results;

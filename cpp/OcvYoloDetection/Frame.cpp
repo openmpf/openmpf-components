@@ -24,53 +24,47 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef OPENMPF_COMPONENTS_FRAME_H
-#define OPENMPF_COMPONENTS_FRAME_H
+#include "Frame.h"
 
-#include <utility>
+using namespace MPF::COMPONENT;
 
-#include <opencv2/opencv.hpp>
+cv::Mat Frame::getDataAsResizedFloat(
+  const cv::Size2i targetSize,
+  //const int imageSize,
+  const int cvBorderType,
+  const cv::Scalar &cvBorderValue) const {
 
-#include <MPFDetectionObjects.h>
+  double targetAspect = targetSize.width/static_cast<double>(targetSize.height);
+  double dataAspect = data.cols / static_cast<double>(data.rows);
+  double scaleFactor;
+  if(targetAspect > dataAspect){
+    // limited by target y
+    scaleFactor = targetSize.height / static_cast<double>(data.rows);
+  }else{
+    // limited by target x
+    scaleFactor = targetSize.width  / static_cast<double>(data.cols);
+  }
 
-/* **************************************************************************
-*  Represent a frame with time stamp
-*************************************************************************** */
-class Frame {
-  public:
-    /// index of frame
-    size_t idx;
+  cv::Mat resizedData;
+  cv::resize(data, resizedData, cv::Size(), scaleFactor, scaleFactor);
 
-    /// time of current frame in sec
-    double time;
+  int leftPadding = (targetSize.width - resizedData.cols) / 2;
+  int topPadding = (targetSize.height - resizedData.rows) / 2;
 
-    /// time interval between frames in sec
-    double timeStep;
-
-    /// bgr image frame
-    cv::Mat data;
-
-    cv::Mat getDataAsResizedFloat(
-      const cv::Size2i targetSize,
-      const int cvBorderType = cv::BORDER_CONSTANT,
-      const cv::Scalar &cvBorderValue = cv::Scalar_<int>(127,127,127)) const;
-
-    cv::Rect getRect() const {
-        return {cv::Point(0, 0), data.size()};
-    }
-
-
-    Frame(size_t idx, double time, double timeStep, cv::Mat data)
-        : idx(idx)
-        , time(time)
-        , timeStep(timeStep)
-        , data(std::move(data)) { };
-
-
-    explicit Frame(cv::Mat data)
-        : Frame(0, 0, 0, std::move(data)) {
-    }
-};
-
-
-#endif // OPENMPF_COMPONENTS_FRAME_H
+  // Convert rectangular image to square image by adding grey bars to the smaller dimensions.
+  // Grey was chosen because that is what the Darknet library does.
+  cv::copyMakeBorder(
+          resizedData,
+          resizedData,
+          topPadding,
+          targetSize.width - resizedData.rows - topPadding,
+          leftPadding,
+          targetSize.height - resizedData.cols - leftPadding,
+          cvBorderType,
+          cvBorderValue);
+  assert(("frame resize did not resulted in desired dimensions",
+          targetSize.width == resizedData.cols
+           && targetSize.height == resizedData.rows ));
+  resizedData.convertTo(resizedData,CV_32F,1/255.0);
+  return resizedData;
+}

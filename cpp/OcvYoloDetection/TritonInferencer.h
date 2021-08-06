@@ -58,6 +58,10 @@ class TritonInferencer {
                const std::vector<cv::Mat> &inputBlobs,
                ExtractDetectionsFunc extractDetectionsFun);
 
+    void infer(const std::vector<Frame> &frames,
+               const TritonTensorMeta &inputMeta,
+               ExtractDetectionsFunc extractDetectionsFun);
+
     int acquireClientIdBlocking();
 
     void releaseClientId(int clientId);

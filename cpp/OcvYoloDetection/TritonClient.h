@@ -34,6 +34,14 @@ class TritonClient {
   public:
     const int id;
 
+    const size_t inputs_byte_size;
+
+    const size_t outputs_byte_size;
+
+    const std::string inputs_shm_key;
+
+    const std::string outputs_shm_key;
+
     TritonClient(
       const int id,
       const Config& cfg,
@@ -48,9 +56,19 @@ class TritonClient {
     void inferAsync(const std::vector<cv::Mat> &inputBlobs,
                     CallbackFunc inferencerLambda);
 
+    void inferAsync(int inferInputIdx, const cv::Mat& shmBlob, CallbackFunc inferencerLambda);
+
     cv::Mat getOutput(const TritonTensorMeta& om);
 
     static const std::string& shm_key_prefix();
+
+    const bool usingShmInput() const {return !inputs_shm_key.empty();}
+
+    const bool usingShmOutput() const {return !outputs_shm_key.empty();}
+
+    const uint8_t* inputs_shm() const {return inputs_shm_;}
+
+    const uint8_t* outputs_shm() const {return outputs_shm_;}
 
   private:
 
@@ -58,17 +76,7 @@ class TritonClient {
 
     std::condition_variable cv_;
 
-    int dependantOnClientId;
-
     const TritonInferencer *inferencer_;
-
-    const size_t inputs_byte_size_;
-
-    const size_t outputs_byte_size_;
-
-    const std::string inputs_shm_key_;
-
-    const std::string outputs_shm_key_;
 
     uint8_t* inputs_shm_;
 
@@ -99,6 +107,8 @@ class TritonClient {
     void prepareInferRequestedOutputs();
 
     void setInferInputsData(const std::vector<cv::Mat> &blobs);
+
+    void inferAsync_(CallbackFunc inferencerLambda);
 
 };
 

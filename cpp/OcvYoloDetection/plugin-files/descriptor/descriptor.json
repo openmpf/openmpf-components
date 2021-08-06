@@ -112,13 +112,13 @@
           "name": "TRACKING_DFT_SIZE",
           "description": "Discrete Fourier transform size for bbox alignment via phase correlation.",
           "type": "INT",
-          "defaultValue": "256"
+          "defaultValue": "128"
         },
         {
           "name": "TRACKING_DISABLE_MOSSE_TRACKER",
           "description": "Disable builtin backup OpenCV MOSSE tracking. OpenCV MOSSE tracking is performed in an attempt to continue a track when there are no compatible Yolo-generated detections in a given frame.",
           "type": "BOOLEAN",
-          "defaultValue": "false"
+          "defaultValue": "true"
         },
         {
           "name": "TRACKING_DFT_USE_HANNING_WINDOW",

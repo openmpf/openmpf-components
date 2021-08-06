@@ -426,14 +426,16 @@ bool comp_xy(const DetectionLocation& l1, const DetectionLocation& l2){
 #define SHOW_DETECTIONS
 #define SHOW_LIMIT 1
 //#define OCV_TEST
-//#define GRPC_TEST
-#define SHM_TEST
+#define GRPC_TEST
+//#define SHM_TEST
 TEST(OcvYoloDetection, TestTritonClient) {
   auto component = initComponent();
 
-  MPFImageJob job("Testing", "", {{"TRTIS_SERVER","triton:8001"},
+  MPFImageJob job("Testing", "", {
+                                          //{"TRTIS_SERVER","bare-lab-dkrnd02.mxu.otd:8001"},
+                                          {"TRTIS_SERVER","triton:8001"},
                                           {"MODEL_NAME", "yolo"},
-                                          {"MAX_INFER_CONCURRENCY", "2"},
+                                          {"MAX_INFER_CONCURRENCY", "1"},
                                           {"DETECTION_FRAME_BATCH_SIZE", "3"},
                                           {"NET_INPUT_IMAGE_SIZE", "416"},
                                           //{"TRTIS_VERBOSE_CLIENT", "true"},
@@ -514,7 +516,9 @@ TEST(OcvYoloDetection, TestTritonClient) {
     detectionsTritonGRPC.clear();
     yolo.GetDetections(
       frames,
-      [&detectionsTritonGRPC](std::vector<std::vector<DetectionLocation>> dets, int){
+      [&detectionsTritonGRPC](std::vector<std::vector<DetectionLocation>> dets,
+        std::vector<Frame>::const_iterator,
+        std::vector<Frame>::const_iterator){
         detectionsTritonGRPC.insert(detectionsTritonGRPC.end(), dets.begin(), dets.end());
      },
      cfg);
@@ -723,8 +727,11 @@ TEST(OcvYoloDetection, TestTritonClientVideo) {
       {"MAX_INFER_CONCURRENCY", "2"},
       {"ENABLE_TRTIS", "true"},
       {"TRTIS_SERVER","triton:8001"},
+      //{"TRTIS_SERVER","bare-lab-dkrnd02.mxu.otd:8001"},
       {"TRTIS_USE_SHM", "true"},
       {"MODEL_NAME", "yolo"},
+      {"TRACKING_DFT_SIZE", "128"},
+      {"TRACKING_DISABLE_MOSSE_TRACKER", "true"},
       {"NET_INPUT_IMAGE_SIZE", "416"}
      }, { });
 

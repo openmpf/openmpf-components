@@ -234,43 +234,25 @@ namespace {
     }
 
 
-    cv::Mat ResizeFrame(const Frame &frame, const int imageSize) {
-        int maxDimension = std::max(frame.data.rows, frame.data.cols);
-        cv::Mat resizedFrame;
-        cv::resize(frame.data, resizedFrame,
-                   frame.data.size() * imageSize / maxDimension);
-
-        int leftPadding = (imageSize - resizedFrame.cols) / 2;
-        int topPadding = (imageSize - resizedFrame.rows) / 2;
-
-        // Convert rectangular image to square image by adding grey bars to the smaller dimensions.
-        // Grey was chosen because that is what the Darknet library does.
-        cv::copyMakeBorder(
-                resizedFrame,
-                resizedFrame,
-                topPadding,
-                imageSize - resizedFrame.rows - topPadding,
-                leftPadding,
-                imageSize - resizedFrame.cols - leftPadding,
-                cv::BORDER_CONSTANT,
-                {127, 127, 127});
-        return resizedFrame;
-    }
-
-
    cv::Mat ConvertToBlob(std::vector<Frame>::const_iterator start, std::vector<Frame>::const_iterator stop, const int netInputImageSize) {
-        std::vector<cv::Mat> resizedFrames;
-        resizedFrames.reserve(stop - start);
+        std::vector<cv::Mat> resizedImages;
+        resizedImages.reserve(stop - start);
         while(start != stop){
-            resizedFrames.push_back(ResizeFrame(*start, netInputImageSize));
+            resizedImages.push_back(
+              start->getDataAsResizedFloat(
+                cv::Size2i(netInputImageSize, netInputImageSize),
+                cv::BORDER_CONSTANT, {127,127,127}));
             start++;
         }
         return cv::dnn::blobFromImages(
-                resizedFrames,
-                1 / 255.0,  // Make pixels values be 0.0 - 1.0
-                cv::Size(netInputImageSize, netInputImageSize),
-                cv::Scalar(0, 0, 0),
-                true);
+                resizedImages,
+                1.0,              // no pixel scaleing
+                cv::Size(),       // no resizing
+                cv::Scalar(),     // no mean subtraction
+                true,             // swapRB
+                false,            // no cropping
+                CV_32F            // make float blob
+                );
     }
 
 
@@ -490,10 +472,12 @@ void YoloNetwork::GetDetectionsTrtis(
     ProcessFrameDetectionsFunc componentProcessLambda,
     const Config &config) {
 
-  std::vector<cv::Mat> inputBlobs = {ConvertToBlob(frames.begin(), frames.end(), config.netInputImageSize)};
+  //std::vector<cv::Mat> inputBlobs = {ConvertToBlob(frames.begin(), frames.end(), config.netInputImageSize)};
   frameIdxComplete_ = frames.front().idx - 1;
 
-  tritonInferencer.infer(frames, inputBlobs,
+  tritonInferencer.infer(frames,
+                        //inputBlobs,
+                        tritonInferencer.inputsMeta.at(0),
 
     [this, &config, &frames, componentProcessLambda]
     (std::vector<cv::Mat> outBlobs,

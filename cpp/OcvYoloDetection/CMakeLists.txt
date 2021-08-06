@@ -71,7 +71,7 @@ set(OCV_YOLO_DETECTION_SOURCE_FILES
         shm_utils.cc shm_utils.h
         util.cpp util.h
         Config.cpp Config.h
-        Frame.h
+        Frame.cpp Frame.h
         DetectionLocation.cpp DetectionLocation.h
         Track.cpp Track.h
         KFTracker.cpp KFTracker.h
