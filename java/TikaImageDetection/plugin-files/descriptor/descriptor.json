@@ -95,6 +95,17 @@
           "value": "TRUE"
         }
       ]
+    },
+    {
+      "name": "JROBBLE: OCV FACE DETECTION DERIVATIVE MEDIA ONLY ACTION",
+      "description": "Performs OpenCV face detection on derivative media only.",
+      "algorithm": "FACECV",
+      "properties": [
+        {
+          "name": "DERIVATIVE_MEDIA_ONLY",
+          "value": "TRUE"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -124,6 +135,13 @@
       "description": "Performs Tesseract OCR on derivative media only.",
       "actions": [
         "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY ACTION"
+      ]
+    },
+    {
+      "name": "JROBBLE: OCV FACE DETECTION DERIVATIVE MEDIA ONLY TASK",
+      "description": "Performs OpenCV face detection on derivative media only.",
+      "actions": [
+        "JROBBLE: OCV FACE DETECTION DERIVATIVE MEDIA ONLY ACTION"
       ]
     }
   ],
@@ -172,6 +190,33 @@
         "TIKA IMAGE DETECTION TASK",
         "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
         "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK"
+      ]
+    },
+    {
+      "name": "JROBBLE: TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR AND KEYWORD TAGGING PIPELINE",
+      "description": "Performs Tika image detection followed by Tika and Tesseract OCR text detection and keyword tagging of TEXT results.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+        "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "JROBBLE: TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA OCV FACE PIPELINE",
+      "description": "Performs Tika image detection followed by OpenCV face detection.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "JROBBLE: OCV FACE DETECTION DERIVATIVE MEDIA ONLY TASK"
+      ]
+    },
+    {
+      "name": "JROBBLE: TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA OCV FACE AND MARKUP PIPELINE",
+      "description": "Performs Tika image detection followed by OpenCV face detection and markup.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "JROBBLE: OCV FACE DETECTION DERIVATIVE MEDIA ONLY TASK",
+        "OCV GENERIC MARKUP TASK"
       ]
     }
   ]
