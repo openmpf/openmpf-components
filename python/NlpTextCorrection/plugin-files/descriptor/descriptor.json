@@ -1,0 +1,84 @@
+{
+  "componentName": "NlpTextCorrection",
+  "componentVersion": "6.2",
+  "middlewareVersion": "6.2",
+  "sourceLanguage": "python",
+  "batchLibrary": "NlpTextCorrection",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "NLPTEXTCORRECTION",
+    "description": "Uses the Hunspell library to correct text output.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_KEYWORD"
+      ],
+      "properties": [
+        {
+          "name": "CUSTOM_DICTIONARY",
+          "description": "Name of a text file used to add custom words to the dictionary",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "FULL_TEXT_CORRECTION_OUTPUT",
+          "description": "When enabled, returns the full list of suggestions for corrected text. Default behavior is to use just the first suggestions",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "NLP TEXT CORRECTION TEXT FILE ACTION",
+      "description": "Runs text correction on plain text file",
+      "algorithm": "NLPTEXTCORRECTION",
+      "properties": []
+    },
+    {
+      "name": "NLP TEXT CORRECTION (WITH FF REGION) ACTION",
+      "description": "Runs post-processing text correction on feed-forward tracks and detections.",
+      "algorithm": "NLPTEXTCORRECTION",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "value": "TRUE"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "NLP TEXT CORRECTION TEXT FILE TASK",
+      "description": "Runs text correction on a plain text file.",
+      "actions": [
+        "NLP TEXT CORRECTION TEXT FILE ACTION"
+      ]
+    },
+    {
+      "name": "NLP TEXT CORRECTION (WITH FF REGION) TASK",
+      "description": "Runs post-processing text correction on feed-forward tracks and detections.",
+      "actions": [
+        "NLP TEXT CORRECTION (WITH FF REGION) ACTION"
+      ]
+    }
+  ],
+    "pipelines": [
+    {
+      "name": "NLP TEXT CORRECTION TEXT FILE PIPELINE",
+      "description": "Runs text correction on a plain text file.",
+      "tasks": [
+        "NLP TEXT CORRECTION TEXT FILE TASK"
+      ]
+    }
+  ]
+}
