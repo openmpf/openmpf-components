@@ -73,6 +73,28 @@
           "value": "FRAME"
         }
       ]
+    },
+    {
+      "name": "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY ACTION",
+      "description": "Executes the Tika text detection algorithm using the default parameters on source media only, no derivatives.",
+      "algorithm": "TIKATEXT",
+      "properties": [
+        {
+          "name": "SOURCE_MEDIA_ONLY",
+          "value": "TRUE"
+        }
+      ]
+    },
+    {
+      "name": "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY ACTION",
+      "description": "Performs Tesseract OCR on derivative media only.",
+      "algorithm": "TESSERACTOCR",
+      "properties": [
+        {
+          "name": "DERIVATIVE_MEDIA_ONLY",
+          "value": "TRUE"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -88,6 +110,20 @@
       "description": "Performs Tika image detection.",
       "actions": [
         "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA ACTION"
+      ]
+    },
+    {
+      "name": "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+      "description": "Executes the Tika text detection algorithm using the default parameters on source media only, no derivatives.",
+      "actions": [
+        "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY ACTION"
+      ]
+    },
+    {
+      "name": "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
+      "description": "Performs Tesseract OCR on derivative media only.",
+      "actions": [
+        "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY ACTION"
       ]
     }
   ],
@@ -127,6 +163,15 @@
         "TIKA TEXT DETECTION SKIP DERIVATIVE MEDIA TASK",
         "AZURE READ DETECTION FF SKIP TEXT TRACKS TASK",
         "KEYWORD TAGGING (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "JROBBLE: TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR PIPELINE",
+      "description": "Performs Tika image detection followed by Tika and Tesseract OCR text detection.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+        "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK"
       ]
     }
   ]
