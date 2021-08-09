@@ -29,7 +29,6 @@ package org.mitre.mpf.detection.tika;
 import org.apache.tika.config.TikaConfig;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.extractor.EmbeddedDocumentExtractor;
-
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
@@ -41,16 +40,8 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.util.LinkedList;
+import java.io.*;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
@@ -77,7 +68,9 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         }
     }
 
-    private ArrayList<String> parseDocument(final String input, final String docPath, final boolean separatePages) throws MPFComponentDetectionError {
+    private LinkedHashMap<String, TreeSet<String>> parseDocument(final String input, final String docPath,
+                                                                 final boolean separatePages)
+            throws MPFComponentDetectionError {
         TikaConfig config;
         String configPath = configDirectory + "/tika-config.xml";
 
@@ -113,10 +106,11 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         } catch (SAXException | IOException | TikaException e) {
             errMsg = "Error processing file at : " + docPath;
             log.error(errMsg, e);
-            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, "Error processing file at : " + docPath);
+            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA,
+                    "Error processing file at : " + docPath);
         }
-        EmbeddedContentExtractor x = ((EmbeddedContentExtractor) embeddedDocumentExtractor);
-        return x.getImageList();
+        EmbeddedContentExtractor ex = ((EmbeddedContentExtractor) embeddedDocumentExtractor);
+        return ex.getImageMap();
     }
 
     // Handles the case where the media is a generic type.
@@ -134,7 +128,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
 
         Map<String,String> properties = mpfGenericJob.getJobProperties();
         boolean separatePages = false;
-        boolean emptyPages = false;
+        boolean emptyPages = false; // TODO: This is not read anywhere
 
         if (properties.get("SAVE_PATH") != null) {
             defaultSavePath = properties.get("SAVE_PATH");
@@ -156,29 +150,23 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
             defaultSavePath += "/" + jobId;
         }
 
-        List<MPFGenericTrack> tracks = new LinkedList<MPFGenericTrack>();
-        int page = 0;
+        List tracks = new LinkedList<MPFGenericTrack>();
         float confidence = -1.0f;
-        boolean emptyDocument = true;
-        for (String imList: parseDocument(mpfGenericJob.getDataUri(), defaultSavePath, separatePages)) {
-            Map<String, String> genericDetectionProperties = new HashMap<String, String>();
-            genericDetectionProperties.put("PAGE_NUM",String.valueOf(page + 1));
-            if (imList.length() > 0) {
-                emptyDocument = false;
-                genericDetectionProperties.put("SAVED_IMAGES",imList.toString());
+
+
+        LinkedHashMap<String, TreeSet<String>> imageMap =
+                parseDocument(mpfGenericJob.getDataUri(), defaultSavePath, separatePages);
+        if (imageMap.size() > 0){
+            for(Map.Entry<String, TreeSet<String>> entry : imageMap.entrySet()) {
+            Map genericDetectionProperties = new HashMap<String, String>();
+                genericDetectionProperties.put("DERIVATIVE_MEDIA_URI", entry.getKey());
+                genericDetectionProperties.put("PAGE_NUM", String.join("; ", entry.getValue()));
+
                 MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                 tracks.add(genericTrack);
-            } else {
-                if (emptyPages) {
-                    genericDetectionProperties.put("SAVED_IMAGES", "");
-                    MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
-                    tracks.add(genericTrack);
-                }
             }
-            page++;
         }
-
-        if (emptyDocument) {
+        else {
             // If no images were found at all, wipe out empty tracks.
             log.info("No images detected in document");
             tracks.clear();
@@ -217,14 +205,17 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
     }
 
     public List<MPFImageLocation> getDetections(MPFImageJob job) throws MPFComponentDetectionError {
-        throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Image detection not supported.");
+        throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
+                "Image detection not supported.");
     }
 
     public List<MPFVideoTrack> getDetections(MPFVideoJob job) throws MPFComponentDetectionError {
-        throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Video detection not supported.");
+        throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
+                "Video detection not supported.");
     }
 
     public List<MPFAudioTrack> getDetections(MPFAudioJob job) throws MPFComponentDetectionError {
-        throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Audio detection not supported.");
+        throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
+                "Audio detection not supported.");
     }
 }

@@ -25,24 +25,18 @@
  ******************************************************************************/
 
 package org.mitre.mpf.detection.tika;
+
 import org.apache.tika.extractor.EmbeddedDocumentExtractor;
 import org.apache.tika.metadata.Metadata;
-
-
 import org.slf4j.Logger;
 import org.xml.sax.ContentHandler;
 
-import java.io.File;
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.UUID;
+import java.util.*;
 
 
 public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
@@ -52,6 +46,7 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
     private boolean separatePages;
     private int id, pagenum;
     private ArrayList<ArrayList<String>> imageMap;
+    private LinkedHashMap<String, TreeSet<String>> imagePageMap;
     private ArrayList<String> current;
     private Path outputDir;
     private Path commonImgDir;
@@ -60,13 +55,14 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
     public EmbeddedContentExtractor(String savePath, boolean separate) {
         path = savePath;
         pagenum = -1;
-        imagesFound = new HashMap<String, String>();
-        imagesIndex = new HashMap<String, String>();
-        commonImages = new ArrayList<String>();
+        imagesFound = new HashMap();
+        imagesIndex = new HashMap();
+        commonImages = new ArrayList();
+        imagePageMap = new LinkedHashMap();
         separatePages = separate;
         id = 0;
-        imageMap = new ArrayList<ArrayList<String>>();
-        current = new ArrayList<String>();
+        imageMap = new ArrayList();
+        current = new ArrayList();
 
         String uniqueId = UUID.randomUUID().toString();
         outputDir = Paths.get(path + "/tika-extracted/" + uniqueId);
@@ -93,12 +89,8 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
 
     }
 
-    public ArrayList<String> getImageList() {
-        ArrayList<String> results = new ArrayList<String>();
-        for (ArrayList<String> pageResults: imageMap) {
-            results.add(String.join("; ", pageResults));
-        }
-        return results;
+    public LinkedHashMap<String, TreeSet<String>> getImageMap() {
+        return imagePageMap;
     }
 
     public boolean shouldParseEmbedded(Metadata metadata) {
@@ -111,6 +103,8 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
                 pageList.set(pageList.indexOf(originalLocation), newLocation);
             }
         }
+        TreeSet<String> pageMap = imagePageMap.remove(originalLocation);
+        imagePageMap.put(newLocation, pageMap);
     }
 
     public void parseEmbedded(InputStream stream, ContentHandler imHandler, Metadata metadata, boolean outputHtml)
@@ -119,16 +113,16 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
         int nextpage = Integer.parseInt(imHandler.toString()) - 1;
         while (pagenum < nextpage) {
             pagenum++;
-            current = new ArrayList<String>();
+            current = new ArrayList();
             imageMap.add(current);
             if (separatePages) {
-                outputDir = Paths.get(path + "/tika-extracted/page-" + String.valueOf(pagenum + 1));
+                outputDir = Paths.get(path + "/tika-extracted/page-" + (pagenum + 1)); // TODO: Shouldn't this use the UUID?
                 Files.createDirectories(outputDir);
             }
         }
 
         String cosId = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
-        String filename = "image" + String.valueOf(id) + "." + metadata.get(Metadata.CONTENT_TYPE);
+        String filename = "image" + id + "." + metadata.get(Metadata.CONTENT_TYPE);
         if (imagesFound.containsKey(cosId) ) {
             if (separatePages && !commonImages.contains(cosId)) {
                 // For images already encountered, save into a common images folder.
@@ -143,7 +137,8 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
                     // Warn users that folder already contains images being overwritten
                     // This only happens if the same jobID was used on separate runs.
                     log.warn("File {} already exists. Can't write file.", outputPath.toAbsolutePath());
-                    throw new IOException(String.format("File %s already exists. Can't write new file.", outputPath.toAbsolutePath()));
+                    throw new IOException(String.format("File %s already exists. Can't write new file.",
+                            outputPath.toAbsolutePath()));
                 }
 
                 Files.move(originalFile, outputPath);
@@ -162,13 +157,23 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
                 // Warn users that folder already contains images being overwritten
                 // This only happens if the same jobID was used on separate runs.
                 log.warn("File {} already exists. Can't write new file.", outputPath.toAbsolutePath());
-                throw new IOException(String.format("File %s already exists. Can't write file.", outputPath.toAbsolutePath()));
+                throw new IOException(String.format("File %s already exists. Can't write file.",
+                        outputPath.toAbsolutePath()));
             }
             Files.copy(stream, outputPath);
             filename = outputPath.toAbsolutePath().toString();
             imagesFound.put(cosId, filename);
             id++;
         }
+
+        if (imagePageMap.containsKey(filename)) {
+            imagePageMap.get(filename).add(String.valueOf(pagenum+1));
+        } else {
+            TreeSet<String> pageSet = new TreeSet<String>();
+            pageSet.add(String.valueOf(pagenum+1));
+            imagePageMap.put(filename, pageSet);
+        }
+
         current.add(filename);
     }
 }

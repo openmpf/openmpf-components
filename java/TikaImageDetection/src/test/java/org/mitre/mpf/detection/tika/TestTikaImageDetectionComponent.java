@@ -114,57 +114,40 @@ public class TestTikaImageDetectionComponent {
             }
         }
 
-        assertEquals(6 ,tracks.size());
+        assertEquals(4 ,tracks.size());
 
-        // Test extraction of image 0, page 1.
-        // Image 0 stored multiple times, should only be reported once.
+        // Test extraction of image 0.
         MPFGenericTrack testTrack = tracks.get(0);
-        assertEquals("1", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
-        assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
+        assertEquals("1; 2; 3", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI").contains("image0.jpg"));
+        assertTrue(pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
 
-        // Test extraction of image 1, page 2.
-        // Image 0 should be listed again.
+        // Test extraction of image 1.
         testTrack = tracks.get(1);
-        assertEquals("2", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
-        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.jpg"));
-        assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
+        assertEquals("2; 3", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI").contains("image1.jpg"));
+        assertTrue(pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
 
-        // Test extraction of page 3.
-        // Images 0 and 1 should be listed again.
+        // Test extraction of image 2.
         testTrack = tracks.get(2);
-        assertEquals("3", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
-        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.jpg"));
-        assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
-
-        // Test empty page.
-        testTrack = tracks.get(3);
-        assertEquals("4", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertEquals("", testTrack.getDetectionProperties().get("SAVED_IMAGES"));
-
-        // Test page with text and no images.
-        testTrack = tracks.get(4);
-        assertEquals("5", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertEquals("", testTrack.getDetectionProperties().get("SAVED_IMAGES"));
-
-        // Test extraction of image 2, page 6.
-        // There should be two images of different formats.
-        testTrack = tracks.get(5);
         assertEquals("6", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image2.jpg"));
-        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image3.png"));
-        assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
+        assertTrue(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI").contains("image2.jpg"));
+        assertTrue(pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
 
-        String uuid = testTrack.getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
+        // Test extraction of image 3.
+        testTrack = tracks.get(3);
+        assertEquals("6", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI").contains("image3.png"));
+        assertTrue(pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
+
+        String uuid = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI").split("/")[5];
 
         // Check that images were saved correctly, then clean up test folder.
         assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
         assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image0.jpg")));
-        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image1.jpg"))));
-        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image2.jpg"))));
-        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image3.png"))));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image1.jpg")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image2.jpg")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image3.png")));
 
         FileUtils.deleteDirectory(testDir.toFile());
     }
@@ -190,17 +173,17 @@ public class TestTikaImageDetectionComponent {
         List<MPFGenericTrack> tracks1 = tikaComponent.getDetections(genericSubJob1);
         List<MPFGenericTrack> tracks2 = tikaComponent.getDetections(genericSubJob2);
 
-        String uuid1 = tracks1.get(0).getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
-        String uuid2 = tracks2.get(0).getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
+        String uuid1 = tracks1.get(0).getDetectionProperties().get("DERIVATIVE_MEDIA_URI").split("/")[5];
+        String uuid2 = tracks2.get(0).getDetectionProperties().get("DERIVATIVE_MEDIA_URI").split("/")[5];
 
         assertNotEquals(uuid1, uuid2);
 
         // Check that images were saved correctly, then clean up test folder.
         assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
         assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image0.jpg")));
-        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image1.jpg"))));
-        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image2.jpg"))));
-        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image3.png"))));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image1.jpg")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image2.jpg")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image3.png")));
 
         assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image0.jpg")));
         assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image1.jpg")));
