@@ -19,7 +19,7 @@ first page then reported in the detection tracks of the following pages whenever
 it found again. For empty pages or pages with no extracted images,
 users can allow empty tracks to be reported by setting ALLOW_EMPTY_PAGES to true.
 
-By default, extracted images are stored in `$MPF_HOME/share/artifacts/<job#>/tika-extracted`.
+By default, extracted images are stored in `$MPF_HOME/share/derivatives/<job#>/<uuid>/tika-extracted`.
 Users can set ORGANIZE_BY_PAGE to true to store each image in a sub-directory labeled by
 page number - for example, `page-1` - and images that appear on more than one page will be
 placed in a `common` directory instead.

@@ -124,7 +124,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         // Tika Detection
         // =========================
 
-        String defaultSavePath = "$MPF_HOME/share/artifacts";
+        String defaultSavePath = "$MPF_HOME/share/derivatives";
 
         Map<String,String> properties = mpfGenericJob.getJobProperties();
         boolean separatePages = false;

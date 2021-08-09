@@ -29,7 +29,7 @@
           "name": "SAVE_PATH",
           "description": "Specifies main directory for storing extracted images.",
           "type": "STRING",
-          "defaultValue": "$MPF_HOME/share/artifacts"
+          "defaultValue": "$MPF_HOME/share/derivatives"
         },
         {
           "name": "ALLOW_EMPTY_PAGES",
