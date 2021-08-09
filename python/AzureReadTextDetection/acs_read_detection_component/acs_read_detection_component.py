@@ -50,13 +50,6 @@ class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReader
     def get_detections_from_generic(generic_job):
         try:
             logger.info('[%s] Received generic job: %s', generic_job.job_name, generic_job)
-
-            if generic_job.feed_forward_track != None and \
-                    "TEXT" in generic_job.feed_forward_track.detection_properties and \
-                    mpf_util.get_property(generic_job.job_properties, 'PASS_FEED_FORWARD_TEXT_TRACKS', True):
-                logger.exception('Skipping track as TEXT property exists.', generic_job.job_name)
-                return [generic_job.feed_forward_track]
-
             detections = JobRunner(generic_job.job_name,
                                    generic_job.job_properties,
                                    MediaType.PDF).get_pdf_detections(generic_job.data_uri)

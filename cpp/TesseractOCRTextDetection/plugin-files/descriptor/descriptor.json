@@ -270,12 +270,6 @@
           "description": "The fill color to use when doing non-orthogonal rotation. Must either be BLACK or WHITE. When doing a non-orthogonal rotation, some pixels will need to be included that were not in the original image. This property controls the color of those undefined pixels.",
           "type": "STRING",
           "defaultValue": "WHITE"
-        },
-        {
-          "name": "PASS_FEED_FORWARD_TEXT_TRACKS",
-          "description": "When set to true, any feed-forward track for an with an existing TEXT property is returned without modification. Only applies to image and generic jobs.",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
         }
       ]
     }
@@ -286,21 +280,6 @@
       "description": "Performs Tesseract OCR.",
       "algorithm": "TESSERACTOCR",
       "properties": []
-    },
-    {
-      "name": "TESSERACT OCR TEXT DETECTION SKIP TEXT TRACKS ACTION",
-      "description": "Performs Tesseract OCR. Skips TEXT tracks.",
-      "algorithm": "TESSERACTOCR",
-      "properties": [
-        {
-          "name": "FEED_FORWARD_TYPE",
-          "value": "FRAME"
-        },
-        {
-          "name": "PASS_FEED_FORWARD_TEXT_TRACKS",
-          "value": "true"
-        }
-      ]
     },
     {
       "name": "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT",
@@ -355,13 +334,6 @@
       "description": "Performs Tesseract OCR.",
       "actions": [
         "TESSERACT OCR TEXT DETECTION ACTION"
-      ]
-    },
-    {
-      "name": "TESSERACT OCR TEXT DETECTION SKIP TEXT TRACKS TASK",
-      "description": "Performs Tesseract OCR, skips DERIVATIVE_MEDIA tracks.",
-      "actions": [
-        "TESSERACT OCR TEXT DETECTION SKIP TEXT TRACKS ACTION"
       ]
     },
     {

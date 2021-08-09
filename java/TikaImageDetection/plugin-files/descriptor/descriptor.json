@@ -38,12 +38,6 @@
           "defaultValue": "false"
         },
         {
-          "name": "MPF_FEED_FORWARD_MEDIA_AND_DERIVATIVES",
-          "description": "Specifies whether or not to pass along original media (PDF, document) as part of a text-extraction pipeline. All derivative images will be marked with the MPF_DERIVATIVE_MEDIA_INSPECTION detection property and will undergo media inspection after this job is complete.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
           "name": "ORGANIZE_BY_PAGE",
           "description": "Specifies whether or not to store images sorted into subdirectories by page.",
           "type": "BOOLEAN",
@@ -58,21 +52,6 @@
       "description": "Executes the Tika image detection algorithm using the default parameters.",
       "algorithm": "TIKAIMAGE",
       "properties": []
-    },
-    {
-      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA ACTION",
-      "description": "Executes the Tika image detection algorithm and enables derivative media processing.",
-      "algorithm": "TIKAIMAGE",
-      "properties": [
-        {
-          "name": "MPF_FEED_FORWARD_MEDIA_AND_DERIVATIVES",
-          "value": "true"
-        },
-        {
-          "name": "FEED_FORWARD_TYPE",
-          "value": "FRAME"
-        }
-      ]
     },
     {
       "name": "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY ACTION",
@@ -117,13 +96,6 @@
       ]
     },
     {
-      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TASK",
-      "description": "Performs Tika image detection.",
-      "actions": [
-        "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA ACTION"
-      ]
-    },
-    {
       "name": "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
       "description": "Executes the Tika text detection algorithm using the default parameters on source media only, no derivatives.",
       "actions": [
@@ -151,36 +123,6 @@
       "description": "Performs Tika image detection.",
       "tasks": [
         "TIKA IMAGE DETECTION TASK"
-      ]
-    },
-    {
-      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR AND TAGGING PIPELINE",
-      "description": "Performs Tika image detection followed by Tika and Tesseract OCR text detection and keyword tagging of TEXT results.",
-      "tasks": [
-        "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TASK",
-        "TIKA TEXT DETECTION SKIP DERIVATIVE MEDIA TASK",
-        "TESSERACT OCR TEXT DETECTION SKIP TEXT TRACKS TASK",
-        "KEYWORD TAGGING (WITH FF REGION) TASK"
-      ]
-    },
-    {
-      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA AZURE OCR AND TAGGING PIPELINE",
-      "description": "Performs Tika image detection, followed by Tika and Azure OCR text detection and keyword tagging of TEXT results.",
-      "tasks": [
-        "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TASK",
-        "TIKA TEXT DETECTION SKIP DERIVATIVE MEDIA TASK",
-        "AZURE OCR TEXT DETECTION FF SKIP TEXT TRACKS TASK",
-        "KEYWORD TAGGING (WITH FF REGION) TASK"
-      ]
-    },
-    {
-      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA AZURE READ OCR AND TAGGING PIPELINE",
-      "description": "Performs Tika image detection, followed by Tika and Azure Read OCR text detection and keyword tagging of TEXT results.",
-      "tasks": [
-        "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TASK",
-        "TIKA TEXT DETECTION SKIP DERIVATIVE MEDIA TASK",
-        "AZURE READ DETECTION FF SKIP TEXT TRACKS TASK",
-        "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
     },
     {

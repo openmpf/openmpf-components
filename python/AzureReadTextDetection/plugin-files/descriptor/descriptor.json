@@ -48,12 +48,6 @@
           "description": "Maximum number of GET requests to retrieve read detection results. When set to 0 or below, allow unlimited retries until server finishes processing.",
           "type": "INT",
           "defaultValue": "-1"
-        },
-        {
-          "name": "PASS_FEED_FORWARD_TEXT_TRACKS",
-          "description": "When set to true, any feed-forward track with an existing TEXT property is returned without modification. Only applies to generic jobs.",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
         }
       ]
     }
@@ -75,21 +69,6 @@
           "value": "true"
         }
       ]
-    },
-    {
-      "name": "AZURE READ DETECTION FF SKIP TEXT TRACKS ACTION",
-      "description": "Performs Azure Read API OCR detection with feed forwarding. Skips TEXT tracks.",
-      "algorithm": "AZUREREAD",
-      "properties": [
-        {
-          "name": "FEED_FORWARD_TYPE",
-          "value": "FRAME"
-        },
-        {
-          "name": "PASS_FEED_FORWARD_TEXT_TRACKS",
-          "value": "true"
-        }
-      ]
     }
   ],
   "tasks": [
@@ -105,13 +84,6 @@
       "description": "Uses Azure Cognitive Services to perform Read API OCR detection with merged line outputs.",
       "actions": [
         "AZURE READ DETECTION ACTION (WITH LINE MERGING)"
-      ]
-    },
-    {
-      "name": "AZURE READ DETECTION FF SKIP TEXT TRACKS TASK",
-      "description": "Performs Azure Read API OCR detection with feed forwarding. Skips TEXT tracks.",
-      "actions": [
-        "AZURE READ DETECTION FF SKIP TEXT TRACKS ACTION"
       ]
     }
   ],

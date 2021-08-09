@@ -48,12 +48,6 @@
           "description": "Whether to detect the text orientation in the image. When true the OCR service tries to detect the image orientation and correct it before further processing (e.g. if it's upside-down).",
           "type": "BOOLEAN",
           "defaultValue": "true"
-        },
-        {
-          "name": "PASS_FEED_FORWARD_TEXT_TRACKS",
-          "description": "When set to true, any feed-forward track with an existing TEXT property is returned without modification. Only applies to generic jobs.",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
         }
       ]
     }
@@ -75,21 +69,6 @@
           "value": "true"
         }
       ]
-    },
-    {
-      "name": "AZURE OCR TEXT DETECTION FF SKIP TEXT TRACKS ACTION",
-      "description": "Performs Azure OCR with feed forwarding. Skips TEXT tracks.",
-      "algorithm": "AZUREOCR",
-      "properties": [
-        {
-          "name": "FEED_FORWARD_TYPE",
-          "value": "FRAME"
-        },
-        {
-          "name": "PASS_FEED_FORWARD_TEXT_TRACKS",
-          "value": "true"
-        }
-      ]
     }
   ],
   "tasks": [
@@ -105,13 +84,6 @@
       "description": "Uses Azure Cognitive Services to perform optical character recognition.",
       "actions": [
         "AZURE OCR TEXT DETECTION (WITH REGION MERGING) ACTION"
-      ]
-    },
-    {
-      "name": "AZURE OCR TEXT DETECTION FF SKIP TEXT TRACKS TASK",
-      "description": "Performs Azure OCR with feed forwarding. Skips TEXT tracks.",
-      "actions": [
-        "AZURE OCR TEXT DETECTION FF SKIP TEXT TRACKS ACTION"
       ]
     }
   ],

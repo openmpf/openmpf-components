@@ -49,10 +49,8 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
@@ -79,7 +77,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         }
     }
 
-    private LinkedHashMap<String, TreeSet<String>> parseDocument(final String input, final String docPath, final boolean separatePages) throws MPFComponentDetectionError {
+    private ArrayList<String> parseDocument(final String input, final String docPath, final boolean separatePages) throws MPFComponentDetectionError {
         TikaConfig config;
         String configPath = configDirectory + "/tika-config.xml";
 
@@ -117,16 +115,16 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
             log.error(errMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, "Error processing file at : " + docPath);
         }
-        EmbeddedContentExtractor ex = ((EmbeddedContentExtractor) embeddedDocumentExtractor);
-        return ex.getImageMap();
+        EmbeddedContentExtractor x = ((EmbeddedContentExtractor) embeddedDocumentExtractor);
+        return x.getImageList();
     }
 
     // Handles the case where the media is a generic type.
     public List<MPFGenericTrack>  getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
         log.info("[{}] Starting job.", mpfGenericJob.getJobName());
         log.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
-            mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
-            mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
+                mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
+                mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
 
         // =========================
         // Tika Detection
@@ -137,7 +135,6 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         Map<String,String> properties = mpfGenericJob.getJobProperties();
         boolean separatePages = false;
         boolean emptyPages = false;
-        boolean feedForwardMedia = false;
 
         if (properties.get("SAVE_PATH") != null) {
             defaultSavePath = properties.get("SAVE_PATH");
@@ -149,9 +146,6 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         }
         if (properties.get("ALLOW_EMPTY_PAGES") != null) {
             emptyPages = Boolean.valueOf(properties.get("ALLOW_EMPTY_PAGES"));
-        }
-        if (properties.get("MPF_FEED_FORWARD_MEDIA_AND_DERIVATIVES") != null) {
-            feedForwardMedia = Boolean.valueOf(properties.get("MPF_FEED_FORWARD_MEDIA_AND_DERIVATIVES"));
         }
 
         if (mpfGenericJob.getJobName().length() != 0) {
@@ -165,37 +159,30 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         List<MPFGenericTrack> tracks = new LinkedList<MPFGenericTrack>();
         int page = 0;
         float confidence = -1.0f;
-
-
-        LinkedHashMap<String, TreeSet<String>> imageMap = parseDocument(mpfGenericJob.getDataUri(), defaultSavePath, separatePages);
-        if (imageMap.size() > 0){
-            for(Map.Entry<String, TreeSet<String>> entry : imageMap.entrySet()) {
-                Map<String, String> genericDetectionProperties = new HashMap<String, String>();
-                genericDetectionProperties.put("DERIVATIVE_MEDIA_URI", entry.getKey());
-                genericDetectionProperties.put("PAGE_NUM", String.join("; ", entry.getValue()));
-                
-                if (feedForwardMedia) {
-                    // Mark track for MPF media inspection.
-                    genericDetectionProperties.put("MPF_DERIVATIVE_MEDIA_INSPECTION", "True");
-                }
+        boolean emptyDocument = true;
+        for (String imList: parseDocument(mpfGenericJob.getDataUri(), defaultSavePath, separatePages)) {
+            Map<String, String> genericDetectionProperties = new HashMap<String, String>();
+            genericDetectionProperties.put("PAGE_NUM",String.valueOf(page + 1));
+            if (imList.length() > 0) {
+                emptyDocument = false;
+                genericDetectionProperties.put("SAVED_IMAGES",imList.toString());
                 MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                 tracks.add(genericTrack);
+            } else {
+                if (emptyPages) {
+                    genericDetectionProperties.put("SAVED_IMAGES", "");
+                    MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
+                    tracks.add(genericTrack);
+                }
             }
+            page++;
         }
-        else {
+
+        if (emptyDocument) {
             // If no images were found at all, wipe out empty tracks.
             log.info("No images detected in document");
             tracks.clear();
         }
-
-        if (feedForwardMedia) {
-            // Create a blank track containing original media URI.
-            Map<String, String> genericDetectionProperties = new HashMap<String, String>();
-            genericDetectionProperties.put("ORIGINAL_MEDIA_URI", mpfGenericJob.getDataUri());
-            MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
-            tracks.add(genericTrack);
-        }
-
         deleteEmptySubDirectories(new File(defaultSavePath + "/tika-extracted"));
 
         log.info("[{}] Processing complete. Generated {} generic tracks.",
@@ -209,14 +196,14 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
     // If all subdirectories are empty and nothing else is contained, the given directory is also deleted.
     private void deleteEmptySubDirectories(File path){
         if (path.isDirectory()) {
-           for(File file: path.listFiles()) {
-               if (file.isDirectory()) {
-                   deleteEmptySubDirectories(file);
-               }
-           }
-           if (path.list().length == 0) {
-               path.delete();
-           }
+            for(File file: path.listFiles()) {
+                if (file.isDirectory()) {
+                    deleteEmptySubDirectories(file);
+                }
+            }
+            if (path.list().length == 0) {
+                path.delete();
+            }
         }
     }
 

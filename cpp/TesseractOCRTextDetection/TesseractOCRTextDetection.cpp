@@ -1444,24 +1444,10 @@ vector<MPFVideoTrack> TesseractOCRTextDetection::GetDetections(const MPFVideoJob
 vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImageJob &job) {
     try{
         LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Starting job.");
-
-        bool skip_text_tracks = DetectionComponentUtils::GetProperty<bool>(job.job_properties,
-                                                                           "PASS_FEED_FORWARD_TEXT_TRACKS",
-                                                                           true);
-        if (job.has_feed_forward_location &&
-            job.feed_forward_location.detection_properties.count("TEXT") &&
-            skip_text_tracks) {
-            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Skipping track because TEXT property exists.");
-            return { job.feed_forward_location };
-        }
-
         OCR_filter_settings ocr_fset;
         Text_type text_type = Unknown;
 
-        MPFImageReader image_reader(job);
-
-        if (job.has_feed_forward_location &&
-            job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
+        if (job.has_feed_forward_location && job.feed_forward_location.detection_properties.count("TEXT_TYPE")) {
             if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "UNSTRUCTURED") {
                 text_type = Unstructured;
             } else if (job.feed_forward_location.detection_properties.at("TEXT_TYPE") == "STRUCTURED") {
@@ -1474,6 +1460,8 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
         load_settings(job, ocr_fset);
         load_image_preprocessing_settings(job, ocr_fset, text_type);
 
+
+        MPFImageReader image_reader(job);
         cv::Mat image_data = image_reader.GetImage();
         string run_dir = GetRunDirectory();
 
@@ -1842,16 +1830,6 @@ void TesseractOCRTextDetection::process_serial_pdf_pages(PDF_page_inputs &page_i
 vector<MPFGenericTrack> TesseractOCRTextDetection::GetDetections(const MPFGenericJob &job) {
     try {
         LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Starting job.");
-
-        bool skip_text_tracks = DetectionComponentUtils::GetProperty<bool>(job.job_properties,
-                                                                           "PASS_FEED_FORWARD_TEXT_TRACKS",
-                                                                           true);
-        if (job.has_feed_forward_track &&
-            job.feed_forward_track.detection_properties.count("TEXT") &&
-            skip_text_tracks) {
-            LOG4CXX_INFO(hw_logger_, "[" + job.job_name + "] Skipping track because TEXT property exists.");
-            return { job.feed_forward_track };
-        }
 
         PDF_page_inputs page_inputs;
         PDF_page_results page_results;
