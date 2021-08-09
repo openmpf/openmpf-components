@@ -577,6 +577,9 @@ std::vector<DetectionLocation> YoloNetwork::ExtractFrameDetectionsTrtis(
     detections.push_back(
       CreateDetectionLocationTrtis(frame, boundingBoxes.at(keepIdx),
              topConfidences.at(keepIdx), classifications.at(keepIdx), config));
+
+    //always calc DFT in callback threads for performance reasons
+    detections.back().getDFTFeature();
   }
   return detections;
 }
