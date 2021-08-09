@@ -141,6 +141,23 @@ class TestNlpCorrection(unittest.TestCase):
         self.assertEqual(1, len(results))
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
 
+    def test_unicode_mixed(self):
+        job = mpf.GenericJob(
+            job_name='test-file',
+            data_uri=self._get_test_file("data/unicode_mixed.txt"),
+            job_properties={},
+            media_properties={},
+            feed_forward_track=None
+        )
+
+        expected_text = "Do you speak Chinese? 你好， 你叫什么名字？ I said: 你好， 你叫什么名字？ " \
+                        "It means, \"Hello, what is your name?\""
+
+        results = list(NlpCorrectionComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
     def test_full_suggestions_output(self):
         job = mpf.GenericJob(
             job_name='test-file',
@@ -186,7 +203,7 @@ class TestNlpCorrection(unittest.TestCase):
             feed_forward_track=None
         )
 
-        expected_text = "Hun spell doesn\'t recognize SQ or D.Q. as words."
+        expected_text = "Hun spell doesn\'t recognize SQ or D.Q. as words. Other variations: D.Q, SQ., .D.Q.!"
 
         results = list(NlpCorrectionComponent().get_detections_from_generic(job))
 
@@ -204,27 +221,9 @@ class TestNlpCorrection(unittest.TestCase):
             feed_forward_track=None
         )
 
-        expected_text = "Hun spell doesn\'t recognize DQ or DQ. as words."
+        expected_text = "Hun spell doesn\'t recognize DQ or D.Q. as words. Other variations: DQ, DQ., .D.Q.!"
 
         results = list(NlpCorrectionComponent().get_detections_from_generic(job_2))
-
-        self.assertEqual(1, len(results))
-        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
-
-
-    def test_ignore_unicode(self):
-        job = mpf.GenericJob(
-            job_name='test-file',
-            data_uri=self._get_test_file("data/chinese.txt"),
-            job_properties={},
-            media_properties={},
-            feed_forward_track=None
-        )
-
-        expected_text = "Do you speak Chinese? 你好， 你叫什么名字？ I said: 你好， 你叫什么名字？ " \
-                        "It means, \"Hello, what is your name?\""
-
-        results = list(NlpCorrectionComponent().get_detections_from_generic(job))
 
         self.assertEqual(1, len(results))
         self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
