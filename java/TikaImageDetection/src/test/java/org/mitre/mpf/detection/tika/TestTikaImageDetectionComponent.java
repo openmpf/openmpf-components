@@ -26,6 +26,7 @@
 
 package org.mitre.mpf.detection.tika;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,20 +39,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
-/**
- * The test class provides the framework for developing Java components.  Test cases can be prepared for a variety
- * of input conditions, and can cover successful executions as well as error conditions.  In most cases, if the
- * getDetections() and support() methods are correctly implemented, the component will work properly.  In cases where
- * the init() or close() methods are overridden, those also should be tested.
- */
 public class TestTikaImageDetectionComponent {
 
     private TikaImageDetectionComponent tikaComponent;
@@ -90,10 +85,9 @@ public class TestTikaImageDetectionComponent {
        return filesFound;
     }
 
-
     @Test
     public void testGetDetectionsGeneric() throws IOException, MPFComponentDetectionError {
-        String mediaPath = this.getClass().getResource("/data/TestImageExtraction.pdf").getPath();
+        String mediaPath = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
         Map<String, String> jobProperties = new HashMap<>();
         Map<String, String> mediaProperties = new HashMap<>();
 
@@ -113,36 +107,106 @@ public class TestTikaImageDetectionComponent {
         if (debug) {
             for (int i = 0; i < tracks.size(); i++) {
                 MPFGenericTrack track = tracks.get(i);
-                System.out.println(String.format("Generic track number %d", i));
-                System.out.println(String.format("  Confidence = %f", track.getConfidence()));
-                System.out.println(String.format("  Image URI = %s", track.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
-                System.out.println(String.format("  Pages = %s", track.getDetectionProperties().get("PAGE_NUM")));
-
+                System.out.printf("Generic track number %d%n", i);
+                System.out.printf("  Confidence = %f%n", track.getConfidence());
+                System.out.printf("  Page = %s%n", track.getDetectionProperties().get("PAGE_NUM"));
+                System.out.printf("  Images = %s%n", track.getDetectionProperties().get("SAVED_IMAGES"));
             }
         }
 
-        assertEquals("Number of expected tracks does not match.", 3 ,tracks.size());
-        // Test each output type.
+        assertEquals(6 ,tracks.size());
 
-        //Test extraction of image 0.
+        // Test extraction of image 0, page 1.
+        // Image 0 stored multiple times, should only be reported once.
         MPFGenericTrack testTrack = tracks.get(0);
-        assertEquals("Page number not correct", "1; 2; 3", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue("Expected image0.jpg.", testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI").contains("image0.jpg"));
-        assertTrue("Invalid file path for image0.jpg.", pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
+        assertEquals("1", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
+        assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
 
+        // Test extraction of image 1, page 2.
+        // Image 0 should be listed again.
         testTrack = tracks.get(1);
-        assertEquals("Page number not correct", "2; 3", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue("Expected image1.jpg.", testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI").contains("image1.jpg"));
-        assertTrue("Invalid file path for image1.jpg.", pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
+        assertEquals("2", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.jpg"));
+        assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
 
+        // Test extraction of page 3.
+        // Images 0 and 1 should be listed again.
         testTrack = tracks.get(2);
-        assertEquals("Page number not correct", "5", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue("Expected image2.jpg.", testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI").contains("image2.jpg"));
-        assertTrue("Invalid file path for image2.jpg.", pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_URI")));
+        assertEquals("3", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.jpg"));
+        assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
 
-        Files.walk(Paths.get(testDir.toString()))
-                .sorted(Comparator.reverseOrder())
-                .map(Path::toFile)
-                .forEach(File::delete);
+        // Test empty page.
+        testTrack = tracks.get(3);
+        assertEquals("4", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("", testTrack.getDetectionProperties().get("SAVED_IMAGES"));
+
+        // Test page with text and no images.
+        testTrack = tracks.get(4);
+        assertEquals("5", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("", testTrack.getDetectionProperties().get("SAVED_IMAGES"));
+
+        // Test extraction of image 2, page 6.
+        // There should be two images of different formats.
+        testTrack = tracks.get(5);
+        assertEquals("6", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image2.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image3.png"));
+        assertTrue(pageCheck(testTrack.getDetectionProperties().get("SAVED_IMAGES")));
+
+        String uuid = testTrack.getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
+
+        // Check that images were saved correctly, then clean up test folder.
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image0.jpg")));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image1.jpg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image2.jpg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image3.png"))));
+
+        FileUtils.deleteDirectory(testDir.toFile());
+    }
+
+    @Test
+    public void testMultiMediaJob() throws IOException, MPFComponentDetectionError {
+        String mediaPath1 = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
+        String mediaPath2 = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+
+        Path testDir = Files.createTempDirectory("tmp");
+        testDir.toFile().deleteOnExit();
+
+        jobProperties.put("SAVE_PATH", testDir.toString());
+        jobProperties.put("ORGANIZE_BY_PAGE", "false");
+        jobProperties.put("ALLOW_EMPTY_PAGES", "true");
+
+        // Test that multiple documents submitted under one job ID are processed properly.
+        MPFGenericJob genericSubJob1 = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath1, jobProperties, mediaProperties);
+        MPFGenericJob genericSubJob2 = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath2, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks1 = tikaComponent.getDetections(genericSubJob1);
+        List<MPFGenericTrack> tracks2 = tikaComponent.getDetections(genericSubJob2);
+
+        String uuid1 = tracks1.get(0).getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
+        String uuid2 = tracks2.get(0).getDetectionProperties().get("SAVED_IMAGES").split("/")[5];
+
+        assertNotEquals(uuid1, uuid2);
+
+        // Check that images were saved correctly, then clean up test folder.
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image0.jpg")));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image1.jpg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image2.jpg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image3.png"))));
+
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image0.jpg")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image1.jpg")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image2.jpg")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image3.png")));
+
+        FileUtils.deleteDirectory(testDir.toFile());
     }
 }

@@ -42,9 +42,7 @@ import java.nio.file.Paths;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.TreeSet;
-
+import java.util.UUID;
 
 
 public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
@@ -54,7 +52,6 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
     private boolean separatePages;
     private int id, pagenum;
     private ArrayList<ArrayList<String>> imageMap;
-    private LinkedHashMap<String, TreeSet<String>> imagePageMap;
     private ArrayList<String> current;
     private Path outputDir;
     private Path commonImgDir;
@@ -66,14 +63,14 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
         imagesFound = new HashMap<String, String>();
         imagesIndex = new HashMap<String, String>();
         commonImages = new ArrayList<String>();
-        imagePageMap = new LinkedHashMap<String, TreeSet<String>>();
         separatePages = separate;
         id = 0;
         imageMap = new ArrayList<ArrayList<String>>();
         current = new ArrayList<String>();
 
-        outputDir = Paths.get(path + "/tika-extracted");
-        commonImgDir = Paths.get(path + "/tika-extracted/common");
+        String uniqueId = UUID.randomUUID().toString();
+        outputDir = Paths.get(path + "/tika-extracted/" + uniqueId);
+        commonImgDir = Paths.get(path + "/tika-extracted/" + uniqueId + "/common");
 
     }
 
@@ -96,10 +93,6 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
 
     }
 
-    public LinkedHashMap<String, TreeSet<String>> getImageMap() {
-        return imagePageMap;
-    }
-
     public ArrayList<String> getImageList() {
         ArrayList<String> results = new ArrayList<String>();
         for (ArrayList<String> pageResults: imageMap) {
@@ -118,8 +111,6 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
                 pageList.set(pageList.indexOf(originalLocation), newLocation);
             }
         }
-        TreeSet<String> pageMap = imagePageMap.remove(originalLocation);
-        imagePageMap.put(newLocation, pageMap);
     }
 
     public void parseEmbedded(InputStream stream, ContentHandler imHandler, Metadata metadata, boolean outputHtml)
@@ -136,15 +127,15 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
             }
         }
 
-        String cosID = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
+        String cosId = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
         String filename = "image" + String.valueOf(id) + "." + metadata.get(Metadata.CONTENT_TYPE);
-        if (imagesFound.containsKey(cosID) ) {
-            if (separatePages && !commonImages.contains(cosID)) {
+        if (imagesFound.containsKey(cosId) ) {
+            if (separatePages && !commonImages.contains(cosId)) {
                 // For images already encountered, save into a common images folder.
                 // Save each image only once in the common images folder.
-                commonImages.add(cosID);
-                String imageFile = imagesIndex.get(cosID);
-                Path originalFile = Paths.get(imagesFound.get(cosID));
+                commonImages.add(cosId);
+                String imageFile = imagesIndex.get(cosId);
+                Path originalFile = Paths.get(imagesFound.get(cosId));
                 Path outputPath = Paths.get(commonImgDir.toString() + "/" + imageFile);
 
 
@@ -156,15 +147,15 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
                 }
 
                 Files.move(originalFile, outputPath);
-                updateFileLocation(originalFile.toAbsolutePath().toString(), outputPath.toAbsolutePath().toString());
+                updateFileLocation(originalFile.toString(), outputPath.toString());
 
                 filename = outputPath.toAbsolutePath().toString();
-                imagesFound.put(cosID, filename);
+                imagesFound.put(cosId, filename);
             } else {
-                filename = imagesFound.get(cosID);
+                filename = imagesFound.get(cosId);
             }
         } else {
-            imagesIndex.put(cosID, filename);
+            imagesIndex.put(cosId, filename);
             Path outputPath = Paths.get(outputDir.toString() + "/" + filename);
 
             if (Files.exists(outputPath)) {
@@ -175,18 +166,9 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
             }
             Files.copy(stream, outputPath);
             filename = outputPath.toAbsolutePath().toString();
-            imagesFound.put(cosID, filename);
+            imagesFound.put(cosId, filename);
             id++;
         }
-
-        if (imagePageMap.containsKey(filename)) {
-            imagePageMap.get(filename).add(String.valueOf(pagenum+1));
-        } else {
-            TreeSet<String> pageSet = new TreeSet<String>();
-            pageSet.add(String.valueOf(pagenum+1));
-            imagePageMap.put(filename, pageSet);
-        }
-
         current.add(filename);
     }
 }
