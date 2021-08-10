@@ -159,7 +159,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         if (imageMap.size() > 0){
             for(Map.Entry<String, TreeSet<String>> entry : imageMap.entrySet()) {
             Map genericDetectionProperties = new HashMap<String, String>();
-                genericDetectionProperties.put("DERIVATIVE_MEDIA_URI", entry.getKey());
+                genericDetectionProperties.put("DERIVATIVE_MEDIA_PATH", entry.getKey());
                 genericDetectionProperties.put("PAGE_NUM", String.join("; ", entry.getValue()));
 
                 MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);

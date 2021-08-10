@@ -46,7 +46,7 @@ public class ImageExtractionContentHandler extends ToTextContentHandler{
     }
 
     public void startElement (String uri, String localName, String qName, Attributes atts) {
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) {
+        if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) { // TODO: NPE on jrobble-test.odp
            startPage();
         }
         if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
