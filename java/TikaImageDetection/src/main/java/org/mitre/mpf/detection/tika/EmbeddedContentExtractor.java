@@ -27,6 +27,7 @@
 package org.mitre.mpf.detection.tika;
 import org.apache.tika.extractor.EmbeddedDocumentExtractor;
 import org.apache.tika.metadata.Metadata;
+import org.apache.tika.metadata.TikaCoreProperties;
 
 
 import org.slf4j.Logger;
@@ -41,18 +42,19 @@ import java.nio.file.Paths;
 
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.UUID;
 
 
 public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
-    private String path;
+    private String path, uniqueId;
     private HashMap<String, String> imagesFound, imagesIndex;
-    private ArrayList<String> commonImages;
+    private HashSet<String> commonImages;
     private boolean separatePages, startingPage;
     private int id, pageNum;
-    private ArrayList<ArrayList<String>> imageMap;
-    private ArrayList<String> current;
+    private ArrayList<HashSet<String>> imageMap;
+    private HashSet<String> current;
     private Path outputDir;
     private Path commonImgDir;
     private Logger log;
@@ -63,13 +65,13 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
         startingPage = true;
         imagesFound = new HashMap<String, String>();
         imagesIndex = new HashMap<String, String>();
-        commonImages = new ArrayList<String>();
+        commonImages = new HashSet<String>();
         separatePages = separate;
         id = 0;
-        imageMap = new ArrayList<ArrayList<String>>();
-        current = new ArrayList<String>();
+        imageMap = new ArrayList<HashSet<String>>();
+        current = new HashSet<String>();
 
-        String uniqueId = UUID.randomUUID().toString();
+        uniqueId = UUID.randomUUID().toString();
         outputDir = Paths.get(path + "/tika-extracted/" + uniqueId);
         commonImgDir = Paths.get(path + "/tika-extracted/" + uniqueId + "/common");
 
@@ -96,7 +98,7 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
 
     public ArrayList<String> getImageList() {
         ArrayList<String> results = new ArrayList<String>();
-        for (ArrayList<String> pageResults: imageMap) {
+        for (HashSet<String> pageResults: imageMap) {
             results.add(String.join("; ", pageResults));
         }
         return results;
@@ -107,9 +109,10 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
     }
 
     public void updateFileLocation(String originalLocation, String newLocation) {
-        for (ArrayList<String> pageList: imageMap) {
-            if (pageList.indexOf(originalLocation) > -1) {
-                pageList.set(pageList.indexOf(originalLocation), newLocation);
+        for (HashSet<String> pageSet: imageMap) {
+            if (pageSet.contains(originalLocation)) {
+                pageSet.remove(originalLocation);
+                pageSet.add(newLocation);
             }
         }
     }
@@ -123,20 +126,20 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
             // For documents that do not support page breaks (i.e. docx format) create one page and store all results there.
             if (pageNum >= nextPage) {
                 pageNum++;
-                current = new ArrayList<String>();
+                current = new HashSet<String>();
                 imageMap.add(current);
                 if (separatePages) {
-                    outputDir = Paths.get(path + "/tika-extracted/page-" + String.valueOf(pageNum + 1));
+                    outputDir = Paths.get(path + "/tika-extracted/" + uniqueId + "/page-" + String.valueOf(pageNum + 1));
                     Files.createDirectories(outputDir);
                 }
             }
         }
         while (pageNum < nextPage) {
             pageNum++;
-            current = new ArrayList<String>();
+            current = new HashSet<String>();
             imageMap.add(current);
             if (separatePages) {
-                outputDir = Paths.get(path + "/tika-extracted/page-" + String.valueOf(pageNum + 1));
+                outputDir = Paths.get(path + "/tika-extracted/" + uniqueId + "/page-" + String.valueOf(pageNum + 1));
                 Files.createDirectories(outputDir);
             }
         }
