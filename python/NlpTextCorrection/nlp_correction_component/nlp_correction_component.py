@@ -23,15 +23,19 @@
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
-from typing import Iterable
 
-import mpf_component_api as mpf
+from typing import Iterable
 from typing import Mapping, Sequence
 from hunspell import Hunspell
+
 import re
 import os
 import string
 import logging
+import pathlib
+
+import mpf_component_api as mpf
+import mpf_component_util as mpf_util
 
 log = logging.getLogger('NlpCorrectionComponent')
 
@@ -100,10 +104,7 @@ class NlpCorrectionComponent(object):
                 return ff_track,
 
             else:
-                with open(job.data_uri, "r") as f:
-                    text = f.read()
-
-                f.close()
+                text = pathlib.Path(job.data_uri).read_text()
 
                 detection_properties = dict(TEXT=text)
 
@@ -129,7 +130,7 @@ class HunspellWrapper(object):
 
         self._unicode_error = False
 
-        self._full_output = job_properties.get("FULL_TEXT_CORRECTION_OUTPUT", False)
+        self._full_output = mpf_util.get_property(job_properties, 'FULL_TEXT_CORRECTION_OUTPUT', False)
 
         self._custom_dictionary_path = job_properties.get('CUSTOM_DICTIONARY', "")
 
@@ -167,6 +168,11 @@ class HunspellWrapper(object):
             try:
                 if self._hunspell.spell(word):
                     return spacer + leading_punc + word + trailing_punc
+
+                if trailing_punc:
+                    word_with_first_trailing_punc = word + trailing_punc[0]
+                    if self._hunspell.spell(word_with_first_trailing_punc):
+                        return spacer + leading_punc + word + trailing_punc
 
                 word_no_inner_punc = word.translate(trans_table)
                 if self._hunspell.spell(word_no_inner_punc):
