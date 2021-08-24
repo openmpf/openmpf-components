@@ -116,34 +116,37 @@ public:
     bool enableDebug;
 
     /// enable inference server use
-    bool trtisEnabled;
+    bool tritonEnabled;
 
     /// triton inference server to use
-    std::string trtisServer;
+    std::string tritonServer;
 
     /// triton inference server model to use
-    std::string trtisModelName;
+    std::string tritonModelName;
 
     /// version of model (e.g. -1 for latest)
-    int trtisModelVersion;
+    int tritonModelVersion;
+
+    /// number of classes returned by model
+    int tritonNumClasses;
 
     /// inference server maximum number of concurrent video frame inferencing request
-    int trtisMaxInferConcurrency;
+    int tritonMaxInferConcurrency;
 
     /// inference server lient request timeout in micro-seconds
-    uint32_t trtisClientTimeout;
+    uint32_t tritonClientTimeout;
 
     /// max setup attempts for inference server connection
-    int trtisMaxConnectionSetupAttempts;
+    int tritonMaxConnectionSetupAttempts;
 
     /// verbose inference server client mode
     bool trtisVerboseClient;
 
     /// use ssl encryption with inference server client
-    bool trtisUseSSL;
+    bool tritonUseSSL;
 
     /// use shared memory for client-server communication
-    bool trtisUseShm;
+    bool tritonUseShm;
 
     /// shared log object
     static const log4cxx::LoggerPtr log;

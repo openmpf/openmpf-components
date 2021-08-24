@@ -44,7 +44,6 @@ class TritonClient {
 
     TritonClient(
       const int id,
-      const Config& cfg,
       const TritonInferencer *inferencer);
 
     ~TritonClient();

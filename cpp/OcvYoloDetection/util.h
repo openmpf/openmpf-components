@@ -104,9 +104,11 @@ namespace MPF {
     namespace COMPONENT {
         /// output MPFImageLocation to stream
         std::ostream &operator<<(std::ostream &os, const MPF::COMPONENT::MPFImageLocation &l);
+        std::istream &operator>>(std::istream &is, MPF::COMPONENT::MPFImageLocation &l);
 
         /// output MPFVideoTrack to stream
         std::ostream &operator<<(std::ostream &os, const MPF::COMPONENT::MPFVideoTrack &t);
+        std::istream &operator>>(std::istream &is, MPF::COMPONENT::MPFVideoTrack &t);
     }
 }
 

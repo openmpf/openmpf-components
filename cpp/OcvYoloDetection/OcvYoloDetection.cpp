@@ -281,6 +281,7 @@ YoloNetwork& OcvYoloDetection::GetYoloNetwork(const Properties &jobProperties,
     return *cachedYoloNetwork_;
 }
 
+
 /** ****************************************************************************
 * Read an image and get object detections and features
 *
@@ -296,45 +297,31 @@ std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob 
         auto& yoloNetwork = GetYoloNetwork(job.job_properties, config);
 
         MPFImageReader imageReader(job);
-        // std::vector<std::vector<DetectionLocation>> detections = yoloNetwork.GetDetections(
-        //         { Frame(imageReader.GetImage()) }, config);
-        //
-        // std::vector<MPFImageLocation> results;
-        // for (std::vector<DetectionLocation> &locationList : detections) {
-        //     for (DetectionLocation &location : locationList) {
-        //         results.emplace_back(
-        //                 location.x_left_upper,
-        //                 location.y_left_upper,
-        //                 location.width,
-        //                 location.height,
-        //                 location.confidence,
-        //                 std::move(location.detection_properties));
-        //         imageReader.ReverseTransform(results.back());
-        //     }
-        // }
-      std::vector<MPFImageLocation> results;
-      std::vector<Frame> frameBatch = { Frame(imageReader.GetImage()) };
-       yoloNetwork.GetDetections(
-         frameBatch,
-         [&imageReader, &results]
-         (std::vector<std::vector<DetectionLocation>> detectionsVec,
-          std::vector<Frame>::const_iterator begin,
-          std::vector<Frame>::const_iterator end){
-            for (std::vector<DetectionLocation> &locationList : detectionsVec) {
-                for (DetectionLocation &location : locationList) {
-                    results.emplace_back(
-                            location.x_left_upper,
-                            location.y_left_upper,
-                            location.width,
-                            location.height,
-                            location.confidence,
-                            std::move(location.detection_properties));
-                    imageReader.ReverseTransform(results.back());
-                }
-            }
-         },
-         config);
+        std::vector<MPFImageLocation> results;
+        std::vector<Frame> frameBatch = { Frame(imageReader.GetImage()) };
+        frameBatch.front().idx = 0;
+        yoloNetwork.GetDetections(
+          frameBatch,
+          [&imageReader, &results]
+          (std::vector<std::vector<DetectionLocation>> detectionsVec,
+            std::vector<Frame>::const_iterator,
+            std::vector<Frame>::const_iterator){
+              for (std::vector<DetectionLocation> &locationList : detectionsVec) {
+                  for (DetectionLocation &location : locationList) {
+                      results.emplace_back(
+                              location.x_left_upper,
+                              location.y_left_upper,
+                              location.width,
+                              location.height,
+                              location.confidence,
+                              std::move(location.detection_properties));
+                      imageReader.ReverseTransform(results.back());
+                  }
+              }
+          },
+          config);
 
+        if(config.tritonEnabled) yoloNetwork.tritonInferencer->waitTillAllClientsReleased();
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << results.size()
                                 << " detections.");
@@ -361,6 +348,10 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
         std::vector<Track> inProgressTracks;
 
         Config config(job.job_properties);
+        if(config.tritonEnabled && !config.mosseTrackerDisabled){
+          config.mosseTrackerDisabled = true;
+          LOG_WARN("MOSSE tracker is not supported with Triton, and has been disabled for this job");
+        }
         auto& yoloNetwork = GetYoloNetwork(job.job_properties, config);
 
         MPFAsyncVideoCapture videoCapture(job);
@@ -371,7 +362,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
         while (true) {
             auto tmp = GetVideoFrames(videoCapture, config.frameBatchSize);
             if (tmp.empty()) {
-                yoloNetwork.tritonInferencer.waitTillAllClientsReleased();
+                if(config.tritonEnabled) yoloNetwork.tritonInferencer->waitTillAllClientsReleased();
                 break;
             }
             int frameBatchKey = tmp.back().idx;

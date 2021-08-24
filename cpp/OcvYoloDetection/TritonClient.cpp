@@ -112,7 +112,7 @@ void TritonClient::prepareInferRequestedOutputs(){
 
     if(usingShmOutput()){
       TR_CHECK_OK(tmp->SetSharedMemory(outputs_shm_key,
-                                       om.byte_size * inferencer_->maxBatchSize,
+                                       om.byte_size * inferencer_->maxBatchSize(),
                                        om.shm_offset),
        "unable to associate output \"" + om.name+ "\" with shared memory at offset"
        + std::to_string(om.shm_offset));
@@ -145,11 +145,11 @@ void TritonClient::setInferInputsData(const std::vector<cv::Mat> &blobs){
 
       // check batch size is ok for model
       int64_t inputBatchSize = *(blobs[i].size.p);
-      if(inputBatchSize > inferencer_->maxBatchSize){
+      if(inputBatchSize > inferencer_->maxBatchSize()){
           THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
           "input \"" + inferencer_->inputsMeta[i].name + "\" blob's batch dimension of "
           + std::to_string(inputBatchSize)
-          + "is greater than the maximum of "+ std::to_string(inferencer_->maxBatchSize)
+          + "is greater than the maximum of "+ std::to_string(inferencer_->maxBatchSize())
           + " supported by the model");
       }
 
@@ -176,7 +176,7 @@ void TritonClient::setInferInputsData(const std::vector<cv::Mat> &blobs){
       // set input data
       size_t num_bytes = blobs[i].total() * blobs[i].elemSize();
       if(usingShmInput()){
-        if(num_bytes <= inferencer_->inputsMeta[i].byte_size * inferencer_->maxBatchSize){
+        if(num_bytes <= inferencer_->inputsMeta[i].byte_size * inferencer_->maxBatchSize()){
           std::memcpy(inputs_shm_ + inferencer_->inputsMeta[i].shm_offset, blobs[i].data , num_bytes);
           TR_CHECK_OK(inferInputs_.at(i)->SetSharedMemory(inputs_shm_key,
                                                           num_bytes ,
@@ -188,7 +188,7 @@ void TritonClient::setInferInputsData(const std::vector<cv::Mat> &blobs){
           THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
             "attempted to set shared input memory buffer with "
              + std::to_string(num_bytes) + " but there is only room for "
-             + std::to_string(inferencer_->inputsMeta[i].byte_size * inferencer_->maxBatchSize) + " bytes.");
+             + std::to_string(inferencer_->inputsMeta[i].byte_size * inferencer_->maxBatchSize()) + " bytes.");
         }
       }else{
         TR_CHECK_OK(inferInputs_.at(i)->AppendRaw(blobs[i].data, num_bytes),
@@ -205,7 +205,7 @@ void TritonClient::infer(const std::vector<cv::Mat> &inputBlobs){
   setInferInputsData(inputBlobs);
 
   triton::client::InferResult* tmp;
-  TR_CHECK_OK( grpc_->Infer(&tmp, inferencer_->inferOptions,
+  TR_CHECK_OK( grpc_->Infer(&tmp, inferencer_->inferOptions(),
                             getRaw(inferInputs_),
                             getRaw(inferRequestedOutputs_) ),
     "unable to inference on server");
@@ -253,6 +253,7 @@ void TritonClient::inferAsync(int inferInputIdx, const cv::Mat& blob, CallbackFu
   inferAsync_(inferencerLambda);
 }
 
+
 void TritonClient::inferAsync_(CallbackFunc inferencerLambda){
   TR_CHECK_OK(
       grpc_->AsyncInfer(
@@ -262,7 +263,7 @@ void TritonClient::inferAsync_(CallbackFunc inferencerLambda){
         inferencerLambda();
       },
 
-      inferencer_->inferOptions,
+      inferencer_->inferOptions(),
       getRaw(inferInputs_),
       getRaw(inferRequestedOutputs_)),
       "unable to async inference on server");
@@ -279,7 +280,7 @@ void TritonClient::setupShmRegion(const std::string shm_key, const size_t byte_s
     TR_CHECK_OK(triton::client::CloseSharedMemory(shm_fd),
         "failed ot close shared memory region " + shm_key + " on host");
     TR_CHECK_OK(grpc_->RegisterSystemSharedMemory(shm_key, shm_key, byte_size),
-      "unable to register " + shm_key + " shared memory with server \"" + inferencer_->serverUrl + "\"");
+      "unable to register " + shm_key + " shared memory with server \"" + inferencer_->serverUrl() + "\"");
     LOG_TRACE("registered shared memory with key " << shm_key << " of size " << byte_size << " at address " << std::hex << (void*) shm_addr);
 }
 
@@ -288,7 +289,7 @@ void TritonClient::removeShmRegion(const std::string shm_key, const size_t byte_
 
   LOG_TRACE("Removing up shm:" << shm_key << "[" << byte_size << "] at " << std::hex << (void*) shm_addr);
   TR_CHECK_OK(grpc_->UnregisterSystemSharedMemory(shm_key),
-    "unable to unregister shared memory region " + shm_key + " from server \"" + inferencer_->serverUrl + "\"");
+    "unable to unregister shared memory region " + shm_key + " from server \"" + inferencer_->serverUrl() + "\"");
   TR_CHECK_OK(triton::client::UnmapSharedMemory((void*) shm_addr, byte_size),
     "unable to unmap shared memory region " + shm_key + " from client address space");
   TR_CHECK_OK(triton::client::UnlinkSharedMemoryRegion(shm_key),
@@ -309,24 +310,23 @@ TritonClient::~TritonClient(){
 
 TritonClient::TritonClient(
   const int id,
-  const Config& cfg,
   const TritonInferencer *inferencer)
  : id(id)
  , inferencer_(inferencer)
  , inputs_byte_size(inferencer->inputsMeta.back().shm_offset
-                   + inferencer->inputsMeta.back().byte_size * inferencer->maxBatchSize)
+                   + inferencer->inputsMeta.back().byte_size * inferencer->maxBatchSize())
  , outputs_byte_size(inferencer->outputsMeta.back().shm_offset
-                    + inferencer->outputsMeta.back().byte_size * inferencer->maxBatchSize)
- , inputs_shm_key(cfg.trtisUseShm ? shm_key_prefix() + "_" + std::to_string(id) + "_inputs" : "")
- , outputs_shm_key(cfg.trtisUseShm ? shm_key_prefix() + "_" + std::to_string(id) + "_outputs" : "")
+                    + inferencer->outputsMeta.back().byte_size * inferencer->maxBatchSize())
+ , inputs_shm_key(inferencer->useShm() ? shm_key_prefix() + "_" + std::to_string(id) + "_inputs" : "")
+ , outputs_shm_key(inferencer->useShm() ? shm_key_prefix() + "_" + std::to_string(id) + "_outputs" : "")
 {
   TR_CHECK_OK(triton::client::InferenceServerGrpcClient::Create(
     &grpc_,
-    inferencer->serverUrl,
-    cfg.trtisVerboseClient,
-    cfg.trtisUseSSL,
-    inferencer->sslOptions),
-      "unable to create TRTIS inference client for \"" + cfg.trtisServer + "\"");
+    inferencer->serverUrl(),
+    inferencer->verboseClient(),
+    inferencer->useSSL(),
+    inferencer->sslOptions()),
+      "unable to create TRTIS inference client for \"" + inferencer->serverUrl() + "\"");
 
   if(usingShmInput()){
     setupShmRegion(inputs_shm_key,  inputs_byte_size,  inputs_shm_);

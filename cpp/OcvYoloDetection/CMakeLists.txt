@@ -93,6 +93,3 @@ target_link_libraries(mpfOcvYoloDetection
 configure_mpf_component(OcvYoloDetection TARGETS mpfOcvYoloDetection)
 
 add_subdirectory(test)
-
-#add_executable(sample_ocv_yolo_detector sample_ocv_yolo_detector.cpp)
-#target_link_libraries(sample_ocv_yolo_detector mpfOcvYoloDetection})

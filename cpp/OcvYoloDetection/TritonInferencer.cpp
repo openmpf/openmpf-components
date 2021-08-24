@@ -43,15 +43,15 @@ void TritonInferencer::checkServerIsAlive(int maxAttempts) const {
   int attempt = 0;
   while(!ok && attempt < maxAttempts){
     TR_CHECK_OK(statusClient_->IsServerLive(&ok),
-      "failed to contact TRTIS inference server \"" + serverUrl + "\"");
+      "failed to contact TRTIS inference server \"" + serverUrl_ + "\"");
     attempt++;
   }
   if(!ok){
     THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
       "unable to verify that TRTIS inference server \""
-       + serverUrl + "\" is alive.");
+       + serverUrl_ + "\" is alive.");
   }else{
-    LOG_INFO("Found inference server \"" + serverUrl + "\"");
+    LOG_INFO("Found inference server \"" + serverUrl_ + "\"");
   }
 }
 
@@ -62,14 +62,14 @@ void TritonInferencer::checkServerIsReady(int maxAttempts) const {
   while(!ok && attempt < maxAttempts){
     TR_CHECK_OK(statusClient_->IsServerReady(&ok),
       "failed to check if TRTIS inference server \""
-       + serverUrl + "\" is ready");
+       + serverUrl_ + "\" is ready");
     attempt++;
   }
   if(!ok){
     THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
-      "TRTIS inference server \"" + serverUrl + "\" is not ready");
+      "TRTIS inference server \"" + serverUrl_ + "\" is not ready");
   }else{
-    LOG_INFO("Inference server \"" + serverUrl + "\" is ready");
+    LOG_INFO("Inference server \"" + serverUrl_ + "\" is ready");
   }
 }
 
@@ -78,23 +78,23 @@ void TritonInferencer::checkModelIsReady(int maxAttempts) const{
   bool ok = false;
   int attempt = 0;
   while(!ok && attempt < maxAttempts){
-    TR_CHECK_OK(statusClient_->IsModelReady(&ok, modelName, modelVersion),
+    TR_CHECK_OK(statusClient_->IsModelReady(&ok, modelName_, modelVersion_),
        "unable to check if TRTIS inference server model \""
-        + modelName + "\" ver. " + modelVersion + " is ready");
+        + modelName_ + "\" ver. " + modelVersion_ + " is ready");
     if(!ok){
-      TR_CHECK_OK(statusClient_->LoadModel(modelName),
-        "failed to explicitly load TRTIS inference server model \"" + modelName
-         + "\" ver. " + modelName + " on server \"" + serverUrl + "\"");
+      TR_CHECK_OK(statusClient_->LoadModel(modelName_),
+        "failed to explicitly load TRTIS inference server model \"" + modelName_
+         + "\" ver. " + modelName_ + " on server \"" + serverUrl_ + "\"");
     }
     attempt++;
   }
   if(!ok){
     THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
-     "TRTIS inference server model \"" + modelName
+     "TRTIS inference server model \"" + modelName_
      + "\" is not ready and could not be loaded explicitly");
   }else{
-    LOG_INFO("Inference server model \"" << modelName << " ver. \""
-     << modelVersion << "\"" << "\" is loaded and ready for inferencing.");
+    LOG_INFO("Inference server model \"" << modelName_ << " ver. \""
+     << modelVersion_ << "\"" << "\" is loaded and ready for inferencing.");
   }
 }
 
@@ -104,14 +104,13 @@ void TritonInferencer::getModelInputOutputMetaData(){
   // get model configuration
   inference::ModelConfigResponse modelConfigResponse;
   TR_CHECK_OK(statusClient_->ModelConfig(
-    &modelConfigResponse, modelName,modelVersion),
-    "unable to get \"" + modelName + "\" model configuration from server \""
-     + serverUrl + "\"");
+    &modelConfigResponse, modelName_, modelVersion_),
+    "unable to get \"" + modelName_ + "\" model configuration from server \""
+     + serverUrl_ + "\"");
 
   // get model inputs and outputs data from server
-  maxBatchSize = modelConfigResponse.config().max_batch_size();
-  //maxBatchSize = 3;  //for testing
-  LOG_INFO("model max supported batch size = " << std::to_string(maxBatchSize));
+  maxBatchSize_ = modelConfigResponse.config().max_batch_size();
+  LOG_INFO("model max supported batch size = " << std::to_string(maxBatchSize_));
 
   // get inputs meta data in inputsMeta TensorMeta vector
   inputsMeta.reserve(modelConfigResponse.config().input_size());
@@ -119,7 +118,7 @@ void TritonInferencer::getModelInputOutputMetaData(){
   for(int i = 0; i < modelConfigResponse.config().input_size(); i++){
     inputsMeta.emplace_back(
       modelConfigResponse.config().input(i), input_shm_offset);
-    input_shm_offset += inputsMeta.back().byte_size * maxBatchSize;
+    input_shm_offset += inputsMeta.back().byte_size * maxBatchSize_;
     LOG_INFO("input[" << i << "]  = \"" << inputsMeta.back().name << "\" "
               << inputsMeta.back().type << inputsMeta.back().shape
               << " bytes:" << inputsMeta.back().byte_size
@@ -132,7 +131,7 @@ void TritonInferencer::getModelInputOutputMetaData(){
   for(int o = 0; o < modelConfigResponse.config().output_size(); o++){
     outputsMeta.emplace_back(
       modelConfigResponse.config().output(o), output_shm_offset);
-    output_shm_offset += outputsMeta.back().byte_size * maxBatchSize;
+    output_shm_offset += outputsMeta.back().byte_size * maxBatchSize_;
     LOG_INFO("output[" << o << "] = \"" << outputsMeta.back().name << "\" "
               << outputsMeta.back().type << outputsMeta.back().shape
               << " bytes:" << outputsMeta.back().byte_size
@@ -151,7 +150,7 @@ void TritonInferencer::removeAllShmRegions(const std::string prefix){
       if(!region_name.compare(0,prefix.size(),prefix)){
         // found existing mapping with same prefix, so delete it for clean start
         TR_CHECK_OK(statusClient_->UnregisterSystemSharedMemory(region_name),
-            "unable to unregister system shared memory region \"" + region_name + "\" from \"" + serverUrl + "\"");
+            "unable to unregister system shared memory region \"" + region_name + "\" from \"" + serverUrl_ + "\"");
         LOG_TRACE("removed existing registered shm region " << region_name << " of size:" << p.second.byte_size() << " with key:" << p.second.key());
       }
     }
@@ -170,7 +169,7 @@ void TritonInferencer::infer(
   while(end != frames.end()){
 
     begin = end;
-    int size = std::min(maxBatchSize, static_cast<int>(frames.end() - begin));
+    int size = std::min(maxBatchSize_, static_cast<int>(frames.end() - begin));
     end = end + size;
 
     // create ocv matrix headers as window into inputBlobs allocated data
@@ -219,7 +218,7 @@ void TritonInferencer::infer(
   while(end != frames.end()){
 
     begin = end;
-    int size = std::min(maxBatchSize, static_cast<int>(frames.end() - begin));
+    int size = std::min(maxBatchSize_, static_cast<int>(frames.end() - begin));
     end = end + size;
 
     // update batch size in input shape
@@ -303,41 +302,44 @@ int TritonInferencer::acquireClientIdBlocking(){
 
 
 TritonInferencer::TritonInferencer(const Config &cfg)
-  : serverUrl(cfg.trtisServer)
-  , modelName(cfg.trtisModelName + "-" + std::to_string(cfg.netInputImageSize))
-  , modelVersion((cfg.trtisModelVersion > 0) ? std::to_string(cfg.trtisModelVersion) : "")
-  , inferOptions(modelName){
+  : serverUrl_(cfg.tritonServer)
+  , modelName_(cfg.tritonModelName + "-" + std::to_string(cfg.netInputImageSize))
+  , modelVersion_((cfg.tritonModelVersion > 0) ? std::to_string(cfg.tritonModelVersion) : "")
+  , useShm_(cfg.tritonUseShm)
+  , useSSL_(cfg.tritonUseSSL)
+  , verboseClient_(cfg.trtisVerboseClient)
+  , inferOptions_(modelName_){
 
   // setup remaining inferencing options
-  inferOptions.model_version_ = modelVersion;
-  inferOptions.client_timeout_ = cfg.trtisClientTimeout;
-  LOG_TRACE("Created inference options for " << modelName << " ver."
-    << modelVersion << " and a client timeout of " << std::fixed
-    << std::setprecision(6) << inferOptions.client_timeout_ / 1e6 << " sec.");
+  inferOptions_.model_version_ = modelVersion_;
+  inferOptions_.client_timeout_ = cfg.tritonClientTimeout;
+  LOG_TRACE("Created inference options for " << modelName_ << " ver."
+    << modelVersion_ << " and a client timeout of " << std::fixed
+    << std::setprecision(6) << inferOptions_.client_timeout_ / 1e6 << " sec.");
 
   // initialize client for server status requests
   TR_CHECK_OK(triton::client::InferenceServerGrpcClient::Create(
-    &statusClient_,serverUrl, cfg.trtisVerboseClient, cfg.trtisUseSSL, sslOptions),
-    "unable to create TRTIS inference client for \"" + serverUrl + "\"");
+    &statusClient_,serverUrl_, cfg.trtisVerboseClient, cfg.tritonUseSSL, sslOptions_),
+    "unable to create TRTIS inference client for \"" + serverUrl_ + "\"");
 
   // do some check on server and model
-  checkServerIsAlive(cfg.trtisMaxConnectionSetupAttempts);
-  checkServerIsReady(cfg.trtisMaxConnectionSetupAttempts);
-  checkModelIsReady(cfg.trtisMaxConnectionSetupAttempts);
+  checkServerIsAlive(cfg.tritonMaxConnectionSetupAttempts);
+  checkServerIsReady(cfg.tritonMaxConnectionSetupAttempts);
+  checkModelIsReady(cfg.tritonMaxConnectionSetupAttempts);
 
   // get model configuration
   getModelInputOutputMetaData();
 
   // clean up any existing shared memory regions from client host
-  if(cfg.trtisUseShm){
+  if(useShm_){
     removeAllShmRegions(TritonClient::shm_key_prefix());
   }
 
   // create clients for concurrent inferencing
-  LOG_TRACE("Creating " << cfg.trtisMaxInferConcurrency << " clients for concurrent inferencing");
-  for(int i = 0; i < cfg.trtisMaxInferConcurrency; i++){
+  LOG_TRACE("Creating " << cfg.tritonMaxInferConcurrency << " clients for concurrent inferencing");
+  for(int i = 0; i < cfg.tritonMaxInferConcurrency; i++){
     clients_.emplace_back(std::unique_ptr<TritonClient>(
-      new TritonClient(i, cfg, this )));
+      new TritonClient(i, this )));
     freeClientIds_.insert(i);
 
   }

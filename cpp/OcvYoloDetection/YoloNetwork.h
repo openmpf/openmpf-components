@@ -65,7 +65,7 @@ public:
 
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
 
-    TritonInferencer tritonInferencer;
+    std::unique_ptr<TritonInferencer> tritonInferencer;
 
 private:
     log4cxx::LoggerPtr log_ = log4cxx::Logger::getLogger("OcvYoloDetection");

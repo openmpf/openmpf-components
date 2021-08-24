@@ -52,7 +52,7 @@ static constexpr int OUTPUT_BLOB_DIM_1 = MAX_OUTPUT_BBOX_COUNT * 7 + 1;
 namespace {
 
     int ConfigureCudaDeviceIfNeeded(const Config &config, log4cxx::LoggerPtr& log) {
-        if (config.cudaDeviceId < 0) {
+        if (config.cudaDeviceId < 0 || config.tritonEnabled) {
             if (cv::cuda::getCudaEnabledDeviceCount() > 0) {
                 // A previous job may have been configured to use CUDA, but this job wasn't.
                 // We call cv::cuda::resetDevice() so that GPU memory used by the previous job
@@ -140,7 +140,7 @@ namespace {
                     "Failed to open names file at: " + modelSettings.namesFile);
         }
 
-        int expectedNumClasses = GetNumClasses(net, config);
+        int expectedNumClasses = config.tritonEnabled ? config.tritonNumClasses : GetNumClasses(net, config);
         std::vector<std::string> names;
         names.reserve(expectedNumClasses);
 
@@ -277,49 +277,59 @@ namespace {
         std::sort_heap(results.begin(), results.end(), scoreIsGreater);
         return results;
     }
+
+
+    std::unique_ptr<TritonInferencer> ConnectTritonInferencer(const Config& config){
+
+      if(!config.tritonEnabled) return nullptr;
+
+      std::unique_ptr<TritonInferencer> tritonInferencer(new TritonInferencer(config));
+      if( tritonInferencer->inputsMeta.size() != 1){
+        std::stringstream ss;
+        ss << "configured yolo inference server model \"" << tritonInferencer->modelName()
+          << "\" Ver. " << tritonInferencer->modelVersion() << " has "
+          << tritonInferencer->inputsMeta.size() << " inputs, only one is expected";
+        throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
+      }
+
+      if(   tritonInferencer->inputsMeta.at(0).shape[0] != 3
+        || tritonInferencer->inputsMeta.at(0).shape[1] != tritonInferencer->inputsMeta.at(0).shape[2]
+        || tritonInferencer->inputsMeta.at(0).shape[2] != config.netInputImageSize){
+        std::stringstream ss;
+        ss << "configured yolo inference server model \"" << tritonInferencer->modelName()
+          << "\" Ver. " << tritonInferencer->modelVersion() << " has 1st input shape "
+          << tritonInferencer->inputsMeta.at(0).shape << ", but data has shape "
+          << std::vector<int>{3,config.netInputImageSize,config.netInputImageSize};
+        throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
+      }
+
+      if(  tritonInferencer->outputsMeta.at(0).shape[0] != OUTPUT_BLOB_DIM_1
+        || tritonInferencer->outputsMeta.at(0).shape[1] != 1
+        || tritonInferencer->outputsMeta.at(0).shape[2] != 1){
+        std::stringstream ss;
+        ss << "configured yolo inference server model \"" << tritonInferencer->modelName()
+          << "\" Ver. " << tritonInferencer->modelVersion() << " has 1st output shape "
+          << tritonInferencer->outputsMeta.at(0).shape << ", but data has shape "
+          << std::vector<int>{OUTPUT_BLOB_DIM_1,1,1} << " was expected.";
+        throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
+
+      }
+
+      return tritonInferencer;
+    }
 } // end anonymous namespace
 
 
 YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
         : modelSettings_(std::move(model_settings))
         , cudaDeviceId_(ConfigureCudaDeviceIfNeeded(config, log_))
-        , net_(LoadNetwork(modelSettings_, cudaDeviceId_, log_))
+        , net_(config.tritonEnabled ?  cv::dnn::Net() : LoadNetwork(modelSettings_, cudaDeviceId_, log_))
+        , tritonInferencer(std::move(ConnectTritonInferencer(config)))
         , names_(LoadNames(net_, modelSettings_, config))
         , confusionMatrix_(LoadConfusionMatrix(modelSettings_.confusionMatrixFile, names_.size()))
         , classWhiteListPath_(config.classWhiteListPath)
         , classFilter_(GetClassFilter(classWhiteListPath_, names_))
-        , tritonInferencer(config) {
-  if(config.trtisEnabled){
-    if( tritonInferencer.inputsMeta.size() != 1){
-      std::stringstream ss;
-      ss << "configured yolo inference server model \"" << tritonInferencer.modelName
-         << "\" Ver. " << tritonInferencer.modelVersion << " has "
-         << tritonInferencer.inputsMeta.size() << " inputs, only one is expected";
-      throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
-    }
-    if(   tritonInferencer.inputsMeta.at(0).shape[0] != 3
-       || tritonInferencer.inputsMeta.at(0).shape[1] != tritonInferencer.inputsMeta.at(0).shape[2]
-       || tritonInferencer.inputsMeta.at(0).shape[2] != config.netInputImageSize){
-      std::stringstream ss;
-      ss << "configured yolo inference server model \"" << tritonInferencer.modelName
-         << "\" Ver. " << tritonInferencer.modelVersion << " has 1st input shape "
-         << tritonInferencer.inputsMeta.at(0).shape << ", but data has shape "
-         << std::vector<int>{3,config.netInputImageSize,config.netInputImageSize};
-      throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
-    }
-    if(  tritonInferencer.outputsMeta.at(0).shape[0] != OUTPUT_BLOB_DIM_1
-      || tritonInferencer.outputsMeta.at(0).shape[1] != 1
-      || tritonInferencer.outputsMeta.at(0).shape[2] != 1){
-      std::stringstream ss;
-      ss << "configured yolo inference server model \"" << tritonInferencer.modelName
-         << "\" Ver. " << tritonInferencer.modelVersion << " has 1st output shape "
-         << tritonInferencer.outputsMeta.at(0).shape << ", but data has shape "
-         << std::vector<int>{OUTPUT_BLOB_DIM_1,1,1} << " was expected.";
-      throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
-
-    }
-  }
-}
+        {}
 
 
 void YoloNetwork::GetDetections(
@@ -328,7 +338,7 @@ void YoloNetwork::GetDetections(
         const Config &config){
 
     LOG_TRACE("start");
-    if(!config.trtisEnabled){
+    if(!config.tritonEnabled){
       processFrameDetectionsFun(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
     }else{
       LOG_TRACE("using trtis");
@@ -449,7 +459,6 @@ DetectionLocation YoloNetwork::CreateDetectionLocationCvdnn(
         classList += "; ";
         classList += names_.at(*topScoreIdxIter);
     }
-
     cv::Mat1f classFeature;
     if (confusionMatrix_.empty()) {
         cv::normalize(scores, classFeature);
@@ -457,7 +466,6 @@ DetectionLocation YoloNetwork::CreateDetectionLocationCvdnn(
     else {
         cv::normalize(scores * confusionMatrix_, classFeature);
     }
-
     DetectionLocation detection(config, frame, boundingBox, topScore,
                                 std::move(classFeature), cv::Mat());
     detection.detection_properties.emplace("CLASSIFICATION", topClass);
@@ -475,9 +483,8 @@ void YoloNetwork::GetDetectionsTrtis(
   //std::vector<cv::Mat> inputBlobs = {ConvertToBlob(frames.begin(), frames.end(), config.netInputImageSize)};
   frameIdxComplete_ = frames.front().idx - 1;
 
-  tritonInferencer.infer(frames,
-                        //inputBlobs,
-                        tritonInferencer.inputsMeta.at(0),
+  tritonInferencer->infer(frames,
+                        tritonInferencer->inputsMeta.at(0),
 
     [this, &config, &frames, componentProcessLambda]
     (std::vector<cv::Mat> outBlobs,
@@ -492,7 +499,7 @@ void YoloNetwork::GetDetectionsTrtis(
 
       LOG_TRACE("received outBlob[" << outBlob.size[0] << "," <<outBlob.size[1] << "," << outBlob.size[2] << "," << outBlob.size[3] <<"]");
       assert(("output blob shape should be [frames, detections, 1, 1]",
-             outBlob.size[0] <= tritonInferencer.maxBatchSize
+             outBlob.size[0] <= tritonInferencer->maxBatchSize()
           && outBlob.size[1] == OUTPUT_BLOB_DIM_1
           && outBlob.size[2] == 1
           && outBlob.size[3] == 1));
@@ -501,7 +508,7 @@ void YoloNetwork::GetDetectionsTrtis(
       std::vector<std::vector<DetectionLocation>> detectionsGroupedByFrame;
       detectionsGroupedByFrame.reserve(numFrames);
 
-      LOG_TRACE("extracting detections for frames["<< begin->idx << ".." << (end - 1)->idx << "]");
+      LOG_TRACE("extracting detections for frames[" << begin->idx << ".." << (end - 1)->idx << "]");
       int i = 0;
       for(auto frameIt = begin; frameIt != end; ++i,++frameIt){
         detectionsGroupedByFrame.push_back(
@@ -592,10 +599,13 @@ DetectionLocation YoloNetwork::CreateDetectionLocationTrtis(
   const int classIdx,
   const Config &config) const {
 
-  cv::Mat1f classFeature(cv::Size(1,names_.size()), 0.0);
+
+  assert(("classIdx = " + std::to_string(classIdx) + " >= " + std::to_string(names_.size()) , classIdx < names_.size()));
+
+  cv::Mat1f classFeature(1, names_.size(), 0.0);
   classFeature.at<float>(0, classIdx) = 1.0;
   if (! confusionMatrix_.empty()) {
-     classFeature = classFeature * confusionMatrix_;
+    classFeature = classFeature * confusionMatrix_;
   }
 
   DetectionLocation detection(config, frame, boundingBox, score,
@@ -609,10 +619,21 @@ DetectionLocation YoloNetwork::CreateDetectionLocationTrtis(
 
 
 bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
-    return modelSettings_.networkConfigFile == modelSettings.networkConfigFile
-            && modelSettings_.namesFile == modelSettings.namesFile
-            && modelSettings_.weightsFile == modelSettings.weightsFile
-            && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
-            && config.cudaDeviceId == cudaDeviceId_
-            && config.classWhiteListPath == classWhiteListPath_;
+    if(config.tritonEnabled && tritonInferencer){
+      return config.tritonServer == tritonInferencer->serverUrl()
+             && config.tritonModelName == tritonInferencer->modelName()
+             && config.tritonModelVersion == std::stoi(tritonInferencer->modelVersion())
+             && config.tritonUseShm == tritonInferencer->useShm()
+             && config.tritonUseSSL == tritonInferencer->useSSL()
+             && config.trtisVerboseClient == tritonInferencer->verboseClient()
+             && config.netInputImageSize == tritonInferencer->inputsMeta.at(0).shape[2];
+    }else{
+      return modelSettings_.networkConfigFile == modelSettings.networkConfigFile
+              && modelSettings_.namesFile == modelSettings.namesFile
+              && modelSettings_.weightsFile == modelSettings.weightsFile
+              && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
+              && config.cudaDeviceId == cudaDeviceId_
+              && config.classWhiteListPath == classWhiteListPath_
+              && !tritonInferencer;
+    }
 }

@@ -30,24 +30,27 @@
 class TritonInferencer {
 
   public:
-
-    TritonInferencer(const Config &cfg);
-
-    const std::string& serverUrl;
-
-    const std::string  modelName;
-
-    const std::string  modelVersion;
-
-    int maxBatchSize;
-
     std::vector<TritonTensorMeta> inputsMeta;
 
     std::vector<TritonTensorMeta> outputsMeta;
 
-    triton::client::InferOptions inferOptions;
+    const triton::client::InferOptions& inferOptions() const {return inferOptions_;}
 
-    triton::client::SslOptions sslOptions;
+    const triton::client::SslOptions& sslOptions() const {return sslOptions_;}
+
+    const std::string&  serverUrl() const {return serverUrl_;}
+
+    const std::string&  modelName() const {return modelName_;}
+
+    const std::string&  modelVersion() const {return modelVersion_;}
+
+    const bool useShm() const {return useShm_;}
+
+    const bool verboseClient() const {return verboseClient_;}
+
+    const bool useSSL() const {return useSSL_;}
+
+    const int maxBatchSize() const {return maxBatchSize_;}
 
     using ExtractDetectionsFunc =
       std::function<void(std::vector<cv::Mat> outBlobs,
@@ -68,7 +71,28 @@ class TritonInferencer {
 
     void waitTillAllClientsReleased();
 
+    TritonInferencer(const Config &cfg);
+
+
   private:
+
+    std::string  serverUrl_;
+
+    std::string  modelName_;
+
+    std::string  modelVersion_;
+
+    bool useShm_;
+
+    bool useSSL_;
+
+    bool verboseClient_;
+
+    int maxBatchSize_;
+
+    triton::client::SslOptions sslOptions_;
+
+    triton::client::InferOptions inferOptions_;
 
     std::unique_ptr<triton::client::InferenceServerGrpcClient> statusClient_;
 

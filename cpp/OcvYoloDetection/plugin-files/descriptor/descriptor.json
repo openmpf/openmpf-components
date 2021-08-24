@@ -169,22 +169,28 @@
           "propertiesKey": "detection.use.cpu.when.gpu.problem"
         },
         {
-          "name": "ENABLE_TRTIS",
+          "name": "ENABLE_TRITON",
           "description": "If true, inferencing will be performed via a configured inference server.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "TRTIS_SERVER",
+          "name": "TRITON_SERVER",
           "description": "NVIDIA Triton inference server url and port to use for inferencing.",
           "type": "string",
           "defaultValue": ""
         },
         {
-          "name": "TRTIS_MODEL_VERSION",
+          "name": "TRITON_MODEL_VERSION",
           "description": "Inference server model version to use for inferencing.",
           "type": "INT",
           "defaultValue": "-1"
+        },
+        {
+          "name": "TRITON_MODEL_NUM_CLASSES",
+          "description": "Inference server model number of possible returned classes.",
+          "type": "INT",
+          "defaultValue": "80"
         },
         {
           "name": "MAX_INFER_CONCURRENCY",
@@ -199,25 +205,25 @@
           "defaultValue": "0"
         },
         {
-          "name": "TRTIS_MAX_CONNECTION_SETUP_ATTEMPTS",
+          "name": "TRITON_MAX_CONNECTION_SETUP_ATTEMPTS",
           "description": "Maximum numer of retry attempts for establishing a connection to the inference server",
           "type": "INT",
           "defaultValue": "3"
         },
         {
-          "name": "TRTIS_VERBOSE_CLIENT",
+          "name": "TRITON_VERBOSE_CLIENT",
           "description": "Inference server client messaging generates verbose log messages",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "TRTIS_USE_SSL",
+          "name": "TRITON_USE_SSL",
           "description": "Inference server client connection uses SSL",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
-          "name": "TRTIS_USE_SHM",
+          "name": "TRITON_USE_SHM",
           "description": "Inference server client communication uses shared memory (requires client and server to be on same machine)",
           "type": "BOOLEAN",
           "defaultValue": "true"

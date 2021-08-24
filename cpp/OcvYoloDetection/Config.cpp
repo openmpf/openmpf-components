@@ -59,9 +59,9 @@ Config::Config(const Properties &jobProps)
                           / GetProperty(jobProps, "FRAME_INTERVAL", 1))
         , maxIOUDist(GetProperty(jobProps, "TRACKING_MAX_IOU_DIST", 0.3))
         , edgeSnapDist(GetProperty(jobProps, "TRACKING_EDGE_SNAP_DIST", 0.005))
-        , dftSize(GetProperty(jobProps, "TRACKING_DFT_SIZE", 256))
+        , dftSize(GetProperty(jobProps, "TRACKING_DFT_SIZE", 128))
         , dftHannWindowEnabled(GetProperty(jobProps, "TRACKING_DFT_USE_HANNING_WINDOW", true))
-        , mosseTrackerDisabled(GetProperty(jobProps, "TRACKING_DISABLE_MOSSE_TRACKER", false))
+        , mosseTrackerDisabled(GetProperty(jobProps, "TRACKING_DISABLE_MOSSE_TRACKER", true))
         , maxKFResidual(GetProperty(jobProps, "KF_MAX_ASSIGNMENT_RESIDUAL", 2.5))
         , kfDisabled(GetProperty(jobProps, "KF_DISABLED", false))
         , RN(LoadCovarianceMat(
@@ -73,16 +73,17 @@ Config::Config(const Properties &jobProps)
         , cudaDeviceId(GetProperty(jobProps, "CUDA_DEVICE_ID", -1))
         , classWhiteListPath(GetProperty(jobProps, "CLASS_WHITELIST_FILE", ""))
         , enableDebug(GetProperty(jobProps, "ENABLE_DEBUG", false))
-        , trtisEnabled(GetProperty(jobProps, "ENABLE_TRTIS", false))
-        , trtisServer(GetProperty(jobProps, "TRTIS_SERVER", "example.org:8001"))
-        , trtisModelName(GetProperty(jobProps,  "MODEL_NAME", "yolo"))
-        , trtisModelVersion(GetProperty(jobProps, "TRTIS_MODEL_VERSION", -1))
-        , trtisMaxInferConcurrency(GetProperty(jobProps, "MAX_INFER_CONCURRENCY", 1))
-        , trtisClientTimeout(GetProperty(jobProps, "INFER_TIMEOUT_US",0))
-        , trtisMaxConnectionSetupAttempts(GetProperty(jobProps, "TRTIS_MAX_CONNECTION_SETUP_ATTEMPTS",3))
-        , trtisVerboseClient(GetProperty(jobProps, "TRTIS_VERBOSE_CLIENT", false))
-        , trtisUseSSL(GetProperty(jobProps, "TRTIS_USE_SSL",false))
-        , trtisUseShm(GetProperty(jobProps, "TRTIS_USE_SHM",true))
+        , tritonEnabled(GetProperty(jobProps, "ENABLE_TRITON", false))
+        , tritonServer(GetProperty(jobProps, "TRITON_SERVER", "example.org:8001"))
+        , tritonModelName(GetProperty(jobProps,  "MODEL_NAME", "yolo"))
+        , tritonModelVersion(GetProperty(jobProps, "TRITON_MODEL_VERSION", -1))
+        , tritonNumClasses(GetProperty(jobProps, "TRITON_MODEL_NUM_CLASSES", 80))
+        , tritonMaxInferConcurrency(GetProperty(jobProps, "MAX_INFER_CONCURRENCY", 1))
+        , tritonClientTimeout(GetProperty(jobProps, "INFER_TIMEOUT_US",0))
+        , tritonMaxConnectionSetupAttempts(GetProperty(jobProps, "TRITON_MAX_CONNECTION_SETUP_ATTEMPTS",3))
+        , trtisVerboseClient(GetProperty(jobProps, "TRITON_VERBOSE_CLIENT", false))
+        , tritonUseSSL(GetProperty(jobProps, "TRITON_USE_SSL",false))
+        , tritonUseShm(GetProperty(jobProps, "TRITON_USE_SHM",true))
 
 {
 }
@@ -112,15 +113,16 @@ std::ostream &operator<<(std::ostream &out, const Config &cfg) {
         << "\"cudaDeviceId\":" << cfg.cudaDeviceId << ","
         << "\"classWhiteListPath\":" << cfg.classWhiteListPath << ","
         << "\"enabledDebug\":" << cfg.enableDebug << ","
-        << "\"trtisServer\":" << cfg.trtisModelVersion << ","
-        << "\"trtisModelName\":" << cfg.trtisModelName << ","
-        << "\"trtisModelVersion\":" << cfg.trtisModelVersion << ","
-        << "\"trtisMaxInferConcurrency\":" << cfg.trtisMaxInferConcurrency << ","
-        << "\"trtisClientTimeout\":" << cfg.trtisClientTimeout << ","
-        << "\"trtisMaxConnectionsSetupAttempts\":" << cfg.trtisMaxConnectionSetupAttempts << ","
+        << "\"tritonServer\":" << cfg.tritonModelVersion << ","
+        << "\"tritonModelName\":" << cfg.tritonModelName << ","
+        << "\"tritonModelVersion\":" << cfg.tritonModelVersion << ","
+        << "\"tritonNumClasses\":" << cfg.tritonNumClasses << ","
+        << "\"tritonMaxInferConcurrency\":" << cfg.tritonMaxInferConcurrency << ","
+        << "\"tritonClientTimeout\":" << cfg.tritonClientTimeout << ","
+        << "\"trtisMaxConnectionsSetupAttempts\":" << cfg.tritonMaxConnectionSetupAttempts << ","
         << "\"trtisVerboseClient\":" << cfg.trtisVerboseClient << ","
-        << "\"trtisUseSSL\":" << cfg.trtisUseSSL << ","
-        << "\"trtisUseSSL\":" << cfg.trtisUseShm << ","
+        << "\"tritonUseSSL\":" << cfg.tritonUseSSL << ","
+        << "\"tritonUseShm\":" << cfg.tritonUseShm << ","
         << "\"kfProcessVar\":" << format(cfg.QN) << ","
         << "\"kfMeasurementVar\":" << format(cfg.RN)
         << "}";
