@@ -44,7 +44,7 @@ services:
 
     volumes:
       # change these as needed
-      - "/mnt/data/docker/triton/models/yolov4-416:/models/yolo-416"
+      - "/mnt/data/docker/triton/models/yolov4-416/1/yolov4.engine:/models/yolo-416/1/yolov4.engine"
       - "/mnt/data/docker/triton/plugins/liblayerplugin.so.r21.06-416:/plugins/liblayerplugin.so"
      # volume for shared memory
      # - "/dev/shm:/dev/shm"
