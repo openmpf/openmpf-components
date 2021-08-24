@@ -52,104 +52,6 @@
       "description": "Executes the Tika image detection algorithm using the default parameters.",
       "algorithm": "TIKAIMAGE",
       "properties": []
-    },
-    {
-      "name": "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY ACTION",
-      "description": "Executes the Tika text detection algorithm using the default parameters on source media only, no derivatives.",
-      "algorithm": "TIKATEXT",
-      "properties": [
-        {
-          "name": "SOURCE_MEDIA_ONLY",
-          "value": "TRUE"
-        }
-      ]
-    },
-    {
-      "name": "JROBBLE: EAST TEXT DETECTION DERIVATIVE MEDIA ONLY ACTION",
-      "description": "Runs EAST text detection on derivative media only.",
-      "algorithm": "EAST",
-      "properties": [
-        {
-          "name": "DERIVATIVE_MEDIA_ONLY",
-          "value": "TRUE"
-        }
-      ]
-    },
-    {
-      "name": "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY ACTION",
-      "description": "Performs Tesseract OCR on derivative media only.",
-      "algorithm": "TESSERACTOCR",
-      "properties": [
-        {
-          "name": "DERIVATIVE_MEDIA_ONLY",
-          "value": "TRUE"
-        }
-      ]
-    },
-    {
-      "name": "JROBBLE: TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY ACTION",
-      "description": "Performs Tesseract OCR on feed-forward regions on derivative media only.",
-      "algorithm": "TESSERACTOCR",
-      "properties": [
-        {
-          "name": "FEED_FORWARD_TYPE",
-          "value": "REGION"
-        },
-        {
-          "name": "MIN_OSD_TEXT_ORIENTATION_CONFIDENCE",
-          "value": "0"
-        },
-        {
-          "name": "MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE",
-          "value": "0"
-        },
-        {
-          "name": "MIN_OSD_SCRIPT_SCORE",
-          "value": "0"
-        },
-        {
-          "name": "MIN_OSD_SECONDARY_SCRIPT_THRESHOLD",
-          "value": "0.40"
-        },
-        {
-          "name": "MAX_OSD_SCRIPTS",
-          "value": "2"
-        },
-        {
-          "name": "UNSTRUCTURED_TEXT_SCALE",
-          "value": "3.2"
-        },
-        {
-          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
-          "value": "TRUE"
-        },
-        {
-          "name": "DERIVATIVE_MEDIA_ONLY",
-          "value": "TRUE"
-        }
-      ]
-    },
-    {
-      "name": "JROBBLE: OCV FACE DETECTION DERIVATIVE MEDIA ONLY ACTION",
-      "description": "Performs OpenCV face detection on derivative media only.",
-      "algorithm": "FACECV",
-      "properties": [
-        {
-          "name": "DERIVATIVE_MEDIA_ONLY",
-          "value": "TRUE"
-        }
-      ]
-    },
-    {
-      "name": "JROBBLE: OCV GENERIC MARKUP DERIVATIVE MEDIA ONLY ACTION",
-      "description": "Performs object markup in images and videos for derivative media only.",
-      "algorithm": "MARKUPCV",
-      "properties": [
-        {
-          "name": "DERIVATIVE_MEDIA_ONLY",
-          "value": "TRUE"
-        }
-      ]
     }
   ],
   "tasks": [
@@ -158,48 +60,6 @@
       "description": "Performs Tika image detection.",
       "actions": [
         "TIKA IMAGE DETECTION ACTION"
-      ]
-    },
-    {
-      "name": "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
-      "description": "Executes the Tika text detection algorithm using the default parameters on source media only, no derivatives.",
-      "actions": [
-        "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY ACTION"
-      ]
-    },
-    {
-      "name": "JROBBLE: EAST TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
-      "description": "Runs EAST text detection on derivative media only.",
-      "actions": [
-        "JROBBLE: EAST TEXT DETECTION DERIVATIVE MEDIA ONLY ACTION"
-      ]
-    },
-    {
-      "name": "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
-      "description": "Performs Tesseract OCR on derivative media only.",
-      "actions": [
-        "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY ACTION"
-      ]
-    },
-    {
-      "name": "JROBBLE: TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY TASK",
-      "description": "Performs Tesseract OCR on feed-forward regions on derivative media only.",
-      "actions": [
-        "JROBBLE: TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY ACTION"
-      ]
-    },
-    {
-      "name": "JROBBLE: OCV FACE DETECTION DERIVATIVE MEDIA ONLY TASK",
-      "description": "Performs OpenCV face detection on derivative media only.",
-      "actions": [
-        "JROBBLE: OCV FACE DETECTION DERIVATIVE MEDIA ONLY ACTION"
-      ]
-    },
-    {
-      "name": "JROBBLE: OCV GENERIC MARKUP DERIVATIVE MEDIA ONLY TASK",
-      "description": "Performs object markup in images and videos for derivative media only.",
-      "actions": [
-        "JROBBLE: OCV GENERIC MARKUP DERIVATIVE MEDIA ONLY ACTION"
       ]
     }
   ],
@@ -212,51 +72,51 @@
       ]
     },
     {
-      "name": "JROBBLE: TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR PIPELINE",
-      "description": "Performs Tika image detection followed by Tika and Tesseract OCR text detection.",
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR PIPELINE",
+      "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR on derivative media.",
       "tasks": [
         "TIKA IMAGE DETECTION TASK",
-        "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
-        "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK"
+        "TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+        "TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK"
       ]
     },
     {
-      "name": "JROBBLE: TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR AND KEYWORD TAGGING PIPELINE",
-      "description": "Performs Tika image detection followed by Tika and Tesseract text detection and keyword tagging of TEXT results.",
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR AND KEYWORD TAGGING PIPELINE",
+      "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR on derivative media. Keyword tagging is performed on all TEXT results.",
       "tasks": [
         "TIKA IMAGE DETECTION TASK",
-        "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
-        "JROBBLE: TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
+        "TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+        "TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
         "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
     },
     {
-      "name": "JROBBLE: TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR (WITH EAST REGIONS) AND KEYWORD TAGGING PIPELINE",
-      "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR on feed-forward regions from EAST on derivative media. Keyword tagging is performed on all TEXT results.",
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR (WITH EAST REGIONS) AND KEYWORD TAGGING AND MARKUP PIPELINE",
+      "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR and markup on feed-forward regions from EAST on derivative media. Keyword tagging is performed on all TEXT results.",
       "tasks": [
         "TIKA IMAGE DETECTION TASK",
-        "JROBBLE: TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
-        "JROBBLE: EAST TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
-        "JROBBLE: TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY TASK",
+        "TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+        "EAST TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY TASK",
         "KEYWORD TAGGING (WITH FF REGION) TASK",
-        "JROBBLE: OCV GENERIC MARKUP DERIVATIVE MEDIA ONLY TASK"
+        "OCV GENERIC MARKUP DERIVATIVE MEDIA ONLY TASK"
       ]
     },
     {
-      "name": "JROBBLE: TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA OCV FACE PIPELINE",
-      "description": "Performs Tika image detection followed by OpenCV face detection.",
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA OCV FACE PIPELINE",
+      "description": "Performs Tika image detection on source media followed by OpenCV face detection on derivative media.",
       "tasks": [
         "TIKA IMAGE DETECTION TASK",
-        "JROBBLE: OCV FACE DETECTION DERIVATIVE MEDIA ONLY TASK"
+        "OCV FACE DETECTION DERIVATIVE MEDIA ONLY TASK"
       ]
     },
     {
-      "name": "JROBBLE: TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA OCV FACE AND MARKUP PIPELINE",
-      "description": "Performs Tika image detection followed by OpenCV face detection and markup.",
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA OCV FACE AND MARKUP PIPELINE",
+      "description": "Performs Tika image detection on source media followed by OpenCV face detection and markup on derivative media.",
       "tasks": [
         "TIKA IMAGE DETECTION TASK",
-        "JROBBLE: OCV FACE DETECTION DERIVATIVE MEDIA ONLY TASK",
-        "OCV GENERIC MARKUP TASK"
+        "OCV FACE DETECTION DERIVATIVE MEDIA ONLY TASK",
+        "OCV GENERIC MARKUP DERIVATIVE MEDIA ONLY TASK"
       ]
     }
   ]
