@@ -45,7 +45,7 @@ import java.util.*;
 
 public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TikaTextDetectionComponent.class);
+    private static final Logger log = LoggerFactory.getLogger(TikaTextDetectionComponent.class);
     private static final Map<String, String> langMap;
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -55,8 +55,8 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
     // Handles the case where the media is a generic type.
     public List<MPFGenericTrack>  getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
-        LOG.info("[{}] Starting job.", mpfGenericJob.getJobName());
-        LOG.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
+        log.info("[{}] Starting job.", mpfGenericJob.getJobName());
+        log.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
             mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
 
@@ -77,7 +77,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
         } catch (Exception e) {
             String errorMsg = String.format("Error parsing file. Filepath = %s", file);
-            LOG.error(errorMsg, e);
+            log.error(errorMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, errorMsg);
         }
 
@@ -106,7 +106,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                 metadataOutput = objectMapper.writeValueAsString(metadataMap);
             } catch (JsonProcessingException e) {
                 String errorMsg = "Error writing metadata as json string.";
-                LOG.error(errorMsg, e);
+                log.error(errorMsg, e);
                 throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, errorMsg);
             }
             genericDetectionProperties.put("METADATA", metadataOutput);
@@ -123,13 +123,13 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
             identifier.loadModels();
 
-            int maxIDLength = (int) (Math.log10(pageOutput.size())) + 1;
+            int maxIdLength = (int) (Math.log10(pageOutput.size())) + 1;
 
             int maxSectionsOnPage = pageOutput.stream().mapToInt(ArrayList::size).max().getAsInt();
-            int sectionIDLength = (int) (Math.log10(maxSectionsOnPage)) + 1;
+            int sectionIdLength = (int) (Math.log10(maxSectionsOnPage)) + 1;
 
-            if (sectionIDLength > maxIDLength) {
-                maxIDLength = sectionIDLength;
+            if (sectionIdLength > maxIdLength) {
+                maxIdLength = sectionIdLength;
             }
             for (int p = 0; p < pageOutput.size(); p++) {
 
@@ -139,8 +139,8 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                         Map<String, String> genericDetectionProperties = new HashMap<>();
                         genericDetectionProperties.put("TEXT", "");
                         genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                        genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIDLength + "d", p + 1));
-                        genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIDLength + "d", 1));
+                        genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
+                        genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", 1));
                         MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                         tracks.add(genericTrack);
                     }
@@ -185,13 +185,13 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                     } catch (Exception e) {
                         String errorMsg = "Failed to process text detections.";
-                        LOG.error(errorMsg, e);
+                        log.error(errorMsg, e);
                         throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg);
                     }
 
 
-                    genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIDLength + "d", p + 1));
-                    genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIDLength + "d", s + 1));
+                    genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
+                    genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", s + 1));
                     MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                     tracks.add(genericTrack);
                 }
@@ -199,10 +199,10 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         }
         // If entire document is empty, generate a single track reporting no detections.
         if (tracks.isEmpty()) {
-            LOG.warn("Empty or invalid document. No extracted text.");
+            log.warn("Empty or invalid document. No extracted text.");
         }
 
-        LOG.info("[{}] Processing complete. Generated {} generic tracks.", mpfGenericJob.getJobName(), tracks.size());
+        log.info("[{}] Processing complete. Generated {} generic tracks.", mpfGenericJob.getJobName(), tracks.size());
 
         return tracks;
     }

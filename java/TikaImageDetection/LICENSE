@@ -25,6 +25,6 @@
 
 The tika-parsers is licensed under the Apache 2.0 License.
 Project Page: https://tika.apache.org/
-Modifications to PDF2XHTML.java to allow for tracking of extracted images.
+Modifications to ImageGraphicsEngine.java to allow for tracking of extracted images.
 
 --------------------------------------------------------------------------

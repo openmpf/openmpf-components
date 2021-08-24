@@ -1,0 +1,10 @@
+This is to test that punctuation is preserved.
+Single newline characters are not lost, and neither are "quotation marks" and (parenthesis.)
+Is punctuation preserved with "these?" They should be!
+
+Two or more newlines are preservd, here's a misspelling for good measure.
+
+
+
+
+Testing that larger gaps between blocks of text are preserved.
