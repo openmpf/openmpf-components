@@ -34,6 +34,8 @@ import java.util.ArrayList;
 public class TextExtractionContentHandler extends ToTextContentHandler {
     private static final String pageTag = "div";
     private static final String sectionTag = "p";
+    private static final String pageLabel = "page";
+    private static final String slideLabel = "slide-content";
     protected int pageNumber;
     protected int sectionNumber;
     public StringBuilder textResults;
@@ -60,25 +62,16 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     }
 
     public void startElement (String uri, String localName, String qName, Attributes atts) {
-        if (atts.getValue("class") != null) {
-            if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) {
-                if (skipTitle) {
-                    // Skip metadata section of pdf.
-                    skipTitle = false;
-                    resetPage();
-                } else {
-                    startPage();
-                }
-            }
-            if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
-                if (skipTitle) {
-                    // Skip metadata section of pptx.
-                    skipTitle = false;
-                    // Discard title text. (not part of slide text nor master slide content).
-                    resetPage();
-                } else {
-                    startPage();
-                }
+        if (pageTag.equals(qName) &&
+                (pageLabel.equals(atts.getValue("class")) || slideLabel.equals(atts.getValue("class")))) {
+            if (skipTitle) {
+                // Skip metadata section of pdf or pptx.
+                skipTitle = false;
+                // If slides: Discard title text. (not part of slide text nor master slide content).
+                // If pdf: Discard blank page.
+                resetPage();
+            } else {
+                startPage();
             }
         } else if (sectionTag.equals(qName)) {
             newSection();

@@ -234,6 +234,49 @@ public class TestTikaImageDetectionComponent {
         FileUtils.deleteDirectory(testDir.toFile());
     }
 
+    @Test
+    public void testGetDetectionsOdp() throws IOException, MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-image-extraction.odp").getPath();
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+
+        Path testDir = Files.createTempDirectory("tmp");
+        testDir.toFile().deleteOnExit();
+
+        jobProperties.put("SAVE_PATH", testDir.toString());
+        jobProperties.put("ORGANIZE_BY_PAGE", "false");
+        jobProperties.put("ALLOW_EMPTY_PAGES", "true");
+        MPFGenericJob genericJob = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        markTempFiles(testDir.toFile());
+
+        assertEquals(1, tracks.size());
+
+        // Test extraction of images from *.odp format.
+        // All images will be contained within one track.
+        MPFGenericTrack testTrack = tracks.get(0);
+        assertEquals("1", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image0.png"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image1.png"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image2.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image3.jpg"));
+        assertTrue(testTrack.getDetectionProperties().get("SAVED_IMAGES").contains("image4.wmf"));
+
+
+        String[] splitAddress = testTrack.getDetectionProperties().get("SAVED_IMAGES").split("/");
+        String uuid = splitAddress[splitAddress.length - 2];
+
+        // Check that images were saved correctly, then clean up test folder.
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
+        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image0.png")));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image1.png"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image2.jpg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image3.jpg"))));
+        assertTrue(Files.exists((Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image4.wmf"))));
+
+        FileUtils.deleteDirectory(testDir.toFile());
+    }
 
     @Test
     public void testGetDetectionsDocx() throws IOException, MPFComponentDetectionError {

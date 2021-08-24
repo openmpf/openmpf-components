@@ -32,22 +32,20 @@ import org.apache.tika.sax.ToTextContentHandler;
 
 
 public class ImageExtractionContentHandler extends ToTextContentHandler{
-
-    private String pageTag;
+    private static final String pageTag = "div";
+    private static final String pageLabel = "page";
+    private static final String slideLabel = "slide-content";
     protected int pageNumber;
     private boolean skipTitle;
 
     public ImageExtractionContentHandler(){
         super();
-        pageTag = "div";
         pageNumber = 0;
     }
 
     public void startElement (String uri, String localName, String qName, Attributes atts) {
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) {
-           startPage();
-        }
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
+        if (pageTag.equals(qName) &&
+                (pageLabel.equals(atts.getValue("class")) || slideLabel.equals(atts.getValue("class")))) {
             startPage();
         }
     }

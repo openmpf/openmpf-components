@@ -145,6 +145,11 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
         }
 
         String cosId = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
+        if (cosId == null) {
+            // Certain formats (i.e. odp) will not set a relationship ID for embedded files.
+            // Assign a unique ID for each null ID.
+            cosId = UUID.randomUUID().toString();
+        }
         String[] filenameSplit = metadata.get(Metadata.RESOURCE_NAME_KEY).split("\\.");
         String extension = filenameSplit[filenameSplit.length - 1];
         String filename = "image" + String.valueOf(id) + "." + extension;
