@@ -128,7 +128,6 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
 
         Map<String,String> properties = mpfGenericJob.getJobProperties();
         boolean separatePages = false;
-        boolean emptyPages = false; // TODO: This is not read anywhere
 
         if (properties.get("SAVE_PATH") != null) {
             defaultSavePath = properties.get("SAVE_PATH");
@@ -137,9 +136,6 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
 
         if (properties.get("ORGANIZE_BY_PAGE") != null) {
             separatePages = Boolean.valueOf(properties.get("ORGANIZE_BY_PAGE"));
-        }
-        if (properties.get("ALLOW_EMPTY_PAGES") != null) {
-            emptyPages = Boolean.valueOf(properties.get("ALLOW_EMPTY_PAGES"));
         }
 
         if (mpfGenericJob.getJobName().length() != 0) {

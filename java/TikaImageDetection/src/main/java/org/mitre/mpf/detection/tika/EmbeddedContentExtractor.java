@@ -46,7 +46,11 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
     private boolean separatePages;
     private int id, pagenum;
     private ArrayList<ArrayList<String>> imageMap;
+
+    // Stores a collection of images and associated pages.
+    // Each image key holds a list of pages where the image appears.
     private LinkedHashMap<String, TreeSet<String>> imagePageMap;
+    private String uniqueId;
     private ArrayList<String> current;
     private Path outputDir;
     private Path commonImgDir;
@@ -64,7 +68,7 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
         imageMap = new ArrayList();
         current = new ArrayList();
 
-        String uniqueId = UUID.randomUUID().toString();
+        uniqueId = UUID.randomUUID().toString();
         outputDir = Paths.get(path + "/tika-extracted/" + uniqueId);
         commonImgDir = Paths.get(path + "/tika-extracted/" + uniqueId + "/common");
 
@@ -116,7 +120,7 @@ public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
             current = new ArrayList();
             imageMap.add(current);
             if (separatePages) {
-                outputDir = Paths.get(path + "/tika-extracted/page-" + (pagenum + 1)); // TODO: Shouldn't this use the UUID?
+                outputDir = Paths.get(path + "/tika-extracted/" + uniqueId + "/page-" + (pagenum + 1));
                 Files.createDirectories(outputDir);
             }
         }

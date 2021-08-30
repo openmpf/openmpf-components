@@ -32,12 +32,6 @@
           "defaultValue": "$MPF_HOME/share/derivatives"
         },
         {
-          "name": "ALLOW_EMPTY_PAGES",
-          "description": "When true, pages with no images are still stored as tracks with an empty IMAGE_FILES field. When false, empty pages are not stored at all.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
           "name": "ORGANIZE_BY_PAGE",
           "description": "Specifies whether or not to store images sorted into subdirectories by page.",
           "type": "BOOLEAN",
