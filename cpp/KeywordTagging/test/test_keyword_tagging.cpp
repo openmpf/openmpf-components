@@ -244,21 +244,41 @@ TEST(KEYWORDTAGGING, MissingTextToProcessTest) {
     tagger.SetRunDirectory("../plugin");
     ASSERT_TRUE(tagger.Init());
 
-    MPFImageLocation location(1, 2, 3, 4, 5,
-                              {{"TEXT", ""},
-                               {"SOME_PROP_2", "SOME_VAL_2"}});
-    MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
+    {
+        MPFImageLocation location(1, 2, 3, 4, 5,
+                                  {{"TEXT", ""},
+                                   {"SOME_PROP_2", "SOME_VAL_2"}});
+        MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
 
-    std::vector<MPFImageLocation> results = tagger.GetDetections(job);
+        std::vector<MPFImageLocation> results = tagger.GetDetections(job);
 
-    // detection is unchanged
-    ASSERT_EQ(1, results.size());
-    ASSERT_EQ(location.x_left_upper, results.at(0).x_left_upper);
-    ASSERT_EQ(location.y_left_upper, results.at(0).y_left_upper);
-    ASSERT_EQ(location.width, results.at(0).width);
-    ASSERT_EQ(location.height, results.at(0).height);
-    ASSERT_EQ(location.confidence, results.at(0).confidence);
-    ASSERT_EQ(location.detection_properties, results.at(0).detection_properties);
+        // detection is unchanged
+        ASSERT_EQ(1, results.size());
+        ASSERT_EQ(location.x_left_upper, results.at(0).x_left_upper);
+        ASSERT_EQ(location.y_left_upper, results.at(0).y_left_upper);
+        ASSERT_EQ(location.width, results.at(0).width);
+        ASSERT_EQ(location.height, results.at(0).height);
+        ASSERT_EQ(location.confidence, results.at(0).confidence);
+        ASSERT_EQ(location.detection_properties, results.at(0).detection_properties);
+    }
+
+    {
+        MPFImageLocation location(1, 2, 3, 4, 5,
+                                  {{"TEXT", ""}, {"TRANSCRIPT", "   "},
+                                   {"SOME_PROP_2", "SOME_VAL_2"}});
+        MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
+
+        std::vector<MPFImageLocation> results = tagger.GetDetections(job);
+
+        // detection is unchanged
+        ASSERT_EQ(1, results.size());
+        ASSERT_EQ(location.x_left_upper, results.at(0).x_left_upper);
+        ASSERT_EQ(location.y_left_upper, results.at(0).y_left_upper);
+        ASSERT_EQ(location.width, results.at(0).width);
+        ASSERT_EQ(location.height, results.at(0).height);
+        ASSERT_EQ(location.confidence, results.at(0).confidence);
+        ASSERT_EQ(location.detection_properties, results.at(0).detection_properties);
+    }
 
     ASSERT_TRUE(tagger.Close());
 }
@@ -283,7 +303,7 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(location.height, results.at(0).height);
         ASSERT_EQ(location.confidence, results.at(0).confidence);
 
-        //default FEED_FORWARD_PROPS_TO_PROCESS is used (TEXT, TRANSCRIPT) so tagging should run only on TEXT
+        // default FEED_FORWARD_PROPS_TO_PROCESS is used (TEXT, TRANSCRIPT) so tagging should run only on TEXT
         Properties props = results.at(0).detection_properties;
         ASSERT_EQ(5, props.size());
         ASSERT_EQ("cash", props["TRANSLATION"]);
@@ -311,7 +331,7 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(7, props.size());
         ASSERT_EQ("cash", props["TRANSLATION"]);
         ASSERT_EQ("car", props["TEXT"]);
-        ASSERT_EQ("vehicle, financial", props["TAGS"]);
+        ASSERT_EQ("financial; vehicle", props["TAGS"]); // tags added in alphabetical order
         ASSERT_EQ("cash", props["TRANSLATION_TRIGGER_WORDS"]);
         ASSERT_EQ("0-3", props["TRANSLATION_TRIGGER_WORDS_OFFSET"]);
         ASSERT_EQ("car", props["TEXT_TRIGGER_WORDS"]);
@@ -320,8 +340,8 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
 
     {
         MPFGenericTrack track(0.9,
-                              {{"BAR", "cash"},
-                               {"FOO", "car"}});
+                              {{"FOO", "car"},
+                               {"BAR", "cash"}});
         MPFGenericJob job("JOB NAME", "/some/path", track,
                           { { "FEED_FORWARD_PROP_TO_PROCESS", "FOO,BAR" } }, {}); // user-specified properties
 
@@ -329,12 +349,12 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(1, results.size());
         ASSERT_EQ(track.confidence, results.at(0).confidence);
 
-        //should run tagging on both foo and bar
+        // should run tagging on both foo and bar
         Properties props = results.at(0).detection_properties;
         ASSERT_EQ(7, props.size());
         ASSERT_EQ("cash", props["BAR"]);
         ASSERT_EQ("car", props["FOO"]);
-        ASSERT_EQ("financial, vehicle", props["TAGS"]); //tags added in property alphabetical order
+        ASSERT_EQ("financial; vehicle", props["TAGS"]); // tags added in alphabetical order
         ASSERT_EQ("car", props["FOO_TRIGGER_WORDS"]);
         ASSERT_EQ("0-2", props["FOO_TRIGGER_WORDS_OFFSET"]);
         ASSERT_EQ("cash", props["BAR_TRIGGER_WORDS"]);
@@ -461,6 +481,53 @@ TEST(KEYWORDTAGGING, ProcessTrackAndDetectionProperties) {
         ASSERT_EQ("username", props["TRANSCRIPT_TRIGGER_WORDS"]);
         ASSERT_EQ("0-7", props["TRANSCRIPT_TRIGGER_WORDS_OFFSET"]);
     }
+
+    ASSERT_TRUE(tagger.Close());
+}
+
+
+TEST(KEYWORDTAGGING, ProcessRepeatTags) {
+    KeywordTagging tagger;
+    tagger.SetRunDirectory("../plugin");
+    ASSERT_TRUE(tagger.Init());
+
+    MPFImageLocation location(1, 2, 3, 4, 5,
+                              {{"TEXT", "cash-car"},
+                               {"OTHER TEXT", "car-cash"},
+                               {"MORE TEXT", "cash cash"},
+                               {"BLANK TEXT", " "}});
+    MPFImageJob job("JOB NAME", "/some/path", location,
+                      { { "FEED_FORWARD_PROP_TO_PROCESS", "TEXT, OTHER TEXT, MORE TEXT, BLANK TEXT" } }, {});
+
+    std::vector<MPFImageLocation> results = tagger.GetDetections(job);
+    ASSERT_EQ(1, results.size());
+    ASSERT_EQ(location.x_left_upper, results.at(0).x_left_upper);
+    ASSERT_EQ(location.y_left_upper, results.at(0).y_left_upper);
+    ASSERT_EQ(location.width, results.at(0).width);
+    ASSERT_EQ(location.height, results.at(0).height);
+    ASSERT_EQ(location.confidence, results.at(0).confidence);
+
+    Properties props = results.at(0).detection_properties;
+    ASSERT_EQ(11, props.size());
+
+    ASSERT_EQ("cash-car", props["TEXT"]);
+    ASSERT_EQ("car-cash", props["OTHER TEXT"]);
+    ASSERT_EQ("cash cash", props["MORE TEXT"]);
+    ASSERT_EQ(" ", props["BLANK TEXT"]);
+
+    ASSERT_EQ("financial; vehicle", props["TAGS"]); // tags added in alphabetical order
+
+    ASSERT_EQ("car; cash", props["TEXT_TRIGGER_WORDS"]); // words added in alphabetical order
+    ASSERT_EQ("5-7; 0-3", props["TEXT_TRIGGER_WORDS_OFFSET"]); // offsets line up with words
+
+    ASSERT_EQ("car; cash", props["OTHER TEXT_TRIGGER_WORDS"]); // words added in alphabetical order
+    ASSERT_EQ("0-2; 4-7", props["OTHER TEXT_TRIGGER_WORDS_OFFSET"]); // offsets line up with words
+
+    ASSERT_EQ("cash", props["MORE TEXT_TRIGGER_WORDS"]);
+    ASSERT_EQ("0-3, 5-8", props["MORE TEXT_TRIGGER_WORDS_OFFSET"]); // offsets are in ascending order
+
+    // "BLANK TEXT_TRIGGER_WORDS" and "BLANK TEXT_TRIGGER_WORDS_OFFSET" are omitted since "BLANK TEXT"
+    // is only whitespace.
 
     ASSERT_TRUE(tagger.Close());
 }
