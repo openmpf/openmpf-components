@@ -566,8 +566,8 @@ void KeywordTagging::process_text_tagging(Properties &detection_properties, cons
         string tag_offset = boost::algorithm::join(offsets_list, "; ");
         tag_trigger = tag_trigger + boost::algorithm::join(triggers_list, L"; ");
 
-        detection_properties[boost::locale::conv::utf_to_utf<char>(prop) + "_TRIGGER_WORDS"] = boost::locale::conv::utf_to_utf<char>(tag_trigger);
-        detection_properties[boost::locale::conv::utf_to_utf<char>(prop)+ "_TRIGGER_WORDS_OFFSET"] = tag_offset;
+        detection_properties[boost::locale::conv::utf_to_utf<char>(prop) + " TRIGGER WORDS"] = boost::locale::conv::utf_to_utf<char>(tag_trigger);
+        detection_properties[boost::locale::conv::utf_to_utf<char>(prop)+ " TRIGGER WORDS OFFSET"] = tag_offset;
     }
 
     if (has_text) {

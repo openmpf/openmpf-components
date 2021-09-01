@@ -126,26 +126,26 @@ symbol is typically used in regex to match any character, which is why we use `\
 instead.
 
 Each detected tag will be stored in `TAGS`, separated by semicolons. The
-substring(s) that triggered each tag will be stored in `TRIGGER_WORDS`. For each
+substring(s) that triggered each tag will be stored in `TRIGGER WORDS`. For each
 trigger word the substring index range relative to the `TEXT` output will be
-stored in `TRIGGER_WORDS_OFFSET`. Because the same trigger word can be
+stored in `TRIGGER WORDS OFFSET`. Because the same trigger word can be
 encountered multiple times in the `TEXT` output, the results are organized as
 follows:
 
-* `TRIGGER_WORDS`: Each distinct trigger word is separated by a semicolon
-followed by a space. For example: `TRIGGER_WORDS=trigger1; trigger2`
+* `TRIGGER WORDS`: Each distinct trigger word is separated by a semicolon
+followed by a space. For example: `TRIGGER WORDS=trigger1; trigger2`
     * Because semicolons can be part of the trigger word itself, those
     semicolons will be encapsulated in brackets. For example,
     `detected trigger with a ;` in the input `TEXT` is reported as
-    `TRIGGER_WORDS=detected trigger with a [;]; some other trigger`.
-* `TRIGGER_WORDS_OFFSET`: Each group of indexes, referring to the same trigger
+    `TRIGGER WORDS=detected trigger with a [;]; some other trigger`.
+* `TRIGGER WORDS OFFSET`: Each group of indexes, referring to the same trigger
 word reported in sequence, is separated by a semicolon followed by a space.
 Indexes within a single group are separated by commas.
-    * Example `TRIGGER_WORDS=trigger1; trigger2`,
-    `TRIGGER_WORDS_OFFSET=0-5, 6-10; 12-15`, means that `trigger1` occurs twice
+    * Example `TRIGGER WORDS=trigger1; trigger2`,
+    `TRIGGER WORDS OFFSET=0-5, 6-10; 12-15`, means that `trigger1` occurs twice
     in the text at the index ranges 0-5 and 6-10, and `trigger2` occurs at index
     range 12-15.
 
-Note that all `TRIGGER_WORDS` results are trimmed of leading and trailing
+Note that all `TRIGGER WORDS` results are trimmed of leading and trailing
 whitespace, regardless of the regex pattern used. The respective
-`TRIGGER_WORDS_OFFSET` indexes refer to the trimmed substrings.
+`TRIGGER WORDS OFFSET` indexes refer to the trimmed substrings.
