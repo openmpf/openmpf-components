@@ -303,7 +303,7 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(location.height, results.at(0).height);
         ASSERT_EQ(location.confidence, results.at(0).confidence);
 
-        // default FEED_FORWARD_PROPS_TO_PROCESS is used (TEXT, TRANSCRIPT) so tagging should run only on TEXT
+        // default FEED_FORWARD_PROP_TO_PROCESS is used (TEXT, TRANSCRIPT) so tagging should run only on TEXT
         Properties props = results.at(0).detection_properties;
         ASSERT_EQ(5, props.size());
         ASSERT_EQ("cash", props["TRANSLATION"]);
