@@ -66,6 +66,25 @@
           "value": "TRUE"
         }
       ]
+    },
+    {
+      "name": "KEYWORD TAGGING (WITH FF REGION) ON ORIGINAL AND CORRECTED TEXT ACTION",
+      "description": "Performs keyword tagging on original and corrected text in feed-forward tracks and detections.",
+      "algorithm": "KEYWORDTAGGING",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "value": "TRUE"
+        },
+        {
+          "name": "FEED_FORWARD_PROP_TO_PROCESS",
+          "value": "TEXT, CORRECTED TEXT"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -81,6 +100,13 @@
       "description": "Performs keyword tagging on feed-forward tracks and detections.",
       "actions": [
         "KEYWORD TAGGING (WITH FF REGION) ACTION"
+      ]
+    },
+    {
+      "name": "KEYWORD TAGGING (WITH FF REGION) ON ORIGINAL AND CORRECTED TEXT TASK",
+      "description": "Performs keyword tagging on original and corrected text in feed-forward tracks and detections.",
+      "actions": [
+        "KEYWORD TAGGING (WITH FF REGION) ON ORIGINAL AND CORRECTED TEXT ACTION"
       ]
     }
   ],

@@ -79,6 +79,14 @@
       "tasks": [
         "NLP TEXT CORRECTION TEXT FILE TASK"
       ]
+    },
+    {
+      "name": "NLP TEXT CORRECTION WITH KEYWORD TAGGING TEXT FILE PIPELINE",
+      "description": "Runs text correction on a plain text file. Performs keyword tagging on original and corrected text.",
+      "tasks": [
+        "NLP TEXT CORRECTION TEXT FILE TASK",
+        "KEYWORD TAGGING (WITH FF REGION) ON ORIGINAL AND CORRECTED TEXT TASK"
+      ]
     }
   ]
 }
