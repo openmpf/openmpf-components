@@ -113,6 +113,7 @@ class AcsSpeechComponent(object):
 
         start_time = audio_job.start_time
         stop_time = audio_job.stop_time
+
         if stop_time < 0:
             stop_time = None
         try:
@@ -188,9 +189,26 @@ class AcsSpeechComponent(object):
             )
 
         # Convert frame locations to timestamps
+        media_properties = video_job.media_properties
+        media_frame_count = int(media_properties.get('FRAME_COUNT', -1))
+        media_duration = float(media_properties.get('DURATION', -1))
+
         fpms = float(video_job.media_properties['FPS']) / 1000.0
-        start_time = start_frame / fpms
-        stop_time = stop_frame / fpms
+        start_time = int(start_frame / fpms)
+
+        # The WFM will pass a stop_frame equal to the detected video
+        #  FRAME_COUNT by default. We want to use the detected DURATION
+        #  in such cases instead. Only use the passed stop_frame if it
+        #  differs from the detected STOP_FRAME.
+        if stop_frame is not None and stop_frame < media_frame_count - 1:
+            stop_time = int(stop_frame / fpms)
+        elif media_duration > 0:
+            stop_time = int(media_duration)
+        elif media_frame_count > 0:
+            stop_time = int(media_frame_count / fpms)
+        else:
+            stop_time = None;
+
         if stop_time < 0:
             stop_time = None
 
