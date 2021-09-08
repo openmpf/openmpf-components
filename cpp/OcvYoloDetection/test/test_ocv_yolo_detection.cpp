@@ -29,7 +29,6 @@
 
 #include <gtest/gtest.h>
 #include <log4cxx/propertyconfigurator.h>
-#include <grpc_client.h>
 #include <MPFDetectionObjects.h>
 #include <MPFImageReader.h>
 #include <MPFVideoCapture.h>
@@ -39,14 +38,17 @@
 
 #include "Config.h"
 #include "Frame.h"
-#include "TritonTensorMeta.h"
-#include "TritonClient.h"
-#include "TritonInferencer.h"
 #include "DetectionLocation.h"
 #include "Track.h"
 #include "YoloNetwork.h"
 #include "OcvYoloDetection.h"
 
+#ifdef TRITON_SUPPORT
+    #include <grpc_client.h>
+    #include "TritonTensorMeta.h"
+    #include "TritonClient.h"
+    #include "TritonInferencer.h"
+#endif
 
 using namespace MPF::COMPONENT;
 
@@ -121,7 +123,7 @@ Properties getYoloConfig(float confidenceThreshold = 0.5) {
     };
 }
 
-
+#ifdef TRITON_SUPPORT
 Properties getTritonYoloConfig(float confidenceThreshold = 0.5) {
     return {
             { "MODEL_NAME", "yolo" },
@@ -135,6 +137,7 @@ Properties getTritonYoloConfig(float confidenceThreshold = 0.5) {
             { "TRITON_USE_SHM","false"} //allow for remote server via plain gRPC
     };
 }
+#endif // TRITON_SUPPORT
 
 
 bool same(MPFImageLocation& l1, MPFImageLocation& l2,
@@ -434,7 +437,7 @@ TEST(OcvYoloDetection, TestImage) {
     }
 }
 
-
+#ifdef TRITON_SUPPORT
 TEST(OcvYoloDetection, TestImageTriton) {
     MPFImageJob job("Test", "data/dog.jpg", getTritonYoloConfig(), {});
 
@@ -585,6 +588,8 @@ TEST(OcvYoloDetection, TestVideoTriton) {
        expectedTracks.size() * (expectedTracks.size() -1) / 2);
 
 }
+#endif // TRITON_SUPPORT
+
 
 TEST(OcvYoloDetection, TestInvalidModel) {
     ModelSettings modelSettings;
@@ -633,6 +638,7 @@ TEST(OcvYoloDetection, TestWhitelist) {
 }
 
 
+#ifdef TRITON_SUPPORT
 TEST(OcvYoloDetection, DISABLED_TestTritonPerformance) {
 
   int start = 0;
@@ -683,5 +689,5 @@ TEST(OcvYoloDetection, DISABLED_TestTritonPerformance) {
   write_track_output_video(inVideoFile, found_tracks, outVideoFile, videoJob);
 
   EXPECT_TRUE(component.Close());
-
 }
+#endif // TRITON_SUPPORT

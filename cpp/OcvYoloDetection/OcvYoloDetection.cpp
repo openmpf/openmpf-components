@@ -43,11 +43,14 @@
 #include "Config.h"
 #include "DetectionLocation.h"
 #include "Track.h"
-#include "grpc_client.h"
-#include "TritonTensorMeta.h"
-#include "TritonClient.h"
-#include "TritonInferencer.h"
 #include "OcvYoloDetection.h"
+
+#ifdef TRITON_SUPPORT
+    #include "grpc_client.h" // DEBUG
+    #include "TritonTensorMeta.h"
+    #include "TritonClient.h"
+    #include "TritonInferencer.h"
+#endif
 
 
 using namespace MPF::COMPONENT;
@@ -321,7 +324,9 @@ std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob 
           },
           config);
 
+#ifdef TRITON_SUPPORT
         if(config.tritonEnabled) yoloNetwork.tritonInferencer->waitTillAllClientsReleased();
+#endif
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << results.size()
                                 << " detections.");
@@ -361,10 +366,14 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
 
         while (true) {
             auto tmp = GetVideoFrames(videoCapture, config.frameBatchSize);
+
             if (tmp.empty()) {
+#ifdef TRITON_SUPPORT
                 if(config.tritonEnabled) yoloNetwork.tritonInferencer->waitTillAllClientsReleased();
+#endif
                 break;
             }
+
             int frameBatchKey = tmp.back().idx;
             frameBatches.insert(std::make_pair(frameBatchKey,std::move(tmp)));
 

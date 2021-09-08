@@ -29,19 +29,21 @@
 #include <fstream>
 #include <list>
 #include <utility>
-#include <grpc_client.h>
 #include <MPFDetectionException.h>
 #include <Utils.h>
 
 #include "util.h"
 #include "Config.h"
 #include "Frame.h"
-#include "TritonTensorMeta.h"
-#include "TritonClient.h"
-#include "TritonInferencer.h"
 #include "YoloNetwork.h"
 #include "WhitelistFilter.h"
 
+#ifdef TRITON_SUPPORT
+    #include <grpc_client.h>
+    #include "TritonTensorMeta.h"
+    #include "TritonClient.h"
+    #include "TritonInferencer.h"
+#endif
 
 using namespace MPF::COMPONENT;
 
@@ -253,10 +255,10 @@ namespace {
                 false,            // no cropping
                 CV_32F            // make float blob
                 );
-    }
+   }
 
 
-    std::vector<int> GetTopScoreIndicesDesc(const cv::Mat1f &scores, int numScoresToGet,
+   std::vector<int> GetTopScoreIndicesDesc(const cv::Mat1f &scores, int numScoresToGet,
                                             float confidenceThreshold) {
         auto scoreIsGreater = [&scores](int i1, int i2) {
             return scores(0, i1) > scores(0, i2);
@@ -276,10 +278,10 @@ namespace {
         }
         std::sort_heap(results.begin(), results.end(), scoreIsGreater);
         return results;
-    }
+   }
 
-
-    std::unique_ptr<TritonInferencer> ConnectTritonInferencer(const Config& config){
+#ifdef TRITON_SUPPORT
+   std::unique_ptr<TritonInferencer> ConnectTritonInferencer(const Config& config){
 
       if(!config.tritonEnabled) return nullptr;
 
@@ -316,7 +318,9 @@ namespace {
       }
 
       return tritonInferencer;
-    }
+   }
+#endif
+
 } // end anonymous namespace
 
 
@@ -324,7 +328,9 @@ YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
         : modelSettings_(std::move(model_settings))
         , cudaDeviceId_(ConfigureCudaDeviceIfNeeded(config, log_))
         , net_(config.tritonEnabled ?  cv::dnn::Net() : LoadNetwork(modelSettings_, cudaDeviceId_, log_))
+#ifdef TRITON_SUPPORT
         , tritonInferencer(std::move(ConnectTritonInferencer(config)))
+#endif
         , names_(LoadNames(net_, modelSettings_, config))
         , confusionMatrix_(LoadConfusionMatrix(modelSettings_.confusionMatrixFile, names_.size()))
         , classWhiteListPath_(config.classWhiteListPath)
@@ -338,12 +344,18 @@ void YoloNetwork::GetDetections(
         const Config &config){
 
     LOG_TRACE("start");
-    if(!config.tritonEnabled){
+
+#ifdef TRITON_SUPPORT
+    if (!config.tritonEnabled) {
       processFrameDetectionsFun(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
-    }else{
+    } else {
       LOG_TRACE("using trtis");
       GetDetectionsTrtis(frames, processFrameDetectionsFun, config);
     }
+#else
+    processFrameDetectionsFun(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
+#endif
+
     LOG_TRACE("end");
  }
 
@@ -474,7 +486,7 @@ DetectionLocation YoloNetwork::CreateDetectionLocationCvdnn(
     return detection;
 }
 
-
+#ifdef TRITON_SUPPORT
 void YoloNetwork::GetDetectionsTrtis(
     const std::vector<Frame> &frames,
     ProcessFrameDetectionsFunc componentProcessLambda,
@@ -616,9 +628,11 @@ DetectionLocation YoloNetwork::CreateDetectionLocationTrtis(
   return detection;
 
 }
-
+#endif // TRITON_SUPPORT
 
 bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
+
+#ifdef TRITON_SUPPORT
     if(config.tritonEnabled && tritonInferencer){
       return config.tritonServer == tritonInferencer->serverUrl()
              && config.tritonModelName == tritonInferencer->modelName()
@@ -636,4 +650,12 @@ bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config 
               && config.classWhiteListPath == classWhiteListPath_
               && !tritonInferencer;
     }
+#else
+    return modelSettings_.networkConfigFile == modelSettings.networkConfigFile
+           && modelSettings_.namesFile == modelSettings.namesFile
+           && modelSettings_.weightsFile == modelSettings.weightsFile
+           && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
+           && config.cudaDeviceId == cudaDeviceId_
+           && config.classWhiteListPath == classWhiteListPath_;
+#endif // TRITON_SUPPORT
 }

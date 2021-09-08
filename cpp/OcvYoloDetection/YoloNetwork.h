@@ -65,7 +65,9 @@ public:
 
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
 
+#ifdef TRITON_SUPPORT
     std::unique_ptr<TritonInferencer> tritonInferencer;
+#endif
 
 private:
     log4cxx::LoggerPtr log_ = log4cxx::Logger::getLogger("OcvYoloDetection");
@@ -104,8 +106,8 @@ private:
       const cv::Mat1f &scores,
       const Config &config) const;
 
-
-     void GetDetectionsTrtis(
+#ifdef TRITON_SUPPORT
+    void GetDetectionsTrtis(
         const std::vector<Frame> &frames,
         ProcessFrameDetectionsFunc pFun,
         const Config &config);
@@ -120,7 +122,7 @@ private:
       const float score,
       const int classIdx,
       const Config &config) const;
-
+#endif
 
 };
 
