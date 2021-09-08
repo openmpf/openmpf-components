@@ -29,12 +29,12 @@ import setuptools
 
 setuptools.setup(
     name='EastTextDetection',
-    version='6.2',
+    version='6.3',
     packages=setuptools.find_packages(exclude=('*test*',)),
     package_data={'': ['east_resnet50.pb']},
     install_requires=(
-        'mpf_component_api>=6.2',
-        'mpf_component_util>=6.2',
+        'mpf_component_api>=6.3',
+        'mpf_component_util>=6.3',
         'opencv-python>=4.4.0',
     ),
     entry_points={

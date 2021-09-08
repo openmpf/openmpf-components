@@ -29,11 +29,11 @@ import setuptools
 
 setuptools.setup(
     name='AzureSpeechDetection',
-    version='6.2',
+    version='6.3',
     packages=setuptools.find_packages(exclude=('*test*',)),
     install_requires=(
-        'mpf_component_api>=6.2',
-        'mpf_component_util>=6.2',
+        'mpf_component_api>=6.3',
+        'mpf_component_util>=6.3',
         'azure-storage-blob>=12.3',
         'python-dateutil'
     ),
