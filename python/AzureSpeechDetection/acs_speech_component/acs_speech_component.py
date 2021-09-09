@@ -188,11 +188,23 @@ class AcsSpeechComponent(object):
                 mpf.DetectionError.MISSING_PROPERTY
             )
 
-        # Convert frame locations to timestamps
         media_properties = video_job.media_properties
         media_frame_count = int(media_properties.get('FRAME_COUNT', -1))
         media_duration = float(media_properties.get('DURATION', -1))
 
+        # If we suspect this is a subjob, overwrite SPEAKER_ID with 0 to
+        #  avoid confusion
+        overwrite_ids = False
+        if video_job.feed_forward_track is not None:
+            overwrite_ids = True
+        elif stop_frame is None:
+            pass
+        elif start_frame > 0:
+            overwrite_ids = True
+        elif stop_frame < media_frame_count - 1:
+            overwrite_ids = True
+
+        # Convert frame locations to timestamps
         fpms = float(video_job.media_properties['FPS']) / 1000.0
         start_time = int(start_frame / fpms)
 
@@ -207,23 +219,7 @@ class AcsSpeechComponent(object):
         elif media_frame_count > 0:
             stop_time = int(media_frame_count / fpms)
         else:
-            stop_time = None;
-
-        if stop_time < 0:
             stop_time = None
-
-        # If we suspect this is a subjob, overwrite SPEAKER_ID with 0 to
-        #  avoid confusion
-        overwrite_ids = False
-        if video_job.feed_forward_track is not None:
-            overwrite_ids = True
-        elif stop_frame is None:
-            pass
-        elif start_frame > 0:
-            overwrite_ids = True
-        elif 'FRAME_COUNT' in video_job.media_properties:
-            if stop_frame < int(video_job.media_properties['FRAME_COUNT']) - 1:
-                overwrite_ids = True
 
         try:
             audio_tracks = self.processor.process_audio(
