@@ -69,7 +69,7 @@ class NlpCorrectionComponent(object):
                         self.wrapper.get_custom_dictionary_path():
                     self.wrapper = HunspellWrapper(image_job.job_properties, image_job.job_name)
 
-            self.wrapper.get_suggestions(text, detection_properties)
+            self.wrapper.get_suggestions(job.job_properties, text, detection_properties)
 
             log.info(f'[{image_job.job_name}] Processing complete.')
             return ff_track,
@@ -99,7 +99,7 @@ class NlpCorrectionComponent(object):
                 detection_properties = ff_track.detection_properties
                 text = detection_properties.get("TEXT")
 
-                self.wrapper.get_suggestions(text, detection_properties)
+                self.wrapper.get_suggestions(job.job_properties, text, detection_properties)
 
                 return ff_track,
 
@@ -108,7 +108,7 @@ class NlpCorrectionComponent(object):
 
                 detection_properties = dict(TEXT=text)
 
-                self.wrapper.get_suggestions(text, detection_properties)
+                self.wrapper.get_suggestions(job.job_properties, text, detection_properties)
                 generic_track = mpf.GenericTrack(detection_properties=detection_properties)
 
                 log.info(f'[{job.job_name}] Processing complete.')
@@ -130,8 +130,6 @@ class HunspellWrapper(object):
 
         self._unicode_error = False
 
-        self._full_output = mpf_util.get_property(job_properties, 'FULL_TEXT_CORRECTION_OUTPUT', False)
-
         self._custom_dictionary_path = job_properties.get('CUSTOM_DICTIONARY', "")
 
         # load custom dictionary if one is specified in the job properties
@@ -149,10 +147,12 @@ class HunspellWrapper(object):
 
     # Adds corrected text to detection_properties.
     # Detection_properties is modified in place.
-    def get_suggestions(self, original_text, detection_properties):
+    def get_suggestions(self, job_properties, original_text, detection_properties):
         log.debug(f'Attempting to correct text: "{original_text}"')
         self._unicode_error = False
         unicode_error_words = []
+
+        full_output = mpf_util.get_property(job_properties, 'FULL_TEXT_CORRECTION_OUTPUT', False)
 
         trans_table = str.maketrans("", "", string.punctuation)  # for removing punctuation
 
@@ -180,7 +180,7 @@ class HunspellWrapper(object):
 
                 temp = self._hunspell.suggest(word)
                 if len(temp) > 0:
-                    if self._full_output:
+                    if full_output:
                         corrected_text = '[' + ', '.join(temp) + ']'
                     else:
                         corrected_text = temp[0]
