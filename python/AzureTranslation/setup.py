@@ -29,12 +29,12 @@ import setuptools
 
 setuptools.setup(
     name='AzureTranslation',
-    version='6.2',
+    version='6.3',
     packages=setuptools.find_packages(exclude=('*test*',)),
     package_data={'': ['text-tags.json']},
     install_requires=(
-        'mpf_component_api>=6.2',
-        'mpf_component_util>=6.2',
+        'mpf_component_api>=6.3',
+        'mpf_component_util>=6.3',
     ),
     entry_points={
         'mpf.exported_component': 'component = acs_translation_component:AcsTranslationComponent'
