@@ -1,7 +1,7 @@
 {
   "componentName": "KeywordTagging",
-  "componentVersion": "6.2",
-  "middlewareVersion": "6.2",
+  "componentVersion": "6.3",
+  "middlewareVersion": "6.3",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/KeywordTagging/lib/libmpfKeywordTagging.so",
   "environmentVariables": [
