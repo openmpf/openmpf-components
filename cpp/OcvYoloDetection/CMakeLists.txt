@@ -56,12 +56,13 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
-# set(TRITON_SUPPORT ON) # DEBUG "cmake3 -DTRITON_SUPPORT=ON .."
 if(TRITON_SUPPORT)
     find_package(gRPC REQUIRED)
     find_package(CUDAToolkit REQUIRED)
     find_package(TritonCommon REQUIRED)
     find_package(TritonClient REQUIRED)
+
+    add_compile_definitions(TRITON_SUPPORT)
 endif()
 
 set(TRITON_OCV_YOLO_DETECTION_SOURCE_FILES

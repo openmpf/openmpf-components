@@ -148,6 +148,7 @@ RUN --mount=type=tmpfs,target=/tmp \
 
 ENV CMAKE_PREFIX_PATH="/opt/triton/lib64/cmake:${CMAKE_PREFIX_PATH}"
 
+ENV TRITON_SUPPORT=ON
 
 
 ARG RUN_TESTS=false
