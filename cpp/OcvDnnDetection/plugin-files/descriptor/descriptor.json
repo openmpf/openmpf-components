@@ -109,6 +109,12 @@
           "defaultValue": "0.0"
         },
         {
+          "name": "SWAP_RB",
+          "description": "Swab the R and B color channels",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
           "name": "CLASSIFICATION_TYPE",
           "description": "By default, each detection will have a CLASSIFICATION, CLASSIFICATION LIST, and CLASSIFICATION CONFIDENCE LIST property. Set this value to change the \"CLASSIFICATION\" part of each output property name to something else.",
           "type": "STRING",
@@ -271,6 +277,10 @@
         {
           "name": "SUBTRACT_RED_VALUE",
           "value": "84.77"
+        },
+        {
+          "name": "SWAP_RB",
+          "value": "TRUE"
         }
       ]
     },
@@ -310,6 +320,10 @@
         {
           "name": "SUBTRACT_RED_VALUE",
           "value": "84.77"
+        },
+        {
+          "name": "SWAP_RB",
+          "value": "TRUE"
         },
         {
           "name": "FEED_FORWARD_TYPE",
