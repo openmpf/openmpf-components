@@ -24,7 +24,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-
 cmake_minimum_required(VERSION 3.6)
 project(ocv-yolo-detection)
 
@@ -41,7 +40,7 @@ include(../ComponentSetup.cmake)
 message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}") # DEBUG
 message("CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}") # DEBUG
 
-if($ENV{TRITON_SUPPORT})
+if ($ENV{TRITON_SUPPORT})
     message("Building with Triton support")
 else()
     message("Building without Triton support")
@@ -64,7 +63,7 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
-if($ENV{TRITON_SUPPORT})
+if ($ENV{TRITON_SUPPORT})
     find_package(gRPC REQUIRED)
     find_package(CUDAToolkit REQUIRED)
     find_package(TritonCommon REQUIRED)
@@ -95,7 +94,7 @@ set(TRITON_OCV_YOLO_DETECTION_SOURCE_FILES
         TritonTensorMeta.cpp TritonTensorMeta.h
         shm_utils.cc shm_utils.h)
 
-if($ENV{TRITON_SUPPORT})
+if ($ENV{TRITON_SUPPORT})
     add_library(mpfOcvYoloDetection SHARED ${COMMON_OCV_YOLO_DETECTION_SOURCE_FILES} ${TRITON_OCV_YOLO_DETECTION_SOURCE_FILES})
     target_link_libraries(mpfOcvYoloDetection
             mpfComponentInterface

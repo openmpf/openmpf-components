@@ -35,12 +35,19 @@ if (${GTEST_FOUND})
     find_package(mpfComponentTestUtils REQUIRED)
 
     include_directories(..)
-    add_executable(OcvYoloDetectionTest test_ocv_yolo_detection.cpp)
-    target_link_libraries(OcvYoloDetectionTest    mpfOcvYoloDetection
-                                                  mpfComponentTestUtils
-                                                  GTest::GTest
-                                                  GTest::Main
-                                                  Qt4::QtCore)
+
+    if ($ENV{TRITON_SUPPORT})
+        add_executable(OcvYoloDetectionTest test_ocv_triton_yolo_detection.cpp)
+    else()
+        add_executable(OcvYoloDetectionTest test_ocv_local_yolo_detection.cpp)
+    endif()
+
+    target_link_libraries(OcvYoloDetectionTest
+            mpfOcvYoloDetection
+            mpfComponentTestUtils
+            GTest::GTest
+            GTest::Main
+            Qt4::QtCore)
 
     add_test(NAME OcvYoloDetectionTest COMMAND OcvYoloDetectionTest)
 
