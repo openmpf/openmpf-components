@@ -68,8 +68,6 @@ if ($ENV{TRITON_SUPPORT})
     find_package(CUDAToolkit REQUIRED)
     find_package(TritonCommon REQUIRED)
     find_package(TritonClient REQUIRED)
-
-    add_compile_definitions(TRITON_SUPPORT)
 endif()
 
 set(COMMON_OCV_YOLO_DETECTION_SOURCE_FILES
