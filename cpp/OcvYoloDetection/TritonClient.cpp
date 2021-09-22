@@ -326,7 +326,7 @@ TritonClient::TritonClient(
     inferencer->verboseClient(),
     inferencer->useSSL(),
     inferencer->sslOptions()),
-      "unable to create TRTIS inference client for \"" + inferencer->serverUrl() + "\"");
+      "unable to create Triton inference client for \"" + inferencer->serverUrl() + "\"");
 
   if(usingShmInput()){
     setupShmRegion(inputs_shm_key,  inputs_byte_size,  inputs_shm_);

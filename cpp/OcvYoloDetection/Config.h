@@ -140,7 +140,7 @@ public:
     int tritonMaxConnectionSetupAttempts;
 
     /// verbose inference server client mode
-    bool trtisVerboseClient;
+    bool tritonVerboseClient;
 
     /// use ssl encryption with inference server client
     bool tritonUseSSL;

@@ -81,7 +81,7 @@ Config::Config(const Properties &jobProps)
         , tritonMaxInferConcurrency(GetProperty(jobProps, "MAX_INFER_CONCURRENCY", 1))
         , tritonClientTimeout(GetProperty(jobProps, "INFER_TIMEOUT_US",0))
         , tritonMaxConnectionSetupAttempts(GetProperty(jobProps, "TRITON_MAX_CONNECTION_SETUP_ATTEMPTS",3))
-        , trtisVerboseClient(GetProperty(jobProps, "TRITON_VERBOSE_CLIENT", false))
+        , tritonVerboseClient(GetProperty(jobProps, "TRITON_VERBOSE_CLIENT", false))
         , tritonUseSSL(GetProperty(jobProps, "TRITON_USE_SSL",false))
         , tritonUseShm(GetProperty(jobProps, "TRITON_USE_SHM",true))
 
@@ -119,8 +119,8 @@ std::ostream &operator<<(std::ostream &out, const Config &cfg) {
         << "\"tritonNumClasses\":" << cfg.tritonNumClasses << ","
         << "\"tritonMaxInferConcurrency\":" << cfg.tritonMaxInferConcurrency << ","
         << "\"tritonClientTimeout\":" << cfg.tritonClientTimeout << ","
-        << "\"trtisMaxConnectionsSetupAttempts\":" << cfg.tritonMaxConnectionSetupAttempts << ","
-        << "\"trtisVerboseClient\":" << cfg.trtisVerboseClient << ","
+        << "\"tritonMaxConnectionsSetupAttempts\":" << cfg.tritonMaxConnectionSetupAttempts << ","
+        << "\"tritonVerboseClient\":" << cfg.tritonVerboseClient << ","
         << "\"tritonUseSSL\":" << cfg.tritonUseSSL << ","
         << "\"tritonUseShm\":" << cfg.tritonUseShm << ","
         << "\"kfProcessVar\":" << format(cfg.QN) << ","

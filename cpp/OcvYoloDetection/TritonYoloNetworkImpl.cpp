@@ -342,8 +342,8 @@ public:
         if (!config.tritonEnabled) {
             processFrameDetectionsFun(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
         } else {
-            LOG_TRACE("using trtis");
-            GetDetectionsTrtis(frames, processFrameDetectionsFun, config);
+            LOG_TRACE("using triton");
+            GetDetectionsTriton(frames, processFrameDetectionsFun, config);
         }
         LOG_TRACE("end");
     }
@@ -355,7 +355,7 @@ public:
                    && config.tritonModelVersion == std::stoi(tritonInferencer_->modelVersion())
                    && config.tritonUseShm == tritonInferencer_->useShm()
                    && config.tritonUseSSL == tritonInferencer_->useSSL()
-                   && config.trtisVerboseClient == tritonInferencer_->verboseClient()
+                   && config.tritonVerboseClient == tritonInferencer_->verboseClient()
                    && config.netInputImageSize == tritonInferencer_->inputsMeta.at(0).shape[2];
         } else {
             return modelSettings_.networkConfigFile == modelSettings.networkConfigFile
@@ -517,7 +517,7 @@ private:
     }
 
 
-    void GetDetectionsTrtis(
+    void GetDetectionsTriton(
             const std::vector<Frame> &frames,
             ProcessFrameDetectionsFunc componentProcessLambda,
             const Config &config) {
@@ -560,7 +560,7 @@ private:
                  int i = 0;
                  for (auto frameIt = begin; frameIt != end; ++i, ++frameIt) {
                      detectionsGroupedByFrame.push_back(
-                             ExtractFrameDetectionsTrtis(*frameIt, outBlob.ptr<float>(i, 0),
+                             ExtractFrameDetectionsTriton(*frameIt, outBlob.ptr<float>(i, 0),
                                                          config));
                  }
 
@@ -588,7 +588,7 @@ private:
     }
 
 
-    std::vector<DetectionLocation> ExtractFrameDetectionsTrtis(
+    std::vector<DetectionLocation> ExtractFrameDetectionsTriton(
             const Frame &frame, float* data, const Config &config) const {
 
         float maxFrameDim = std::max(frame.data.cols, frame.data.rows);
@@ -632,7 +632,7 @@ private:
         detections.reserve(keepIndecies.size());
         for (int keepIdx : keepIndecies){
             detections.push_back(
-                    CreateDetectionLocationTrtis(frame, boundingBoxes.at(keepIdx),
+                    CreateDetectionLocationTriton(frame, boundingBoxes.at(keepIdx),
                                                  topConfidences.at(keepIdx), classifications.at(keepIdx), config));
 
             //always calc DFT in callback threads for performance reasons
@@ -641,7 +641,7 @@ private:
         return detections;
     }
 
-    DetectionLocation CreateDetectionLocationTrtis(
+    DetectionLocation CreateDetectionLocationTriton(
             const Frame &frame,
             const cv::Rect2d &boundingBox,
             const float score,

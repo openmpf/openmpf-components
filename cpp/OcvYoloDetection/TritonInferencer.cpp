@@ -43,12 +43,12 @@ void TritonInferencer::checkServerIsAlive(int maxAttempts) const {
   int attempt = 0;
   while(!ok && attempt < maxAttempts){
     TR_CHECK_OK(statusClient_->IsServerLive(&ok),
-      "failed to contact TRTIS inference server \"" + serverUrl_ + "\"");
+      "failed to contact Triton inference server \"" + serverUrl_ + "\"");
     attempt++;
   }
   if(!ok){
     THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
-      "unable to verify that TRTIS inference server \""
+      "unable to verify that Triton inference server \""
        + serverUrl_ + "\" is alive.");
   }else{
     LOG_INFO("Found inference server \"" + serverUrl_ + "\"");
@@ -61,13 +61,13 @@ void TritonInferencer::checkServerIsReady(int maxAttempts) const {
   int attempt = 0;
   while(!ok && attempt < maxAttempts){
     TR_CHECK_OK(statusClient_->IsServerReady(&ok),
-      "failed to check if TRTIS inference server \""
+      "failed to check if Triton inference server \""
        + serverUrl_ + "\" is ready");
     attempt++;
   }
   if(!ok){
     THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
-      "TRTIS inference server \"" + serverUrl_ + "\" is not ready");
+      "Triton inference server \"" + serverUrl_ + "\" is not ready");
   }else{
     LOG_INFO("Inference server \"" + serverUrl_ + "\" is ready");
   }
@@ -79,18 +79,18 @@ void TritonInferencer::checkModelIsReady(int maxAttempts) const{
   int attempt = 0;
   while(!ok && attempt < maxAttempts){
     TR_CHECK_OK(statusClient_->IsModelReady(&ok, modelName_, modelVersion_),
-       "unable to check if TRTIS inference server model \""
+       "unable to check if Triton inference server model \""
         + modelName_ + "\" ver. " + modelVersion_ + " is ready");
     if(!ok){
       TR_CHECK_OK(statusClient_->LoadModel(modelName_),
-        "failed to explicitly load TRTIS inference server model \"" + modelName_
+        "failed to explicitly load Triton inference server model \"" + modelName_
          + "\" ver. " + modelName_ + " on server \"" + serverUrl_ + "\"");
     }
     attempt++;
   }
   if(!ok){
     THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
-     "TRTIS inference server model \"" + modelName_
+     "Triton inference server model \"" + modelName_
      + "\" is not ready and could not be loaded explicitly");
   }else{
     LOG_INFO("Inference server model \"" << modelName_ << " ver. \""
@@ -307,7 +307,7 @@ TritonInferencer::TritonInferencer(const Config &cfg)
   , modelVersion_((cfg.tritonModelVersion > 0) ? std::to_string(cfg.tritonModelVersion) : "")
   , useShm_(cfg.tritonUseShm)
   , useSSL_(cfg.tritonUseSSL)
-  , verboseClient_(cfg.trtisVerboseClient)
+  , verboseClient_(cfg.tritonVerboseClient)
   , inferOptions_(modelName_){
 
   // setup remaining inferencing options
@@ -319,8 +319,8 @@ TritonInferencer::TritonInferencer(const Config &cfg)
 
   // initialize client for server status requests
   TR_CHECK_OK(triton::client::InferenceServerGrpcClient::Create(
-    &statusClient_,serverUrl_, cfg.trtisVerboseClient, cfg.tritonUseSSL, sslOptions_),
-    "unable to create TRTIS inference client for \"" + serverUrl_ + "\"");
+    &statusClient_,serverUrl_, cfg.tritonVerboseClient, cfg.tritonUseSSL, sslOptions_),
+    "unable to create Triton inference client for \"" + serverUrl_ + "\"");
 
   // do some check on server and model
   checkServerIsAlive(cfg.tritonMaxConnectionSetupAttempts);
