@@ -40,7 +40,6 @@
 #include "DetectionLocation.h"
 #include "Frame.h"
 
-
 struct ModelSettings {
     std::string networkConfigFile;
     std::string namesFile;
@@ -48,10 +47,15 @@ struct ModelSettings {
     std::string confusionMatrixFile;
 };
 
-
 class YoloNetwork {
 public:
     YoloNetwork(ModelSettings modelSettings, const Config &config);
+
+    ~YoloNetwork();
+
+    // YoloNetwork(const YoloNetwork& other);
+
+    // YoloNetwork& operator=(YoloNetwork rhs);
 
     using ProcessFrameDetectionsFunc =
       std::function<void(std::vector<std::vector<DetectionLocation>>&& dets,
@@ -65,66 +69,10 @@ public:
 
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
 
-#ifdef TRITON_SUPPORT
-    std::unique_ptr<TritonInferencer> tritonInferencer;
-#endif
-
 private:
-    log4cxx::LoggerPtr log_ = log4cxx::Logger::getLogger("OcvYoloDetection");
+    class YoloNetworkImpl;
 
-    ModelSettings modelSettings_;
-
-    int cudaDeviceId_;
-
-    cv::dnn::Net net_;
-
-    std::vector<std::string> names_;
-
-    cv::Mat1f confusionMatrix_;
-
-    std::string classWhiteListPath_;
-
-    std::function<bool(const std::string&)> classFilter_;
-
-    int frameIdxComplete_;
-
-    std::mutex frameIdxCompleteMtx_;
-
-    std::condition_variable frameIdxCompleteCv_;
-
-    std::vector<std::vector<DetectionLocation>> GetDetectionsCvdnn(
-        const std::vector<Frame> &frames,
-        const Config &config);
-
-    std::vector<DetectionLocation> ExtractFrameDetectionsCvdnn(
-            int frameIdx, const Frame &frame, const std::vector<cv::Mat> &layerOutputs,
-            const Config &config) const;
-
-    DetectionLocation CreateDetectionLocationCvdnn(
-      const Frame &frame,
-      const cv::Rect2d &boundingBox,
-      const cv::Mat1f &scores,
-      const Config &config) const;
-
-#ifdef TRITON_SUPPORT
-    void GetDetectionsTrtis(
-        const std::vector<Frame> &frames,
-        ProcessFrameDetectionsFunc pFun,
-        const Config &config);
-
-    std::vector<DetectionLocation> ExtractFrameDetectionsTrtis(
-        const Frame &frame, float* data,
-        const Config &config) const;
-
-    DetectionLocation CreateDetectionLocationTrtis(
-      const Frame &frame,
-      const cv::Rect2d &boundingBox,
-      const float score,
-      const int classIdx,
-      const Config &config) const;
-#endif
-
+    std::unique_ptr<YoloNetworkImpl> pimpl_;
 };
-
 
 #endif //OPENMPF_COMPONENTS_YOLONETWORK_H

@@ -65,14 +65,7 @@ if(TRITON_SUPPORT)
     add_compile_definitions(TRITON_SUPPORT)
 endif()
 
-set(TRITON_OCV_YOLO_DETECTION_SOURCE_FILES
-        TritonExceptionMacros.h
-        TritonInferencer.cpp TritonInferencer.h
-        TritonClient.cpp TritonClient.h
-        TritonTensorMeta.cpp TritonTensorMeta.h
-        shm_utils.cc shm_utils.h)
-
-set(OCV_YOLO_DETECTION_SOURCE_FILES
+set(COMMON_OCV_YOLO_DETECTION_SOURCE_FILES
         util.cpp util.h
         Config.cpp Config.h
         Frame.cpp Frame.h
@@ -81,11 +74,21 @@ set(OCV_YOLO_DETECTION_SOURCE_FILES
         KFTracker.cpp KFTracker.h
         OcvYoloDetection.cpp OcvYoloDetection.h
         ocv_phasecorr.cpp ocv_phasecorr.h
-        YoloNetwork.cpp YoloNetwork.h
         WhitelistFilter.cpp WhitelistFilter.h)
 
+set(LOCAL_OCV_YOLO_DETECTION_SOURCE_FILES
+        LocalYoloNetworkImpl.cpp YoloNetwork.h)
+
+set(TRITON_OCV_YOLO_DETECTION_SOURCE_FILES
+        TritonYoloNetworkImpl.cpp YoloNetwork.h
+        TritonExceptionMacros.h
+        TritonInferencer.cpp TritonInferencer.h
+        TritonClient.cpp TritonClient.h
+        TritonTensorMeta.cpp TritonTensorMeta.h
+        shm_utils.cc shm_utils.h)
+
 if(TRITON_SUPPORT)
-    add_library(mpfOcvYoloDetection SHARED ${OCV_YOLO_DETECTION_SOURCE_FILES} ${TRITON_OCV_YOLO_DETECTION_SOURCE_FILES})
+    add_library(mpfOcvYoloDetection SHARED ${COMMON_OCV_YOLO_DETECTION_SOURCE_FILES} ${TRITON_OCV_YOLO_DETECTION_SOURCE_FILES})
     target_link_libraries(mpfOcvYoloDetection
             mpfComponentInterface
             mpfDetectionComponentApi
@@ -95,7 +98,7 @@ if(TRITON_SUPPORT)
             dlib
             explain) # TODO: Is this necessary?
 else()
-    add_library(mpfOcvYoloDetection SHARED ${OCV_YOLO_DETECTION_SOURCE_FILES})
+    add_library(mpfOcvYoloDetection SHARED ${COMMON_OCV_YOLO_DETECTION_SOURCE_FILES} ${LOCAL_OCV_YOLO_DETECTION_SOURCE_FILES})
     target_link_libraries(mpfOcvYoloDetection
             mpfComponentInterface
             mpfDetectionComponentApi
