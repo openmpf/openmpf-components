@@ -44,6 +44,7 @@ using namespace MPF::COMPONENT;
 
 bool logging_initialized = init_logging();
 
+
 /** ***************************************************************************
 *   Test phase correlator and similarity score images
 **************************************************************************** */
@@ -157,6 +158,79 @@ TEST(OcvYoloDetection, TestImage) {
         ASSERT_NEAR(92, carDetection.height,2);
         ASSERT_NEAR(0.910, carDetection.confidence, 0.01);
         ASSERT_EQ("truck", carDetection.detection_properties.at("CLASSIFICATION"));
+    }
+}
+
+
+TEST(OcvYoloDetection, TestVideo) {
+    auto jobProps = getTinyYoloConfig(0.92);
+    jobProps.emplace("TRACKING_DISABLE_MOSSE_TRACKER", "true");
+    MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 2, 10,
+                    jobProps, {});
+
+    auto tracks = initComponent().GetDetections(job);
+    write_track_output_video(job.data_uri, tracks, "TestVideo.avi", job);
+    ASSERT_EQ(3, tracks.size());
+    {
+        auto personTrack = findDetectionWithClass("person", tracks);
+        ASSERT_EQ(2, personTrack.start_frame);
+        ASSERT_EQ(5, personTrack.stop_frame);
+        ASSERT_EQ(2, personTrack.frame_locations.size());
+        ASSERT_NEAR(0.927688, personTrack.confidence, 0.001);
+
+        const auto& personDetection = personTrack.frame_locations.at(2);
+        ASSERT_EQ(532, personDetection.x_left_upper);
+        ASSERT_EQ(0, personDetection.y_left_upper);
+        ASSERT_EQ(70, personDetection.width);
+        ASSERT_EQ(147, personDetection.height);
+        ASSERT_EQ(personTrack.confidence, personDetection.confidence);
+    }
+
+    int carTrack1Idx = -1;
+    int carTrack2Idx = -1;
+    for (int i = 0; i < tracks.size(); ++i) {
+        const auto& track = tracks[i];
+        if (track.detection_properties.at("CLASSIFICATION") != "car") {
+            continue;
+        }
+        if (track.frame_locations.at(2).x_left_upper == 223) {
+            carTrack1Idx = i;
+        }
+        else {
+            carTrack2Idx = i;
+        }
+    }
+    ASSERT_TRUE(carTrack1Idx >= 0);
+    ASSERT_TRUE(carTrack2Idx >= 0);
+
+    {
+        const auto& carTrack = tracks.at(carTrack1Idx);
+        ASSERT_EQ(2, carTrack.start_frame);
+        ASSERT_EQ(10, carTrack.stop_frame);
+        ASSERT_EQ(9, carTrack.frame_locations.size());
+        ASSERT_NEAR(0.961101, carTrack.confidence, 0.001);
+
+        const auto& carDetection = carTrack.frame_locations.at(2);
+        ASSERT_EQ(223, carDetection.x_left_upper);
+        ASSERT_EQ(20, carDetection.y_left_upper);
+        ASSERT_EQ(318, carDetection.width);
+        ASSERT_EQ(86, carDetection.height);
+        ASSERT_NEAR(0.952526, carDetection.confidence, 0.001);
+    }
+
+    {
+        const auto& carTrack = tracks.at(carTrack2Idx);
+        ASSERT_EQ(2, carTrack.start_frame);
+        ASSERT_EQ(10, carTrack.stop_frame);
+        ASSERT_EQ(7, carTrack.frame_locations.size());
+        ASSERT_NEAR(0.9496, carTrack.confidence, 0.001);
+
+        const auto& carDetection = carTrack.frame_locations.at(3);
+        ASSERT_EQ(591, carDetection.x_left_upper);
+        ASSERT_EQ(37, carDetection.y_left_upper);
+        ASSERT_EQ(434, carDetection.width);
+        ASSERT_EQ(131, carDetection.height);
+        ASSERT_EQ(carTrack.confidence, carDetection.confidence);
     }
 }
 
