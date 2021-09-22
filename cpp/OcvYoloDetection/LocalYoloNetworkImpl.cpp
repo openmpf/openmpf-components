@@ -307,6 +307,8 @@ public:
                && config.classWhiteListPath == classWhiteListPath_;
     }
 
+    void Cleanup() {}
+
 private:
     log4cxx::LoggerPtr log_ = log4cxx::Logger::getLogger("OcvYoloDetection");
 
@@ -472,3 +474,5 @@ void YoloNetwork::GetDetections(
 bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
     return pimpl_->IsCompatible(modelSettings, config);
 }
+
+void YoloNetwork::Cleanup(const Config &config) {}

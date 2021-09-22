@@ -24,13 +24,11 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-
 #include <functional>
 #include <list>
 #include <stdexcept>
 #include <vector>
 #include <utility>
-#include <tuple>
 
 #include <opencv2/core.hpp>
 
@@ -44,14 +42,6 @@
 #include "DetectionLocation.h"
 #include "Track.h"
 #include "OcvYoloDetection.h"
-
-#ifdef TRITON_SUPPORT
-    #include "grpc_client.h" // DEBUG
-    #include "TritonTensorMeta.h"
-    #include "TritonClient.h"
-    #include "TritonInferencer.h"
-#endif
-
 
 using namespace MPF::COMPONENT;
 using DetectionComponentUtils::GetProperty;
@@ -324,9 +314,7 @@ std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob 
           },
           config);
 
-#ifdef TRITON_SUPPORT
-        if(config.tritonEnabled) yoloNetwork.tritonInferencer->waitTillAllClientsReleased();
-#endif
+        yoloNetwork.Cleanup(config);
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << results.size()
                                 << " detections.");
@@ -368,9 +356,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             auto tmp = GetVideoFrames(videoCapture, config.frameBatchSize);
 
             if (tmp.empty()) {
-#ifdef TRITON_SUPPORT
-                if(config.tritonEnabled) yoloNetwork.tritonInferencer->waitTillAllClientsReleased();
-#endif
+                yoloNetwork.Cleanup(config);
                 break;
             }
 
