@@ -24,42 +24,67 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include <list>
+#ifndef OPENMPF_COMPONENTS_BASEYOLONETWORKIMPL_H
+#define OPENMPF_COMPONENTS_BASEYOLONETWORKIMPL_H
 
-#include "util.h"
+#include <functional>
+#include <string>
+#include <vector>
+
+#include <log4cxx/logger.h>
+
+#include <opencv2/core.hpp>
+#include <opencv2/dnn/dnn.hpp>
+
 #include "Config.h"
+#include "DetectionLocation.h"
 #include "Frame.h"
-#include "WhitelistFilter.h"
 
 #include "YoloNetwork.h"
-#include "BaseYoloNetworkImpl.h"
 
-using namespace MPF::COMPONENT;
-
-class YoloNetwork::YoloNetworkImpl : public BaseYoloNetworkImpl {
+class BaseYoloNetworkImpl {
 public:
-    YoloNetworkImpl(ModelSettings model_settings, const Config &config)
-            : BaseYoloNetworkImpl(model_settings, config) {}
+    BaseYoloNetworkImpl(ModelSettings modelSettings, const Config &config);
 
-    ~YoloNetworkImpl() = default;
+    ~BaseYoloNetworkImpl();
+
+    using ProcessFrameDetectionsFunc =
+    std::function<void(std::vector<std::vector<DetectionLocation>>&& dets,
+                       std::vector<Frame>::const_iterator begin,
+                       std::vector<Frame>::const_iterator end)>;
+
+    void GetDetections(
+            std::vector<Frame> &frames,
+            ProcessFrameDetectionsFunc componentProcessLambda,
+            const Config &config);
+
+    bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
+
+    void Cleanup(const Config &config);
+
+protected:
+    log4cxx::LoggerPtr log_ = log4cxx::Logger::getLogger("OcvYoloDetection");
+
+    ModelSettings modelSettings_;
+    int cudaDeviceId_;
+    cv::dnn::Net net_;
+    std::vector<std::string> names_;
+    cv::Mat1f confusionMatrix_;
+    std::string classWhiteListPath_;
+    std::function<bool(const std::string&)> classFilter_;
+
+    std::vector<std::vector<DetectionLocation>> GetDetectionsCvdnn(
+            const std::vector<Frame> &frames, const Config &config);
+
+    std::vector<DetectionLocation> ExtractFrameDetectionsCvdnn(
+            int frameIdx, const Frame &frame, const std::vector<cv::Mat> &layerOutputs,
+            const Config &config) const;
+
+    DetectionLocation CreateDetectionLocationCvdnn(
+            const Frame &frame,
+            const cv::Rect2d &boundingBox,
+            const cv::Mat1f &scores,
+            const Config &config) const;
 };
 
-YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
-        : pimpl_(new YoloNetworkImpl(model_settings, config)) {}
-
-YoloNetwork::~YoloNetwork() = default;
-
-void YoloNetwork::GetDetections(
-        std::vector<Frame> &frames,
-        ProcessFrameDetectionsFunc processFrameDetectionsFun,
-        const Config &config){
-    pimpl_->GetDetections(frames, processFrameDetectionsFun, config);
-}
-
-bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
-    return pimpl_->IsCompatible(modelSettings, config);
-}
-
-void YoloNetwork::Cleanup(const Config &config) {
-    return pimpl_->Cleanup(config);
-}
+#endif // OPENMPF_COMPONENTS_BASEYOLONETWORKIMPL_H
