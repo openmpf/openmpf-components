@@ -42,14 +42,20 @@
 
 using namespace MPF::COMPONENT;
 
-bool logging_initialized = init_logging();
+class OcvLocalYoloDetectionTestFixture : public ::testing::Test {
+protected:
+    // Called once for all of the tests in this fixture.
+    static void SetUpTestCase() {
+        init_logging();
+    }
+};
 
 
 /** ***************************************************************************
 *   Test phase correlator and similarity score images
 **************************************************************************** */
 // TODO: Determine if this is worth saving. If it is, then clean it up.
-TEST(OcvYoloDetection, TestCorrelator) {
+TEST_F(OcvLocalYoloDetectionTestFixture, TestCorrelator) {
     string image_file = "data/dog.jpg";
     string output_image_file = "correlator.png";
 
@@ -126,7 +132,7 @@ TEST(OcvYoloDetection, TestCorrelator) {
 }
 
 
-TEST(OcvYoloDetection, TestImage) {
+TEST_F(OcvLocalYoloDetectionTestFixture, TestImage) {
     MPFImageJob job("Test", "data/dog.jpg", getYoloConfig(), {});
 
     auto detections = initComponent().GetDetections(job);
@@ -162,7 +168,7 @@ TEST(OcvYoloDetection, TestImage) {
 }
 
 
-TEST(OcvYoloDetection, TestVideo) {
+TEST_F(OcvLocalYoloDetectionTestFixture, TestVideo) {
     auto jobProps = getTinyYoloConfig(0.92);
     jobProps.emplace("TRACKING_DISABLE_MOSSE_TRACKER", "true");
     MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 2, 10,
@@ -235,7 +241,7 @@ TEST(OcvYoloDetection, TestVideo) {
 }
 
 
-TEST(OcvYoloDetection, TestInvalidModel) {
+TEST_F(OcvLocalYoloDetectionTestFixture, TestInvalidModel) {
     ModelSettings modelSettings;
     modelSettings.networkConfigFile = "fake config";
     modelSettings.namesFile = "fake names";
@@ -252,7 +258,7 @@ TEST(OcvYoloDetection, TestInvalidModel) {
 }
 
 
-TEST(OcvYoloDetection, TestWhitelist) {
+TEST_F(OcvLocalYoloDetectionTestFixture, TestWhitelist) {
     Properties jobProps = getTinyYoloConfig();
     auto component = initComponent();
 

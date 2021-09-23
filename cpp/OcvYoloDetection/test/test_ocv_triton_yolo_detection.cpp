@@ -30,16 +30,21 @@
 #include <gtest/gtest.h>
 
 #include "Config.h"
-#include "Track.h"
 
 #include "TestUtils.h"
 
 using namespace MPF::COMPONENT;
 
-bool logging_initialized = init_logging();
+class OcvTritonYoloDetectionTestFixture : public ::testing::Test {
+protected:
+    // Called once for all of the tests in this fixture.
+    static void SetUpTestCase() {
+        init_logging();
+    }
+};
 
 
-TEST(OcvTritonYoloDetection, TestImageTriton) {
+TEST_F(OcvTritonYoloDetectionTestFixture, TestImageTriton) {
     MPFImageJob job("Test", "data/dog.jpg", getTritonYoloConfig(), {});
 
     auto detections = initComponent().GetDetections(job);
@@ -75,7 +80,7 @@ TEST(OcvTritonYoloDetection, TestImageTriton) {
 }
 
 
-TEST(OcvTritonYoloDetection, TestVideoTriton) {
+TEST_F(OcvTritonYoloDetectionTestFixture, TestVideoTriton) {
     auto jobProps = getTritonYoloConfig(0.92);
     MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 2, 10,
                     jobProps, {});
@@ -116,7 +121,7 @@ TEST(OcvTritonYoloDetection, TestVideoTriton) {
 
 
 // TODO: Should we remove this?
-TEST(OcvTritonYoloDetection, DISABLED_TestTritonPerformance) {
+TEST_F(OcvTritonYoloDetectionTestFixture, DISABLED_TestTritonPerformance) {
 
   int start = 0;
   int stop = 336;

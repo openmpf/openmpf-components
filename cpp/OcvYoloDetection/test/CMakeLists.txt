@@ -37,9 +37,14 @@ if (${GTEST_FOUND})
     include_directories(..)
 
     if ($ENV{TRITON_SUPPORT})
-        add_executable(OcvYoloDetectionTest test_ocv_triton_yolo_detection.cpp TestUtils.h)
+        add_executable(OcvYoloDetectionTest
+                test_ocv_local_yolo_detection.cpp
+                test_ocv_triton_yolo_detection.cpp
+                TestUtils.cpp TestUtils.h)
     else()
-        add_executable(OcvYoloDetectionTest test_ocv_local_yolo_detection.cpp TestUtils.h)
+        add_executable(OcvYoloDetectionTest
+                test_ocv_local_yolo_detection.cpp
+                TestUtils.cpp TestUtils.h)
     endif()
 
     target_link_libraries(OcvYoloDetectionTest
