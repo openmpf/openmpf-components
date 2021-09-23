@@ -35,7 +35,7 @@
 #include "Frame.h"
 #include "DetectionLocation.h"
 #include "Track.h"
-#include "YoloNetwork.h"
+#include "yolo_network/YoloNetwork.h"
 #include "OcvYoloDetection.h"
 
 #include "TestUtils.h"

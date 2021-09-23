@@ -111,4 +111,4 @@ class TritonClient {
 
 };
 
-#endif
+#endif // OPENMPF_COMPONENTS_TRITON_CLIENT_H

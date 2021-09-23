@@ -117,4 +117,4 @@ class TritonInferencer {
 };
 
 
-#endif //OPENMPF_COMPONENTS_TRITON_CLIENT_H
+#endif // OPENMPF_COMPONENTS_TRITON_INFERENCER_H

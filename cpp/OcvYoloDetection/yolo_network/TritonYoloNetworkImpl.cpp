@@ -31,15 +31,15 @@
 #include <MPFDetectionException.h>
 #include <Utils.h>
 
-#include "util.h"
-#include "Config.h"
-#include "Frame.h"
-#include "WhitelistFilter.h"
+#include "../util.h"
+#include "../Config.h"
+#include "../Frame.h"
+#include "../WhitelistFilter.h"
 
 #include <grpc_client.h>
-#include "TritonTensorMeta.h"
-#include "TritonClient.h"
-#include "TritonInferencer.h"
+#include "../triton/TritonTensorMeta.h"
+#include "../triton/TritonClient.h"
+#include "../triton/TritonInferencer.h"
 
 #include "YoloNetwork.h"
 #include "BaseYoloNetworkImpl.h"

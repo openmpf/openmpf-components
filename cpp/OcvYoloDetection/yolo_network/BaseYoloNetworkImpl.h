@@ -36,9 +36,9 @@
 #include <opencv2/core.hpp>
 #include <opencv2/dnn/dnn.hpp>
 
-#include "Config.h"
-#include "DetectionLocation.h"
-#include "Frame.h"
+#include "../Config.h"
+#include "../DetectionLocation.h"
+#include "../Frame.h"
 
 #include "YoloNetwork.h"
 

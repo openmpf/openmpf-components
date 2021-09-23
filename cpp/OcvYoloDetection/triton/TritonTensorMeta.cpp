@@ -27,7 +27,8 @@
 #include <grpc_client.h>
 #include <MPFDetectionException.h>
 
-#include "Config.h"
+#include "../Config.h"
+
 #include "TritonExceptionMacros.h"
 #include "TritonTensorMeta.h"
 

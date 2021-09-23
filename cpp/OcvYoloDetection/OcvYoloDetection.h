@@ -39,7 +39,7 @@
 #include <ModelsIniParser.h>
 
 #include "Config.h"
-#include "YoloNetwork.h"
+#include "yolo_network/YoloNetwork.h"
 
 
 class OcvYoloDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {

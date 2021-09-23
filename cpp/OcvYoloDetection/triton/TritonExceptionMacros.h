@@ -23,43 +23,31 @@
  * See the License for the specific language governing permissions and        *
  * limitations under the License.                                             *
  ******************************************************************************/
+#ifndef OPENMPF_COMPONENTS_TRITON_EXCEPTION_MACROS_H
+#define OPENMPF_COMPONENTS_TRITON_EXCEPTION_MACROS_H
 
-#include <list>
-
-#include "util.h"
-#include "Config.h"
-#include "Frame.h"
-#include "WhitelistFilter.h"
-
-#include "YoloNetwork.h"
-#include "BaseYoloNetworkImpl.h"
-
-using namespace MPF::COMPONENT;
-
-class YoloNetwork::YoloNetworkImpl : public BaseYoloNetworkImpl {
-public:
-    YoloNetworkImpl(ModelSettings model_settings, const Config &config)
-            : BaseYoloNetworkImpl(model_settings, config) {}
-
-    ~YoloNetworkImpl() = default;
-};
-
-YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
-        : pimpl_(new YoloNetworkImpl(model_settings, config)) {}
-
-YoloNetwork::~YoloNetwork() = default;
-
-void YoloNetwork::GetDetections(
-        std::vector<Frame> &frames,
-        ProcessFrameDetectionsFunc processFrameDetectionsFun,
-        const Config &config){
-    pimpl_->GetDetections(frames, processFrameDetectionsFun, config);
+/** ****************************************************************************
+* Macro for throwing exception so we can see where in the code it happened
+***************************************************************************** */
+#define THROW_TRITON_EXCEPTION(X, MSG) {                                         \
+    MPF::COMPONENT::MPFDetectionError e = (X);                                 \
+    throw MPF::COMPONENT::MPFDetectionException(e,                             \
+       "Error in " + std::string(__FILENAME__)                                 \
+        + "[" + std::to_string(__LINE__) + "]: " + (MSG));                     \
 }
 
-bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
-    return pimpl_->IsCompatible(modelSettings, config);
+/** ****************************************************************************
+* Macro for error checking / logging of inference server client lib
+***************************************************************************** */
+#define TR_CHECK_OK(X, MSG) {                                                  \
+  triton::client::Error e = (X);                              \
+  if (!e.IsOk()) {                                                             \
+    throw MPF::COMPONENT::MPFDetectionException(MPF_OTHER_DETECTION_ERROR_TYPE \
+      , std::string("Triton inference server error")                           \
+        + " in " + std::string(__FILENAME__)                                   \
+        + "[" + std::to_string( __LINE__) + "]"                                \
+        + ": " + (MSG) + ": " + e.Message());                                  \
+  }                                                                            \
 }
 
-void YoloNetwork::Cleanup(const Config &config) {
-    return pimpl_->Cleanup(config);
-}
+#endif // OPENMPF_COMPONENTS_TRITON_EXCEPTION_MACROS_H

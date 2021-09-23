@@ -36,9 +36,9 @@
 
 #include "Config.h"
 #include "Frame.h"
-#include "TritonTensorMeta.h"
-#include "TritonClient.h"
-#include "TritonInferencer.h"
+#include "triton/TritonTensorMeta.h"
+#include "triton/TritonClient.h"
+#include "triton/TritonInferencer.h"
 
 #include "OcvYoloDetection.h"
 

@@ -28,10 +28,12 @@
 #include <grpc_client.h>
 #include <MPFDetectionException.h>
 
-#include "util.h"
 #include "shm_utils.h"
-#include "Config.h"
-#include "Frame.h"
+
+#include "../util.h"
+#include "../Config.h"
+#include "../Frame.h"
+
 #include "TritonTensorMeta.h"
 #include "TritonExceptionMacros.h"
 #include "TritonClient.h"
@@ -336,5 +338,4 @@ TritonClient::TritonClient(
   }
   prepareInferInputs();
   prepareInferRequestedOutputs();
-
 }

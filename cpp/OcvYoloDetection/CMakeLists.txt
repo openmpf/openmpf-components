@@ -80,20 +80,20 @@ set(COMMON_OCV_YOLO_DETECTION_SOURCE_FILES
         OcvYoloDetection.cpp OcvYoloDetection.h
         ocv_phasecorr.cpp ocv_phasecorr.h
         WhitelistFilter.cpp WhitelistFilter.h
-        BaseYoloNetworkImpl.cpp BaseYoloNetworkImpl.h)
+        yolo_network/BaseYoloNetworkImpl.cpp yolo_network/BaseYoloNetworkImpl.h)
 
 set(LOCAL_OCV_YOLO_DETECTION_SOURCE_FILES
-        LocalYoloNetworkImpl.cpp YoloNetwork.h)
+        yolo_network/LocalYoloNetworkImpl.cpp yolo_network/YoloNetwork.h)
 
 set(TRITON_OCV_YOLO_DETECTION_SOURCE_FILES
-        TritonYoloNetworkImpl.cpp YoloNetwork.h
-        TritonExceptionMacros.h
-        TritonInferencer.cpp TritonInferencer.h
-        TritonClient.cpp TritonClient.h
-        TritonTensorMeta.cpp TritonTensorMeta.h
-        shm_utils.cc shm_utils.h)
+        yolo_network/TritonYoloNetworkImpl.cpp yolo_network/YoloNetwork.h
+        triton/TritonExceptionMacros.h
+        triton/TritonInferencer.cpp triton/TritonInferencer.h
+        triton/TritonClient.cpp triton/TritonClient.h
+        triton/TritonTensorMeta.cpp triton/TritonTensorMeta.h
+        triton/shm_utils.cc triton/shm_utils.h)
 
-if ($ENV{TRITON_SUPPORT})
+#if ($ENV{TRITON_SUPPORT})
     add_library(mpfOcvYoloDetection SHARED ${COMMON_OCV_YOLO_DETECTION_SOURCE_FILES} ${TRITON_OCV_YOLO_DETECTION_SOURCE_FILES})
     target_link_libraries(mpfOcvYoloDetection
             mpfComponentInterface
@@ -103,15 +103,15 @@ if ($ENV{TRITON_SUPPORT})
             ${OpenCV_LIBS}
             dlib
             explain) # TODO: Is this necessary?
-else()
-    add_library(mpfOcvYoloDetection SHARED ${COMMON_OCV_YOLO_DETECTION_SOURCE_FILES} ${LOCAL_OCV_YOLO_DETECTION_SOURCE_FILES})
-    target_link_libraries(mpfOcvYoloDetection
-            mpfComponentInterface
-            mpfDetectionComponentApi
-            mpfComponentUtils
-            ${OpenCV_LIBS}
-            dlib)
-endif()
+#else()
+#    add_library(mpfOcvYoloDetection SHARED ${COMMON_OCV_YOLO_DETECTION_SOURCE_FILES} ${LOCAL_OCV_YOLO_DETECTION_SOURCE_FILES})
+#    target_link_libraries(mpfOcvYoloDetection
+#            mpfComponentInterface
+#            mpfDetectionComponentApi
+#            mpfComponentUtils
+#            ${OpenCV_LIBS}
+#            dlib)
+#endif()
 
 configure_mpf_component(OcvYoloDetection TARGETS mpfOcvYoloDetection)
 

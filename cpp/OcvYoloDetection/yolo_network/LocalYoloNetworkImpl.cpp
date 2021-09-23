@@ -24,22 +24,42 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef OPENMPF_COMPONENTS_TRITON_TENSOR_META_H
-#define OPENMPF_COMPONENTS_TRITON_TENSOR_META_H
+#include <list>
 
-class TritonTensorMeta {
-  public:
-    const std::string name;
-    const std::string type;
-    const size_t cvType;
-    const std::vector<int64_t> shape;
-    const size_t element_count;
-    const size_t element_byte_size;
-    const size_t byte_size;
-    const size_t shm_offset;
+#include "../util.h"
+#include "../Config.h"
+#include "../Frame.h"
+#include "../WhitelistFilter.h"
 
-    TritonTensorMeta(const inference::ModelInput& mi, size_t shm_offset);
-    TritonTensorMeta(const inference::ModelOutput& mo, size_t shm_offset);
+#include "YoloNetwork.h"
+#include "BaseYoloNetworkImpl.h"
+
+using namespace MPF::COMPONENT;
+
+class YoloNetwork::YoloNetworkImpl : public BaseYoloNetworkImpl {
+public:
+    YoloNetworkImpl(ModelSettings model_settings, const Config &config)
+            : BaseYoloNetworkImpl(model_settings, config) {}
+
+    ~YoloNetworkImpl() = default;
 };
 
-#endif
+YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
+        : pimpl_(new YoloNetworkImpl(model_settings, config)) {}
+
+YoloNetwork::~YoloNetwork() = default;
+
+void YoloNetwork::GetDetections(
+        std::vector<Frame> &frames,
+        ProcessFrameDetectionsFunc processFrameDetectionsFun,
+        const Config &config){
+    pimpl_->GetDetections(frames, processFrameDetectionsFun, config);
+}
+
+bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
+    return pimpl_->IsCompatible(modelSettings, config);
+}
+
+void YoloNetwork::Cleanup(const Config &config) {
+    return pimpl_->Cleanup(config);
+}

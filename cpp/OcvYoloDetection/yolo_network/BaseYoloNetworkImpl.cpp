@@ -31,11 +31,11 @@
 #include <MPFDetectionException.h>
 #include <Utils.h>
 
-#include "util.h"
-#include "Config.h"
-#include "Frame.h"
+#include "../util.h"
+#include "../Config.h"
+#include "../Frame.h"
 #include "YoloNetwork.h"
-#include "WhitelistFilter.h"
+#include "../WhitelistFilter.h"
 
 #include "BaseYoloNetworkImpl.h"
 

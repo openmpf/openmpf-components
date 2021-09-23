@@ -28,9 +28,10 @@
 #include <grpc_client.h>
 #include <MPFDetectionException.h>
 
-#include "util.h"
-#include "Config.h"
-#include "Frame.h"
+#include "../util.h"
+#include "../Config.h"
+#include "../Frame.h"
+
 #include "TritonTensorMeta.h"
 #include "TritonClient.h"
 #include "TritonInferencer.h"
