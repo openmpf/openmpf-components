@@ -34,7 +34,6 @@
 #include <log4cxx/logger.h>
 
 #include <opencv2/core.hpp>
-#include <opencv2/dnn/dnn.hpp>
 
 #include "../Config.h"
 #include "../DetectionLocation.h"

@@ -27,6 +27,15 @@
 #ifndef OPENMPF_COMPONENTS_TRITON_INFERENCER_H
 #define OPENMPF_COMPONENTS_TRITON_INFERENCER_H
 
+#include <functional>
+#include <string>
+#include <vector>
+
+#include "../Config.h"
+#include "../Frame.h"
+
+#include <triton/core/tritonbackend.h>
+
 class TritonInferencer {
 
   public:
@@ -38,11 +47,11 @@ class TritonInferencer {
 
     const triton::client::SslOptions& sslOptions() const {return sslOptions_;}
 
-    const std::string&  serverUrl() const {return serverUrl_;}
+    const std::string& serverUrl() const {return serverUrl_;}
 
-    const std::string&  modelName() const {return modelName_;}
+    const std::string& modelName() const {return modelName_;}
 
-    const std::string&  modelVersion() const {return modelVersion_;}
+    const std::string& modelVersion() const {return modelVersion_;}
 
     const bool useShm() const {return useShm_;}
 
@@ -72,7 +81,6 @@ class TritonInferencer {
     void waitTillAllClientsReleased();
 
     TritonInferencer(const Config &cfg);
-
 
   private:
 
@@ -113,8 +121,6 @@ class TritonInferencer {
     void getModelInputOutputMetaData();
 
     void removeAllShmRegions(const std::string prefix);
-
 };
-
 
 #endif // OPENMPF_COMPONENTS_TRITON_INFERENCER_H

@@ -26,22 +26,19 @@
 
 #include <algorithm>
 #include <fstream>
-#include <list>
 #include <utility>
+#include <vector>
+
 #include <MPFDetectionException.h>
 #include <Utils.h>
 
 #include "../util.h"
-#include "../Config.h"
-#include "../Frame.h"
-#include "../WhitelistFilter.h"
 
 #include <grpc_client.h>
 #include "../triton/TritonTensorMeta.h"
 #include "../triton/TritonClient.h"
 #include "../triton/TritonInferencer.h"
 
-#include "YoloNetwork.h"
 #include "BaseYoloNetworkImpl.h"
 
 using namespace MPF::COMPONENT;
@@ -268,6 +265,7 @@ private:
         }
         return detections;
     }
+
 
     DetectionLocation CreateDetectionLocationTriton(
             const Frame &frame,

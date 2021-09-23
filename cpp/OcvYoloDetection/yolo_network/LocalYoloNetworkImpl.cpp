@@ -24,14 +24,6 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include <list>
-
-#include "../util.h"
-#include "../Config.h"
-#include "../Frame.h"
-#include "../WhitelistFilter.h"
-
-#include "YoloNetwork.h"
 #include "BaseYoloNetworkImpl.h"
 
 using namespace MPF::COMPONENT;

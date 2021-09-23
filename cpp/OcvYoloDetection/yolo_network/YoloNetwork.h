@@ -31,8 +31,6 @@
 #include <string>
 #include <vector>
 
-#include <log4cxx/logger.h>
-
 #include <opencv2/core.hpp>
 #include <opencv2/dnn/dnn.hpp>
 
@@ -52,10 +50,6 @@ public:
     YoloNetwork(ModelSettings modelSettings, const Config &config);
 
     ~YoloNetwork();
-
-    // YoloNetwork(const YoloNetwork& other);
-
-    // YoloNetwork& operator=(YoloNetwork rhs);
 
     using ProcessFrameDetectionsFunc =
       std::function<void(std::vector<std::vector<DetectionLocation>>&& dets,

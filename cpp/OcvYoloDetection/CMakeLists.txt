@@ -93,7 +93,7 @@ set(TRITON_OCV_YOLO_DETECTION_SOURCE_FILES
         triton/TritonTensorMeta.cpp triton/TritonTensorMeta.h
         triton/shm_utils.cc triton/shm_utils.h)
 
-#if ($ENV{TRITON_SUPPORT})
+if ($ENV{TRITON_SUPPORT})
     add_library(mpfOcvYoloDetection SHARED ${COMMON_OCV_YOLO_DETECTION_SOURCE_FILES} ${TRITON_OCV_YOLO_DETECTION_SOURCE_FILES})
     target_link_libraries(mpfOcvYoloDetection
             mpfComponentInterface
@@ -103,15 +103,15 @@ set(TRITON_OCV_YOLO_DETECTION_SOURCE_FILES
             ${OpenCV_LIBS}
             dlib
             explain) # TODO: Is this necessary?
-#else()
-#    add_library(mpfOcvYoloDetection SHARED ${COMMON_OCV_YOLO_DETECTION_SOURCE_FILES} ${LOCAL_OCV_YOLO_DETECTION_SOURCE_FILES})
-#    target_link_libraries(mpfOcvYoloDetection
-#            mpfComponentInterface
-#            mpfDetectionComponentApi
-#            mpfComponentUtils
-#            ${OpenCV_LIBS}
-#            dlib)
-#endif()
+else()
+    add_library(mpfOcvYoloDetection SHARED ${COMMON_OCV_YOLO_DETECTION_SOURCE_FILES} ${LOCAL_OCV_YOLO_DETECTION_SOURCE_FILES})
+    target_link_libraries(mpfOcvYoloDetection
+            mpfComponentInterface
+            mpfDetectionComponentApi
+            mpfComponentUtils
+            ${OpenCV_LIBS}
+            dlib)
+endif()
 
 configure_mpf_component(OcvYoloDetection TARGETS mpfOcvYoloDetection)
 
