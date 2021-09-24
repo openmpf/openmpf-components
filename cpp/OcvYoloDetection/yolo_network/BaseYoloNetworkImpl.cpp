@@ -125,7 +125,7 @@ namespace {
     std::vector<std::string> LoadNames(const cv::dnn::Net &net,
                                        const ModelSettings &modelSettings,
                                        const Config &config) {
-        std::ifstream namesFile(modelSettings.namesFile);
+        std::ifstream namesFile(modelSettings.namesFile); // TODO: The model file determines which names to use for Triton models?
         if (!namesFile.good()) {
             throw MPFDetectionException(
                     MPF_COULD_NOT_OPEN_DATAFILE,
@@ -276,7 +276,7 @@ namespace {
 BaseYoloNetworkImpl::BaseYoloNetworkImpl(ModelSettings model_settings, const Config &config)
         : modelSettings_(std::move(model_settings))
         , cudaDeviceId_(ConfigureCudaDeviceIfNeeded(config, log_))
-        , net_(config.tritonEnabled ?  cv::dnn::Net() : LoadNetwork(modelSettings_, cudaDeviceId_, log_))
+        , net_(config.tritonEnabled ?  cv::dnn::Net() : LoadNetwork(modelSettings_, cudaDeviceId_, log_)) // TODO: Test Triton enabled in local build
         , names_(LoadNames(net_, modelSettings_, config))
         , confusionMatrix_(LoadConfusionMatrix(modelSettings_.confusionMatrixFile, names_.size()))
         , classWhiteListPath_(config.classWhiteListPath)
@@ -293,10 +293,11 @@ void BaseYoloNetworkImpl::GetDetections(
     LOG_TRACE("end");
 }
 
+// Determines if the cached YoloNetwork should be reused or not.
 bool BaseYoloNetworkImpl::IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
     return modelSettings_.networkConfigFile == modelSettings.networkConfigFile
-           && modelSettings_.namesFile == modelSettings.namesFile
            && modelSettings_.weightsFile == modelSettings.weightsFile
+           && modelSettings_.namesFile == modelSettings.namesFile
            && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
            && config.cudaDeviceId == cudaDeviceId_
            && config.classWhiteListPath == classWhiteListPath_;

@@ -71,4 +71,4 @@ private:
     std::unique_ptr<YoloNetworkImpl> pimpl_;
 };
 
-#endif //OPENMPF_COMPONENTS_YOLONETWORK_H
+#endif // OPENMPF_COMPONENTS_YOLONETWORK_H

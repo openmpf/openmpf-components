@@ -69,6 +69,7 @@ public:
         LOG_TRACE("end");
     }
 
+    // Determines if the cached YoloNetwork should be reused or not.
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
         if (config.tritonEnabled && tritonInferencer_) {
             return config.tritonServer == tritonInferencer_->serverUrl()
@@ -77,11 +78,15 @@ public:
                    && config.tritonUseShm == tritonInferencer_->useShm()
                    && config.tritonUseSSL == tritonInferencer_->useSSL()
                    && config.tritonVerboseClient == tritonInferencer_->verboseClient()
-                   && config.netInputImageSize == tritonInferencer_->inputsMeta.at(0).shape[2];
+                   && config.netInputImageSize == tritonInferencer_->inputsMeta.at(0).shape[2]
+                   // common settings with local yolo network
+                   && modelSettings_.namesFile == modelSettings.namesFile
+                   && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
+                   && config.classWhiteListPath == classWhiteListPath_;
         } else {
             return modelSettings_.networkConfigFile == modelSettings.networkConfigFile
-                   && modelSettings_.namesFile == modelSettings.namesFile
                    && modelSettings_.weightsFile == modelSettings.weightsFile
+                   && modelSettings_.namesFile == modelSettings.namesFile
                    && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
                    && config.cudaDeviceId == cudaDeviceId_
                    && config.classWhiteListPath == classWhiteListPath_
@@ -153,7 +158,7 @@ private:
         tritonInferencer_->infer(frames,
              tritonInferencer_->inputsMeta.at(0),
 
-             [this, &config, &frames, componentProcessLambda]
+             [this, &config, componentProcessLambda]
                      (std::vector<cv::Mat> outBlobs,
                       std::vector<Frame>::const_iterator begin,
                       std::vector<Frame>::const_iterator end) {
@@ -230,7 +235,6 @@ private:
         cv::Mat dmat(OUTPUT_BLOB_DIM_1 - 1, 7, CV_32F, &data[1]);
 
         float rescale2Frame = maxFrameDim / config.netInputImageSize;
-        cv::Size scoreVecSize(1,names_.size());
         for (int det = 0; det < numDetections; ++det){
             float maxConfidence = dmat.at<float>(det, 4);
             int classIdx = static_cast<int>(dmat.at<float>(det, 5));

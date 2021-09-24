@@ -30,8 +30,7 @@ using namespace MPF::COMPONENT;
 
 class YoloNetwork::YoloNetworkImpl : public BaseYoloNetworkImpl {
 public:
-    YoloNetworkImpl(ModelSettings model_settings, const Config &config)
-            : BaseYoloNetworkImpl(model_settings, config) {}
+    using BaseYoloNetworkImpl::BaseYoloNetworkImpl; // use base constructor
 
     ~YoloNetworkImpl() = default;
 };

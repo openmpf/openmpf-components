@@ -67,6 +67,7 @@ protected:
     ModelSettings modelSettings_;
     int cudaDeviceId_;
     cv::dnn::Net net_;
+
     std::vector<std::string> names_;
     cv::Mat1f confusionMatrix_;
     std::string classWhiteListPath_;
