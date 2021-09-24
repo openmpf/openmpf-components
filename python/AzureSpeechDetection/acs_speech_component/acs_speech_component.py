@@ -208,10 +208,9 @@ class AcsSpeechComponent(object):
         fpms = float(video_job.media_properties['FPS']) / 1000.0
         start_time = int(start_frame / fpms)
 
-        # The WFM will pass a stop_frame equal to the detected video
-        #  FRAME_COUNT by default. We want to use the detected DURATION
-        #  in such cases instead. Only use the passed stop_frame if it
-        #  differs from the detected STOP_FRAME.
+        # The WFM will pass a job stop frame equal to FRAME_COUNT-1 for the last video segment.
+        #  We want to use the detected DURATION in such cases instead to ensure we process the entire audio track.
+        #  Only use the job stop frame if it differs from FRAME_COUNT-1.
         if stop_frame is not None and stop_frame < media_frame_count - 1:
             stop_time = int(stop_frame / fpms)
         elif media_duration > 0:
