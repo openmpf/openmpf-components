@@ -31,8 +31,8 @@ setuptools.setup(
     version='6.1',
     packages=setuptools.find_packages(exclude=('*test*',)),
     install_requires=(
-        'mpf_component_api>=6.2',
-        'mpf_component_util>=6.2',
+        'mpf_component_api>=6.3',
+        'mpf_component_util>=6.3',
         'cyhunspell>=2.0.2',
         'setuptools>=8.1'
     ),

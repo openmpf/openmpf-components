@@ -70,11 +70,11 @@ int main(int argc, char *argv[]) {
             if (props.find("TAGS") != props.end()) {
                 std::cout << "TAGS: " << props["TAGS"] << std::endl;
             }
-            if (props.find("TRIGGER_WORDS") != props.end()) {
-                std::cout << "TRIGGER_WORDS: " << props["TRIGGER_WORDS"] << std::endl;
+            if (props.find("TRIGGER WORDS") != props.end()) {
+                std::cout << "TRIGGER WORDS: " << props["TRIGGER WORDS"] << std::endl;
             }
-            if (props.find("TRIGGER_WORDS_OFFSET") != props.end()) {
-                std::cout << "TRIGGER_WORDS_OFFSET: " << props["TRIGGER_WORDS_OFFSET"] << std::endl;
+            if (props.find("TRIGGER WORDS OFFSET") != props.end()) {
+                std::cout << "TRIGGER WORDS OFFSET: " << props["TRIGGER WORDS OFFSET"] << std::endl;
             }
         }
 

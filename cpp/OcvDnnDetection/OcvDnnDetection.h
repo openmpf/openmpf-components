@@ -124,6 +124,7 @@ private:
         cv::Size resize_size;
         cv::Size crop_size;
         cv::Scalar subtract_colors;
+        bool swap_rb;
 
 
         // In order to get all the layers we need in one pass through the network, we need to add all the layer

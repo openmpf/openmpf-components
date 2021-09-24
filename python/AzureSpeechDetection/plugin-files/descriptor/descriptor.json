@@ -1,7 +1,7 @@
 {
   "componentName": "AzureSpeechDetection",
-  "componentVersion": "6.2",
-  "middlewareVersion": "6.2",
+  "componentVersion": "6.3",
+  "middlewareVersion": "6.3",
   "sourceLanguage": "python",
   "batchLibrary": "AzureSpeechDetection",
   "environmentVariables": [],
@@ -33,7 +33,7 @@
         },
         {
           "name": "ACS_URL",
-          "description": "URL for the Azure Cognitive Services Endpoint. e.g. https://virginia.cris.azure.us/api/speechtotext/v2.0/transcriptions. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.  Note that the component was only tested against v2.0 of the API.",
+          "description": "URL for the Azure Cognitive Services Endpoint. e.g. https://virginia.cris.azure.us/api/speechtotext/v3.0/transcriptions. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.  The component has been tested against v3.0 of the API.",
           "type": "STRING",
           "defaultValue": ""
         },
