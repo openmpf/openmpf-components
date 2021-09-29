@@ -68,7 +68,7 @@
         },
         {
           "name": "NUMBER_OF_CLASSIFICATIONS_PER_REGION",
-          "description": "Number of classification to return per detection.",
+          "description": "Number of classifications to return per detection.",
           "type": "INT",
           "defaultValue": "5"
         },

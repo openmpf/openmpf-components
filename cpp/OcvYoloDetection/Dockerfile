@@ -146,7 +146,6 @@ RUN --mount=type=tmpfs,target=/tmp \
     ldconfig; \
     rm --recursive /tmp/triton;
 
-# TODO: Doesn't work
 ENV CMAKE_PREFIX_PATH="/opt/triton/lib64/cmake:${CMAKE_PREFIX_PATH}"
 
 ENV TRITON_SUPPORT=ON
