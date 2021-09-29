@@ -144,7 +144,7 @@ TEST_F(OcvTritonYoloDetectionTestFixture, DISABLED_TestTritonPerformance) {
   auto jobProp = getTritonYoloConfig();
   jobProp["TRACKING_DFT_SIZE"] = "128";
   jobProp["DETECTION_FRAME_BATCH_SIZE"] = "16";
-  jobProp["MAX_INFER_CONCURRENCY"] = "4";
+  jobProp["TRITON_MAX_INFER_CONCURRENCY"] = "4";
 
 
   MPFVideoJob videoJob("Testing", inVideoFile, start, stop, jobProp, {});

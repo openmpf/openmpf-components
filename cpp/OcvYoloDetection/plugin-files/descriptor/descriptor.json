@@ -38,9 +38,81 @@
         },
         {
           "name": "MODELS_DIR_PATH",
-          "description": "Path to models directory.",
+          "description": "Only applies when using OpenCV DNN (not Triton). Path to models directory.",
           "type": "STRING",
           "propertiesKey": "detection.models.dir.path"
+        },
+        {
+          "name": "CUDA_DEVICE_ID",
+          "description": "Only applies when using OpenCV DNN (not Triton). CUDA device / GPU to use. Set to -1 to only use CPU.",
+          "type": "INT",
+          "propertiesKey": "detection.cuda.device.id"
+        },
+        {
+          "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
+          "description": "Only applies when using OpenCV DNN (not Triton). If true will fallback to CPU only when GPU fails to initialize.",
+          "type": "BOOLEAN",
+          "propertiesKey": "detection.use.cpu.when.gpu.problem"
+        },
+        {
+          "name": "ENABLE_TRITON",
+          "description": "If true, inferencing will be performed via a configured Triton inference server (not OpenCV DNN).",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "TRITON_SERVER",
+          "description": "Triton server url and port to use for inferencing.",
+          "type": "string",
+          "defaultValue": ""
+        },
+        {
+          "name": "TRITON_MODEL_VERSION",
+          "description": "Triton server model version to use for inferencing.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "TRITON_MODEL_NUM_CLASSES",
+          "description": "Triton server model number of possible returned classes.",
+          "type": "INT",
+          "defaultValue": "80"
+        },
+        {
+          "name": "TRITON_MAX_INFER_CONCURRENCY",
+          "descriptions": "Simultaneous client connections to Triton server. Should be set to number of GPUs available on the server.",
+          "type": "INT",
+          "defaultValue": "4"
+        },
+        {
+          "name": "TRITON_INFER_TIMEOUT_US",
+          "description": "Time in microseconds after which Triton server client requests timeout.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "TRITON_MAX_CONNECTION_SETUP_ATTEMPTS",
+          "description": "Maximum number of retry attempts for establishing a connection to the inference server",
+          "type": "INT",
+          "defaultValue": "3"
+        },
+        {
+          "name": "TRITON_VERBOSE_CLIENT",
+          "description": "Inference server client messaging generates verbose log messages",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "TRITON_USE_SSL",
+          "description": "Inference server client connection uses SSL",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "TRITON_USE_SHM",
+          "description": "Inference server client communication uses shared memory (requires client and server to be on same machine)",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
         },
         {
           "name": "NET_INPUT_IMAGE_SIZE",
@@ -155,78 +227,6 @@
           "description": "Add track assignment information as detection properties.",
           "type": "BOOLEAN",
           "defaultValue": "false"
-        },
-        {
-          "name": "CUDA_DEVICE_ID",
-          "description": "CUDA device / GPU to use. Set to -1 to only use CPU.",
-          "type": "INT",
-          "propertiesKey": "detection.cuda.device.id"
-        },
-        {
-          "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
-          "description": "If true will fallback to CPU only when GPU fails to initialize.",
-          "type": "BOOLEAN",
-          "propertiesKey": "detection.use.cpu.when.gpu.problem"
-        },
-        {
-          "name": "ENABLE_TRITON",
-          "description": "If true, inferencing will be performed via a configured inference server.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "TRITON_SERVER",
-          "description": "NVIDIA Triton inference server url and port to use for inferencing.",
-          "type": "string",
-          "defaultValue": ""
-        },
-        {
-          "name": "TRITON_MODEL_VERSION",
-          "description": "Inference server model version to use for inferencing.",
-          "type": "INT",
-          "defaultValue": "-1"
-        },
-        {
-          "name": "TRITON_MODEL_NUM_CLASSES",
-          "description": "Inference server model number of possible returned classes.",
-          "type": "INT",
-          "defaultValue": "80"
-        },
-        {
-          "name": "MAX_INFER_CONCURRENCY",
-          "descriptions": "Simultaneous client connections to inference server, should be set to number of GPUs available on inference server",
-          "type": "INT",
-          "defaultValue": "4"
-        },
-        {
-          "name": "INFER_TIMEOUT_US",
-          "description": "Time in microseconds after which inference server client requests timeout.",
-          "type": "INT",
-          "defaultValue": "0"
-        },
-        {
-          "name": "TRITON_MAX_CONNECTION_SETUP_ATTEMPTS",
-          "description": "Maximum number of retry attempts for establishing a connection to the inference server",
-          "type": "INT",
-          "defaultValue": "3"
-        },
-        {
-          "name": "TRITON_VERBOSE_CLIENT",
-          "description": "Inference server client messaging generates verbose log messages",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "TRITON_USE_SSL",
-          "description": "Inference server client connection uses SSL",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
-        },
-        {
-          "name": "TRITON_USE_SHM",
-          "description": "Inference server client communication uses shared memory (requires client and server to be on same machine)",
-          "type": "BOOLEAN",
-          "defaultValue": "true"
         }
       ]
     }

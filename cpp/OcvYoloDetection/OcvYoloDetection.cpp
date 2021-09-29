@@ -235,9 +235,9 @@ bool OcvYoloDetection::Init() {
 
     auto pluginPath = GetRunDirectory() + "/OcvYoloDetection";
     modelsParser_.Init(pluginPath + "/models")
-            .RegisterPathField("network_config", &ModelSettings::networkConfigFile)
+            .RegisterPathField("ocvdnn_network_config", &ModelSettings::ocvDnnNetworkConfigFile)
+            .RegisterPathField("ocvdnn_weights", &ModelSettings::ocvDnnWeightsFile)
             .RegisterPathField("names", &ModelSettings::namesFile)
-            .RegisterPathField("weights", &ModelSettings::weightsFile)
             .RegisterOptionalPathField("confusion_matrix", &ModelSettings::confusionMatrixFile);
 
     LOG4CXX_INFO(logger_, "Initialized OcvYoloDetection component.");

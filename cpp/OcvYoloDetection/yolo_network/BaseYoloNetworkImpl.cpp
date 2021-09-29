@@ -81,19 +81,19 @@ namespace {
     cv::dnn::Net LoadNetwork(const ModelSettings &modelSettings, int cudaDeviceId,
                              log4cxx::LoggerPtr& log) {
 
-        LOG4CXX_INFO(log, "Attempting to load network using network config file from "
-                << modelSettings.networkConfigFile << " and weights from "
-                << modelSettings.weightsFile);
+        LOG4CXX_INFO(log, "Attempting to load OpenCV DNN network using network config file from "
+                << modelSettings.ocvDnnNetworkConfigFile << " and weights from "
+                << modelSettings.ocvDnnWeightsFile);
 
         cv::dnn::Net net;
         try {
-            net = cv::dnn::readNetFromDarknet(modelSettings.networkConfigFile,
-                                              modelSettings.weightsFile);
+            net = cv::dnn::readNetFromDarknet(modelSettings.ocvDnnNetworkConfigFile,
+                                              modelSettings.ocvDnnWeightsFile);
         }
         catch (const cv::Exception& e) {
             throw MPFDetectionException(
                     MPF_COULD_NOT_READ_DATAFILE,
-                    std::string("Failed to load model due to: ") + e.what());
+                    std::string("Failed to load OpenCV DNN model due to: ") + e.what());
         }
 
         if (cudaDeviceId >= 0) {
@@ -101,7 +101,7 @@ namespace {
             net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
         }
 
-        LOG4CXX_INFO(log, "Successfully loaded network.");
+        LOG4CXX_INFO(log, "Successfully loaded OpenCV DNN network.");
         return net;
     }
 
@@ -125,7 +125,7 @@ namespace {
     std::vector<std::string> LoadNames(const cv::dnn::Net &net,
                                        const ModelSettings &modelSettings,
                                        const Config &config) {
-        std::ifstream namesFile(modelSettings.namesFile); // TODO: The model file determines which names to use for Triton models?
+        std::ifstream namesFile(modelSettings.namesFile);
         if (!namesFile.good()) {
             throw MPFDetectionException(
                     MPF_COULD_NOT_OPEN_DATAFILE,
@@ -153,7 +153,7 @@ namespace {
         }
 
         std::stringstream error;
-        error << "The network config file at " << modelSettings.networkConfigFile
+        error << "The OpenCV DNN network config file at " << modelSettings.ocvDnnNetworkConfigFile
               << " specifies " << expectedNumClasses << " classes, but the names file at "
               << modelSettings.namesFile << " contains " << names.size()
               << " classes. This is probably because given names file does not correspond to the "
@@ -295,8 +295,8 @@ void BaseYoloNetworkImpl::GetDetections(
 
 // Determines if the cached YoloNetwork should be reused or not.
 bool BaseYoloNetworkImpl::IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
-    return modelSettings_.networkConfigFile == modelSettings.networkConfigFile
-           && modelSettings_.weightsFile == modelSettings.weightsFile
+    return modelSettings_.ocvDnnNetworkConfigFile == modelSettings.ocvDnnNetworkConfigFile
+           && modelSettings_.ocvDnnWeightsFile == modelSettings.ocvDnnWeightsFile
            && modelSettings_.namesFile == modelSettings.namesFile
            && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
            && config.cudaDeviceId == cudaDeviceId_

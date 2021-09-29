@@ -84,8 +84,8 @@ public:
                    && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
                    && config.classWhiteListPath == classWhiteListPath_;
         } else {
-            return modelSettings_.networkConfigFile == modelSettings.networkConfigFile
-                   && modelSettings_.weightsFile == modelSettings.weightsFile
+            return modelSettings_.ocvDnnNetworkConfigFile == modelSettings.ocvDnnNetworkConfigFile
+                   && modelSettings_.ocvDnnWeightsFile == modelSettings.ocvDnnWeightsFile
                    && modelSettings_.namesFile == modelSettings.namesFile
                    && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
                    && config.cudaDeviceId == cudaDeviceId_

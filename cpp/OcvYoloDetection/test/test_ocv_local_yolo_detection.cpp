@@ -68,8 +68,8 @@ TEST_F(OcvLocalYoloDetectionTestFixture, TestCorrelator) {
     EXPECT_FALSE(frame1.data.empty()) << "Could not load:" << image_file;
 
     ModelSettings modelSettings;
-    modelSettings.networkConfigFile = "OcvYoloDetection/models/yolov4-tiny.cfg";
-    modelSettings.weightsFile = "OcvYoloDetection/models/yolov4-tiny.weights";
+    modelSettings.ocvDnnNetworkConfigFile = "OcvYoloDetection/models/yolov4-tiny.cfg";
+    modelSettings.ocvDnnWeightsFile = "OcvYoloDetection/models/yolov4-tiny.weights";
     modelSettings.namesFile = "OcvYoloDetection/models/coco.names";
 
     std::vector<Frame> frameBatch = {frame1};
@@ -243,9 +243,9 @@ TEST_F(OcvLocalYoloDetectionTestFixture, TestVideo) {
 
 TEST_F(OcvLocalYoloDetectionTestFixture, TestInvalidModel) {
     ModelSettings modelSettings;
-    modelSettings.networkConfigFile = "fake config";
+    modelSettings.ocvDnnNetworkConfigFile = "fake config";
+    modelSettings.ocvDnnWeightsFile = "fake weights";
     modelSettings.namesFile = "fake names";
-    modelSettings.weightsFile = "fake weights";
     Config config({});
 
     try {

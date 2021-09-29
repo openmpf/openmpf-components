@@ -39,9 +39,9 @@
 #include "../Frame.h"
 
 struct ModelSettings {
-    std::string networkConfigFile;
+    std::string ocvDnnNetworkConfigFile;
+    std::string ocvDnnWeightsFile;
     std::string namesFile;
-    std::string weightsFile;
     std::string confusionMatrixFile;
 };
 
