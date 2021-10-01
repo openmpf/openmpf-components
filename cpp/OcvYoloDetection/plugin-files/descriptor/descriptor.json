@@ -62,8 +62,8 @@
         },
         {
           "name": "TRITON_SERVER",
-          "description": "Triton server url and port to use for inferencing.",
-          "type": "string",
+          "description": "Triton server <host>:<port> to use for inferencing.",
+          "type": "STRING",
           "defaultValue": ""
         },
         {
@@ -80,7 +80,7 @@
         },
         {
           "name": "TRITON_MAX_INFER_CONCURRENCY",
-          "descriptions": "Simultaneous client connections to Triton server. Should be set to number of GPUs available on the server.",
+          "description": "Simultaneous client connections to Triton server. Should be set to number of GPUs available on the server.",
           "type": "INT",
           "defaultValue": "4"
         },
