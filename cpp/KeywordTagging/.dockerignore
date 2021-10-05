@@ -24,41 +24,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-#display options
-#IMSHOW_ON = 0: no visual output
-#IMSHOW_ON = 1: display detection and tracking windows
-#IMSHOW_ON should only be set to 1 when DEBUGGING
-IMSHOW_ON: 0
-
-#ActiveMQ polling interval in seconds
-POLLING_INTERVAL: 1
-
-#minimum x and y pixel size passed to the opencv face detector
-MIN_FACE_SIZE: 48
-
-#max feature points
-MAX_FEATURE: 250
-
-#minimum points needed by feature detector within detected face bounding box
-MIN_INIT_POINT_COUNT: 45
-
-#min point percentage when comparing current feature points to initial feature points
-MIN_POINT_PERCENT: 0.70
-
-#minimum face detection confidence value needed to start a track, must be greater than 0
-MIN_INITIAL_CONFIDENCE: 10.0
-
-#unused option to ignore certain points that do not meet a certain quality when using the calcopticalflow alg
-MAX_OPTICAL_FLOW_ERROR: 4.7
-
-# VERBOSE = 0: no debugging output
-# VERBOSE = 1: print settings and detection results
-
-VERBOSE: 0
-
-
-SEARCH_REGION_ENABLE_DETECTION: false
-SEARCH_REGION_TOP_LEFT_X_DETECTION: 0
-SEARCH_REGION_TOP_LEFT_Y_DETECTION: 0
-SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION: 0
-SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION: 0
+README.md
+Dockerfile
+.dockerignore

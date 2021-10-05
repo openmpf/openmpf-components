@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -24,16 +25,35 @@
 # limitations under the License.                                            #
 #############################################################################
 
-OALPR_TEXT_VIDEO_FILE: ./test/test_vids/oalpr_text_video.avi
-OALPR_TEXT_KNOWN_TRACKS: ./test/test_vids/oalpr_text_known_tracks.txt
-OALPR_TEXT_VIDEO_OUTPUT_FILE: oalpr_text_found_tracks.avi
-OALPR_TEXT_FOUND_TRACKS: oalpr_text_found_tracks.txt
-OALPR_TEXT_START_FRAME: 0
-OALPR_TEXT_STOP_FRAME: 49
-OALPR_TEXT_FRAME_RATE: 1
-OALPR_TEXT_COMPARISON_SCORE_VIDEO: 0.3
-OALPR_TEXT_IMAGE_FILE: ./test/test_imgs/oalpr_text_image.png
-OALPR_TEXT_KNOWN_DETECTIONS: ./test/test_imgs/oalpr_text_known_detections.txt
-OALPR_TEXT_IMAGE_OUTPUT_FILE: oalpr_text_found_detections.png
-OALPR_TEXT_FOUND_DETECTIONS: oalpr_text_found_detections.txt
-OALPR_TEXT_COMPARISON_SCORE_IMAGE: 0.6
+set -o errexit -o pipefail -o xtrace
+
+cleanup() {
+    if [ "$server_cid" ]; then
+        docker stop "$server_cid" ||:
+    fi
+    if [ "$trt_test_net" ]; then
+        docker network rm "$trt_test_net"
+    fi
+}
+
+trap cleanup EXIT
+
+script_dir=$(dirname "$0")
+image_id=$(docker build "$script_dir" --target build_component --quiet \
+            --build-arg BUILD_REGISTRY --build-arg BUILD_TAG)
+
+trt_test_net="trt_test_net_$RANDOM"
+docker network create "$trt_test_net"
+
+server_cid=$(docker run --rm --detach --network "$trt_test_net" --network-alias trtserver \
+                "${BUILD_REGISTRY}openmpf_trtis_detection_server:${BUILD_TAG:-latest}" \
+                trtserver --model-store=/models)
+
+until docker logs "$server_cid" |& grep -q 'Successfully loaded servable version'; do
+    sleep 1
+done
+
+docker run --rm --network "$trt_test_net" --env TRTIS_SERVER=trtserver:8001 \
+    --workdir /home/mpf/component_build/test --entrypoint ./TrtisDetectionTest "$image_id"
+
+echo Tests passed

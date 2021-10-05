@@ -49,7 +49,6 @@ find_package(OpenCV 4.5.0 EXACT REQUIRED COMPONENTS opencv_dnn opencv_videoio op
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
-find_package(Qt4 REQUIRED)
 
 
 set(OCV_YOLO_DETECTION_SOURCE_FILES

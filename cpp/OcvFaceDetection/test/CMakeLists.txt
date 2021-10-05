@@ -33,18 +33,13 @@ find_package(GTest)
 if (${GTEST_FOUND})
 
     enable_testing()
-    find_package(Qt4 REQUIRED)
     find_package(mpfComponentTestUtils REQUIRED)
 
     include_directories(..)
     add_executable(OcvFaceDetectionTest test_ocv_face_detection.cpp)
-    target_link_libraries(OcvFaceDetectionTest mpfOcvFaceDetection mpfComponentTestUtils GTest::GTest GTest::Main Qt4::QtCore)
+    target_link_libraries(OcvFaceDetectionTest mpfOcvFaceDetection mpfComponentTestUtils GTest::GTest GTest::Main)
 
     add_test(NAME OcvFaceDetectionTest COMMAND OcvFaceDetectionTest)
-
-
-    # Install config file
-    file(COPY test_ocv_face_config.ini DESTINATION config)
 
 
     # Install test images and videos

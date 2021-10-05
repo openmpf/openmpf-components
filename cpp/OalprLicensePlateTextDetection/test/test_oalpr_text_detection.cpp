@@ -24,13 +24,11 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include <stdio.h>
+#include <cstdio>
 #include <iostream>
 #include <map>
 #include <string>
 #include <vector>
-
-#include <QDir>
 
 #include <gtest/gtest.h>
 #include <log4cxx/basicconfigurator.h>
@@ -52,23 +50,6 @@ using std::pair;
 using namespace MPF;
 using namespace COMPONENT;
 
-
-// global variable to hold the file name parameters
-QHash<QString, QString> parameters;
-bool parameters_loaded = false;
-
-static string GetCurrentWorkingDirectory() {
-    char cwd[1024];
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        std::cout << "Current working dir: " << cwd << std::endl;
-        return string(cwd);
-    }
-    else {
-        std::cout << "getcwd() error";
-        return "";
-    }
-}
-
 bool init_logging() {
     log4cxx::BasicConfigurator::configure();
     return true;
@@ -77,67 +58,35 @@ bool logging_initialized = init_logging();
 
 
 TEST(Detection, Init) {
-    string current_working_dir = GetCurrentWorkingDirectory();
-
-    LicensePlateTextDetection *text_detection = new LicensePlateTextDetection();
-    ASSERT_TRUE(NULL != text_detection);
-
-    string dir_input(current_working_dir + "/../plugin");
-    text_detection->SetRunDirectory(dir_input);
-    string rundir = text_detection->GetRunDirectory();
+    LicensePlateTextDetection text_detection;
+    string dir_input("../plugin");
+    text_detection.SetRunDirectory(dir_input);
+    string rundir = text_detection.GetRunDirectory();
     EXPECT_EQ(dir_input, rundir);
 
-    ASSERT_TRUE(text_detection->Init());
+    ASSERT_TRUE(text_detection.Init());
 
-    MPFComponentType comp_type = text_detection->GetComponentType();
+    MPFComponentType comp_type = text_detection.GetComponentType();
     EXPECT_EQ(MPF_DETECTION_COMPONENT, comp_type);
 
-    EXPECT_TRUE(text_detection->Close());
-    delete text_detection;
+    EXPECT_TRUE(text_detection.Close());
 }
 
 TEST(VideoGeneration, TestOnKnownVideo) {
-
-    string current_working_dir = GetCurrentWorkingDirectory();
-    string test_output_dir = current_working_dir + "/test/test_output/";
-
     int start = 0;
-    int stop = 0;
-    int rate = 0;
-    float comparison_score_threshold = 0.0;
-    string inTrackFile;
-    string inVideoFile;
-    string outTrackFile;
-    string outVideoFile;
-    float threshold;
-
-    if (!parameters_loaded) {
-      QString current_path = QDir::currentPath();
-      string config_path(current_path.toStdString() + "/config/test_oalpr_text_config.ini");
-      std::cout << "config path: " << config_path << std::endl;
-      int rc = LoadConfig(config_path, parameters);
-      ASSERT_EQ(0, rc);
-      std::cout << "Test TestOnKnownVideo: config file loaded" << std::endl;
-      parameters_loaded = true;
-    }
-
-    std::cout << "Reading parameters for video test." << std::endl;
-
-    start = parameters["OALPR_TEXT_START_FRAME"].toInt();
-    stop = parameters["OALPR_TEXT_STOP_FRAME"].toInt();
-    rate = parameters["OALPR_TEXT_FRAME_RATE"].toInt();
-    inTrackFile = parameters["OALPR_TEXT_KNOWN_TRACKS"].toStdString();
-    inVideoFile = parameters["OALPR_TEXT_VIDEO_FILE"].toStdString();
-    outTrackFile = parameters["OALPR_TEXT_FOUND_TRACKS"].toStdString();
-    outVideoFile = parameters["OALPR_TEXT_VIDEO_OUTPUT_FILE"].toStdString();
-    comparison_score_threshold = parameters["OALPR_TEXT_COMPARISON_SCORE_VIDEO"].toFloat();
+    int stop = 49;
+    int rate = 1;
+    float comparison_score_threshold = 0.3;
+    string inTrackFile = "test/test_vids/oalpr_text_known_tracks.txt";
+    string inVideoFile = "test/test_vids/oalpr_text_video.avi";
+    string outTrackFile = "alpr_text_found_tracks.txt";
+    string outVideoFile = "oalpr_text_found_tracks.avi";
 
     // 	Create an OpenALPR text detection object.
     std::cout << "\tCreating OpenALPR text detection" << std::endl;
-    LicensePlateTextDetection *text_detection = new LicensePlateTextDetection();
-    ASSERT_TRUE(NULL != text_detection);
-    text_detection->SetRunDirectory(current_working_dir + "/../plugin");
-    ASSERT_TRUE(text_detection->Init());
+    LicensePlateTextDetection text_detection;
+    text_detection.SetRunDirectory("../plugin");
+    ASSERT_TRUE(text_detection.Init());
 
     std::cout << "Start:\t" << start << std::endl;
     std::cout << "Stop:\t" << stop << std::endl;
@@ -156,7 +105,7 @@ TEST(VideoGeneration, TestOnKnownVideo) {
     // 	Evaluate the known video file to generate the test tracks.
     std::cout << "\tRunning the tracker on the video: " << inVideoFile << std::endl;
     const MPFVideoJob video_job("Testing", inVideoFile, start, stop, { }, { });
-    vector<MPFVideoTrack> found_tracks = text_detection->GetDetections(video_job);
+    vector<MPFVideoTrack> found_tracks = text_detection.GetDetections(video_job);
     EXPECT_FALSE(found_tracks.empty());
 
     // 	Compare the known and test track output.
@@ -168,50 +117,29 @@ TEST(VideoGeneration, TestOnKnownVideo) {
     // create output video to view performance
     std::cout << "\tWriting detected video and test tracks to files." << std::endl;
     VideoGeneration video_generation;
+    string test_output_dir = "test/test_output/";
     video_generation.WriteTrackOutputVideo(inVideoFile, found_tracks, (test_output_dir + "/" + outVideoFile));
     WriteDetectionsToFile::WriteVideoTracks((test_output_dir + "/" + outTrackFile), found_tracks);
 
     // don't forget
     std::cout << "\tClosing down detection." << std::endl;
-    EXPECT_TRUE(text_detection->Close());
-    delete text_detection;
+    EXPECT_TRUE(text_detection.Close());
 }
 
 TEST(ImageGeneration, TestOnKnownImage) {
 
-    string current_working_dir = GetCurrentWorkingDirectory();
-    string test_output_dir = current_working_dir + "/test/test_output/";
+    string known_image_file = "test/test_imgs/oalpr_text_image.png";
+    string known_detections_file = "test/test_imgs/oalpr_text_known_detections.txt";
+    string output_image_file = "oalpr_text_found_detections.png";
+    string output_detections_file = "oalpr_text_found_detections.txt";
+    float comparison_score_threshold = 0.6;
 
-    string known_image_file;
-    string known_detections_file;
-    string output_image_file;
-    string output_detections_file;
-    float comparison_score_threshold = 0.0;
 
-    if (!parameters_loaded) {
-      QString current_path = QDir::currentPath();
-      string config_path(current_path.toStdString() + "/config/test_oalpr_text_config.ini");
-      std::cout << "config path: " << config_path << std::endl;
-      int rc = LoadConfig(config_path, parameters);
-      ASSERT_EQ(0, rc);
-      std::cout << "Test TestOnKnownImage: config file loaded" << std::endl;
-      parameters_loaded = true;
-    }
-
-    std::cout << "Reading parameters for image test." << std::endl;
-
-    known_image_file = parameters["OALPR_TEXT_IMAGE_FILE"].toStdString();
-    known_detections_file = parameters["OALPR_TEXT_KNOWN_DETECTIONS"].toStdString();
-    output_image_file = parameters["OALPR_TEXT_IMAGE_OUTPUT_FILE"].toStdString();
-    output_detections_file = parameters["OALPR_TEXT_FOUND_DETECTIONS"].toStdString();
-
-    comparison_score_threshold = parameters["OALPR_TEXT_COMPARISON_SCORE_IMAGE"].toFloat();
     // 	Create a text detection object.
-    LicensePlateTextDetection *text_detection = new LicensePlateTextDetection();
-    ASSERT_TRUE(NULL != text_detection);
+    LicensePlateTextDetection text_detection;
 
-    text_detection->SetRunDirectory(current_working_dir + "/../plugin");
-    ASSERT_TRUE(text_detection->Init());
+    text_detection.SetRunDirectory("../plugin");
+    ASSERT_TRUE(text_detection.Init());
 
     std::cout << "Input Known Detections:\t" << known_detections_file << std::endl;
     std::cout << "Output Found Detections:\t" << output_detections_file << std::endl;
@@ -225,7 +153,7 @@ TEST(ImageGeneration, TestOnKnownImage) {
 					       known_detections));
 
     const MPFImageJob job("Testing", known_image_file, { }, { });
-    vector<MPFImageLocation> found_detections = text_detection->GetDetections(job);
+    vector<MPFImageLocation> found_detections = text_detection.GetDetections(job);
     EXPECT_FALSE(found_detections.empty());
 
     float comparison_score = DetectionComparison::CompareDetectionOutput(found_detections, known_detections);
@@ -236,6 +164,7 @@ TEST(ImageGeneration, TestOnKnownImage) {
 
     // create output video to view performance
     ImageGeneration image_generation;
+    string test_output_dir = "test/test_output/";
     image_generation.WriteDetectionOutputImage(known_image_file,
                                                 found_detections,
                                                 test_output_dir + "/" + output_image_file);
@@ -243,6 +172,5 @@ TEST(ImageGeneration, TestOnKnownImage) {
     WriteDetectionsToFile::WriteVideoTracks(test_output_dir + "/" + output_detections_file,
                                               found_detections);
 
-    EXPECT_TRUE(text_detection->Close());
-    delete text_detection;
+    EXPECT_TRUE(text_detection.Close());
 }

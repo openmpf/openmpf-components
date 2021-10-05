@@ -31,7 +31,6 @@ set(CMAKE_CXX_STANDARD 11)
 find_package(GTest)
 if (${GTEST_FOUND})
     enable_testing()
-    find_package(Qt4 REQUIRED)
     find_package(mpfComponentTestUtils REQUIRED)
 
     include_directories(..)
@@ -39,8 +38,7 @@ if (${GTEST_FOUND})
     target_link_libraries(OcvYoloDetectionTest    mpfOcvYoloDetection
                                                   mpfComponentTestUtils
                                                   GTest::GTest
-                                                  GTest::Main
-                                                  Qt4::QtCore)
+                                                  GTest::Main)
 
     add_test(NAME OcvYoloDetectionTest COMMAND OcvYoloDetectionTest)
 

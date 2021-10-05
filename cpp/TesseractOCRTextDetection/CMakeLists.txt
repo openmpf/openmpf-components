@@ -37,14 +37,12 @@ find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0
     COMPONENTS opencv_highgui opencv_objdetect opencv_features2d opencv_ml opencv_flann opencv_video)
 
 
-set(ImageMagick_INCLUDE_DIRS /usr/include/ImageMagick-6)
-set(ImageMagick_LIBRARIES /usr/lib64/libMagick++-6.Q16.so)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
-find_package(Qt4 REQUIRED)
 find_package( Leptonica 1.75.0 REQUIRED )
 find_package( Tesseract 4.1.1 REQUIRED )
+find_package(ImageMagick REQUIRED COMPONENTS Magick++)
 
 find_package(Boost 1.53.0 COMPONENTS regex locale filesystem)
 include_directories(${Boost_INCLUDE_DIRS})
@@ -62,8 +60,11 @@ add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
 add_library(mpfTesseractOCRTextDetection SHARED ${OCR_SOURCE_FILES})
 
 
-target_link_libraries(mpfTesseractOCRTextDetection mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${OpenCV_LIBS} ${Tesseract_LIBRARIES} ${Leptonica_LIBRARIES} ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES} ${ImageMagick_LIBRARIES})
-configure_mpf_component(TesseractOCRTextDetection TARGETS  mpfTesseractOCRTextDetection EXTRA_LIB_PATHS "${extra_lib_dirs}")
+target_link_libraries(mpfTesseractOCRTextDetection mpfComponentInterface mpfDetectionComponentApi
+    mpfComponentUtils ${OpenCV_LIBS} ${Tesseract_LIBRARIES} ${Leptonica_LIBRARIES}
+    ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES} ${ImageMagick_LIBRARIES})
+
+configure_mpf_component(TesseractOCRTextDetection TARGETS  mpfTesseractOCRTextDetection)
 
 
 add_subdirectory(test)

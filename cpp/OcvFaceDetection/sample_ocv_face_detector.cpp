@@ -31,8 +31,8 @@
 #include <string>
 #include <iostream>
 
-#include <QCoreApplication>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
+#include <detectionComponentUtils.h>
 
 using namespace std;
 
@@ -52,10 +52,7 @@ int main(int argc, char* argv[]) {
             printf("Usage (VIDEO): %s <uri> <start_index> <end_index> <detection_interval (optional)>\n", argv[0]);
             return 1;
         }
-
-        QCoreApplication *this_app = new QCoreApplication(argc, argv);
-        string app_dir = (this_app->applicationDirPath()).toStdString();
-        delete this_app;
+        string app_dir = DetectionComponentUtils::GetAppDir(argv[0]);
 
         OcvFaceDetection ocv_face_detection;
         MPFDetectionComponent *detection_engine = &ocv_face_detection;

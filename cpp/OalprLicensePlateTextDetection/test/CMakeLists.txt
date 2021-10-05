@@ -35,7 +35,6 @@ find_package(GTest)
 if (${GTEST_FOUND})
 
     enable_testing()
-    find_package(Qt4 REQUIRED)
     find_package(mpfComponentTestUtils REQUIRED)
 
     include_directories(..)
@@ -43,12 +42,9 @@ if (${GTEST_FOUND})
     add_executable(OalprLicensePlateTextDetectionTest test_oalpr_text_detection.cpp)
     target_link_libraries(OalprLicensePlateTextDetectionTest
         mpfOALPRLicensePlateTextDetection mpfComponentTestUtils
-        GTest::GTest GTest::Main Qt4::QtCore)
+        GTest::GTest GTest::Main)
 
     add_test(NAME OalprLicensePlateTextDetectionTest COMMAND OalprLicensePlateTextDetectionTest)
-
-    # Install config file
-    file(COPY test_oalpr_text_config.ini DESTINATION config)
 
     # Install test images and videos
     file(COPY data/ DESTINATION test)

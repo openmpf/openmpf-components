@@ -27,13 +27,12 @@
 #include "SceneChangeDetection.h"
 
 #include <algorithm>
-#include <fstream>
+#include <map>
 #include <utility>
 
 #include <opencv2/imgproc.hpp>
 
 #include <detectionComponentUtils.h>
-#include <MPFSimpleConfigLoader.h>
 #include <MPFVideoCapture.h>
 #include <Utils.h>
 
@@ -64,104 +63,11 @@ bool SceneChangeDetection::Init() {
     // Initialize dilateKernel.
     dilateKernel = getStructuringElement(MORPH_RECT, Size(11, 11), Point(5, 5));
 
-    SetDefaultParameters();
-    //Once this is done - parameters will be set and SetReadConfigParameters() can be called again to revert back
-    //to the params read at initialization.
-    std::string config_params_path = config_path + "/mpfSceneChangeDetection.ini";
-    int rc = LoadConfig(config_params_path, parameters);
-    if (rc) {
-        LOG4CXX_ERROR(logger_, "Could not parse config file: " << config_params_path);
-        keyframes.clear();
-        return false;
-    }
-
-    SetReadConfigParameters();
-    keyframes.clear();
     LOG4CXX_INFO(logger_, "INITIALIZED COMPONENT" );
     return true;
 }
 
-/*
- * Called during Init.
- * Initializes default parameter values.
- */
-void SceneChangeDetection::SetDefaultParameters() {
-    // Threshold for edge detection.
-    // Higher values result in less detections (lower sensitivity).
-    // Range 0-1.
-    edge_thresh = 0.75;
 
-    // Threshold for histogram detection.
-    // Higher values result in more detections (higher sensitivity).
-    // Range 0-1.
-    hist_thresh = 0.25;
-
-    // Threshold for content detection.
-    // Higher values result in less detections (lower sensitivity).
-    // Range 0-1.
-    cont_thresh = 0.30;
-
-    // Threshold for thrs detection.
-    // Higher values result in more detections (higher sensitivity).
-    // Range 0-1? (most likely 0-255).
-    thrs_thresh = 12.0;
-
-    // Second threshold for thrs detection (combines with thrs_thres).
-    // Higher values decrease sensitivity.
-    // Range 0-1.
-    minPercent = 0.95;
-
-    // Expected min number of frames between scene changes.
-    minScene = 15;
-
-    // Toggles each type of detection (true = perform detection).
-    do_hist = true;
-    do_cont = true;
-    do_thrs = true;
-    do_edge = true;
-
-    use_middle_frame = true;
-}
-
-/*
- * Called during Init.
- * Sets parameters from .ini file.
- */
-void SceneChangeDetection::SetReadConfigParameters() {
-    if (parameters.contains("DO_HIST")) {
-        do_hist = (parameters["DO_HIST"].toInt() > 0);
-    }
-    if (parameters.contains("DO_CONT")) {
-        do_cont = (parameters["DO_CONT"].toInt() > 0);
-    }
-    if (parameters.contains("DO_THRS")) {
-        do_thrs = (parameters["DO_THRS"].toInt() > 0);
-    }
-    if (parameters.contains("DO_EDGE")) {
-        do_edge = (parameters["DO_EDGE"].toInt() > 0);
-    }
-    if (parameters.contains("USE_MIDDLE_FRAME")) {
-        use_middle_frame = (parameters["USE_MIDDLE_FRAME"].toInt() > 0);
-    }
-    if (parameters.contains("HIST_THRESHOLD")) {
-        hist_thresh = parameters["HIST_THRESHOLD"].toDouble();
-    }
-    if (parameters.contains("CONT_THRESHOLD")) {
-        cont_thresh = parameters["CONT_THRESHOLD"].toDouble();
-    }
-    if (parameters.contains("THRS_THRESHOLD")) {
-        thrs_thresh = parameters["THRS_THRESHOLD"].toDouble();
-    }
-    if (parameters.contains("EDGE_THRESHOLD")) {
-        edge_thresh = parameters["EDGE_THRESHOLD"].toDouble();
-    }
-    if (parameters.contains("MIN_PERCENT")) {
-        minPercent = parameters["MIN_PERCENT"].toDouble();
-    }
-    if (parameters.contains("MIN_SCENECHANGE_LENGTH")) {
-        minScene = parameters["MIN_SCENECHANGE_LENGTH"].toInt();
-    }
-}
 
 bool SceneChangeDetection::Close() {
     return true;
@@ -171,8 +77,8 @@ bool SceneChangeDetection::Close() {
  * Calculates the difference in edge pixels between the last two frames.
  * Returns true when the difference exceeds edge_thresh.
  */
-bool SceneChangeDetection::DetectChangeEdges(const cv::Mat &frameGray, cv::Mat &lastFrameEdgeFinal)
-{
+bool SceneChangeDetection::DetectChangeEdges(const cv::Mat &frameGray,
+                                             cv::Mat &lastFrameEdgeFinal) const {
     cv::Mat frameEdges, frameEdgeFinal, edgeDst;
     blur(frameGray, frameEdges, Size(3, 3));
     Canny(frameEdges, frameEdges, 90, 270, 3);
@@ -184,21 +90,14 @@ bool SceneChangeDetection::DetectChangeEdges(const cv::Mat &frameGray, cv::Mat &
     double deltaEdges = sumEdges / frame_pixels;
 
     frameEdges.copyTo(lastFrameEdgeFinal);
-    if (deltaEdges > edge_thresh)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return deltaEdges > edge_thresh;
 }
 
 /*
  * Performs histogram comparison between the last two frames.
  * Returns true when correlation falls below hist_thresh.
  */
-bool SceneChangeDetection::DetectChangeHistogram(const cv::Mat &frame, cv::Mat &lastHist)
+bool SceneChangeDetection::DetectChangeHistogram(const cv::Mat &frame, cv::Mat &lastHist) const
 {
     MatND hist;
     const float* ranges[] = { hranges, sranges };
@@ -217,12 +116,12 @@ bool SceneChangeDetection::DetectChangeHistogram(const cv::Mat &frame, cv::Mat &
  * Calculates average difference in HSV values between the last two frames.
  * Returns true when total average difference exceeds cont_thresh.
  */
-bool SceneChangeDetection::DetectChangeContent(const cv::Mat &frame, cv::Mat &lastFrameHSV)
+bool SceneChangeDetection::DetectChangeContent(const cv::Mat &frame, cv::Mat &lastFrameHSV) const
 {
     Mat frameHSV, dst;
     cvtColor(frame, frameHSV, COLOR_BGR2HSV);
     absdiff(frameHSV, lastFrameHSV, dst);
-    auto sum_ = sum(dst).val;
+    auto sum_ = sum(dst);
     int frame_pixels = dst.size().width * dst.size().height;
     double deltaH = sum_[0] / frame_pixels;
     double deltaS = sum_[1] / frame_pixels;
@@ -230,12 +129,7 @@ bool SceneChangeDetection::DetectChangeContent(const cv::Mat &frame, cv::Mat &la
     double deltaHSVAvg = (deltaH + deltaS + deltaV) / (3.0);
 
     frameHSV.copyTo(lastFrameHSV);
-    if (deltaHSVAvg > cont_thresh)
-    {
-        return true;
-    }
-    else return false;
-
+    return deltaHSVAvg > cont_thresh;
 }
 
 /*
@@ -261,7 +155,8 @@ bool SceneChangeDetection::DetectChangeThreshold(const cv::Mat &frame, cv::Mat &
  * Counts number of pixels that fall under threshold value.
  * If total number of dark pixels exceeds minThreshold, return true.
  */
-bool SceneChangeDetection::frameUnderThreshold(const cv::Mat &image, double threshold, double numPixels)
+bool SceneChangeDetection::frameUnderThreshold(
+        const cv::Mat &image, double threshold, double numPixels) const
 {
     int minThreshold = (int)(numPixels * (1.0 - minPercent));
     int frameAmount = 0;
@@ -343,7 +238,6 @@ std::vector<MPFVideoTrack> SceneChangeDetection::GetDetections(const MPFVideoJob
 
         use_middle_frame = DetectionComponentUtils::GetProperty<bool>(job.job_properties, "USE_MIDDLE_FRAME", use_middle_frame);
 
-        double msec = cap.GetProperty(CAP_PROP_POS_MSEC);
         rows = lastFrame.rows;
         cols = lastFrame.cols;
         numPixels = rows * cols;
@@ -361,6 +255,7 @@ std::vector<MPFVideoTrack> SceneChangeDetection::GetDetections(const MPFVideoJob
              false );
 
         cv::Mat frame;
+        std::map<int, int> keyframes;
         while (cap.Read(frame)) {
 
             cvtColor(frame,frameGray,COLOR_BGR2GRAY);
@@ -409,12 +304,10 @@ std::vector<MPFVideoTrack> SceneChangeDetection::GetDetections(const MPFVideoJob
             tracks.push_back(track);
         }
 
-        keyframes.clear();
         LOG4CXX_INFO(logger_, "[" + job.job_name + "] Processing complete. Found " + std::to_string(tracks.size()) + " tracks.");
         return tracks;
     }
     catch (...) {
-        keyframes.clear();
         Utils::LogAndReThrowException(job, logger_);
     }
 }
