@@ -153,38 +153,26 @@ ENV TRITON_SUPPORT=ON
 
 ARG RUN_TESTS=false
 
-# DEBUG
-COPY --from=download_library_source /apps/source/dlib-sources \
-                                    /apps/source/dlib-sources
-
-# DEBUG
-COPY . .
-
-# DEBUG
-RUN build-component.sh; \
+RUN --mount=target=. \
+    --mount=from=download_library_source,source=/apps/source/dlib-sources,target=/apps/source/dlib-sources \
+    build-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test; ./OcvYoloDetectionTest; fi
 
-# ORIG
-#RUN --mount=target=. \
-#    --mount=from=download_library_source,source=/apps/source/dlib-sources,target=/apps/source/dlib-sources \
-#    build-component.sh; \
-#    if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test; ./OcvYoloDetectionTest; fi
 
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-#FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
-#
-#COPY --from=download_weights /weights $PLUGINS_DIR/OcvYoloDetection/models
-#
-#ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvYoloDetection/lib
-#
-#COPY --from=build_component $BUILD_DIR/plugin/OcvYoloDetection $PLUGINS_DIR/OcvYoloDetection
-#
-#COPY --from=build_component $BUILD_DIR/libmpfOcvYoloDetection.so \
-#                            $PLUGINS_DIR/OcvYoloDetection/lib/
-#
-#LABEL org.label-schema.license="Mixed" \
-#      org.label-schema.name="OpenMPF OpenCV Yolo Detection" \
-#      org.label-schema.schema-version="1.0" \
-#      org.label-schema.url="https://openmpf.github.io" \
-#      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
-#      org.label-schema.vendor="MITRE"
+COPY --from=download_weights /weights $PLUGINS_DIR/OcvYoloDetection/models
+
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvYoloDetection/lib
+
+COPY --from=build_component $BUILD_DIR/plugin/OcvYoloDetection $PLUGINS_DIR/OcvYoloDetection
+
+COPY --from=build_component $BUILD_DIR/libmpfOcvYoloDetection.so \
+                            $PLUGINS_DIR/OcvYoloDetection/lib/
+
+LABEL org.label-schema.license="Mixed" \
+      org.label-schema.name="OpenMPF OpenCV Yolo Detection" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
+      org.label-schema.vendor="MITRE"
