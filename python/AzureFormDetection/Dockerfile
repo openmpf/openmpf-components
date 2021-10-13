@@ -34,7 +34,9 @@ RUN pip3 install --no-cache-dir 'opencv-python>=4.4.0'
 
 ARG RUN_TESTS=false
 
-RUN --mount=target=. install-component.sh; \
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=target=. \
+    install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs.py; fi
 
 
