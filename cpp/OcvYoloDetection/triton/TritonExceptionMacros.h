@@ -29,25 +29,44 @@
 /** ****************************************************************************
 * Macro for throwing exception so we can see where in the code it happened
 ***************************************************************************** */
-#define THROW_TRITON_EXCEPTION(X, MSG) {                                         \
-    MPF::COMPONENT::MPFDetectionError e = (X);                                 \
-    throw MPF::COMPONENT::MPFDetectionException(e,                             \
+#ifdef DEBUG_LINE_NUMBERS
+#define THROW_TRITON_EXCEPTION(X, MSG) {                                       \
+    MPF::COMPONENT::MPFDetectionError err = (X);                               \
+    throw MPF::COMPONENT::MPFDetectionException(err,                           \
        "Error in " + std::string(__FILENAME__)                                 \
         + "[" + std::to_string(__LINE__) + "]: " + (MSG));                     \
 }
+#else
+#define THROW_TRITON_EXCEPTION(X, MSG) {                                       \
+    MPF::COMPONENT::MPFDetectionError err = (X);                               \
+    throw MPF::COMPONENT::MPFDetectionException(err, (MSG));                   \
+}
+#endif
 
 /** ****************************************************************************
 * Macro for error checking / logging of inference server client lib
 ***************************************************************************** */
+// TODO: Don't use MPF_OTHER_DETECTION_ERROR_TYPE.
+#ifdef DEBUG_LINE_NUMBERS
 #define TR_CHECK_OK(X, MSG) {                                                  \
-  triton::client::Error e = (X);                              \
-  if (!e.IsOk()) {                                                             \
+  triton::client::Error err = (X);                                             \
+  if (!err.IsOk()) {                                                           \
     throw MPF::COMPONENT::MPFDetectionException(MPF_OTHER_DETECTION_ERROR_TYPE \
       , std::string("Triton inference server error")                           \
         + " in " + std::string(__FILENAME__)                                   \
         + "[" + std::to_string( __LINE__) + "]"                                \
-        + ": " + (MSG) + ": " + e.Message());                                  \
+        + ": " + (MSG) + ": " + err.Message());                                \
   }                                                                            \
 }
+#else
+#define TR_CHECK_OK(X, MSG) {                                                  \
+  triton::client::Error err = (X);                                             \
+  if (!err.IsOk()) {                                                           \
+    throw MPF::COMPONENT::MPFDetectionException(MPF_OTHER_DETECTION_ERROR_TYPE \
+      , std::string("Triton inference server error: ")                         \
+        + (MSG) + ": " + err.Message());                                       \
+  }                                                                            \
+}
+#endif
 
 #endif // OPENMPF_COMPONENTS_TRITON_EXCEPTION_MACROS_H

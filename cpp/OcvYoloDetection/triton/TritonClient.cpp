@@ -280,7 +280,7 @@ void TritonClient::setupShmRegion(const std::string shm_key, const size_t byte_s
     TR_CHECK_OK(triton::client::MapSharedMemory(shm_fd, 0, byte_size, (void**) &shm_addr),
       "unable to map shared memory region " + shm_key + " to client address space");
     TR_CHECK_OK(triton::client::CloseSharedMemory(shm_fd),
-        "failed ot close shared memory region " + shm_key + " on host");
+        "failed to close shared memory region " + shm_key + " on host");
     TR_CHECK_OK(grpc_->RegisterSystemSharedMemory(shm_key, shm_key, byte_size),
       "unable to register " + shm_key + " shared memory with server \"" + inferencer_->serverUrl() + "\"");
     LOG_TRACE("registered shared memory with key " << shm_key << " of size " << byte_size << " at address " << std::hex << (void*) shm_addr);

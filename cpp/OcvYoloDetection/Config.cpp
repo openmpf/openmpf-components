@@ -81,6 +81,7 @@ Config::Config(const Properties &jobProps)
         , tritonMaxInferConcurrency(GetProperty(jobProps, "TRITON_MAX_INFER_CONCURRENCY", 1))
         , tritonClientTimeout(GetProperty(jobProps, "TRITON_INFER_TIMEOUT_US",0))
         , tritonMaxConnectionSetupAttempts(GetProperty(jobProps, "TRITON_MAX_CONNECTION_SETUP_ATTEMPTS",3))
+        , tritonConnectionSetupAttemptInitialDelay(GetProperty(jobProps, "TRITON_CONNECTION_SETUP_ATTEMPT_INITIAL_DELAY",5))
         , tritonVerboseClient(GetProperty(jobProps, "TRITON_VERBOSE_CLIENT", false))
         , tritonUseSSL(GetProperty(jobProps, "TRITON_USE_SSL",false))
         , tritonUseShm(GetProperty(jobProps, "TRITON_USE_SHM",true))
@@ -120,6 +121,7 @@ std::ostream &operator<<(std::ostream &out, const Config &cfg) {
         << "\"tritonMaxInferConcurrency\":" << cfg.tritonMaxInferConcurrency << ","
         << "\"tritonClientTimeout\":" << cfg.tritonClientTimeout << ","
         << "\"tritonMaxConnectionsSetupAttempts\":" << cfg.tritonMaxConnectionSetupAttempts << ","
+        << "\"tritonConnectionSetupAttemptInitialDelay\":" << cfg.tritonConnectionSetupAttemptInitialDelay << ","
         << "\"tritonVerboseClient\":" << cfg.tritonVerboseClient << ","
         << "\"tritonUseSSL\":" << cfg.tritonUseSSL << ","
         << "\"tritonUseShm\":" << cfg.tritonUseShm << ","

@@ -84,11 +84,11 @@ class TritonInferencer {
 
   private:
 
-    std::string  serverUrl_;
+    std::string serverUrl_;
 
-    std::string  modelName_;
+    std::string modelName_;
 
-    std::string  modelVersion_;
+    std::string modelVersion_;
 
     bool useShm_;
 
@@ -112,11 +112,11 @@ class TritonInferencer {
 
     std::condition_variable freeClientIdsCv_;
 
-    void checkServerIsAlive(int maxAttempts) const;
+    void checkServerIsAlive(int maxAttempts, int initialDelaySeconds) const;
 
-    void checkServerIsReady(int maxAttempts) const;
+    void checkServerIsReady(int maxAttempts, int initialDelaySeconds) const;
 
-    void checkModelIsReady(int maxAttempts) const;
+    void checkModelIsReady(int maxAttempts, int initialDelaySeconds) const;
 
     void getModelInputOutputMetaData();
 

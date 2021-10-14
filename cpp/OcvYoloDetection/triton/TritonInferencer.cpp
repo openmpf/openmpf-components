@@ -39,64 +39,73 @@
 
 using namespace MPF::COMPONENT;
 
-void TritonInferencer::checkServerIsAlive(int maxAttempts) const {
-  bool ok = false;
-  int attempt = 0;
-  while(!ok && attempt < maxAttempts){
-    TR_CHECK_OK(statusClient_->IsServerLive(&ok),
-      "failed to contact Triton inference server \"" + serverUrl_ + "\"");
-    attempt++;
-  }
-  if(!ok){
-    THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
-      "unable to verify that Triton inference server \""
-       + serverUrl_ + "\" is alive.");
-  }else{
-    LOG_INFO("Found inference server \"" + serverUrl_ + "\"");
-  }
-}
+void TritonInferencer::checkServerIsAlive(int maxAttempts, int initialDelaySeconds) const {
+    for (int i = 0; i <= maxAttempts; i++) {
+        bool live;
+        triton::client::Error err = statusClient_->IsServerLive(&live);
+        std::string errMsg;
+        if (!err.IsOk()) {
+            errMsg = "Failed to check liveliness of Triton inference server " + serverUrl_ + ".";
+        } else if (!live) {
+            errMsg = "Triton inference server " + serverUrl_ + " is not live.";
+        } else {
+            LOG_INFO("Triton inference server " << serverUrl_ << " is live.");
+            return;
+        }
 
-
-void TritonInferencer::checkServerIsReady(int maxAttempts) const {
-  bool ok = false;
-  int attempt = 0;
-  while(!ok && attempt < maxAttempts){
-    TR_CHECK_OK(statusClient_->IsServerReady(&ok),
-      "failed to check if Triton inference server \""
-       + serverUrl_ + "\" is ready");
-    attempt++;
-  }
-  if(!ok){
-    THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
-      "Triton inference server \"" + serverUrl_ + "\" is not ready");
-  }else{
-    LOG_INFO("Inference server \"" + serverUrl_ + "\" is ready");
-  }
-}
-
-
-void TritonInferencer::checkModelIsReady(int maxAttempts) const{
-  bool ok = false;
-  int attempt = 0;
-  while(!ok && attempt < maxAttempts){
-    TR_CHECK_OK(statusClient_->IsModelReady(&ok, modelName_, modelVersion_),
-       "unable to check if Triton inference server model \""
-        + modelName_ + "\" ver. " + modelVersion_ + " is ready");
-    if(!ok){
-      TR_CHECK_OK(statusClient_->LoadModel(modelName_),
-        "failed to explicitly load Triton inference server model \"" + modelName_
-         + "\" ver. " + modelName_ + " on server \"" + serverUrl_ + "\"");
+        if (i < maxAttempts) {
+            int sleepSeconds = initialDelaySeconds * (i + 1);
+            LOG_WARN("Sleeping for " << sleepSeconds
+                                     << " seconds before checking liveliness of Triton inference server "
+                                     << serverUrl_ << " again.");
+            sleep(sleepSeconds);
+        } else {
+            THROW_TRITON_EXCEPTION(MPF_NETWORK_ERROR, errMsg);
+        }
     }
-    attempt++;
-  }
-  if(!ok){
-    THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
-     "Triton inference server model \"" + modelName_
-     + "\" is not ready and could not be loaded explicitly");
-  }else{
-    LOG_INFO("Inference server model \"" << modelName_ << " ver. \""
-     << modelVersion_ << "\"" << "\" is loaded and ready for inferencing.");
-  }
+}
+
+
+void TritonInferencer::checkServerIsReady(int maxAttempts, int initialDelaySeconds) const {
+    bool ok = false;
+    int attempt = 0;
+    while (!ok && attempt < maxAttempts) {
+        TR_CHECK_OK(statusClient_->IsServerReady(&ok),
+                    "failed to check if Triton inference server \""
+                    + serverUrl_ + "\" is ready");
+        attempt++;
+    }
+    if (!ok) {
+        THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
+                               "Triton inference server \"" + serverUrl_ + "\" is not ready");
+    } else {
+        LOG_INFO("Inference server \"" + serverUrl_ + "\" is ready");
+    }
+}
+
+
+void TritonInferencer::checkModelIsReady(int maxAttempts, int initialDelaySeconds) const {
+    bool ok = false;
+    int attempt = 0;
+    while (!ok && attempt < maxAttempts) {
+        TR_CHECK_OK(statusClient_->IsModelReady(&ok, modelName_, modelVersion_), // TODO: How long does an attempt take?
+                    "unable to check if Triton inference server model \""
+                    + modelName_ + "\" ver. " + modelVersion_ + " is ready");
+        if (!ok) {
+            TR_CHECK_OK(statusClient_->LoadModel(modelName_),
+                        "failed to explicitly load Triton inference server model \"" + modelName_
+                        + "\" ver. " + modelVersion_ + " on server \"" + serverUrl_ + "\"");
+        }
+        attempt++;
+    }
+    if (!ok) {
+        THROW_TRITON_EXCEPTION(MPF_OTHER_DETECTION_ERROR_TYPE,
+                               "Triton inference server model \"" + modelName_ + "\" ver. " + modelVersion_ +
+                               +" is not ready and could not be loaded explicitly");
+    } else {
+        LOG_INFO("Inference server model \"" << modelName_ << "\" ver. "
+                                             << modelVersion_ << " is loaded and ready for inferencing.");
+    }
 }
 
 
@@ -324,9 +333,9 @@ TritonInferencer::TritonInferencer(const Config &cfg)
     "unable to create Triton inference client for \"" + serverUrl_ + "\"");
 
   // do some check on server and model
-  checkServerIsAlive(cfg.tritonMaxConnectionSetupAttempts);
-  checkServerIsReady(cfg.tritonMaxConnectionSetupAttempts);
-  checkModelIsReady(cfg.tritonMaxConnectionSetupAttempts);
+  checkServerIsAlive(cfg.tritonMaxConnectionSetupAttempts, cfg.tritonConnectionSetupAttemptInitialDelay);
+  checkServerIsReady(cfg.tritonMaxConnectionSetupAttempts, cfg.tritonConnectionSetupAttemptInitialDelay);
+  checkModelIsReady(cfg.tritonMaxConnectionSetupAttempts, cfg.tritonConnectionSetupAttemptInitialDelay);
 
   // get model configuration
   getModelInputOutputMetaData();

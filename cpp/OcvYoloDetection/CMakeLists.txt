@@ -35,6 +35,9 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
 #set(CMAKE_BUILD_TYPE Release)         # build release version
 #set(CMAKE_BUILD_TYPE Debug)           # build debug version
 
+# Uncomment to enable line numbers in log messages and exceptions. Should only be used when debugging, not production.
+add_compile_definitions(DEBUG_LINE_NUMBERS)
+
 include(../ComponentSetup.cmake)
 
 message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}") # DEBUG

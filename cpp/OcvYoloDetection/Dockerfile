@@ -51,7 +51,8 @@ RUN mkdir --parents /apps/source/dlib-sources; \
     curl --location 'http://dlib.net/files/dlib-19.20.tar.bz2' \
         | tar --extract --bzip2 --directory /apps/source/dlib-sources
 
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_setup
 
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=tmpfs,target=/var/cache/yum \
@@ -87,7 +88,7 @@ ENV CXXFLAGS=-std=c++11
 ENV LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
 ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
 
-# install updated cmake 3.18, configure existing opencv
+# install updated cmake 3.21.1, configure existing opencv
 RUN curl --location 'https://github.com/Kitware/CMake/releases/download/v3.21.1/cmake-3.21.1-linux-x86_64.tar.gz' \
         | tar --extract --gzip --directory=/usr --strip-components=1; \
     ln -sf /usr/bin/cmake /usr/bin/cmake3; \
@@ -148,8 +149,10 @@ RUN --mount=type=tmpfs,target=/tmp \
 
 ENV CMAKE_PREFIX_PATH="/opt/triton/lib64/cmake:${CMAKE_PREFIX_PATH}"
 
-ENV TRITON_SUPPORT=ON
 
+FROM build_setup as build_component
+
+ENV TRITON_SUPPORT=ON
 
 ARG RUN_TESTS=false
 
@@ -157,6 +160,62 @@ RUN --mount=target=. \
     --mount=from=download_library_source,source=/apps/source/dlib-sources,target=/apps/source/dlib-sources \
     build-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test; ./OcvYoloDetectionTest; fi
+
+
+########################################################################
+# CLion
+# Refer to: https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
+# Based on: https://github.com/JetBrains/clion-remote/blob/master/Dockerfile.centos7-cpp-env
+#
+# CLion toolchain settings:
+# - CMake: /usr/bin/cmake3
+# - Make: /usr/bin/gmake
+# - C Compiler: /usr/local/bin/gcc
+# - C++ Compiler: /usr/local/bin/g++
+# - Debugger: /usr/bin/gdb
+#
+# CLion CMake settings:
+# - CMake options: -DCMAKE_PREFIX_PATH=/opt/triton/lib64/cmake;/home/mpf/mpf-sdk-install/lib/cmake
+# - Environment: TRITON_SUPPORT=ON
+#
+# CLion deployment settings (SFTP Remote Development):
+# - [Connection] SSH configuration: root@localhost:2222
+# - [Connection] Root path: /home/mpf/component_src
+# - [Mappings] Deployment path: .
+#
+# Build command:
+#   COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker build . --progress=plain --target=clion \
+#   -t openmpf_ocv_yolo_detection:triton-clion
+#
+# Run command:
+#   docker run -d --cap-add sys_ptrace -p127.0.0.1:2222:22 --name clion_remote_env \
+#   openmpf_ocv_yolo_detection:triton-clion
+########################################################################
+FROM build_setup as clion
+
+COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
+
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum install --assumeyes openssh-server; \
+    yum clean all
+
+RUN ssh-keygen -A
+
+RUN ( \
+    echo 'LogLevel DEBUG2'; \
+    echo 'PermitRootLogin yes'; \
+    echo 'PasswordAuthentication yes'; \
+    echo 'Subsystem sftp /usr/libexec/openssh/sftp-server'; \
+  ) > /etc/ssh/sshd_config_test_clion
+
+# Set root user password for SSH access.
+RUN echo "openmpf123" | passwd root --stdin
+
+CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
+########################################################################
+# CLion
+########################################################################
 
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component

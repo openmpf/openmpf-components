@@ -86,31 +86,37 @@
         },
         {
           "name": "TRITON_INFER_TIMEOUT_US",
-          "description": "Time in microseconds after which Triton server client requests timeout.",
+          "description": "Time in microseconds after which Triton server client requests timeout. 0 means the client will wait forever.",
           "type": "INT",
           "defaultValue": "0"
         },
         {
           "name": "TRITON_MAX_CONNECTION_SETUP_ATTEMPTS",
-          "description": "Maximum number of retry attempts for establishing a connection to the inference server",
+          "description": "Maximum number of retry attempts for establishing a connection to the inference server.",
           "type": "INT",
           "defaultValue": "3"
         },
         {
+          "name": "TRITON_CONNECTION_SETUP_ATTEMPT_INITIAL_DELAY",
+          "description": "The time to sleep before trying to connect again (first retry), in seconds. The second retry will wait 2x this long, the third retry will wait 3x this long, etc.",
+          "type": "INT",
+          "defaultValue": "5"
+        },
+        {
           "name": "TRITON_VERBOSE_CLIENT",
-          "description": "Inference server client messaging generates verbose log messages",
+          "description": "If true, inference server client messaging generates verbose log messages.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
           "name": "TRITON_USE_SSL",
-          "description": "Inference server client connection uses SSL",
+          "description": "If true, inference server client connection uses SSL.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
           "name": "TRITON_USE_SHM",
-          "description": "Inference server client communication uses shared memory (requires client and server to be on same machine)",
+          "description": "If true, inference server client communication uses shared memory (requires client and server to be on same machine).",
           "type": "BOOLEAN",
           "defaultValue": "true"
         },

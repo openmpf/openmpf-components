@@ -40,14 +40,19 @@
 /** ****************************************************************************
 * logging shorthand macros
 ****************************************************************************** */
+#ifdef DEBUG_LINE_NUMBERS
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define LOG_PREFIX "." <<  std::setw(20) << std::string(__FUNCTION__).substr(0,20) << ":" << std::setw(4) << __LINE__ <<" - "
-#define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log,LOG_PREFIX << MSG) }
-#define LOG_DEBUG(MSG){ LOG4CXX_DEBUG(Config::log,LOG_PREFIX << MSG) }
-#define LOG_INFO(MSG){ LOG4CXX_INFO (Config::log,LOG_PREFIX << MSG) }
-#define LOG_WARN(MSG){ LOG4CXX_WARN (Config::log,LOG_PREFIX << MSG) }
-#define LOG_ERROR(MSG){ LOG4CXX_ERROR(Config::log,LOG_PREFIX << MSG) }
-#define LOG_FATAL(MSG){ LOG4CXX_FATAL(Config::log,LOG_PREFIX << MSG) }
+#else
+#define LOG_PREFIX ""
+#endif
+
+#define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log, LOG_PREFIX << MSG) }
+#define LOG_DEBUG(MSG){ LOG4CXX_DEBUG(Config::log, LOG_PREFIX << MSG) }
+#define LOG_INFO(MSG){ LOG4CXX_INFO (Config::log, LOG_PREFIX << MSG) }
+#define LOG_WARN(MSG){ LOG4CXX_WARN (Config::log, LOG_PREFIX << MSG) }
+#define LOG_ERROR(MSG){ LOG4CXX_ERROR(Config::log, LOG_PREFIX << MSG) }
+#define LOG_FATAL(MSG){ LOG4CXX_FATAL(Config::log, LOG_PREFIX << MSG) }
 
 
 class Config {
@@ -133,11 +138,14 @@ public:
     /// inference server maximum number of concurrent video frame inferencing request
     int tritonMaxInferConcurrency;
 
-    /// inference server lient request timeout in micro-seconds
+    /// inference server client request timeout in micro-seconds
     uint32_t tritonClientTimeout;
 
     /// max setup attempts for inference server connection
     int tritonMaxConnectionSetupAttempts;
+
+    /// initial delay before attempting inference server connection again
+    int tritonConnectionSetupAttemptInitialDelay;
 
     /// verbose inference server client mode
     bool tritonVerboseClient;
