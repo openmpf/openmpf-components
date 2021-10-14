@@ -108,9 +108,9 @@ void TritonInferencer::checkModelIsReady(int maxAttempts, int initialDelaySecond
                                                       << " is not ready. Attempting to explicitly load.");
             err = statusClient_->LoadModel(modelName_);
             if (!err.IsOk()) {
-                errMsg = "Failed to explicitly load Triton inference server model " + modelNameAndVersion + " : " +
-                         err.Message();
-                THROW_TRITON_EXCEPTION(MPF_COULD_NOT_READ_DATAFILE, errMsg);
+                THROW_TRITON_EXCEPTION(MPF_COULD_NOT_READ_DATAFILE,
+                                       "Failed to explicitly load Triton inference server model " +
+                                       modelNameAndVersion + " : " + err.Message());
             }
         } else {
             LOG_INFO("Triton inference server model " << modelNameAndVersion << " is ready.");
@@ -131,17 +131,18 @@ void TritonInferencer::checkModelIsReady(int maxAttempts, int initialDelaySecond
 
 
 void TritonInferencer::getModelInputOutputMetaData(){
+  std::string modelNameAndVersion = modelVersion_.empty() ? modelName_ : modelName_ + " ver. " + modelVersion_;
 
   // get model configuration
   inference::ModelConfigResponse modelConfigResponse;
   TR_CHECK_OK(statusClient_->ModelConfig(
     &modelConfigResponse, modelName_, modelVersion_),
-    "unable to get \"" + modelName_ + "\" model configuration from server \""
-     + serverUrl_ + "\"");
+    MPF_COULD_NOT_READ_DATAFILE,
+    "Unable to get model " + modelNameAndVersion + " configuration from Triton inference server " + serverUrl_ + ".");
 
   // get model inputs and outputs data from server
   maxBatchSize_ = modelConfigResponse.config().max_batch_size();
-  LOG_INFO("model max supported batch size = " << std::to_string(maxBatchSize_));
+  LOG_INFO("Model " + modelNameAndVersion + " max supported batch size: " << std::to_string(maxBatchSize_));
 
   // get inputs meta data in inputsMeta TensorMeta vector
   inputsMeta.reserve(modelConfigResponse.config().input_size());
@@ -151,9 +152,10 @@ void TritonInferencer::getModelInputOutputMetaData(){
       modelConfigResponse.config().input(i), input_shm_offset);
     input_shm_offset += inputsMeta.back().byte_size * maxBatchSize_;
     LOG_INFO("input[" << i << "]  = \"" << inputsMeta.back().name << "\" "
-              << inputsMeta.back().type << inputsMeta.back().shape
-              << " bytes:" << inputsMeta.back().byte_size
-              << " shm_offset:" << inputsMeta.back().shm_offset);
+              << inputsMeta.back().type << " "
+              << inputsMeta.back().shape
+              << " bytes: " << inputsMeta.back().byte_size
+              << " shm_offset: " << inputsMeta.back().shm_offset);
   }
 
   // get outputs meta data in outputsMeta TensorMeta vector
@@ -164,11 +166,11 @@ void TritonInferencer::getModelInputOutputMetaData(){
       modelConfigResponse.config().output(o), output_shm_offset);
     output_shm_offset += outputsMeta.back().byte_size * maxBatchSize_;
     LOG_INFO("output[" << o << "] = \"" << outputsMeta.back().name << "\" "
-              << outputsMeta.back().type << outputsMeta.back().shape
-              << " bytes:" << outputsMeta.back().byte_size
-              << " shm_offset:" << outputsMeta.back().shm_offset);
+              << outputsMeta.back().type << " "
+              << outputsMeta.back().shape
+              << " bytes: " << outputsMeta.back().byte_size
+              << " shm_offset: " << outputsMeta.back().shm_offset);
   }
-
 }
 
 
@@ -181,8 +183,10 @@ void TritonInferencer::removeAllShmRegions(const std::string prefix){
       if(!region_name.compare(0,prefix.size(),prefix)){
         // found existing mapping with same prefix, so delete it for clean start
         TR_CHECK_OK(statusClient_->UnregisterSystemSharedMemory(region_name),
-            "unable to unregister system shared memory region \"" + region_name + "\" from \"" + serverUrl_ + "\"");
-        LOG_TRACE("removed existing registered shm region " << region_name << " of size:" << p.second.byte_size() << " with key:" << p.second.key());
+            MPF_MEMORY_ALLOCATION_FAILED,
+            "Unable to unregister system shared memory region \"" + region_name +
+            "\" from Triton inference server" + serverUrl_ + ".");
+        LOG_TRACE("Removed existing registered shm region " << region_name << " of size: " << p.second.byte_size() << " with key: " << p.second.key());
       }
     }
 }
@@ -213,8 +217,7 @@ void TritonInferencer::infer(
     }
 
     int clientId =  acquireClientIdBlocking();
-    LOG_TRACE("inferencing frames[" << begin->idx << ".."
-      << (end - 1)->idx << "] with client[" << clientId << "]");
+    LOG_TRACE("Inferencing frames[" << begin->idx << ".." << (end - 1)->idx << "] with client[" << clientId << "]");
 
     clients_[clientId]->inferAsync(
       batchInputBlobs,
@@ -263,7 +266,7 @@ void TritonInferencer::infer(
     //   with code similar to opencv's blobFromImages
     cv::Mat blob;
     if(client.usingShmInput()){
-      LOG_TRACE("creating shm blob of shape:" << shape << "at address " << std::hex << (void*)client.inputs_shm());
+      LOG_TRACE("Creating shm blob of shape: " << shape << " at address:" << std::hex << (void*)client.inputs_shm());
       blob = cv::Mat(4, shape, CV_32F, (void*)client.inputs_shm());
     }else{
       blob = cv::Mat(4, shape, CV_32F);
@@ -278,8 +281,7 @@ void TritonInferencer::infer(
       cv::split(resizedImage, ch);
     }
 
-    LOG_TRACE("inferencing frames[" << begin->idx << ".."
-      << (end - 1)->idx << "] with client[" << client.id << "]");
+    LOG_TRACE("Inferencing frames[" << begin->idx << ".." << (end - 1)->idx << "] with client[" << client.id << "]");
     client.inferAsync(0, blob,
 
       [this, extractDetectionsFun, clientId, begin, end](){
@@ -300,7 +302,7 @@ void TritonInferencer::releaseClientId(int clientId){
   {
     std::lock_guard<std::mutex> lk(freeClientIdsMtx_);
     freeClientIds_.insert(clientId);
-    LOG_TRACE("freeing client["<< clientId <<"]");
+    LOG_TRACE("Freeing client["<< clientId <<"]");
   }
   freeClientIdsCv_.notify_all();
 }
@@ -309,11 +311,11 @@ void TritonInferencer::releaseClientId(int clientId){
 void TritonInferencer::waitTillAllClientsReleased(){
   if(freeClientIds_.size() != clients_.size()){
     std::unique_lock<std::mutex> lk(freeClientIdsMtx_);
-    LOG_TRACE("waiting till all clients freed");
+    LOG_TRACE("Waiting till all clients freed.");
     freeClientIdsCv_.wait(lk, [this] {
        return freeClientIds_.size() == clients_.size(); });
   }
-  LOG_TRACE("all clients were freed");
+  LOG_TRACE("All clients were freed.");
 
 }
 
@@ -322,7 +324,7 @@ int TritonInferencer::acquireClientIdBlocking(){
 
   std::unique_lock<std::mutex> lk(freeClientIdsMtx_);
   if(freeClientIds_.empty()){
-    LOG_TRACE("wait for a free client");
+    LOG_TRACE("Wait for a free client.");
     freeClientIdsCv_.wait(lk, [this] { return !freeClientIds_.empty(); });
   }
   auto it = freeClientIds_.begin();
@@ -341,17 +343,19 @@ TritonInferencer::TritonInferencer(const Config &cfg)
   , verboseClient_(cfg.tritonVerboseClient)
   , inferOptions_(modelName_){
 
+  std::string modelNameAndVersion = modelVersion_.empty() ? modelName_ : modelName_ + " ver. " + modelVersion_;
+
   // setup remaining inferencing options
   inferOptions_.model_version_ = modelVersion_;
   inferOptions_.client_timeout_ = cfg.tritonClientTimeout;
-  LOG_TRACE("Created inference options for " << modelName_ << " ver."
-    << modelVersion_ << " and a client timeout of " << std::fixed
-    << std::setprecision(6) << inferOptions_.client_timeout_ / 1e6 << " sec.");
+  LOG_TRACE("Created inference options for " << modelNameAndVersion << " and a client timeout of "
+    << std::fixed << std::setprecision(6) << inferOptions_.client_timeout_ / 1e6 << " seconds.");
 
   // initialize client for server status requests
   TR_CHECK_OK(triton::client::InferenceServerGrpcClient::Create(
     &statusClient_,serverUrl_, cfg.tritonVerboseClient, cfg.tritonUseSSL, sslOptions_),
-    "unable to create Triton inference client for \"" + serverUrl_ + "\"");
+    MPF_NETWORK_ERROR,
+    "Unable to create Triton inference client for " + serverUrl_ + ".");
 
   // do some check on server and model
   checkServerIsAlive(cfg.tritonMaxConnectionSetupAttempts, cfg.tritonConnectionSetupAttemptInitialDelay);
@@ -367,7 +371,7 @@ TritonInferencer::TritonInferencer(const Config &cfg)
   }
 
   // create clients for concurrent inferencing
-  LOG_TRACE("Creating " << cfg.tritonMaxInferConcurrency << " clients for concurrent inferencing");
+  LOG_TRACE("Creating " << cfg.tritonMaxInferConcurrency << " clients for concurrent inferencing.");
   for(int i = 0; i < cfg.tritonMaxInferConcurrency; i++){
     clients_.emplace_back(std::unique_ptr<TritonClient>(
       new TritonClient(i, this )));

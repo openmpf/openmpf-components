@@ -87,7 +87,7 @@ namespace {
         THROW_TRITON_EXCEPTION(MPF_DETECTION_FAILED,
                             "Unsupported inference::DataType = "
                             + std::to_string(dt)
-                            + " in cv:Mat conversion");
+                            + " in cv:Mat conversion.");
     }
   }
 

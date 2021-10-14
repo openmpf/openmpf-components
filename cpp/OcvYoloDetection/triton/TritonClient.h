@@ -48,8 +48,6 @@ class TritonClient {
 
     ~TritonClient();
 
-    void infer(const std::vector<cv::Mat> &inputBlobs);
-
     using CallbackFunc = std::function<void()>;
 
     void inferAsync(const std::vector<cv::Mat> &inputBlobs,
