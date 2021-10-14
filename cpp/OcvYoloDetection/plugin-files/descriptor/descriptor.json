@@ -92,9 +92,9 @@
         },
         {
           "name": "TRITON_MAX_CONNECTION_SETUP_ATTEMPTS",
-          "description": "Maximum number of retry attempts for establishing a connection to the inference server.",
+          "description": "Maximum number of retry attempts for establishing a connection to the inference server after the first connection failure.",
           "type": "INT",
-          "defaultValue": "3"
+          "defaultValue": "5"
         },
         {
           "name": "TRITON_CONNECTION_SETUP_ATTEMPT_INITIAL_DELAY",
