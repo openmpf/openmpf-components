@@ -146,7 +146,7 @@ void TritonClient::prepareInferInputs(){
 
 void TritonClient::setInferInputsData(const std::vector<cv::Mat> &blobs){
 
-    assert(("all model inputs have to be specified" , blobs.size() == inferencer_->inputsMeta.size()));
+    assert(("All model inputs have to be specified." , blobs.size() == inferencer_->inputsMeta.size()));
 
     for(int i = 0; i < blobs.size(); ++i){
 

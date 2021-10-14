@@ -80,6 +80,8 @@ class TritonInferencer {
 
     void waitTillAllClientsReleased();
 
+    std::string getModelNameAndVersion() const;
+
     TritonInferencer(const Config &cfg);
 
   private:

@@ -192,9 +192,9 @@ namespace {
                                                      detection.frame.getRect(),
                                                      config.RN, config.QN);
                 }
-                // add 1st detection to track
+                // add first detection to track
                 assignedTracks.back().add(std::move(detection));
-                LOG_TRACE("created new track " << assignedTracks.back());
+                LOG_TRACE("Created new track " << assignedTracks.back());
 
             }
         }
@@ -363,7 +363,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             int frameBatchKey = tmp.back().idx;
             frameBatches.insert(std::make_pair(frameBatchKey,std::move(tmp)));
 
-            LOG_TRACE("processing frames [" << frameBatches.at(frameBatchKey).front().idx << "..."
+            LOG_TRACE("Processing frames [" << frameBatches.at(frameBatchKey).front().idx << "..."
                                             << frameBatches.at(frameBatchKey).back().idx << "]");
             yoloNetwork.GetDetections(
               frameBatches.at(frameBatchKey),

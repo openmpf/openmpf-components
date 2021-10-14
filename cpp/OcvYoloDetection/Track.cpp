@@ -125,11 +125,11 @@ bool Track::ocvTrackerPredict(const Frame &frame, const long maxFrameGap, cv::Re
             // could try different trackers here. e.g. cv::TrackerKCF::create();
             ocvTracker_ = cv::TrackerMOSSE::create();
             ocvTracker_->init(back().frame.data, bbox);
-            LOG_TRACE("tracker created for " << back());
+            LOG_TRACE("Tracker created for " << back());
             ocvTrackerStartFrameIdx_ = frame.idx;
         }
         else {
-            LOG_TRACE("can't create tracker for " << back());
+            LOG_TRACE("Can't create tracker for " << back());
             return false;
         }
     }
@@ -141,14 +141,14 @@ bool Track::ocvTrackerPredict(const Frame &frame, const long maxFrameGap, cv::Re
             prediction.y = std::round(pred.y);
             prediction.width = std::round(pred.width);
             prediction.height = std::round(pred.height);
-            LOG_TRACE("tracking " << back() << " to " << prediction);
+            LOG_TRACE("Tracking " << back() << " to " << prediction);
             return true;
         }
         else {
-            LOG_TRACE("could not track " << back() << " to new location");
+            LOG_TRACE("Could not track " << back() << " to new location.");
         }
     }
-    LOG_TRACE("extrapolation tracking stopped" << back()
+    LOG_TRACE("Extrapolation tracking stopped" << back()
                                                << " frame gap = "
                                                << frame.idx - ocvTrackerStartFrameIdx_ << " > "
                                                << maxFrameGap);
@@ -178,7 +178,7 @@ void Track::kalmanPredict(const float t, const float edgeSnap) {
         kalmanFilterTracker_->setStatePreFromBBox(
                 snapToEdges(back().getRect(), kalmanFilterTracker_->predictedBBox(),
                             back().frame.data.size(), edgeSnap));
-        LOG_TRACE("kf pred:" << back().getRect() << " => " << kalmanFilterTracker_->predictedBBox());
+        LOG_TRACE("kf pred: " << back().getRect() << " => " << kalmanFilterTracker_->predictedBBox());
     }
 }
 
@@ -187,7 +187,7 @@ void Track::kalmanPredict(const float t, const float edgeSnap) {
 *************************************************************************** */
 void Track::kalmanCorrect(const float edgeSnap) {
     if (kalmanFilterTracker_) {
-        LOG_TRACE("kf meas:" << back().getRect());
+        LOG_TRACE("kf meas: " << back().getRect());
         kalmanFilterTracker_->correct(back().getRect());
         cv::Rect2i corrected = snapToEdges(back().getRect(), kalmanFilterTracker_->correctedBBox(),
                                            back().frame.data.size(), edgeSnap);
@@ -198,7 +198,7 @@ void Track::kalmanCorrect(const float edgeSnap) {
             kalmanFilterTracker_->setStatePostFromBBox(corrected);
             back().setRect(corrected);
         }
-        LOG_TRACE("kf corr:" << back().getRect());
+        LOG_TRACE("kf corr: " << back().getRect());
     }
 }
 

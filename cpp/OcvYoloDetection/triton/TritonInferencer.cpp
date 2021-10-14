@@ -94,7 +94,7 @@ void TritonInferencer::checkServerIsReady(int maxAttempts, int initialDelaySecon
 
 
 void TritonInferencer::checkModelIsReady(int maxAttempts, int initialDelaySeconds) const {
-    std::string modelNameAndVersion = modelVersion_.empty() ? modelName_ : modelName_ + " ver. " + modelVersion_;
+    std::string modelNameAndVersion = getModelNameAndVersion();
 
     for (int i = 0; i <= maxAttempts; i++) {
         bool ready;
@@ -131,7 +131,7 @@ void TritonInferencer::checkModelIsReady(int maxAttempts, int initialDelaySecond
 
 
 void TritonInferencer::getModelInputOutputMetaData(){
-  std::string modelNameAndVersion = modelVersion_.empty() ? modelName_ : modelName_ + " ver. " + modelVersion_;
+  std::string modelNameAndVersion = getModelNameAndVersion();
 
   // get model configuration
   inference::ModelConfigResponse modelConfigResponse;
@@ -236,7 +236,7 @@ void TritonInferencer::infer(
 }
 
 
-/// inference single frame batch using 1st input tensor
+/// inference single frame batch using first  input tensor
 void TritonInferencer::infer(
   const std::vector<Frame> &frames,
   const TritonTensorMeta &inputMeta,
@@ -334,6 +334,11 @@ int TritonInferencer::acquireClientIdBlocking(){
 }
 
 
+std::string TritonInferencer::getModelNameAndVersion() const {
+    return modelVersion_.empty() ? modelName_ : modelName_ + " ver. " + modelVersion_;
+}
+
+
 TritonInferencer::TritonInferencer(const Config &cfg)
   : serverUrl_(cfg.tritonServer)
   , modelName_(cfg.tritonModelName + "-" + std::to_string(cfg.netInputImageSize))
@@ -343,7 +348,7 @@ TritonInferencer::TritonInferencer(const Config &cfg)
   , verboseClient_(cfg.tritonVerboseClient)
   , inferOptions_(modelName_){
 
-  std::string modelNameAndVersion = modelVersion_.empty() ? modelName_ : modelName_ + " ver. " + modelVersion_;
+  std::string modelNameAndVersion = getModelNameAndVersion();
 
   // setup remaining inferencing options
   inferOptions_.model_version_ = modelVersion_;

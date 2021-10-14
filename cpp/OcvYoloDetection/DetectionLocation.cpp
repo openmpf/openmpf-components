@@ -157,7 +157,7 @@ float DetectionLocation::featureDist(Track &track) {
     // This does pixel interpolation since the center may not correspond to an exact pixel location.
     cv::getRectSubPix(frame.data, trackRoi.size(), center, comp);
 
-    // compute pixel wise absolute diff (could do HSV transform 1st?!)
+    // compute pixel wise absolute diff (could do HSV transform first ?!)
     cv::absdiff(track.back().frame.data(trackRoi), comp, comp);
     assert(frame.data.depth() == CV_8U);
 

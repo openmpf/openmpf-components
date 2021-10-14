@@ -59,14 +59,11 @@ public:
             std::vector<Frame> &frames,
             ProcessFrameDetectionsFunc processFrameDetectionsFun,
             const Config &config){
-        LOG_TRACE("start");
         if (!config.tritonEnabled) {
             processFrameDetectionsFun(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
         } else {
-            LOG_TRACE("using triton");
             GetDetectionsTriton(frames, processFrameDetectionsFun, config);
         }
-        LOG_TRACE("end");
     }
 
     // Determines if the cached YoloNetwork should be reused or not.
@@ -112,35 +109,35 @@ private:
         if(!config.tritonEnabled) return nullptr;
 
         std::unique_ptr<TritonInferencer> tritonInferencer(new TritonInferencer(config));
+        std::string modelNameAndVersion = tritonInferencer->getModelNameAndVersion();
+
         if( tritonInferencer->inputsMeta.size() != 1){
             std::stringstream ss;
-            ss << "configured yolo inference server model \"" << tritonInferencer->modelName()
-               << "\" Ver. " << tritonInferencer->modelVersion() << " has "
-               << tritonInferencer->inputsMeta.size() << " inputs, only one is expected";
+            ss << "Configured Triton inference server model " << modelNameAndVersion << " has "
+               << tritonInferencer->inputsMeta.size() << " inputs, but only one is expected.";
             throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
         }
 
-        if(   tritonInferencer->inputsMeta.at(0).shape[0] != 3
+        if(tritonInferencer->inputsMeta.at(0).shape[0] != 3
               || tritonInferencer->inputsMeta.at(0).shape[1] != tritonInferencer->inputsMeta.at(0).shape[2]
               || tritonInferencer->inputsMeta.at(0).shape[2] != config.netInputImageSize){
             std::stringstream ss;
-            ss << "configured yolo inference server model \"" << tritonInferencer->modelName()
-               << "\" Ver. " << tritonInferencer->modelVersion() << " has 1st input shape "
+            ss << "Configured Triton inference server model " << modelNameAndVersion
+               << " has first input shape "
                << tritonInferencer->inputsMeta.at(0).shape << ", but data has shape "
-               << std::vector<int>{3,config.netInputImageSize,config.netInputImageSize};
+               << std::vector<int>{3,config.netInputImageSize, config.netInputImageSize} << ".";
             throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
         }
 
-        if(  tritonInferencer->outputsMeta.at(0).shape[0] != OUTPUT_BLOB_DIM_1
+        if(tritonInferencer->outputsMeta.at(0).shape[0] != OUTPUT_BLOB_DIM_1
              || tritonInferencer->outputsMeta.at(0).shape[1] != 1
              || tritonInferencer->outputsMeta.at(0).shape[2] != 1){
             std::stringstream ss;
-            ss << "configured yolo inference server model \"" << tritonInferencer->modelName()
-               << "\" Ver. " << tritonInferencer->modelVersion() << " has 1st output shape "
-               << tritonInferencer->outputsMeta.at(0).shape << ", but data has shape "
+            ss << "Configured Triton inference server model " << modelNameAndVersion
+               << " has first output shape "
+               << tritonInferencer->outputsMeta.at(0).shape << ", but "
                << std::vector<int>{OUTPUT_BLOB_DIM_1,1,1} << " was expected.";
             throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
-
         }
 
         return tritonInferencer;
@@ -152,7 +149,6 @@ private:
             ProcessFrameDetectionsFunc componentProcessLambda,
             const Config &config) {
 
-        //std::vector<cv::Mat> inputBlobs = {ConvertToBlob(frames.begin(), frames.end(), config.netInputImageSize)};
         frameIdxComplete_ = frames.front().idx - 1;
 
         tritonInferencer_->infer(frames,
@@ -166,15 +162,15 @@ private:
                  cv::Mat outBlob = outBlobs.at(0); // yolo only has one output tensor
                  int numFrames = end - begin;
 
-                 LOG_TRACE("frameCount = " << numFrames << " outBlob.size() = "
+                 LOG_TRACE("frameCount: " << numFrames << " outBlob.size(): "
                                            << std::vector<int>(outBlob.size.p,
                                                                outBlob.size.p + outBlob.dims));
-                 assert(("blob's 1st dim should equal number of frames", outBlob.size[0] ==
+                 assert(("Blob's first dim should equal number of frames.", outBlob.size[0] ==
                                                                          numFrames));
 
-                 LOG_TRACE("received outBlob[" << outBlob.size[0] << "," << outBlob.size[1] << ","
-                                               << outBlob.size[2] << "," << outBlob.size[3] << "]");
-                 assert(("output blob shape should be [frames, detections, 1, 1]",
+                 LOG_TRACE("Received outBlob[" << outBlob.size[0] << "," << outBlob.size[1] << ","
+                                               << outBlob.size[2] << "," << outBlob.size[3] << "].");
+                 assert(("Output blob shape should be [frames, detections, 1, 1].",
                          outBlob.size[0] <= tritonInferencer_->maxBatchSize()
                          && outBlob.size[1] == OUTPUT_BLOB_DIM_1
                          && outBlob.size[2] == 1
@@ -184,9 +180,7 @@ private:
                  std::vector<std::vector<DetectionLocation>> detectionsGroupedByFrame;
                  detectionsGroupedByFrame.reserve(numFrames);
 
-                 LOG_TRACE(
-                         "extracting detections for frames[" << begin->idx << ".." << (end - 1)->idx
-                                                             << "]");
+                 LOG_TRACE("Extracting detections for frames[" << begin->idx << ".." << (end - 1)->idx << "].");
                  int i = 0;
                  for (auto frameIt = begin; frameIt != end; ++i, ++frameIt) {
                      detectionsGroupedByFrame.push_back(
@@ -198,22 +192,20 @@ private:
                      int frameIdxToWaitFor = begin->idx - 1;
                      int frameIdxLast = (end - 1)->idx;
                      std::unique_lock<std::mutex> lk(frameIdxCompleteMtx_);
-                     LOG_TRACE("waiting for frame[" << frameIdxToWaitFor << "] to complete");
+                     LOG_TRACE("Waiting for frame[" << frameIdxToWaitFor << "] to complete.");
                      frameIdxCompleteCv_.wait(lk,
                                               [this, frameIdxToWaitFor] {
                                                   return frameIdxComplete_ >= frameIdxToWaitFor;
                                               });
-                     LOG_TRACE("done waiting for frame[" << frameIdxToWaitFor << "]");
+                     LOG_TRACE("Done waiting for frame[" << frameIdxToWaitFor << "].");
 
                      componentProcessLambda(std::move(detectionsGroupedByFrame), begin, end);
 
                      frameIdxComplete_ = frameIdxLast;
-                     LOG_TRACE(
-                             "completed frames[" << begin->idx << ".." << frameIdxComplete_ << "]");
+                     LOG_TRACE("Completed frames[" << begin->idx << ".." << frameIdxComplete_ << "].");
 
                  }
                  frameIdxCompleteCv_.notify_all();
-
              });
     }
 
@@ -264,7 +256,7 @@ private:
                     CreateDetectionLocationTriton(frame, boundingBoxes.at(keepIdx),
                                                  topConfidences.at(keepIdx), classifications.at(keepIdx), config));
 
-            //always calc DFT in callback threads for performance reasons
+            // always calc DFT in callback threads for performance reasons
             detections.back().getDFTFeature();
         }
         return detections;
@@ -278,7 +270,7 @@ private:
             const int classIdx,
             const Config &config) const {
 
-        assert(("classIdx = " + std::to_string(classIdx) + " >= " + std::to_string(names_.size()) , classIdx < names_.size()));
+        assert(("classIdx: " + std::to_string(classIdx) + " >= " + std::to_string(names_.size()) , classIdx < names_.size()));
 
         cv::Mat1f classFeature(1, names_.size(), 0.0);
         classFeature.at<float>(0, classIdx) = 1.0;
@@ -291,6 +283,7 @@ private:
         detection.detection_properties.emplace("CLASSIFICATION", names_.at(classIdx));
         detection.detection_properties.emplace("CLASSIFICATION LIST", names_.at(classIdx));
         detection.detection_properties.emplace("CLASSIFICATION CONFIDENCE LIST", std::to_string(score));
+
         return detection;
     }
 };

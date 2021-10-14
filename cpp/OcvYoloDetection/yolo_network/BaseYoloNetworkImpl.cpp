@@ -288,9 +288,7 @@ void BaseYoloNetworkImpl::GetDetections(
         std::vector<Frame> &frames,
         ProcessFrameDetectionsFunc processFrameDetectionsFun,
         const Config &config){
-    LOG_TRACE("start");
     processFrameDetectionsFun(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
-    LOG_TRACE("end");
 }
 
 // Determines if the cached YoloNetwork should be reused or not.
