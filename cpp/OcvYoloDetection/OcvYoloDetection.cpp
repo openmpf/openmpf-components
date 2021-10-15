@@ -392,7 +392,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
               config);
         }
 
-        assert(("all frame batches should have been processed", frameBatches.empty()));
+        assert(("All frame batches should have been processed.", frameBatches.empty()));
 
         LOG_TRACE("Converting remaining active tracks to MPF tracks");
         // Convert any remaining active tracks to MPFVideoTracks. Remove any detections

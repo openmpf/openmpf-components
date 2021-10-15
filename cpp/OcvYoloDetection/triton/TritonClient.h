@@ -48,10 +48,16 @@ class TritonClient {
 
     ~TritonClient();
 
+    /* TODO: Remove this?
+    void infer(const std::vector<cv::Mat> &inputBlobs);
+    */
+
     using CallbackFunc = std::function<void()>;
 
+    /* TODO: Remove this?
     void inferAsync(const std::vector<cv::Mat> &inputBlobs,
                     CallbackFunc inferencerLambda);
+    */
 
     void inferAsync(int inferInputIdx, const cv::Mat& shmBlob, CallbackFunc inferencerLambda);
 
@@ -59,19 +65,18 @@ class TritonClient {
 
     static const std::string& shm_key_prefix();
 
+    // TODO: Move definitions to *.cpp. Prefix with get*.
+
     const bool usingShmInput() const {return !inputs_shm_key.empty();}
 
     const bool usingShmOutput() const {return !outputs_shm_key.empty();}
 
     const uint8_t* inputs_shm() const {return inputs_shm_;}
 
+    // TODO: Remove this?
     const uint8_t* outputs_shm() const {return outputs_shm_;}
 
   private:
-
-    std::mutex mtx_;
-
-    std::condition_variable cv_;
 
     const TritonInferencer *inferencer_;
 

@@ -31,17 +31,15 @@ set(CMAKE_CXX_STANDARD 11)
 #ADD_DEFINITIONS("-std=c++11")
 add_definitions(-Wfatal-errors)
 
-set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
+# TODO: Use RelWithDebInfo in final version
+#set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
 #set(CMAKE_BUILD_TYPE Release)         # build release version
-#set(CMAKE_BUILD_TYPE Debug)           # build debug version
+set(CMAKE_BUILD_TYPE Debug)           # build debug version
 
 # Uncomment to enable line numbers in log messages and exceptions. Should only be used when debugging, not production.
-add_compile_definitions(DEBUG_LINE_NUMBERS)
+add_compile_definitions(DEBUG_LINE_NUMBERS) # TODO: Comment this out in final version
 
 include(../ComponentSetup.cmake)
-
-message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}") # DEBUG
-message("CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}") # DEBUG
 
 if ($ENV{TRITON_SUPPORT})
     message("Building with Triton support")

@@ -62,7 +62,7 @@ cv::Mat Frame::getDataAsResizedFloat(
           targetSize.height - resizedData.cols - leftPadding,
           cvBorderType,
           cvBorderValue);
-  assert(("frame resize did not resulted in desired dimensions",
+  assert(("Frame resize did not result in desired dimensions.",
           targetSize.width == resizedData.cols
            && targetSize.height == resizedData.rows ));
   resizedData.convertTo(resizedData,CV_32F,1/255.0);

@@ -43,6 +43,8 @@ class TritonInferencer {
 
     std::vector<TritonTensorMeta> outputsMeta;
 
+    // TODO: Move definitions to *.cpp. Prefix with get*.
+
     const triton::client::InferOptions& inferOptions() const {return inferOptions_;}
 
     const triton::client::SslOptions& sslOptions() const {return sslOptions_;}
@@ -66,9 +68,11 @@ class TritonInferencer {
                          std::vector<Frame>::const_iterator begin,
                          std::vector<Frame>::const_iterator end)>;
 
+    /* TODO: Remove this?
     void infer(const std::vector<Frame> &frames,
                const std::vector<cv::Mat> &inputBlobs,
                ExtractDetectionsFunc extractDetectionsFun);
+    */
 
     void infer(const std::vector<Frame> &frames,
                const TritonTensorMeta &inputMeta,

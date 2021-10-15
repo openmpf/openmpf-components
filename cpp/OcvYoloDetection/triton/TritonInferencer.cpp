@@ -191,7 +191,7 @@ void TritonInferencer::removeAllShmRegions(const std::string prefix){
     }
 }
 
-
+/* TODO: Remove this?
 /// inference if there are multiple input tensors
 void TritonInferencer::infer(
   const std::vector<Frame> &frames,
@@ -230,20 +230,19 @@ void TritonInferencer::infer(
         extractDetectionsFun(results, begin, end);
         releaseClientId(clientId);
       }
-
     );
   }
 }
+*/
 
-
-/// inference single frame batch using first  input tensor
+/// inference single frame batch using first input tensor
 void TritonInferencer::infer(
   const std::vector<Frame> &frames,
   const TritonTensorMeta &inputMeta,
   ExtractDetectionsFunc extractDetectionsFun){
 
-  assert(("input blob is expected to be a 4D tensor",inputMeta.shape.size() == 3));
-  assert(("2nd input tensor dim is expected to be 3 color channels", inputMeta.shape[0] == 3));
+  assert(("Input blob is expected to be a 4D tensor.", inputMeta.shape.size() == 3));
+  assert(("Second input tensor dim is expected to be 3 color channels.", inputMeta.shape[0] == 3));
   int shape[] = {-1, 3, static_cast<int>(inputMeta.shape[1]), static_cast<int>(inputMeta.shape[2])};
 
   std::vector<Frame>::const_iterator begin;
@@ -292,7 +291,6 @@ void TritonInferencer::infer(
         extractDetectionsFun(results, begin, end);
         releaseClientId(clientId);
       }
-
     );
   }
 }
@@ -316,7 +314,6 @@ void TritonInferencer::waitTillAllClientsReleased(){
        return freeClientIds_.size() == clients_.size(); });
   }
   LOG_TRACE("All clients were freed.");
-
 }
 
 
@@ -381,6 +378,5 @@ TritonInferencer::TritonInferencer(const Config &cfg)
     clients_.emplace_back(std::unique_ptr<TritonClient>(
       new TritonClient(i, this )));
     freeClientIds_.insert(i);
-
   }
 }
