@@ -191,49 +191,6 @@ void TritonInferencer::removeAllShmRegions(const std::string prefix){
     }
 }
 
-/* TODO: Remove this?
-/// inference if there are multiple input tensors
-void TritonInferencer::infer(
-  const std::vector<Frame> &frames,
-  const std::vector<cv::Mat> &inputBlobs,
-  ExtractDetectionsFunc extractDetectionsFun){
-
-  std::vector<Frame>::const_iterator begin;
-  std::vector<Frame>::const_iterator end(frames.begin());
-
-  while(end != frames.end()){
-
-    begin = end;
-    int size = std::min(maxBatchSize_, static_cast<int>(frames.end() - begin));
-    end = end + size;
-
-    // create ocv matrix headers as window into inputBlobs allocated data
-    std::vector<cv::Mat> batchInputBlobs;
-    for(auto& inputBlob : inputBlobs){
-      std::vector<int> shape(inputBlob.size.p, inputBlob.size.p + inputBlob.dims);
-      shape[0] = size;
-      batchInputBlobs.emplace_back(shape.size(), shape.data(),
-        inputBlob.type(), (void*)inputBlob.ptr(begin - frames.begin()));
-    }
-
-    int clientId =  acquireClientIdBlocking();
-    LOG_TRACE("Inferencing frames[" << begin->idx << ".." << (end - 1)->idx << "] with client[" << clientId << "]");
-
-    clients_[clientId]->inferAsync(
-      batchInputBlobs,
-
-      [this, extractDetectionsFun, clientId, begin, end](){
-        std::vector<cv::Mat> results;
-        for(int i = 0; i < outputsMeta.size(); ++i){
-          results.push_back(clients_[clientId]->getOutput(outputsMeta[i]));
-        }
-        extractDetectionsFun(results, begin, end);
-        releaseClientId(clientId);
-      }
-    );
-  }
-}
-*/
 
 /// inference single frame batch using first input tensor
 void TritonInferencer::infer(
@@ -251,7 +208,7 @@ void TritonInferencer::infer(
   while(end != frames.end()){
 
     begin = end;
-    int size = std::min(maxBatchSize_, static_cast<int>(frames.end() - begin));
+    int size = std::min(maxBatchSize_, static_cast<int>(frames.end() - begin)); // TODO: What if this exceeds the server size?
     end = end + size;
 
     // update batch size in input shape

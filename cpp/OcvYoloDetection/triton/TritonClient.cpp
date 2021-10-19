@@ -57,7 +57,7 @@ const std::string& TritonClient::shm_key_prefix(){
   return prefix;
 }
 
-// TODO: Remove this?
+
 cv::Mat TritonClient::getOutput(const TritonTensorMeta& om) {
 
     // get raw data shape
@@ -208,28 +208,6 @@ void TritonClient::setInferInputsData(const std::vector<cv::Mat> &blobs){
     }
 }
 
-/* TODO: Remove this?
-void TritonClient::infer(const std::vector<cv::Mat> &inputBlobs){
-
-  setInferInputsData(inputBlobs);
-
-  triton::client::InferResult* tmp;
-  TR_CHECK_OK( grpc_->Infer(&tmp, inferencer_->inferOptions(),
-                            getRaw(inferInputs_),
-                            getRaw(inferRequestedOutputs_) ),
-    MPF_DETECTION_FAILED,
-    "Unable to perform inference on server.");
-  inferResult_.reset(tmp);
-}
-*/
-
-/* TODO: Remove this?
-void TritonClient::inferAsync(const std::vector<cv::Mat> &inputBlobs,
-                              CallbackFunc inferencerLambda){
-  setInferInputsData(inputBlobs);
-  inferAsync_(inferencerLambda);
-}
-*/
 
 void TritonClient::inferAsync(int inferInputIdx, const cv::Mat& blob, CallbackFunc inferencerLambda){
 

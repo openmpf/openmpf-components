@@ -349,8 +349,8 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
 
         MPFAsyncVideoCapture videoCapture(job);
 
-       //place to hold frames till callbacks are done
-       std::unordered_map<int,std::vector<Frame>> frameBatches;
+       // place to hold frames till callbacks are done
+       std::unordered_map<int, std::vector<Frame>> frameBatches;
 
         while (true) {
             auto tmp = GetVideoFrames(videoCapture, config.frameBatchSize);
@@ -361,7 +361,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             }
 
             int frameBatchKey = tmp.back().idx;
-            frameBatches.insert(std::make_pair(frameBatchKey,std::move(tmp)));
+            frameBatches.insert(std::make_pair(frameBatchKey, std::move(tmp)));
 
             LOG_TRACE("Processing frames [" << frameBatches.at(frameBatchKey).front().idx << "..."
                                             << frameBatches.at(frameBatchKey).back().idx << "]");
