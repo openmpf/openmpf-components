@@ -32,8 +32,7 @@ FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 ARG RUN_TESTS=false
 
-RUN --mount=type=tmpfs,target=/tmp \
-    --mount=target=. \
+RUN --mount=target=.,readwrite \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_nlp_correction.py; fi
 
