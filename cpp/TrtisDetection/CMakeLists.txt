@@ -46,10 +46,11 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package(Qt4 REQUIRED)
 
-set(CMAKE_PREFIX_PATH /opt/triton)
 find_package(CURL REQUIRED)
-find_package(TritonCommon PATH_SUFFIXES 64 REQUIRED)
-find_package(TRITON REQUIRED)
+find_package(gRPC REQUIRED)
+find_package(CUDAToolkit REQUIRED)
+find_package(TritonCommon REQUIRED)
+find_package(TritonClient REQUIRED)
 
 set(BUILD_SHARED_LIBS ON)  # make AWS use shared linking
 find_package(AWSSDK REQUIRED COMPONENTS core s3)
@@ -64,7 +65,7 @@ target_link_libraries(mpfTrtisDetection
                        mpfComponentInterface
                        mpfDetectionComponentApi
                        mpfComponentUtils
-                       TRITON::grpcclient_static
+                       TritonClient::grpcclient_static
                        ${OpenCV_LIBS}
                        ${PROTOBUF_LIBRARY}
                        ${CURL_LIBRARIES}

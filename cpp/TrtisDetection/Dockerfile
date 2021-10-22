@@ -30,16 +30,15 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 ARG MODELS_REGISTRY=openmpf/
 
-FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:6.1 as models
+FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:6.3 as models
 
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=tmpfs,target=/var/cache/yum \
-    yum update --assumeyes; \
-    yum --assumeyes --nogpgcheck install \
-        which file git \
+     yum install --assumeyes --nogpgcheck \
+        git gdb which mlocate bzip2 \
         cuda-cufft-dev-10-2 cuda-npp-dev-10-2 \
         libtool openssl-devel rapidjson-devel \
         # gcc4.9.4 dependancies
@@ -47,8 +46,10 @@ RUN --mount=type=tmpfs,target=/tmp \
     # add libb64 needed by Triton
     rpm --nosignature -i http://www6.atomicorp.com/channels/atomic/centos/7/x86_64/RPMS/libb64-libs-1.2.1-2.1.el7.art.x86_64.rpm; \
     rpm --nosignature -i http://www6.atomicorp.com/channels/atomic/centos/7/x86_64/RPMS/libb64-devel-1.2.1-2.1.el7.art.x86_64.rpm; \
-    yum clean all; \
-    rm --recursive /var/cache/yum/*;
+    # some debug messages support for system calls (e.g. nmap)
+    rpm --nosignature -i http://download.sipxcom.org/pub/epel/6/x86_64/libexplain-0.52.D002-1.el6.x86_64.rpm; \
+    rpm --nosignature -i http://download.sipxcom.org/pub/epel/6/x86_64/libexplain-devel-0.52.D002-1.el6.x86_64.rpm; \
+    yum clean all;
 
 # install gcc 4.9.4
 RUN --mount=type=tmpfs,target=/tmp \
@@ -64,17 +65,68 @@ RUN --mount=type=tmpfs,target=/tmp \
 
 ENV CC=/usr/local/bin/gcc
 ENV CXX=/usr/local/bin/g++
-
+ENV CXXFLAGS=-std=c++11
+ENV LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
 
 # install updated cmake 3.18, configure existing opencv
-RUN curl --location 'https://github.com/Kitware/CMake/releases/download/v3.18.6/cmake-3.18.6-Linux-x86_64.tar.gz' \
+RUN curl --location 'https://github.com/Kitware/CMake/releases/download/v3.21.1/cmake-3.21.1-linux-x86_64.tar.gz' \
         | tar --extract --gzip --directory=/usr --strip-components=1; \
     ln -sf /usr/bin/cmake /usr/bin/cmake3; \
     echo '/opt/opencv-4.5.0/lib64' > /etc/ld.so.conf.d/opencv.conf; \
     ldconfig; \
     ln --symbolic '/opt/opencv-4.5.0/include/opencv4/opencv2' /usr/local/include/opencv2;
 
-WORKDIR /tmp
+# Triton Client build
+ARG TRITON_REPO_TAG=r21.06
+ENV TRITON_VERSION=2.11.0
+RUN --mount=type=tmpfs,target=/tmp \
+     mkdir -p /tmp/triton; \
+    cd /tmp/triton; \
+    git clone -b ${TRITON_REPO_TAG}  https://github.com/triton-inference-server/client.git; \
+    # build the client library
+    mkdir -p /tmp/triton/client/build; \
+    cd /tmp/triton/client/build; \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_CXX_FLAGS="-std=c++11 -Wfatal-errors" \
+          -DCMAKE_CXX_STANDARD=11 \
+          -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+          -DCMAKE_INSTALL_PREFIX:PATH=/opt/triton/ \
+          -DTRITON_VERSION="$TRITON_VERSION" \
+          -DTRITON_COMMON_REPO_TAG="$TRITON_REPO_TAG" \
+          -DTRITON_THIRD_PARTY_REPO_TAG="$TRITON_REPO_TAG" \
+          # GPU only needed if using cuda_shm
+          -DTRITON_ENABLE_GPU=ON \
+          -DTRITON_ENABLE_CC_GRPC=ON \
+          -DTRITON_ENABLE_CC_HTTP=OFF \
+          -DTRITON_ENABLE_PERF_ANALYZER=OFF \
+          -DTRITON_ENABLE_PYTHON_HTTP=OFF \
+          -DTRITON_ENABLE_PYTHON_GRPC=OFF \
+          -DTRITON_ENABLE_EXAMPLES=OFF \
+          -DTRITON_ENABLE_TESTS=OFF \
+          ..; \
+    Protobuf_DIR=/tmp/triton/client/build/third-party/protobuf \
+    make -j "$(nproc)"; \
+    # fix paths for 3rd party libraries installs
+    rm -rf /opt/triton/lib64/lib64; \
+    rsync -aL /tmp/triton/client/build/third-party/c-ares/include/ /opt/triton/include/; \
+    rsync -aL /tmp/triton/client/build/third-party/c-ares/lib/ /opt/triton/lib64/; \
+    rsync -aL /tmp/triton/client/build/third-party/c-ares/bin/ /opt/triton/bin/; \
+    rsync -aL /tmp/triton/client/build/third-party/curl/include/ /opt/triton/include/; \
+    rsync -aL /tmp/triton/client/build/third-party/curl/lib64/ /opt/triton/lib64/; \
+    rsync -aL /tmp/triton/client/build/third-party/curl/bin/ /opt/triton/bin/; \
+    rsync -aL /tmp/triton/client/build/third-party/grpc/include/ /opt/triton/include/; \
+    rsync -aL /tmp/triton/client/build/third-party/grpc/lib/ /opt/triton/lib64/; \
+    rsync -aL /tmp/triton/client/build/third-party/grpc/lib64/ /opt/triton/lib64/; \
+    rsync -aL /tmp/triton/client/build/third-party/grpc/bin/ /opt/triton/bin/; \
+    rsync -aL /tmp/triton/client/build/third-party/grpc/share/ /opt/triton/share/; \
+    rsync -aL /tmp/triton/client/build/third-party/protobuf/include/ /opt/triton/include/; \
+    rsync -aL /tmp/triton/client/build/third-party/protobuf/lib64/ /opt/triton/lib64/; \
+    rsync -aL /tmp/triton/client/build/third-party/protobuf/bin/ /opt/triton/bin/; \
+    ln -s /opt/triton/lib64 /opt/triton/lib; \
+    echo '/opt/triton/lib64' > /etc/ld.so.conf.d/triton.conf; \
+    ldconfig; \
+    rm --recursive /tmp/triton;
 
 # Install newer version of curl needed for AWS S3
 RUN --mount=type=tmpfs,target=/tmp \
@@ -82,10 +134,7 @@ RUN --mount=type=tmpfs,target=/tmp \
    git clone -b curl-7_76_1 https://github.com/curl/curl.git; \
    cd /tmp/curl; \
    mkdir build && cd build && cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -DBUILD_SHARED_LIBS=ON .. && make install; \
-   ln -s /usr/local/lib64/libcurl.so /usr/local/lib/libcurl.so; \
-   mv /usr/local/lib64/libcurl.so /lib64/libcurl.so.7.76.1; \
-   ln -s /lib64/libcurl.so.7.76.1 /usr/local/lib64/libcurl.so; \
-   echo '/usr/local/lib64'   > /etc/ld.so.conf.d/locallib64.conf; \
+   echo '/usr/local/lib64' > /etc/ld.so.conf.d/locallib64.conf; \
    ldconfig; \
    rm --recursive /tmp/curl;
 
@@ -106,58 +155,7 @@ RUN --mount=type=tmpfs,target=/tmp \
     make --jobs "$(nproc)" install; \
     rm --recursive /tmp/aws-sdk-cpp;
 
-# Triton Client build
-ARG TRITON_REPO_TAG=r21.04
-RUN --mount=type=tmpfs,target=/tmp \
-    mkdir -p /tmp/triton; \
-    cd /tmp/triton; \
-    git clone -b ${TRITON_REPO_TAG}  https://github.com/triton-inference-server/server.git; \
-    # build the client library and examples
-    mkdir -p /tmp/triton/server/builddir; \
-    cd /tmp/triton/server/builddir; \
-    # remove python client source so it doesn't try to build it
-    sed -i '/add_subdirectory(\.\.\/\.\.\/src\/clients\/python src\/clients\/python)/d' /tmp/triton/server/build/client/CMakeLists.txt; \
-    # fix c++14 idiom for clearing queue
-    sed -i 's/data_buffers_ = {};/data_buffers_ = std::queue<std::pair<uint8_t *, size_t>>();/g' /tmp/triton/server/src/clients/c++/library/http_client.cc; \
-    cmake -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX:PATH=/opt/triton/ \
-          -DTRITON_COMMON_REPO_TAG:STRING=${TRITON_REPO_TAG} \
-          -DTRITON_CORE_REPO_TAG:STRING=${TRITON_REPO_TAG} \
-          -DTRITON_CLIENT_SKIP_EXAMPLES=ON \
-          -DTRITON_ENABLE_PYTHON=OFF \
-          -DTRITON_ENABLE_METRICS=OFF \
-          -DTRITON_ENABLE_METRICS_GPU=OFF \
-          -DTRITON_ENABLE_LOGGING=OFF \
-          -DTRITON_ENABLE_STATS=OFF \
-          -DTRITON_ENABLE_GPU=OFF \
-          -DTRITON_ENABLE_GRPC=ON \
-          -DTRITON_ENABLE_HTTP=ON \
-          -DTRITON_CURL_WITHOUT_CONFIG=ON \
-          ../build; \
-    # simlink curl's lib64 to lib so we can find curl.a
-    mkdir -p /tmp/triton/server/builddir/curl/install; \
-    ln -s /tmp/triton/server/builddir/curl/install/lib64 /tmp/triton/server/builddir/curl/install/lib; \
-    make -j "$(nproc)" client; \
-    # move missing libraries to install in /opt/triton
-    rsync -aL /tmp/triton/server/builddir/curl/install/ /opt/triton/; \
-    rsync -aL /tmp/triton/server/builddir/protobuf/bin/ /opt/triton/bin/; \
-    rsync -aL /tmp/triton/server/builddir/protobuf/include/ /opt/triton/include/; \
-    rsync -aL /tmp/triton/server/builddir/protobuf/lib64/ /opt/triton/lib64/; \
-    rsync -aL /tmp/triton/server/builddir/grpc/bin/ /opt/triton/bin/; \
-    rsync -aL /tmp/triton/server/builddir/grpc/include/ /opt/triton/include/; \
-    rsync -aL /tmp/triton/server/builddir/grpc/lib/ /opt/triton/lib/; \
-    rsync -aL /tmp/triton/server/builddir/grpc/lib64/ /opt/triton/lib64; \
-    rsync -aL /tmp/triton/server/builddir/grpc/share/ /opt/triton/share/; \
-    rsync -aL /tmp/triton/server/builddir/c-ares/bin/ /opt/triton/bin/; \
-    rsync -aL /tmp/triton/server/builddir/c-ares/include/ /opt/triton/include/c-ares/; \
-    rsync -aL /tmp/triton/server/builddir/c-ares/lib/ /opt/triton/lib; \
-    echo '/opt/triton/lib' > /etc/ld.so.conf.d/triton.conf; \
-    ldconfig; \
-    rm --recursive /tmp/triton;
-
-# set Triton version correspoding to r21.04
-ENV TRITON_VERSION=2.9.0
-ENV request_DIR=/root/trtis
+# ENV request_DIR=/root/trtis
 
 WORKDIR /home/mpf/component_src
 
@@ -166,7 +164,10 @@ COPY --from=models /models/model.graphdef \
 
 COPY . .
 
+ENV CMAKE_PREFIX_PATH="/opt/triton/lib64/cmake:${CMAKE_PREFIX_PATH}"
+
 RUN build-component.sh
+
 
 FROM nvcr.io/nvidia/tritonserver:21.04-py3 as openmpf_trtis_test_server
 
@@ -184,6 +185,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; \
     && ./run_docker_tests.sh \
 ; fi
 
+
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
 ENV LD_LIBRARY_PATH $PLUGINS_DIR/TrtisDetection/lib
@@ -194,7 +196,9 @@ COPY --from=openmpf_trtis_test_server /Testing_MPF_FILES/plugin/TrtisDetection \
 COPY --from=openmpf_trtis_test_server /Testing_MPF_FILES/libmpfTrtisDetection.so \
                                       $PLUGINS_DIR/TrtisDetection/lib/
 
-RUN cp $PLUGINS_DIR/TrtisDetection/lib/librequest.so /usr/local/lib/ && ldconfig
+# DEBUG
+# RUN cp $PLUGINS_DIR/TrtisDetection/lib/librequest.so /usr/local/lib/ && ldconfig
+# RUN cp $PLUGINS_DIR/TrtisDetection/lib/libnss3.so /lib64/libnss3.so && ldconfig
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF TRITON Client Detection" \

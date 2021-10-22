@@ -46,7 +46,7 @@
 namespace MPF{
  namespace COMPONENT{
 
-  namespace       nic  = nvidia::inferenceserver::client;
+  namespace       nic  = triton::client;
 
   using namespace std;
 
