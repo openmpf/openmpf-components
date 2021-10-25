@@ -190,11 +190,17 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
 ENV LD_LIBRARY_PATH $PLUGINS_DIR/TrtisDetection/lib
 
+# DEBUG
 # Must copy from openmpf_trtis_test_server so that Docker BuildKit does not skip test stage.
-COPY --from=openmpf_trtis_test_server /Testing_MPF_FILES/plugin/TrtisDetection \
-                                      $PLUGINS_DIR/TrtisDetection
-COPY --from=openmpf_trtis_test_server /Testing_MPF_FILES/libmpfTrtisDetection.so \
-                                      $PLUGINS_DIR/TrtisDetection/lib/
+# COPY --from=openmpf_trtis_test_server /Testing_MPF_FILES/plugin/TrtisDetection \
+#                                      $PLUGINS_DIR/TrtisDetection
+# COPY --from=openmpf_trtis_test_server /Testing_MPF_FILES/libmpfTrtisDetection.so \
+#                                      $PLUGINS_DIR/TrtisDetection/lib/
+
+COPY --from=build_component $BUILD_DIR/plugin/TrtisDetection \
+                            $PLUGINS_DIR/TrtisDetection
+COPY --from=build_component $BUILD_DIR/libmpfTrtisDetection.so \
+                            $PLUGINS_DIR/TrtisDetection/lib/
 
 # DEBUG
 # RUN cp $PLUGINS_DIR/TrtisDetection/lib/librequest.so /usr/local/lib/ && ldconfig
