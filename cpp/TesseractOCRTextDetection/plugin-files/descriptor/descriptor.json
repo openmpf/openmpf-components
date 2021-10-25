@@ -1,7 +1,7 @@
 {
   "componentName": "TesseractOCRTextDetection",
-  "componentVersion": "6.1",
-  "middlewareVersion": "6.1",
+  "componentVersion": "6.3",
+  "middlewareVersion": "6.3",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib/libmpfTesseractOCRTextDetection.so",
   "environmentVariables": [
@@ -381,6 +381,14 @@
       "tasks": [
         "TESSERACT OCR TEXT DETECTION TASK",
         "AZURE TRANSLATION (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION WITH NLP TEXT CORRECTION PIPELINE",
+      "description": "Performs Tesseract OCR and runs post-processing text correction.",
+      "tasks": [
+        "TESSERACT OCR TEXT DETECTION TASK",
+        "NLP TEXT CORRECTION (WITH FF REGION) TASK"
       ]
     }
   ]

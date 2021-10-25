@@ -6,8 +6,8 @@ This repository contains source code for the OpenMPF Azure Cognitive Services Sp
 In order for the component to process any jobs, the job properties listed below must be provided. These properties have no default value, but can be set through environment variables of the same name. If both environment variable and job property are provided, the job property will be used.
 
 - `ACS_URL`: URL for the Azure Cognitive Services Endpoint.
- e.g. `https://virginia.cris.azure.us/api/speechtotext/v2.0/transcriptions`.
- The component has only been tested against v2.0 of the API.
+ e.g. `https://virginia.cris.azure.us/api/speechtotext/v3.0/transcriptions`.
+ The component has been tested against v3.0 of the API.
 
  - `ACS_SUBSCRIPTION_KEY`: A string containing your subscription key for the speech service.
 

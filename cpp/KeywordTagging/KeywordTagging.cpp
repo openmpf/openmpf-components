@@ -388,27 +388,30 @@ vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) 
 
     MPFGenericTrack track;
     bool has_prop = true;
+    map<string, wstring> prop_texts;
     wstring text;
 
     if (job.has_feed_forward_track) {
         track = job.feed_forward_track;
-        has_prop = get_text_to_process(job, track.detection_properties, text);
+        has_prop = get_text_to_process(job, track.detection_properties, prop_texts);
     } else {
         LOG4CXX_INFO(hw_logger_, "Generic job is not feed forward. Performing tagging on text file.");
         wifstream file {job.data_uri};
         if (!file.is_open()) {
-            throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE, "Cannot open: " + job.data_uri);
+            throw MPFDetectionException(MPF_COULD_NOT_OPEN_MEDIA, "Cannot open: " + job.data_uri);
         }
         wstring file_contents((istreambuf_iterator<wchar_t>(file)), (istreambuf_iterator<wchar_t>()));
         text = move(file_contents);
         track.detection_properties["TEXT"] = boost::locale::conv::utf_to_utf<char>(text);
+
+        prop_texts["TEXT"] = text;
         file.close();
     }
 
     if (has_prop) {
         map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
         load_tags_json(job, json_kvs_regex);
-        process_text_tagging(track.detection_properties, job, text, json_kvs_regex);
+        process_text_tagging(track.detection_properties, job, prop_texts, json_kvs_regex);
     }
 
     return {track};
@@ -423,12 +426,12 @@ vector<MPFAudioTrack> KeywordTagging::GetDetections(const MPFAudioJob &job) {
     }
 
     MPFAudioTrack track = job.feed_forward_track;
-    wstring text;
+    map<string, wstring> prop_texts;
 
-    if (get_text_to_process(job, track.detection_properties, text)) {
+    if (get_text_to_process(job, track.detection_properties, prop_texts)) {
         map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
         load_tags_json(job, json_kvs_regex);
-        process_text_tagging(track.detection_properties, job, text, json_kvs_regex);
+        process_text_tagging(track.detection_properties, job, prop_texts, json_kvs_regex);
     }
 
     return {track};
@@ -443,12 +446,12 @@ vector<MPFImageLocation> KeywordTagging::GetDetections(const MPFImageJob &job) {
     }
 
     MPFImageLocation location = job.feed_forward_location;
-    wstring text;
+    map<string, wstring> prop_texts;
 
-    if (get_text_to_process(job, location.detection_properties, text)) {
+    if (get_text_to_process(job, location.detection_properties, prop_texts)) {
         map<wstring, vector<pair<wstring, bool>>> json_kvs_regex;
         load_tags_json(job, json_kvs_regex);
-        process_text_tagging(location.detection_properties, job, text, json_kvs_regex);
+        process_text_tagging(location.detection_properties, job, prop_texts, json_kvs_regex);
     }
 
     return {location};
@@ -466,18 +469,19 @@ vector<MPFVideoTrack> KeywordTagging::GetDetections(const MPFVideoJob &job) {
     load_tags_json(job, json_kvs_regex);
 
     MPFVideoTrack track = job.feed_forward_track;
-    wstring text;
+    map<string, wstring> prop_texts;
 
-    // process track-level property
-    if (get_text_to_process(job, track.detection_properties, text)) {
-        process_text_tagging(track.detection_properties, job, text, json_kvs_regex);
+    // process track-level properties
+    if (get_text_to_process(job, track.detection_properties, prop_texts)) {
+        process_text_tagging(track.detection_properties, job, prop_texts, json_kvs_regex);
     }
 
-    // process each detection-level property
+    // process detection-level properties
     for (auto &pair : track.frame_locations) {
-        if (get_text_to_process(job, pair.second.detection_properties, text)) {
-            process_text_tagging(pair.second.detection_properties, job, text, json_kvs_regex);
+        if (get_text_to_process(job, pair.second.detection_properties, prop_texts)) {
+            process_text_tagging(pair.second.detection_properties, job, prop_texts, json_kvs_regex);
         }
+
     }
 
     return {track};
@@ -488,64 +492,88 @@ bool KeywordTagging::Supports(MPFDetectionDataType data_type) {
         || data_type == MPFDetectionDataType::AUDIO || data_type == MPFDetectionDataType::VIDEO;
 }
 
-bool KeywordTagging::get_text_to_process(const MPFJob &job, const Properties &detection_properties, wstring& text) {
+bool KeywordTagging::get_text_to_process(const MPFJob &job, const Properties &detection_properties, map<string, wstring> &prop_texts) {
     string props_to_process = DetectionComponentUtils::GetProperty<string>(job.job_properties,
                                                                            "FEED_FORWARD_PROP_TO_PROCESS",
-                                                                           "TEXT,TRANSCRIPT");
+                                                                           "TEXT, TRANSCRIPT");
     vector<string> split_props_to_process;
     boost::split(split_props_to_process, props_to_process, boost::is_any_of(","));
+    wstring text;
 
+    bool has_prop = false;
     for (string prop_to_process : split_props_to_process) {
         boost::trim(prop_to_process);
         if (detection_properties.find(prop_to_process) != detection_properties.end()) {
-            LOG4CXX_INFO(hw_logger_, "Performing tagging on " + prop_to_process + " property.");
+            LOG4CXX_INFO(hw_logger_, "Performing tagging on " + prop_to_process + " property.")
             text = boost::locale::conv::utf_to_utf<wchar_t>(detection_properties.at(prop_to_process));
-            return true;
+            prop_texts[prop_to_process] = text;
+            has_prop = true;
         }
     }
 
-    LOG4CXX_WARN(hw_logger_, "Feed forward element missing one of the following properties: " + props_to_process);
-    return false;
+    if (!has_prop) {
+        LOG4CXX_WARN(hw_logger_, "Feed forward element missing one of the following properties: " + props_to_process)
+    }
+
+    return has_prop;
+
 }
 
-void KeywordTagging::process_text_tagging(Properties &detection_properties, const MPFJob &job, const wstring &full_text,
+void KeywordTagging::process_text_tagging(Properties &detection_properties, const MPFJob &job, const map<string, wstring>& prop_texts,
                                           const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex) {
-    wstring text = clean_whitespace(full_text);
+    string prop;
+    wstring prop_text;
 
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing tags");
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Text is: " +
-                              boost::locale::conv::utf_to_utf<char>(text));
+    bool has_text = false;
+    set<wstring> all_found_tags;
 
-    if (is_only_ascii_whitespace(text)) {
-        LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] No text to process!");
-        return;
+    for (auto const& it : prop_texts) {
+        prop = it.first;
+        prop_text = it.second;
+        wstring text = clean_whitespace(prop_text);
+
+        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing tags on " +
+                                  boost::locale::conv::utf_to_utf<char>(prop))
+        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Text is: " +
+                                  boost::locale::conv::utf_to_utf<char>(text))
+
+        if (is_only_ascii_whitespace(text)) {
+            LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] No text to process for " +
+                                     boost::locale::conv::utf_to_utf<char>(prop))
+            continue;
+        }
+        has_text = true;
+
+        bool full_regex = DetectionComponentUtils::GetProperty(job.job_properties, "FULL_REGEX_SEARCH", true);
+
+        set<wstring> trigger_words;
+        map<wstring, vector<string>> trigger_words_offset;
+        set<wstring> found_tags_regex = search_regex(job, text, json_kvs_regex, trigger_words_offset, full_regex);
+        all_found_tags.insert(found_tags_regex.begin(), found_tags_regex.end());
+
+        wstring tag_string = boost::algorithm::join(found_tags_regex, L"; ");
+
+        vector<string> offsets_list;
+        vector<wstring> triggers_list;
+
+        wstring tag_trigger = boost::algorithm::join(trigger_words, L"; ");
+
+        for (auto const& word_offset : trigger_words_offset) {
+            triggers_list.push_back(word_offset.first);
+            offsets_list.push_back(boost::algorithm::join(word_offset.second, ", "));
+        }
+
+        string tag_offset = boost::algorithm::join(offsets_list, "; ");
+        tag_trigger = tag_trigger + boost::algorithm::join(triggers_list, L"; ");
+
+        detection_properties[boost::locale::conv::utf_to_utf<char>(prop) + " TRIGGER WORDS"] = boost::locale::conv::utf_to_utf<char>(tag_trigger);
+        detection_properties[boost::locale::conv::utf_to_utf<char>(prop)+ " TRIGGER WORDS OFFSET"] = tag_offset;
     }
 
-    bool full_regex = DetectionComponentUtils::GetProperty(job.job_properties, "FULL_REGEX_SEARCH", true);
-
-    set<wstring> trigger_words;
-    map<wstring, vector<string>> trigger_words_offset;
-    set<wstring> found_tags_regex = search_regex(job, text, json_kvs_regex, trigger_words_offset, full_regex);
-
-    wstring tag_string = boost::algorithm::join(found_tags_regex, L"; ");
-
-    vector<string> offsets_list;
-    vector<wstring> triggers_list;
-
-    wstring tag_trigger = boost::algorithm::join(trigger_words, L"; ");
-
-    for (auto const& word_offset : trigger_words_offset ) {
-        triggers_list.push_back(word_offset.first);
-        offsets_list.push_back(boost::algorithm::join(word_offset.second, ", "));
+    if (has_text) {
+        wstring tag_string = boost::algorithm::join(all_found_tags, L"; ");
+        detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
     }
-
-    string tag_offset = boost::algorithm::join(offsets_list, "; ");
-
-    tag_trigger = tag_trigger + boost::algorithm::join(triggers_list, L"; ");
-
-    detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
-    detection_properties["TRIGGER_WORDS"] = boost::locale::conv::utf_to_utf<char>(tag_trigger);
-    detection_properties["TRIGGER_WORDS_OFFSET"] = tag_offset;
 }
 
 MPF_COMPONENT_CREATOR(KeywordTagging);

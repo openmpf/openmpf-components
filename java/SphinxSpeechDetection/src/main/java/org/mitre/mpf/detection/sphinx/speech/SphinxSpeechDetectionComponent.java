@@ -123,7 +123,7 @@ public class SphinxSpeechDetectionComponent extends MPFAudioAndVideoDetectionCom
                         "Failed to rip the audio from '%s' (startTime = %s, stopTime = %s) to '%s' due to an Exception.",
                         source, newStartTime, newStopTime, target);
                 LOG.error(errorMsg, e);
-                throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, errorMsg, e);
+                throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, errorMsg, e);
             }
 
             // detect and transcribe any spoken English in the audio
@@ -142,7 +142,7 @@ public class SphinxSpeechDetectionComponent extends MPFAudioAndVideoDetectionCom
                         "NullPointerException encountered during audio processing of file %s.",
                         target.getAbsoluteFile());
                 LOG.error(errorMsg, e);
-                throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_DATAFILE, errorMsg, e);
+                throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, errorMsg, e);
             }
         }
         catch (MPFComponentDetectionError mcde) {

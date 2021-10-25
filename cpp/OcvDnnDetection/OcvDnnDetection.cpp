@@ -194,11 +194,18 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
 
         std::vector<MPFVideoTrack> tracks = getDetections(job, feedForwardTracker);
 
+        bool output_merge_with_previous_task =
+                DetectionComponentUtils::GetProperty(job.job_properties, "OUTPUT_MERGE_WITH_PREVIOUS_TASK", false);
+
         for (MPFVideoTrack &track : tracks) {
             // Update track props with feed-forward props
             Properties &track_props = track.detection_properties;
             for (const auto& feed_forward_track_prop : feed_forward_track_props) {
                 track_props.insert(feed_forward_track_prop);
+            }
+            // Determine if we should copy feed-forward confidence
+            if (output_merge_with_previous_task) {
+                track.confidence = job.feed_forward_track.confidence;
             }
             // Update location props with corresponding feed-forward props
             for (auto& pair : track.frame_locations) {
@@ -209,6 +216,10 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
                     Properties &loc_props = pair.second.detection_properties;
                     for (const auto& feed_forward_prop : feed_forward_loc_props) {
                         loc_props.insert(feed_forward_prop);
+                    }
+                    // Determine if we should copy feed-forward confidence
+                    if (output_merge_with_previous_task) {
+                        pair.second.confidence = feed_forward_loc_iter->second.confidence;
                     }
                 }
             }
@@ -283,12 +294,19 @@ std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &
         }
 
         if (job.has_feed_forward_location) {
+            bool output_merge_with_previous_task =
+                    DetectionComponentUtils::GetProperty(job.job_properties, "OUTPUT_MERGE_WITH_PREVIOUS_TASK", false);
+
             // Update location props with feed-forward props
             const Properties &feed_forward_props = job.feed_forward_location.detection_properties;
             for (MPFImageLocation &location : locations) {
                 Properties &props = location.detection_properties;
                 for (const auto& feed_forward_prop : feed_forward_props) {
                     props.insert(feed_forward_prop);
+                }
+                // Determine if we should copy feed-forward confidence
+                if (output_merge_with_previous_task) {
+                    location.confidence = job.feed_forward_location.confidence;
                 }
             }
         }
@@ -487,13 +505,18 @@ void OcvDnnDetection::getNetworkOutput(OcvDnnDetection::OcvDnnJobConfig &config,
                                        std::vector<std::pair<std::string, cv::Mat>> &activation_layer_info,
                                        std::vector<std::pair<SpectralHashInfo, cv::Mat>> &spectral_hash_info) {
     cv::Mat frame;
-    cv::resize(input_frame, frame, config.resize_size);
+    try {
+        cv::resize(input_frame, frame, config.resize_size);
+    }
+    catch (const cv::Exception &err) {
+        throw MPFDetectionException(MPFDetectionError::MPF_BAD_FRAME_SIZE, err.what());
+    }
 
     cv::Rect roi(config.crop_size, frame.size() - (config.crop_size * 2));
     frame = frame(roi);
 
     // convert Mat to batch of images (BGR)
-    cv::Mat input_blob = cv::dnn::blobFromImage(frame, 1.0, cv::Size(), config.subtract_colors, false); // swapRB = false
+    cv::Mat input_blob = cv::dnn::blobFromImage(frame, 1.0, cv::Size(), config.subtract_colors, config.swap_rb);
 
     config.net.setInput(input_blob, config.model_input_name);
 
@@ -606,9 +629,18 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
 
     crop_size = cv::Size(GetProperty(props, "LEFT_AND_RIGHT_CROP", 0), GetProperty(props, "TOP_AND_BOTTOM_CROP", 0));
 
-    subtract_colors = cv::Scalar(GetProperty(props, "SUBTRACT_BLUE_VALUE", 0.0),
-                                 GetProperty(props, "SUBTRACT_GREEN_VALUE", 0.0),
-                                 GetProperty(props, "SUBTRACT_RED_VALUE", 0.0));
+    swap_rb = DetectionComponentUtils::GetProperty(
+        props, "SWAP_RB", false);
+
+    if (!swap_rb) {
+        subtract_colors = cv::Scalar(GetProperty(props, "SUBTRACT_BLUE_VALUE", 0.0),
+                                     GetProperty(props, "SUBTRACT_GREEN_VALUE", 0.0),
+                                     GetProperty(props, "SUBTRACT_RED_VALUE", 0.0));
+    } else {
+        subtract_colors = cv::Scalar(GetProperty(props, "SUBTRACT_RED_VALUE", 0.0),
+                                     GetProperty(props, "SUBTRACT_GREEN_VALUE", 0.0),
+                                     GetProperty(props, "SUBTRACT_BLUE_VALUE", 0.0));
+    }
 
 
     const std::vector<cv::String> &net_layer_names = net.getLayerNames();
@@ -666,7 +698,7 @@ std::vector<std::string> OcvDnnDetection::OcvDnnJobConfig::readClassNames(const 
     fp.close();
 
     if (class_names.empty()) {
-        throw MPFDetectionException(MPF_DETECTION_FAILED, "No network class labels found.");
+        throw MPFDetectionException(MPF_COULD_NOT_READ_DATAFILE, "No network class labels found.");
     }
     return class_names;
 }

@@ -35,7 +35,8 @@ RUN pip3 install --no-cache-dir 'azure-storage-blob>=12.3' 'python-dateutil'
 
 ARG RUN_TESTS=false
 
-RUN --mount=target=. install-component.sh; \
+RUN --mount=target=.,readwrite \
+    install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs_speech.py; fi
 
 

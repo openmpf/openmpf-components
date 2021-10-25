@@ -12,7 +12,9 @@ The OpenCV DNN classification component comes with two trained Caffe models and 
 
 * The BAIR GoogLeNet model, `bvlc_googlenet`, from the BAIR model zoo ([http://caffe.berkeleyvision.org/model_zoo.html](http://caffe.berkeleyvision.org/model_zoo.html)), which was trained on the ImageNet Large Scale Visual Recognition Challenge (ILSVRC) 2012 dataset.
 * The Yahoo Not Suitable/Safe for Work model, `yahoo_nsfw`, from [https://github.com/yahoo/open_nsfw](https://github.com/yahoo/open_nsfw).
-* A model trained in-house for vehicle color estimation, `vehicle_color`. This is a variant of ResNet-18 ([https://arxiv.org/abs/1512.03385](https://arxiv.org/abs/1512.03385)), with narrower layers and no activation function between blocks. Specifics of the architecture can be seen in `plugin-files/models/vehicle_color.pbtxt`.
+* A model trained in-house for vehicle color estimation, `vehicle_color`. This is a variant of ResNet-18 ([https://arxiv.org/abs/1512.03385](https://arxiv.org/abs/1512.03385)), with narrower layers and no activation function between blocks. Temperature scaling ([https://arxiv.org/abs/1706.04599](https://arxiv.org/abs/1706.04599)) is used to decrease over-confidence in predictions. Specifics of the architecture can be seen in `plugin-files/models/vehicle_color.pbtxt`. The model is trained using the following datasets. Please abide by their license agreements:
+  - [Video and Image Retrieval and Analysis Tool (VIRAT)](https://viratdata.org) ground camera data. Refer to the [VIRAT Video and Dataset Protection Agreement](https://viratdata.org/resources/VIRAT-Video-Data-Set-Protection-Agreement-1-4-11.pdf). In essence: "You may use the Dataset for lawful research and commercial purposes".
+  - [Cityscapes Dataset (non-3D)](https://www.cityscapes-dataset.com/) originally released in 2016. Refer to the [Cityscapes Dataset License Agreement](https://www.cityscapes-dataset.com/license/). In essence: "This dataset is made freely available to academic and non-academic entities for non-commercial purposes such as academic research".
 
 # Adding a new model
 

@@ -72,7 +72,7 @@ public class TestSphinxSpeechDetectionComponent {
     public void testGetDetectionsVideo() throws MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/left.avi").getPath();
         MPFVideoJob videoJob = new MPFVideoJob("Job TestRun:TestVideoJob", mediaPath, Map.of(),
-                Map.of("DURATION", "5008", "FPS", "24", "FRAME_COUNT", "122"), 0, -1);
+                Map.of("DURATION", "5008", "FPS", "24", "FRAME_COUNT", "122"), 0, 121);
         List<MPFVideoTrack> tracks = sphinxComponent.getDetections(videoJob);
         assertEquals("Unexpected number of tracks.", 1 ,tracks.size());
         assertEquals("Unexpected transcript.", "this three left on the left side of the one closest to us",

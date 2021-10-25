@@ -1,0 +1,1 @@
+Hunspell doesn't recognize DQ or D.Q. as words. Other variations: D.Q, DQ., .D.Q.!

@@ -61,6 +61,8 @@ class AcsSpeechDetectionProcessor(object):
                 start_time=start_time,
                 stop_time=stop_time
             )
+        except mpf.DetectionException:
+            raise
         except Exception as e:
             raise mpf.DetectionException(
                 'Failed to upload file to blob: {}'.format(e),
@@ -113,7 +115,7 @@ class AcsSpeechDetectionProcessor(object):
         self.logger.info('Creating AudioTracks')
         audio_tracks = []
         for utt in transcription['recognizedPhrases']:
-            speaker_id = utt['speaker'] if diarize else '0'
+            speaker_id = utt.get('speaker', '0')
             display = utt['nBest'][0]['display']
 
             # Confidence information. Utterance confidence does not seem

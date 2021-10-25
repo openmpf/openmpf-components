@@ -34,8 +34,8 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_componen
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=tmpfs,target=/var/cache/yum \
     yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
-    && yum --enablerepo=remi install -y ImageMagick ImageMagick-c++ \
-         ImageMagick-c++-devel ImageMagick-devel ImageMagick-libs \
+    && yum --enablerepo=remi install -y ImageMagick6 ImageMagick6-c++ \
+         ImageMagick6-c++-devel ImageMagick6-devel ImageMagick6-libs \
          libjpeg libpng libtiff zlib ghostscript \
     && yum clean all;
 
@@ -77,7 +77,7 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=tmpfs,target=/var/cache/yum \
     yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
-    && yum --enablerepo=remi install -y ImageMagick \
+    && yum --enablerepo=remi install -y ImageMagick6 \
     && yum clean all
 
 ENV LD_LIBRARY_PATH $PLUGINS_DIR/TesseractOCRTextDetection/lib
