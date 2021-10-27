@@ -33,7 +33,7 @@ ARG MODELS_REGISTRY=openmpf/
 FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:6.3 as models
 
 
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_setup
 
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=tmpfs,target=/var/cache/yum \
@@ -155,16 +155,15 @@ RUN --mount=type=tmpfs,target=/tmp \
     make --jobs "$(nproc)" install; \
     rm --recursive /tmp/aws-sdk-cpp;
 
-# ENV request_DIR=/root/trtis
+ENV CMAKE_PREFIX_PATH="/opt/triton/lib64/cmake:${CMAKE_PREFIX_PATH}"
 
-WORKDIR /home/mpf/component_src
+
+FROM build_setup as build_component
 
 COPY --from=models /models/model.graphdef \
         $BUILD_DIR/plugin/TrtisDetection/models/ip_irv2_coco/1/model.graphdef
 
 COPY . .
-
-ENV CMAKE_PREFIX_PATH="/opt/triton/lib64/cmake:${CMAKE_PREFIX_PATH}"
 
 RUN build-component.sh
 
@@ -186,6 +185,59 @@ RUN if [ "${RUN_TESTS,,}" == true ]; \
 ; fi
 
 
+########################################################################
+# CLion
+# Refer to: https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
+# Based on: https://github.com/JetBrains/clion-remote/blob/master/Dockerfile.centos7-cpp-env
+#
+# CLion toolchain settings:
+# - CMake: /usr/bin/cmake3
+# - Make: /usr/bin/gmake
+# - C Compiler: /usr/local/bin/gcc
+# - C++ Compiler: /usr/local/bin/g++
+# - Debugger: /usr/bin/gdb
+#
+# CLion CMake settings:
+# - CMake options: -DCMAKE_PREFIX_PATH=/opt/triton/lib64/cmake;/home/mpf/mpf-sdk-install/lib/cmake
+#
+# CLion deployment settings (SFTP Remote Development):
+# - [Connection] SSH configuration: root@localhost:2222
+# - [Connection] Root path: /home/mpf/component_src
+# - [Mappings] Deployment path: .
+#
+# Build command:
+#   COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker build . --progress=plain --target=clion \
+#   -t openmpf_trtis_detection:triton-clion
+#
+# Run command:
+#   docker run -d --cap-add sys_ptrace -p127.0.0.1:2222:22 --name clion_remote_env \
+#   openmpf_trtis_detection:triton-clion
+########################################################################
+FROM build_setup as clion
+
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum install --assumeyes openssh-server; \
+    yum clean all
+
+RUN ssh-keygen -A
+
+RUN ( \
+    echo 'LogLevel DEBUG2'; \
+    echo 'PermitRootLogin yes'; \
+    echo 'PasswordAuthentication yes'; \
+    echo 'Subsystem sftp /usr/libexec/openssh/sftp-server'; \
+  ) > /etc/ssh/sshd_config_test_clion
+
+# Set root user password for SSH access.
+RUN echo "openmpf123" | passwd root --stdin
+
+CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
+########################################################################
+# CLion
+########################################################################
+
+
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
 ENV LD_LIBRARY_PATH $PLUGINS_DIR/TrtisDetection/lib
@@ -201,10 +253,6 @@ COPY --from=build_component $BUILD_DIR/plugin/TrtisDetection \
                             $PLUGINS_DIR/TrtisDetection
 COPY --from=build_component $BUILD_DIR/libmpfTrtisDetection.so \
                             $PLUGINS_DIR/TrtisDetection/lib/
-
-# DEBUG
-# RUN cp $PLUGINS_DIR/TrtisDetection/lib/librequest.so /usr/local/lib/ && ldconfig
-# RUN cp $PLUGINS_DIR/TrtisDetection/lib/libnss3.so /lib64/libnss3.so && ldconfig
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF TRITON Client Detection" \
