@@ -213,9 +213,6 @@ RUN ( \
 RUN echo "openmpf123" | passwd root --stdin
 
 CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
-########################################################################
-# CLion
-########################################################################
 
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
