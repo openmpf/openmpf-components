@@ -516,7 +516,7 @@ void OcvDnnDetection::getNetworkOutput(OcvDnnDetection::OcvDnnJobConfig &config,
     frame = frame(roi);
 
     // convert Mat to batch of images (BGR)
-    cv::Mat input_blob = cv::dnn::blobFromImage(frame, 1.0, cv::Size(), config.subtract_colors, false); // swapRB = false
+    cv::Mat input_blob = cv::dnn::blobFromImage(frame, 1.0, cv::Size(), config.subtract_colors, config.swap_rb);
 
     config.net.setInput(input_blob, config.model_input_name);
 
@@ -629,9 +629,18 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
 
     crop_size = cv::Size(GetProperty(props, "LEFT_AND_RIGHT_CROP", 0), GetProperty(props, "TOP_AND_BOTTOM_CROP", 0));
 
-    subtract_colors = cv::Scalar(GetProperty(props, "SUBTRACT_BLUE_VALUE", 0.0),
-                                 GetProperty(props, "SUBTRACT_GREEN_VALUE", 0.0),
-                                 GetProperty(props, "SUBTRACT_RED_VALUE", 0.0));
+    swap_rb = DetectionComponentUtils::GetProperty(
+        props, "SWAP_RB", false);
+
+    if (!swap_rb) {
+        subtract_colors = cv::Scalar(GetProperty(props, "SUBTRACT_BLUE_VALUE", 0.0),
+                                     GetProperty(props, "SUBTRACT_GREEN_VALUE", 0.0),
+                                     GetProperty(props, "SUBTRACT_RED_VALUE", 0.0));
+    } else {
+        subtract_colors = cv::Scalar(GetProperty(props, "SUBTRACT_RED_VALUE", 0.0),
+                                     GetProperty(props, "SUBTRACT_GREEN_VALUE", 0.0),
+                                     GetProperty(props, "SUBTRACT_BLUE_VALUE", 0.0));
+    }
 
 
     const std::vector<cv::String> &net_layer_names = net.getLayerNames();

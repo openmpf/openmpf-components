@@ -1,11 +1,13 @@
-0 black
-1 blue
-2 brown
-3 gray
-4 green
-5 orange
-6 pink
-7 purple
-8 red
-9 white
-10 yellow
+beige
+black
+blue
+brown
+cyan
+gray
+green
+orange
+pink
+purple
+red
+white
+yellow
