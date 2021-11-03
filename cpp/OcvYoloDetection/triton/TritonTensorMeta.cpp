@@ -29,7 +29,7 @@
 
 #include "../Config.h"
 
-#include "TritonExceptionMacros.h"
+#include "TritonUtils.h"
 #include "TritonTensorMeta.h"
 
 using namespace MPF::COMPONENT;
@@ -75,7 +75,7 @@ namespace {
   }
 
   size_t tritonTypeName2OCVType(const inference::DataType& dt){
-    switch (dt){
+    switch (dt) {
       case inference::TYPE_FP32:  return CV_32FC1;
       case inference::TYPE_UINT8: return CV_16UC1;
       case inference::TYPE_INT8:  return CV_8SC1;
@@ -84,10 +84,10 @@ namespace {
       case inference::TYPE_FP64:  return CV_64FC1;
       default:// OpenCV does not support these types
               //   UINT32, UINT64, INT64, FP16, BOOL, BYTES:
-        THROW_TRITON_EXCEPTION(MPF_DETECTION_FAILED,
-                            "Unsupported inference::DataType = "
-                            + std::to_string(dt)
-                            + " in cv:Mat conversion.");
+          throw createTritonException(MPF_DETECTION_FAILED,
+                                      "Unsupported inference::DataType = "
+                                      + std::to_string(dt)
+                                      + " in cv:Mat conversion.");
     }
   }
 

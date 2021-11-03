@@ -35,7 +35,7 @@
 #include "TritonTensorMeta.h"
 #include "TritonClient.h"
 #include "TritonInferencer.h"
-#include "TritonExceptionMacros.h"
+#include "TritonUtils.h"
 
 using namespace MPF::COMPONENT;
 
@@ -60,7 +60,7 @@ void TritonInferencer::checkServerIsAlive(int maxAttempts, int initialDelaySecon
                                      << serverUrl_ << " again.");
             sleep(sleepSeconds);
         } else {
-            THROW_TRITON_EXCEPTION(MPF_NETWORK_ERROR, errMsg);
+            throw createTritonException(MPF_NETWORK_ERROR, errMsg);
         }
     }
 }
@@ -87,7 +87,7 @@ void TritonInferencer::checkServerIsReady(int maxAttempts, int initialDelaySecon
                                      << serverUrl_ << " again.");
             sleep(sleepSeconds);
         } else {
-            THROW_TRITON_EXCEPTION(MPF_NETWORK_ERROR, errMsg);
+            throw createTritonException(MPF_NETWORK_ERROR, errMsg);
         }
     }
 }
@@ -108,9 +108,9 @@ void TritonInferencer::checkModelIsReady(int maxAttempts, int initialDelaySecond
                                                       << " is not ready. Attempting to explicitly load.");
             err = statusClient_->LoadModel(modelName_);
             if (!err.IsOk()) {
-                THROW_TRITON_EXCEPTION(MPF_COULD_NOT_READ_DATAFILE,
-                                       "Failed to explicitly load Triton inference server model " +
-                                       modelNameAndVersion + " : " + err.Message());
+                throw createTritonException(MPF_COULD_NOT_READ_DATAFILE,
+                                            "Failed to explicitly load Triton inference server model " +
+                                            modelNameAndVersion + " : " + err.Message());
             }
         } else {
             LOG_INFO("Triton inference server model " << modelNameAndVersion << " is ready.");
@@ -124,7 +124,7 @@ void TritonInferencer::checkModelIsReady(int maxAttempts, int initialDelaySecond
                                      << modelNameAndVersion << " again.");
             sleep(sleepSeconds);
         } else {
-            THROW_TRITON_EXCEPTION(MPF_NETWORK_ERROR, errMsg);
+            throw createTritonException(MPF_NETWORK_ERROR, errMsg);
         }
     }
 }
@@ -135,7 +135,7 @@ void TritonInferencer::getModelInputOutputMetaData(){
 
   // get model configuration
   inference::ModelConfigResponse modelConfigResponse;
-  TR_CHECK_OK(statusClient_->ModelConfig(
+  tritonCheckOk(statusClient_->ModelConfig(
     &modelConfigResponse, modelName_, modelVersion_),
     MPF_COULD_NOT_READ_DATAFILE,
     "Unable to get model " + modelNameAndVersion + " configuration from Triton inference server " + serverUrl_ + ".");
@@ -182,7 +182,7 @@ void TritonInferencer::removeAllShmRegions(const std::string prefix){
       std::string region_name = p.second.name();
       if(!region_name.compare(0,prefix.size(),prefix)){
         // found existing mapping with same prefix, so delete it for clean start
-        TR_CHECK_OK(statusClient_->UnregisterSystemSharedMemory(region_name),
+        tritonCheckOk(statusClient_->UnregisterSystemSharedMemory(region_name),
             MPF_MEMORY_ALLOCATION_FAILED,
             "Unable to unregister system shared memory region \"" + region_name +
             "\" from Triton inference server" + serverUrl_ + ".");
@@ -311,7 +311,7 @@ TritonInferencer::TritonInferencer(const Config &cfg)
     << std::fixed << std::setprecision(6) << inferOptions_.client_timeout_ / 1e6 << " seconds.");
 
   // initialize client for server status requests
-  TR_CHECK_OK(triton::client::InferenceServerGrpcClient::Create(
+  tritonCheckOk(triton::client::InferenceServerGrpcClient::Create(
     &statusClient_,serverUrl_, cfg.tritonVerboseClient, cfg.tritonUseSSL, sslOptions_),
     MPF_NETWORK_ERROR,
     "Unable to create Triton inference client for " + serverUrl_ + ".");
