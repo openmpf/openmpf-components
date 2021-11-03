@@ -39,25 +39,25 @@
 
 using namespace MPF::COMPONENT;
 
-void TritonInferencer::checkServerIsAlive(int maxAttempts, int initialDelaySeconds) const {
-    for (int i = 0; i <= maxAttempts; i++) {
+void TritonInferencer::checkServerIsAlive(int maxRetries, int initialDelaySeconds) const {
+    for (int i = 0; i <= maxRetries; i++) {
         bool live;
         triton::client::Error err = statusClient_->IsServerLive(&live);
         std::string errMsg;
         if (!err.IsOk()) {
-            errMsg = "Failed to check liveliness of Triton inference server " + serverUrl_ + " : " + err.Message();
+            errMsg = "Failed to check liveliness of Triton inference server " + serverUrl_
+                     + " : " + err.Message() + ".";
         } else if (!live) {
             errMsg = "Triton inference server " + serverUrl_ + " is not live.";
         } else {
             LOG_INFO("Triton inference server " << serverUrl_ << " is live.");
             return;
         }
-
-        if (i < maxAttempts) {
+        if (i < maxRetries) {
             int sleepSeconds = initialDelaySeconds * (i + 1);
-            LOG_WARN("Sleeping for " << sleepSeconds
-                                     << " seconds before checking liveliness of Triton inference server "
-                                     << serverUrl_ << " again.");
+            LOG_ERROR(errMsg
+                      << " There are " << (maxRetries - i)
+                      << " attempts remaining and the next attempt will begin in " << sleepSeconds << " seconds.");
             sleep(sleepSeconds);
         } else {
             throw createTritonException(MPF_NETWORK_ERROR, errMsg);
@@ -66,25 +66,25 @@ void TritonInferencer::checkServerIsAlive(int maxAttempts, int initialDelaySecon
 }
 
 
-void TritonInferencer::checkServerIsReady(int maxAttempts, int initialDelaySeconds) const {
-    for (int i = 0; i <= maxAttempts; i++) {
+void TritonInferencer::checkServerIsReady(int maxRetries, int initialDelaySeconds) const {
+    for (int i = 0; i <= maxRetries; i++) {
         bool ready;
         triton::client::Error err = statusClient_->IsServerReady(&ready);
         std::string errMsg;
         if (!err.IsOk()) {
-            errMsg = "Failed to check readiness of Triton inference server " + serverUrl_ + " : " + err.Message();
+            errMsg = "Failed to check readiness of Triton inference server " + serverUrl_
+                     + " : " + err.Message() + ".";
         } else if (!ready) {
             errMsg = "Triton inference server " + serverUrl_ + " is not ready.";
         } else {
             LOG_INFO("Triton inference server " << serverUrl_ << " is ready.");
             return;
         }
-
-        if (i < maxAttempts) {
+        if (i < maxRetries) {
             int sleepSeconds = initialDelaySeconds * (i + 1);
-            LOG_WARN("Sleeping for " << sleepSeconds
-                                     << " seconds before checking readiness of Triton inference server "
-                                     << serverUrl_ << " again.");
+            LOG_ERROR(errMsg
+                      << " There are " << (maxRetries - i)
+                      << " attempts remaining and the next attempt will begin in " << sleepSeconds << " seconds.");
             sleep(sleepSeconds);
         } else {
             throw createTritonException(MPF_NETWORK_ERROR, errMsg);
@@ -93,19 +93,19 @@ void TritonInferencer::checkServerIsReady(int maxAttempts, int initialDelaySecon
 }
 
 
-void TritonInferencer::checkModelIsReady(int maxAttempts, int initialDelaySeconds) const {
+void TritonInferencer::checkModelIsReady(int maxRetries, int initialDelaySeconds) const {
     std::string modelNameAndVersion = getModelNameAndVersion();
 
-    for (int i = 0; i <= maxAttempts; i++) {
+    for (int i = 0; i <= maxRetries; i++) {
         bool ready;
         triton::client::Error err = statusClient_->IsModelReady(&ready, modelName_, modelVersion_);
         std::string errMsg;
         if (!err.IsOk()) {
-            errMsg = "Failed to check readiness of Triton inference server model " + modelNameAndVersion + " : " +
-                     err.Message();
+            errMsg = "Failed to check readiness of Triton inference server model " + modelNameAndVersion
+                     + " : " + err.Message() + ".";
         } else if (!ready) {
             LOG_WARN("Triton inference server model " << modelNameAndVersion
-                                                      << " is not ready. Attempting to explicitly load.");
+                     << " is not ready. Attempting to explicitly load.");
             err = statusClient_->LoadModel(modelName_);
             if (!err.IsOk()) {
                 throw createTritonException(MPF_COULD_NOT_READ_DATAFILE,
@@ -116,12 +116,11 @@ void TritonInferencer::checkModelIsReady(int maxAttempts, int initialDelaySecond
             LOG_INFO("Triton inference server model " << modelNameAndVersion << " is ready.");
             return;
         }
-
-        if (i < maxAttempts) {
+        if (i < maxRetries) {
             int sleepSeconds = initialDelaySeconds * (i + 1);
-            LOG_WARN("Sleeping for " << sleepSeconds
-                                     << " seconds before checking readiness of Triton inference server model "
-                                     << modelNameAndVersion << " again.");
+            LOG_ERROR(errMsg
+                      << " There are " << (maxRetries - i)
+                      << " attempts remaining and the next attempt will begin in " << sleepSeconds << " seconds.");
             sleep(sleepSeconds);
         } else {
             throw createTritonException(MPF_NETWORK_ERROR, errMsg);
@@ -317,9 +316,9 @@ TritonInferencer::TritonInferencer(const Config &cfg)
     "Unable to create Triton inference client for " + serverUrl_ + ".");
 
   // do some check on server and model
-  checkServerIsAlive(cfg.tritonMaxConnectionSetupAttempts, cfg.tritonConnectionSetupAttemptInitialDelay);
-  checkServerIsReady(cfg.tritonMaxConnectionSetupAttempts, cfg.tritonConnectionSetupAttemptInitialDelay);
-  checkModelIsReady(cfg.tritonMaxConnectionSetupAttempts, cfg.tritonConnectionSetupAttemptInitialDelay);
+  // checkServerIsAlive(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay); // DEBUG
+  // checkServerIsReady(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay); // DEBUG
+  checkModelIsReady(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);
 
   // get model configuration
   getModelInputOutputMetaData();

@@ -141,11 +141,11 @@ public:
     /// inference server client request timeout in micro-seconds
     uint32_t tritonClientTimeout;
 
-    /// max setup attempts for inference server connection
-    int tritonMaxConnectionSetupAttempts;
+    /// max setup retries for inference server connection
+    int tritonMaxConnectionSetupRetries;
 
     /// initial delay before attempting inference server connection again
-    int tritonConnectionSetupAttemptInitialDelay;
+    int tritonConnectionSetupRetryInitialDelay;
 
     /// verbose inference server client mode
     bool tritonVerboseClient;

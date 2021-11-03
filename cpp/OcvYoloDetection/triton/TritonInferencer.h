@@ -112,11 +112,11 @@ class TritonInferencer {
 
     std::condition_variable freeClientIdsCv_;
 
-    void checkServerIsAlive(int maxAttempts, int initialDelaySeconds) const;
+    void checkServerIsAlive(int maxRetries, int initialDelaySeconds) const;
 
-    void checkServerIsReady(int maxAttempts, int initialDelaySeconds) const;
+    void checkServerIsReady(int maxRetries, int initialDelaySeconds) const;
 
-    void checkModelIsReady(int maxAttempts, int initialDelaySeconds) const;
+    void checkModelIsReady(int maxRetries, int initialDelaySeconds) const;
 
     void getModelInputOutputMetaData();
 
