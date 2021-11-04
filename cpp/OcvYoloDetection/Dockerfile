@@ -202,10 +202,16 @@ RUN --mount=type=tmpfs,target=/tmp \
 
 RUN ssh-keygen -A
 
+RUN mkdir /root/.ssh; \
+  ( \
+    echo 'LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64'; \
+  ) > /root/.ssh/environment
+
 RUN ( \
     echo 'LogLevel DEBUG2'; \
     echo 'PermitRootLogin yes'; \
     echo 'PasswordAuthentication yes'; \
+    echo 'PermitUserEnvironment yes'; \
     echo 'Subsystem sftp /usr/libexec/openssh/sftp-server'; \
   ) > /etc/ssh/sshd_config_test_clion
 

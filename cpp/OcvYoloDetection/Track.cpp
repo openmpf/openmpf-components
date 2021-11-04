@@ -103,18 +103,7 @@ void Track::kalmanInit(const float t,
     kalmanFilterTracker_ = std::unique_ptr<KFTracker>(new KFTracker(t, dt, rec0, roi, rn, qn));
 }
 
-// TODO comment was never accurate
 
-/** **************************************************************************
-*  Get a new DetectionLocation from an existing one based on a frame
-*
-* \param framePtr pointer to the frame with new tracking info
-*
-* \returns ptr to new location based on tracker's estimation
-*
-* \note    tracker is passed on to the new location on success
-*
-**************************************************************************** */
 bool Track::ocvTrackerPredict(const Frame &frame, const long maxFrameGap, cv::Rect2i &prediction) {
 
     if (ocvTracker_.empty()) {   // initialize a new tracker if we don't have one already

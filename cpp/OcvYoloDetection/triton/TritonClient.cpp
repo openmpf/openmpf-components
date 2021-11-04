@@ -41,7 +41,6 @@
 
 using namespace MPF::COMPONENT;
 
-// TODO: Seems dangerous.
 template<typename T>
 std::vector<T*> getRaw(const std::vector<std::unique_ptr<T>> &v){
   std::vector<T*> raw;
@@ -140,73 +139,6 @@ void TritonClient::prepareInferInputs(){
                   MPF_DETECTION_FAILED,
                   "Unable to create input \"" + im.name + "\".");
       inferInputs_.push_back(std::unique_ptr<triton::client::InferInput>(tmp));
-    }
-}
-
-
-void TritonClient::setInferInputsData(const std::vector<cv::Mat> &blobs){
-
-    assert(("All model inputs have to be specified." , blobs.size() == inferencer_->inputsMeta.size()));
-
-    for(int i = 0; i < blobs.size(); ++i){
-
-      // check batch size is ok for model
-      int64_t inputBatchSize = *(blobs[i].size.p);
-      if(inputBatchSize > inferencer_->maxBatchSize()){
-          throw createTritonException(MPF_INVALID_PROPERTY,
-                                      "Input \"" + inferencer_->inputsMeta[i].name + "\" blob's batch dimension of "
-                                      + std::to_string(inputBatchSize)
-                                      + " is greater than the maximum of " + std::to_string(inferencer_->maxBatchSize())
-                                      + " supported by the model.");
-      }
-
-      // check ocv matrix data is contiguous in memory
-      if(!blobs[i].isContinuous()){
-          throw createTritonException(MPF_MEMORY_ALLOCATION_FAILED,
-                                      "Blob is not stored in continuous memory for conversion to inference client input \""
-                                      + inferencer_->inputsMeta[i].name + "\".");
-      }
-
-      // clear out input
-        tritonCheckOk(inferInputs_.at(i)->Reset(),
-                      MPF_DETECTION_FAILED,
-                      "Unable to reset input \"" + inferencer_->inputsMeta.at(i).name
-                      + "\" to receive new tensor data.");
-
-      // set input shape
-      std::vector<int64_t> shape;
-      shape.assign(blobs[i].size.p, blobs[i].size.p + blobs[i].dims);
-      tritonCheckOk(inferInputs_[i]->SetShape(shape),
-        MPF_DETECTION_FAILED,
-        "Unable to set shape " +
-        [&shape]{std::stringstream ss; ss << shape; return ss.str();}()
-        + " for input \"" + inferencer_->inputsMeta[i].name + "\".");
-
-      // set input data
-      size_t num_bytes = blobs[i].total() * blobs[i].elemSize();
-      if (usingShmInput()){
-        if (num_bytes <= inferencer_->inputsMeta[i].byte_size * inferencer_->maxBatchSize()) {
-          std::memcpy(inputs_shm_ + inferencer_->inputsMeta[i].shm_offset, blobs[i].data , num_bytes);
-            tritonCheckOk(inferInputs_.at(i)->SetSharedMemory(inputs_shm_key,
-                                                                     num_bytes,
-                                                                     inferencer_->inputsMeta[i].shm_offset),
-                          MPF_MEMORY_ALLOCATION_FAILED,
-                          "Unable to associate input \"" + inferencer_->inputsMeta[i].name
-                          + "\" with shared memory at offset "
-                          + std::to_string(inferencer_->inputsMeta[i].shm_offset) + ".");
-        } else {
-            throw createTritonException(MPF_MEMORY_ALLOCATION_FAILED,
-                                        "Attempted to set shared input memory buffer with "
-                                        + std::to_string(num_bytes) + " bytes but there is only room for "
-                                        + std::to_string(
-                                                inferencer_->inputsMeta[i].byte_size * inferencer_->maxBatchSize()) +
-                                        " bytes.");
-        }
-      } else {
-        tritonCheckOk(inferInputs_.at(i)->AppendRaw(blobs[i].data, num_bytes),
-                    MPF_MEMORY_ALLOCATION_FAILED,
-                    "Unable to set data for \"" + inferencer_->inputsMeta[i].name + "\".");
-      }
     }
 }
 

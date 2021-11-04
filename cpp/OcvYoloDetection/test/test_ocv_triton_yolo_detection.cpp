@@ -121,7 +121,7 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestVideoTriton) {
 
 
 // TODO: Should we remove this?
-TEST_F(OcvTritonYoloDetectionTestFixture, DISABLED_TestTritonPerformance) {
+TEST_F(OcvTritonYoloDetectionTestFixture, TestTritonPerformance) { // DEBUG: Was disabled
 
   int start = 0;
   int stop = 336;

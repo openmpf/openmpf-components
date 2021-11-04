@@ -316,8 +316,8 @@ TritonInferencer::TritonInferencer(const Config &cfg)
     "Unable to create Triton inference client for " + serverUrl_ + ".");
 
   // do some check on server and model
-  // checkServerIsAlive(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay); // DEBUG
-  // checkServerIsReady(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay); // DEBUG
+  checkServerIsAlive(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);
+  checkServerIsReady(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);
   checkModelIsReady(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);
 
   // get model configuration

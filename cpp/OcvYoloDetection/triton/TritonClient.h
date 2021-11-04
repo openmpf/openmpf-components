@@ -96,8 +96,6 @@ class TritonClient {
 
     void prepareInferRequestedOutputs();
 
-    void setInferInputsData(const std::vector<cv::Mat> &blobs);
-
     void inferAsync_(CallbackFunc inferencerLambda);
 
 };

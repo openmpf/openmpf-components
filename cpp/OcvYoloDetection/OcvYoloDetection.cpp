@@ -161,6 +161,7 @@ namespace {
         LOG_TRACE(detections.size() << " detections to be matched to " << inProgressTracks.size()
                     << " tracks");
 
+        /* DEBUG
         // group detections according to class features
         std::vector<Cluster<DetectionLocation>> detectionClusterList
                 = clusterItems(std::move(detections), config.maxClassDist);
@@ -179,7 +180,6 @@ namespace {
         for (auto &detectionCluster : detectionClusterList) {
             // make any unassigned detections into new tracks
             for (auto& detection : detectionCluster.members) {
-                // TODO: Ask why this isn't assigned to anything
                 // start of tracks always get feature calculated
                 detection.getDFTFeature();
                 // create new track
@@ -225,6 +225,7 @@ namespace {
                 track.kalmanPredict(frame.time, config.edgeSnapDist);
             }
         }
+        */
     }
 } // end anonymous namespace
 
