@@ -90,8 +90,8 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestVideoTriton) {
 
     auto foundTracks = initComponent().GetDetections(job);
 
-    write_track_output_video(job.data_uri, foundTracks, "TestVideoTriton.avi", job);
-    write_track_output(foundTracks, "TestVideoTriton.tracks", job);
+    // write_track_output_video(job.data_uri, foundTracks, "TestVideoTriton.avi", job);
+    // write_track_output(foundTracks, "TestVideoTriton.tracks", job);
 
     ASSERT_EQ(expectedTracks.size(), foundTracks.size());
 
@@ -127,15 +127,15 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestTritonPerformance) { // DEBUG: Was
   int stop = 336;
   int rate = 1;
   string inVideoFile  = "data/Stockholm_Marathon_9_km.webm";
-  string outTrackFile = "Stockholm_Marathon_9_km.tracks";
-  string outVideoFile = "Stockholm_Marathon_9_km.tracks.avi";
+  string outTrackFile = "/output/Stockholm_Marathon_9_km.01.tracks"; // DEBUG
+  string outVideoFile = "/output/Stockholm_Marathon_9_km.01.tracks.avi"; // DEBUG
   float comparison_score_threshold = 0.6;
 
   GOUT("Start:\t"    << start);
   GOUT("Stop:\t"     << stop);
   GOUT("Rate:\t"     << rate);
-  GOUT("outTrack:\t" << outTrackFile);
   GOUT("inVideo:\t"  << inVideoFile);
+  GOUT("outTrack:\t" << outTrackFile);
   GOUT("outVideo:\t" << outVideoFile);
   GOUT("comparison threshold:\t" << comparison_score_threshold);
 

@@ -175,7 +175,7 @@ TEST_F(OcvLocalYoloDetectionTestFixture, TestVideo) {
                     jobProps, {});
 
     auto tracks = initComponent().GetDetections(job);
-    write_track_output_video(job.data_uri, tracks, "TestVideo.avi", job);
+    // write_track_output_video(job.data_uri, tracks, "TestVideo.avi", job);
     ASSERT_EQ(3, tracks.size());
     {
         auto personTrack = findDetectionWithClass("person", tracks);

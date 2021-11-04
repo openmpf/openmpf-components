@@ -161,7 +161,6 @@ namespace {
         LOG_TRACE(detections.size() << " detections to be matched to " << inProgressTracks.size()
                     << " tracks");
 
-        /* DEBUG
         // group detections according to class features
         std::vector<Cluster<DetectionLocation>> detectionClusterList
                 = clusterItems(std::move(detections), config.maxClassDist);
@@ -225,7 +224,6 @@ namespace {
                 track.kalmanPredict(frame.time, config.edgeSnapDist);
             }
         }
-        */
     }
 } // end anonymous namespace
 

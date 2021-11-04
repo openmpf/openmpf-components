@@ -98,7 +98,7 @@ public:
     }
 
 private:
-    int frameIdxComplete_;
+    int frameIdxComplete_ = -1;
     std::mutex frameIdxCompleteMtx_;
     std::condition_variable frameIdxCompleteCv_;
     std::unique_ptr<TritonInferencer> tritonInferencer_;
@@ -149,8 +149,6 @@ private:
             ProcessFrameDetectionsFunc componentProcessLambda,
             const Config &config) {
 
-        frameIdxComplete_ = frames.front().idx - 1;
-
         tritonInferencer_->infer(frames,
              tritonInferencer_->inputsMeta.at(0),
 
@@ -195,13 +193,15 @@ private:
                      LOG_TRACE("Waiting for frame[" << frameIdxToWaitFor << "] to complete.");
                      frameIdxCompleteCv_.wait(lk,
                                               [this, frameIdxToWaitFor] {
-                                                  return frameIdxComplete_ >= frameIdxToWaitFor;
+                                                  return frameIdxComplete_ == frameIdxToWaitFor;
                                               });
                      LOG_TRACE("Done waiting for frame[" << frameIdxToWaitFor << "].");
 
                      componentProcessLambda(std::move(detectionsGroupedByFrame), begin, end);
 
                      frameIdxComplete_ = frameIdxLast;
+                     LOG_TRACE("PST: frameIdxComplete_: " << frameIdxComplete_); // DEBUG
+
                      LOG_TRACE("Completed frames[" << begin->idx << ".." << frameIdxComplete_ << "].");
 
                  }
