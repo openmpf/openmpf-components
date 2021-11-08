@@ -25,8 +25,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /*
- * This code has been modified by OpenMPF to return success when
- * attempting to unlink a shared memory file that does not exist.
+ * This code has been modified by OpenMPF to:
+ * 1. Fail when attempting to create a shared memory region that already exists.
+ * 2. Return success when attempting to unlink a shared memory region that does not exist.
  */
 
 #include "shm_utils.h"
@@ -43,11 +44,17 @@ Error
 CreateSharedMemoryRegion(std::string shm_key, size_t byte_size, int* shm_fd)
 {
   // get shared memory region descriptor
-  *shm_fd = shm_open(shm_key.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+  // OpenMPF modification: fail if the region already exists
+  *shm_fd = shm_open(shm_key.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
   if (*shm_fd == -1) {
-    return Error(
-        "unable to get shared memory descriptor for shared-memory key '" +
-        shm_key + "'");
+    if (errno == EEXIST) {
+        return Error(
+            "shared-memory region '" + shm_key + "' already exists");
+    } else {
+        return Error(
+            "unable to get shared memory descriptor for shared-memory key '" +
+            shm_key + "'");
+    }
   }
   // extend shared memory object as by default it's initialized with size 0
   int res = ftruncate(*shm_fd, byte_size);
@@ -91,7 +98,7 @@ Error
 UnlinkSharedMemoryRegion(std::string shm_key)
 {
   int shm_fd = shm_unlink(shm_key.c_str());
-  if (shm_fd == -1 && errno != ENOENT) { // OpenMPF modification: succeed if the file does not exist
+  if (shm_fd == -1 && errno != ENOENT) { // OpenMPF modification: succeed if the region does not exist
     return Error(
         "unable to unlink shared memory for key '" + shm_key + "'");
   }

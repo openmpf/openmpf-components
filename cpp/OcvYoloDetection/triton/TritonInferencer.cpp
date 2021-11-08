@@ -24,6 +24,8 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include <dirent.h>
+
 #include <Utils.h>
 #include <grpc_client.h>
 #include <MPFDetectionException.h>
@@ -173,16 +175,32 @@ void TritonInferencer::getModelInputOutputMetaData(){
 }
 
 
-bool TritonInferencer::isShmKeyPrefixInUse(const std::string& prefix) {
+bool TritonInferencer::isShmKeyPrefixInUse(const std::string &prefix) {
 
+    // check local host
+    DIR *dir;
+    struct dirent *diread;
+    if ((dir = opendir("/dev/shm")) != nullptr) {
+        while ((diread = readdir(dir)) != nullptr) {
+            if (strncmp(prefix.c_str(), diread->d_name, prefix.size()) == 0) {
+                LOG_WARN("Shared memory prefix \"" << prefix << "\" in use by region on local host: "
+                         << diread->d_name << ". Will try another prefix.");
+                return true;
+            }
+        }
+        closedir (dir);
+    }
+
+    // check server
     inference::SystemSharedMemoryStatusResponse shm_status;
     statusClient_->SystemSharedMemoryStatus(&shm_status);
-    for(const auto& p : shm_status.regions()){
-      std::string region_name = p.second.name();
-      if(!region_name.compare(0,prefix.size(),prefix)){
-        LOG_WARN("Shared memory prefix in use: " << prefix);
-        return true;
-      }
+    for (const auto &p: shm_status.regions()) {
+        std::string region_name = p.second.name();
+        if (!region_name.compare(0, prefix.size(), prefix)) {
+            LOG_WARN("Shared memory prefix \"" << prefix
+                     << "\" in use by Triton server. Will try another prefix.");
+            return true;
+        }
     }
 
     return false;
@@ -290,6 +308,13 @@ std::string TritonInferencer::getModelNameAndVersion() const {
 }
 
 
+std::string getRandomShmKeyPrefix() {
+    std::stringstream ss;
+    ss << "/OcvYoloDetection_" << hostname() << "_" << std::setw(10) << std::setfill('0') << rand();
+    return ss.str();
+}
+
+
 TritonInferencer::TritonInferencer(const Config &cfg)
         : serverUrl_(cfg.tritonServer),
           modelName_(cfg.tritonModelName),
@@ -323,13 +348,11 @@ TritonInferencer::TritonInferencer(const Config &cfg)
     // get model configuration
     getModelInputOutputMetaData();
 
-    // ensure shm key is unique
-    std::string shmKeyPrefix;
-    do {
-        std::stringstream ss;
-        ss << "OcvYoloDetection_" << hostname() << "_" << std::setw(10) << std::setfill('0') << rand();
-        shmKeyPrefix = ss.str();
-    } while(isShmKeyPrefixInUse(shmKeyPrefix));
+    // ensure shm key prefix is unique
+    std::string shmKeyPrefix = getRandomShmKeyPrefix();
+    while (isShmKeyPrefixInUse(shmKeyPrefix)) {
+        shmKeyPrefix = getRandomShmKeyPrefix();
+    }
 
     // create clients for concurrent inferencing
     LOG_TRACE("Creating " << cfg.tritonMaxInferConcurrency << " clients for concurrent inferencing.");
