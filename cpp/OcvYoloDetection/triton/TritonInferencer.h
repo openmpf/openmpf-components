@@ -53,6 +53,8 @@ class TritonInferencer {
 
     const std::string& modelName() const {return modelName_;}
 
+    const std::string& fullModelName() const {return fullModelName_;}
+
     const std::string& modelVersion() const {return modelVersion_;}
 
     const bool useShm() const {return useShm_;}
@@ -88,6 +90,8 @@ class TritonInferencer {
 
     std::string modelName_;
 
+    std::string fullModelName_;
+
     std::string modelVersion_;
 
     bool useShm_;
@@ -120,7 +124,7 @@ class TritonInferencer {
 
     void getModelInputOutputMetaData();
 
-    void removeAllShmRegions(const std::string prefix);
+    bool isShmKeyPrefixInUse(const std::string& prefix);
 };
 
 #endif // OPENMPF_COMPONENTS_TRITON_INFERENCER_H

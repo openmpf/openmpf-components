@@ -24,6 +24,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/*
+ * This code has been modified by OpenMPF to return success when
+ * attempting to unlink a shared memory file that does not exist.
+ */
+
 #include "shm_utils.h"
 
 #include <fcntl.h>
@@ -86,7 +91,7 @@ Error
 UnlinkSharedMemoryRegion(std::string shm_key)
 {
   int shm_fd = shm_unlink(shm_key.c_str());
-  if (shm_fd == -1) {
+  if (shm_fd == -1 && errno != ENOENT) { // OpenMPF modification: succeed if the file does not exist
     return Error(
         "unable to unlink shared memory for key '" + shm_key + "'");
   }

@@ -98,7 +98,7 @@ void TritonInferencer::checkModelIsReady(int maxRetries, int initialDelaySeconds
 
     for (int i = 0; i <= maxRetries; i++) {
         bool ready;
-        triton::client::Error err = statusClient_->IsModelReady(&ready, modelName_, modelVersion_);
+        triton::client::Error err = statusClient_->IsModelReady(&ready, fullModelName_, modelVersion_);
         std::string errMsg;
         if (!err.IsOk()) {
             errMsg = "Failed to check readiness of Triton inference server model " + modelNameAndVersion
@@ -106,7 +106,7 @@ void TritonInferencer::checkModelIsReady(int maxRetries, int initialDelaySeconds
         } else if (!ready) {
             LOG_WARN("Triton inference server model " << modelNameAndVersion
                      << " is not ready. Attempting to explicitly load.");
-            err = statusClient_->LoadModel(modelName_);
+            err = statusClient_->LoadModel(fullModelName_);
             if (!err.IsOk()) {
                 throw createTritonException(MPF_COULD_NOT_READ_DATAFILE,
                                             "Failed to explicitly load Triton inference server model " +
@@ -135,7 +135,7 @@ void TritonInferencer::getModelInputOutputMetaData(){
   // get model configuration
   inference::ModelConfigResponse modelConfigResponse;
   tritonCheckOk(statusClient_->ModelConfig(
-    &modelConfigResponse, modelName_, modelVersion_),
+    &modelConfigResponse, fullModelName_, modelVersion_),
     MPF_COULD_NOT_READ_DATAFILE,
     "Unable to get model " + modelNameAndVersion + " configuration from Triton inference server " + serverUrl_ + ".");
 
@@ -173,21 +173,19 @@ void TritonInferencer::getModelInputOutputMetaData(){
 }
 
 
-void TritonInferencer::removeAllShmRegions(const std::string prefix){
+bool TritonInferencer::isShmKeyPrefixInUse(const std::string& prefix) {
 
     inference::SystemSharedMemoryStatusResponse shm_status;
     statusClient_->SystemSharedMemoryStatus(&shm_status);
-    for(const auto& p  : shm_status.regions()){
+    for(const auto& p : shm_status.regions()){
       std::string region_name = p.second.name();
       if(!region_name.compare(0,prefix.size(),prefix)){
-        // found existing mapping with same prefix, so delete it for clean start
-        tritonCheckOk(statusClient_->UnregisterSystemSharedMemory(region_name),
-            MPF_MEMORY_ALLOCATION_FAILED,
-            "Unable to unregister system shared memory region \"" + region_name +
-            "\" from Triton inference server" + serverUrl_ + ".");
-        LOG_TRACE("Removed existing registered shm region " << region_name << " of size: " << p.second.byte_size() << " with key: " << p.second.key());
+        LOG_WARN("Shared memory prefix in use: " << prefix);
+        return true;
       }
     }
+
+    return false;
 }
 
 
@@ -263,7 +261,7 @@ void TritonInferencer::releaseClientId(int clientId){
 
 
 void TritonInferencer::waitTillAllClientsReleased(){
-  if(freeClientIds_.size() != clients_.size()){
+  if (freeClientIds_.size() != clients_.size()){
     std::unique_lock<std::mutex> lk(freeClientIdsMtx_);
     LOG_TRACE("Waiting till all clients freed.");
     freeClientIdsCv_.wait(lk, [this] {
@@ -288,51 +286,56 @@ int TritonInferencer::acquireClientIdBlocking(){
 
 
 std::string TritonInferencer::getModelNameAndVersion() const {
-    return modelVersion_.empty() ? modelName_ : modelName_ + " ver. " + modelVersion_;
+    return modelVersion_.empty() ? fullModelName_ : fullModelName_ + " ver. " + modelVersion_;
 }
 
 
 TritonInferencer::TritonInferencer(const Config &cfg)
-  : serverUrl_(cfg.tritonServer)
-  , modelName_(cfg.tritonModelName + "-" + std::to_string(cfg.netInputImageSize))
-  , modelVersion_((cfg.tritonModelVersion > 0) ? std::to_string(cfg.tritonModelVersion) : "")
-  , useShm_(cfg.tritonUseShm)
-  , useSSL_(cfg.tritonUseSSL)
-  , verboseClient_(cfg.tritonVerboseClient)
-  , inferOptions_(modelName_){
+        : serverUrl_(cfg.tritonServer),
+          modelName_(cfg.tritonModelName),
+          fullModelName_(cfg.tritonModelName + "-" + std::to_string(cfg.netInputImageSize)),
+          modelVersion_(cfg.tritonModelVersion),
+          useShm_(cfg.tritonUseShm),
+          useSSL_(cfg.tritonUseSSL),
+          verboseClient_(cfg.tritonVerboseClient),
+          inferOptions_(fullModelName_) {
 
-  std::string modelNameAndVersion = getModelNameAndVersion();
+    std::string modelNameAndVersion = getModelNameAndVersion();
 
-  // setup remaining inferencing options
-  inferOptions_.model_version_ = modelVersion_;
-  inferOptions_.client_timeout_ = cfg.tritonClientTimeout;
-  LOG_TRACE("Created inference options for " << modelNameAndVersion << " and a client timeout of "
-    << std::fixed << std::setprecision(6) << inferOptions_.client_timeout_ / 1e6 << " seconds.");
+    // setup remaining inferencing options
+    inferOptions_.model_version_ = modelVersion_;
+    inferOptions_.client_timeout_ = cfg.tritonClientTimeout;
+    LOG_TRACE("Created inference options for " << modelNameAndVersion << " and a client timeout of "
+                                               << std::fixed << std::setprecision(6)
+                                               << inferOptions_.client_timeout_ / 1e6 << " seconds.");
 
-  // initialize client for server status requests
-  tritonCheckOk(triton::client::InferenceServerGrpcClient::Create(
-    &statusClient_,serverUrl_, cfg.tritonVerboseClient, cfg.tritonUseSSL, sslOptions_),
-    MPF_NETWORK_ERROR,
-    "Unable to create Triton inference client for " + serverUrl_ + ".");
+    // initialize client for server status requests
+    tritonCheckOk(triton::client::InferenceServerGrpcClient::Create(
+                          &statusClient_, serverUrl_, cfg.tritonVerboseClient, cfg.tritonUseSSL, sslOptions_),
+                  MPF_NETWORK_ERROR,
+                  "Unable to create Triton inference client for " + serverUrl_ + ".");
 
-  // do some check on server and model
-  checkServerIsAlive(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);
-  checkServerIsReady(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);
-  checkModelIsReady(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);
+    // do some check on server and model
+    checkServerIsAlive(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);
+    checkServerIsReady(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);
+    checkModelIsReady(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);
 
-  // get model configuration
-  getModelInputOutputMetaData();
+    // get model configuration
+    getModelInputOutputMetaData();
 
-  // clean up any existing shared memory regions from client host
-  if(useShm_){
-    removeAllShmRegions(TritonClient::shm_key_prefix());
-  }
+    // ensure shm key is unique
+    std::string shmKeyPrefix;
+    do {
+        std::stringstream ss;
+        ss << "OcvYoloDetection_" << hostname() << "_" << std::setw(10) << std::setfill('0') << rand();
+        shmKeyPrefix = ss.str();
+    } while(isShmKeyPrefixInUse(shmKeyPrefix));
 
-  // create clients for concurrent inferencing
-  LOG_TRACE("Creating " << cfg.tritonMaxInferConcurrency << " clients for concurrent inferencing.");
-  for(int i = 0; i < cfg.tritonMaxInferConcurrency; i++){
-    clients_.emplace_back(std::unique_ptr<TritonClient>(
-      new TritonClient(i, this )));
-    freeClientIds_.insert(i);
-  }
+    // create clients for concurrent inferencing
+    LOG_TRACE("Creating " << cfg.tritonMaxInferConcurrency << " clients for concurrent inferencing.");
+    for (int i = 0; i < cfg.tritonMaxInferConcurrency; i++) {
+        clients_.emplace_back(std::unique_ptr<TritonClient>(new TritonClient(i, shmKeyPrefix, this)));
+        clients_[i]->init(); // DEBUG
+        freeClientIds_.insert(i);
+    }
 }

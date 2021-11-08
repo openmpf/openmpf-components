@@ -51,12 +51,6 @@ std::vector<T*> getRaw(const std::vector<std::unique_ptr<T>> &v){
 }
 
 
-const std::string& TritonClient::shm_key_prefix(){
-  static std::string prefix = "\\" + hostname();
-  return prefix;
-}
-
-
 cv::Mat TritonClient::getOutput(const TritonTensorMeta& om) {
 
     // get raw data shape
@@ -204,9 +198,11 @@ void TritonClient::setupShmRegion(const std::string shm_key, const size_t byte_s
     tritonCheckOk(triton::client::MapSharedMemory(shm_fd, 0, byte_size, (void**) &shm_addr),
       MPF_MEMORY_ALLOCATION_FAILED,
       "Unable to map shared memory region " + shm_key + " to client address space.");
+
     tritonCheckOk(triton::client::CloseSharedMemory(shm_fd),
       MPF_MEMORY_ALLOCATION_FAILED,
       "Failed to close shared memory region " + shm_key + " on host.");
+
     tritonCheckOk(grpc_->RegisterSystemSharedMemory(shm_key, shm_key, byte_size),
       MPF_MEMORY_ALLOCATION_FAILED,
       "Unable to register " + shm_key + " shared memory with Triton inference server " + inferencer_->serverUrl() + ".");
@@ -215,35 +211,57 @@ void TritonClient::setupShmRegion(const std::string shm_key, const size_t byte_s
 }
 
 
-void TritonClient::removeShmRegion(const std::string shm_key, const size_t byte_size, uint8_t* shm_addr){
+void TritonClient::removeShmRegion(const std::string shm_key, const size_t byte_size, uint8_t *shm_addr) {
 
-  LOG_TRACE("Removing shared memory with key " << shm_key << " of size " << byte_size << " bytes at address " << std::hex << (void*) shm_addr);
+    LOG_TRACE("Removing shared memory with key " << shm_key << " of size " << byte_size
+                                                 << " bytes at address " << std::hex << (void *) shm_addr);
 
-  tritonCheckOk(grpc_->UnregisterSystemSharedMemory(shm_key),
-    MPF_MEMORY_ALLOCATION_FAILED,
-    "Unable to unregister shared memory region " + shm_key + " from Triton inference server " + inferencer_->serverUrl() + ".");
-  tritonCheckOk(triton::client::UnmapSharedMemory((void*) shm_addr, byte_size),
-    MPF_MEMORY_ALLOCATION_FAILED,
-    "Unable to unmap shared memory region " + shm_key + " from client address space.");
-  tritonCheckOk(triton::client::UnlinkSharedMemoryRegion(shm_key),
-    MPF_MEMORY_ALLOCATION_FAILED,
-    "Unable to remove shared memory region " + shm_key + " on host.");
+    triton::client::Error tritonErr = grpc_->UnregisterSystemSharedMemory(shm_key);
+    if (!tritonErr.IsOk()) {
+        LOG_WARN("Unable to unregister shared memory region " + shm_key
+                 + " from Triton inference server " + inferencer_->serverUrl() + ".");
+    }
+    if (shm_addr != nullptr) {
+        tritonErr = triton::client::UnmapSharedMemory((void *) shm_addr, byte_size);
+        if (!tritonErr.IsOk()) {
+            LOG_WARN("Unable to unmap shared memory region " + shm_key + " from client address space.");
+        }
+    }
+    tritonErr = triton::client::UnlinkSharedMemoryRegion(shm_key);
+    if (!tritonErr.IsOk()) {
+        LOG_WARN("Unable to remove shared memory region " + shm_key + " on host.");
+    }
 }
 
 
-TritonClient::~TritonClient(){
-  LOG_TRACE("~TritonClient " << id);
-  if(usingShmInput()){
-    removeShmRegion(inputs_shm_key,  inputs_byte_size,  inputs_shm_);
-  }
-  if(usingShmOutput()){
-    removeShmRegion(outputs_shm_key, outputs_byte_size, outputs_shm_);
-  }
+void TritonClient::init() {
+    // TODO: Initialize shared memory here instead of the constructor so that if something goes wrong
+    // then the shared memory is cleaned up in the destructor.
+    if (usingShmInput()) {
+        setupShmRegion(inputs_shm_key, inputs_byte_size, inputs_shm_);
+    }
+    if (usingShmOutput()) {
+        setupShmRegion(outputs_shm_key, outputs_byte_size, outputs_shm_);
+    }
+    prepareInferInputs();
+    prepareInferRequestedOutputs();
+}
+
+
+TritonClient::~TritonClient() {
+    LOG_TRACE("~TritonClient " << id);
+    if (usingShmInput()) {
+        removeShmRegion(inputs_shm_key, inputs_byte_size, inputs_shm_);
+    }
+    if (usingShmOutput()) {
+        removeShmRegion(outputs_shm_key, outputs_byte_size, outputs_shm_);
+    }
 }
 
 
 TritonClient::TritonClient(
   const int id,
+  const std::string& shmKeyPrefix,
   const TritonInferencer *inferencer)
  : id(id)
  , inferencer_(inferencer)
@@ -251,8 +269,8 @@ TritonClient::TritonClient(
                    + inferencer->inputsMeta.back().byte_size * inferencer->maxBatchSize())
  , outputs_byte_size(inferencer->outputsMeta.back().shm_offset
                     + inferencer->outputsMeta.back().byte_size * inferencer->maxBatchSize())
- , inputs_shm_key(inferencer->useShm() ? shm_key_prefix() + "_" + std::to_string(id) + "_inputs" : "")
- , outputs_shm_key(inferencer->useShm() ? shm_key_prefix() + "_" + std::to_string(id) + "_outputs" : "")
+ , inputs_shm_key(inferencer->useShm() ? shmKeyPrefix + "_" + std::to_string(id) + "_inputs" : "")
+ , outputs_shm_key(inferencer->useShm() ? shmKeyPrefix + "_" + std::to_string(id) + "_outputs" : "")
 {
   tritonCheckOk(triton::client::InferenceServerGrpcClient::Create(
     &grpc_,
@@ -262,13 +280,4 @@ TritonClient::TritonClient(
     inferencer->sslOptions()),
       MPF_NETWORK_ERROR,
       "Unable to create Triton inference client for " + inferencer->serverUrl() + ".");
-
-  if(usingShmInput()){
-    setupShmRegion(inputs_shm_key,  inputs_byte_size,  inputs_shm_);
-  }
-  if(usingShmOutput()){
-    setupShmRegion(outputs_shm_key, outputs_byte_size, outputs_shm_);
-  }
-  prepareInferInputs();
-  prepareInferRequestedOutputs();
 }

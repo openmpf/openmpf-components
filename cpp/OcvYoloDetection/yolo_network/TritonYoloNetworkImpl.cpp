@@ -58,7 +58,7 @@ public:
     void GetDetections(
             std::vector<Frame> &frames,
             ProcessFrameDetectionsFunc processFrameDetectionsFun,
-            const Config &config){
+            const Config &config) {
         if (!config.tritonEnabled) {
             processFrameDetectionsFun(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
         } else {
@@ -71,7 +71,7 @@ public:
         if (config.tritonEnabled && tritonInferencer_) {
             return config.tritonServer == tritonInferencer_->serverUrl()
                    && config.tritonModelName == tritonInferencer_->modelName()
-                   && config.tritonModelVersion == std::stoi(tritonInferencer_->modelVersion())
+                   && config.tritonModelVersion == tritonInferencer_->modelVersion()
                    && config.tritonUseShm == tritonInferencer_->useShm()
                    && config.tritonUseSSL == tritonInferencer_->useSSL()
                    && config.tritonVerboseClient == tritonInferencer_->verboseClient()
@@ -91,9 +91,10 @@ public:
         }
     }
 
-    void Cleanup(const Config &config) {
-        if (config.tritonEnabled) {
+    void Cleanup() {
+        if (tritonInferencer_) {
             tritonInferencer_->waitTillAllClientsReleased();
+            frameIdxComplete_ = -1;
         }
     }
 
@@ -306,6 +307,6 @@ bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config 
     return pimpl_->IsCompatible(modelSettings, config);
 }
 
-void YoloNetwork::Cleanup(const Config &config) {
-    pimpl_->Cleanup(config);
+void YoloNetwork::Cleanup() {
+    pimpl_->Cleanup();
 }

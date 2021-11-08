@@ -59,7 +59,7 @@ public:
 
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
 
-    void Cleanup(const Config &config);
+    void Cleanup();
 
 protected:
     log4cxx::LoggerPtr log_ = log4cxx::Logger::getLogger("OcvYoloDetection");

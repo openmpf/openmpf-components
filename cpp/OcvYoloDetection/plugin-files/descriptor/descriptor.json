@@ -68,9 +68,9 @@
         },
         {
           "name": "TRITON_MODEL_VERSION",
-          "description": "Triton server model version to use for inferencing.",
-          "type": "INT",
-          "defaultValue": "-1"
+          "description": "Triton server model version to use for inferencing. Use empty string for the latest.",
+          "type": "STRING",
+          "defaultValue": ""
         },
         {
           "name": "TRITON_MODEL_NUM_CLASSES",

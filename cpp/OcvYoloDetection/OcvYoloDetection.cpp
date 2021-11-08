@@ -232,6 +232,8 @@ bool OcvYoloDetection::Init() {
     logger_ = log4cxx::Logger::getLogger("OcvYoloDetection");
     LOG_DEBUG("Initializing OcvYoloDetector");
 
+    srand(time(NULL));
+
     auto pluginPath = GetRunDirectory() + "/OcvYoloDetection";
     modelsParser_.Init(pluginPath + "/models")
             .RegisterPathField("ocvdnn_network_config", &ModelSettings::ocvDnnNetworkConfigFile)
@@ -313,7 +315,7 @@ std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob 
           },
           config);
 
-        yoloNetwork.Cleanup(config);
+        yoloNetwork.Cleanup();
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << results.size()
                                 << " detections.");
@@ -355,7 +357,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             auto tmp = GetVideoFrames(videoCapture, config.frameBatchSize);
 
             if (tmp.empty()) {
-                yoloNetwork.Cleanup(config);
+                yoloNetwork.Cleanup();
                 break;
             }
 

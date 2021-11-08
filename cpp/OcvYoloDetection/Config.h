@@ -129,8 +129,8 @@ public:
     /// triton inference server model to use
     std::string tritonModelName;
 
-    /// version of model (e.g. -1 for latest)
-    int tritonModelVersion;
+    /// version of model (e.g. "" for latest)
+    std::string tritonModelVersion;
 
     /// number of classes returned by model
     int tritonNumClasses;

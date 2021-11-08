@@ -63,7 +63,7 @@ public:
 
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
 
-    void Cleanup(const Config &config);
+    void Cleanup();
 
 private:
     class YoloNetworkImpl;

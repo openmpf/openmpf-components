@@ -301,7 +301,7 @@ bool BaseYoloNetworkImpl::IsCompatible(const ModelSettings &modelSettings, const
            && config.classWhiteListPath == classWhiteListPath_;
 }
 
-void BaseYoloNetworkImpl::Cleanup(const Config &config) {}
+void BaseYoloNetworkImpl::Cleanup() {}
 
 
 std::vector<std::vector<DetectionLocation>> BaseYoloNetworkImpl::GetDetectionsCvdnn(

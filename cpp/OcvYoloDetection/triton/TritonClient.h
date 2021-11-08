@@ -44,17 +44,18 @@ class TritonClient {
 
     TritonClient(
       const int id,
+      const std::string& shmKeyPrefix,
       const TritonInferencer *inferencer);
 
     ~TritonClient();
 
     using CallbackFunc = std::function<void()>;
 
+    void init();
+
     void inferAsync(int inferInputIdx, const cv::Mat& shmBlob, CallbackFunc inferencerLambda);
 
     cv::Mat getOutput(const TritonTensorMeta& om);
-
-    static const std::string& shm_key_prefix();
 
     // TODO: Move definitions to *.cpp. Prefix with get*.
 
@@ -68,9 +69,9 @@ class TritonClient {
 
     const TritonInferencer *inferencer_;
 
-    uint8_t* inputs_shm_;
+    uint8_t* inputs_shm_ = nullptr;
 
-    uint8_t* outputs_shm_;
+    uint8_t* outputs_shm_ = nullptr;
 
     std::vector<std::unique_ptr<triton::client::InferInput>>
       inferInputs_;
