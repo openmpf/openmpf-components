@@ -62,7 +62,7 @@ void TritonInferencer::checkServerIsAlive(int maxRetries, int initialDelaySecond
                       << " attempts remaining and the next attempt will begin in " << sleepSeconds << " seconds.");
             sleep(sleepSeconds);
         } else {
-            throw createTritonException(MPF_NETWORK_ERROR, errMsg);
+            THROW_TRITON_EXCEPTION(MPF_NETWORK_ERROR, errMsg);
         }
     }
 }
@@ -89,7 +89,7 @@ void TritonInferencer::checkServerIsReady(int maxRetries, int initialDelaySecond
                       << " attempts remaining and the next attempt will begin in " << sleepSeconds << " seconds.");
             sleep(sleepSeconds);
         } else {
-            throw createTritonException(MPF_NETWORK_ERROR, errMsg);
+            THROW_TRITON_EXCEPTION(MPF_NETWORK_ERROR, errMsg);
         }
     }
 }
@@ -110,9 +110,9 @@ void TritonInferencer::checkModelIsReady(int maxRetries, int initialDelaySeconds
                      << " is not ready. Attempting to explicitly load.");
             err = statusClient_->LoadModel(fullModelName_);
             if (!err.IsOk()) {
-                throw createTritonException(MPF_COULD_NOT_READ_DATAFILE,
-                                            "Failed to explicitly load Triton inference server model " +
-                                            modelNameAndVersion + " : " + err.Message());
+                THROW_TRITON_EXCEPTION(MPF_COULD_NOT_READ_DATAFILE,
+                                             "Failed to explicitly load Triton inference server model " +
+                                             modelNameAndVersion + " : " + err.Message());
             }
         } else {
             LOG_INFO("Triton inference server model " << modelNameAndVersion << " is ready.");
@@ -125,7 +125,7 @@ void TritonInferencer::checkModelIsReady(int maxRetries, int initialDelaySeconds
                       << " attempts remaining and the next attempt will begin in " << sleepSeconds << " seconds.");
             sleep(sleepSeconds);
         } else {
-            throw createTritonException(MPF_NETWORK_ERROR, errMsg);
+            THROW_TRITON_EXCEPTION(MPF_NETWORK_ERROR, errMsg);
         }
     }
 }
@@ -136,7 +136,7 @@ void TritonInferencer::getModelInputOutputMetaData(){
 
   // get model configuration
   inference::ModelConfigResponse modelConfigResponse;
-  tritonCheckOk(statusClient_->ModelConfig(
+  TR_CHECK_OK(statusClient_->ModelConfig(
     &modelConfigResponse, fullModelName_, modelVersion_),
     MPF_COULD_NOT_READ_DATAFILE,
     "Unable to get model " + modelNameAndVersion + " configuration from Triton inference server " + serverUrl_ + ".");
@@ -335,10 +335,10 @@ TritonInferencer::TritonInferencer(const Config &cfg)
                                                << inferOptions_.client_timeout_ / 1e6 << " seconds.");
 
     // initialize client for server status requests
-    tritonCheckOk(triton::client::InferenceServerGrpcClient::Create(
+    TR_CHECK_OK(triton::client::InferenceServerGrpcClient::Create(
                           &statusClient_, serverUrl_, cfg.tritonVerboseClient, cfg.tritonUseSSL, sslOptions_),
-                  MPF_NETWORK_ERROR,
-                  "Unable to create Triton inference client for " + serverUrl_ + ".");
+                MPF_NETWORK_ERROR,
+                "Unable to create Triton inference client for " + serverUrl_ + ".");
 
     // do some check on server and model
     checkServerIsAlive(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);

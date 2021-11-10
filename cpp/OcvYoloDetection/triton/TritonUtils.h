@@ -32,8 +32,45 @@
 
 using namespace MPF::COMPONENT;
 
-void tritonCheckOk(triton::client::Error tritonErr, MPFDetectionError mpfErr, std::string message);
+// Macro for error checking / logging of inference server client lib
+#ifdef DEBUG_LINE_NUMBERS
+#define TR_CHECK_OK(TRITON_ERR, MPF_ERR, MSG) {                                                     \
+    triton::client::Error tritonErr = (TRITON_ERR);                                                 \
+    MPFDetectionError mpfErr = (MPF_ERR);                                                           \
+    if (!tritonErr.IsOk()) {                                                                        \
+        throw MPFDetectionException(mpfErr,                                                         \
+                                    std::string("Triton inference server error")                    \
+                                    + " in " + std::string(__FILENAME__)                            \
+                                    + "[" + std::to_string(__LINE__) + "]: "                        \
+                                    + (MSG) + ": " + tritonErr.Message());                          \
+    }                                                                                               \
+}
+#else
+#define TR_CHECK_OK(TRITON_ERR, MPF_ERR, MSG) {                                                     \
+    triton::client::Error tritonErr = (TRITON_ERR);                                                 \
+    MPFDetectionError mpfErr = (MPF_ERR);                                                           \
+    if (!tritonErr.IsOk()) {                                                                        \
+        throw MPFDetectionException(mpfErr,                                                         \
+                                    std::string("Triton inference server error: ")                  \
+                                    + (MSG) + ": " + tritonErr.Message());                          \
+    }                                                                                               \
+}
+#endif
 
-MPFDetectionException createTritonException(MPFDetectionError mpfErr, std::string message);
+
+// Macro for throwing exception so we can see where in the code it happened
+#ifdef DEBUG_LINE_NUMBERS
+#define THROW_TRITON_EXCEPTION(MPF_ERR, MSG) {                                                      \
+    MPFDetectionError mpfErr = (MPF_ERR);                                                           \
+    throw MPFDetectionException(mpfErr,                                                             \
+                                "Error in " + std::string(__FILENAME__)                             \
+                                + "[" + std::to_string(__LINE__) + "]: " + (MSG));                  \
+}
+#else
+#define THROW_TRITON_EXCEPTION(MPF_ERR, MSG) {                                                      \
+    MPFDetectionError mpfErr = (MPF_ERR);                                                           \
+    throw MPFDetectionException(mpfErr, (MSG));                                                     \
+}
+#endif
 
 #endif // OPENMPF_COMPONENTS_TRITON_UTILS_H

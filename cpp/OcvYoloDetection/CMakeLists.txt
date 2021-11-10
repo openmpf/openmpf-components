@@ -88,7 +88,7 @@ set(LOCAL_OCV_YOLO_DETECTION_SOURCE_FILES
 
 set(TRITON_OCV_YOLO_DETECTION_SOURCE_FILES
         yolo_network/TritonYoloNetworkImpl.cpp yolo_network/YoloNetwork.h
-        triton/TritonUtils.cpp triton/TritonUtils.h
+        triton/TritonUtils.h
         triton/TritonInferencer.cpp triton/TritonInferencer.h
         triton/TritonClient.cpp triton/TritonClient.h
         triton/TritonTensorMeta.cpp triton/TritonTensorMeta.h

@@ -55,7 +55,7 @@ cv::Mat TritonClient::getOutput(const TritonTensorMeta& om) {
 
     // get raw data shape
     std::vector<int64_t> shape;
-    tritonCheckOk(inferResult_->Shape(om.name, &shape),
+    TR_CHECK_OK(inferResult_->Shape(om.name, &shape),
                 MPF_DETECTION_FAILED,
                 "Failed to get inference server result shape for \"" + om.name + "\".");
     size_t ndim = shape.size();
@@ -74,7 +74,7 @@ cv::Mat TritonClient::getOutput(const TritonTensorMeta& om) {
       LOG_TRACE("Output \"" << om.name << "\" uses shared memory starting at address "
                 << std::hex << (void*)ptrRaw);
     }else{
-      tritonCheckOk(inferResult_->RawData(om.name, &ptrRaw, &cntRaw),
+      TR_CHECK_OK(inferResult_->RawData(om.name, &ptrRaw, &cntRaw),
             MPF_DETECTION_FAILED,
             "Failed to get inference server result raw data for \"" + om.name + "\".");
     }
@@ -94,7 +94,7 @@ cv::Mat TritonClient::getOutput(const TritonTensorMeta& om) {
         std::stringstream ss("Shape ");
         ss << shape << " and data-type \"" << om.type
            << "\" are inconsistent with buffer size " << cntRaw << ".";
-        throw createTritonException(MPF_DETECTION_FAILED, ss.str());
+        THROW_TRITON_EXCEPTION(MPF_DETECTION_FAILED, ss.str());
     }
 
     return cv::Mat(ndim, iShape.data(), om.cvType, (void *) ptrRaw);
@@ -105,14 +105,14 @@ void TritonClient::prepareInferRequestedOutputs(){
 
   for(auto &om : inferencer_->outputsMeta){
     triton::client::InferRequestedOutput *tmp;
-    tritonCheckOk(triton::client::InferRequestedOutput::Create(&tmp, om.name),
+    TR_CHECK_OK(triton::client::InferRequestedOutput::Create(&tmp, om.name),
       MPF_DETECTION_FAILED,
       "Unable to create requested output \"" + om.name + "\".");
 
     if(usingShmOutput()){
-      tritonCheckOk(tmp->SetSharedMemory(outputs_shm_key,
-                                       om.byte_size * inferencer_->maxBatchSize(),
-                                       om.shm_offset),
+       TR_CHECK_OK(tmp->SetSharedMemory(outputs_shm_key,
+                                        om.byte_size * inferencer_->maxBatchSize(),
+                                        om.shm_offset),
        MPF_MEMORY_ALLOCATION_FAILED,
        "Unable to associate output \"" + om.name+ "\" with shared memory at offset "
        + std::to_string(om.shm_offset));
@@ -129,7 +129,7 @@ void TritonClient::prepareInferInputs(){
     inferInputs_.clear();
     for(auto& im : inferencer_->inputsMeta){
       triton::client::InferInput *tmp;
-      tritonCheckOk(triton::client::InferInput::Create(&tmp, im.name, im.shape, im.type),
+      TR_CHECK_OK(triton::client::InferInput::Create(&tmp, im.name, im.shape, im.type),
                   MPF_DETECTION_FAILED,
                   "Unable to create input \"" + im.name + "\".");
       inferInputs_.push_back(std::unique_ptr<triton::client::InferInput>(tmp));
@@ -140,16 +140,16 @@ void TritonClient::prepareInferInputs(){
 void TritonClient::inferAsync(int inferInputIdx, const cv::Mat& blob, CallbackFunc inferencerLambda){
 
   // clear out input
-    tritonCheckOk(inferInputs_.at(inferInputIdx)->Reset(),
-                  MPF_DETECTION_FAILED,
-                  "Unable to reset input \"" + inferencer_->inputsMeta.at(inferInputIdx).name
-                  + "\" to receive new tensor data.");
+  TR_CHECK_OK(inferInputs_.at(inferInputIdx)->Reset(),
+              MPF_DETECTION_FAILED,
+              "Unable to reset input \"" + inferencer_->inputsMeta.at(inferInputIdx).name
+              + "\" to receive new tensor data.");
 
   // set input shape
   std::vector<int64_t> shape;
   shape.assign(blob.size.p, blob.size.p + blob.dims);
   if(inferInputs_[inferInputIdx]->Shape()[0] != shape[0]){
-    tritonCheckOk(inferInputs_[inferInputIdx]->SetShape(shape),
+    TR_CHECK_OK(inferInputs_[inferInputIdx]->SetShape(shape),
       MPF_DETECTION_FAILED,
       "Unable to set shape" +
       [&shape]{std::stringstream ss; ss << shape; return ss.str();}()
@@ -158,14 +158,14 @@ void TritonClient::inferAsync(int inferInputIdx, const cv::Mat& blob, CallbackFu
   // set input data
   size_t numBytes = blob.total() * blob.elemSize();
   if(usingShmInput()){
-    tritonCheckOk(inferInputs_.at(inferInputIdx)->SetSharedMemory(
+    TR_CHECK_OK(inferInputs_.at(inferInputIdx)->SetSharedMemory(
       inputs_shm_key, numBytes, inferencer_->inputsMeta[inferInputIdx].shm_offset),
       MPF_MEMORY_ALLOCATION_FAILED,
       "Unable to associate input \"" + inferencer_->inputsMeta[inferInputIdx].name
       + "\" with shared memory at offset "
       + std::to_string(inferencer_->inputsMeta[inferInputIdx].shm_offset) + ".");
   }else{
-    tritonCheckOk(inferInputs_.at(inferInputIdx)->AppendRaw(blob.data, numBytes),
+    TR_CHECK_OK(inferInputs_.at(inferInputIdx)->AppendRaw(blob.data, numBytes),
                 MPF_MEMORY_ALLOCATION_FAILED,
                 "Unable to set data for \"" + inferencer_->inputsMeta[inferInputIdx].name + "\".");
   }
@@ -175,7 +175,7 @@ void TritonClient::inferAsync(int inferInputIdx, const cv::Mat& blob, CallbackFu
 
 
 void TritonClient::inferAsync_(CallbackFunc inferencerLambda){
-  tritonCheckOk(
+  TR_CHECK_OK(
       grpc_->AsyncInfer(
       [inferencerLambda, this](triton::client::InferResult* tmp) {
         inferResult_.reset(tmp);
@@ -192,18 +192,18 @@ void TritonClient::inferAsync_(CallbackFunc inferencerLambda){
 void TritonClient::setupShmRegion(const std::string shm_key, const size_t byte_size, uint8_t* &shm_addr){
 
     int shm_fd;
-    tritonCheckOk(triton::client::CreateSharedMemoryRegion(shm_key, byte_size, &shm_fd),
+    TR_CHECK_OK(triton::client::CreateSharedMemoryRegion(shm_key, byte_size, &shm_fd),
       MPF_MEMORY_ALLOCATION_FAILED,
       "Unable to create shared memory region " + shm_key + " on host.");
-    tritonCheckOk(triton::client::MapSharedMemory(shm_fd, 0, byte_size, (void**) &shm_addr),
+    TR_CHECK_OK(triton::client::MapSharedMemory(shm_fd, 0, byte_size, (void**) &shm_addr),
       MPF_MEMORY_ALLOCATION_FAILED,
       "Unable to map shared memory region " + shm_key + " to client address space.");
 
-    tritonCheckOk(triton::client::CloseSharedMemory(shm_fd),
+    TR_CHECK_OK(triton::client::CloseSharedMemory(shm_fd),
       MPF_MEMORY_ALLOCATION_FAILED,
       "Failed to close shared memory region " + shm_key + " on host.");
 
-    tritonCheckOk(grpc_->RegisterSystemSharedMemory(shm_key, shm_key, byte_size),
+    TR_CHECK_OK(grpc_->RegisterSystemSharedMemory(shm_key, shm_key, byte_size),
       MPF_MEMORY_ALLOCATION_FAILED,
       "Unable to register " + shm_key + " shared memory with Triton inference server " + inferencer_->serverUrl() + ".");
 
@@ -272,7 +272,7 @@ TritonClient::TritonClient(
  , inputs_shm_key(inferencer->useShm() ? shmKeyPrefix + "_" + std::to_string(id) + "_inputs" : "")
  , outputs_shm_key(inferencer->useShm() ? shmKeyPrefix + "_" + std::to_string(id) + "_outputs" : "")
 {
-  tritonCheckOk(triton::client::InferenceServerGrpcClient::Create(
+  TR_CHECK_OK(triton::client::InferenceServerGrpcClient::Create(
     &grpc_,
     inferencer->serverUrl(),
     inferencer->verboseClient(),

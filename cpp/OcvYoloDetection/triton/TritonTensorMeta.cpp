@@ -84,10 +84,10 @@ namespace {
       case inference::TYPE_FP64:  return CV_64FC1;
       default:// OpenCV does not support these types
               //   UINT32, UINT64, INT64, FP16, BOOL, BYTES:
-          throw createTritonException(MPF_DETECTION_FAILED,
-                                      "Unsupported inference::DataType = "
-                                      + std::to_string(dt)
-                                      + " in cv:Mat conversion.");
+          THROW_TRITON_EXCEPTION(MPF_DETECTION_FAILED,
+                                 "Unsupported inference::DataType = "
+                                 + std::to_string(dt)
+                                 + " in cv:Mat conversion.");
     }
   }
 
