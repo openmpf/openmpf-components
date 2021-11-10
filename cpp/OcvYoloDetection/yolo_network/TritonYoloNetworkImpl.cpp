@@ -68,8 +68,9 @@ public:
 
     // Determines if the cached YoloNetwork should be reused or not.
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
-        if (config.tritonEnabled && tritonInferencer_) {
-            return config.tritonServer == tritonInferencer_->serverUrl()
+        if (config.tritonEnabled) {
+            return tritonInferencer_
+                   && config.tritonServer == tritonInferencer_->serverUrl()
                    && config.tritonModelName == tritonInferencer_->modelName()
                    && config.tritonModelVersion == tritonInferencer_->modelVersion()
                    && config.tritonUseShm == tritonInferencer_->useShm()
@@ -81,13 +82,13 @@ public:
                    && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
                    && config.classWhiteListPath == classWhiteListPath_;
         } else {
-            return modelSettings_.ocvDnnNetworkConfigFile == modelSettings.ocvDnnNetworkConfigFile
+            return !tritonInferencer_
+                   && modelSettings_.ocvDnnNetworkConfigFile == modelSettings.ocvDnnNetworkConfigFile
                    && modelSettings_.ocvDnnWeightsFile == modelSettings.ocvDnnWeightsFile
                    && modelSettings_.namesFile == modelSettings.namesFile
                    && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
                    && config.cudaDeviceId == cudaDeviceId_
-                   && config.classWhiteListPath == classWhiteListPath_
-                   && !tritonInferencer_;
+                   && config.classWhiteListPath == classWhiteListPath_;
         }
     }
 
