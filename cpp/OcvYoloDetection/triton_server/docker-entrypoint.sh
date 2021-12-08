@@ -26,21 +26,23 @@
 # limitations under the License.                                            #
 #############################################################################
 
+set -o errexit -o pipefail -o xtrace
+
 cd /model-gen/yolo
 
-./gen-engine-416
-LD_PRELOAD="/plugins/libyolo416layerplugin.so"
+YOLO_416_PLUGIN_LIB="/plugins/libyolo416layerplugin.so"
+env LD_PRELOAD="$YOLO_416_PLUGIN_LIB" ./gen-engine-416
 
-./gen-engine-608
-LD_PRELOAD="$LD_PRELOAD:/plugins/libyolo608layerplugin.so"
+YOLO_608_PLUGIN_LIB="/plugins/libyolo608layerplugin.so"
+env LD_PRELOAD="$YOLO_608_PLUGIN_LIB" ./gen-engine-608
 
-exec env LD_PRELOAD="$LD_PRELOAD" \
+exec env LD_PRELOAD="$YOLO_416_PLUGIN_LIB:$YOLO_608_PLUGIN_LIB" \
     tritonserver \
     --model-repository=/models \
     --strict-model-config=false \
     --model-control-mode=explicit \
-    --load-model=yolo-416 \  # GPU
-    --load-model=yolo-608 \  # GPU
-    # --load-model=ip_irv2_coco \  # CPU
-    --log-verbose=1 \  # (optional)
+    --load-model=yolo-416 \
+    --load-model=yolo-608 \
+    # (optional)
+    --log-verbose=1 \
     --grpc-infer-allocation-pool-size=16

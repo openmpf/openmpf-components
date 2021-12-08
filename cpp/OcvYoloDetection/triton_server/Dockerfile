@@ -39,10 +39,8 @@ FROM nvcr.io/nvidia/tritonserver:21.06-py3 as openmpf_triton_server
 # Weights will later be used to generate TensorRT engine files in the entrypoint.
 COPY --from=models /models/yolov4.wts /model-gen/yolo/yolov4.wts
 
-COPY docker-entrypoint.sh /opt/tritonserver
-
 RUN apt-get update; \
-    apt-get -y cmake; \
+    apt-get install -y cmake; \
     rm -rf /var/lib/apt/lists/*
 
 # Generate binaries that will later be used to generate TensorRT engine files in the entrypoint.
@@ -53,21 +51,24 @@ RUN --mount=type=tmpfs,target=/tmp \
     cd yolov4-triton-tensorrt; \
     mkdir -p /plugins; \
     # Support 416x416 images
-    git checkout openmpf/dims-416; \
+    git checkout openmpf/dim-416; \
     mkdir build-416; \
     cd build-416; \
     cmake ..; \
     make; \
-    mv main /model-gen/yolo/gen-engine-416 \
+    mv main /model-gen/yolo/gen-engine-416; \
     mv libyolo416layerplugin.so /plugins/libyolo416layerplugin.so; \
-    # Support 608x608 images
-    git checkout openmpf/dims-608; \
+    # Support 608x608 images \
+    cd ..; \
+    git checkout openmpf/dim-608; \
     mkdir build.608; \
     cd build.608; \
     cmake ..; \
     make; \
-    mv main /model-gen/yolo/gen-engine-608 \
-    mv libyolo608layerplugin.so /plugins/libyolo608layerplugin.so;
+    mv main /model-gen/yolo/gen-engine-608; \
+    mv libyolo608layerplugin.so /plugins/libyolo608layerplugin.so
+
+COPY docker-entrypoint.sh /opt/tritonserver
 
 ENTRYPOINT ["/opt/tritonserver/docker-entrypoint.sh"]
 
