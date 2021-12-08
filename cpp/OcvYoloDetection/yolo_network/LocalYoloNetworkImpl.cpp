@@ -51,6 +51,6 @@ bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config 
     return pimpl_->IsCompatible(modelSettings, config);
 }
 
-void YoloNetwork::Cleanup(const Config &config) {
-    return pimpl_->Cleanup(config);
+void YoloNetwork::Cleanup() {
+    return pimpl_->Cleanup();
 }

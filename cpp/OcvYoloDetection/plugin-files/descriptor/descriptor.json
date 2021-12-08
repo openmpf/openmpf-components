@@ -118,13 +118,13 @@
           "name": "TRITON_USE_SHM",
           "description": "If true, inference server client communication uses shared memory (requires client and server to be on same machine).",
           "type": "BOOLEAN",
-          "defaultValue": "true"
+          "defaultValue": "false"
         },
         {
           "name": "NET_INPUT_IMAGE_SIZE",
           "description": "Scaled image width and height for detection network input (e.g. 320, 416, or 608).",
           "type": "INT",
-          "defaultValue": "608"
+          "defaultValue": "416"
         },
         {
           "name": "DETECTION_NMS_THRESHOLD",

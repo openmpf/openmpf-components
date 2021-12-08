@@ -75,3 +75,19 @@ assignment stages, each using a linear assignment cost solver:
 * Currently, only the full and Tiny YoloV3 models are configured with a confusion matrix. The matrix was originally
   created based on testing Tiny YoloV3, so it may not be appropriate for use with full YoloV3. Consider generating new
   confusion matrices for the full and Tiny YoloV4 models.
+
+# Models Image
+
+Building the Triton server image requires models that are stored in a docker image. To update this image with new
+models, follow these steps:
+
+```
+mkdir temp_models
+cd temp_models
+docker run --rm --workdir /models openmpf_ocv_yolo_detection_triton_models:<image tag> tar --create . | tar --extract`
+```
+
+Now make your changes in this directory by adding or removing files as necessary. Create the new image with the
+following command:
+
+`echo -e 'FROM busybox\nCOPY . /models/' | docker build -f- . -t openmpf_ocv_yolo_detection_triton_models:<image tag>`
