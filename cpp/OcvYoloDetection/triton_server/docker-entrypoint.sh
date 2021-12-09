@@ -37,18 +37,7 @@ YOLO_608_PLUGIN_LIB="/plugins/libyolo608layerplugin.so"
 env LD_PRELOAD="$YOLO_608_PLUGIN_LIB" ./gen-engine-608
 
 # Background process that will periodically unload unused models
-# ./expire-models.py &
+/opt/tritonserver/expire-models.py &
 
-# env LD_PRELOAD="$YOLO_416_PLUGIN_LIB:$YOLO_608_PLUGIN_LIB:$LD_PRELOAD" \
-#    /opt/triton/nvidia_entrypoint.sh "$@"
-
-env LD_PRELOAD="$YOLO_416_PLUGIN_LIB:$YOLO_608_PLUGIN_LIB:" \
-    tritonserver \
-    --model-repository=/models \
-    --strict-model-config=false \
-    --model-control-mode=explicit \
-    --load-model=yolo-416 \
-    --load-model=yolo-608 \
-    # (optional)
-    --log-verbose=1 \
-    --grpc-infer-allocation-pool-size=16
+# Run the "command" specified in the Docker service entry.
+env /opt/tritonserver/nvidia_entrypoint.sh "$@"

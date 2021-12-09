@@ -26,6 +26,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import os
 import requests
 import sys
 import threading
@@ -33,26 +34,36 @@ import threading
 from datetime import datetime
 from http import HTTPStatus
 
-HOST = 'localhost'  # DEBUG: localhost
-CHECK_PERIOD_SECONDS = 5  # DEBUG: 60 x 10  # 10 minutes
-EXPIRE_TIME_SECONDS = 10  # DEBUG: 60 * 60  # 1 hour
+HOST = 'localhost'
+CHECK_PERIOD_SECONDS = int(os.getenv('EXPIRE_MODEL_CHECK_PERIOD_SECONDS', 60 * 10))  # 10 minute default
+ELAPSED_TIME_SECONDS = int(os.getenv('EXPIRE_MODEL_ELAPSED_TIME_SECONDS', 60 * 30))  # 30 minute default
+
+
+def print_std_out(text):
+    print(text)
+    sys.stdout.flush()
+
+
+def print_std_err(text):
+    print(text, file=sys.stderr)
+    sys.stderr.flush()
 
 
 def check_and_expire():
     current_time = datetime.utcnow()
-    print('Checking for expired models at ' + str(current_time))
+    print_std_out('The time is ' + str(current_time) + '. Checking for expired models.')
 
     stats_url = 'http://' + HOST + ':8000/v2/models/stats'
 
     try:
         resp = requests.get(url=stats_url)
     except requests.exceptions.RequestException as e:
-        print('Failed to GET from ' + stats_url + ' due to ' + str(e)
-              + '. Triton may not be running (yet).', file=sys.stderr)
+        print_std_err('Failed to GET from ' + stats_url + ' due to ' + str(e)
+                      + '. Triton may not be running (yet).')
         return
 
     if resp.status_code != HTTPStatus.OK:
-        print('Failed to GET from ' + stats_url + '. Response code: ' + str(resp.status_code), file=sys.stderr)
+        print_std_err('Failed to GET from ' + stats_url + '. Response code: ' + str(resp.status_code))
         return
 
     for model_json in resp.json()['model_stats']:
@@ -67,28 +78,34 @@ def check_and_expire():
             time_delta = current_time - last_inference_time
             # print(time_delta)  # DEBUG
 
-            if time_delta.total_seconds() > EXPIRE_TIME_SECONDS:
-                print(model_name + ' was last used at ' + str(last_inference_time) + '. Unloading now.')  # DEBUG
+            if time_delta.total_seconds() > ELAPSED_TIME_SECONDS:
+                print_std_out(model_name + ' was last used at ' + str(last_inference_time) + '. Unloading now.')
 
                 upload_url = 'http://' + HOST + ':8000/v2/repository/models/' + model_name + '/unload'
 
                 try:
                     resp = requests.post(url=upload_url)
                 except requests.exceptions.RequestException as e:
-                    print('Failed to POST to ' + upload_url + ' due to ' + str(e), file=sys.stderr)
+                    print_std_err('Failed to POST to ' + upload_url + ' due to ' + str(e))
                     continue
 
                 if resp.status_code != HTTPStatus.OK:
-                    print('Failed to POST to ' + upload_url + '. Response code: ' + str(resp.status_code),
-                          file=sys.stderr)
+                    print_std_err('Failed to POST to ' + upload_url + '. Response code: ' + str(resp.status_code))
                     continue
 
-                print('Successfully unloaded ' + model_name)
+                print_std_out('Successfully unloaded ' + model_name)
 
 
 def check_and_expire_loop():
     check_and_expire()
     threading.Timer(CHECK_PERIOD_SECONDS, check_and_expire_loop).start()
 
+
+if CHECK_PERIOD_SECONDS <= 0:
+    print_std_out('Disabled periodic check for expired models.')
+    exit(0)
+
+print_std_out('Will check for expired models every ' + str(CHECK_PERIOD_SECONDS) + ' seconds.'
+              + ' Models will be unloaded if not used for ' + str(ELAPSED_TIME_SECONDS) + ' seconds.')
 
 check_and_expire_loop()
