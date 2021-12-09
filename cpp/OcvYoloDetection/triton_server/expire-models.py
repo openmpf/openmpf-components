@@ -35,9 +35,11 @@ from datetime import datetime
 from http import HTTPStatus
 
 HOST = 'localhost'
-CHECK_PERIOD_SECONDS = int(os.getenv('EXPIRE_MODEL_CHECK_PERIOD_SECONDS', 60 * 10))  # 10 minute default
-ELAPSED_TIME_SECONDS = int(os.getenv('EXPIRE_MODEL_ELAPSED_TIME_SECONDS', 60 * 30))  # 30 minute default
+CHECK_PERIOD_SECONDS = int(os.getenv('EXPIRE_CHECK_PERIOD_SECONDS', 60 * 10))  # 10 minute default
+ELAPSED_TIME_SECONDS = int(os.getenv('EXPIRE_ELAPSED_TIME_SECONDS', 60 * 30))  # 30 minute default
 
+NEVER_UNLOAD_MODELS = os.getenv('EXPIRE_NEVER_UNLOAD_MODELS', '').split(',')
+NEVER_UNLOAD_MODELS = list(filter(None, NEVER_UNLOAD_MODELS))  # remove empty elements
 
 def print_std_out(text):
     print(text)
@@ -69,6 +71,9 @@ def check_and_expire():
     for model_json in resp.json()['model_stats']:
 
         model_name = model_json['name']
+        if model_name in NEVER_UNLOAD_MODELS:
+            continue
+
         last_inference = model_json['last_inference']
 
         if last_inference != 0:  # don't expire explicitly loaded models
@@ -107,5 +112,8 @@ if CHECK_PERIOD_SECONDS <= 0:
 
 print_std_out('Will check for expired models every ' + str(CHECK_PERIOD_SECONDS) + ' seconds.'
               + ' Models will be unloaded if not used for ' + str(ELAPSED_TIME_SECONDS) + ' seconds.')
+
+if NEVER_UNLOAD_MODELS:
+    print_std_out('The following models will never be unloaded: ' + str(NEVER_UNLOAD_MODELS))
 
 check_and_expire_loop()
