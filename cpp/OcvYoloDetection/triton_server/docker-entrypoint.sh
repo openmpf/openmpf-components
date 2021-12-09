@@ -36,7 +36,13 @@ env LD_PRELOAD="$YOLO_416_PLUGIN_LIB" ./gen-engine-416
 YOLO_608_PLUGIN_LIB="/plugins/libyolo608layerplugin.so"
 env LD_PRELOAD="$YOLO_608_PLUGIN_LIB" ./gen-engine-608
 
-exec env LD_PRELOAD="$YOLO_416_PLUGIN_LIB:$YOLO_608_PLUGIN_LIB" \
+# Background process that will periodically unload unused models
+# ./expire-models.py &
+
+# env LD_PRELOAD="$YOLO_416_PLUGIN_LIB:$YOLO_608_PLUGIN_LIB:$LD_PRELOAD" \
+#    /opt/triton/nvidia_entrypoint.sh "$@"
+
+env LD_PRELOAD="$YOLO_416_PLUGIN_LIB:$YOLO_608_PLUGIN_LIB:" \
     tritonserver \
     --model-repository=/models \
     --strict-model-config=false \
