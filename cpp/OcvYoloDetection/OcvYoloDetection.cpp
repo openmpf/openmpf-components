@@ -261,16 +261,12 @@ YoloNetwork& OcvYoloDetection::GetYoloNetwork(const Properties &jobProperties,
     auto modelsDirPath = GetProperty(jobProperties, "MODELS_DIR_PATH", ".");
     auto modelSettings = modelsParser_.ParseIni(modelName, modelsDirPath + "/OcvYoloDetection");
 
-    if (cachedYoloNetwork_) {
-        if (cachedYoloNetwork_->IsCompatible(modelSettings, config)) {
-            LOG4CXX_INFO(logger_, "Reusing cached model.");
-            return *cachedYoloNetwork_;
-        }
-        else {
-            // Reset to remove current network from memory before loading the new one.
-            cachedYoloNetwork_.reset();
-        }
+    if (cachedYoloNetwork_ && cachedYoloNetwork_->IsCompatible(modelSettings, config)) {
+        LOG4CXX_INFO(logger_, "Reusing cached model.");
+        cachedYoloNetwork_->Reset(); // reset the network for another job
+        return *cachedYoloNetwork_;
     }
+
     cachedYoloNetwork_.reset(new YoloNetwork(std::move(modelSettings), config));
     return *cachedYoloNetwork_;
 }
@@ -296,7 +292,7 @@ std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob 
         frameBatch.front().idx = 0;
         yoloNetwork.GetDetections(
           frameBatch,
-          [&imageReader, &results]
+          [&imageReader, &results] // LAMBDA
           (std::vector<std::vector<DetectionLocation>> detectionsVec,
             std::vector<Frame>::const_iterator,
             std::vector<Frame>::const_iterator){
@@ -342,10 +338,11 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
         std::vector<Track> inProgressTracks;
 
         Config config(job.job_properties);
-        if(config.tritonEnabled && !config.mosseTrackerDisabled){
+        if (config.tritonEnabled && !config.mosseTrackerDisabled){
           config.mosseTrackerDisabled = true;
           LOG_WARN("MOSSE tracker is not supported with Triton, and has been disabled for this job");
         }
+
         auto& yoloNetwork = GetYoloNetwork(job.job_properties, config);
 
         MPFAsyncVideoCapture videoCapture(job);
@@ -370,7 +367,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
               frameBatches.at(frameBatchKey),
 
               // this callback gets called MULTIPLE times
-              [&config, &frameBatches, &inProgressTracks, &completedTracks, frameBatchKey]
+              [&config, &frameBatches, &inProgressTracks, &completedTracks, frameBatchKey] // LAMBDA
               (std::vector<std::vector<DetectionLocation>>&& detectionsVec,
                std::vector<Frame>::const_iterator begin,
                std::vector<Frame>::const_iterator end) {
@@ -391,6 +388,8 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
               },
 
               config);
+
+            // TODO: Log batch complete. Check for exception.
         }
 
         assert(("All frame batches should have been processed.", frameBatches.empty()));

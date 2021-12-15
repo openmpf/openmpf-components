@@ -68,6 +68,10 @@ RUN --mount=type=tmpfs,target=/tmp \
     mv main /model-gen/yolo/gen-engine-608; \
     mv libyolo608layerplugin.so /plugins/libyolo608layerplugin.so
 
+COPY models/yolo-416.config.pbtxt /models/yolo-416/1/config.pbtxt
+
+COPY models/yolo-608.config.pbtxt /models/yolo-608/1/config.pbtxt
+
 COPY docker-entrypoint.sh expire-models.py /opt/tritonserver
 
 ENTRYPOINT ["/opt/tritonserver/docker-entrypoint.sh"]

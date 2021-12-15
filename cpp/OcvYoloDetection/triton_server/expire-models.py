@@ -60,7 +60,7 @@ def check_and_expire():
     try:
         resp = requests.get(url=stats_url)
     except requests.exceptions.RequestException as e:
-        print_std_err('Failed to GET from ' + stats_url + ' due to ' + str(e)
+        print_std_err('Failed to GET from ' + stats_url + ' due to: ' + str(e)
                       + '. Triton may not be running (yet).')
         return
 
@@ -91,14 +91,14 @@ def check_and_expire():
                 try:
                     resp = requests.post(url=upload_url)
                 except requests.exceptions.RequestException as e:
-                    print_std_err('Failed to POST to ' + upload_url + ' due to ' + str(e))
+                    print_std_err('Failed to POST to ' + upload_url + ' due to: ' + str(e))
                     continue
 
                 if resp.status_code != HTTPStatus.OK:
                     print_std_err('Failed to POST to ' + upload_url + '. Response code: ' + str(resp.status_code))
                     continue
 
-                print_std_out('Successfully unloaded ' + model_name)
+                print_std_out('Successfully unloaded ' + model_name + '.')
 
 
 def check_and_expire_loop():

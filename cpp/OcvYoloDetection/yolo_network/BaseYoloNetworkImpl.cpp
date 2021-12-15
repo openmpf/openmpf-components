@@ -284,6 +284,8 @@ BaseYoloNetworkImpl::BaseYoloNetworkImpl(ModelSettings model_settings, const Con
 
 BaseYoloNetworkImpl::~BaseYoloNetworkImpl() = default;
 
+void BaseYoloNetworkImpl::Reset() {}
+
 void BaseYoloNetworkImpl::GetDetections(
         std::vector<Frame> &frames,
         ProcessFrameDetectionsFunc processFrameDetectionsFun,

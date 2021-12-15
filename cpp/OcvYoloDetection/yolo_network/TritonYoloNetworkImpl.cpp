@@ -55,6 +55,13 @@ public:
 
     ~YoloNetworkImpl() = default;
 
+    void Reset() {
+        frameIdxComplete_ = -1;
+        if (tritonInferencer_) {
+            tritonInferencer_->reset();
+        }
+    }
+
     void GetDetections(
             std::vector<Frame> &frames,
             ProcessFrameDetectionsFunc processFrameDetectionsFun,
@@ -95,7 +102,6 @@ public:
     void Cleanup() {
         if (tritonInferencer_) {
             tritonInferencer_->waitTillAllClientsReleased();
-            frameIdxComplete_ = -1;
         }
     }
 
@@ -108,19 +114,21 @@ private:
 
     std::unique_ptr<TritonInferencer> ConnectTritonInferencer(const Config& config){
 
-        if(!config.tritonEnabled) return nullptr;
+        if (!config.tritonEnabled) {
+            return nullptr;
+        }
 
         std::unique_ptr<TritonInferencer> tritonInferencer(new TritonInferencer(config));
         std::string modelNameAndVersion = tritonInferencer->getModelNameAndVersion();
 
-        if( tritonInferencer->inputsMeta.size() != 1){
+        if (tritonInferencer->inputsMeta.size() != 1){
             std::stringstream ss;
             ss << "Configured Triton inference server model " << modelNameAndVersion << " has "
                << tritonInferencer->inputsMeta.size() << " inputs, but only one is expected.";
             throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
         }
 
-        if(tritonInferencer->inputsMeta.at(0).shape[0] != 3
+        if (tritonInferencer->inputsMeta.at(0).shape[0] != 3
               || tritonInferencer->inputsMeta.at(0).shape[1] != tritonInferencer->inputsMeta.at(0).shape[2]
               || tritonInferencer->inputsMeta.at(0).shape[2] != config.netInputImageSize){
             std::stringstream ss;
@@ -154,7 +162,7 @@ private:
         tritonInferencer_->infer(frames,
              tritonInferencer_->inputsMeta.at(0),
 
-             [this, &config, componentProcessLambda]
+             [this, &config, componentProcessLambda] // LAMBDA
                      (std::vector<cv::Mat> outBlobs,
                       std::vector<Frame>::const_iterator begin,
                       std::vector<Frame>::const_iterator end) {
@@ -296,6 +304,9 @@ YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
 
 YoloNetwork::~YoloNetwork() = default;
 
+void YoloNetwork::Reset() {
+    return pimpl_->Reset();
+}
 
 void YoloNetwork::GetDetections(
         std::vector<Frame> &frames,

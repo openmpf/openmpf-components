@@ -65,6 +65,8 @@ class TritonInferencer {
 
     const int maxBatchSize() const {return maxBatchSize_;}
 
+    void reset();
+
     using ExtractDetectionsFunc =
       std::function<void(std::vector<cv::Mat> outBlobs,
                          std::vector<Frame>::const_iterator begin,
@@ -74,9 +76,9 @@ class TritonInferencer {
                const TritonTensorMeta &inputMeta,
                ExtractDetectionsFunc extractDetectionsFun);
 
-    int acquireClientIdBlocking();
+    int acquireClientId();
 
-    void releaseClientId(int clientId);
+    void releaseClientId(int clientId, std::exception_ptr eptr);
 
     void waitTillAllClientsReleased();
 
@@ -87,34 +89,25 @@ class TritonInferencer {
   private:
 
     std::string serverUrl_;
-
     std::string modelName_;
-
     std::string fullModelName_;
-
     std::string modelVersion_;
 
     bool useShm_;
-
     bool useSSL_;
-
     bool verboseClient_;
 
     int maxBatchSize_;
 
     triton::client::SslOptions sslOptions_;
-
     triton::client::InferOptions inferOptions_;
-
     std::unique_ptr<triton::client::InferenceServerGrpcClient> statusClient_;
 
-    std::vector<std::unique_ptr<TritonClient>> clients_;
-
-    std::unordered_set<int> freeClientIds_;
-
     std::mutex freeClientIdsMtx_;
-
     std::condition_variable freeClientIdsCv_;
+    std::unordered_set<int> freeClientIds_;
+    std::vector<std::unique_ptr<TritonClient>> clients_;
+    std::exception_ptr clientEptr_;
 
     void checkServerIsAlive(int maxRetries, int initialDelaySeconds) const;
 

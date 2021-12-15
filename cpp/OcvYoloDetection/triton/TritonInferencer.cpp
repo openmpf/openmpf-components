@@ -41,6 +41,11 @@
 
 using namespace MPF::COMPONENT;
 
+void TritonInferencer::reset() {
+    clientEptr_ = nullptr;
+}
+
+
 void TritonInferencer::checkServerIsAlive(int maxRetries, int initialDelaySeconds) const {
     for (int i = 0; i <= maxRetries; i++) {
         bool live;
@@ -230,7 +235,7 @@ void TritonInferencer::infer(
     shape[0] = size;
 
     // get a client from pool
-    int clientId = acquireClientIdBlocking();
+    int clientId = acquireClientId();
     TritonClient& client = *clients_[clientId];
 
     // create blob directly, in client input shm region if appropriate,
@@ -255,26 +260,51 @@ void TritonInferencer::infer(
     LOG_TRACE("Inferencing frames[" << begin->idx << ".." << (end - 1)->idx << "] with client[" << client.id << "]");
     client.inferAsync(0, blob,
 
-      [this, extractDetectionsFun, clientId, begin, end](){
-        std::vector<cv::Mat> results;
-        for(int i = 0; i < outputsMeta.size(); ++i){
-          results.push_back(clients_[clientId]->getOutput(outputsMeta[i]));
+      [this, extractDetectionsFun, clientId, begin, end](){ // LAMBDA
+        std::exception_ptr eptr;
+        try {
+            std::vector<cv::Mat> results;
+            for (int i = 0; i < outputsMeta.size(); ++i) {
+                results.push_back(clients_[clientId]->getOutput(outputsMeta[i]));
+            }
+            extractDetectionsFun(results, begin, end);
+        } catch(std::exception &e) {
+            eptr = std::current_exception();
         }
-        extractDetectionsFun(results, begin, end);
-        releaseClientId(clientId);
+        releaseClientId(clientId, eptr);
       }
     );
   }
 }
 
 
-void TritonInferencer::releaseClientId(int clientId){
-  {
-    std::lock_guard<std::mutex> lk(freeClientIdsMtx_);
-    freeClientIds_.insert(clientId);
-    LOG_TRACE("Freeing client["<< clientId <<"]");
-  }
-  freeClientIdsCv_.notify_all();
+// This function only has one entrypoint and will only be called sequentially.
+int TritonInferencer::acquireClientId(){
+    std::unique_lock<std::mutex> lk(freeClientIdsMtx_);
+    if (clientEptr_) { // check for error before processing next frame
+        std::rethrow_exception(clientEptr_);
+    }
+    if (freeClientIds_.empty()){
+        LOG_TRACE("Wait for a free client.");
+        freeClientIdsCv_.wait(lk, [this] { return !freeClientIds_.empty(); });
+    }
+    auto it = freeClientIds_.begin();
+    int id = *it;
+    freeClientIds_.erase(it);
+    return id;
+}
+
+
+void TritonInferencer::releaseClientId(int clientId, std::exception_ptr newClientEptr) {
+    {
+        std::lock_guard<std::mutex> lk(freeClientIdsMtx_);
+        freeClientIds_.insert(clientId);
+        if (newClientEptr && !clientEptr_) {
+            clientEptr_ = newClientEptr;
+        }
+        LOG_TRACE("Freeing client[" << clientId << "]");
+    }
+    freeClientIdsCv_.notify_all();
 }
 
 
@@ -284,22 +314,11 @@ void TritonInferencer::waitTillAllClientsReleased(){
     LOG_TRACE("Waiting till all clients freed.");
     freeClientIdsCv_.wait(lk, [this] {
        return freeClientIds_.size() == clients_.size(); });
+    if (clientEptr_) { // check for error at the end of the job
+        std::rethrow_exception(clientEptr_);
+    }
   }
   LOG_TRACE("All clients were freed.");
-}
-
-
-int TritonInferencer::acquireClientIdBlocking(){
-
-  std::unique_lock<std::mutex> lk(freeClientIdsMtx_);
-  if(freeClientIds_.empty()){
-    LOG_TRACE("Wait for a free client.");
-    freeClientIdsCv_.wait(lk, [this] { return !freeClientIds_.empty(); });
-  }
-  auto it = freeClientIds_.begin();
-  int id = *it;
-  freeClientIds_.erase(it);
-  return id;
 }
 
 

@@ -40,6 +40,10 @@ YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
 
 YoloNetwork::~YoloNetwork() = default;
 
+void YoloNetwork::Reset() {
+    return pimpl_->Reset();
+}
+
 void YoloNetwork::GetDetections(
         std::vector<Frame> &frames,
         ProcessFrameDetectionsFunc processFrameDetectionsFun,

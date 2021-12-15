@@ -47,10 +47,12 @@ public:
 
     ~BaseYoloNetworkImpl();
 
+    void Reset();
+
     using ProcessFrameDetectionsFunc =
-    std::function<void(std::vector<std::vector<DetectionLocation>>&& dets,
-                       std::vector<Frame>::const_iterator begin,
-                       std::vector<Frame>::const_iterator end)>;
+      std::function<void(std::vector<std::vector<DetectionLocation>>&& dets,
+                         std::vector<Frame>::const_iterator begin,
+                         std::vector<Frame>::const_iterator end)>;
 
     void GetDetections(
             std::vector<Frame> &frames,
