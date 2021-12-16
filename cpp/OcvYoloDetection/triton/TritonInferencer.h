@@ -80,7 +80,9 @@ class TritonInferencer {
 
     void releaseClientId(int clientId, std::exception_ptr eptr);
 
-    void waitTillAllClientsReleased();
+    void waitTillAllClientsReleased() noexcept;
+
+    void rethrowClientException();
 
     std::string getModelNameAndVersion() const;
 

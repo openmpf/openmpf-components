@@ -55,13 +55,6 @@ public:
 
     ~YoloNetworkImpl() = default;
 
-    void Reset() {
-        frameIdxComplete_ = -1;
-        if (tritonInferencer_) {
-            tritonInferencer_->reset();
-        }
-    }
-
     void GetDetections(
             std::vector<Frame> &frames,
             ProcessFrameDetectionsFunc processFrameDetectionsFun,
@@ -99,9 +92,23 @@ public:
         }
     }
 
-    void Cleanup() {
+
+    void Finish() {
         if (tritonInferencer_) {
+            // wait for clients and check for client exception at the end of the job
             tritonInferencer_->waitTillAllClientsReleased();
+            frameIdxComplete_ = -1;
+            tritonInferencer_->rethrowClientException();
+        }
+    }
+
+
+    void Reset() noexcept {
+        if (tritonInferencer_) {
+            // wait for clients but don't check for client exception; it's too late to care
+            tritonInferencer_->waitTillAllClientsReleased();
+            frameIdxComplete_ = -1;
+            tritonInferencer_->reset();
         }
     }
 
@@ -304,10 +311,6 @@ YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
 
 YoloNetwork::~YoloNetwork() = default;
 
-void YoloNetwork::Reset() {
-    return pimpl_->Reset();
-}
-
 void YoloNetwork::GetDetections(
         std::vector<Frame> &frames,
         ProcessFrameDetectionsFunc processFrameDetectionsFun,
@@ -319,6 +322,10 @@ bool YoloNetwork::IsCompatible(const ModelSettings &modelSettings, const Config 
     return pimpl_->IsCompatible(modelSettings, config);
 }
 
-void YoloNetwork::Cleanup() {
-    pimpl_->Cleanup();
+void YoloNetwork::Finish() {
+    return pimpl_->Finish();
+}
+
+void YoloNetwork::Reset() noexcept {
+    return pimpl_->Reset();
 }

@@ -255,43 +255,33 @@ std::string OcvYoloDetection::GetDetectionType() {
 }
 
 
-YoloNetwork& OcvYoloDetection::GetYoloNetwork(const Properties &jobProperties,
-                                              const Config &config) {
+void OcvYoloDetection::InitYoloNetwork(const Properties &jobProperties, const Config &config) {
     auto modelName = GetProperty(jobProperties, "MODEL_NAME", "tiny yolo");
     auto modelsDirPath = GetProperty(jobProperties, "MODELS_DIR_PATH", ".");
     auto modelSettings = modelsParser_.ParseIni(modelName, modelsDirPath + "/OcvYoloDetection");
 
-    if (cachedYoloNetwork_ && cachedYoloNetwork_->IsCompatible(modelSettings, config)) {
-        LOG4CXX_INFO(logger_, "Reusing cached model.");
-        cachedYoloNetwork_->Reset(); // reset the network for another job
-        return *cachedYoloNetwork_;
+    if (yoloNetwork_ && yoloNetwork_->IsCompatible(modelSettings, config)) {
+        LOG4CXX_INFO(logger_, "Reusing cached network.");
+        return;
     }
 
-    cachedYoloNetwork_.reset(new YoloNetwork(std::move(modelSettings), config));
-    return *cachedYoloNetwork_;
+    yoloNetwork_.reset(new YoloNetwork(std::move(modelSettings), config));
 }
 
 
-/** ****************************************************************************
-* Read an image and get object detections and features
-*
-* \param          job     MPF Image job
-*
-* \returns  locations collection to which detections have been added
-*
-***************************************************************************** */
 std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob &job) {
     try {
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
         Config config(job.job_properties);
-        auto& yoloNetwork = GetYoloNetwork(job.job_properties, config);
+        InitYoloNetwork(job.job_properties, config);
 
         MPFImageReader imageReader(job);
         std::vector<MPFImageLocation> results;
         std::vector<Frame> frameBatch = { Frame(imageReader.GetImage()) };
         frameBatch.front().idx = 0;
-        yoloNetwork.GetDetections(
-          frameBatch,
+
+        yoloNetwork_->GetDetections(frameBatch,
+
           [&imageReader, &results] // LAMBDA
           (std::vector<std::vector<DetectionLocation>> detectionsVec,
             std::vector<Frame>::const_iterator,
@@ -309,28 +299,22 @@ std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob 
                   }
               }
           },
+
           config);
 
-        yoloNetwork.Cleanup();
+        yoloNetwork_->Finish();
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << results.size()
                                 << " detections.");
         return results;
     }
     catch (...) {
+        yoloNetwork_->Reset();
         Utils::LogAndReThrowException(job, logger_);
     }
 }
 
 
-/** ****************************************************************************
-* Read frames from a video, get object detections and make tracks
-*
-* \param          job     MPF Video job
-*
-* \returns   Tracks collection to which detections have been added
-*
-***************************************************************************** */
 std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &job) {
     try {
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
@@ -343,7 +327,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
           LOG_WARN("MOSSE tracker is not supported with Triton, and has been disabled for this job");
         }
 
-        auto& yoloNetwork = GetYoloNetwork(job.job_properties, config);
+        InitYoloNetwork(job.job_properties, config);
 
         MPFAsyncVideoCapture videoCapture(job);
 
@@ -354,7 +338,6 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             auto tmp = GetVideoFrames(videoCapture, config.frameBatchSize);
 
             if (tmp.empty()) {
-                yoloNetwork.Cleanup();
                 break;
             }
 
@@ -363,8 +346,8 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
 
             LOG_TRACE("Processing frames [" << frameBatches.at(frameBatchKey).front().idx << "..."
                                             << frameBatches.at(frameBatchKey).back().idx << "]");
-            yoloNetwork.GetDetections(
-              frameBatches.at(frameBatchKey),
+
+            yoloNetwork_->GetDetections(frameBatches.at(frameBatchKey),
 
               // this callback gets called MULTIPLE times
               [&config, &frameBatches, &inProgressTracks, &completedTracks, frameBatchKey] // LAMBDA
@@ -382,15 +365,15 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
                 }
 
                 // last frame in batch, release frame batch
-                if(frameBatchKey == backFrameIdx){
+                if (frameBatchKey == backFrameIdx){
                   frameBatches.erase(frameBatchKey);
                 }
               },
 
               config);
-
-            // TODO: Log batch complete. Check for exception.
         }
+
+        yoloNetwork_->Finish();
 
         assert(("All frame batches should have been processed.", frameBatches.empty()));
 
@@ -434,13 +417,12 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             completedTracks.erase(it);
         }
 
-
-        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << completedTracks.size()
-                     << " tracks.");
+        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << completedTracks.size() << " tracks.");
 
         return completedTracks;
     }
     catch (...) {
+        yoloNetwork_->Reset();
         Utils::LogAndReThrowException(job, logger_);
     }
 }

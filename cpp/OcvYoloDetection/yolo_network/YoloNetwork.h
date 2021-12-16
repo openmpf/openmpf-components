@@ -51,8 +51,6 @@ public:
 
     ~YoloNetwork();
 
-    void Reset();
-
     using ProcessFrameDetectionsFunc =
       std::function<void(std::vector<std::vector<DetectionLocation>>&& dets,
                          std::vector<Frame>::const_iterator begin,
@@ -65,7 +63,9 @@ public:
 
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
 
-    void Cleanup();
+    void Finish();
+
+    void Reset() noexcept;
 
 private:
     class YoloNetworkImpl;

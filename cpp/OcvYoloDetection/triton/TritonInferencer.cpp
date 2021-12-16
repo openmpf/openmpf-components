@@ -308,17 +308,22 @@ void TritonInferencer::releaseClientId(int clientId, std::exception_ptr newClien
 }
 
 
-void TritonInferencer::waitTillAllClientsReleased(){
-  if (freeClientIds_.size() != clients_.size()){
-    std::unique_lock<std::mutex> lk(freeClientIdsMtx_);
-    LOG_TRACE("Waiting till all clients freed.");
-    freeClientIdsCv_.wait(lk, [this] {
-       return freeClientIds_.size() == clients_.size(); });
-    if (clientEptr_) { // check for error at the end of the job
+void TritonInferencer::waitTillAllClientsReleased() noexcept {
+    if (freeClientIds_.size() != clients_.size()) {
+        LOG_INFO("Waiting until all clients freed.");
+        std::unique_lock<std::mutex> lk(freeClientIdsMtx_);
+        freeClientIdsCv_.wait(lk, [this] {
+            return freeClientIds_.size() == clients_.size();
+        });
+        LOG_INFO("All clients were freed.");
+    }
+}
+
+
+void TritonInferencer::rethrowClientException() {
+    if (clientEptr_) {
         std::rethrow_exception(clientEptr_);
     }
-  }
-  LOG_TRACE("All clients were freed.");
 }
 
 

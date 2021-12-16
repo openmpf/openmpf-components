@@ -47,8 +47,6 @@ public:
 
     ~BaseYoloNetworkImpl();
 
-    void Reset();
-
     using ProcessFrameDetectionsFunc =
       std::function<void(std::vector<std::vector<DetectionLocation>>&& dets,
                          std::vector<Frame>::const_iterator begin,
@@ -61,7 +59,9 @@ public:
 
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
 
-    void Cleanup();
+    void Finish();
+
+    void Reset() noexcept;
 
 protected:
     log4cxx::LoggerPtr log_ = log4cxx::Logger::getLogger("OcvYoloDetection");

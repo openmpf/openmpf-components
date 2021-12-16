@@ -284,8 +284,6 @@ BaseYoloNetworkImpl::BaseYoloNetworkImpl(ModelSettings model_settings, const Con
 
 BaseYoloNetworkImpl::~BaseYoloNetworkImpl() = default;
 
-void BaseYoloNetworkImpl::Reset() {}
-
 void BaseYoloNetworkImpl::GetDetections(
         std::vector<Frame> &frames,
         ProcessFrameDetectionsFunc processFrameDetectionsFun,
@@ -303,7 +301,9 @@ bool BaseYoloNetworkImpl::IsCompatible(const ModelSettings &modelSettings, const
            && config.classWhiteListPath == classWhiteListPath_;
 }
 
-void BaseYoloNetworkImpl::Cleanup() {}
+void BaseYoloNetworkImpl::Finish() {}
+
+void BaseYoloNetworkImpl::Reset() noexcept {}
 
 
 std::vector<std::vector<DetectionLocation>> BaseYoloNetworkImpl::GetDetectionsCvdnn(
