@@ -51,14 +51,14 @@ public:
 
     ~YoloNetwork();
 
-    using ProcessFrameDetectionsFunc =
+    using ProcessFrameDetectionsCallback =
       std::function<void(std::vector<std::vector<DetectionLocation>>&& dets,
                          std::vector<Frame>::const_iterator begin,
                          std::vector<Frame>::const_iterator end)>;
 
     void GetDetections(
             std::vector<Frame> &frames,
-            ProcessFrameDetectionsFunc componentProcessLambda,
+            ProcessFrameDetectionsCallback processFrameDetectionsCallback,
             const Config &config);
 
     bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;

@@ -28,7 +28,7 @@
 #define OPENMPF_COMPONENTS_TRITON_TENSOR_META_H
 
 class TritonTensorMeta {
-  public:
+public:
     const std::string name;
     const std::string type;
     const size_t cvType;
@@ -38,8 +38,9 @@ class TritonTensorMeta {
     const size_t byte_size;
     const size_t shm_offset;
 
-    TritonTensorMeta(const inference::ModelInput& mi, size_t shm_offset);
-    TritonTensorMeta(const inference::ModelOutput& mo, size_t shm_offset);
+    TritonTensorMeta(const inference::ModelInput &mi, size_t shm_offset);
+
+    TritonTensorMeta(const inference::ModelOutput &mo, size_t shm_offset);
 };
 
 #endif // OPENMPF_COMPONENTS_TRITON_TENSOR_META_H

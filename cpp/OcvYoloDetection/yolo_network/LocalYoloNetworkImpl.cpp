@@ -42,7 +42,7 @@ YoloNetwork::~YoloNetwork() = default;
 
 void YoloNetwork::GetDetections(
         std::vector<Frame> &frames,
-        ProcessFrameDetectionsFunc processFrameDetectionsFun,
+        ProcessFrameDetectionsCallback processFrameDetectionsFun,
         const Config &config){
     pimpl_->GetDetections(frames, processFrameDetectionsFun, config);
 }

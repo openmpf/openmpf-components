@@ -1,7 +1,7 @@
 {
   "componentName": "OcvYoloDetection",
-  "componentVersion": "6.2",
-  "middlewareVersion": "6.2",
+  "componentVersion": "6.3",
+  "middlewareVersion": "6.3",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/OcvYoloDetection/lib/libmpfOcvYoloDetection.so",
   "environmentVariables": [
@@ -34,7 +34,7 @@
           "name": "MODEL_NAME",
           "description": "Name of YOLO model to run.",
           "type": "STRING",
-          "defaultValue": "yolo"
+          "defaultValue": "tiny yolo"
         },
         {
           "name": "MODELS_DIR_PATH",
@@ -307,32 +307,44 @@
       ]
     },
     {
-      "name": "OCV TINY YOLO V3 OBJECT DETECTION ACTION",
-      "description": "Runs the TINY YOLO V3 object detection Darknet model.",
+      "name": "OCV TRITON YOLO OBJECT DETECTION ACTION",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server.",
       "algorithm": "OCVYOLO",
       "properties": [
         {
           "name": "MODEL_NAME",
-          "value": "TINY YOLO V3"
-        },
-        {
-          "name": "NET_INPUT_IMAGE_SIZE",
-          "value": "416"
-        }
-      ]
-    },
-    {
-      "name": "OCV YOLO V3 OBJECT DETECTION ACTION",
-      "description": "Runs the YOLO V3 object detection Darknet model.",
-      "algorithm": "OCVYOLO",
-      "properties": [
-        {
-          "name": "MODEL_NAME",
-          "value": "YOLO V3"
+          "value": "YOLO"
         },
         {
           "name": "NET_INPUT_IMAGE_SIZE",
           "value": "608"
+        },
+        {
+          "name": "ENABLE_TRITON",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "name": "OCV TRITON YOLO VEHICLE DETECTION ACTION",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server, and only detects road vehicles (cars, buses, trucks).",
+      "algorithm": "OCVYOLO",
+      "properties": [
+        {
+          "name": "MODEL_NAME",
+          "value": "YOLO"
+        },
+        {
+          "name": "NET_INPUT_IMAGE_SIZE",
+          "value": "608"
+        },
+        {
+          "name": "CLASS_WHITELIST_FILE",
+          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-whitelist.txt"
+        },
+        {
+          "name": "ENABLE_TRITON",
+          "value": "true"
         }
       ]
     }
@@ -367,17 +379,17 @@
       ]
     },
     {
-      "name": "OCV TINY YOLO V3 OBJECT DETECTION TASK",
-      "description": "Runs the TINY YOLO V3 object detection Darknet model.",
+      "name": "OCV TRITON YOLO OBJECT DETECTION TASK",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server.",
       "actions": [
-        "OCV TINY YOLO V3 OBJECT DETECTION ACTION"
+        "OCV TRITON YOLO OBJECT DETECTION ACTION"
       ]
     },
     {
-      "name": "OCV YOLO V3 OBJECT DETECTION TASK",
-      "description": "Runs the YOLO V3 object detection Darknet model.",
+      "name": "OCV TRITON YOLO VEHICLE DETECTION TASK",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server, and only detects road vehicles (cars, buses, trucks).",
       "actions": [
-        "OCV YOLO V3 OBJECT DETECTION ACTION"
+        "OCV TRITON YOLO VEHICLE DETECTION ACTION"
       ]
     }
   ],
@@ -443,32 +455,32 @@
       ]
     },
     {
-      "name": "OCV TINY YOLO V3 OBJECT DETECTION PIPELINE",
-      "description": "Runs the TINY YOLO V3 object detection Darknet model.",
+      "name": "OCV TRITON YOLO OBJECT DETECTION PIPELINE",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server.",
       "tasks": [
-        "OCV TINY YOLO V3 OBJECT DETECTION TASK"
+        "OCV TRITON YOLO OBJECT DETECTION TASK"
       ]
     },
     {
-      "name": "OCV TINY YOLO V3 OBJECT DETECTION (WITH MARKUP) PIPELINE",
-      "description": "Runs the TINY YOLO object detection Darknet model and produces markup.",
+      "name": "OCV TRITON YOLO OBJECT DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server and produces markup.",
       "tasks": [
-        "OCV TINY YOLO V3 OBJECT DETECTION TASK",
+        "OCV TRITON YOLO OBJECT DETECTION TASK",
         "OCV GENERIC MARKUP TASK"
       ]
     },
     {
-      "name": "OCV YOLO V3 OBJECT DETECTION PIPELINE",
-      "description": "Runs the YOLO V3 object detection Darknet model.",
+      "name": "OCV TRITON YOLO VEHICLE DETECTION PIPELINE",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server, and only detects road vehicles (cars, buses, trucks)",
       "tasks": [
-        "OCV YOLO V3 OBJECT DETECTION TASK"
+        "OCV TRITON YOLO VEHICLE DETECTION TASK"
       ]
     },
     {
-      "name": "OCV YOLO V3 OBJECT DETECTION (WITH MARKUP) PIPELINE",
-      "description": "Runs the YOLO object detection Darknet model and produces markup.",
+      "name": "OCV TRITON YOLO VEHICLE DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server, and only detects road vehicles (cars, buses, trucks). Produces markup.",
       "tasks": [
-        "OCV YOLO V3 OBJECT DETECTION TASK",
+        "OCV TRITON YOLO VEHICLE DETECTION TASK",
         "OCV GENERIC MARKUP TASK"
       ]
     }

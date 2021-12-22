@@ -286,7 +286,7 @@ BaseYoloNetworkImpl::~BaseYoloNetworkImpl() = default;
 
 void BaseYoloNetworkImpl::GetDetections(
         std::vector<Frame> &frames,
-        ProcessFrameDetectionsFunc processFrameDetectionsFun,
+        ProcessFrameDetectionsCallback processFrameDetectionsFun,
         const Config &config){
     processFrameDetectionsFun(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
 }
@@ -311,7 +311,7 @@ std::vector<std::vector<DetectionLocation>> BaseYoloNetworkImpl::GetDetectionsCv
 
     net_.setInput(ConvertToBlob(frames.begin(),frames.end(), config.netInputImageSize));
 
-    // There are different output layers for different scales, e.g. yolo_82, yolo_94, yolo_106 for yolo v3.
+    // There are different output layers for different scales, e.g. yolo_82, yolo_94, yolo_106 for yolo v4.
     // Each result is a row vector like: [center_x, center_y, width, height, objectness, ...class_scores]
     // When multiple frames dimensions are: layerOutputs[output_layer][frame][box][feature]
     // When single frame dimensions are: layerOutputs[output_layer][box][feature]

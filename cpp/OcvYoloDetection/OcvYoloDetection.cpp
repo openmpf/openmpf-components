@@ -56,8 +56,7 @@ namespace {
                 double time = mpfFrame.index / fps;
                 frames.emplace_back(mpfFrame.index, time, 1 / fps,
                                     std::move(mpfFrame.data));
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -120,18 +119,18 @@ namespace {
     }
 
 
-    void ExtendWithOcvTracker(const Config& config, const Frame &frame,
+    void ExtendWithOcvTracker(const Config &config, const Frame &frame,
                               Cluster<Track> &trackCluster) {
         if (config.mosseTrackerDisabled) {
             return;
         }
         // tracks leftover have no detections in current frame, try tracking
-        for (auto &track : trackCluster.members) {
+        for (auto &track: trackCluster.members) {
             cv::Rect2i predictedRect;
             bool ocvTrackingSuccessful = track.ocvTrackerPredict(frame, config.maxFrameGap,
                                                                  predictedRect);
             if (!ocvTrackingSuccessful ||
-                    track.testResidual(predictedRect, config.edgeSnapDist) > config.maxKFResidual) {
+                track.testResidual(predictedRect, config.edgeSnapDist) > config.maxKFResidual) {
                 continue;
             }
 
@@ -139,11 +138,11 @@ namespace {
             auto previousProps = track.back().detection_properties;
             constexpr float gapFillPenalty = 0.00001;
             track.add({
-                  config, frame, predictedRect,
-                  // Slightly lower confidence to make sure this detection is never chosen as the exemplar.
-                  previousConfidence - gapFillPenalty,
-                  track.back().getClassFeature(),
-                  track.back().getDFTFeature()});
+                              config, frame, predictedRect,
+                              // Slightly lower confidence to make sure this detection is never chosen as the exemplar.
+                              previousConfidence - gapFillPenalty,
+                              track.back().getClassFeature(),
+                              track.back().getDFTFeature()});
             track.back().detection_properties = std::move(previousProps);
             track.back().detection_properties.emplace("FILLED_GAP", "TRUE");
             track.kalmanCorrect(config.edgeSnapDist);
@@ -159,7 +158,7 @@ namespace {
             std::vector<MPFVideoTrack> &completedTracks) {
 
         LOG_TRACE(detections.size() << " detections to be matched to " << inProgressTracks.size()
-                    << " tracks");
+                                    << " tracks");
 
         // group detections according to class features
         std::vector<Cluster<DetectionLocation>> detectionClusterList
@@ -176,9 +175,9 @@ namespace {
 
         // LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
         // any detection not assigned up to this point becomes a new track
-        for (auto &detectionCluster : detectionClusterList) {
+        for (auto &detectionCluster: detectionClusterList) {
             // make any unassigned detections into new tracks
-            for (auto& detection : detectionCluster.members) {
+            for (auto &detection: detectionCluster.members) {
                 // start of tracks always get feature calculated
                 detection.getDFTFeature();
                 // create new track
@@ -198,7 +197,7 @@ namespace {
             }
         }
 
-        for (auto &trackCluster : trackClusterList) {
+        for (auto &trackCluster: trackClusterList) {
             // check any tracks that didn't get a detection and use tracker to continue them if possible
             ExtendWithOcvTracker(config, frame, trackCluster);
             // move tracks with no new detections to assigned tracks
@@ -207,20 +206,19 @@ namespace {
                                   std::make_move_iterator(trackCluster.members.end()));
         }
 
-        for (auto& track : assignedTracks) {
+        for (auto &track: assignedTracks) {
             auto gapSize = frame.idx - track.back().frame.idx;
             if (gapSize > config.maxFrameGap) {
                 // remove and convert any tracks too far in the past from the active list
                 completedTracks.push_back(Track::toMpfTrack(std::move(track)));
-            }
-            else {
+            } else {
                 inProgressTracks.push_back(std::move(track));
             }
         }
 
         // advance Kalman predictions
         if (!config.kfDisabled) {
-            for (auto &track : inProgressTracks) {
+            for (auto &track: inProgressTracks) {
                 track.kalmanPredict(frame.time, config.edgeSnapDist);
             }
         }
@@ -251,7 +249,7 @@ bool OcvYoloDetection::Close() {
 
 
 std::string OcvYoloDetection::GetDetectionType() {
-   return "CLASS";
+    return "CLASS";
 }
 
 
@@ -277,35 +275,37 @@ std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob 
 
         MPFImageReader imageReader(job);
         std::vector<MPFImageLocation> results;
-        std::vector<Frame> frameBatch = { Frame(imageReader.GetImage()) };
+        std::vector<Frame> frameBatch = {Frame(imageReader.GetImage())};
         frameBatch.front().idx = 0;
 
+        // Get the detections from this image (batch of one).
         yoloNetwork_->GetDetections(frameBatch,
 
-          [&imageReader, &results] // LAMBDA
-          (std::vector<std::vector<DetectionLocation>> detectionsVec,
-            std::vector<Frame>::const_iterator,
-            std::vector<Frame>::const_iterator){
-              for (std::vector<DetectionLocation> &locationList : detectionsVec) {
-                  for (DetectionLocation &location : locationList) {
-                      results.emplace_back(
-                              location.x_left_upper,
-                              location.y_left_upper,
-                              location.width,
-                              location.height,
-                              location.confidence,
-                              std::move(location.detection_properties));
-                      imageReader.ReverseTransform(results.back());
-                  }
-              }
-          },
+                                    // LAMBDA: This callback converts the detections to MPFImageLocation objects.
+                                    [&imageReader, &results]
+                                            (std::vector<std::vector<DetectionLocation>> detectionsVec,
+                                             std::vector<Frame>::const_iterator,
+                                             std::vector<Frame>::const_iterator) {
+                                        for (std::vector<DetectionLocation> &locationList: detectionsVec) {
+                                            for (DetectionLocation &location: locationList) {
+                                                results.emplace_back(
+                                                        location.x_left_upper,
+                                                        location.y_left_upper,
+                                                        location.width,
+                                                        location.height,
+                                                        location.confidence,
+                                                        std::move(location.detection_properties));
+                                                imageReader.ReverseTransform(results.back());
+                                            }
+                                        }
+                                    },
 
-          config);
+                                    config);
 
         yoloNetwork_->Finish();
 
         LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << results.size()
-                                << " detections.");
+                                  << " detections.");
         return results;
     }
     catch (...) {
@@ -322,17 +322,17 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
         std::vector<Track> inProgressTracks;
 
         Config config(job.job_properties);
-        if (config.tritonEnabled && !config.mosseTrackerDisabled){
-          config.mosseTrackerDisabled = true;
-          LOG_WARN("MOSSE tracker is not supported with Triton, and has been disabled for this job");
+        if (config.tritonEnabled && !config.mosseTrackerDisabled) {
+            config.mosseTrackerDisabled = true;
+            LOG_WARN("MOSSE tracker is not supported with Triton, and has been disabled for this job");
         }
 
         InitYoloNetwork(job.job_properties, config);
 
         MPFAsyncVideoCapture videoCapture(job);
 
-       // place to hold frames till callbacks are done
-       std::unordered_map<int, std::vector<Frame>> frameBatches;
+        // place to hold frames till callbacks are done
+        std::unordered_map<int, std::vector<Frame>> frameBatches;
 
         while (true) {
             auto tmp = GetVideoFrames(videoCapture, config.frameBatchSize);
@@ -347,30 +347,32 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             LOG_TRACE("Processing frames [" << frameBatches.at(frameBatchKey).front().idx << "..."
                                             << frameBatches.at(frameBatchKey).back().idx << "]");
 
+            // Get the detections from this batch of frames.
             yoloNetwork_->GetDetections(frameBatches.at(frameBatchKey),
 
-              // this callback gets called MULTIPLE times
-              [&config, &frameBatches, &inProgressTracks, &completedTracks, frameBatchKey] // LAMBDA
-              (std::vector<std::vector<DetectionLocation>>&& detectionsVec,
-               std::vector<Frame>::const_iterator begin,
-               std::vector<Frame>::const_iterator end) {
+                                        // LAMBDA: This callback performs tracking on the frame detections using the
+                                        // corresponding Frame objects, which contain the cv::Mat data.
+                                        [&config, &frameBatches, &inProgressTracks, &completedTracks, frameBatchKey]
+                                                (std::vector<std::vector<DetectionLocation>> &&detectionsVec,
+                                                 std::vector<Frame>::const_iterator begin,
+                                                 std::vector<Frame>::const_iterator end) {
 
-                int backFrameIdx = (end - 1)->idx;
-                int i = 0;
-                for(std::vector<Frame>::const_iterator it = begin; it != end; ++it,++i){
-                  ProcessFrameDetections(config, *it,
-                                         std::move(detectionsVec.at(i)),
-                                         inProgressTracks,
-                                         completedTracks);
-                }
+                                            int backFrameIdx = (end - 1)->idx;
+                                            int i = 0;
+                                            for (std::vector<Frame>::const_iterator it = begin; it != end; ++it, ++i) {
+                                                ProcessFrameDetections(config, *it,
+                                                                       std::move(detectionsVec.at(i)),
+                                                                       inProgressTracks,
+                                                                       completedTracks);
+                                            }
 
-                // last frame in batch, release frame batch
-                if (frameBatchKey == backFrameIdx){
-                  frameBatches.erase(frameBatchKey);
-                }
-              },
+                                            // last frame in batch, release frame batch
+                                            if (frameBatchKey == backFrameIdx) {
+                                                frameBatches.erase(frameBatchKey);
+                                            }
+                                        },
 
-              config);
+                                        config);
         }
 
         yoloNetwork_->Finish();
@@ -380,7 +382,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
         LOG_TRACE("Converting remaining active tracks to MPF tracks");
         // Convert any remaining active tracks to MPFVideoTracks. Remove any detections
         // that are below the confidence threshold, and drop empty tracks, if any.
-        for (Track &track : inProgressTracks) {
+        for (Track &track: inProgressTracks) {
             completedTracks.push_back(Track::toMpfTrack(std::move(track)));
         }
 
@@ -391,12 +393,12 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             MPFVideoTrack &mpfTrack = *it;
             // Remove detections below the confidence threshold.
             std::vector<int> detections_to_erase;
-            for (const auto &loc : mpfTrack.frame_locations) {
+            for (const auto &loc: mpfTrack.frame_locations) {
                 if (loc.second.confidence < config.confidenceThreshold) {
                     detections_to_erase.push_back(loc.first);
                 }
             }
-            for (int idx : detections_to_erase) {
+            for (int idx: detections_to_erase) {
                 mpfTrack.frame_locations.erase(idx);
             }
 
@@ -406,14 +408,13 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
                 mpfTrack.start_frame = mpfTrack.frame_locations.begin()->first;
                 mpfTrack.stop_frame = mpfTrack.frame_locations.rbegin()->first;
                 videoCapture.ReverseTransform(mpfTrack);
-            }
-            else {
+            } else {
                 // The frame locations map is empty, so discard this track.
                 // This is unlikely to happen, but we need to handle it just in case.
                 tracks_to_erase.push_back(it);
             }
         }
-        for (auto it : tracks_to_erase) {
+        for (auto it: tracks_to_erase) {
             completedTracks.erase(it);
         }
 

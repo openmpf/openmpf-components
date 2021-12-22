@@ -53,208 +53,216 @@ OcvYoloDetection initComponent() {
 }
 
 
-float iou(const cv::Rect& r1, const cv::Rect& r2) {
+float iou(const cv::Rect &r1, const cv::Rect &r2) {
     int intersectionArea = (r1 & r2).area();
     int unionArea = (r1 | r2).area();
     return static_cast<float>(intersectionArea) / static_cast<float>(unionArea);
 }
 
 
-float iou(const DetectionLocation& l1, const DetectionLocation& l2) {
-  return iou(l1.getRect(),l2.getRect());
+float iou(const DetectionLocation &l1, const DetectionLocation &l2) {
+    return iou(l1.getRect(), l2.getRect());
 }
 
 
-float iou(const MPFImageLocation& l1, const MPFImageLocation& l2){
-  return iou(cv::Rect2i(l1.x_left_upper, l1.y_left_upper, l1.width, l1.height),
-             cv::Rect2i(l2.x_left_upper, l2.y_left_upper, l2.width, l2.height));
+float iou(const MPFImageLocation &l1, const MPFImageLocation &l2) {
+    return iou(cv::Rect2i(l1.x_left_upper, l1.y_left_upper, l1.width, l1.height),
+               cv::Rect2i(l2.x_left_upper, l2.y_left_upper, l2.width, l2.height));
 }
 
 
 Properties getTinyYoloConfig(float confidenceThreshold) {
     return {
-            { "MODEL_NAME", "tiny yolo" },
-            { "NET_INPUT_IMAGE_SIZE", "416"},
-            { "CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold) }
+            {"MODEL_NAME",           "tiny yolo"},
+            {"NET_INPUT_IMAGE_SIZE", "416"},
+            {"CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold)}
     };
 }
 
 
 Properties getYoloConfig(float confidenceThreshold) {
     return {
-            { "MODEL_NAME", "yolo" },
-            { "NET_INPUT_IMAGE_SIZE", "416"},
-            { "CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold) }
+            {"MODEL_NAME",           "yolo"},
+            {"NET_INPUT_IMAGE_SIZE", "416"},
+            {"CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold)}
     };
 }
 
 
 Properties getTritonYoloConfig(float confidenceThreshold) {
     return {
-            { "MODEL_NAME", "yolo" },
-            { "NET_INPUT_IMAGE_SIZE", "416"},
-            { "CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold) },
-            { "CUDA_DEVICE_ID", "-1"},
-            { "TRACKING_MAX_FRAME_GAP", "10"},
-            { "ENABLE_TRITON", "true"},
-            { "DETECTION_FRAME_BATCH_SIZE", "16"},
-            { "TRITON_SERVER","triton:8001"},
-            { "TRITON_USE_SHM","false"} //allow for remote server via plain gRPC
+            {"MODEL_NAME",                   "yolo"},
+            {"NET_INPUT_IMAGE_SIZE",         "608"},
+            {"CONFIDENCE_THRESHOLD",         std::to_string(confidenceThreshold)},
+            {"CUDA_DEVICE_ID",               "-1"},
+            {"TRACKING_MAX_FRAME_GAP",       "10"},
+            {"ENABLE_TRITON",                "true"},
+            {"DETECTION_FRAME_BATCH_SIZE",   "16"},
+            { "TRITON_SERVER",               "localhost:8001"}, // DEBUG
+            {"TRITON_USE_SHM",               "false"}, // allow for remote server via plain gRPC
+            {"TRITON_MAX_INFER_CONCURRENCY", "4"}
     };
 }
 
 
-bool same(MPFImageLocation& l1, MPFImageLocation& l2,
+bool same(MPFImageLocation &l1, MPFImageLocation &l2,
           float confidenceTolerance, float iouTolerance,
-          float& confidenceDiff,
-          float& iouValue){
+          float &confidenceDiff,
+          float &iouValue) {
 
-  confidenceDiff = fabs(l1.confidence - l2.confidence);
-  iouValue = iou(l1, l2);
-  return   (confidenceDiff <= confidenceTolerance)
-        && (l1.detection_properties.at("CLASSIFICATION") == l1.detection_properties.at("CLASSIFICATION"))
-        && (1.0f - iouValue <= iouTolerance);
+    confidenceDiff = fabs(l1.confidence - l2.confidence);
+    iouValue = iou(l1, l2);
+    return (confidenceDiff <= confidenceTolerance)
+           && (l1.detection_properties.at("CLASSIFICATION") == l1.detection_properties.at("CLASSIFICATION"))
+           && (1.0f - iouValue <= iouTolerance);
 }
 
 
-bool same(MPFImageLocation& l1, MPFImageLocation& l2,
-          float confidenceTolerance, float iouTolerance){
-  float tmp1,tmp2;
-  return same(l1, l2, confidenceTolerance, iouTolerance, tmp1, tmp2);
+bool same(MPFImageLocation &l1, MPFImageLocation &l2,
+          float confidenceTolerance, float iouTolerance) {
+    float tmp1, tmp2;
+    return same(l1, l2, confidenceTolerance, iouTolerance, tmp1, tmp2);
 }
 
 
-bool same(MPFVideoTrack& t1, MPFVideoTrack& t2,
+bool same(MPFVideoTrack &t1, MPFVideoTrack &t2,
           float confidenceTolerance, float iouTolerance,
-          float& confidenceDiff,
-          float& aveIou){
+          float &confidenceDiff,
+          float &aveIou) {
 
-  confidenceDiff = fabs(t1.confidence - t2.confidence);
-  if(   t1.detection_properties.at("CLASSIFICATION") != t2.detection_properties.at("CLASSIFICATION")
-     || confidenceDiff > confidenceTolerance) {
-       return false;
-  }
-
-  int start_frame = min(t1.start_frame, t2.start_frame);
-  int stop_frame = max(t1.stop_frame, t2.stop_frame);
-  aveIou = 0.0;
-  int numCommonFrames = 0;
-  for(int f = start_frame; f <= stop_frame; ++f) {
-    auto l1Itr = t1.frame_locations.find(f);
-    auto l2Itr = t2.frame_locations.find(f);
-    if(   l1Itr != t1.frame_locations.end()
-       && l2Itr != t2.frame_locations.end()) {
-         aveIou += iou(l1Itr->second, l2Itr->second);
-         ++numCommonFrames;
-    }else if (   l1Itr != t1.frame_locations.end()
-              || l2Itr != t2.frame_locations.end()) {
-      ++numCommonFrames;
+    confidenceDiff = fabs(t1.confidence - t2.confidence);
+    if (t1.detection_properties.at("CLASSIFICATION") != t2.detection_properties.at("CLASSIFICATION")
+        || confidenceDiff > confidenceTolerance) {
+        return false;
     }
-  }
-  aveIou /= numCommonFrames;
-  return (1.0 - aveIou <= iouTolerance);
-}
 
-
-bool same(MPFVideoTrack& t1, MPFVideoTrack& t2, float confidenceTolerance, float iouTolerance){
-  float tmp1, tmp2;
-  return same(t1, t2, confidenceTolerance, iouTolerance, tmp1, tmp2);
-}
-
-
-void write_track_output(vector<MPFVideoTrack>& tracks, string outTrackFileName, MPFVideoJob& videoJob){
-  std::ofstream outTrackFile(outTrackFileName);
-  if(outTrackFile.is_open()){
-    for(int i = 0; i < tracks.size(); ++i){
-      outTrackFile << "#" << i << " ";
-      outTrackFile << tracks.at(i) << std::endl;
-    }
-    outTrackFile.close();
-  }else{
-    std::cerr << "Could not open '" << outTrackFileName << "'" << std::endl;
-    throw exception();
-  }
-}
-
-
-vector<MPFVideoTrack> read_track_output(string inTrackFileName){
-  std::ifstream inTrackFile(inTrackFileName);
-  vector<MPFVideoTrack> tracks;
-
-  if(inTrackFile.is_open()){
-    int idx;
-    inTrackFile.ignore(1000,'#');
-    while(!inTrackFile.eof()){
-      inTrackFile >> idx;
-      MPFVideoTrack track;
-      inTrackFile >> track;
-      tracks.insert(tracks.begin() + idx , track);
-      inTrackFile.ignore(1000,'#');
-    }
-  }else{
-    std::cerr << "Could not open '" << inTrackFileName << "'" << std::endl;
-    throw exception();
-  }
-  return tracks;
-}
-
-
-void write_track_output_video(string inVideoFileName, vector<MPFVideoTrack>& tracks, string outVideoFileName,
-                              MPFVideoJob& videoJob){
-
-   MPFVideoCapture cap(inVideoFileName);
-   cv::VideoWriter writer(outVideoFileName,
-                cv::VideoWriter::fourcc('M', 'J', 'P', 'G'),
-                cap.GetFrameRate(), cap.GetFrameSize());
-  //Sort tracks into frames
-   map<int,vector<MPFVideoTrack*>> frameTracks;
-   int trackIdx = 0;
-   for(auto& track:tracks){
-     track.detection_properties.emplace("idx",std::to_string(trackIdx++));
-     for(auto& det:track.frame_locations){
-       if(det.first < track.start_frame || det.first > track.stop_frame){
-         // GOUT("\tdetection index " + to_string(det.first) + " outside of track frame range [" + to_string(track.start_frame) + "," + to_string(track.stop_frame) + "]");
-       }
-     }
-    for(int fr = track.start_frame; fr <= track.stop_frame; fr++){
-      frameTracks[fr].push_back(&track);
-    }
-   }
-
-   //Render tracks
-   cv::Mat frame;
-   int frameIdx = cap.GetCurrentFramePosition();
-   int calFrameIdx = round(cap.GetCurrentTimeInMillis() * cap.GetFrameRate() / 1000.0);
-   int numColors = 16;
-   std::vector<cv::Scalar> randomPalette;
-   for(int i = 0; i < numColors; ++i){
-     randomPalette.emplace_back(rand() % 255,rand() % 255,rand() % 255);
-   }
-   while(cap.Read(frame)){
-     if(frameIdx > videoJob.stop_frame) break;
-     if(frameIdx >= videoJob.start_frame){
-      map<int,vector<MPFVideoTrack*>>::iterator tracksItr = frameTracks.find(frameIdx);
-      if(tracksItr != frameTracks.end()){
-        for(MPFVideoTrack* trackPtr:tracksItr->second){
-          map<int,MPFImageLocation>::iterator detItr = trackPtr->frame_locations.find(frameIdx);
-          if(detItr != trackPtr->frame_locations.end()){
-            cv::Rect detection_rect(detItr->second.x_left_upper, detItr->second.y_left_upper, detItr->second.width, detItr->second.height);
-
-
-            cv::rectangle(frame, detection_rect, randomPalette.at(atoi(trackPtr->detection_properties["idx"].c_str()) % numColors), 2);
-            std::stringstream ss;
-            ss << trackPtr->detection_properties["idx"] << ":" <<  detItr->second.detection_properties["CLASSIFICATION"] << ":" << std::setprecision(3) << detItr->second.confidence;
-            cv::putText(frame, ss.str(), detection_rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 200, 200), 1);
-          }
+    int start_frame = min(t1.start_frame, t2.start_frame);
+    int stop_frame = max(t1.stop_frame, t2.stop_frame);
+    aveIou = 0.0;
+    int numCommonFrames = 0;
+    for (int f = start_frame; f <= stop_frame; ++f) {
+        auto l1Itr = t1.frame_locations.find(f);
+        auto l2Itr = t2.frame_locations.find(f);
+        if (l1Itr != t1.frame_locations.end()
+            && l2Itr != t2.frame_locations.end()) {
+            aveIou += iou(l1Itr->second, l2Itr->second);
+            ++numCommonFrames;
+        } else if (l1Itr != t1.frame_locations.end()
+                   || l2Itr != t2.frame_locations.end()) {
+            ++numCommonFrames;
         }
-      }
-      string disp = "# " + to_string(frameIdx) + ":" + to_string(calFrameIdx);
-      putText(frame, disp, cv::Point(50, 100), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 200, 200), 4);
-      writer.write(frame);
-     }
-     frameIdx = cap.GetCurrentFramePosition();
-     calFrameIdx = round(cap.GetCurrentTimeInMillis() * cap.GetFrameRate() / 1000.0);
-   }
+    }
+    aveIou /= numCommonFrames;
+    return (1.0 - aveIou <= iouTolerance);
+}
+
+
+bool same(MPFVideoTrack &t1, MPFVideoTrack &t2, float confidenceTolerance, float iouTolerance) {
+    float tmp1, tmp2;
+    return same(t1, t2, confidenceTolerance, iouTolerance, tmp1, tmp2);
+}
+
+
+void write_track_output(vector<MPFVideoTrack> &tracks, string outTrackFileName, MPFVideoJob &videoJob) {
+    std::ofstream outTrackFile(outTrackFileName);
+    if (outTrackFile.is_open()) {
+        for (int i = 0; i < tracks.size(); ++i) {
+            outTrackFile << "#" << i << " ";
+            outTrackFile << tracks.at(i) << std::endl;
+        }
+        outTrackFile.close();
+    } else {
+        std::cerr << "Could not open '" << outTrackFileName << "'" << std::endl;
+        throw exception();
+    }
+}
+
+
+vector<MPFVideoTrack> read_track_output(string inTrackFileName) {
+    std::ifstream inTrackFile(inTrackFileName);
+    vector<MPFVideoTrack> tracks;
+
+    if (inTrackFile.is_open()) {
+        int idx;
+        inTrackFile.ignore(1000, '#');
+        while (!inTrackFile.eof()) {
+            inTrackFile >> idx;
+            MPFVideoTrack track;
+            inTrackFile >> track;
+            tracks.insert(tracks.begin() + idx, track);
+            inTrackFile.ignore(1000, '#');
+        }
+    } else {
+        std::cerr << "Could not open '" << inTrackFileName << "'" << std::endl;
+        throw exception();
+    }
+    return tracks;
+}
+
+
+void write_track_output_video(string inVideoFileName, vector<MPFVideoTrack> &tracks, string outVideoFileName,
+                              MPFVideoJob &videoJob) {
+
+    MPFVideoCapture cap(inVideoFileName);
+    cv::VideoWriter writer(outVideoFileName,
+                           cv::VideoWriter::fourcc('M', 'J', 'P', 'G'),
+                           cap.GetFrameRate(), cap.GetFrameSize());
+    // Sort tracks into frames
+    map<int, vector<MPFVideoTrack *>> frameTracks;
+    int trackIdx = 0;
+    for (auto &track: tracks) {
+        track.detection_properties.emplace("idx", std::to_string(trackIdx++));
+        for (auto &det: track.frame_locations) {
+            if (det.first < track.start_frame || det.first > track.stop_frame) {
+                GOUT("\tdetection index " + to_string(det.first) + " outside of track frame range [" +
+                     to_string(track.start_frame) + "," + to_string(track.stop_frame) + "]");
+            }
+        }
+        for (int fr = track.start_frame; fr <= track.stop_frame; fr++) {
+            frameTracks[fr].push_back(&track);
+        }
+    }
+
+    // Render tracks
+    cv::Mat frame;
+    int frameIdx = cap.GetCurrentFramePosition();
+    int calFrameIdx = round(cap.GetCurrentTimeInMillis() * cap.GetFrameRate() / 1000.0);
+    int numColors = 16;
+    std::vector<cv::Scalar> randomPalette;
+    for (int i = 0; i < numColors; ++i) {
+        randomPalette.emplace_back(rand() % 255, rand() % 255, rand() % 255);
+    }
+    while (cap.Read(frame)) {
+        if (frameIdx > videoJob.stop_frame) break;
+        if (frameIdx >= videoJob.start_frame) {
+            map<int, vector<MPFVideoTrack *>>::iterator tracksItr = frameTracks.find(frameIdx);
+            if (tracksItr != frameTracks.end()) {
+                for (MPFVideoTrack *trackPtr: tracksItr->second) {
+                    map<int, MPFImageLocation>::iterator detItr = trackPtr->frame_locations.find(frameIdx);
+                    if (detItr != trackPtr->frame_locations.end()) {
+                        cv::Rect detection_rect(detItr->second.x_left_upper, detItr->second.y_left_upper,
+                                                detItr->second.width, detItr->second.height);
+
+
+                        cv::rectangle(frame, detection_rect,
+                                      randomPalette.at(atoi(trackPtr->detection_properties["idx"].c_str()) % numColors),
+                                      2);
+                        std::stringstream ss;
+                        ss << trackPtr->detection_properties["idx"] << ":"
+                           << detItr->second.detection_properties["CLASSIFICATION"] << ":" << std::setprecision(3)
+                           << detItr->second.confidence;
+                        cv::putText(frame, ss.str(), detection_rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                                    cv::Scalar(0, 200, 200), 1);
+                    }
+                }
+            }
+            string disp = "# " + to_string(frameIdx) + ":" + to_string(calFrameIdx);
+            putText(frame, disp, cv::Point(50, 100), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 200, 200), 4);
+            writer.write(frame);
+        }
+        frameIdx = cap.GetCurrentFramePosition();
+        calFrameIdx = round(cap.GetCurrentTimeInMillis() * cap.GetFrameRate() / 1000.0);
+    }
 
 }
 

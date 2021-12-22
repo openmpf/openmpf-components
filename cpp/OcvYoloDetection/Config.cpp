@@ -46,7 +46,7 @@ namespace {
 }
 
 Config::Config(const Properties &jobProps)
-        : confidenceThreshold(GetProperty(jobProps, "CONFIDENCE_THRESHOLD", 0.5))
+        : confidenceThreshold(std::min(GetProperty(jobProps, "CONFIDENCE_THRESHOLD", 0.5), 0.0))
         , nmsThresh(GetProperty(jobProps, "DETECTION_NMS_THRESHOLD", 0.3))
         , numClassPerRegion(GetProperty(jobProps, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5))
         , netInputImageSize(GetProperty(jobProps, "NET_INPUT_IMAGE_SIZE", 416))
@@ -74,7 +74,7 @@ Config::Config(const Properties &jobProps)
         , classWhiteListPath(GetProperty(jobProps, "CLASS_WHITELIST_FILE", ""))
         , enableDebug(GetProperty(jobProps, "ENABLE_DEBUG", false))
         , tritonEnabled(GetProperty(jobProps, "ENABLE_TRITON", false))
-        , tritonServer(GetProperty(jobProps, "TRITON_SERVER", "example.org:8001"))
+        , tritonServer(GetProperty(jobProps, "TRITON_SERVER", "localhost:8001"))
         , tritonModelName(GetProperty(jobProps,  "MODEL_NAME", "yolo"))
         , tritonModelVersion(GetProperty(jobProps, "TRITON_MODEL_VERSION", ""))
         , tritonNumClasses(GetProperty(jobProps, "TRITON_MODEL_NUM_CLASSES", 80))

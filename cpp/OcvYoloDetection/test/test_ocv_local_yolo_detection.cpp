@@ -170,12 +170,10 @@ TEST_F(OcvLocalYoloDetectionTestFixture, TestImage) {
 
 TEST_F(OcvLocalYoloDetectionTestFixture, TestVideo) {
     auto jobProps = getTinyYoloConfig(0.92);
-    jobProps.emplace("TRACKING_DISABLE_MOSSE_TRACKER", "true");
     MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 2, 10,
                     jobProps, {});
 
     auto tracks = initComponent().GetDetections(job);
-    // write_track_output_video(job.data_uri, tracks, "TestVideo.avi", job);
     ASSERT_EQ(3, tracks.size());
     {
         auto personTrack = findDetectionWithClass("person", tracks);

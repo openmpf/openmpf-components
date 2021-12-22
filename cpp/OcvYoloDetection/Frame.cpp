@@ -29,42 +29,41 @@
 using namespace MPF::COMPONENT;
 
 cv::Mat Frame::getDataAsResizedFloat(
-  const cv::Size2i targetSize,
-  //const int imageSize,
-  const int cvBorderType,
-  const cv::Scalar &cvBorderValue) const {
+        const cv::Size2i targetSize,
+        const int cvBorderType,
+        const cv::Scalar &cvBorderValue) const {
 
-  double targetAspect = targetSize.width/static_cast<double>(targetSize.height);
-  double dataAspect = data.cols / static_cast<double>(data.rows);
-  double scaleFactor;
-  if(targetAspect > dataAspect){
-    // limited by target y
-    scaleFactor = targetSize.height / static_cast<double>(data.rows);
-  }else{
-    // limited by target x
-    scaleFactor = targetSize.width  / static_cast<double>(data.cols);
-  }
+    double targetAspect = targetSize.width / static_cast<double>(targetSize.height);
+    double dataAspect = data.cols / static_cast<double>(data.rows);
+    double scaleFactor;
+    if (targetAspect > dataAspect) {
+        // limited by target y
+        scaleFactor = targetSize.height / static_cast<double>(data.rows);
+    } else {
+        // limited by target x
+        scaleFactor = targetSize.width / static_cast<double>(data.cols);
+    }
 
-  cv::Mat resizedData;
-  cv::resize(data, resizedData, cv::Size(), scaleFactor, scaleFactor);
+    cv::Mat resizedData;
+    cv::resize(data, resizedData, cv::Size(), scaleFactor, scaleFactor);
 
-  int leftPadding = (targetSize.width - resizedData.cols) / 2;
-  int topPadding = (targetSize.height - resizedData.rows) / 2;
+    int leftPadding = (targetSize.width - resizedData.cols) / 2;
+    int topPadding = (targetSize.height - resizedData.rows) / 2;
 
-  // Convert rectangular image to square image by adding grey bars to the smaller dimensions.
-  // Grey was chosen because that is what the Darknet library does.
-  cv::copyMakeBorder(
-          resizedData,
-          resizedData,
-          topPadding,
-          targetSize.width - resizedData.rows - topPadding,
-          leftPadding,
-          targetSize.height - resizedData.cols - leftPadding,
-          cvBorderType,
-          cvBorderValue);
-  assert(("Frame resize did not result in desired dimensions.",
-          targetSize.width == resizedData.cols
-           && targetSize.height == resizedData.rows ));
-  resizedData.convertTo(resizedData,CV_32F,1/255.0);
-  return resizedData;
+    // Convert rectangular image to square image by adding grey bars to the smaller dimensions.
+    // Grey was chosen because that is what the Darknet library does.
+    cv::copyMakeBorder(
+            resizedData,
+            resizedData,
+            topPadding,
+            targetSize.width - resizedData.rows - topPadding,
+            leftPadding,
+            targetSize.height - resizedData.cols - leftPadding,
+            cvBorderType,
+            cvBorderValue);
+    assert(("Frame resize did not result in desired dimensions.",
+            targetSize.width == resizedData.cols
+            && targetSize.height == resizedData.rows));
+    resizedData.convertTo(resizedData, CV_32F, 1 / 255.0);
+    return resizedData;
 }

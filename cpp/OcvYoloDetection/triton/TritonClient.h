@@ -31,7 +31,7 @@ class TritonInferencer;
 
 class TritonClient {
 
-  public:
+public:
     const int id;
 
     const size_t inputs_byte_size;
@@ -43,9 +43,9 @@ class TritonClient {
     const std::string outputs_shm_key;
 
     TritonClient(
-      const int id,
-      const std::string& shmKeyPrefix,
-      const TritonInferencer *inferencer);
+            const int id,
+            const std::string &shmKeyPrefix,
+            const TritonInferencer *inferencer);
 
     ~TritonClient();
 
@@ -53,52 +53,45 @@ class TritonClient {
 
     void init();
 
-    void inferAsync(int inferInputIdx, const cv::Mat& shmBlob, CallbackFunc inferencerLambda);
+    void inferAsync(int inferInputIdx, const cv::Mat &shmBlob, CallbackFunc inferencerCallback);
 
-    cv::Mat getOutput(const TritonTensorMeta& om);
+    cv::Mat getOutput(const TritonTensorMeta &om);
 
     // TODO: Move definitions to *.cpp. Prefix with get*.
 
-    const bool usingShmInput() const {return !inputs_shm_key.empty();}
+    const bool usingShmInput() const { return !inputs_shm_key.empty(); }
 
-    const bool usingShmOutput() const {return !outputs_shm_key.empty();}
+    const bool usingShmOutput() const { return !outputs_shm_key.empty(); }
 
-    const uint8_t* inputs_shm() const {return inputs_shm_;}
+    const uint8_t *inputs_shm() const { return inputs_shm_; }
 
-  private:
+private:
 
     const TritonInferencer *inferencer_;
 
-    uint8_t* inputs_shm_ = nullptr;
+    uint8_t *inputs_shm_ = nullptr;
 
-    uint8_t* outputs_shm_ = nullptr;
+    uint8_t *outputs_shm_ = nullptr;
 
-    std::vector<std::unique_ptr<triton::client::InferInput>>
-      inferInputs_;
+    std::vector<std::unique_ptr<triton::client::InferInput>> inferInputs_;
 
-    std::vector<std::unique_ptr<const triton::client::InferRequestedOutput>>
-      inferRequestedOutputs_;
+    std::vector<std::unique_ptr<const triton::client::InferRequestedOutput>> inferRequestedOutputs_;
 
-    std::unique_ptr<triton::client::InferResult>
-      inferResult_;
+    std::unique_ptr<triton::client::InferResult> inferResult_;
 
-    std::unique_ptr<triton::client::InferenceServerGrpcClient>
-      grpc_;
+    std::unique_ptr<triton::client::InferenceServerGrpcClient> grpc_;
 
     void setupShmRegion(const std::string shm_key,
                         const size_t byte_size,
-                        uint8_t* &shm_addr);
+                        uint8_t *&shm_addr);
 
     void removeShmRegion(const std::string shm_key,
                          const size_t byte_size,
-                        uint8_t* shm_addr);
+                         uint8_t *shm_addr);
 
     void prepareInferInputs();
 
     void prepareInferRequestedOutputs();
-
-    void inferAsync_(CallbackFunc inferencerLambda);
-
 };
 
 #endif // OPENMPF_COMPONENTS_TRITON_CLIENT_H

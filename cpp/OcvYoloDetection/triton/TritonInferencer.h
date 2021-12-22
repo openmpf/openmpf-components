@@ -67,14 +67,14 @@ class TritonInferencer {
 
     void reset();
 
-    using ExtractDetectionsFunc =
+    using ExtractDetectionsCallback =
       std::function<void(std::vector<cv::Mat> outBlobs,
                          std::vector<Frame>::const_iterator begin,
                          std::vector<Frame>::const_iterator end)>;
 
     void infer(const std::vector<Frame> &frames,
                const TritonTensorMeta &inputMeta,
-               ExtractDetectionsFunc extractDetectionsFun);
+               ExtractDetectionsCallback extractDetectionsCallback);
 
     int acquireClientId();
 

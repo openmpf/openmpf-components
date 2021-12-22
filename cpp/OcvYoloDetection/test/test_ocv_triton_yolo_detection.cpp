@@ -51,7 +51,7 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestImageTriton) {
     ASSERT_EQ(3, detections.size());
 
     {
-        const auto& dogDetection = findDetectionWithClass("dog", detections);
+        const auto &dogDetection = findDetectionWithClass("dog", detections);
         ASSERT_NEAR(133, dogDetection.x_left_upper, 2);
         ASSERT_NEAR(228, dogDetection.y_left_upper, 2);
         ASSERT_NEAR(176, dogDetection.width, 2);
@@ -60,7 +60,7 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestImageTriton) {
         ASSERT_EQ("dog", dogDetection.detection_properties.at("CLASSIFICATION"));
     }
     {
-        const auto& bikeDetection = findDetectionWithClass("bicycle", detections);
+        const auto &bikeDetection = findDetectionWithClass("bicycle", detections);
         ASSERT_NEAR(121, bikeDetection.x_left_upper, 2);
         ASSERT_NEAR(136, bikeDetection.y_left_upper, 2);
         ASSERT_NEAR(455, bikeDetection.width, 2);
@@ -69,7 +69,7 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestImageTriton) {
         ASSERT_EQ("bicycle", bikeDetection.detection_properties.at("CLASSIFICATION"));
     }
     {
-        const auto& carDetection = findDetectionWithClass("truck", detections);
+        const auto &carDetection = findDetectionWithClass("truck", detections);
         ASSERT_NEAR(439, carDetection.x_left_upper, 2);
         ASSERT_NEAR(78, carDetection.y_left_upper, 3);
         ASSERT_NEAR(258, carDetection.width, 2);
@@ -86,7 +86,7 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestVideoTriton) {
                     jobProps, {});
 
     std::vector<MPFVideoTrack> expectedTracks =
-      read_track_output("data/lp-ferrari-texas-shortened.tracks");
+            read_track_output("data/lp-ferrari-texas-shortened.tracks");
 
     auto foundTracks = initComponent().GetDetections(job);
 
@@ -97,78 +97,119 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestVideoTriton) {
 
     int numMatching = 0;
     int numNotMatching = 0;
-    for(int et = 0; et < expectedTracks.size(); ++et){
-      for(int ft = et; ft < foundTracks.size(); ++ft){
-        float confDiff = 0;
-        float aveIou = 0;
-        if(same(expectedTracks.at(et), foundTracks.at(ft),
-                0.001, 0.01, confDiff, aveIou)) {
-          GOUT("Expected track #" << et << " matches found track #" << ft
-                << " with confidence diff: " << setprecision(3) << confDiff
-                << " and average iou: " << setprecision(3) << aveIou);
-          ++numMatching;
-        }else{
-          ++numNotMatching;
+    for (int et = 0; et < expectedTracks.size(); ++et) {
+        for (int ft = et; ft < foundTracks.size(); ++ft) {
+            float confDiff = 0;
+            float aveIou = 0;
+            if (same(expectedTracks.at(et), foundTracks.at(ft),
+                     0.001, 0.01, confDiff, aveIou)) {
+                GOUT("Expected track #" << et << " matches found track #" << ft
+                                        << " with confidence diff: " << setprecision(3) << confDiff
+                                        << " and average iou: " << setprecision(3) << aveIou);
+                ++numMatching;
+            } else {
+                ++numNotMatching;
+            }
         }
-      }
     }
 
     ASSERT_EQ(numMatching, expectedTracks.size());
 
     ASSERT_EQ(numNotMatching,
-       expectedTracks.size() * (expectedTracks.size() -1) / 2);
+              expectedTracks.size() * (expectedTracks.size() - 1) / 2);
 }
 
 
 // TODO: Should we remove this?
 TEST_F(OcvTritonYoloDetectionTestFixture, TestTritonPerformance) { // DEBUG: Was disabled
 
-  int start = 0;
-  int stop = 336;
-  int rate = 1;
-  string inVideoFile  = "data/Stockholm_Marathon_9_km.webm";
-  string outTrackFile = "/output/Stockholm_Marathon_9_km.01.tracks"; // DEBUG
-  string outVideoFile = "/output/Stockholm_Marathon_9_km.01.tracks.avi"; // DEBUG
-  float comparison_score_threshold = 0.6;
+    int start = 0;
+    int stop = 335;
+    string inVideoFile = "data/Stockholm_Marathon_9_km.webm";
+    // string outTrackFile = "Stockholm_Marathon_9_km.tracks"; // DEBUG
+    // string outVideoFile = "Stockholm_Marathon_9_km.tracks.avi"; // DEBUG
+    float comparison_score_threshold = 0.6;
 
-  GOUT("Start:\t"    << start);
-  GOUT("Stop:\t"     << stop);
-  GOUT("Rate:\t"     << rate);
-  GOUT("inVideo:\t"  << inVideoFile);
-  GOUT("outTrack:\t" << outTrackFile);
-  GOUT("outVideo:\t" << outVideoFile);
-  GOUT("comparison threshold:\t" << comparison_score_threshold);
+    GOUT("Start:\t" << start);
+    GOUT("Stop:\t" << stop);
+    GOUT("inVideo:\t" << inVideoFile);
+    // GOUT("outTrack:\t" << outTrackFile);
+    // GOUT("outVideo:\t" << outVideoFile);
+    GOUT("comparison threshold:\t" << comparison_score_threshold);
 
-  auto component = initComponent();
+    auto component = initComponent();
 
-  auto jobProp = getTritonYoloConfig();
-  jobProp["TRACKING_DFT_SIZE"] = "128";
-  jobProp["DETECTION_FRAME_BATCH_SIZE"] = "16";
-  jobProp["TRITON_MAX_INFER_CONCURRENCY"] = "4";
+    auto jobProp = getTritonYoloConfig();
+    jobProp["DETECTION_FRAME_BATCH_SIZE"] = "16";
+    jobProp["TRITON_MAX_INFER_CONCURRENCY"] = "4";
+    jobProp["TRITON_USE_SHM"] = "true"; // DEBUG
 
 
-  MPFVideoJob videoJob("Testing", inVideoFile, start, stop, jobProp, {});
+    MPFVideoJob videoJob("Testing", inVideoFile, start, stop, jobProp, {});
 
-  Config cfg(videoJob.job_properties);
+    Config cfg(videoJob.job_properties);
 
-  auto start_time = chrono::high_resolution_clock::now();
-  vector<MPFVideoTrack> found_tracks = component.GetDetections(videoJob);
-  auto end_time = chrono::high_resolution_clock::now();
+    auto start_time = chrono::high_resolution_clock::now();
+    vector<MPFVideoTrack> found_tracks = component.GetDetections(videoJob);
+    auto end_time = chrono::high_resolution_clock::now();
 
-  EXPECT_FALSE(found_tracks.empty());
-  double time_taken =
-    chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count();
-  time_taken = time_taken * 1e-9;
+    EXPECT_FALSE(found_tracks.empty());
+    double time_taken =
+            chrono::duration_cast<chrono::nanoseconds>(end_time - start_time).count();
+    time_taken = time_taken * 1e-9;
 
-  GOUT("\tVideoJob processing time: " << fixed << setprecision(5) << time_taken
-     << "[sec] for " << stop-start << " frames or "
-     << (stop - start)/time_taken << "[FPS]");
+    int detections = 0;
+    for (auto track: found_tracks) {
+        detections += track.frame_locations.size();
+    }
+    GOUT("Found " << detections << " total detections.");
 
-  GOUT("\t" <<found_tracks.size() << " tracks: " << outTrackFile);
-  write_track_output(found_tracks, outTrackFile, videoJob);
+    GOUT("\tVideoJob processing time: " << fixed << setprecision(5) << time_taken
+                                        << "[sec] for " << stop - start << " frames or "
+                                        << (stop - start) / time_taken << "[FPS]");
 
-  GOUT("\toverlay video: " << outVideoFile);
-  write_track_output_video(inVideoFile, found_tracks, outVideoFile, videoJob);
+    // GOUT("\t" << found_tracks.size() << " tracks: " << outTrackFile);
+    // write_track_output(found_tracks, outTrackFile, videoJob);
 
-  EXPECT_TRUE(component.Close());
+    // GOUT("\toverlay video: " << outVideoFile);
+    // write_track_output_video(inVideoFile, found_tracks, outVideoFile, videoJob);
+
+    EXPECT_TRUE(component.Close());
+}
+
+
+TEST_F(OcvTritonYoloDetectionTestFixture, TestImageLocalAndTriton) {
+
+    auto localJobProp = getYoloConfig();
+    // localJobProp["CUDA_DEVICE_ID"] = "0"; // DEBUG
+    MPFImageJob localImageJob("LocalTest", "data/dog.jpg", localJobProp, {});
+
+    auto tritonJobProp = getTritonYoloConfig();
+    MPFImageJob tritonImageJob("TritonTest", "data/dog.jpg", tritonJobProp, {});
+
+    auto component = initComponent();
+
+    auto tracks = component.GetDetections(localImageJob);
+    ASSERT_EQ(3, tracks.size());
+
+    tracks = component.GetDetections(tritonImageJob);
+    ASSERT_EQ(3, tracks.size());
+
+    tracks = component.GetDetections(localImageJob);
+    ASSERT_EQ(3, tracks.size());
+
+    tracks = component.GetDetections(tritonImageJob);
+    ASSERT_EQ(3, tracks.size());
+
+    tracks = component.GetDetections(localImageJob);
+    ASSERT_EQ(3, tracks.size());
+    tracks = component.GetDetections(localImageJob);
+    ASSERT_EQ(3, tracks.size());
+
+    tracks = component.GetDetections(tritonImageJob);
+    ASSERT_EQ(3, tracks.size());
+    tracks = component.GetDetections(tritonImageJob);
+    ASSERT_EQ(3, tracks.size());
+
+    EXPECT_TRUE(component.Close());
 }

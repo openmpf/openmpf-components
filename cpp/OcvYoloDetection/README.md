@@ -72,9 +72,8 @@ assignment stages, each using a linear assignment cost solver:
       every frame of a video. Region overlap may occur less frequently when using higher frame intervals, in which case
       the tracker will fall back to DFT pixel similarity more. Very little testing has been done with frame intervals >
       1.
-* Currently, only the full and Tiny YoloV3 models are configured with a confusion matrix. The matrix was originally
-  created based on testing Tiny YoloV3, so it may not be appropriate for use with full YoloV3. Consider generating new
-  confusion matrices for the full and Tiny YoloV4 models.
+* The confusion matrix was originally created based on testing Tiny YoloV3, so it may not be appropriate for use with 
+  Tiny YoloV4 or full YoloV4. Consider generating new confusion matrices for those models.
 
 # Models Image
 

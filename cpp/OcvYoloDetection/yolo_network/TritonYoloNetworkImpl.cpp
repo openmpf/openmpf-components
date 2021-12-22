@@ -24,13 +24,11 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include <algorithm>
 #include <fstream>
 #include <utility>
 #include <vector>
 
 #include <MPFDetectionException.h>
-#include <Utils.h>
 
 #include "../util.h"
 
@@ -50,19 +48,19 @@ static constexpr int OUTPUT_BLOB_DIM_1 = MAX_OUTPUT_BBOX_COUNT * 7 + 1;
 class YoloNetwork::YoloNetworkImpl : public BaseYoloNetworkImpl {
 public:
     YoloNetworkImpl(ModelSettings model_settings, const Config &config)
-            : BaseYoloNetworkImpl(model_settings, config)
-            , tritonInferencer_(std::move(ConnectTritonInferencer(config))) {}
+            : BaseYoloNetworkImpl(model_settings, config),
+              tritonInferencer_(std::move(ConnectTritonInferencer(config))) {}
 
     ~YoloNetworkImpl() = default;
 
     void GetDetections(
             std::vector<Frame> &frames,
-            ProcessFrameDetectionsFunc processFrameDetectionsFun,
+            ProcessFrameDetectionsCallback processFrameDetectionsCallback,
             const Config &config) {
         if (!config.tritonEnabled) {
-            processFrameDetectionsFun(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
+            processFrameDetectionsCallback(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
         } else {
-            GetDetectionsTriton(frames, processFrameDetectionsFun, config);
+            GetDetectionsTriton(frames, processFrameDetectionsCallback, config);
         }
     }
 
@@ -119,8 +117,7 @@ private:
     std::unique_ptr<TritonInferencer> tritonInferencer_;
 
 
-    std::unique_ptr<TritonInferencer> ConnectTritonInferencer(const Config& config){
-
+    std::unique_ptr<TritonInferencer> ConnectTritonInferencer(const Config &config) {
         if (!config.tritonEnabled) {
             return nullptr;
         }
@@ -128,7 +125,7 @@ private:
         std::unique_ptr<TritonInferencer> tritonInferencer(new TritonInferencer(config));
         std::string modelNameAndVersion = tritonInferencer->getModelNameAndVersion();
 
-        if (tritonInferencer->inputsMeta.size() != 1){
+        if (tritonInferencer->inputsMeta.size() != 1) {
             std::stringstream ss;
             ss << "Configured Triton inference server model " << modelNameAndVersion << " has "
                << tritonInferencer->inputsMeta.size() << " inputs, but only one is expected.";
@@ -136,24 +133,24 @@ private:
         }
 
         if (tritonInferencer->inputsMeta.at(0).shape[0] != 3
-              || tritonInferencer->inputsMeta.at(0).shape[1] != tritonInferencer->inputsMeta.at(0).shape[2]
-              || tritonInferencer->inputsMeta.at(0).shape[2] != config.netInputImageSize){
+            || tritonInferencer->inputsMeta.at(0).shape[1] != tritonInferencer->inputsMeta.at(0).shape[2]
+            || tritonInferencer->inputsMeta.at(0).shape[2] != config.netInputImageSize) {
             std::stringstream ss;
             ss << "Configured Triton inference server model " << modelNameAndVersion
                << " has first input shape "
                << tritonInferencer->inputsMeta.at(0).shape << ", but data has shape "
-               << std::vector<int>{3,config.netInputImageSize, config.netInputImageSize} << ".";
+               << std::vector<int>{3, config.netInputImageSize, config.netInputImageSize} << ".";
             throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
         }
 
-        if(tritonInferencer->outputsMeta.at(0).shape[0] != OUTPUT_BLOB_DIM_1
-             || tritonInferencer->outputsMeta.at(0).shape[1] != 1
-             || tritonInferencer->outputsMeta.at(0).shape[2] != 1){
+        if (tritonInferencer->outputsMeta.at(0).shape[0] != OUTPUT_BLOB_DIM_1
+            || tritonInferencer->outputsMeta.at(0).shape[1] != 1
+            || tritonInferencer->outputsMeta.at(0).shape[2] != 1) {
             std::stringstream ss;
             ss << "Configured Triton inference server model " << modelNameAndVersion
                << " has first output shape "
                << tritonInferencer->outputsMeta.at(0).shape << ", but "
-               << std::vector<int>{OUTPUT_BLOB_DIM_1,1,1} << " was expected.";
+               << std::vector<int>{OUTPUT_BLOB_DIM_1, 1, 1} << " was expected.";
             throw MPFDetectionException(MPFDetectionError::MPF_INVALID_PROPERTY, ss.str());
         }
 
@@ -163,72 +160,74 @@ private:
 
     void GetDetectionsTriton(
             const std::vector<Frame> &frames,
-            ProcessFrameDetectionsFunc componentProcessLambda,
+            ProcessFrameDetectionsCallback processFrameDetectionsCallback,
             const Config &config) {
 
-        tritonInferencer_->infer(frames,
-             tritonInferencer_->inputsMeta.at(0),
+        // Send async request to Triton using this batch of frames to get output blobs.
+        tritonInferencer_->infer(frames, tritonInferencer_->inputsMeta.at(0),
 
-             [this, &config, componentProcessLambda] // LAMBDA
-                     (std::vector<cv::Mat> outBlobs,
-                      std::vector<Frame>::const_iterator begin,
-                      std::vector<Frame>::const_iterator end) {
+                                 // LAMBDA: This callback will extract detections from output blobs.
+                                 // Also, it will invoke processFrameDetectionsCallback to process detections (e.g. tracking).
+                                 [this, &config, processFrameDetectionsCallback]
+                                         (std::vector<cv::Mat> outBlobs,
+                                          std::vector<Frame>::const_iterator begin,
+                                          std::vector<Frame>::const_iterator end) {
 
-                 cv::Mat outBlob = outBlobs.at(0); // yolo only has one output tensor
-                 int numFrames = end - begin;
+                                     cv::Mat outBlob = outBlobs.at(0); // yolo only has one output tensor
+                                     int numFrames = end - begin;
 
-                 LOG_TRACE("frameCount: " << numFrames << " outBlob.size(): "
-                                           << std::vector<int>(outBlob.size.p,
-                                                               outBlob.size.p + outBlob.dims));
-                 assert(("Blob's first dim should equal number of frames.", outBlob.size[0] ==
-                                                                         numFrames));
+                                     LOG_TRACE("frameCount: " << numFrames << " outBlob.size(): "
+                                               << std::vector<int>(outBlob.size.p, outBlob.size.p + outBlob.dims));
+                                     assert(("Blob's first dim should equal number of frames.",
+                                             outBlob.size[0] == numFrames));
 
-                 LOG_TRACE("Received outBlob[" << outBlob.size[0] << "," << outBlob.size[1] << ","
+                                     LOG_TRACE("Received outBlob["
+                                               << outBlob.size[0] << "," << outBlob.size[1] << ","
                                                << outBlob.size[2] << "," << outBlob.size[3] << "].");
-                 assert(("Output blob shape should be [frames, detections, 1, 1].",
-                         outBlob.size[0] <= tritonInferencer_->maxBatchSize()
-                         && outBlob.size[1] == OUTPUT_BLOB_DIM_1
-                         && outBlob.size[2] == 1
-                         && outBlob.size[3] == 1));
+                                     assert(("Output blob shape should be [frames, detections, 1, 1].",
+                                             outBlob.size[0] <= tritonInferencer_->maxBatchSize()
+                                             && outBlob.size[1] == OUTPUT_BLOB_DIM_1
+                                             && outBlob.size[2] == 1
+                                             && outBlob.size[3] == 1));
 
-                 // parse output blob into detections
-                 std::vector<std::vector<DetectionLocation>> detectionsGroupedByFrame;
-                 detectionsGroupedByFrame.reserve(numFrames);
+                                     // parse output blob into detections
+                                     std::vector<std::vector<DetectionLocation>> detectionsGroupedByFrame;
+                                     detectionsGroupedByFrame.reserve(numFrames);
 
-                 LOG_TRACE("Extracting detections for frames[" << begin->idx << ".." << (end - 1)->idx << "].");
-                 int i = 0;
-                 for (auto frameIt = begin; frameIt != end; ++i, ++frameIt) {
-                     detectionsGroupedByFrame.push_back(
-                             ExtractFrameDetectionsTriton(*frameIt, outBlob.ptr<float>(i, 0),
-                                                         config));
-                 }
+                                     LOG_TRACE("Extracting detections for frames["
+                                               << begin->idx << ".." << (end - 1)->idx << "].");
+                                     int i = 0;
+                                     for (auto frameIt = begin; frameIt != end; ++i, ++frameIt) {
+                                         detectionsGroupedByFrame.push_back(
+                                                 ExtractFrameDetectionsTriton(*frameIt, outBlob.ptr<float>(i, 0),
+                                                                              config));
+                                     }
 
-                 { // exact frame sequencing needed from here on due to tracking...
-                     int frameIdxToWaitFor = begin->idx - 1;
-                     int frameIdxLast = (end - 1)->idx;
-                     std::unique_lock<std::mutex> lk(frameIdxCompleteMtx_);
-                     LOG_TRACE("Waiting for frame[" << frameIdxToWaitFor << "] to complete.");
-                     frameIdxCompleteCv_.wait(lk,
-                                              [this, frameIdxToWaitFor] {
-                                                  return frameIdxComplete_ == frameIdxToWaitFor;
-                                              });
-                     LOG_TRACE("Done waiting for frame[" << frameIdxToWaitFor << "].");
+                                     { // exact frame sequencing needed from here on due to tracking...
+                                         int frameIdxToWaitFor = begin->idx - 1;
+                                         int frameIdxLast = (end - 1)->idx;
+                                         std::unique_lock<std::mutex> lk(frameIdxCompleteMtx_);
+                                         LOG_TRACE("Waiting for frame[" << frameIdxToWaitFor << "] to complete.");
+                                         frameIdxCompleteCv_.wait(lk,
+                                                                  [this, frameIdxToWaitFor] {
+                                                                      return frameIdxComplete_ == frameIdxToWaitFor;
+                                                                  });
+                                         LOG_TRACE("Done waiting for frame[" << frameIdxToWaitFor << "].");
 
-                     componentProcessLambda(std::move(detectionsGroupedByFrame), begin, end);
+                                         processFrameDetectionsCallback(std::move(detectionsGroupedByFrame), begin, end);
 
-                     frameIdxComplete_ = frameIdxLast;
-                     LOG_TRACE("PST: frameIdxComplete_: " << frameIdxComplete_); // DEBUG
+                                         frameIdxComplete_ = frameIdxLast;
 
-                     LOG_TRACE("Completed frames[" << begin->idx << ".." << frameIdxComplete_ << "].");
-
-                 }
-                 frameIdxCompleteCv_.notify_all();
-             });
+                                         LOG_TRACE("Completed frames["
+                                                   << begin->idx << ".." << frameIdxComplete_ << "].");
+                                     }
+                                     frameIdxCompleteCv_.notify_all();
+                                 });
     }
 
 
     std::vector<DetectionLocation> ExtractFrameDetectionsTriton(
-            const Frame &frame, float* data, const Config &config) const {
+            const Frame &frame, float *data, const Config &config) const {
 
         float maxFrameDim = std::max(frame.data.cols, frame.data.rows);
         int horizontalPadding = (maxFrameDim - frame.data.cols) / 2;
@@ -244,16 +243,16 @@ private:
         cv::Mat dmat(OUTPUT_BLOB_DIM_1 - 1, 7, CV_32F, &data[1]);
 
         float rescale2Frame = maxFrameDim / config.netInputImageSize;
-        for (int det = 0; det < numDetections; ++det){
+        for (int det = 0; det < numDetections; ++det) {
             float maxConfidence = dmat.at<float>(det, 4);
             int classIdx = static_cast<int>(dmat.at<float>(det, 5));
             const std::string &maxClass = names_.at(classIdx);
 
-            if (maxConfidence >= config.confidenceThreshold && classFilter_(maxClass)){
-                auto center = cv::Vec2f(dmat.at<float>(det,0),
-                                        dmat.at<float>(det,1)) * rescale2Frame;
-                auto size = cv::Vec2f(dmat.at<float>(det,2),
-                                      dmat.at<float>(det,3)) * rescale2Frame;
+            if (maxConfidence >= config.confidenceThreshold && classFilter_(maxClass)) {
+                auto center = cv::Vec2f(dmat.at<float>(det, 0),
+                                        dmat.at<float>(det, 1)) * rescale2Frame;
+                auto size = cv::Vec2f(dmat.at<float>(det, 2),
+                                      dmat.at<float>(det, 3)) * rescale2Frame;
                 auto topLeft = (center - size / 2.0) - paddingPerSide;
 
                 boundingBoxes.emplace_back(topLeft(0), topLeft(1), size(0), size(1));
@@ -268,10 +267,10 @@ private:
 
         std::vector<DetectionLocation> detections;
         detections.reserve(keepIndecies.size());
-        for (int keepIdx : keepIndecies){
+        for (int keepIdx: keepIndecies) {
             detections.push_back(
                     CreateDetectionLocationTriton(frame, boundingBoxes.at(keepIdx),
-                                                 topConfidences.at(keepIdx), classifications.at(keepIdx), config));
+                                                  topConfidences.at(keepIdx), classifications.at(keepIdx), config));
 
             // always calc DFT in callback threads for performance reasons
             detections.back().getDFTFeature();
@@ -287,11 +286,12 @@ private:
             const int classIdx,
             const Config &config) const {
 
-        assert(("classIdx: " + std::to_string(classIdx) + " >= " + std::to_string(names_.size()) , classIdx < names_.size()));
+        assert(("classIdx: " + std::to_string(classIdx) + " >= " + std::to_string(names_.size()),
+                classIdx < names_.size()));
 
         cv::Mat1f classFeature(1, names_.size(), 0.0);
         classFeature.at<float>(0, classIdx) = 1.0;
-        if (! confusionMatrix_.empty()) {
+        if (!confusionMatrix_.empty()) {
             classFeature = classFeature * confusionMatrix_;
         }
 
@@ -313,8 +313,8 @@ YoloNetwork::~YoloNetwork() = default;
 
 void YoloNetwork::GetDetections(
         std::vector<Frame> &frames,
-        ProcessFrameDetectionsFunc processFrameDetectionsFun,
-        const Config &config){
+        ProcessFrameDetectionsCallback processFrameDetectionsFun,
+        const Config &config) {
     pimpl_->GetDetections(frames, processFrameDetectionsFun, config);
 }
 

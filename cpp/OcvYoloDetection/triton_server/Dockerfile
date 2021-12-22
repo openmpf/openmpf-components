@@ -31,11 +31,6 @@ FROM ${MODELS_REGISTRY}openmpf_ocv_yolo_detection_triton_models:6.5 as models
 
 FROM nvcr.io/nvidia/tritonserver:21.06-py3 as openmpf_triton_server
 
-# TODO:
-# - Only load 416 on startup.
-# - Start long-running expiration process.
-# - Enable dynamic batching
-
 # Weights will later be used to generate TensorRT engine files in the entrypoint.
 COPY --from=models /models/yolov4.wts /model-gen/yolo/yolov4.wts
 
@@ -50,16 +45,7 @@ RUN --mount=type=tmpfs,target=/tmp \
     git clone https://github.com/openmpf/yolov4-triton-tensorrt.git; \
     cd yolov4-triton-tensorrt; \
     mkdir -p /plugins; \
-    # Support 416x416 images
-    git checkout openmpf/dim-416; \
-    mkdir build-416; \
-    cd build-416; \
-    cmake ..; \
-    make; \
-    mv main /model-gen/yolo/gen-engine-416; \
-    mv libyolo416layerplugin.so /plugins/libyolo416layerplugin.so; \
     # Support 608x608 images \
-    cd ..; \
     git checkout openmpf/dim-608; \
     mkdir build.608; \
     cd build.608; \
@@ -68,11 +54,9 @@ RUN --mount=type=tmpfs,target=/tmp \
     mv main /model-gen/yolo/gen-engine-608; \
     mv libyolo608layerplugin.so /plugins/libyolo608layerplugin.so
 
-COPY models/yolo-416.config.pbtxt /models/yolo-416/1/config.pbtxt
-
 COPY models/yolo-608.config.pbtxt /models/yolo-608/1/config.pbtxt
 
-COPY docker-entrypoint.sh expire-models.py /opt/tritonserver
+COPY docker-entrypoint.sh /opt/tritonserver
 
 ENTRYPOINT ["/opt/tritonserver/docker-entrypoint.sh"]
 

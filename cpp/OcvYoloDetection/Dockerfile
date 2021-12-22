@@ -34,8 +34,6 @@ FROM centos:7 as download_weights
 RUN mkdir /weights \
     && cd /weights \
     && curl --location --remote-name --fail \
-        https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov3.weights \
-    && curl --location --remote-name --fail \
         https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov4.weights
 
 

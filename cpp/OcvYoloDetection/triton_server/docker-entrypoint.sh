@@ -30,14 +30,8 @@ set -o errexit -o pipefail -o xtrace
 
 cd /model-gen/yolo
 
-YOLO_416_PLUGIN_LIB="/plugins/libyolo416layerplugin.so"
-env LD_PRELOAD="$YOLO_416_PLUGIN_LIB" ./gen-engine-416
-
 YOLO_608_PLUGIN_LIB="/plugins/libyolo608layerplugin.so"
 env LD_PRELOAD="$YOLO_608_PLUGIN_LIB" ./gen-engine-608
-
-# Background process that will periodically unload unused models
-/opt/tritonserver/expire-models.py &
 
 # Run the "command" specified in the Docker service entry.
 env /opt/tritonserver/nvidia_entrypoint.sh "$@"
