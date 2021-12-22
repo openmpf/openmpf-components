@@ -36,7 +36,7 @@ namespace triton { namespace client {
 // \param shm_fd Returns an int descriptor of the created shared memory region
 // \return error Returns an error if unable to open shared memory region.
 Error CreateSharedMemoryRegion(
-    std::string shm_key, size_t byte_size, int* shm_fd);
+    const std::string& shm_key, size_t byte_size, int* shm_fd);
 
 // Mmap the shared memory region with the given 'offset' and 'byte_size' and
 // return the base address of the region.
@@ -56,7 +56,7 @@ Error CloseSharedMemory(int shm_fd);
 
 // Destory the shared memory region with the given name.
 // \return error Returns an error if unable to unlink shared memory region.
-Error UnlinkSharedMemoryRegion(std::string shm_key);
+Error UnlinkSharedMemoryRegion(const std::string& shm_key);
 
 // Munmap the shared memory region from the base address with the given
 // byte_size.

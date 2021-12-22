@@ -75,6 +75,8 @@ public:
                    && config.tritonUseSSL == tritonInferencer_->useSSL()
                    && config.tritonVerboseClient == tritonInferencer_->verboseClient()
                    && config.netInputImageSize == tritonInferencer_->inputsMeta.at(0).shape[2]
+                   && config.tritonClientTimeout == tritonInferencer_->clientTimeout()
+                   && config.tritonMaxInferConcurrency == tritonInferencer_->maxInferConcurrency()
                    // common settings with local yolo network
                    && modelSettings_.namesFile == modelSettings.namesFile
                    && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile

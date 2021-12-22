@@ -215,14 +215,14 @@ bool TritonInferencer::isShmKeyPrefixInUse(const std::string &prefix) {
 void TritonInferencer::infer(
         const std::vector<Frame> &frames,
         const TritonTensorMeta &inputMeta,
-        ExtractDetectionsCallback extractDetectionsCallback) {
+        const ExtractDetectionsCallback& extractDetectionsCallback) {
 
     assert(("Input blob is expected to be a 4D tensor.", inputMeta.shape.size() == 3));
     assert(("Second input tensor dim is expected to be 3 color channels.", inputMeta.shape[0] == 3));
     int shape[] = {-1, 3, static_cast<int>(inputMeta.shape[1]), static_cast<int>(inputMeta.shape[2])};
 
     std::vector<Frame>::const_iterator begin;
-    std::vector<Frame>::const_iterator end(frames.begin());
+    auto end(frames.begin());
 
     while (end != frames.end()) {
         begin = end;
@@ -269,8 +269,8 @@ void TritonInferencer::infer(
                               std::exception_ptr eptr;
                               try {
                                   std::vector<cv::Mat> outBlobs;
-                                  for (int i = 0; i < outputsMeta.size(); ++i) {
-                                      outBlobs.push_back(clients_[clientId]->getOutput(outputsMeta[i]));
+                                  for (auto & i : outputsMeta) {
+                                      outBlobs.push_back(clients_[clientId]->getOutput(i));
                                   }
                                   extractDetectionsCallback(outBlobs, begin, end);
                               } catch (std::exception &e) {
@@ -299,7 +299,7 @@ int TritonInferencer::acquireClientId() {
 }
 
 
-void TritonInferencer::releaseClientId(int clientId, std::exception_ptr newClientEptr) {
+void TritonInferencer::releaseClientId(int clientId, const std::exception_ptr& newClientEptr) {
     {
         std::lock_guard<std::mutex> lk(freeClientIdsMtx_);
         freeClientIds_.insert(clientId);
@@ -351,6 +351,8 @@ TritonInferencer::TritonInferencer(const Config &cfg)
           useShm_(cfg.tritonUseShm),
           useSSL_(cfg.tritonUseSSL),
           verboseClient_(cfg.tritonVerboseClient),
+          clientTimeout_(cfg.tritonClientTimeout),
+          maxInferConcurrency_(cfg.tritonMaxInferConcurrency),
           inferOptions_(fullModelName_) {
 
     std::string modelNameAndVersion = getModelNameAndVersion();
@@ -386,7 +388,6 @@ TritonInferencer::TritonInferencer(const Config &cfg)
     LOG_TRACE("Creating " << cfg.tritonMaxInferConcurrency << " clients for concurrent inferencing.");
     for (int i = 0; i < cfg.tritonMaxInferConcurrency; i++) {
         clients_.emplace_back(std::unique_ptr<TritonClient>(new TritonClient(i, shmKeyPrefix, this)));
-        clients_[i]->init(); // DEBUG
         freeClientIds_.insert(i);
     }
 }

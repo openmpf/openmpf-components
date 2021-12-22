@@ -46,46 +46,43 @@ namespace {
 }
 
 Config::Config(const Properties &jobProps)
-        : confidenceThreshold(std::min(GetProperty(jobProps, "CONFIDENCE_THRESHOLD", 0.5), 0.0))
-        , nmsThresh(GetProperty(jobProps, "DETECTION_NMS_THRESHOLD", 0.3))
-        , numClassPerRegion(GetProperty(jobProps, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5))
-        , netInputImageSize(GetProperty(jobProps, "NET_INPUT_IMAGE_SIZE", 416))
-        , frameBatchSize(GetProperty(jobProps, "DETECTION_FRAME_BATCH_SIZE", 16))
-        , maxClassDist(GetProperty(jobProps, "TRACKING_MAX_CLASS_DIST", 0.99))
-        , maxFeatureDist(GetProperty(jobProps, "TRACKING_MAX_FEATURE_DIST", 0.1))
+        : confidenceThreshold(std::max(GetProperty(jobProps, "CONFIDENCE_THRESHOLD", 0.5), 0.0)),
+          nmsThresh(GetProperty(jobProps, "DETECTION_NMS_THRESHOLD", 0.3)),
+          numClassPerRegion(GetProperty(jobProps, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5)),
+          netInputImageSize(GetProperty(jobProps, "NET_INPUT_IMAGE_SIZE", 416)),
+          frameBatchSize(GetProperty(jobProps, "DETECTION_FRAME_BATCH_SIZE", 16)),
+          maxClassDist(GetProperty(jobProps, "TRACKING_MAX_CLASS_DIST", 0.99)),
+          maxFeatureDist(GetProperty(jobProps, "TRACKING_MAX_FEATURE_DIST", 0.1))
         // TODO: Center-to-center distance is currently disabled. Expose it as optional behavior or remove it.
-        , maxCenterDist(GetProperty(jobProps, "TRACKING_MAX_CENTER_DIST", 0.0))
-        , maxFrameGap(GetProperty(jobProps, "TRACKING_MAX_FRAME_GAP", 4)
-                          / GetProperty(jobProps, "FRAME_INTERVAL", 1))
-        , maxIOUDist(GetProperty(jobProps, "TRACKING_MAX_IOU_DIST", 0.3))
-        , edgeSnapDist(GetProperty(jobProps, "TRACKING_EDGE_SNAP_DIST", 0.005))
-        , dftSize(GetProperty(jobProps, "TRACKING_DFT_SIZE", 128))
-        , dftHannWindowEnabled(GetProperty(jobProps, "TRACKING_DFT_USE_HANNING_WINDOW", true))
-        , mosseTrackerDisabled(GetProperty(jobProps, "TRACKING_DISABLE_MOSSE_TRACKER", true))
-        , maxKFResidual(GetProperty(jobProps, "KF_MAX_ASSIGNMENT_RESIDUAL", 2.5))
-        , kfDisabled(GetProperty(jobProps, "KF_DISABLED", false))
-        , RN(LoadCovarianceMat(
-                GetProperty(jobProps, "KF_RN", "[ 10.0, 10.0, 100.0, 100.0 ]")))
-        , QN(LoadCovarianceMat(
-                GetProperty(jobProps, "KF_QN", "[ 1000.0, 1000.0, 1000.0, 1000.0 ]")))
-        , fallback2CpuWhenGpuProblem(
-                GetProperty(jobProps, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", false))
-        , cudaDeviceId(GetProperty(jobProps, "CUDA_DEVICE_ID", -1))
-        , classWhiteListPath(GetProperty(jobProps, "CLASS_WHITELIST_FILE", ""))
-        , enableDebug(GetProperty(jobProps, "ENABLE_DEBUG", false))
-        , tritonEnabled(GetProperty(jobProps, "ENABLE_TRITON", false))
-        , tritonServer(GetProperty(jobProps, "TRITON_SERVER", "localhost:8001"))
-        , tritonModelName(GetProperty(jobProps,  "MODEL_NAME", "yolo"))
-        , tritonModelVersion(GetProperty(jobProps, "TRITON_MODEL_VERSION", ""))
-        , tritonNumClasses(GetProperty(jobProps, "TRITON_MODEL_NUM_CLASSES", 80))
-        , tritonMaxInferConcurrency(GetProperty(jobProps, "TRITON_MAX_INFER_CONCURRENCY", 1))
-        , tritonClientTimeout(GetProperty(jobProps, "TRITON_INFER_TIMEOUT_US",0))
-        , tritonMaxConnectionSetupRetries(GetProperty(jobProps, "TRITON_MAX_CONNECTION_SETUP_RETRIES", 5))
-        , tritonConnectionSetupRetryInitialDelay(GetProperty(jobProps, "TRITON_CONNECTION_SETUP_RETRY_INITIAL_DELAY", 5))
-        , tritonVerboseClient(GetProperty(jobProps, "TRITON_VERBOSE_CLIENT", false))
-        , tritonUseSSL(GetProperty(jobProps, "TRITON_USE_SSL",false))
-        , tritonUseShm(GetProperty(jobProps, "TRITON_USE_SHM",true))
-{
+        , maxCenterDist(GetProperty(jobProps, "TRACKING_MAX_CENTER_DIST", 0.0)),
+          maxFrameGap(GetProperty(jobProps, "TRACKING_MAX_FRAME_GAP", 4)
+                      / GetProperty(jobProps, "FRAME_INTERVAL", 1)),
+          maxIOUDist(GetProperty(jobProps, "TRACKING_MAX_IOU_DIST", 0.3)),
+          edgeSnapDist(GetProperty(jobProps, "TRACKING_EDGE_SNAP_DIST", 0.005)),
+          dftSize(GetProperty(jobProps, "TRACKING_DFT_SIZE", 128)),
+          dftHannWindowEnabled(GetProperty(jobProps, "TRACKING_DFT_USE_HANNING_WINDOW", true)),
+          mosseTrackerDisabled(GetProperty(jobProps, "TRACKING_DISABLE_MOSSE_TRACKER", true)),
+          maxKFResidual(GetProperty(jobProps, "KF_MAX_ASSIGNMENT_RESIDUAL", 2.5)),
+          kfDisabled(GetProperty(jobProps, "KF_DISABLED", false)), RN(LoadCovarianceMat(
+                GetProperty(jobProps, "KF_RN", "[ 10.0, 10.0, 100.0, 100.0 ]"))), QN(LoadCovarianceMat(
+                GetProperty(jobProps, "KF_QN", "[ 1000.0, 1000.0, 1000.0, 1000.0 ]"))), fallback2CpuWhenGpuProblem(
+                GetProperty(jobProps, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", false)),
+          cudaDeviceId(GetProperty(jobProps, "CUDA_DEVICE_ID", -1)),
+          classWhiteListPath(GetProperty(jobProps, "CLASS_WHITELIST_FILE", "")),
+          enableDebug(GetProperty(jobProps, "ENABLE_DEBUG", false)),
+          tritonEnabled(GetProperty(jobProps, "ENABLE_TRITON", false)),
+          tritonServer(GetProperty(jobProps, "TRITON_SERVER", "localhost:8001")),
+          tritonModelName(GetProperty(jobProps, "MODEL_NAME", "yolo")),
+          tritonModelVersion(GetProperty(jobProps, "TRITON_MODEL_VERSION", "")),
+          tritonNumClasses(GetProperty(jobProps, "TRITON_MODEL_NUM_CLASSES", 80)),
+          tritonMaxInferConcurrency(GetProperty(jobProps, "TRITON_MAX_INFER_CONCURRENCY", 4)),
+          tritonClientTimeout(GetProperty(jobProps, "TRITON_INFER_TIMEOUT_US", 0)),
+          tritonMaxConnectionSetupRetries(GetProperty(jobProps, "TRITON_MAX_CONNECTION_SETUP_RETRIES", 5)),
+          tritonConnectionSetupRetryInitialDelay(
+                  GetProperty(jobProps, "TRITON_CONNECTION_SETUP_RETRY_INITIAL_DELAY", 5)),
+          tritonVerboseClient(GetProperty(jobProps, "TRITON_VERBOSE_CLIENT", false)),
+          tritonUseSSL(GetProperty(jobProps, "TRITON_USE_SSL", false)),
+          tritonUseShm(GetProperty(jobProps, "TRITON_USE_SHM", false)) {
 }
 
 

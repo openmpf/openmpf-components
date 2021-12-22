@@ -63,6 +63,10 @@ class TritonInferencer {
 
     const bool useSSL() const {return useSSL_;}
 
+    const uint32_t clientTimeout() const {return clientTimeout_;}
+
+    const int maxInferConcurrency() const {return maxInferConcurrency_;}
+
     const int maxBatchSize() const {return maxBatchSize_;}
 
     void reset();
@@ -74,11 +78,11 @@ class TritonInferencer {
 
     void infer(const std::vector<Frame> &frames,
                const TritonTensorMeta &inputMeta,
-               ExtractDetectionsCallback extractDetectionsCallback);
+               const ExtractDetectionsCallback& extractDetectionsCallback);
 
     int acquireClientId();
 
-    void releaseClientId(int clientId, std::exception_ptr eptr);
+    void releaseClientId(int clientId, const std::exception_ptr& eptr);
 
     void waitTillAllClientsReleased() noexcept;
 
@@ -86,7 +90,7 @@ class TritonInferencer {
 
     std::string getModelNameAndVersion() const;
 
-    TritonInferencer(const Config &cfg);
+    explicit TritonInferencer(const Config &cfg);
 
   private:
 
@@ -98,6 +102,9 @@ class TritonInferencer {
     bool useShm_;
     bool useSSL_;
     bool verboseClient_;
+
+    uint32_t clientTimeout_;
+    int maxInferConcurrency_;
 
     int maxBatchSize_;
 

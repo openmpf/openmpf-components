@@ -137,7 +137,7 @@ void TritonClient::prepareInferInputs() {
 }
 
 
-void TritonClient::inferAsync(int inferInputIdx, const cv::Mat &blob, CallbackFunc inferencerCallback) {
+void TritonClient::inferAsync(int inferInputIdx, const cv::Mat &blob, const CallbackFunc& inferencerCallback) {
 
     // clear out input
     TR_CHECK_OK(inferInputs_.at(inferInputIdx)->Reset(),
@@ -194,7 +194,7 @@ void TritonClient::inferAsync(int inferInputIdx, const cv::Mat &blob, CallbackFu
 }
 
 
-void TritonClient::setupShmRegion(const std::string shm_key, const size_t byte_size, uint8_t *&shm_addr) {
+void TritonClient::setupShmRegion(const std::string& shm_key, const size_t byte_size, uint8_t *&shm_addr) {
 
     int shm_fd;
     TR_CHECK_OK(triton::client::CreateSharedMemoryRegion(shm_key, byte_size, &shm_fd),
@@ -218,7 +218,7 @@ void TritonClient::setupShmRegion(const std::string shm_key, const size_t byte_s
 }
 
 
-void TritonClient::removeShmRegion(const std::string shm_key, const size_t byte_size, uint8_t *shm_addr) {
+void TritonClient::removeShmRegion(const std::string& shm_key, const size_t byte_size, uint8_t *shm_addr) noexcept {
 
     LOG_TRACE("Removing shared memory with key " << shm_key << " of size " << byte_size
                                                  << " bytes at address " << std::hex << (void *) shm_addr);
@@ -241,28 +241,19 @@ void TritonClient::removeShmRegion(const std::string shm_key, const size_t byte_
 }
 
 
-void TritonClient::init() {
-    // TODO: Initialize shared memory here instead of the constructor so that if something goes wrong
-    // then the shared memory is cleaned up in the destructor.
-    if (usingShmInput()) {
-        setupShmRegion(inputs_shm_key, inputs_byte_size, inputs_shm_);
-    }
-    if (usingShmOutput()) {
-        setupShmRegion(outputs_shm_key, outputs_byte_size, outputs_shm_);
-    }
-    prepareInferInputs();
-    prepareInferRequestedOutputs();
-}
-
-
-TritonClient::~TritonClient() {
-    LOG_TRACE("~TritonClient " << id);
+void TritonClient::cleanupShm() noexcept {
     if (usingShmInput()) {
         removeShmRegion(inputs_shm_key, inputs_byte_size, inputs_shm_);
     }
     if (usingShmOutput()) {
         removeShmRegion(outputs_shm_key, outputs_byte_size, outputs_shm_);
     }
+}
+
+
+TritonClient::~TritonClient() {
+    LOG_TRACE("~TritonClient " << id);
+    cleanupShm();
 }
 
 
@@ -278,12 +269,25 @@ TritonClient::TritonClient(
                             + inferencer->outputsMeta.back().byte_size * inferencer->maxBatchSize()),
           inputs_shm_key(inferencer->useShm() ? shmKeyPrefix + "_" + std::to_string(id) + "_inputs" : ""),
           outputs_shm_key(inferencer->useShm() ? shmKeyPrefix + "_" + std::to_string(id) + "_outputs" : "") {
-    TR_CHECK_OK(triton::client::InferenceServerGrpcClient::Create(
-            &grpc_,
-            inferencer->serverUrl(),
-            inferencer->verboseClient(),
-            inferencer->useSSL(),
-            inferencer->sslOptions()),
-                MPF_NETWORK_ERROR,
-                "Unable to create Triton inference client for " + inferencer->serverUrl() + ".");
+    try {
+        TR_CHECK_OK(triton::client::InferenceServerGrpcClient::Create(
+                &grpc_,
+                inferencer->serverUrl(),
+                inferencer->verboseClient(),
+                inferencer->useSSL(),
+                inferencer->sslOptions()),
+                    MPF_NETWORK_ERROR,
+                    "Unable to create Triton inference client for " + inferencer->serverUrl() + ".");
+        if (usingShmInput()) {
+            setupShmRegion(inputs_shm_key, inputs_byte_size, inputs_shm_);
+        }
+        if (usingShmOutput()) {
+            setupShmRegion(outputs_shm_key, outputs_byte_size, outputs_shm_);
+        }
+        prepareInferInputs();
+        prepareInferRequestedOutputs();
+    } catch (std::exception &ex) {
+        cleanupShm();
+        throw ex;
+    }
 }

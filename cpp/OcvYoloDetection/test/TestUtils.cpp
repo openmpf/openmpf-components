@@ -60,11 +60,6 @@ float iou(const cv::Rect &r1, const cv::Rect &r2) {
 }
 
 
-float iou(const DetectionLocation &l1, const DetectionLocation &l2) {
-    return iou(l1.getRect(), l2.getRect());
-}
-
-
 float iou(const MPFImageLocation &l1, const MPFImageLocation &l2) {
     return iou(cv::Rect2i(l1.x_left_upper, l1.y_left_upper, l1.width, l1.height),
                cv::Rect2i(l2.x_left_upper, l2.y_left_upper, l2.width, l2.height));
@@ -98,7 +93,7 @@ Properties getTritonYoloConfig(float confidenceThreshold) {
             {"TRACKING_MAX_FRAME_GAP",       "10"},
             {"ENABLE_TRITON",                "true"},
             {"DETECTION_FRAME_BATCH_SIZE",   "16"},
-            { "TRITON_SERVER",               "localhost:8001"}, // DEBUG
+            {"TRITON_SERVER",                "localhost:8001"}, // DEBUG
             {"TRITON_USE_SHM",               "false"}, // allow for remote server via plain gRPC
             {"TRITON_MAX_INFER_CONCURRENCY", "4"}
     };
@@ -163,7 +158,7 @@ bool same(MPFVideoTrack &t1, MPFVideoTrack &t2, float confidenceTolerance, float
 }
 
 
-void write_track_output(vector<MPFVideoTrack> &tracks, string outTrackFileName, MPFVideoJob &videoJob) {
+void write_track_output(vector<MPFVideoTrack> &tracks, const string& outTrackFileName, MPFVideoJob &videoJob) {
     std::ofstream outTrackFile(outTrackFileName);
     if (outTrackFile.is_open()) {
         for (int i = 0; i < tracks.size(); ++i) {
@@ -178,7 +173,7 @@ void write_track_output(vector<MPFVideoTrack> &tracks, string outTrackFileName, 
 }
 
 
-vector<MPFVideoTrack> read_track_output(string inTrackFileName) {
+vector<MPFVideoTrack> read_track_output(const string& inTrackFileName) {
     std::ifstream inTrackFile(inTrackFileName);
     vector<MPFVideoTrack> tracks;
 
@@ -200,8 +195,8 @@ vector<MPFVideoTrack> read_track_output(string inTrackFileName) {
 }
 
 
-void write_track_output_video(string inVideoFileName, vector<MPFVideoTrack> &tracks, string outVideoFileName,
-                              MPFVideoJob &videoJob) {
+void write_track_output_video(const string& inVideoFileName, vector<MPFVideoTrack> &tracks,
+                              const string& outVideoFileName, MPFVideoJob &videoJob) {
 
     MPFVideoCapture cap(inVideoFileName);
     cv::VideoWriter writer(outVideoFileName,
@@ -235,10 +230,10 @@ void write_track_output_video(string inVideoFileName, vector<MPFVideoTrack> &tra
     while (cap.Read(frame)) {
         if (frameIdx > videoJob.stop_frame) break;
         if (frameIdx >= videoJob.start_frame) {
-            map<int, vector<MPFVideoTrack *>>::iterator tracksItr = frameTracks.find(frameIdx);
+            auto tracksItr = frameTracks.find(frameIdx);
             if (tracksItr != frameTracks.end()) {
                 for (MPFVideoTrack *trackPtr: tracksItr->second) {
-                    map<int, MPFImageLocation>::iterator detItr = trackPtr->frame_locations.find(frameIdx);
+                    auto detItr = trackPtr->frame_locations.find(frameIdx);
                     if (detItr != trackPtr->frame_locations.end()) {
                         cv::Rect detection_rect(detItr->second.x_left_upper, detItr->second.y_left_upper,
                                                 detItr->second.width, detItr->second.height);

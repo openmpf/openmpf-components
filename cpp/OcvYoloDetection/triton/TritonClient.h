@@ -51,13 +51,9 @@ public:
 
     using CallbackFunc = std::function<void()>;
 
-    void init();
-
-    void inferAsync(int inferInputIdx, const cv::Mat &shmBlob, CallbackFunc inferencerCallback);
+    void inferAsync(int inferInputIdx, const cv::Mat &shmBlob, const CallbackFunc& inferencerCallback);
 
     cv::Mat getOutput(const TritonTensorMeta &om);
-
-    // TODO: Move definitions to *.cpp. Prefix with get*.
 
     const bool usingShmInput() const { return !inputs_shm_key.empty(); }
 
@@ -81,13 +77,15 @@ private:
 
     std::unique_ptr<triton::client::InferenceServerGrpcClient> grpc_;
 
-    void setupShmRegion(const std::string shm_key,
+    void setupShmRegion(const std::string& shm_key,
                         const size_t byte_size,
                         uint8_t *&shm_addr);
 
-    void removeShmRegion(const std::string shm_key,
+    void removeShmRegion(const std::string& shm_key,
                          const size_t byte_size,
-                         uint8_t *shm_addr);
+                         uint8_t *shm_addr) noexcept;
+
+    void cleanupShm() noexcept;
 
     void prepareInferInputs();
 

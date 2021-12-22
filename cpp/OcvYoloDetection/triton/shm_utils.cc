@@ -35,13 +35,12 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <iostream>
 #include <string>
 
 namespace triton { namespace client {
 
 Error
-CreateSharedMemoryRegion(std::string shm_key, size_t byte_size, int* shm_fd)
+CreateSharedMemoryRegion(const std::string& shm_key, size_t byte_size, int* shm_fd)
 {
   // get shared memory region descriptor
   // OpenMPF modification: fail if the region already exists
@@ -95,7 +94,7 @@ CloseSharedMemory(int shm_fd)
 }
 
 Error
-UnlinkSharedMemoryRegion(std::string shm_key)
+UnlinkSharedMemoryRegion(const std::string& shm_key)
 {
   int shm_fd = shm_unlink(shm_key.c_str());
   if (shm_fd == -1 && errno != ENOENT) { // OpenMPF modification: succeed if the region does not exist

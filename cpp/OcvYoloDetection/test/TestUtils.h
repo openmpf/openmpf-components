@@ -58,12 +58,11 @@ T findDetectionWithClass(const std::string &classification,
         }
     }
 
-    throw std::runtime_error("No detection with class: " + classification);
+    std::string message = "No detection with class: " + classification;
+    throw std::runtime_error(message);
 }
 
 float iou(const cv::Rect &r1, const cv::Rect &r2);
-
-float iou(const DetectionLocation &l1, const DetectionLocation &l2);
 
 float iou(const MPFImageLocation &l1, const MPFImageLocation &l2);
 
@@ -88,12 +87,12 @@ bool same(MPFVideoTrack &t1, MPFVideoTrack &t2,
 
 bool same(MPFVideoTrack &t1, MPFVideoTrack &t2, float confidenceTolerance = 0.01, float iouTolerance = 0.1);
 
-void write_track_output(vector<MPFVideoTrack> &tracks, string outTrackFileName, MPFVideoJob &videoJob);
+void write_track_output(vector<MPFVideoTrack> &tracks, const string& outTrackFileName, MPFVideoJob &videoJob);
 
-vector<MPFVideoTrack> read_track_output(string inTrackFileName);
+vector<MPFVideoTrack> read_track_output(const string& inTrackFileName);
 
 void write_track_output_video(string inVideoFileName, vector<MPFVideoTrack> &tracks,
-                              string outVideoFileName, MPFVideoJob &videoJob);
+                              const string& outVideoFileName, MPFVideoJob &videoJob);
 
 bool objectFound(const std::string &expectedObjectName, const Properties &detectionProperties);
 

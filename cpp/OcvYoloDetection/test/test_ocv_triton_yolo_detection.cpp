@@ -140,9 +140,9 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestTritonPerformance) { // DEBUG: Was
     auto component = initComponent();
 
     auto jobProp = getTritonYoloConfig();
-    jobProp["DETECTION_FRAME_BATCH_SIZE"] = "16";
-    jobProp["TRITON_MAX_INFER_CONCURRENCY"] = "4";
     jobProp["TRITON_USE_SHM"] = "true"; // DEBUG
+    jobProp["TRACKING_DFT_SIZE"] = "128"; // DEBUG
+    jobProp["TRACKING_DISABLE_MOSSE_TRACKER"] = "false"; // DEBUG
 
 
     MPFVideoJob videoJob("Testing", inVideoFile, start, stop, jobProp, {});
@@ -159,7 +159,7 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestTritonPerformance) { // DEBUG: Was
     time_taken = time_taken * 1e-9;
 
     int detections = 0;
-    for (auto track: found_tracks) {
+    for (const auto& track: found_tracks) {
         detections += track.frame_locations.size();
     }
     GOUT("Found " << detections << " total detections.");
