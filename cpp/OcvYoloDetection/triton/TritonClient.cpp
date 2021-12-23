@@ -53,6 +53,10 @@ std::vector<T *> getRaw(const std::vector<std::unique_ptr<T>> &v) {
 
 cv::Mat TritonClient::getOutput(const TritonTensorMeta &om) {
 
+    TR_CHECK_OK(inferResult_->RequestStatus(),
+                MPF_NETWORK_ERROR,
+                "Failed to get inference server result.");
+
     // get raw data shape
     std::vector<int64_t> shape;
     TR_CHECK_OK(inferResult_->Shape(om.name, &shape),
