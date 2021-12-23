@@ -227,7 +227,7 @@ void TritonInferencer::infer(
     while (end != frames.end()) {
         begin = end;
         int size = std::min(maxBatchSize_,
-                            static_cast<int>(frames.end() - begin)); // TODO: What if this exceeds the server size?
+                            static_cast<int>(frames.end() - begin));
         end = end + size;
 
         // update batch size in input shape
@@ -273,7 +273,8 @@ void TritonInferencer::infer(
                                       outBlobs.push_back(clients_[clientId]->getOutput(i));
                                   }
                                   extractDetectionsCallback(outBlobs, begin, end);
-                              } catch (std::exception &e) {
+                              }
+                              catch (std::exception &ex) {
                                   eptr = std::current_exception();
                               }
                               releaseClientId(clientId, eptr);

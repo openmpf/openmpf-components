@@ -61,12 +61,12 @@ namespace {
             }
             return config.cudaDeviceId;
         }
-        catch (const cv::Exception &e) {
-            if (e.code != cv::Error::GpuApiCallError && e.code != cv::Error::GpuNotSupported) {
+        catch (const cv::Exception &ex) {
+            if (ex.code != cv::Error::GpuApiCallError && ex.code != cv::Error::GpuNotSupported) {
                 throw;
             }
 
-            std::string message = "An error occurred while trying to set CUDA device: " + e.msg;
+            std::string message = "An error occurred while trying to set CUDA device: " + ex.msg;
             if (config.fallback2CpuWhenGpuProblem) {
                 LOG4CXX_WARN(log, message << ". Job will run on CPU instead.")
                 return -1;
@@ -89,10 +89,10 @@ namespace {
             net = cv::dnn::readNetFromDarknet(modelSettings.ocvDnnNetworkConfigFile,
                                               modelSettings.ocvDnnWeightsFile);
         }
-        catch (const cv::Exception &e) {
+        catch (const cv::Exception &ex) {
             throw MPFDetectionException(
                     MPF_COULD_NOT_READ_DATAFILE,
-                    std::string("Failed to load OpenCV DNN model due to: ") + e.what());
+                    std::string("Failed to load OpenCV DNN model due to: ") + ex.what());
         }
 
         if (cudaDeviceId >= 0) {
@@ -274,9 +274,8 @@ namespace {
 
 BaseYoloNetworkImpl::BaseYoloNetworkImpl(ModelSettings model_settings, const Config &config)
         : modelSettings_(std::move(model_settings)), cudaDeviceId_(ConfigureCudaDeviceIfNeeded(config, log_)),
-          net_(config.tritonEnabled ? cv::dnn::Net() : LoadNetwork(modelSettings_, cudaDeviceId_,
-                                                                   log_)) // TODO: Test Triton enabled in local build
-        , names_(LoadNames(net_, modelSettings_, config)),
+          net_(config.tritonEnabled ? cv::dnn::Net() : LoadNetwork(modelSettings_, cudaDeviceId_, log_)),
+          names_(LoadNames(net_, modelSettings_, config)),
           confusionMatrix_(LoadConfusionMatrix(modelSettings_.confusionMatrixFile, names_.size())),
           classWhiteListPath_(config.classWhiteListPath), classFilter_(GetClassFilter(classWhiteListPath_, names_)) {}
 

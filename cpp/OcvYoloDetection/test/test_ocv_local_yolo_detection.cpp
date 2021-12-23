@@ -251,8 +251,8 @@ TEST_F(OcvLocalYoloDetectionTestFixture, TestInvalidModel) {
         YoloNetwork network(modelSettings, config);
         FAIL() << "Expected exception not thrown.";
     }
-    catch (const MPFDetectionException &e) {
-        ASSERT_EQ(MPF_COULD_NOT_READ_DATAFILE, e.error_code);
+    catch (const MPFDetectionException &ex) {
+        ASSERT_EQ(MPF_COULD_NOT_READ_DATAFILE, ex.error_code);
     }
 }
 

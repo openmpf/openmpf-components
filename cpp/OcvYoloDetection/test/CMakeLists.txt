@@ -63,7 +63,11 @@ if (${GTEST_FOUND})
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test/test_output/)
 
     # Create link to test data so that test binary can access it.
-    file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/data ${CMAKE_CURRENT_BINARY_DIR}/data SYMBOLIC)
+    file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/data
+                     ${CMAKE_CURRENT_BINARY_DIR}/data SYMBOLIC)
+
+    file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/log4cxx.properties
+                     ${CMAKE_CURRENT_BINARY_DIR}/log4cxx.properties SYMBOLIC)
 
     file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/../plugin-files
                      ${CMAKE_CURRENT_BINARY_DIR}/OcvYoloDetection SYMBOLIC)

@@ -286,7 +286,8 @@ TritonClient::TritonClient(
         }
         prepareInferInputs();
         prepareInferRequestedOutputs();
-    } catch (std::exception &ex) {
+    }
+    catch (std::exception &ex) {
         cleanupShm();
         throw ex;
     }

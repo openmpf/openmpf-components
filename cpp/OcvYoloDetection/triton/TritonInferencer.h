@@ -43,8 +43,6 @@ class TritonInferencer {
 
     std::vector<TritonTensorMeta> outputsMeta;
 
-    // TODO: Move definitions to *.cpp. Prefix with get*.
-
     const triton::client::InferOptions& inferOptions() const {return inferOptions_;}
 
     const triton::client::SslOptions& sslOptions() const {return sslOptions_;}

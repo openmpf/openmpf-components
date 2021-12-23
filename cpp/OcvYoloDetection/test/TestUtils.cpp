@@ -39,7 +39,7 @@
 using namespace MPF::COMPONENT;
 
 bool init_logging() {
-    log4cxx::PropertyConfigurator::configure("data/log4cxx.properties");
+    log4cxx::PropertyConfigurator::configure("log4cxx.properties");
     return true;
 }
 

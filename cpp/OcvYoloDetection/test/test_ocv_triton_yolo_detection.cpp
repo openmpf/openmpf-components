@@ -142,8 +142,6 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestTritonPerformance) { // DEBUG: Was
     auto jobProp = getTritonYoloConfig();
     jobProp["TRITON_USE_SHM"] = "true"; // DEBUG
     jobProp["TRACKING_DFT_SIZE"] = "128"; // DEBUG
-    jobProp["TRACKING_DISABLE_MOSSE_TRACKER"] = "false"; // DEBUG
-
 
     MPFVideoJob videoJob("Testing", inVideoFile, start, stop, jobProp, {});
 

@@ -309,7 +309,9 @@ std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob 
         return results;
     }
     catch (...) {
-        yoloNetwork_->Reset();
+        if (yoloNetwork_) {
+            yoloNetwork_->Reset();
+        }
         Utils::LogAndReThrowException(job, logger_);
     }
 }
@@ -423,7 +425,9 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
         return completedTracks;
     }
     catch (...) {
-        yoloNetwork_->Reset();
+        if (yoloNetwork_) {
+            yoloNetwork_->Reset();
+        }
         Utils::LogAndReThrowException(job, logger_);
     }
 }
