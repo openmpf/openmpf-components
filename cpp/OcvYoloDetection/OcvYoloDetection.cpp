@@ -87,7 +87,7 @@ namespace {
         }
 
         if (config.maxFeatureDist > 0) {
-            // feature-based tracking tracking and assignment
+            // feature-based tracking and assignment
             Track::assignDetections(trackClusters,
                                     detectionClusters,
                                     assignedTracks,
@@ -359,7 +359,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
 
                                             int backFrameIdx = (end - 1)->idx;
                                             int i = 0;
-                                            for (std::vector<Frame>::const_iterator it = begin; it != end; ++it, ++i) {
+                                            for (auto it = begin; it != end; ++it, ++i) {
                                                 ProcessFrameDetections(config, *it,
                                                                        std::move(detectionsVec.at(i)),
                                                                        inProgressTracks,
@@ -387,7 +387,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
         }
 
         std::vector<std::vector<MPFVideoTrack>::iterator> tracks_to_erase;
-        for (std::vector<MPFVideoTrack>::iterator it = completedTracks.begin();
+        for (auto it = completedTracks.begin();
              it != completedTracks.end();
              it++) {
             MPFVideoTrack &mpfTrack = *it;

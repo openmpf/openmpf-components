@@ -25,21 +25,14 @@
  ******************************************************************************/
 
 
-#include <stdlib.h>
 #include <stdio.h>
 #include <string>
 #include <iostream>
 
-#include <grpc_client.h>
 #include <QCoreApplication>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
 
-#include "Config.h"
 #include "Frame.h"
-#include "triton/TritonTensorMeta.h"
-#include "triton/TritonClient.h"
-#include "triton/TritonInferencer.h"
-
 #include "OcvYoloDetection.h"
 
 using namespace std;
@@ -49,7 +42,7 @@ using namespace COMPONENT;
 //-----------------------------------------------------------------------------
 // Process and image
 //-----------------------------------------------------------------------------
-void processImage(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
+void processImage(MPFDetectionComponent *detection_engine, char* argv[]) {
 
     MPFImageJob job("Testing", argv[1], { }, { });
     vector<MPFImageLocation> locations = detection_engine->GetDetections(job);
@@ -122,7 +115,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (argc == 2) {
-        processImage(detection_engine, argc, argv);
+        processImage(detection_engine, argv);
     } else {
         processVideo(detection_engine, argc, argv);
     }

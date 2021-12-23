@@ -42,9 +42,9 @@ include(../ComponentSetup.cmake)
 
 if ($ENV{TRITON_SUPPORT})
     message("Building with Triton support")
-else()
+else ()
     message("Building without Triton support")
-endif()
+endif ()
 
 # Uncomment if not specifying dlib source directory.
 # Warning: may not work with dlib release installation.
@@ -68,7 +68,7 @@ if ($ENV{TRITON_SUPPORT})
     find_package(CUDAToolkit REQUIRED)
     find_package(TritonCommon REQUIRED)
     find_package(TritonClient REQUIRED)
-endif()
+endif ()
 
 set(COMMON_OCV_YOLO_DETECTION_SOURCE_FILES
         util.cpp util.h
@@ -103,7 +103,7 @@ if ($ENV{TRITON_SUPPORT})
             ${OpenCV_LIBS}
             dlib
             explain) # TODO: Is this necessary?
-else()
+else ()
     add_library(mpfOcvYoloDetection SHARED ${COMMON_OCV_YOLO_DETECTION_SOURCE_FILES} ${LOCAL_OCV_YOLO_DETECTION_SOURCE_FILES})
     target_link_libraries(mpfOcvYoloDetection
             mpfComponentInterface
@@ -111,7 +111,7 @@ else()
             mpfComponentUtils
             ${OpenCV_LIBS}
             dlib)
-endif()
+endif ()
 
 configure_mpf_component(OcvYoloDetection TARGETS mpfOcvYoloDetection)
 

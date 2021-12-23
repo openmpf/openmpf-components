@@ -29,7 +29,7 @@
 using namespace MPF::COMPONENT;
 
 cv::Mat Frame::getDataAsResizedFloat(
-        const cv::Size2i targetSize,
+        const cv::Size2i &targetSize,
         const int cvBorderType,
         const cv::Scalar &cvBorderValue) const {
 

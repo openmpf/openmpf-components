@@ -53,21 +53,19 @@ class TritonInferencer {
 
     const std::string& modelName() const {return modelName_;}
 
-    const std::string& fullModelName() const {return fullModelName_;}
-
     const std::string& modelVersion() const {return modelVersion_;}
 
-    const bool useShm() const {return useShm_;}
+    bool useShm() const {return useShm_;}
 
-    const bool verboseClient() const {return verboseClient_;}
+    bool verboseClient() const {return verboseClient_;}
 
-    const bool useSSL() const {return useSSL_;}
+    bool useSSL() const {return useSSL_;}
 
-    const uint32_t clientTimeout() const {return clientTimeout_;}
+    uint32_t clientTimeout() const {return clientTimeout_;}
 
-    const int maxInferConcurrency() const {return maxInferConcurrency_;}
+    int maxInferConcurrency() const {return maxInferConcurrency_;}
 
-    const int maxBatchSize() const {return maxBatchSize_;}
+    int maxBatchSize() const {return maxBatchSize_;}
 
     void reset();
 

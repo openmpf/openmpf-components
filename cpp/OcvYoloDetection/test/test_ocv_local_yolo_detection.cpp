@@ -25,6 +25,7 @@
  ******************************************************************************/
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -79,13 +80,13 @@ TEST_F(OcvLocalYoloDetectionTestFixture, TestCorrelator) {
       [&detections](std::vector<std::vector<DetectionLocation>> detectionsVec,
         std::vector<Frame>::const_iterator,
         std::vector<Frame>::const_iterator){
-        detections = detectionsVec;
+        detections = std::move(detectionsVec);
       },
       cfg);
 
     EXPECT_FALSE(detections[0].empty());
 
-    std::vector<DetectionLocation>::iterator dogItr=detections[0].begin();
+    auto dogItr=detections[0].begin();
     while(dogItr != detections[0].end()){
       if(dogItr->detection_properties["CLASSIFICATION"]=="dog"){
         GOUT("Found:\t" << dogItr->detection_properties["CLASSIFICATION"]

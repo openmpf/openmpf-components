@@ -33,22 +33,22 @@
 using namespace MPF::COMPONENT;
 
 
-DetectionLocation& Track::front() {
+DetectionLocation &Track::front() {
     return locations_.front();
 }
 
 
-const DetectionLocation& Track::front() const {
+const DetectionLocation &Track::front() const {
     return locations_.front();
 }
 
 
-DetectionLocation& Track::back() {
+DetectionLocation &Track::back() {
     return locations_.back();
 }
 
 
-const DetectionLocation& Track::back() const {
+const DetectionLocation &Track::back() const {
     return locations_.back();
 }
 
@@ -58,7 +58,7 @@ void Track::add(DetectionLocation detectionLocation) {
         // old tail's image no longer needed
         back().frame.data.release();
         assert(("Track frames have to be in sequence.",
-          back().frame.idx < detectionLocation.frame.idx));
+                back().frame.idx < detectionLocation.frame.idx));
     }
     locations_.push_back(std::move(detectionLocation));
 }
@@ -66,20 +66,20 @@ void Track::add(DetectionLocation detectionLocation) {
 
 MPFVideoTrack Track::toMpfTrack(Track track) {
     assert(("Track start frame has to come before end frame.",
-      track.front().frame.idx <= track.back().frame.idx));
+            track.front().frame.idx <= track.back().frame.idx));
     MPFVideoTrack mpfTrack(
             track.front().frame.idx,
             track.back().frame.idx,
             track.front().confidence);
     auto topClassItr = track.front().detection_properties.find("CLASSIFICATION");
 
-    for (DetectionLocation &detection : track.locations_) {
+    for (DetectionLocation &detection: track.locations_) {
         if (detection.confidence > mpfTrack.confidence) {
             mpfTrack.confidence = detection.confidence;
             topClassItr = detection.detection_properties.find("CLASSIFICATION");
         }
         assert(("All track frames have to fall between start and end frames.",
-                  track.front().frame.idx <= detection.frame.idx
+                track.front().frame.idx <= detection.frame.idx
                 && detection.frame.idx <= track.back().frame.idx));
         mpfTrack.frame_locations.emplace(
                 std::piecewise_construct,
@@ -116,8 +116,7 @@ bool Track::ocvTrackerPredict(const Frame &frame, const long maxFrameGap, cv::Re
             ocvTracker_->init(back().frame.data, bbox);
             LOG_TRACE("Tracker created for " << back());
             ocvTrackerStartFrameIdx_ = frame.idx;
-        }
-        else {
+        } else {
             LOG_TRACE("Can't create tracker for " << back());
             return false;
         }
@@ -132,8 +131,7 @@ bool Track::ocvTrackerPredict(const Frame &frame, const long maxFrameGap, cv::Re
             prediction.height = std::round(pred.height);
             LOG_TRACE("Tracking " << back() << " to " << prediction);
             return true;
-        }
-        else {
+        } else {
             LOG_TRACE("Could not track " << back() << " to new location.");
         }
     }
@@ -148,8 +146,7 @@ bool Track::ocvTrackerPredict(const Frame &frame, const long maxFrameGap, cv::Re
 cv::Rect2i Track::predictedBox() const {
     if (kalmanFilterTracker_) {
         return kalmanFilterTracker_->predictedBBox();
-    }
-    else {
+    } else {
         return back().getRect();
     }
 }
@@ -182,8 +179,7 @@ void Track::kalmanCorrect(const float edgeSnap) {
                                            back().frame.data.size(), edgeSnap);
         if ((corrected.width == 0) || (corrected.height == 0)) {
             kalmanFilterTracker_->setStatePostFromBBox(back().getRect());
-        }
-        else {
+        } else {
             kalmanFilterTracker_->setStatePostFromBBox(corrected);
             back().setRect(corrected);
         }
@@ -194,8 +190,7 @@ void Track::kalmanCorrect(const float edgeSnap) {
 float Track::testResidual(const cv::Rect2i &bbox, const float edgeSnap) const {
     if (kalmanFilterTracker_) {
         return kalmanFilterTracker_->testResidual(bbox, edgeSnap);
-    }
-    else {
+    } else {
         return 0.0;
     }
 }
@@ -204,7 +199,7 @@ float Track::testResidual(const cv::Rect2i &bbox, const float edgeSnap) const {
 /** **************************************************************************
 *   Dump MPF::COMPONENT::Track to a stream
 *************************************************************************** */
-std::ostream& operator<<(std::ostream &out, const Track &t) {
+std::ostream &operator<<(std::ostream &out, const Track &t) {
     out << "<f" << t.front().frame.idx << t.front()
         << "...f" << t.back().frame.idx << t.back()
         << ">(" << t.locations_.size() << ")";

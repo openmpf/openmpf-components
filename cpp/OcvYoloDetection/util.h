@@ -83,31 +83,33 @@ std::string dformat(const dlib::matrix<T> &m) {
 cv::Mat fromString(const std::string &data,
                    int rows,
                    int cols,
-                   const std::string& dt = "f");
+                   const std::string &dt = "f");
 
-namespace std{
-  /// output vector to stream
-  template<typename T>
-  std::ostream & operator<<(std::ostream &os, const std::vector<T> &v) {
-      os << "{";
-      size_t last = v.size() - 1;
-      for (size_t i = 0; i < v.size(); ++i) {
-          os << v[i];
-          if (i != last) { os << ", "; }
-      }
-      os << "}";
-      return os;
-  }
+namespace std {
+    /// output vector to stream
+    template<typename T>
+    std::ostream &operator<<(std::ostream &os, const std::vector<T> &v) {
+        os << "{";
+        size_t last = v.size() - 1;
+        for (size_t i = 0; i < v.size(); ++i) {
+            os << v[i];
+            if (i != last) { os << ", "; }
+        }
+        os << "}";
+        return os;
+    }
 }
 
 namespace MPF {
     namespace COMPONENT {
         /// output MPFImageLocation to stream
         std::ostream &operator<<(std::ostream &os, const MPF::COMPONENT::MPFImageLocation &l);
+
         std::istream &operator>>(std::istream &is, MPF::COMPONENT::MPFImageLocation &l);
 
         /// output MPFVideoTrack to stream
         std::ostream &operator<<(std::ostream &os, const MPF::COMPONENT::MPFVideoTrack &t);
+
         std::istream &operator>>(std::istream &is, MPF::COMPONENT::MPFVideoTrack &t);
     }
 }

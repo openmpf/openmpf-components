@@ -31,7 +31,6 @@
 #include <MPFVideoCapture.h>
 
 #include "Frame.h"
-#include "DetectionLocation.h"
 #include "Track.h"
 #include "OcvYoloDetection.h"
 

@@ -160,7 +160,7 @@ public:
     static const log4cxx::LoggerPtr log;
 
 
-    explicit Config(const MPF::COMPONENT::Properties& jobProps);
+    explicit Config(const MPF::COMPONENT::Properties &jobProps);
 };
 
 /// Dump Config to a stream

@@ -428,7 +428,7 @@ KFTracker::KFTracker(const float t,
 /** **************************************************************************
 *  Write out error statistics over time to csv file for filter tuning
 *************************************************************************** */
-void KFTracker::dump(string filename) {
+void KFTracker::dump(const string& filename) {
     ofstream dump;
     dump.open(filename, ofstream::out | ofstream::trunc);
     dump << "t,";

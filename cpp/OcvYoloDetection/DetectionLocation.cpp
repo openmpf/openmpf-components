@@ -44,12 +44,9 @@ DetectionLocation::DetectionLocation(const Config &config,
                                      float confidence,
                                      cv::Mat classFeature,
                                      cv::Mat dftFeature)
-        : frame(std::move(frame))
-        , dftSize_(config.dftSize)
-        , dftHanningWindowEnabled_(config.dftHannWindowEnabled)
-        , edgeSnapDist_(config.edgeSnapDist)
-        , classFeature_(std::move(classFeature))
-        , dftFeature_(std::move(dftFeature)) {
+        : frame(std::move(frame)), dftSize_(config.dftSize), dftHanningWindowEnabled_(config.dftHannWindowEnabled),
+          edgeSnapDist_(config.edgeSnapDist), classFeature_(std::move(classFeature)),
+          dftFeature_(std::move(dftFeature)) {
     this->confidence = confidence;
     setRect(boundingBox & cv::Rect2d(0, 0, DetectionLocation::frame.data.cols,
                                      DetectionLocation::frame.data.rows));
@@ -136,8 +133,8 @@ float DetectionLocation::featureDist(Track &track) {
 
     // center of shifted track roi
     cv::Point2d center
-        = cv::Point2d(x_left_upper + 0.5 * width, y_left_upper + 0.5 * height)
-                  - phaseCorrelate(track);
+            = cv::Point2d(x_left_upper + 0.5 * width, y_left_upper + 0.5 * height)
+              - phaseCorrelate(track);
 
     // center not ok
     if (!cv::Rect2d({0, 0}, frame.data.size()).contains(center)) {
@@ -183,7 +180,7 @@ float DetectionLocation::kfResidualDist(const Track &track) const {
 * get the location as an opencv rectangle
 *************************************************************************** */
 cv::Rect2i DetectionLocation::getRect() const {
-    return { x_left_upper, y_left_upper, width, height };
+    return {x_left_upper, y_left_upper, width, height};
 }
 
 /** **************************************************************************
@@ -214,8 +211,7 @@ cv::Mat1f DetectionLocation::getHanningWindow(const cv::Size &size) const {
             cv::createHanningWindow(defaultWindow, size, CV_32F);
         }
         return defaultWindow;
-    }
-    else {
+    } else {
         cv::Mat1f customWindow;
         //LOG_TRACE("Created custom Hanning window of size " << customWin.size());
         cv::createHanningWindow(customWindow, size, CV_32F);
@@ -282,5 +278,3 @@ cv::Mat DetectionLocation::getDFTFeature() {
     assert(dftFeature_.type() == CV_32FC1);
     return dftFeature_;
 }
-
-

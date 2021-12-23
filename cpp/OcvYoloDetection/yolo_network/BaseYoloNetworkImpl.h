@@ -48,20 +48,20 @@ public:
     ~BaseYoloNetworkImpl();
 
     using ProcessFrameDetectionsCallback =
-      std::function<void(std::vector<std::vector<DetectionLocation>>&& dets,
-                         std::vector<Frame>::const_iterator begin,
-                         std::vector<Frame>::const_iterator end)>;
+    std::function<void(std::vector<std::vector<DetectionLocation>> &&dets,
+                       std::vector<Frame>::const_iterator begin,
+                       std::vector<Frame>::const_iterator end)>;
 
-    void GetDetections(
+    virtual void GetDetections(
             std::vector<Frame> &frames,
-            ProcessFrameDetectionsCallback processFrameDetectionsCallback,
+            const ProcessFrameDetectionsCallback &processFrameDetectionsCallback,
             const Config &config);
 
-    bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
+    virtual bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const;
 
-    void Finish();
+    virtual void Finish();
 
-    void Reset() noexcept;
+    virtual void Reset() noexcept;
 
 protected:
     log4cxx::LoggerPtr log_ = log4cxx::Logger::getLogger("OcvYoloDetection");
@@ -73,7 +73,7 @@ protected:
     std::vector<std::string> names_;
     cv::Mat1f confusionMatrix_;
     std::string classWhiteListPath_;
-    std::function<bool(const std::string&)> classFilter_;
+    std::function<bool(const std::string &)> classFilter_;
 
     std::vector<std::vector<DetectionLocation>> GetDetectionsCvdnn(
             const std::vector<Frame> &frames, const Config &config);

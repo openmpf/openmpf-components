@@ -43,7 +43,7 @@ public:
     const std::string outputs_shm_key;
 
     TritonClient(
-            const int id,
+            int id,
             const std::string &shmKeyPrefix,
             const TritonInferencer *inferencer);
 
@@ -55,9 +55,9 @@ public:
 
     cv::Mat getOutput(const TritonTensorMeta &om);
 
-    const bool usingShmInput() const { return !inputs_shm_key.empty(); }
+    bool usingShmInput() const { return !inputs_shm_key.empty(); }
 
-    const bool usingShmOutput() const { return !outputs_shm_key.empty(); }
+    bool usingShmOutput() const { return !outputs_shm_key.empty(); }
 
     const uint8_t *inputs_shm() const { return inputs_shm_; }
 
@@ -78,11 +78,11 @@ private:
     std::unique_ptr<triton::client::InferenceServerGrpcClient> grpc_;
 
     void setupShmRegion(const std::string& shm_key,
-                        const size_t byte_size,
+                        size_t byte_size,
                         uint8_t *&shm_addr);
 
     void removeShmRegion(const std::string& shm_key,
-                         const size_t byte_size,
+                         size_t byte_size,
                          uint8_t *shm_addr) noexcept;
 
     void cleanupShm() noexcept;

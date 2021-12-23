@@ -57,15 +57,13 @@ cv::Rect2i snapToEdges(const cv::Rect2i &rt,
 
     if (rt_tl.x <= border_x) {                             // near   left side of frame
         rm_tl.x = 0;
-    }
-    else if (rt_br.x >= frameSize.width - border_x - 1) { // near  right side of frame
+    } else if (rt_br.x >= frameSize.width - border_x - 1) { // near  right side of frame
         rm_br.x = frameSize.width - 1;
     }
 
     if (rt_tl.y <= border_y) {                              // near    top side of frame
         rm_tl.y = 0;
-    }
-    else if (rt_br.y >= frameSize.height - border_y - 1) { // near bottom side of frame
+    } else if (rt_br.y >= frameSize.height - border_y - 1) { // near bottom side of frame
         rm_br.y = frameSize.height - 1;
     }
 
@@ -87,8 +85,7 @@ std::string format(const cv::Mat1f &m) {
             ss << std::setfill('0') << std::setw(6) << std::fixed << std::setprecision(3) << m.at<float>(r, c);
             if (c != m.cols - 1) {
                 ss << ", ";
-            }
-            else if (r != m.rows - 1) {
+            } else if (r != m.rows - 1) {
                 ss << "; ";
             }
         }
@@ -96,7 +93,6 @@ std::string format(const cv::Mat1f &m) {
     ss << "]";
     return ss.str();;
 }
-
 
 
 /** **************************************************************************
@@ -124,7 +120,7 @@ namespace MPF {
 /** **************************************************************************
 *   Dump MPFLocation to a stream
 *************************************************************************** */
-        std::ostream &operator<<(std::ostream &os, const  MPF::COMPONENT::MPFImageLocation &l) {
+        std::ostream &operator<<(std::ostream &os, const MPF::COMPONENT::MPFImageLocation &l) {
             os << "[" << l.x_left_upper << "," << l.y_left_upper << "]-("
                << l.width << "," << l.height << "):"
                << l.confidence;
@@ -136,54 +132,63 @@ namespace MPF {
         }
 
 
-        std::istream &operator>>(std::istream &is,  MPF::COMPONENT::MPFImageLocation &l) {
-          is >> l.x_left_upper; is.ignore(1000,',');
-          is >> l.y_left_upper; is.ignore(1000,'(');
-          is >> l.width; is.ignore(1000,',');
-          is >> l.height; is.ignore(1000,':');
-          is >> l.confidence;
-          is.ignore(1000,'|');
-          is >> l.detection_properties["CLASSIFICATION"];
-          return is;
+        std::istream &operator>>(std::istream &is, MPF::COMPONENT::MPFImageLocation &l) {
+            is >> l.x_left_upper;
+            is.ignore(1000, ',');
+            is >> l.y_left_upper;
+            is.ignore(1000, '(');
+            is >> l.width;
+            is.ignore(1000, ',');
+            is >> l.height;
+            is.ignore(1000, ':');
+            is >> l.confidence;
+            is.ignore(1000, '|');
+            is >> l.detection_properties["CLASSIFICATION"];
+            return is;
         }
 
 /** **************************************************************************
 *   Dump MPFTrack to a stream
 *************************************************************************** */
-        std::ostream &operator<<(std::ostream &os, const  MPF::COMPONENT::MPFVideoTrack &t) {
+        std::ostream &operator<<(std::ostream &os, const MPF::COMPONENT::MPFVideoTrack &t) {
             os << "(" << t.start_frame << "," << t.stop_frame << "):"
                << t.confidence << "|"
                << t.detection_properties.at("CLASSIFICATION") << std::endl;
-            for (auto &p : t.frame_locations) {
-              os << "(" << p.first << ") \t" << p.second << std::endl;
-               // os << p.second.x_left_upper << "," << p.second.y_left_upper << ","
-               //    << p.second.width << "," << p.second.height << std::endl;
+            for (auto &p: t.frame_locations) {
+                os << "(" << p.first << ") \t" << p.second << std::endl;
+                // os << p.second.x_left_upper << "," << p.second.y_left_upper << ","
+                //    << p.second.width << "," << p.second.height << std::endl;
             }
             return os;
         }
 
 
-        std::istream &operator>>(std::istream &is,  MPF::COMPONENT::MPFVideoTrack &t) {
-          is.ignore(1000,'(');
-          int i;
-          is >> i;
-          t.start_frame=i;
-          is.ignore(1,',');
-          is >> t.stop_frame; is.ignore(1000,':');
-          is >> t.confidence; is.ignore(1000,'|');
-          is >> t.detection_properties["CLASSIFICATION"]; is.ignore(1000,'(');
-          int f;
-          is >> f; is.ignore(1000,'[');
-          while(1){
-            MPFImageLocation l;
-            is >> l;
-            t.frame_locations.insert({f,l});
-            if(f == t.stop_frame) break;
-            is.ignore(1000,'(');
-            is >> f; is.ignore(1000,'[');
-          }
+        std::istream &operator>>(std::istream &is, MPF::COMPONENT::MPFVideoTrack &t) {
+            is.ignore(1000, '(');
+            int i;
+            is >> i;
+            t.start_frame = i;
+            is.ignore(1, ',');
+            is >> t.stop_frame;
+            is.ignore(1000, ':');
+            is >> t.confidence;
+            is.ignore(1000, '|');
+            is >> t.detection_properties["CLASSIFICATION"];
+            is.ignore(1000, '(');
+            int f;
+            is >> f;
+            is.ignore(1000, '[');
+            while (1) {
+                MPFImageLocation l;
+                is >> l;
+                t.frame_locations.insert({f, l});
+                if (f == t.stop_frame) break;
+                is.ignore(1000, '(');
+                is >> f;
+                is.ignore(1000, '[');
+            }
 
-          return is;
+            return is;
 
         }
 
@@ -201,12 +206,12 @@ std::ostream &cv::operator<<(std::ostream &os, const cv::Rect &r) {
 
 
 /// get machine hostname
-const std::string hostname(){
-  static std::string hostname;
-  if(hostname.empty()){
-    char h[64];
-    gethostname(h,sizeof(h));
-    hostname.assign(h);
-  }
-  return hostname;
+const std::string hostname() {
+    static std::string hostname;
+    if (hostname.empty()) {
+        char h[64];
+        gethostname(h, sizeof(h));
+        hostname.assign(h);
+    }
+    return hostname;
 }

@@ -48,15 +48,15 @@ static constexpr int OUTPUT_BLOB_DIM_1 = MAX_OUTPUT_BBOX_COUNT * 7 + 1;
 class YoloNetwork::YoloNetworkImpl : public BaseYoloNetworkImpl {
 public:
     YoloNetworkImpl(ModelSettings model_settings, const Config &config)
-            : BaseYoloNetworkImpl(model_settings, config),
+            : BaseYoloNetworkImpl(std::move(model_settings), config),
               tritonInferencer_(std::move(ConnectTritonInferencer(config))) {}
 
     ~YoloNetworkImpl() = default;
 
     void GetDetections(
             std::vector<Frame> &frames,
-            ProcessFrameDetectionsCallback processFrameDetectionsCallback,
-            const Config &config) {
+            const ProcessFrameDetectionsCallback &processFrameDetectionsCallback,
+            const Config &config) override {
         if (!config.tritonEnabled) {
             processFrameDetectionsCallback(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
         } else {
@@ -65,7 +65,7 @@ public:
     }
 
     // Determines if the cached YoloNetwork should be reused or not.
-    bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const {
+    bool IsCompatible(const ModelSettings &modelSettings, const Config &config) const override {
         if (config.tritonEnabled) {
             return tritonInferencer_
                    && config.tritonServer == tritonInferencer_->serverUrl()
@@ -93,7 +93,7 @@ public:
     }
 
 
-    void Finish() {
+    void Finish() override {
         if (tritonInferencer_) {
             // wait for clients and check for client exception at the end of the job
             tritonInferencer_->waitTillAllClientsReleased();
@@ -103,7 +103,7 @@ public:
     }
 
 
-    void Reset() noexcept {
+    void Reset() noexcept override {
         if (tritonInferencer_) {
             // wait for clients but don't check for client exception; it's too late to care
             tritonInferencer_->waitTillAllClientsReleased();
@@ -119,7 +119,7 @@ private:
     std::unique_ptr<TritonInferencer> tritonInferencer_;
 
 
-    std::unique_ptr<TritonInferencer> ConnectTritonInferencer(const Config &config) {
+    static std::unique_ptr<TritonInferencer> ConnectTritonInferencer(const Config &config) {
         if (!config.tritonEnabled) {
             return nullptr;
         }
@@ -162,14 +162,14 @@ private:
 
     void GetDetectionsTriton(
             const std::vector<Frame> &frames,
-            ProcessFrameDetectionsCallback processFrameDetectionsCallback,
+            const ProcessFrameDetectionsCallback &processFrameDetectionsCallback,
             const Config &config) {
 
         // Send async request to Triton using this batch of frames to get output blobs.
         tritonInferencer_->infer(frames, tritonInferencer_->inputsMeta.at(0),
 
-                                 // LAMBDA: This callback will extract detections from output blobs.
-                                 // Also, it will invoke processFrameDetectionsCallback to process detections (e.g. tracking).
+                // LAMBDA: This callback will extract detections from output blobs.
+                // Also, it will invoke processFrameDetectionsCallback to process detections (e.g. tracking).
                                  [this, &config, processFrameDetectionsCallback]
                                          (std::vector<cv::Mat> outBlobs,
                                           std::vector<Frame>::const_iterator begin,
@@ -179,13 +179,14 @@ private:
                                      int numFrames = end - begin;
 
                                      LOG_TRACE("frameCount: " << numFrames << " outBlob.size(): "
-                                               << std::vector<int>(outBlob.size.p, outBlob.size.p + outBlob.dims));
+                                                              << std::vector<int>(outBlob.size.p,
+                                                                                  outBlob.size.p + outBlob.dims));
                                      assert(("Blob's first dim should equal number of frames.",
                                              outBlob.size[0] == numFrames));
 
                                      LOG_TRACE("Received outBlob["
-                                               << outBlob.size[0] << "," << outBlob.size[1] << ","
-                                               << outBlob.size[2] << "," << outBlob.size[3] << "].");
+                                                       << outBlob.size[0] << "," << outBlob.size[1] << ","
+                                                       << outBlob.size[2] << "," << outBlob.size[3] << "].");
                                      assert(("Output blob shape should be [frames, detections, 1, 1].",
                                              outBlob.size[0] <= tritonInferencer_->maxBatchSize()
                                              && outBlob.size[1] == OUTPUT_BLOB_DIM_1
@@ -197,7 +198,7 @@ private:
                                      detectionsGroupedByFrame.reserve(numFrames);
 
                                      LOG_TRACE("Extracting detections for frames["
-                                               << begin->idx << ".." << (end - 1)->idx << "].");
+                                                       << begin->idx << ".." << (end - 1)->idx << "].");
                                      int i = 0;
                                      for (auto frameIt = begin; frameIt != end; ++i, ++frameIt) {
                                          detectionsGroupedByFrame.push_back(
@@ -216,12 +217,13 @@ private:
                                                                   });
                                          LOG_TRACE("Done waiting for frame[" << frameIdxToWaitFor << "].");
 
-                                         processFrameDetectionsCallback(std::move(detectionsGroupedByFrame), begin, end);
+                                         processFrameDetectionsCallback(std::move(detectionsGroupedByFrame), begin,
+                                                                        end);
 
                                          frameIdxComplete_ = frameIdxLast;
 
                                          LOG_TRACE("Completed frames["
-                                                   << begin->idx << ".." << frameIdxComplete_ << "].");
+                                                           << begin->idx << ".." << frameIdxComplete_ << "].");
                                      }
                                      frameIdxCompleteCv_.notify_all();
                                  });
@@ -309,13 +311,13 @@ private:
 
 
 YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
-        : pimpl_(new YoloNetworkImpl(model_settings, config)) {}
+        : pimpl_(new YoloNetworkImpl(std::move(model_settings), config)) {}
 
 YoloNetwork::~YoloNetwork() = default;
 
 void YoloNetwork::GetDetections(
         std::vector<Frame> &frames,
-        ProcessFrameDetectionsCallback processFrameDetectionsFun,
+        const ProcessFrameDetectionsCallback &processFrameDetectionsFun,
         const Config &config) {
     pimpl_->GetDetections(frames, processFrameDetectionsFun, config);
 }

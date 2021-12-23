@@ -37,7 +37,7 @@
 *  Represent a frame with time stamp
 *************************************************************************** */
 class Frame {
-  public:
+public:
     /// index of frame
     size_t idx;
 
@@ -51,9 +51,9 @@ class Frame {
     cv::Mat data;
 
     cv::Mat getDataAsResizedFloat(
-      const cv::Size2i targetSize,
-      const int cvBorderType = cv::BORDER_CONSTANT,
-      const cv::Scalar &cvBorderValue = cv::Scalar_<int>(127,127,127)) const;
+            const cv::Size2i &targetSize,
+            const int cvBorderType = cv::BORDER_CONSTANT,
+            const cv::Scalar &cvBorderValue = cv::Scalar_<int>(127, 127, 127)) const;
 
     cv::Rect getRect() const {
         return {cv::Point(0, 0), data.size()};
@@ -61,14 +61,11 @@ class Frame {
 
 
     Frame(size_t idx, double time, double timeStep, cv::Mat data)
-        : idx(idx)
-        , time(time)
-        , timeStep(timeStep)
-        , data(std::move(data)) { };
+            : idx(idx), time(time), timeStep(timeStep), data(std::move(data)) {};
 
 
     explicit Frame(cv::Mat data)
-        : Frame(0, 0, 0, std::move(data)) {
+            : Frame(0, 0, 0, std::move(data)) {
     }
 };
 

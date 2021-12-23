@@ -43,7 +43,7 @@ using namespace MPF::COMPONENT;
 
 namespace {
 
-    int ConfigureCudaDeviceIfNeeded(const Config &config, log4cxx::LoggerPtr& log) {
+    int ConfigureCudaDeviceIfNeeded(const Config &config, log4cxx::LoggerPtr &log) {
         if (config.cudaDeviceId < 0 || config.tritonEnabled) {
             if (cv::cuda::getCudaEnabledDeviceCount() > 0) {
                 // A previous job may have been configured to use CUDA, but this job wasn't.
@@ -70,8 +70,7 @@ namespace {
             if (config.fallback2CpuWhenGpuProblem) {
                 LOG4CXX_WARN(log, message << ". Job will run on CPU instead.")
                 return -1;
-            }
-            else {
+            } else {
                 throw MPFDetectionException(MPFDetectionError::MPF_GPU_ERROR, message);
             }
         }
@@ -79,7 +78,7 @@ namespace {
 
 
     cv::dnn::Net LoadNetwork(const ModelSettings &modelSettings, int cudaDeviceId,
-                             log4cxx::LoggerPtr& log) {
+                             log4cxx::LoggerPtr &log) {
 
         LOG4CXX_INFO(log, "Attempting to load OpenCV DNN network using network config file from "
                 << modelSettings.ocvDnnNetworkConfigFile << " and weights from "
@@ -90,7 +89,7 @@ namespace {
             net = cv::dnn::readNetFromDarknet(modelSettings.ocvDnnNetworkConfigFile,
                                               modelSettings.ocvDnnWeightsFile);
         }
-        catch (const cv::Exception& e) {
+        catch (const cv::Exception &e) {
             throw MPFDetectionException(
                     MPF_COULD_NOT_READ_DATAFILE,
                     std::string("Failed to load OpenCV DNN model due to: ") + e.what());
@@ -215,25 +214,25 @@ namespace {
     }
 
 
-    std::function<bool(const std::string&)> GetClassFilter(
-            const std::string& whiteListPath, const std::vector<std::string> &names) {
+    std::function<bool(const std::string &)> GetClassFilter(
+            const std::string &whiteListPath, const std::vector<std::string> &names) {
         if (whiteListPath.empty()) {
-            return [](const std::string&) { return true; };
-        }
-        else {
+            return [](const std::string &) { return true; };
+        } else {
             return WhitelistFilter(whiteListPath, names);
         }
     }
 
 
-    cv::Mat ConvertToBlob(std::vector<Frame>::const_iterator start, std::vector<Frame>::const_iterator stop, const int netInputImageSize) {
+    cv::Mat ConvertToBlob(std::vector<Frame>::const_iterator start, std::vector<Frame>::const_iterator stop,
+                          const int netInputImageSize) {
         std::vector<cv::Mat> resizedImages;
         resizedImages.reserve(stop - start);
-        while(start != stop){
+        while (start != stop) {
             resizedImages.push_back(
                     start->getDataAsResizedFloat(
                             cv::Size2i(netInputImageSize, netInputImageSize),
-                            cv::BORDER_CONSTANT, {127,127,127}));
+                            cv::BORDER_CONSTANT, {127, 127, 127}));
             start++;
         }
         return cv::dnn::blobFromImages(
@@ -274,20 +273,19 @@ namespace {
 
 
 BaseYoloNetworkImpl::BaseYoloNetworkImpl(ModelSettings model_settings, const Config &config)
-        : modelSettings_(std::move(model_settings))
-        , cudaDeviceId_(ConfigureCudaDeviceIfNeeded(config, log_))
-        , net_(config.tritonEnabled ?  cv::dnn::Net() : LoadNetwork(modelSettings_, cudaDeviceId_, log_)) // TODO: Test Triton enabled in local build
-        , names_(LoadNames(net_, modelSettings_, config))
-        , confusionMatrix_(LoadConfusionMatrix(modelSettings_.confusionMatrixFile, names_.size()))
-        , classWhiteListPath_(config.classWhiteListPath)
-        , classFilter_(GetClassFilter(classWhiteListPath_, names_)) {}
+        : modelSettings_(std::move(model_settings)), cudaDeviceId_(ConfigureCudaDeviceIfNeeded(config, log_)),
+          net_(config.tritonEnabled ? cv::dnn::Net() : LoadNetwork(modelSettings_, cudaDeviceId_,
+                                                                   log_)) // TODO: Test Triton enabled in local build
+        , names_(LoadNames(net_, modelSettings_, config)),
+          confusionMatrix_(LoadConfusionMatrix(modelSettings_.confusionMatrixFile, names_.size())),
+          classWhiteListPath_(config.classWhiteListPath), classFilter_(GetClassFilter(classWhiteListPath_, names_)) {}
 
 BaseYoloNetworkImpl::~BaseYoloNetworkImpl() = default;
 
 void BaseYoloNetworkImpl::GetDetections(
         std::vector<Frame> &frames,
-        ProcessFrameDetectionsCallback processFrameDetectionsFun,
-        const Config &config){
+        const ProcessFrameDetectionsCallback &processFrameDetectionsFun,
+        const Config &config) {
     processFrameDetectionsFun(GetDetectionsCvdnn(frames, config), frames.begin(), frames.end());
 }
 
@@ -309,7 +307,7 @@ void BaseYoloNetworkImpl::Reset() noexcept {}
 std::vector<std::vector<DetectionLocation>> BaseYoloNetworkImpl::GetDetectionsCvdnn(
         const std::vector<Frame> &frames, const Config &config) {
 
-    net_.setInput(ConvertToBlob(frames.begin(),frames.end(), config.netInputImageSize));
+    net_.setInput(ConvertToBlob(frames.begin(), frames.end(), config.netInputImageSize));
 
     // There are different output layers for different scales, e.g. yolo_82, yolo_94, yolo_106 for yolo v4.
     // Each result is a row vector like: [center_x, center_y, width, height, objectness, ...class_scores]
@@ -320,7 +318,7 @@ std::vector<std::vector<DetectionLocation>> BaseYoloNetworkImpl::GetDetectionsCv
 
     std::vector<std::vector<DetectionLocation>> detectionsGroupedByFrame;
     detectionsGroupedByFrame.reserve(frames.size());
-    for (int frameIdx = 0; frameIdx < frames.size(); ++frameIdx)  {
+    for (int frameIdx = 0; frameIdx < frames.size(); ++frameIdx) {
         detectionsGroupedByFrame.push_back(
                 ExtractFrameDetectionsCvdnn(frameIdx, frames.at(frameIdx), layerOutputs, config));
     }
@@ -342,14 +340,13 @@ std::vector<DetectionLocation> BaseYoloNetworkImpl::ExtractFrameDetectionsCvdnn(
     std::vector<float> topConfidences;
     std::vector<cv::Mat1f> scoreMats;
 
-    for (const cv::Mat& layerOutput : layerOutputs) {
+    for (const cv::Mat &layerOutput: layerOutputs) {
         cv::Mat frameDetections;
         if (layerOutput.dims == 2) {
             // When a single frame is passed to the network, the output only has two dimensions:
             // (boxes X features)
             frameDetections = layerOutput;
-        }
-        else {
+        } else {
             // When multiple frames are passed to the network, the output has three dimensions:
             // (frames X boxes X features)
             frameDetections = layerOutput
@@ -387,7 +384,7 @@ std::vector<DetectionLocation> BaseYoloNetworkImpl::ExtractFrameDetectionsCvdnn(
 
     std::vector<DetectionLocation> detections;
     detections.reserve(keepIndices.size());
-    for (int keepIdx : keepIndices) {
+    for (int keepIdx: keepIndices) {
         detections.push_back(CreateDetectionLocationCvdnn(frame, boundingBoxes.at(keepIdx),
                                                           scoreMats.at(keepIdx), config));
     }
@@ -420,8 +417,7 @@ DetectionLocation BaseYoloNetworkImpl::CreateDetectionLocationCvdnn(
     cv::Mat1f classFeature;
     if (confusionMatrix_.empty()) {
         cv::normalize(scores, classFeature);
-    }
-    else {
+    } else {
         cv::normalize(scores * confusionMatrix_, classFeature);
     }
     DetectionLocation detection(config, frame, boundingBox, topScore,

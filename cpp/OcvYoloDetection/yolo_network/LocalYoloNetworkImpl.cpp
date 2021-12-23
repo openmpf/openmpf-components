@@ -24,6 +24,8 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include <utility>
+
 #include "BaseYoloNetworkImpl.h"
 
 using namespace MPF::COMPONENT;
@@ -36,14 +38,14 @@ public:
 };
 
 YoloNetwork::YoloNetwork(ModelSettings model_settings, const Config &config)
-        : pimpl_(new YoloNetworkImpl(model_settings, config)) {}
+        : pimpl_(new YoloNetworkImpl(std::move(model_settings), config)) {}
 
 YoloNetwork::~YoloNetwork() = default;
 
 void YoloNetwork::GetDetections(
         std::vector<Frame> &frames,
-        ProcessFrameDetectionsCallback processFrameDetectionsFun,
-        const Config &config){
+        const ProcessFrameDetectionsCallback &processFrameDetectionsFun,
+        const Config &config) {
     pimpl_->GetDetections(frames, processFrameDetectionsFun, config);
 }
 
