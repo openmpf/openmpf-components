@@ -69,7 +69,8 @@ Properties getTinyYoloConfig(float confidenceThreshold) {
     return {
             {"MODEL_NAME",           "tiny yolo"},
             {"NET_INPUT_IMAGE_SIZE", "416"},
-            {"CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold)}
+            {"CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold)},
+            {"FRAME_QUEUE_CAPACITY", "16"}
     };
 }
 
@@ -78,7 +79,8 @@ Properties getYoloConfig(float confidenceThreshold) {
     return {
             {"MODEL_NAME",           "yolo"},
             {"NET_INPUT_IMAGE_SIZE", "416"},
-            {"CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold)}
+            {"CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold)},
+            {"FRAME_QUEUE_CAPACITY", "16"}
     };
 }
 
@@ -92,9 +94,10 @@ Properties getTritonYoloConfig(float confidenceThreshold) {
             {"TRACKING_MAX_FRAME_GAP",       "10"},
             {"ENABLE_TRITON",                "true"},
             {"DETECTION_FRAME_BATCH_SIZE",   "16"},
-            {"TRITON_SERVER",                "localhost:8001"}, // DEBUG
+            {"TRITON_SERVER",                "10.100.132.101:8001"}, // "localhost:8001"}, // DEBUG
             {"TRITON_USE_SHM",               "false"}, // allow for remote server via plain gRPC
-            {"TRITON_MAX_INFER_CONCURRENCY", "4"}
+            {"TRITON_MAX_INFER_CONCURRENCY", "4"},
+            {"FRAME_QUEUE_CAPACITY",         "16"}
     };
 }
 

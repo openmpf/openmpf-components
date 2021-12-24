@@ -67,6 +67,7 @@ void processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[
 
     map<string, string> algorithm_properties;
     algorithm_properties.insert(pair<string, string>("FRAME_INTERVAL", to_string(detection_interval)));
+    algorithm_properties.insert(pair<string, string>("FRAME_QUEUE_CAPACITY", "16"));
 
     MPFVideoJob job("Testing", argv[1], stoi(argv[2]), stoi(argv[3]), algorithm_properties, { });
     vector<MPFVideoTrack> tracks = detection_engine->GetDetections(job);

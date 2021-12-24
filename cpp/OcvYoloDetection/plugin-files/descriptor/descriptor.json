@@ -64,7 +64,7 @@
           "name": "TRITON_SERVER",
           "description": "Triton server <host>:<port> to use for inferencing.",
           "type": "STRING",
-          "defaultValue": ""
+          "defaultValue": "ocv-yolo-detection-server:8001"
         },
         {
           "name": "TRITON_MODEL_VERSION",
