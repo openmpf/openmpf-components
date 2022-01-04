@@ -46,7 +46,7 @@ COPY --from=build_component $BUILD_DIR/libmpfOcvDnnDetection.so \
                             $PLUGINS_DIR/OcvDnnDetection/lib/
 
 
-LABEL org.label-schema.license="Apache 2.0" \
+LABEL org.label-schema.license="Mixed" \
       org.label-schema.name="OpenMPF OpenCV Deep Neural Network (DNN) Classification" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \

@@ -1,7 +1,7 @@
 {
   "componentName": "OcvDnnDetection",
-  "componentVersion": "6.2",
-  "middlewareVersion": "6.2",
+  "componentVersion": "6.3",
+  "middlewareVersion": "6.3",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/OcvDnnDetection/lib/libmpfOcvDnnDetection.so",
   "environmentVariables": [
@@ -107,6 +107,12 @@
           "description": "After the input image is resized and cropped, subtract this value from the red color channel for all of the pixels. The range is [0.0, 255.0].",
           "type": "FLOAT",
           "defaultValue": "0.0"
+        },
+        {
+          "name": "SWAP_RB",
+          "description": "Swab the R and B color channels",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
         },
         {
           "name": "CLASSIFICATION_TYPE",
@@ -271,6 +277,10 @@
         {
           "name": "SUBTRACT_RED_VALUE",
           "value": "84.77"
+        },
+        {
+          "name": "SWAP_RB",
+          "value": "TRUE"
         }
       ]
     },
@@ -310,6 +320,10 @@
         {
           "name": "SUBTRACT_RED_VALUE",
           "value": "84.77"
+        },
+        {
+          "name": "SWAP_RB",
+          "value": "TRUE"
         },
         {
           "name": "FEED_FORWARD_TYPE",
@@ -388,7 +402,7 @@
       "name": "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION FROM TINY YOLO VEHICLE DETECTOR) PIPELINE",
       "description": "Performs TensorFlow detection on feed forward regions for Tiny YOLO using the 'vehicle_color' model.",
       "tasks": [
-        "TINY YOLO VEHICLE DETECTION TASK",
+        "OCV TINY YOLO VEHICLE DETECTION TASK",
         "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
       ]
     },
@@ -396,7 +410,7 @@
       "name": "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION FROM YOLO VEHICLE DETECTOR) PIPELINE",
       "description": "Performs TensorFlow detection on feed forward regions for YOLO using the 'vehicle_color' model.",
       "tasks": [
-        "YOLO VEHICLE DETECTION TASK",
+        "OCV YOLO VEHICLE DETECTION TASK",
         "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
       ]
     }
