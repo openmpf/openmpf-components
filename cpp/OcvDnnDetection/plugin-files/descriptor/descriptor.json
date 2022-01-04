@@ -402,7 +402,7 @@
       "name": "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION FROM TINY YOLO VEHICLE DETECTOR) PIPELINE",
       "description": "Performs TensorFlow detection on feed forward regions for Tiny YOLO using the 'vehicle_color' model.",
       "tasks": [
-        "TINY YOLO VEHICLE DETECTION TASK",
+        "OCV TINY YOLO VEHICLE DETECTION TASK",
         "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
       ]
     },
@@ -410,7 +410,7 @@
       "name": "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION FROM YOLO VEHICLE DETECTOR) PIPELINE",
       "description": "Performs TensorFlow detection on feed forward regions for YOLO using the 'vehicle_color' model.",
       "tasks": [
-        "YOLO VEHICLE DETECTION TASK",
+        "OCV YOLO VEHICLE DETECTION TASK",
         "TENSORFLOW VEHICLE COLOR DETECTION (WITH FF REGION) TASK"
       ]
     }
