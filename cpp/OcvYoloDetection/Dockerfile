@@ -63,9 +63,6 @@ RUN --mount=type=tmpfs,target=/tmp \
     # add libb64 needed by Triton
     rpm --nosignature -i http://www6.atomicorp.com/channels/atomic/centos/7/x86_64/RPMS/libb64-libs-1.2.1-2.1.el7.art.x86_64.rpm; \
     rpm --nosignature -i http://www6.atomicorp.com/channels/atomic/centos/7/x86_64/RPMS/libb64-devel-1.2.1-2.1.el7.art.x86_64.rpm; \
-    # some debug messages support for system calls (e.g. nmap)
-    rpm --nosignature -i http://download.sipxcom.org/pub/epel/6/x86_64/libexplain-0.52.D002-1.el6.x86_64.rpm; \
-    rpm --nosignature -i http://download.sipxcom.org/pub/epel/6/x86_64/libexplain-devel-0.52.D002-1.el6.x86_64.rpm; \
     yum clean all;
 
 # install gcc 4.9.4
@@ -157,7 +154,7 @@ ARG RUN_TESTS=false
 RUN --mount=target=. \
     --mount=from=download_library_source,source=/apps/source/dlib-sources,target=/apps/source/dlib-sources \
     build-component.sh; \
-    if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test; ./OcvYoloDetectionTest; fi
+    if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test; ./OcvLocalYoloDetectionTest; fi
 
 
 ########################################################################
@@ -221,14 +218,30 @@ CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum install -y epel-release; \
+    yum install --assumeyes gtest-devel; \
+    yum clean all;
+
 COPY --from=download_weights /weights $PLUGINS_DIR/OcvYoloDetection/models
 
 ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvYoloDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/OcvYoloDetection $PLUGINS_DIR/OcvYoloDetection
 
-COPY --from=build_component $BUILD_DIR/libmpfOcvYoloDetection.so \
-                            $PLUGINS_DIR/OcvYoloDetection/lib/
+COPY --from=build_component $BUILD_DIR/libmpfOcvYoloDetection.so $PLUGINS_DIR/OcvYoloDetection/lib/
+
+# Copy test files so that they can be used to debug issues later at runtime.
+COPY --from=build_component $BUILD_DIR/test/OcvLocalYoloDetectionTest \
+                            $PLUGINS_DIR/OcvYoloDetection/test/OcvLocalYoloDetectionTest
+COPY --from=build_component $BUILD_DIR/test/OcvTritonYoloDetectionTest \
+                            $PLUGINS_DIR/OcvYoloDetection/test/OcvTritonYoloDetectionTest
+COPY --from=build_component $BUILD_DIR/test/data \
+                            $PLUGINS_DIR/OcvYoloDetection/test/data
+COPY --from=build_component $BUILD_DIR/test/log4cxx.properties \
+                            $PLUGINS_DIR/OcvYoloDetection/test/log4cxx.properties
+RUN ln -s $PLUGINS_DIR $PLUGINS_DIR/OcvYoloDetection/plugin
 
 LABEL org.label-schema.license="Mixed" \
       org.label-schema.name="OpenMPF OpenCV Yolo Detection" \

@@ -101,8 +101,7 @@ if ($ENV{TRITON_SUPPORT})
             mpfComponentUtils
             TritonClient::grpcclient_static
             ${OpenCV_LIBS}
-            dlib
-            explain) # TODO: Is this necessary?
+            dlib)
 else ()
     add_library(mpfOcvYoloDetection SHARED ${COMMON_OCV_YOLO_DETECTION_SOURCE_FILES} ${LOCAL_OCV_YOLO_DETECTION_SOURCE_FILES})
     target_link_libraries(mpfOcvYoloDetection

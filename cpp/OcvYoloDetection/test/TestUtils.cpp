@@ -46,7 +46,7 @@ bool init_logging() {
 
 OcvYoloDetection initComponent() {
     OcvYoloDetection component;
-    component.SetRunDirectory(".");
+    component.SetRunDirectory("../plugin");
     component.Init();
     return component;
 }
@@ -94,7 +94,6 @@ Properties getTritonYoloConfig(float confidenceThreshold) {
             {"TRACKING_MAX_FRAME_GAP",       "10"},
             {"ENABLE_TRITON",                "true"},
             {"DETECTION_FRAME_BATCH_SIZE",   "16"},
-            {"TRITON_SERVER",                "10.100.132.101:8001"}, // "localhost:8001"}, // DEBUG
             {"TRITON_USE_SHM",               "false"}, // allow for remote server via plain gRPC
             {"TRITON_MAX_INFER_CONCURRENCY", "4"},
             {"FRAME_QUEUE_CAPACITY",         "16"}

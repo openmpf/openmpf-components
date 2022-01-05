@@ -52,29 +52,29 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestImageTriton) {
 
     {
         const auto &dogDetection = findDetectionWithClass("dog", detections);
-        ASSERT_NEAR(133, dogDetection.x_left_upper, 2);
-        ASSERT_NEAR(228, dogDetection.y_left_upper, 2);
-        ASSERT_NEAR(176, dogDetection.width, 2);
-        ASSERT_NEAR(315, dogDetection.height, 2);
-        ASSERT_NEAR(0.9899, dogDetection.confidence, 0.01);
+        ASSERT_NEAR(131, dogDetection.x_left_upper, 2); // TODO: Make fuzzier
+        ASSERT_NEAR(226, dogDetection.y_left_upper, 2);
+        ASSERT_NEAR(179, dogDetection.width, 2);
+        ASSERT_NEAR(313, dogDetection.height, 2);
+        ASSERT_NEAR(0.9853, dogDetection.confidence, 0.01);
         ASSERT_EQ("dog", dogDetection.detection_properties.at("CLASSIFICATION"));
     }
     {
         const auto &bikeDetection = findDetectionWithClass("bicycle", detections);
-        ASSERT_NEAR(121, bikeDetection.x_left_upper, 2);
-        ASSERT_NEAR(136, bikeDetection.y_left_upper, 2);
-        ASSERT_NEAR(455, bikeDetection.width, 2);
-        ASSERT_NEAR(274, bikeDetection.height, 2);
-        ASSERT_NEAR(0.9906, bikeDetection.confidence, 0.01);
+        ASSERT_NEAR(122, bikeDetection.x_left_upper, 2);
+        ASSERT_NEAR(124, bikeDetection.y_left_upper, 2);
+        ASSERT_NEAR(449, bikeDetection.width, 2);
+        ASSERT_NEAR(299, bikeDetection.height, 2);
+        ASSERT_NEAR(0.935, bikeDetection.confidence, 0.01);
         ASSERT_EQ("bicycle", bikeDetection.detection_properties.at("CLASSIFICATION"));
     }
     {
         const auto &carDetection = findDetectionWithClass("truck", detections);
-        ASSERT_NEAR(439, carDetection.x_left_upper, 2);
-        ASSERT_NEAR(78, carDetection.y_left_upper, 3);
-        ASSERT_NEAR(258, carDetection.width, 2);
-        ASSERT_NEAR(89, carDetection.height, 2);
-        ASSERT_NEAR(0.9686, carDetection.confidence, 0.01);
+        ASSERT_NEAR(468, carDetection.x_left_upper, 2);
+        ASSERT_NEAR(76, carDetection.y_left_upper, 3);
+        ASSERT_NEAR(214, carDetection.width, 2);
+        ASSERT_NEAR(93, carDetection.height, 2);
+        ASSERT_NEAR(0.987, carDetection.confidence, 0.01);
         ASSERT_EQ("truck", carDetection.detection_properties.at("CLASSIFICATION"));
     }
 }
@@ -140,7 +140,7 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestTritonPerformance) { // DEBUG: Was
     auto component = initComponent();
 
     auto jobProp = getTritonYoloConfig();
-    jobProp["TRITON_USE_SHM"] = "true"; // DEBUG
+    // jobProp["TRITON_USE_SHM"] = "true"; // DEBUG // TODO: Test with pre-gen server
     jobProp["TRACKING_DFT_SIZE"] = "128"; // DEBUG
 
     MPFVideoJob videoJob("Testing", inVideoFile, start, stop, jobProp, {});

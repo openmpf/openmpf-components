@@ -32,43 +32,36 @@ find_package(GTest)
 if (${GTEST_FOUND})
     enable_testing()
     find_package(Qt4 REQUIRED)
-    find_package(mpfComponentTestUtils REQUIRED)
 
     include_directories(..)
 
+    add_executable(OcvLocalYoloDetectionTest
+            test_ocv_local_yolo_detection.cpp
+            TestUtils.cpp TestUtils.h)
+
+    target_link_libraries(OcvLocalYoloDetectionTest
+            mpfOcvYoloDetection
+            GTest::GTest
+            GTest::Main)
+
+    add_test(NAME OcvLocalYoloDetectionTest COMMAND OcvLocalYoloDetectionTest)
+
     if ($ENV{TRITON_SUPPORT})
-        add_executable(OcvYoloDetectionTest
-                test_ocv_local_yolo_detection.cpp
+        add_executable(OcvTritonYoloDetectionTest
                 test_ocv_triton_yolo_detection.cpp
                 TestUtils.cpp TestUtils.h)
-    else()
-        add_executable(OcvYoloDetectionTest
-                test_ocv_local_yolo_detection.cpp
-                TestUtils.cpp TestUtils.h)
+
+        target_link_libraries(OcvTritonYoloDetectionTest
+                mpfOcvYoloDetection
+                GTest::GTest
+                GTest::Main)
     endif()
-
-    target_link_libraries(OcvYoloDetectionTest
-            mpfOcvYoloDetection
-            mpfComponentTestUtils
-            GTest::GTest
-            GTest::Main
-            Qt4::QtCore)
-
-    add_test(NAME OcvYoloDetectionTest COMMAND OcvYoloDetectionTest)
-
-    # allow for 'make check'
-    add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --verbose)
 
     # Create directory for test output files
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test/test_output/)
 
-    # Create link to test data so that test binary can access it.
-    file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/data
-                     ${CMAKE_CURRENT_BINARY_DIR}/data SYMBOLIC)
+    # Install test images, videos, and other files
+    file(COPY data/ DESTINATION data)
+    file(COPY log4cxx.properties DESTINATION .)
 
-    file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/log4cxx.properties
-                     ${CMAKE_CURRENT_BINARY_DIR}/log4cxx.properties SYMBOLIC)
-
-    file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/../plugin-files
-                     ${CMAKE_CURRENT_BINARY_DIR}/OcvYoloDetection SYMBOLIC)
 endif()
