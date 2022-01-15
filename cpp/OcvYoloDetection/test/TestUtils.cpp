@@ -85,7 +85,7 @@ Properties getYoloConfig(float confidenceThreshold) {
 }
 
 
-Properties getTritonYoloConfig(float confidenceThreshold) {
+Properties getTritonYoloConfig(const std::string &tritonServer, float confidenceThreshold) {
     return {
             {"MODEL_NAME",                   "yolo"},
             {"NET_INPUT_IMAGE_SIZE",         "608"},
@@ -94,6 +94,7 @@ Properties getTritonYoloConfig(float confidenceThreshold) {
             {"TRACKING_MAX_FRAME_GAP",       "10"},
             {"ENABLE_TRITON",                "true"},
             {"DETECTION_FRAME_BATCH_SIZE",   "16"},
+            {"TRITON_SERVER",                tritonServer},
             {"TRITON_USE_SHM",               "false"}, // allow for remote server via plain gRPC
             {"TRITON_MAX_INFER_CONCURRENCY", "4"},
             {"FRAME_QUEUE_CAPACITY",         "16"}

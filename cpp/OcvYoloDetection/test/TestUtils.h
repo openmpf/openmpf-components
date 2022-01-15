@@ -70,7 +70,7 @@ Properties getTinyYoloConfig(float confidenceThreshold = 0.5);
 
 Properties getYoloConfig(float confidenceThreshold = 0.5);
 
-Properties getTritonYoloConfig(float confidenceThreshold = 0.5);
+Properties getTritonYoloConfig(const std::string &tritonServer, float confidenceThreshold = 0.5);
 
 bool same(MPFImageLocation &l1, MPFImageLocation &l2,
           float confidenceTolerance, float iouTolerance,

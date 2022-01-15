@@ -226,8 +226,6 @@ RUN --mount=type=tmpfs,target=/tmp \
 
 COPY --from=download_weights /weights $PLUGINS_DIR/OcvYoloDetection/models
 
-ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvYoloDetection/lib
-
 COPY --from=build_component $BUILD_DIR/plugin/OcvYoloDetection $PLUGINS_DIR/OcvYoloDetection
 
 COPY --from=build_component $BUILD_DIR/libmpfOcvYoloDetection.so $PLUGINS_DIR/OcvYoloDetection/lib/
@@ -242,6 +240,15 @@ COPY --from=build_component $BUILD_DIR/test/data \
 COPY --from=build_component $BUILD_DIR/test/log4cxx.properties \
                             $PLUGINS_DIR/OcvYoloDetection/test/log4cxx.properties
 RUN ln -s $PLUGINS_DIR $PLUGINS_DIR/OcvYoloDetection/plugin
+
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvYoloDetection/lib
+
+ARG RUN_GPU_TESTS=false
+ARG TRITON_SERVER=ocv-yolo-detection-server:8001
+RUN if [ "${RUN_GPU_TESTS,,}" == true ]; then \
+        cd $PLUGINS_DIR/OcvYoloDetection/test; \
+        ./OcvTritonYoloDetectionTest ${TRITON_SERVER}; \
+    fi
 
 LABEL org.label-schema.license="Mixed" \
       org.label-schema.name="OpenMPF OpenCV Yolo Detection" \

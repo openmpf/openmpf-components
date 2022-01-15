@@ -43,16 +43,19 @@ protected:
     }
 };
 
+std::string TRITON_SERVER = "ocv-yolo-detection-server:8001";
 
+
+// Expected output based on yolov4.dim608.bs16.cuda11.3.trt7.2.3.nvidia_geforce_rtx_2080_ti.engine.1.0.0
 TEST_F(OcvTritonYoloDetectionTestFixture, TestImageTriton) {
-    MPFImageJob job("Test", "data/dog.jpg", getTritonYoloConfig(), {});
+    MPFImageJob job("Test", "data/dog.jpg", getTritonYoloConfig(TRITON_SERVER), {});
 
     auto detections = initComponent().GetDetections(job);
     ASSERT_EQ(3, detections.size());
 
     {
         const auto &dogDetection = findDetectionWithClass("dog", detections);
-        ASSERT_NEAR(131, dogDetection.x_left_upper, 2); // TODO: Make fuzzier
+        ASSERT_NEAR(131, dogDetection.x_left_upper, 2);
         ASSERT_NEAR(226, dogDetection.y_left_upper, 2);
         ASSERT_NEAR(179, dogDetection.width, 2);
         ASSERT_NEAR(313, dogDetection.height, 2);
@@ -80,68 +83,53 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestImageTriton) {
 }
 
 
+// Expected output based on yolov4.dim608.bs16.cuda11.3.trt7.2.3.nvidia_geforce_rtx_2080_ti.engine.1.0.0
 TEST_F(OcvTritonYoloDetectionTestFixture, TestVideoTriton) {
-    auto jobProps = getTritonYoloConfig(0.92);
+    auto jobProps = getTritonYoloConfig(TRITON_SERVER, 0.92);
     MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 2, 10,
                     jobProps, {});
 
     std::vector<MPFVideoTrack> expectedTracks =
             read_track_output("data/lp-ferrari-texas-shortened.tracks");
 
-    auto foundTracks = initComponent().GetDetections(job);
+    auto tracks = initComponent().GetDetections(job);
 
-    // write_track_output_video(job.data_uri, foundTracks, "TestVideoTriton.avi", job);
-    // write_track_output(foundTracks, "TestVideoTriton.tracks", job);
+    ASSERT_NEAR(7, tracks.size(), 2);
 
-    ASSERT_EQ(expectedTracks.size(), foundTracks.size());
-
-    int numMatching = 0;
-    int numNotMatching = 0;
-    for (int et = 0; et < expectedTracks.size(); ++et) {
-        for (int ft = et; ft < foundTracks.size(); ++ft) {
-            float confDiff = 0;
-            float aveIou = 0;
-            if (same(expectedTracks.at(et), foundTracks.at(ft),
-                     0.001, 0.01, confDiff, aveIou)) {
-                GOUT("Expected track #" << et << " matches found track #" << ft
-                                        << " with confidence diff: " << setprecision(3) << confDiff
-                                        << " and average iou: " << setprecision(3) << aveIou);
-                ++numMatching;
-            } else {
-                ++numNotMatching;
-            }
+    for (auto &track : tracks) {
+        std::string clazz = track.detection_properties["CLASSIFICATION"];
+        if (clazz == "car") {
+            ASSERT_NEAR(9, track.frame_locations.size(), 2);
+        } else if (clazz == "person") {
+            ASSERT_NEAR(5, track.frame_locations.size(), 4);
+        } else {
+            FAIL() << "Unexpected classification: " << clazz;
         }
     }
-
-    ASSERT_EQ(numMatching, expectedTracks.size());
-
-    ASSERT_EQ(numNotMatching,
-              expectedTracks.size() * (expectedTracks.size() - 1) / 2);
 }
 
 
-// TODO: Should we remove this?
-TEST_F(OcvTritonYoloDetectionTestFixture, TestTritonPerformance) { // DEBUG: Was disabled
+// Disabled as a unit test. Keeping as a development tool.
+// Uncomment the lines in the OUTPUT sections to generate a track list and markup output.
+TEST_F(OcvTritonYoloDetectionTestFixture, DISABLED_TestTritonPerformance) {
 
     int start = 0;
     int stop = 335;
     string inVideoFile = "data/Stockholm_Marathon_9_km.webm";
-    // string outTrackFile = "Stockholm_Marathon_9_km.tracks"; // DEBUG
-    // string outVideoFile = "Stockholm_Marathon_9_km.tracks.avi"; // DEBUG
+    // string outTrackFile = "Stockholm_Marathon_9_km.tracks"; // OUTPUT
+    // string outVideoFile = "Stockholm_Marathon_9_km.tracks.avi";
     float comparison_score_threshold = 0.6;
 
     GOUT("Start:\t" << start);
     GOUT("Stop:\t" << stop);
     GOUT("inVideo:\t" << inVideoFile);
-    // GOUT("outTrack:\t" << outTrackFile);
+    // GOUT("outTrack:\t" << outTrackFile); // OUTPUT
     // GOUT("outVideo:\t" << outVideoFile);
     GOUT("comparison threshold:\t" << comparison_score_threshold);
 
     auto component = initComponent();
 
-    auto jobProp = getTritonYoloConfig();
-    // jobProp["TRITON_USE_SHM"] = "true"; // DEBUG // TODO: Test with pre-gen server
-    jobProp["TRACKING_DFT_SIZE"] = "128"; // DEBUG
+    auto jobProp = getTritonYoloConfig(TRITON_SERVER);
 
     MPFVideoJob videoJob("Testing", inVideoFile, start, stop, jobProp, {});
 
@@ -166,10 +154,10 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestTritonPerformance) { // DEBUG: Was
                                         << "[sec] for " << stop - start << " frames or "
                                         << (stop - start) / time_taken << "[FPS]");
 
-    // GOUT("\t" << found_tracks.size() << " tracks: " << outTrackFile);
+    // GOUT("\t" << found_tracks.size() << " tracks: " << outTrackFile); // OUTPUT
     // write_track_output(found_tracks, outTrackFile, videoJob);
 
-    // GOUT("\toverlay video: " << outVideoFile);
+    // GOUT("\toverlay video: " << outVideoFile); // OUTPUT
     // write_track_output_video(inVideoFile, found_tracks, outVideoFile, videoJob);
 
     EXPECT_TRUE(component.Close());
@@ -179,10 +167,9 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestTritonPerformance) { // DEBUG: Was
 TEST_F(OcvTritonYoloDetectionTestFixture, TestImageLocalAndTriton) {
 
     auto localJobProp = getYoloConfig();
-    // localJobProp["CUDA_DEVICE_ID"] = "0"; // DEBUG
     MPFImageJob localImageJob("LocalTest", "data/dog.jpg", localJobProp, {});
 
-    auto tritonJobProp = getTritonYoloConfig();
+    auto tritonJobProp = getTritonYoloConfig(TRITON_SERVER);
     MPFImageJob tritonImageJob("TritonTest", "data/dog.jpg", tritonJobProp, {});
 
     auto component = initComponent();
@@ -210,4 +197,14 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestImageLocalAndTriton) {
     ASSERT_EQ(3, tracks.size());
 
     EXPECT_TRUE(component.Close());
+}
+
+
+int main(int argc, char **argv) {
+    testing::InitGoogleTest(&argc, argv);
+    if (argc > 1) {
+        TRITON_SERVER = argv[1];
+    }
+    GOUT("Using TRITON_SERVER: " << TRITON_SERVER);
+    return RUN_ALL_TESTS();
 }

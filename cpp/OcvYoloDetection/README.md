@@ -90,3 +90,24 @@ Now make your changes in this directory by adding or removing files as necessary
 following command:
 
 `echo -e 'FROM busybox\nCOPY . /models/' | docker build -f- . -t openmpf_ocv_yolo_detection_triton_models:<image tag>`
+
+# Unit Tests
+
+The OpenCV Yolo detection component has two sets of unit tests. They both run on the CPU, but the second set requires
+communicating with a Triton server.
+
+- The local tests test the ability to perform inferencing using OpenCV DNN on the local host machine.
+  To run them at build time specify `--build-arg RUN_TESTS=true`.
+
+- The Triton tests test the ability to perform inferencing using an external Triton server.
+  To run them at build time specify `--build-arg RUN_GPU_TESTS=true` and `--build-arg TRITON_SERVER=<host>:<port>`.
+
+Note that both sets of tests can be run as part of the same `docker build` command, if desired.
+
+Additionally, the Triton tests can be run on a Docker image that is already built by using following command:
+
+`docker run --rm -w /opt/mpf/plugins/OcvYoloDetection/test --entrypoint ./OcvTritonYoloDetectionTest openmpf_ocv_yolo_detection:<tag-name> <triton-host>:<triton-port>`
+
+To execute the tests on a running Docker container, you can use the following command:
+
+`docker exec -w /opt/mpf/plugins/OcvYoloDetection/test <container-id> ./OcvTritonYoloDetectionTest <triton-host>:<triton-port>`
