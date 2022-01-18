@@ -89,9 +89,6 @@ TEST_F(OcvTritonYoloDetectionTestFixture, TestVideoTriton) {
     MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 2, 10,
                     jobProps, {});
 
-    std::vector<MPFVideoTrack> expectedTracks =
-            read_track_output("data/lp-ferrari-texas-shortened.tracks");
-
     auto tracks = initComponent().GetDetections(job);
 
     ASSERT_NEAR(7, tracks.size(), 2);
