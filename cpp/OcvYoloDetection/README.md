@@ -2,25 +2,33 @@
 
 This repository contains source code for the MPF OpenCV Yolo detection component. This component detects objects in
 images and videos using the OpenCV Yolo Detector. The component can perform inferencing using OpenCV's DNN libraries, or
-rely on an external [Triton Inference Server](https://github.com/triton-inference-server).
+use an external [Triton Inference Server](https://github.com/triton-inference-server).
 
 # Trained Models
 
-The OpenCV Yolo detection component comes with MS COCO trained YoloV4 model:
+The OpenCV Yolo detection component comes with an MS COCO trained YoloV4 model:
 
 * Model files,
   [yolov4.cfg](https://github.com/AlexeyAB/darknet/blob/master/cfg/yolov4.cfg) and
-  [yolov4.weights](https://drive.google.com/open?id=1cewMfusmPjYWbrnuJRuKhPMwRe_b9PaT). This model was trained on MS
+  [yolov4.weights](https://drive.google.com/open?id=1cewMfusmPjYWbrnuJRuKhPMwRe_b9PaT). This model was trained on the MS
   COCO data set. For details of the YoloV4 model please see
   [Bochkovskiy, A et al.](https://arxiv.org/abs/2004.10934), *"YOLOv4: Optimal Speed and Accuracy of Object Detection"*,
   2020.
 
-* Triton YOLOv4 model implementation is optimized for a Triton Inference Server (e.g. 2.11.0) compiled with a specific
-  version of TensorRT (e.g. r21.06) for specific GPU hardware. An associated plugin file (liblayerplugin.so) is needed
-  for YOLO layer implementation on the inference server and an engine file (yolov4.engine) for model deployment. These
-  model engine and plugin files are not included in this repo, but can be created as
-  described [here](https://github.com/isarsoft/yolov4-triton-tensorrt) by isarsoft. Note that they are image size and
-  inference batch size specific.
+# Triton Inference Server
+
+A TensorRT engine file (`yolov4.engine`) and associated plugin library (`liblayerplugin.so`) are needed to run the Yolo
+model on a Triton Inference Server. The plugin library implements the necessary Yolo model layers needed to perform
+inferencing using the engine file. The library is built for the specific version of TensorRT supported by the
+version of the Triton server, as well as the desired image/video frame dimensions. The engine file is also generated for
+the specific version of TensorRT and frame dimensions, and is optimized to run on specific GPU hardware.
+
+The library and engine file can be manually created as described
+[here](https://github.com/isarsoft/yolov4-triton-tensorrt) by isarsoft, but we instead highly recommend that
+you build and use the custom Triton Inference Server Docker image using the `triton_server/Dockerfile`.
+The entrypoint for that image will attempt to automatically generate the necessary plugin and engine files for 608x608
+frames using the available GPU hardware. This ensures that the engine file is optimized for the correct GPUs.
+Refer to the [Models Image](#models-image) section below for more information.
 
 # Algorithms Used
 
@@ -77,8 +85,8 @@ assignment stages, each using a linear assignment cost solver:
 
 # Models Image
 
-Building the Triton server image requires models that are stored in a docker image. To update this image with new
-models, follow these steps:
+Building the Triton server Docker image requires models that are stored in a separate Docker image. To update the latter
+image with new models, follow these steps:
 
 ```
 mkdir temp_models
