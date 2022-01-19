@@ -173,7 +173,7 @@ namespace {
         std::vector<Track> assignedTracks
                 = AssignDetections(trackClusterList, detectionClusterList, config);
 
-        // LOG_TRACE( detectionsVec[i].size() <<" detections left for new tracks");
+        LOG_TRACE( detectionsVec[i].size() << " detections left for new tracks");
         // any detection not assigned up to this point becomes a new track
         for (auto &detectionCluster: detectionClusterList) {
             // make any unassigned detections into new tracks
