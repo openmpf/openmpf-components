@@ -45,7 +45,7 @@ class BaseYoloNetworkImpl {
 public:
     BaseYoloNetworkImpl(ModelSettings modelSettings, const Config &config);
 
-    ~BaseYoloNetworkImpl();
+    virtual ~BaseYoloNetworkImpl();
 
     using ProcessFrameDetectionsCallback =
     std::function<void(std::vector<std::vector<DetectionLocation>> &&dets,

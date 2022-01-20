@@ -273,11 +273,13 @@ namespace {
 
 
 BaseYoloNetworkImpl::BaseYoloNetworkImpl(ModelSettings model_settings, const Config &config)
-        : modelSettings_(std::move(model_settings)), cudaDeviceId_(ConfigureCudaDeviceIfNeeded(config, log_)),
+        : modelSettings_(std::move(model_settings)),
+          cudaDeviceId_(ConfigureCudaDeviceIfNeeded(config, log_)),
           net_(config.tritonEnabled ? cv::dnn::Net() : LoadNetwork(modelSettings_, cudaDeviceId_, log_)),
           names_(LoadNames(net_, modelSettings_, config)),
           confusionMatrix_(LoadConfusionMatrix(modelSettings_.confusionMatrixFile, names_.size())),
-          classWhiteListPath_(config.classWhiteListPath), classFilter_(GetClassFilter(classWhiteListPath_, names_)) {}
+          classWhiteListPath_(config.classWhiteListPath),
+          classFilter_(GetClassFilter(classWhiteListPath_, names_)) {}
 
 BaseYoloNetworkImpl::~BaseYoloNetworkImpl() = default;
 

@@ -49,7 +49,7 @@ class YoloNetwork::YoloNetworkImpl : public BaseYoloNetworkImpl {
 public:
     YoloNetworkImpl(ModelSettings model_settings, const Config &config)
             : BaseYoloNetworkImpl(std::move(model_settings), config),
-              tritonInferencer_(std::move(ConnectTritonInferencer(config))) {}
+              tritonInferencer_(ConnectTritonInferencer(config)) {}
 
     ~YoloNetworkImpl() = default;
 
@@ -168,8 +168,8 @@ private:
         // Send async request to Triton using this batch of frames to get output blobs.
         tritonInferencer_->infer(frames, tritonInferencer_->inputsMeta.at(0),
 
-                // LAMBDA: This callback will extract detections from output blobs.
-                // Also, it will invoke processFrameDetectionsCallback to process detections (e.g. tracking).
+                                 // LAMBDA: This callback will extract detections from output blobs. Also, it will
+                                 // invoke processFrameDetectionsCallback to process detections (e.g. tracking).
                                  [this, &config, processFrameDetectionsCallback]
                                          (std::vector<cv::Mat> outBlobs,
                                           std::vector<Frame>::const_iterator begin,
