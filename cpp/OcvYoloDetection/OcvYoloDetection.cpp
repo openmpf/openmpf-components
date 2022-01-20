@@ -164,7 +164,7 @@ namespace {
         std::vector<Cluster<DetectionLocation>> detectionClusterList
                 = clusterItems(std::move(detections), config.maxClassDist);
 
-        //group tracks according to class features
+        // group tracks according to class features
         std::vector<Cluster<Track>> trackClusterList
                 = clusterItems(std::move(inProgressTracks), config.maxClassDist);
         inProgressTracks.clear();
@@ -173,7 +173,6 @@ namespace {
         std::vector<Track> assignedTracks
                 = AssignDetections(trackClusterList, detectionClusterList, config);
 
-        LOG_TRACE( detectionsVec[i].size() << " detections left for new tracks");
         // any detection not assigned up to this point becomes a new track
         for (auto &detectionCluster: detectionClusterList) {
             // make any unassigned detections into new tracks
@@ -261,6 +260,9 @@ void OcvYoloDetection::InitYoloNetwork(const Properties &jobProperties, const Co
     if (yoloNetwork_ && yoloNetwork_->IsCompatible(modelSettings, config)) {
         LOG4CXX_INFO(logger_, "Reusing cached network.");
         return;
+    } else {
+        // Reset to remove current network from memory before loading the new one.
+        yoloNetwork_.reset();
     }
 
     yoloNetwork_.reset(new YoloNetwork(std::move(modelSettings), config));

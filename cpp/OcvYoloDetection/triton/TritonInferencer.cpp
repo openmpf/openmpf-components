@@ -180,7 +180,7 @@ void TritonInferencer::getModelInputOutputMetaData() {
 }
 
 
-bool TritonInferencer::isShmKeyPrefixInUse(const std::string &prefix) {
+bool TritonInferencer::isShmKeyPrefixInUse(const std::string &prefix) const {
     // check local host
     DIR *dir;
     struct dirent *diread;
@@ -189,6 +189,7 @@ bool TritonInferencer::isShmKeyPrefixInUse(const std::string &prefix) {
             if (strncmp(prefix.c_str(), diread->d_name, prefix.size()) == 0) {
                 LOG_WARN("Shared memory prefix \"" << prefix << "\" in use by region on local host: "
                          << diread->d_name << ". Will try another prefix.");
+                closedir(dir);
                 return true;
             }
         }
@@ -303,10 +304,10 @@ int TritonInferencer::acquireClientId() {
 void TritonInferencer::releaseClientId(int clientId, const std::exception_ptr& newClientEptr) {
     {
         std::lock_guard<std::mutex> lk(freeClientIdsMtx_);
-        freeClientIds_.insert(clientId);
         if (newClientEptr && !clientEptr_) {
             clientEptr_ = newClientEptr;
         }
+        freeClientIds_.insert(clientId);
         LOG_TRACE("Freeing client[" << clientId << "]");
     }
     freeClientIdsCv_.notify_all();
@@ -314,14 +315,12 @@ void TritonInferencer::releaseClientId(int clientId, const std::exception_ptr& n
 
 
 void TritonInferencer::waitTillAllClientsReleased() noexcept {
-    if (freeClientIds_.size() != clients_.size()) {
-        LOG_INFO("Waiting until all clients freed.");
-        std::unique_lock<std::mutex> lk(freeClientIdsMtx_);
-        freeClientIdsCv_.wait(lk, [this] {
-            return freeClientIds_.size() == clients_.size();
-        });
-        LOG_INFO("All clients were freed.");
-    }
+    LOG_INFO("Waiting until all clients freed.");
+    std::unique_lock<std::mutex> lk(freeClientIdsMtx_);
+    freeClientIdsCv_.wait(lk, [this] {
+        return freeClientIds_.size() == clients_.size();
+    });
+    LOG_INFO("All clients were freed.");
 }
 
 

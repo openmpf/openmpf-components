@@ -122,7 +122,7 @@ class TritonInferencer {
 
     void getModelInputOutputMetaData();
 
-    bool isShmKeyPrefixInUse(const std::string& prefix);
+    bool isShmKeyPrefixInUse(const std::string& prefix) const;
 };
 
 #endif // OPENMPF_COMPONENTS_TRITON_INFERENCER_H

@@ -60,12 +60,12 @@ public:
               const cv::Mat1f &rn,
               const cv::Mat1f &qn);
 
-    KFTracker(KFTracker &&kft) noexcept: _kf(move(kft._kf)),
-                                         _t(kft._t),
-                                         _dt(kft._dt),
-                                         _roi(move(kft._roi)),
-                                         _qn(move(kft._qn)),
-                                         _state_trace(kft._state_trace.str()) {}
+    KFTracker(KFTracker &&kft): _kf(move(kft._kf)),
+                                _t(kft._t),
+                                _dt(kft._dt),
+                                _roi(move(kft._roi)),
+                                _qn(move(kft._qn)),
+                                _state_trace(kft._state_trace.str()) {}
 
     // diagnostic output function for debug/tuning
     void dump(const string& filename);

@@ -42,11 +42,10 @@ RUN apt-get update; \
 # Also, generate TensorRT plugin libraries.
 RUN --mount=type=tmpfs,target=/tmp \
     cd /tmp; \
-    git clone https://github.com/openmpf/yolov4-triton-tensorrt.git; \
-    cd yolov4-triton-tensorrt; \
+    curl --location 'https://github.com/openmpf/yolov4-triton-tensorrt/archive/refs/heads/openmpf/dim-608.tar.gz' \
+        | tar --extract --gzip; \
+    cd yolov4-triton-tensorrt-openmpf-dim-608; \
     mkdir -p /plugins; \
-    # Support 608x608 images \
-    git checkout openmpf/dim-608; \
     mkdir build.608; \
     cd build.608; \
     cmake ..; \
