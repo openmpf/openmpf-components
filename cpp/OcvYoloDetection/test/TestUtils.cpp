@@ -36,6 +36,7 @@
 
 #include "TestUtils.h"
 
+using namespace std;
 using namespace MPF::COMPONENT;
 
 bool init_logging() {

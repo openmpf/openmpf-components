@@ -43,8 +43,6 @@
 }
 
 
-using namespace MPF::COMPONENT;
-
 bool init_logging();
 
 OcvYoloDetection initComponent();
@@ -64,42 +62,59 @@ T findDetectionWithClass(const std::string &classification,
 
 float iou(const cv::Rect &r1, const cv::Rect &r2);
 
-float iou(const MPFImageLocation &l1, const MPFImageLocation &l2);
+float iou(const MPF::COMPONENT::MPFImageLocation &l1,
+          const MPF::COMPONENT::MPFImageLocation &l2);
 
-Properties getTinyYoloConfig(float confidenceThreshold = 0.5);
+MPF::COMPONENT::Properties getTinyYoloConfig(float confidenceThreshold = 0.5);
 
-Properties getYoloConfig(float confidenceThreshold = 0.5);
+MPF::COMPONENT::Properties getYoloConfig(float confidenceThreshold = 0.5);
 
-Properties getTritonYoloConfig(const std::string &tritonServer, float confidenceThreshold = 0.5);
+MPF::COMPONENT::Properties getTritonYoloConfig(const std::string &tritonServer,
+                                               float confidenceThreshold = 0.5);
 
-bool same(MPFImageLocation &l1, MPFImageLocation &l2,
-          float confidenceTolerance, float iouTolerance,
+bool same(MPF::COMPONENT::MPFImageLocation &l1,
+          MPF::COMPONENT::MPFImageLocation &l2,
+          float confidenceTolerance,
+          float iouTolerance,
           float &confidenceDiff,
           float &iouValue);
 
-bool same(MPFImageLocation &l1, MPFImageLocation &l2,
-          float confidenceTolerance = 0.01, float iouTolerance = 0.1);
+bool same(MPF::COMPONENT::MPFImageLocation &l1,
+          MPF::COMPONENT::MPFImageLocation &l2,
+          float confidenceTolerance = 0.01,
+          float iouTolerance = 0.1);
 
-bool same(MPFVideoTrack &t1, MPFVideoTrack &t2,
-          float confidenceTolerance, float iouTolerance,
+bool same(MPF::COMPONENT::MPFVideoTrack &t1,
+          MPF::COMPONENT::MPFVideoTrack &t2,
+          float confidenceTolerance,
+          float iouTolerance,
           float &confidenceDiff,
           float &aveIou);
 
-bool same(MPFVideoTrack &t1, MPFVideoTrack &t2, float confidenceTolerance = 0.01, float iouTolerance = 0.1);
+bool same(MPF::COMPONENT::MPFVideoTrack &t1,
+          MPF::COMPONENT::MPFVideoTrack &t2,
+          float confidenceTolerance = 0.01,
+          float iouTolerance = 0.1);
 
-void write_track_output(vector<MPFVideoTrack> &tracks, const string& outTrackFileName, MPFVideoJob &videoJob);
+void write_track_output(std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
+                        const std::string& outTrackFileName,
+                        MPF::COMPONENT::MPFVideoJob &videoJob);
 
-vector<MPFVideoTrack> read_track_output(const string& inTrackFileName);
+std::vector<MPF::COMPONENT::MPFVideoTrack> read_track_output(const std::string& inTrackFileName);
 
-void write_track_output_video(string inVideoFileName, vector<MPFVideoTrack> &tracks,
-                              const string& outVideoFileName, MPFVideoJob &videoJob);
+void write_track_output_video(std::string inVideoFileName,
+                              std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks,
+                              const std::string& outVideoFileName,
+                              MPF::COMPONENT::MPFVideoJob &videoJob);
 
-bool objectFound(const std::string &expectedObjectName, const Properties &detectionProperties);
+bool objectFound(const std::string &expectedObjectName,
+                 const MPF::COMPONENT::Properties &detectionProperties);
 
-bool objectFound(const std::string &expectedObjectName, int frameNumber,
-                 const std::vector<MPFVideoTrack> &tracks);
+bool objectFound(const std::string &expectedObjectName,
+                 int frameNumber,
+                 const std::vector<MPF::COMPONENT::MPFVideoTrack> &tracks);
 
 bool objectFound(const std::string &expected_object_name,
-                 const std::vector<MPFImageLocation> &detections);
+                 const std::vector<MPF::COMPONENT::MPFImageLocation> &detections);
 
 #endif // OPENMPF_COMPONENTS_TESTUTILS_H

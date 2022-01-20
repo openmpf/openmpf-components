@@ -32,6 +32,7 @@
 // TODO: Consider exposing a property to use piecewise white noise instead of continuous white noise.
 //#define PROCESS_NOISE PIECEWISE_WHITE
 
+using namespace std;
 using namespace MPF::COMPONENT;
 
 // Kalman Filter Dimensions (4x constant acceleration model)

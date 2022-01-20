@@ -41,6 +41,7 @@
 
 #include "TestUtils.h"
 
+using namespace std;
 using namespace MPF::COMPONENT;
 
 class OcvLocalYoloDetectionTestFixture : public ::testing::Test {
