@@ -229,8 +229,6 @@ bool OcvYoloDetection::Init() {
     logger_ = log4cxx::Logger::getLogger("OcvYoloDetection");
     LOG_DEBUG("Initializing OcvYoloDetector");
 
-    srand(time(NULL));
-
     auto pluginPath = GetRunDirectory() + "/OcvYoloDetection";
     modelsParser_.Init(pluginPath + "/models")
             .RegisterPathField("ocvdnn_network_config", &ModelSettings::ocvDnnNetworkConfigFile)

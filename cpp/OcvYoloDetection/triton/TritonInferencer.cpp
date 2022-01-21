@@ -337,8 +337,12 @@ std::string TritonInferencer::getModelNameAndVersion() const {
 
 
 std::string getRandomShmKeyPrefix() {
+    static unsigned seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    static std::default_random_engine generator(seed);
+    static std::uniform_int_distribution<int> distribution;
+
     std::stringstream ss;
-    ss << "/OcvYoloDetection_" << hostname() << "_" << std::setw(10) << std::setfill('0') << rand();
+    ss << "/OcvYoloDetection_" << hostname() << "_" << std::setw(10) << std::setfill('0') << distribution(generator);
     return ss.str();
 }
 

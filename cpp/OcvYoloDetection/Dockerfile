@@ -55,10 +55,11 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_setup
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=tmpfs,target=/var/cache/yum \
      yum install --assumeyes --nogpgcheck \
-        git gdb which mlocate bzip2 \
+        # git is needed by the Triton client CMakeLists.txt
+        git \
         cuda-cufft-dev-10-2 cuda-npp-dev-10-2 \
         libtool openssl-devel rapidjson-devel \
-        # gcc4.9.4 dependancies
+        # gcc4.9.4 dependencies
         gmp-devel mpfr-devel libmpc-devel; \
     # add libb64 needed by Triton
     rpm --nosignature -i http://www6.atomicorp.com/channels/atomic/centos/7/x86_64/RPMS/libb64-libs-1.2.1-2.1.el7.art.x86_64.rpm; \
@@ -95,7 +96,7 @@ RUN curl --location 'https://github.com/Kitware/CMake/releases/download/v3.21.1/
 ARG TRITON_REPO_TAG=r21.06
 ENV TRITON_VERSION=2.11.0
 RUN --mount=type=tmpfs,target=/tmp \
-     mkdir -p /tmp/triton; \
+    mkdir -p /tmp/triton; \
     cd /tmp/triton; \
     git clone -b ${TRITON_REPO_TAG}  https://github.com/triton-inference-server/client.git; \
     # build the client library
@@ -155,6 +156,7 @@ ARG TRITON_SERVER=ocv-yolo-detection-server:8001
 
 RUN --mount=target=. \
     --mount=from=download_library_source,source=/apps/source/dlib-sources,target=/apps/source/dlib-sources \
+    --mount=from=download_weights,source=/weights/yolov4.weights,target=plugin-files/models/yolov4.weights \
     build-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then \
         cd $BUILD_DIR/test; \
@@ -162,7 +164,7 @@ RUN --mount=target=. \
     fi; \
     if [ "${RUN_GPU_TESTS,,}" == true ]; then \
         cd $BUILD_DIR/test; \
-        ./OcvTritonYoloDetectionTest ${TRITON_SERVER}; \
+        ./OcvTritonYoloDetectionTest $TRITON_SERVER; \
     fi
 
 ########################################################################
