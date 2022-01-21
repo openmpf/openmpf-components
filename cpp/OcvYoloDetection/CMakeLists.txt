@@ -31,8 +31,8 @@ set(CMAKE_CXX_STANDARD 11)
 #ADD_DEFINITIONS("-std=c++11")
 add_definitions(-Wfatal-errors)
 
-set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
-#set(CMAKE_BUILD_TYPE Release)         # build release version
+#set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
+set(CMAKE_BUILD_TYPE Release)          # build release version
 #set(CMAKE_BUILD_TYPE Debug)           # build debug version
 
 # Uncomment to enable line numbers in log messages and exceptions. Should only be used when debugging, not production.
