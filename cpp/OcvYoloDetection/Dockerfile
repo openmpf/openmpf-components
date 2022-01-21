@@ -156,7 +156,7 @@ ARG TRITON_SERVER=ocv-yolo-detection-server:8001
 
 RUN --mount=target=. \
     --mount=from=download_library_source,source=/apps/source/dlib-sources,target=/apps/source/dlib-sources \
-    --mount=from=download_weights,source=/weights/yolov4.weights,target=plugin-files/models/yolov4.weights \
+    --mount=from=download_weights,source=/weights/yolov4.weights,target=/home/mpf/component_build/plugin/OcvYoloDetection/models/yolov4.weights \
     build-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then \
         cd $BUILD_DIR/test; \
@@ -202,7 +202,7 @@ COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-
 
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=tmpfs,target=/var/cache/yum \
-    yum install --assumeyes openssh-server; \
+    yum install --assumeyes openssh-server gdb; \
     yum clean all
 
 RUN ssh-keygen -A
