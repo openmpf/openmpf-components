@@ -30,8 +30,7 @@ set -o errexit -o pipefail -o xtrace
 
 cd /model-gen/yolo
 
-YOLO_608_PLUGIN_LIB="/plugins/libyolo608layerplugin.so"
-env LD_PRELOAD="$YOLO_608_PLUGIN_LIB" ./gen-engine-608
+./gen-engine-608
 
 # Run the "command" specified in the Docker service entry.
-env /opt/tritonserver/nvidia_entrypoint.sh "$@"
+/opt/tritonserver/nvidia_entrypoint.sh "$@"

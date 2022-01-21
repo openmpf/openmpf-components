@@ -57,6 +57,8 @@ COPY models/yolo-608.config.pbtxt /models/yolo-608/1/config.pbtxt
 
 COPY docker-entrypoint.sh /opt/tritonserver
 
+ENV LD_PRELOAD /plugins/libyolo608layerplugin.so
+
 ENTRYPOINT ["/opt/tritonserver/docker-entrypoint.sh"]
 
 LABEL org.label-schema.license="Apache 2.0" \
