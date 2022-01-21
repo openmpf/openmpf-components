@@ -111,11 +111,3 @@ communicating with a Triton server.
   To run them at build time specify `--build-arg RUN_GPU_TESTS=true` and `--build-arg TRITON_SERVER=<host>:<port>`.
 
 Note that both sets of tests can be run as part of the same `docker build` command, if desired.
-
-Additionally, the Triton tests can be run on a Docker image that is already built by using following command:
-
-`docker run --rm -w /opt/mpf/plugins/OcvYoloDetection/test --entrypoint ./OcvTritonYoloDetectionTest openmpf_ocv_yolo_detection:<tag-name> <triton-host>:<triton-port>`
-
-To execute the tests on a running Docker container, you can use the following command:
-
-`docker exec -w /opt/mpf/plugins/OcvYoloDetection/test <container-id> ./OcvTritonYoloDetectionTest <triton-host>:<triton-port>`

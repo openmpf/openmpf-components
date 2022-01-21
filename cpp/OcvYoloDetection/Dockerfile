@@ -150,12 +150,20 @@ FROM build_setup as build_component
 ENV TRITON_SUPPORT=ON
 
 ARG RUN_TESTS=false
+ARG RUN_GPU_TESTS=false
+ARG TRITON_SERVER=ocv-yolo-detection-server:8001
 
 RUN --mount=target=. \
     --mount=from=download_library_source,source=/apps/source/dlib-sources,target=/apps/source/dlib-sources \
     build-component.sh; \
-    if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test; ./OcvLocalYoloDetectionTest; fi
-
+    if [ "${RUN_TESTS,,}" == true ]; then \
+        cd $BUILD_DIR/test; \
+        ./OcvLocalYoloDetectionTest; \
+    fi; \
+    if [ "${RUN_GPU_TESTS,,}" == true ]; then \
+        cd $BUILD_DIR/test; \
+        ./OcvTritonYoloDetectionTest ${TRITON_SERVER}; \
+    fi
 
 ########################################################################
 # CLion
@@ -218,37 +226,13 @@ CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
-RUN --mount=type=tmpfs,target=/tmp \
-    --mount=type=tmpfs,target=/var/cache/yum \
-    yum install -y epel-release; \
-    yum install --assumeyes gtest-devel; \
-    yum clean all;
-
 COPY --from=download_weights /weights $PLUGINS_DIR/OcvYoloDetection/models
 
 COPY --from=build_component $BUILD_DIR/plugin/OcvYoloDetection $PLUGINS_DIR/OcvYoloDetection
 
 COPY --from=build_component $BUILD_DIR/libmpfOcvYoloDetection.so $PLUGINS_DIR/OcvYoloDetection/lib/
 
-# Copy test files so that they can be used to debug issues later at runtime.
-COPY --from=build_component $BUILD_DIR/test/OcvLocalYoloDetectionTest \
-                            $PLUGINS_DIR/OcvYoloDetection/test/OcvLocalYoloDetectionTest
-COPY --from=build_component $BUILD_DIR/test/OcvTritonYoloDetectionTest \
-                            $PLUGINS_DIR/OcvYoloDetection/test/OcvTritonYoloDetectionTest
-COPY --from=build_component $BUILD_DIR/test/data \
-                            $PLUGINS_DIR/OcvYoloDetection/test/data
-COPY --from=build_component $BUILD_DIR/test/log4cxx.properties \
-                            $PLUGINS_DIR/OcvYoloDetection/test/log4cxx.properties
-RUN ln -s $PLUGINS_DIR $PLUGINS_DIR/OcvYoloDetection/plugin
-
 ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvYoloDetection/lib
-
-ARG RUN_GPU_TESTS=false
-ARG TRITON_SERVER=ocv-yolo-detection-server:8001
-RUN if [ "${RUN_GPU_TESTS,,}" == true ]; then \
-        cd $PLUGINS_DIR/OcvYoloDetection/test; \
-        ./OcvTritonYoloDetectionTest ${TRITON_SERVER}; \
-    fi
 
 LABEL org.label-schema.license="Mixed" \
       org.label-schema.name="OpenMPF OpenCV Yolo Detection" \
