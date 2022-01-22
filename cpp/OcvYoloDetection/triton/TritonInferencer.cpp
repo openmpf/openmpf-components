@@ -144,7 +144,7 @@ void TritonInferencer::getModelInputOutputMetaData() {
             &modelConfigResponse, fullModelName_, modelVersion_),
                 MPF_COULD_NOT_READ_DATAFILE,
                 "Unable to get model " + modelNameAndVersion + " configuration from Triton inference server " +
-                serverUrl_ + ".");
+                serverUrl_);
 
     // get model inputs and outputs data from server
     maxBatchSize_ = modelConfigResponse.config().max_batch_size();
@@ -275,7 +275,7 @@ void TritonInferencer::infer(
                                   }
                                   extractDetectionsCallback(outBlobs, begin, end);
                               }
-                              catch (std::exception &ex) {
+                              catch (const std::exception &ex) {
                                   eptr = std::current_exception();
                               }
                               releaseClientId(clientId, eptr);
@@ -372,7 +372,7 @@ TritonInferencer::TritonInferencer(const Config &cfg)
     TR_CHECK_OK(triton::client::InferenceServerGrpcClient::Create(
             &statusClient_, serverUrl_, cfg.tritonVerboseClient, cfg.tritonUseSSL, sslOptions_),
                 MPF_NETWORK_ERROR,
-                "Unable to create Triton inference client for " + serverUrl_ + ".");
+                "Unable to create Triton inference client for " + serverUrl_);
 
     // do some check on server and model
     checkServerIsAlive(cfg.tritonMaxConnectionSetupRetries, cfg.tritonConnectionSetupRetryInitialDelay);
