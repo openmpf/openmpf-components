@@ -34,9 +34,9 @@
 
 class WhitelistFilter {
 public:
-    WhitelistFilter(const std::string& whiteListPath, const std::vector<std::string>& names);
+    WhitelistFilter(const std::string &whiteListPath, const std::vector<std::string> &names);
 
-    bool operator()(const std::string& className);
+    bool operator()(const std::string &className);
 
 private:
     std::unordered_set<std::string> whitelist_;

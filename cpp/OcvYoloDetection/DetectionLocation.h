@@ -69,7 +69,7 @@ public:
 
     /// compute normalized center to center distance
     float center2CenterDist(const Track &track) const;
-    
+
     /// compute deep feature similarity distance
     // TODO: Determine if we can make this "float featureDist(const Track &track) const"
     float featureDist(Track &track);
@@ -87,14 +87,13 @@ private:
 
     /// unit vector of with elements proportional to scores for each classes
     cv::Mat classFeature_;
-    
+
     /// dft for matching-up detections via phase correlation
     cv::Mat dftFeature_;
 
     /// get Hanning window of specified size
     cv::Mat1f getHanningWindow(const cv::Size &size) const;
 };
-
 
 
 #endif //OPENMPF_COMPONENTS_DETECTIONLOCATION_H

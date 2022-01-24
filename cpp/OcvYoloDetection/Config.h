@@ -36,15 +36,23 @@
 #include <MPFDetectionObjects.h>
 
 
+
 /** ****************************************************************************
 * logging shorthand macros
 ****************************************************************************** */
-#define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log, MSG) }
-#define LOG_DEBUG(MSG){ LOG4CXX_DEBUG(Config::log, MSG) }
-#define LOG_INFO(MSG){ LOG4CXX_INFO (Config::log, MSG) }
-#define LOG_WARN(MSG){ LOG4CXX_WARN (Config::log, MSG) }
-#define LOG_ERROR(MSG){ LOG4CXX_ERROR(Config::log, MSG) }
-#define LOG_FATAL(MSG){ LOG4CXX_FATAL(Config::log, MSG) }
+#ifdef DEBUG_LINE_NUMBERS
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define LOG_PREFIX "." <<  std::setw(20) << std::string(__FUNCTION__).substr(0,20) << ":" << std::setw(4) << __LINE__ <<" - "
+#else
+#define LOG_PREFIX ""
+#endif
+
+#define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log, LOG_PREFIX << MSG) }
+#define LOG_DEBUG(MSG){ LOG4CXX_DEBUG(Config::log, LOG_PREFIX << MSG) }
+#define LOG_INFO(MSG){ LOG4CXX_INFO (Config::log, LOG_PREFIX << MSG) }
+#define LOG_WARN(MSG){ LOG4CXX_WARN (Config::log, LOG_PREFIX << MSG) }
+#define LOG_ERROR(MSG){ LOG4CXX_ERROR(Config::log, LOG_PREFIX << MSG) }
+#define LOG_FATAL(MSG){ LOG4CXX_FATAL(Config::log, LOG_PREFIX << MSG) }
 
 
 class Config {
@@ -53,8 +61,8 @@ public:
     float confidenceThreshold;
 
     /// non-maximum suppression threshold to remove redundant bounding boxes
-    float nmsThresh;                
-    
+    float nmsThresh;
+
     /// number of class labels and confidence scores to return for a bbox
     int numClassPerRegion;
 
@@ -112,15 +120,51 @@ public:
 
     bool enableDebug;
 
+    /// enable inference server use
+    bool tritonEnabled;
+
+    /// triton inference server to use
+    std::string tritonServer;
+
+    /// triton inference server model to use
+    std::string tritonModelName;
+
+    /// version of model (e.g. "" for latest)
+    std::string tritonModelVersion;
+
+    /// number of classes returned by model
+    int tritonNumClasses;
+
+    /// inference server maximum number of concurrent video frame inferencing request
+    int tritonMaxInferConcurrency;
+
+    /// inference server client request timeout in micro-seconds
+    uint32_t tritonClientTimeout;
+
+    /// max setup retries for inference server connection
+    int tritonMaxConnectionSetupRetries;
+
+    /// initial delay before attempting inference server connection again
+    int tritonConnectionSetupRetryInitialDelay;
+
+    /// verbose inference server client mode
+    bool tritonVerboseClient;
+
+    /// use ssl encryption with inference server client
+    bool tritonUseSSL;
+
+    /// use shared memory for client-server communication
+    bool tritonUseShm;
+
     /// shared log object
     static const log4cxx::LoggerPtr log;
 
 
-    explicit Config(const MPF::COMPONENT::Properties& jobProps);
+    explicit Config(const MPF::COMPONENT::Properties &jobProps);
 };
 
 /// Dump Config to a stream
-std::ostream &operator<<(std::ostream &out, const Config &cfg);  
+std::ostream &operator<<(std::ostream &out, const Config &cfg);
 
 
 #endif //OPENMPF_COMPONENTS_CONFIG_H
