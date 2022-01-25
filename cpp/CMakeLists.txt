@@ -31,12 +31,12 @@ project(openmpf-components)
 set(CMAKE_CXX_STANDARD 11)
 
 add_subdirectory(OcvFaceDetection)
-add_subdirectory(OalprLicensePlateTextDetection)
+#add_subdirectory(OalprLicensePlateTextDetection)
 add_subdirectory(OcvDnnDetection)
-add_subdirectory(TesseractOCRTextDetection)
+#add_subdirectory(TesseractOCRTextDetection)
 add_subdirectory(SceneChangeDetection)
 add_subdirectory(KeywordTagging)
-add_subdirectory(OcvYoloDetection)
+#add_subdirectory(OcvYoloDetection)
 
 
 

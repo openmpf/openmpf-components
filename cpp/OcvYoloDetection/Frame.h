@@ -31,6 +31,7 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <MPFDetectionObjects.h>
 
 /* **************************************************************************
 *  Represent a frame with time stamp
@@ -49,19 +50,22 @@ public:
     /// bgr image frame
     cv::Mat data;
 
+    cv::Mat getDataAsResizedFloat(
+            const cv::Size2i &targetSize,
+            const int cvBorderType = cv::BORDER_CONSTANT,
+            const cv::Scalar &cvBorderValue = cv::Scalar_<int>(127, 127, 127)) const;
+
     cv::Rect getRect() const {
         return {cv::Point(0, 0), data.size()};
     }
 
+
     Frame(size_t idx, double time, double timeStep, cv::Mat data)
-        : idx(idx)
-        , time(time)
-        , timeStep(timeStep)
-        , data(std::move(data)) { };
+            : idx(idx), time(time), timeStep(timeStep), data(std::move(data)) {};
 
 
     explicit Frame(cv::Mat data)
-        : Frame(0, 0, 0, std::move(data)) {
+            : Frame(0, 0, 0, std::move(data)) {
     }
 };
 
