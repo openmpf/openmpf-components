@@ -39,7 +39,7 @@
 #include <ModelsIniParser.h>
 
 #include "Config.h"
-#include "YoloNetwork.h"
+#include "yolo_network/YoloNetwork.h"
 
 
 class OcvYoloDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
@@ -62,10 +62,9 @@ private:
 
     MPF::COMPONENT::ModelsIniParser<ModelSettings> modelsParser_;
 
-    std::unique_ptr<YoloNetwork> cachedYoloNetwork_;
+    std::unique_ptr<YoloNetwork> yoloNetwork_;
 
-    YoloNetwork& GetYoloNetwork(const MPF::COMPONENT::Properties &jobProperties,
-                                const Config &config);
+    void InitYoloNetwork(const MPF::COMPONENT::Properties &jobProperties, const Config &config);
 };
 
 #endif //OPENMPF_COMPONENTS_OCVYOLODETECTION_H

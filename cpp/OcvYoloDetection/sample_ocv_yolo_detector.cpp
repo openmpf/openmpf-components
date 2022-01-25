@@ -24,15 +24,16 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include "OcvYoloDetection.h"
 
-#include <stdlib.h>
 #include <stdio.h>
 #include <string>
 #include <iostream>
 
 #include <QCoreApplication>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
+
+#include "Frame.h"
+#include "OcvYoloDetection.h"
 
 using namespace std;
 using namespace MPF;
@@ -41,7 +42,7 @@ using namespace COMPONENT;
 //-----------------------------------------------------------------------------
 // Process and image
 //-----------------------------------------------------------------------------
-void processImage(MPFDetectionComponent *detection_engine, int argc, char* argv[]) {
+void processImage(MPFDetectionComponent *detection_engine, char* argv[]) {
 
     MPFImageJob job("Testing", argv[1], { }, { });
     vector<MPFImageLocation> locations = detection_engine->GetDetections(job);
@@ -66,6 +67,7 @@ void processVideo(MPFDetectionComponent *detection_engine, int argc, char* argv[
 
     map<string, string> algorithm_properties;
     algorithm_properties.insert(pair<string, string>("FRAME_INTERVAL", to_string(detection_interval)));
+    algorithm_properties.insert(pair<string, string>("FRAME_QUEUE_CAPACITY", "16"));
 
     MPFVideoJob job("Testing", argv[1], stoi(argv[2]), stoi(argv[3]), algorithm_properties, { });
     vector<MPFVideoTrack> tracks = detection_engine->GetDetections(job);
@@ -114,7 +116,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (argc == 2) {
-        processImage(detection_engine, argc, argv);
+        processImage(detection_engine, argv);
     } else {
         processVideo(detection_engine, argc, argv);
     }

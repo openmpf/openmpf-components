@@ -36,8 +36,6 @@
 #include "Config.h"
 
 
-using namespace std;
-
 class KFTracker {
 
 public:
@@ -45,31 +43,31 @@ public:
 
     void setStatePostFromBBox(const cv::Rect2i &r);
 
-    const cv::Rect2i predictedBBox() const { return _bboxFromState(_kf.statePre) & _roi; };
+    cv::Rect2i predictedBBox() const { return _bboxFromState(_kf.statePre) & _roi; };
 
-    const cv::Rect2i correctedBBox() const { return _bboxFromState(_kf.statePost) & _roi; };
+    cv::Rect2i correctedBBox() const { return _bboxFromState(_kf.statePost) & _roi; };
 
-    void predict(const float t);         ///< advance Kalman state to time t and get predicted bbox
+    void predict(float t);         ///< advance Kalman state to time t and get predicted bbox
     void correct(const cv::Rect2i &rec); ///< correct current filter state with measurement rec
     float
-    testResidual(const cv::Rect2i &rec, const int snapDist) const;  ///< return a normalized error if rec is assigned
-    KFTracker(const float t,
-              const float dt,
+    testResidual(const cv::Rect2i &rec, int snapDist) const;  ///< return a normalized error if rec is assigned
+    KFTracker(float t,
+              float dt,
               const cv::Rect2i &rec0,
               const cv::Rect2i &roi,
               const cv::Mat1f &rn,
               const cv::Mat1f &qn);
 
-    KFTracker(KFTracker &&kft) : _kf(move(kft._kf)),
-                                 _t(kft._t),
-                                 _dt(kft._dt),
-                                 _roi(move(kft._roi)),
-                                 _qn(move(kft._qn)),
-                                 _state_trace(kft._state_trace.str()) {}
+    KFTracker(KFTracker &&kft): _kf(std::move(kft._kf)),
+                                _t(kft._t),
+                                _dt(kft._dt),
+                                _roi(std::move(kft._roi)),
+                                _qn(std::move(kft._qn)),
+                                _state_trace(kft._state_trace.str()) {}
 
     // diagnostic output function for debug/tuning
-    void dump(string filename);
-    friend ostream &operator<<(ostream &out, const KFTracker &kft);
+    void dump(const std::string& filename);
+    friend std::ostream &operator<<(std::ostream &out, const KFTracker &kft);
 
 private:
     mutable cv::KalmanFilter _kf;          ///< Kalman filter for bounding box
@@ -77,7 +75,7 @@ private:
     float                    _dt;          ///< time step to use for filter updates
     cv::Rect2i               _roi;         ///< canvas clipping limits for bboxes returned by filter
     cv::Mat1f                _qn;          ///< Kalman filter process noise variances (i.e. unknown accelerations) [ax,ay,aw,ah]
-    stringstream             _state_trace; ///< time series of states for csv file output supporting debug/tuning
+    std::stringstream        _state_trace; ///< time series of states for csv file output supporting debug/tuning
 
     static cv::Mat1f _measurementFromBBox(const cv::Rect2i &r);
 

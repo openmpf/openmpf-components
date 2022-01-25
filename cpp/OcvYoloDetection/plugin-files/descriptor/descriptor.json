@@ -38,9 +38,87 @@
         },
         {
           "name": "MODELS_DIR_PATH",
-          "description": "Path to models directory.",
+          "description": "Only applies when using OpenCV DNN (not Triton). Path to models directory.",
           "type": "STRING",
           "propertiesKey": "detection.models.dir.path"
+        },
+        {
+          "name": "CUDA_DEVICE_ID",
+          "description": "Only applies when using OpenCV DNN (not Triton). CUDA device / GPU to use. Set to -1 to only use CPU.",
+          "type": "INT",
+          "propertiesKey": "detection.cuda.device.id"
+        },
+        {
+          "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
+          "description": "Only applies when using OpenCV DNN (not Triton). If true will fallback to CPU only when GPU fails to initialize.",
+          "type": "BOOLEAN",
+          "propertiesKey": "detection.use.cpu.when.gpu.problem"
+        },
+        {
+          "name": "ENABLE_TRITON",
+          "description": "If true, inferencing will be performed via a configured Triton inference server (not OpenCV DNN).",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "TRITON_SERVER",
+          "description": "Triton server <host>:<port> to use for inferencing.",
+          "type": "STRING",
+          "defaultValue": "ocv-yolo-detection-server:8001"
+        },
+        {
+          "name": "TRITON_MODEL_VERSION",
+          "description": "Triton server model version to use for inferencing. Use empty string for the latest.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "TRITON_MODEL_NUM_CLASSES",
+          "description": "Triton server model number of possible returned classes.",
+          "type": "INT",
+          "defaultValue": "80"
+        },
+        {
+          "name": "TRITON_MAX_INFER_CONCURRENCY",
+          "description": "Simultaneous client connections to Triton server. Should be set to number of GPUs available on the server.",
+          "type": "INT",
+          "defaultValue": "4"
+        },
+        {
+          "name": "TRITON_INFER_TIMEOUT_US",
+          "description": "Time in microseconds after which Triton server client requests timeout. 0 means the client will wait forever.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
+          "name": "TRITON_MAX_CONNECTION_SETUP_RETRIES",
+          "description": "Maximum number of retry attempts for establishing a connection to the inference server after the first connection failure.",
+          "type": "INT",
+          "defaultValue": "5"
+        },
+        {
+          "name": "TRITON_CONNECTION_SETUP_RETRY_INITIAL_DELAY",
+          "description": "The time to sleep before trying to connect again (first retry), in seconds. The second retry will wait 2x this long, the third retry will wait 3x this long, etc.",
+          "type": "INT",
+          "defaultValue": "5"
+        },
+        {
+          "name": "TRITON_VERBOSE_CLIENT",
+          "description": "If true, inference server client messaging generates verbose log messages.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "TRITON_USE_SSL",
+          "description": "If true, inference server client connection uses SSL.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "TRITON_USE_SHM",
+          "description": "If true, inference server client communication uses shared memory (requires client and server to be on same machine).",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
         },
         {
           "name": "NET_INPUT_IMAGE_SIZE",
@@ -68,7 +146,7 @@
         },
         {
           "name": "NUMBER_OF_CLASSIFICATIONS_PER_REGION",
-          "description": "Number of classification to return per detection.",
+          "description": "Number of classifications to return per detection.",
           "type": "INT",
           "defaultValue": "5"
         },
@@ -112,13 +190,13 @@
           "name": "TRACKING_DFT_SIZE",
           "description": "Discrete Fourier transform size for bbox alignment via phase correlation.",
           "type": "INT",
-          "defaultValue": "256"
+          "defaultValue": "128"
         },
         {
           "name": "TRACKING_DISABLE_MOSSE_TRACKER",
           "description": "Disable builtin backup OpenCV MOSSE tracking. OpenCV MOSSE tracking is performed in an attempt to continue a track when there are no compatible Yolo-generated detections in a given frame.",
           "type": "BOOLEAN",
-          "defaultValue": "false"
+          "defaultValue": "true"
         },
         {
           "name": "TRACKING_DFT_USE_HANNING_WINDOW",
@@ -155,18 +233,6 @@
           "description": "Add track assignment information as detection properties.",
           "type": "BOOLEAN",
           "defaultValue": "false"
-        },
-        {
-          "name": "CUDA_DEVICE_ID",
-          "description": "CUDA device / GPU to use. Set to -1 to only use CPU.",
-          "type": "INT",
-          "propertiesKey": "detection.cuda.device.id"
-        },
-        {
-          "name": "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM",
-          "description": "If true will fallback to CPU only when GPU fails to initialize.",
-          "type": "BOOLEAN",
-          "propertiesKey": "detection.use.cpu.when.gpu.problem"
         }
       ]
     }
@@ -241,32 +307,44 @@
       ]
     },
     {
-      "name": "OCV TINY YOLO V3 OBJECT DETECTION ACTION",
-      "description": "Runs the TINY YOLO V3 object detection Darknet model.",
+      "name": "OCV TRITON YOLO OBJECT DETECTION ACTION",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server.",
       "algorithm": "OCVYOLO",
       "properties": [
         {
           "name": "MODEL_NAME",
-          "value": "TINY YOLO V3"
-        },
-        {
-          "name": "NET_INPUT_IMAGE_SIZE",
-          "value": "416"
-        }
-      ]
-    },
-    {
-      "name": "OCV YOLO V3 OBJECT DETECTION ACTION",
-      "description": "Runs the YOLO V3 object detection Darknet model.",
-      "algorithm": "OCVYOLO",
-      "properties": [
-        {
-          "name": "MODEL_NAME",
-          "value": "YOLO V3"
+          "value": "YOLO"
         },
         {
           "name": "NET_INPUT_IMAGE_SIZE",
           "value": "608"
+        },
+        {
+          "name": "ENABLE_TRITON",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "name": "OCV TRITON YOLO VEHICLE DETECTION ACTION",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server, and only detects road vehicles (cars, buses, trucks).",
+      "algorithm": "OCVYOLO",
+      "properties": [
+        {
+          "name": "MODEL_NAME",
+          "value": "YOLO"
+        },
+        {
+          "name": "NET_INPUT_IMAGE_SIZE",
+          "value": "608"
+        },
+        {
+          "name": "CLASS_WHITELIST_FILE",
+          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-whitelist.txt"
+        },
+        {
+          "name": "ENABLE_TRITON",
+          "value": "true"
         }
       ]
     }
@@ -301,17 +379,17 @@
       ]
     },
     {
-      "name": "OCV TINY YOLO V3 OBJECT DETECTION TASK",
-      "description": "Runs the TINY YOLO V3 object detection Darknet model.",
+      "name": "OCV TRITON YOLO OBJECT DETECTION TASK",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server.",
       "actions": [
-        "OCV TINY YOLO V3 OBJECT DETECTION ACTION"
+        "OCV TRITON YOLO OBJECT DETECTION ACTION"
       ]
     },
     {
-      "name": "OCV YOLO V3 OBJECT DETECTION TASK",
-      "description": "Runs the YOLO V3 object detection Darknet model.",
+      "name": "OCV TRITON YOLO VEHICLE DETECTION TASK",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server, and only detects road vehicles (cars, buses, trucks).",
       "actions": [
-        "OCV YOLO V3 OBJECT DETECTION ACTION"
+        "OCV TRITON YOLO VEHICLE DETECTION ACTION"
       ]
     }
   ],
@@ -377,32 +455,32 @@
       ]
     },
     {
-      "name": "OCV TINY YOLO V3 OBJECT DETECTION PIPELINE",
-      "description": "Runs the TINY YOLO V3 object detection Darknet model.",
+      "name": "OCV TRITON YOLO OBJECT DETECTION PIPELINE",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server.",
       "tasks": [
-        "OCV TINY YOLO V3 OBJECT DETECTION TASK"
+        "OCV TRITON YOLO OBJECT DETECTION TASK"
       ]
     },
     {
-      "name": "OCV TINY YOLO V3 OBJECT DETECTION (WITH MARKUP) PIPELINE",
-      "description": "Runs the TINY YOLO object detection Darknet model and produces markup.",
+      "name": "OCV TRITON YOLO OBJECT DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server and produces markup.",
       "tasks": [
-        "OCV TINY YOLO V3 OBJECT DETECTION TASK",
+        "OCV TRITON YOLO OBJECT DETECTION TASK",
         "OCV GENERIC MARKUP TASK"
       ]
     },
     {
-      "name": "OCV YOLO V3 OBJECT DETECTION PIPELINE",
-      "description": "Runs the YOLO V3 object detection Darknet model.",
+      "name": "OCV TRITON YOLO VEHICLE DETECTION PIPELINE",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server, and only detects road vehicles (cars, buses, trucks)",
       "tasks": [
-        "OCV YOLO V3 OBJECT DETECTION TASK"
+        "OCV TRITON YOLO VEHICLE DETECTION TASK"
       ]
     },
     {
-      "name": "OCV YOLO V3 OBJECT DETECTION (WITH MARKUP) PIPELINE",
-      "description": "Runs the YOLO object detection Darknet model and produces markup.",
+      "name": "OCV TRITON YOLO VEHICLE DETECTION (WITH MARKUP) PIPELINE",
+      "description": "Runs the YOLO object detection TensorRT engine on the Triton server, and only detects road vehicles (cars, buses, trucks). Produces markup.",
       "tasks": [
-        "OCV YOLO V3 OBJECT DETECTION TASK",
+        "OCV TRITON YOLO VEHICLE DETECTION TASK",
         "OCV GENERIC MARKUP TASK"
       ]
     }

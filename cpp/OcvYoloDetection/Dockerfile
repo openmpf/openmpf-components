@@ -34,8 +34,6 @@ FROM centos:7 as download_weights
 RUN mkdir /weights \
     && cd /weights \
     && curl --location --remote-name --fail \
-        https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov3.weights \
-    && curl --location --remote-name --fail \
         https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov4.weights
 
 
@@ -52,30 +50,193 @@ RUN mkdir --parents /apps/source/dlib-sources; \
         | tar --extract --bzip2 --directory /apps/source/dlib-sources
 
 
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_setup
 
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+     yum install --assumeyes --nogpgcheck \
+        # git is needed by the Triton client CMakeLists.txt
+        git \
+        cuda-cufft-dev-10-2 cuda-npp-dev-10-2 \
+        libtool openssl-devel rapidjson-devel \
+        # gcc4.9.4 dependencies
+        gmp-devel mpfr-devel libmpc-devel; \
+    # add libb64 needed by Triton
+    rpm --nosignature -i http://www6.atomicorp.com/channels/atomic/centos/7/x86_64/RPMS/libb64-libs-1.2.1-2.1.el7.art.x86_64.rpm; \
+    rpm --nosignature -i http://www6.atomicorp.com/channels/atomic/centos/7/x86_64/RPMS/libb64-devel-1.2.1-2.1.el7.art.x86_64.rpm; \
+    yum clean all;
+
+# install gcc 4.9.4
+RUN --mount=type=tmpfs,target=/tmp \
+   cd /tmp; \
+   curl https://ftp.gnu.org/gnu/gcc/gcc-4.9.4/gcc-4.9.4.tar.gz | tar --extract --gzip; \
+   mkdir -p /tmp/gcc-4.9.4/build; \
+   cd /tmp/gcc-4.9.4/build; \
+   ../configure --enable-languages=c,c++ --disable-multilib; \
+   make -j$(nproc) && make install; \
+   echo '/usr/local/lib64'   > /etc/ld.so.conf.d/locallib64.conf; \
+   ldconfig; \
+   rm --recursive /tmp/gcc-4.9.4;
+
+ENV CC=/usr/local/bin/gcc
+ENV CXX=/usr/local/bin/g++
+ENV CXXFLAGS=-std=c++11
+ENV LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
+
+# install updated cmake 3.21.1, configure existing opencv
+RUN curl --location 'https://github.com/Kitware/CMake/releases/download/v3.21.1/cmake-3.21.1-linux-x86_64.tar.gz' \
+        | tar --extract --gzip --directory=/usr --strip-components=1; \
+    ln -sf /usr/bin/cmake /usr/bin/cmake3; \
+    echo '/opt/opencv-4.5.0/lib64' > /etc/ld.so.conf.d/opencv.conf; \
+    ldconfig; \
+    ln --symbolic '/opt/opencv-4.5.0/include/opencv4/opencv2' /usr/local/include/opencv2;
+
+# Triton Client build
+ARG TRITON_REPO_TAG=r21.06
+ENV TRITON_VERSION=2.11.0
+RUN --mount=type=tmpfs,target=/tmp \
+    mkdir -p /tmp/triton; \
+    cd /tmp/triton; \
+    git clone -b ${TRITON_REPO_TAG}  https://github.com/triton-inference-server/client.git; \
+    # build the client library
+    mkdir -p /tmp/triton/client/build; \
+    cd /tmp/triton/client/build; \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_CXX_FLAGS="-std=c++11 -Wfatal-errors" \
+          -DCMAKE_CXX_STANDARD=11 \
+          -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+          -DCMAKE_INSTALL_PREFIX:PATH=/opt/triton/ \
+          -DTRITON_VERSION="$TRITON_VERSION" \
+          -DTRITON_COMMON_REPO_TAG="$TRITON_REPO_TAG" \
+          -DTRITON_THIRD_PARTY_REPO_TAG="$TRITON_REPO_TAG" \
+          # GPU only needed if using cuda_shm
+          -DTRITON_ENABLE_GPU=ON \
+          -DTRITON_ENABLE_CC_GRPC=ON \
+          -DTRITON_ENABLE_CC_HTTP=OFF \
+          -DTRITON_ENABLE_PERF_ANALYZER=OFF \
+          -DTRITON_ENABLE_PYTHON_HTTP=OFF \
+          -DTRITON_ENABLE_PYTHON_GRPC=OFF \
+          -DTRITON_ENABLE_EXAMPLES=OFF \
+          -DTRITON_ENABLE_TESTS=OFF \
+          ..; \
+    Protobuf_DIR=/tmp/triton/client/build/third-party/protobuf \
+    make -j "$(nproc)"; \
+    # fix paths for 3rd party libraries installs
+    rm -rf /opt/triton/lib64/lib64; \
+    rsync -aL /tmp/triton/client/build/third-party/c-ares/include/ /opt/triton/include/; \
+    rsync -aL /tmp/triton/client/build/third-party/c-ares/lib/ /opt/triton/lib64/; \
+    rsync -aL /tmp/triton/client/build/third-party/c-ares/bin/ /opt/triton/bin/; \
+    rsync -aL /tmp/triton/client/build/third-party/curl/include/ /opt/triton/include/; \
+    rsync -aL /tmp/triton/client/build/third-party/curl/lib64/ /opt/triton/lib64/; \
+    rsync -aL /tmp/triton/client/build/third-party/curl/bin/ /opt/triton/bin/; \
+    rsync -aL /tmp/triton/client/build/third-party/grpc/include/ /opt/triton/include/; \
+    rsync -aL /tmp/triton/client/build/third-party/grpc/lib/ /opt/triton/lib64/; \
+    rsync -aL /tmp/triton/client/build/third-party/grpc/lib64/ /opt/triton/lib64/; \
+    rsync -aL /tmp/triton/client/build/third-party/grpc/bin/ /opt/triton/bin/; \
+    rsync -aL /tmp/triton/client/build/third-party/grpc/share/ /opt/triton/share/; \
+    rsync -aL /tmp/triton/client/build/third-party/protobuf/include/ /opt/triton/include/; \
+    rsync -aL /tmp/triton/client/build/third-party/protobuf/lib64/ /opt/triton/lib64/; \
+    rsync -aL /tmp/triton/client/build/third-party/protobuf/bin/ /opt/triton/bin/; \
+    ln -s /opt/triton/lib64 /opt/triton/lib; \
+    echo '/opt/triton/lib64' > /etc/ld.so.conf.d/triton.conf; \
+    ldconfig; \
+    rm --recursive /tmp/triton;
+
+ENV CMAKE_PREFIX_PATH="/opt/triton/lib64/cmake:${CMAKE_PREFIX_PATH}"
+
+
+FROM build_setup as build_component
+
+ENV TRITON_SUPPORT=ON
 
 ARG RUN_TESTS=false
+ARG RUN_GPU_TESTS=false
+ARG TRITON_SERVER=ocv-yolo-detection-server:8001
 
 RUN --mount=target=. \
     --mount=from=download_library_source,source=/apps/source/dlib-sources,target=/apps/source/dlib-sources \
+    --mount=from=download_weights,source=/weights/yolov4.weights,target=/home/mpf/component_build/plugin/OcvYoloDetection/models/yolov4.weights \
     build-component.sh; \
-    if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test; ./OcvYoloDetectionTest; fi
+    if [ "${RUN_TESTS,,}" == true ]; then \
+        cd $BUILD_DIR/test; \
+        ./OcvLocalYoloDetectionTest; \
+    fi; \
+    if [ "${RUN_GPU_TESTS,,}" == true ]; then \
+        cd $BUILD_DIR/test; \
+        ./OcvTritonYoloDetectionTest $TRITON_SERVER; \
+    fi
 
+########################################################################
+# CLion
+# Refer to: https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
+# Based on: https://github.com/JetBrains/clion-remote/blob/master/Dockerfile.centos7-cpp-env
+#
+# CLion toolchain settings:
+# - CMake: /usr/bin/cmake3
+# - Make: /usr/bin/gmake
+# - C Compiler: /usr/local/bin/gcc
+# - C++ Compiler: /usr/local/bin/g++
+# - Debugger: /usr/bin/gdb
+#
+# CLion CMake settings:
+# - CMake options: -DCMAKE_PREFIX_PATH=/opt/triton/lib64/cmake;/home/mpf/mpf-sdk-install/lib/cmake
+# - Environment: TRITON_SUPPORT=ON
+#
+# CLion deployment settings (SFTP Remote Development):
+# - [Connection] SSH configuration: root@localhost:2222
+# - [Connection] Root path: /home/mpf/component_src
+# - [Mappings] Deployment path: .
+#
+# Build command:
+#   COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker build . --progress=plain --target=clion \
+#   -t openmpf_ocv_yolo_detection:triton-clion
+#
+# Run command:
+#   docker run -d --cap-add sys_ptrace -p127.0.0.1:2222:22 --name clion_remote_env \
+#   openmpf_ocv_yolo_detection:triton-clion
+########################################################################
+FROM build_setup as clion
+
+COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
+
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=tmpfs,target=/var/cache/yum \
+    yum install --assumeyes openssh-server gdb; \
+    yum clean all
+
+RUN ssh-keygen -A
+
+RUN mkdir /root/.ssh; \
+  ( \
+    echo 'LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64'; \
+  ) > /root/.ssh/environment
+
+RUN ( \
+    echo 'LogLevel DEBUG2'; \
+    echo 'PermitRootLogin yes'; \
+    echo 'PasswordAuthentication yes'; \
+    echo 'PermitUserEnvironment yes'; \
+    echo 'Subsystem sftp /usr/libexec/openssh/sftp-server'; \
+  ) > /etc/ssh/sshd_config_test_clion
+
+# Set root user password for SSH access.
+RUN echo "openmpf123" | passwd root --stdin
+
+CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
 
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
 COPY --from=download_weights /weights $PLUGINS_DIR/OcvYoloDetection/models
 
-ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvYoloDetection/lib
-
 COPY --from=build_component $BUILD_DIR/plugin/OcvYoloDetection $PLUGINS_DIR/OcvYoloDetection
 
-COPY --from=build_component $BUILD_DIR/libmpfOcvYoloDetection.so \
-                            $PLUGINS_DIR/OcvYoloDetection/lib/
+COPY --from=build_component $BUILD_DIR/libmpfOcvYoloDetection.so $PLUGINS_DIR/OcvYoloDetection/lib/
 
-LABEL org.label-schema.license="Apache 2.0" \
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvYoloDetection/lib
+
+LABEL org.label-schema.license="Mixed" \
       org.label-schema.name="OpenMPF OpenCV Yolo Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
