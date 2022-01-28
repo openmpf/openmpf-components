@@ -88,7 +88,7 @@ public class SphinxSpeechDetectionComponent extends MPFAudioAndVideoDetectionCom
                 duration = Integer.valueOf(mediaProperties.get("DURATION"));
             } catch (NumberFormatException ex) {
                 LOG.error("Could not obtain duration.", ex);
-                throw new MPFComponentDetectionError(MPFDetectionError.MPF_PROPERTY_IS_NOT_INT, "Could not obtain duration.");
+                throw new MPFComponentDetectionError(MPFDetectionError.MPF_INVALID_PROPERTY, "DURATION property is not an integer.");
             }
             LOG.debug("For file {}, duration = {} milliseconds.", job.getDataUri(), duration);
 
