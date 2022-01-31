@@ -63,11 +63,11 @@ find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 
 if ($ENV{TRITON_SUPPORT})
-    find_package(gRPC REQUIRED)
-    find_package(CUDAToolkit REQUIRED)
-    find_package(TritonCommon REQUIRED)
-    find_package(TritonClient REQUIRED)
+    include_directories(/opt/triton/include)
+    find_library(grpc_client grpcclient REQUIRED PATHS /opt/triton/lib)
+    find_library(protobuf protobuf REQUIRED PATHS /opt/triton/lib)
 endif ()
+
 
 set(COMMON_OCV_YOLO_DETECTION_SOURCE_FILES
         util.cpp util.h
@@ -98,7 +98,8 @@ if ($ENV{TRITON_SUPPORT})
             mpfComponentInterface
             mpfDetectionComponentApi
             mpfComponentUtils
-            TritonClient::grpcclient_static
+            ${grpc_client}
+            ${protobuf}
             ${OpenCV_LIBS}
             dlib)
 else ()

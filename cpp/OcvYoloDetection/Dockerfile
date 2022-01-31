@@ -48,67 +48,13 @@ RUN mkdir --parents /apps/source/dlib-sources; \
         | tar --extract --bzip2 --directory /apps/source/dlib-sources
 
 
+RUN mkdir /opt/triton \
+    && wget -O- https://github.com/triton-inference-server/server/releases/download/v2.11.0/v2.11.0_ubuntu2004.clients.tar.gz \
+        | tar --extract --gzip --directory /opt/triton lib include
+
+
+
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_setup
-
-RUN --mount=type=tmpfs,target=/var/cache/apt \
-    --mount=type=tmpfs,target=/var/lib/apt/lists  \
-    --mount=type=tmpfs,target=/tmp \
-    apt-get update; \
-    apt-get install --no-install-recommends -y \
-        git libssl-dev zlib1g-dev rapidjson-dev python3.8 rsync;
-
-
-RUN wget -O- 'https://github.com/Kitware/CMake/releases/download/v3.21.1/cmake-3.21.1-linux-x86_64.tar.gz' \
-        | tar --extract --gzip --directory=/usr --strip-components=1; \
-    ln -sf /usr/bin/cmake /usr/bin/cmake3;
-
-
-# Triton Client build
-ARG TRITON_REPO_TAG=r21.06
-ENV TRITON_VERSION=2.11.0
-RUN --mount=type=tmpfs,target=/tmp \
-    mkdir -p /tmp/triton; \
-    cd /tmp/triton; \
-    git clone -b ${TRITON_REPO_TAG}  https://github.com/triton-inference-server/client.git; \
-    # build the client library
-    mkdir -p /tmp/triton/client/build; \
-    cd /tmp/triton/client/build; \
-    cmake -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_CXX_FLAGS="-std=c++11 -Wfatal-errors" \
-          -DCMAKE_CXX_STANDARD=11 \
-          -DCMAKE_CXX_STANDARD_REQUIRED=ON \
-          -DCMAKE_INSTALL_PREFIX:PATH=/opt/triton/ \
-          -DTRITON_VERSION="$TRITON_VERSION" \
-          -DTRITON_COMMON_REPO_TAG="$TRITON_REPO_TAG" \
-          -DTRITON_THIRD_PARTY_REPO_TAG="$TRITON_REPO_TAG" \
-          -DTRITON_ENABLE_GPU=ON \
-          -DTRITON_ENABLE_CC_GRPC=ON \
-          -DTRITON_ENABLE_CC_HTTP=OFF \
-          -DTRITON_ENABLE_PERF_ANALYZER=OFF \
-          -DTRITON_ENABLE_PYTHON_HTTP=OFF \
-          -DTRITON_ENABLE_PYTHON_GRPC=OFF \
-          -DTRITON_ENABLE_EXAMPLES=OFF \
-          -DTRITON_ENABLE_TESTS=OFF \
-          ..; \
-    make -j "$(nproc)"; \
-    rsync -aL /tmp/triton/client/build/third-party/c-ares/include/ /opt/triton/include/; \
-    rsync -aL /tmp/triton/client/build/third-party/c-ares/lib/ /opt/triton/lib/; \
-    rsync -aL /tmp/triton/client/build/third-party/c-ares/bin/ /opt/triton/bin/; \
-    rsync -aL /tmp/triton/client/build/third-party/curl/include/ /opt/triton/include/; \
-    rsync -aL /tmp/triton/client/build/third-party/curl/lib/ /opt/triton/lib/; \
-    rsync -aL /tmp/triton/client/build/third-party/curl/bin/ /opt/triton/bin/; \
-    rsync -aL /tmp/triton/client/build/third-party/grpc/include/ /opt/triton/include/; \
-    rsync -aL /tmp/triton/client/build/third-party/grpc/lib/ /opt/triton/lib/; \
-    rsync -aL /tmp/triton/client/build/third-party/grpc/bin/ /opt/triton/bin/; \
-    rsync -aL /tmp/triton/client/build/third-party/grpc/share/ /opt/triton/share/; \
-    rsync -aL /tmp/triton/client/build/third-party/protobuf/include/ /opt/triton/include/; \
-    rsync -aL /tmp/triton/client/build/third-party/protobuf/lib/ /opt/triton/lib/; \
-    rsync -aL /tmp/triton/client/build/third-party/protobuf/bin/ /opt/triton/bin/; \
-    echo '/opt/triton/lib' > /etc/ld.so.conf.d/triton.conf; \
-    ldconfig;
-
-ENV CMAKE_PREFIX_PATH="/opt/triton/lib/cmake:${CMAKE_PREFIX_PATH}"
-
 
 FROM build_setup as build_component
 
@@ -121,6 +67,8 @@ ARG TRITON_SERVER=ocv-yolo-detection-server:8001
 RUN --mount=target=. \
     --mount=from=download_dependencies,source=/apps/source/dlib-sources,target=/apps/source/dlib-sources \
     --mount=from=download_dependencies,source=/weights/yolov4.weights,target=/home/mpf/component_build/plugin/OcvYoloDetection/models/yolov4.weights \
+    --mount=from=download_dependencies,source=/opt/triton/lib,target=/opt/triton/lib \
+    --mount=from=download_dependencies,source=/opt/triton/include,target=/opt/triton/include \
     build-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then \
         cd $BUILD_DIR/test; \
