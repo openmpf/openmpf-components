@@ -84,6 +84,12 @@
           "description": "Timespan after which to automatically delete transcriptions, in minutes.",
           "type": "INT",
           "defaultValue": "120"
+        },
+        {
+          "name": "TRIGGER",
+          "description": "Trigger condition for this component when used as a downstream action, of the form `TRACK_PROPERTY=VALUE`. Example: 'SPEECH_DETECTOR=AZURESPEECH' will result in this action only being run if the feed-forward track has the property SPEECH_DETECTOR with the value AZURESPEECH.",
+          "type": "FLOAT",
+          "defaultValue": "0.5"
         }
       ]
     }
@@ -114,6 +120,17 @@
           "value": "FALSE"
         }
       ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION WITH UPSTREAM SPEAKER ACTION",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in with language determined by an upstream language detection component.",
+      "algorithm": "AZURESPEECH",
+      "properties": [
+        {
+          "name": "TRIGGER",
+          "value": "SPEECH_DETECTOR=AZURESPEECH"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -129,6 +146,13 @@
       "description": "Uses Azure Cognitive Services to perform speech-to-text in Spanish.",
       "actions": [
         "AZURE SPEECH DETECTION TO SPANISH ACTION"
+      ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION WITH UPSTREAM SPEAKER TASK",
+      "description": "Uses Azure Cognitive Services to perform speech-to-text in with language determined by an upstream language detection component.",
+      "actions": [
+        "AZURE SPEECH DETECTION WITH UPSTREAM SPEAKER ACTION"
       ]
     }
   ],

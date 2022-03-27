@@ -27,10 +27,12 @@
 import os
 import logging
 from math import floor, ceil
+from collections import defaultdict
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
-from .acs_speech_processor import AcsSpeechDetectionProcessor
+from .acs_speech_processor import AcsSpeechDetectionProcessor, SpeakerInfo
+from .azure_connect import AcsServerInfo
 
 
 class MPFJobNameLoggerAdapter(logging.LoggerAdapter):
@@ -43,12 +45,14 @@ class MPFJobNameLoggerAdapter(logging.LoggerAdapter):
             return msg, kwargs
         return '[%s] %s' % (job_name, msg), kwargs
 
+
 logger = MPFJobNameLoggerAdapter(
     logging.getLogger('AcsSpeechComponent'),
     extra={}
 )
 
 logging.getLogger('azure').setLevel('WARN')
+
 
 class AcsSpeechComponent(object):
     detection_type = 'SPEECH'
@@ -70,41 +74,231 @@ class AcsSpeechComponent(object):
             return env_value
 
         raise mpf.DetectionException(
-            'The "{}" property must be provided as a job property or environment variable.'.format(property_name),
+            f'The "{property_name}" property must be provided as a '
+            'job property or environment variable.',
             mpf.DetectionError.MISSING_PROPERTY)
 
     @classmethod
-    def _parse_properties(cls, job_properties):
+    def _parse_job_props(cls, job_properties):
         """
         :param job_properties: Properties object from AudioJob or VideoJob
         :return: Dictionary of properties, pass as **kwargs to process_audio
         """
 
+        acs_url = cls._get_job_property_or_env_value(
+            'ACS_URL',
+            job_properties
+        )
+
+        acs_subscription_key = cls._get_job_property_or_env_value(
+            'ACS_SUBSCRIPTION_KEY',
+            job_properties
+        )
+
+        acs_blob_container_url = cls._get_job_property_or_env_value(
+            'ACS_BLOB_CONTAINER_URL',
+            job_properties
+        )
+
+        acs_blob_service_key = cls._get_job_property_or_env_value(
+            'ACS_BLOB_SERVICE_KEY',
+            job_properties
+        )
+
+        http_retry = mpf_util.HttpRetry.from_properties(
+            job_properties,
+            logger.warning
+        )
+
+        http_max_attempts = mpf_util.get_property(
+            properties=job_properties,
+            key='COMPONENT_HTTP_RETRY_MAX_ATTEMPTS',
+            default_value=10,
+            prop_type=int
+        )
+
+        server_info = AcsServerInfo(
+            url=acs_url,
+            subscription_key=acs_subscription_key,
+            blob_container_url=acs_blob_container_url,
+            blob_service_key=acs_blob_service_key,
+            http_retry=http_retry,
+            http_max_attempts=http_max_attempts
+        )
+
+        blob_access_time = mpf_util.get_property(
+            properties=job_properties,
+            key='BLOB_ACCESS_TIME',
+            default_value=120,
+            prop_type=int
+        )
+
+        expiry = mpf_util.get_property(
+            properties=job_properties,
+            key='TRANSCRIPTION_EXPIRATION',
+            default_value=120,
+            prop_type=int
+        )
+
+        language = mpf_util.get_property(
+            properties=job_properties,
+            key='LANGUAGE',
+            default_value='en-US',
+            prop_type=str
+        )
+
+        diarize = mpf_util.get_property(
+            properties=job_properties,
+            key='DIARIZE',
+            default_value=True,
+            prop_type=bool
+        )
+
+        cleanup = mpf_util.get_property(
+            properties=job_properties,
+            key='CLEANUP',
+            default_value=True,
+            prop_type=bool
+        )
+
+        confidence_threshold = mpf_util.get_property(
+            properties=job_properties,
+            key='CONFIDENCE_THRESHOLD',
+            default_value=-1.0,
+            prop_type=float
+        )
+
         return dict(
-            acs_url=cls._get_job_property_or_env_value(
-                'ACS_URL',
-                job_properties
-            ),
-            acs_subscription_key=cls._get_job_property_or_env_value(
-                'ACS_SUBSCRIPTION_KEY',
-                job_properties
-            ),
-            acs_blob_container_url=cls._get_job_property_or_env_value(
-                'ACS_BLOB_CONTAINER_URL',
-                job_properties
-            ),
-            acs_blob_service_key=cls._get_job_property_or_env_value(
-                'ACS_BLOB_SERVICE_KEY',
-                job_properties
-            ),
-            lang=job_properties.get('LANGUAGE', 'en-US'),
-            diarize=mpf_util.get_property(job_properties, 'DIARIZE', True),
-            cleanup=mpf_util.get_property(job_properties, 'CLEANUP', True),
-            blob_access_time=int(job_properties.get('BLOB_ACCESS_TIME', '120')),
-            expiry=int(job_properties.get('TRANSCRIPTION_EXPIRATION', '120')),
-            http_retry=mpf_util.HttpRetry.from_properties(job_properties, logger.warning),
-            http_max_attempts=mpf_util.get_property(
-                job_properties, 'COMPONENT_HTTP_RETRY_MAX_ATTEMPTS', 10)
+            server_info=server_info,
+            blob_access_time=blob_access_time,
+            expiry=expiry,
+            language=language,
+            diarize=diarize,
+            cleanup=cleanup,
+            confidence_threshold=confidence_threshold
+        )
+
+    @staticmethod
+    def _parse_ff_props(ff_props):
+        speaker_id = mpf_util.get_property(
+            properties=ff_props,
+            key='SPEAKER_ID',
+            default_value='0',
+            prop_type=str
+        )
+        # If speaker ID was overwritten, use long speaker ID
+        if speaker_id == '0':
+            speaker_id = mpf_util.get_property(
+                properties=ff_props,
+                key='LONG_SPEAKER_ID',
+                default_value='0',
+                prop_type=str
+            )
+
+        gender = mpf_util.get_property(
+            properties=ff_props,
+            key='GENDER',
+            default_value='',
+            prop_type=str
+        )
+
+        gender_score = mpf_util.get_property(
+            properties=ff_props,
+            key='GENDER_CONFIDENCE',
+            default_value=-1.0,
+            prop_type=float
+        )
+
+        languages = mpf_util.get_property(
+            properties=ff_props,
+            key='SPEAKER_LANGUAGES',
+            default_value='',
+            prop_type=str
+        )
+
+        language_scores = mpf_util.get_property(
+            properties=ff_props,
+            key='SPEAKER_LANGUAGE_CONFIDENCES',
+            default_value='',
+            prop_type=str
+        )
+
+        languages = [lab.strip().lower() for lab in languages.split(',')]
+        language_scores = [float(s.strip()) for s in language_scores.split(',')]
+        language_scores = defaultdict(
+            lambda: -1.0,
+            zip(languages, language_scores)
+        )
+
+        segments_str = mpf_util.get_property(
+            properties=ff_props,
+            key='VOICED_SEGMENTS',
+            default_value='',
+            prop_type=str
+        )
+
+        language_iso = mpf_util.get_property(
+            properties=ff_props,
+            key='LANGUAGE',
+            default_value='',
+            prop_type=str
+        )
+        language_iso = language_iso.strip().upper()
+        language = mpf_util.ISO6393_2_BCP47.get(language_iso, None)
+        if language is None:
+            raise mpf.DetectionException(
+                f"ISO 639-3 code '{language_iso}' provided in feed-forward track"
+                f" does not correspond to a BCP-47 language code supported by "
+                f" Azure Speech-to-Text.",
+                mpf.DetectionError.INVALID_PROPERTY
+            )
+
+        return language, dict(
+            speaker_id=speaker_id,
+            language_scores=language_scores,
+            gender=gender,
+            gender_score=gender_score,
+            speech_segs=segments_str
+        )
+
+    @classmethod
+    def _parse_properties(cls, job):
+        """
+        :param job_properties: Properties object from AudioJob or VideoJob
+        :return: Dictionary of properties, pass as **kwargs to process_audio
+        """
+        trigger = mpf_util.get_property(
+            properties=job.job_properties,
+            key='TRIGGER',
+            default_value='',
+            prop_type=str
+        )
+        t_key, t_val = trigger.strip().split('=') if trigger else (None, None)
+
+        job_props = cls._parse_job_props(job.job_properties)
+
+        skip = False
+        feed_forward = False
+        speaker_props = None
+        if job.feed_forward_track is not None:
+            det_props = job.feed_forward_track.detection_properties
+
+            # If trigger key is in feed-forward properties, only run
+            #  transcription if the value matches trigger_val
+            if t_key in det_props:
+                skip = (det_props[t_key] != t_val)
+
+            if 'LANGUAGE' in det_props:
+                logger.debug("Getting properties from feed-forward track")
+                lang, speaker_props = cls._parse_ff_props(det_props)
+                job_props['language'] = lang
+                job_props['diarize'] = False
+                feed_forward = True
+        return (
+            skip,
+            feed_forward,
+            job_props,
+            speaker_props
         )
 
     def get_detections_from_audio(self, audio_job):
@@ -117,13 +311,17 @@ class AcsSpeechComponent(object):
         if stop_time < 0:
             stop_time = None
         try:
-            parsed_properties = self._parse_properties(audio_job.job_properties)
+            (skip, feed_forward, job_props,
+                speaker_props) = self.parse_properties(audio_job)
         except Exception as e:
             # Pass the exception up
             logger.exception(
                 'Exception raised while parsing properties: ' + str(e)
             )
             raise
+
+        if skip:
+            return [audio_job.feed_forward_track]
 
         # If we suspect this is a subjob, overwrite SPEAKER_ID with 0 to
         #  avoid confusion
@@ -139,12 +337,23 @@ class AcsSpeechComponent(object):
                 overwrite_ids = True
 
         try:
+            logger.debug("Getting transcription tracks")
+            if feed_forward:
+                logger.debug("Using feed-forward speaker information")
+                speech_segs = AcsSpeechDetectionProcessor.parse_segments_str(
+                    segments_string=speaker_props['speech_segs'],
+                    media_start_time=start_time,
+                    media_stop_time=stop_time
+                )
+                speaker_props['speech_segs'] = speech_segs
+                job_props['speaker'] = SpeakerInfo(**speaker_props)
+
             audio_tracks = self.processor.process_audio(
                 target_file=audio_job.data_uri,
                 start_time=start_time,
                 stop_time=stop_time,
                 job_name=audio_job.job_name,
-                **parsed_properties
+                **job_props
             )
         except Exception as e:
             # Pass the exception up
@@ -172,13 +381,17 @@ class AcsSpeechComponent(object):
         start_frame = video_job.start_frame
         stop_frame = video_job.stop_frame
         try:
-            parsed_properties = self._parse_properties(video_job.job_properties)
+            (skip, feed_forward, job_props,
+                speaker_props) = self.parse_properties(video_job)
         except Exception as e:
             # Pass the exception up
             logger.exception(
                 'Exception raised while parsing properties: ' + str(e)
             )
             raise
+
+        if skip:
+            return [video_job.feed_forward_track]
 
         if 'FPS' not in video_job.media_properties:
             error_str = 'FPS must be included in video job media properties.'
@@ -221,12 +434,22 @@ class AcsSpeechComponent(object):
             stop_time = None
 
         try:
+            if feed_forward:
+                logger.debug("Using feed-forward speaker information")
+                speech_segs = AcsSpeechDetectionProcessor.parse_segments_str(
+                    segments_string=speaker_props['speech_segs'],
+                    media_start_time=start_time,
+                    media_stop_time=stop_time
+                )
+                speaker_props['speech_segs'] = speech_segs
+                job_props['speaker'] = SpeakerInfo(**speaker_props)
+
             audio_tracks = self.processor.process_audio(
                 target_file=video_job.data_uri,
                 start_time=start_time,
                 stop_time=stop_time,
                 job_name=video_job.job_name,
-                **parsed_properties
+                **job_props
             )
         except Exception as e:
             # Pass the exception up

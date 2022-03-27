@@ -26,10 +26,26 @@
 
 import os
 import uuid
+from typing import (
+    Dict, Optional, Sequence, List,
+    Iterable, Set, Tuple, Mapping, NamedTuple
+)
+from itertools import accumulate
+from bisect import bisect_right
 
 import mpf_component_api as mpf
+import mpf_component_util as util
 
-from .azure_connect import AzureConnection
+from .azure_connect import AzureConnection, AcsServerInfo
+
+
+class SpeakerInfo(NamedTuple):
+    speaker_id: str
+    gender: str
+    gender_score: float
+    language_scores: Mapping[str, float]
+    speech_segs: List[Tuple[float, float]]
+
 
 class AcsSpeechDetectionProcessor(object):
 
@@ -37,29 +53,120 @@ class AcsSpeechDetectionProcessor(object):
         self.logger = logger
         self.acs = AzureConnection(logger)
 
+    @staticmethod
+    def parse_segments_str(
+                segments_string: str,
+                media_start_time: Optional[int] = 0,
+                media_stop_time: Optional[int] = None
+            ) -> Optional[List[Tuple[int, int]]]:
+        """ Converts a string of the form
+                'start_1-stop_1, start_2-stop_2, ..., start_n-stop_n'
+            where start_x and stop_x are in milliseconds, Olive-compatible
+            AnnotationRegion object list.
+        """
+        try:
+            segments = []
+            start_stops = segments_string.split(",")
+            for ss in start_stops:
+                start, stop = ss.strip().split("-")
+                start = int(start)
+                stop = int(stop)
 
-    def process_audio(self, target_file, start_time, stop_time, job_name,
-                      acs_url, acs_subscription_key, acs_blob_container_url,
-                      acs_blob_service_key, lang, diarize, cleanup,
-                      blob_access_time, expiry, http_retry, http_max_attempts):
-        self.acs.update_acs(
-            url=acs_url,
-            subscription_key=acs_subscription_key,
-            blob_container_url=acs_blob_container_url,
-            blob_service_key=acs_blob_service_key,
-            http_retry=http_retry,
-            http_max_attempts=http_max_attempts
+                # Limit to media start and stop times. If entirely
+                #  outside the limits, drop the segment
+                if media_stop_time is not None and start > media_stop_time:
+                    continue
+                if stop < media_start_time:
+                    continue
+                start = max(start, media_start_time)
+                if media_stop_time is not None:
+                    stop = min(stop, media_stop_time)
+
+                # Offset by media_start_time so that segments are
+                #  relative to the transcoded waveform
+                start -= media_start_time
+                stop -= media_start_time
+
+                # Convert from integer milliseconds to float seconds
+                segments.append((start, stop))
+        except Exception as e:
+            raise mpf.DetectionException(
+                'Exception raised while parsing voiced segments '
+                f'"{segments_string}": {e}',
+                mpf.DetectionError.INVALID_PROPERTY
+            )
+
+        # If all the voiced segments are outside the time range, signal that
+        #  we should halt and return an empty list.
+        if not segments:
+            return None
+
+        return sorted(segments, key=lambda s: s.start_t)
+
+    @staticmethod
+    def desegment_times(
+            utterances: Iterable[Mapping[str, Any]],
+            segments: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+        """ Adjust region start and stop times to account for the passed
+            annotation_regions. Updates regions in place.
+
+            :param regions: sorted RegionScores
+            :param annotation_regions: sorted AnnotationRegions
+        """
+        # The beginning, end, and length of each segment
+        segbegs, segends, seglens = zip(*(
+            (t0, t1, t1-t0) for t0, t1 in sorted(segments)
+        ))
+
+        # The dividing line between each segment relative to regions
+        segdivs = list(accumulate(seglens))
+
+        # The offset to add to region times, according to their segment
+        offsets = [a-b for a, b in zip(segbegs, [0] + segdivs)]
+
+        utterance_times = []
+        for utt in utterances:
+            # Timing information. Azure works in 100-nanosecond ticks,
+            #  so multiply by 1e-4 to obtain milliseconds.
+            utterance_start = utt['offsetInTicks'] * 1e-4
+            utterance_duration = utt['durationInTicks'] * 1e-4
+            utterance_stop = utterance_start + utterance_duration
+
+            # Index of the segment containing the region start time
+            i = min(bisect_right(segdivs, utterance_start), len(segdivs)-1)
+
+            # Offset the region start and end times
+            utterance_times.append((
+                utterance_start + offsets[i],
+                utterance_stop + offsets[i]
+            ))
+
+        return utterance_times
+
+    def process_audio(
+                self, target_file: str, start_time: float,
+                stop_time: Optional[float], job_name: str,
+                server_info: AcsServerInfo, language: str, diarize: bool,
+                cleanup: bool, blob_access_time: int, expiry: int,
+                speaker: Optional[SpeakerInfo] = None
+            ) -> List[mpf.AudioTrack]:
+        self.acs.update_acs(server_info)
+
+        self.logger.debug('Loading file: ' + target_file)
+        audio_bytes = util.transcode_to_wav(
+            target_file,
+            start_time=start_time,
+            stop_time=stop_time,
+            segments=speaker.speech_segs if speaker else None
         )
 
         try:
             self.logger.info('Uploading file to blob')
             recording_id = str(uuid.uuid4())
             recording_url = self.acs.upload_file_to_blob(
-                filepath=target_file,
+                audio_bytes=audio_bytes,
                 recording_id=recording_id,
-                blob_access_time=blob_access_time,
-                start_time=start_time,
-                stop_time=stop_time
+                blob_access_time=blob_access_time
             )
         except mpf.DetectionException:
             raise
@@ -77,7 +184,7 @@ class AcsSpeechDetectionProcessor(object):
                     recording_url=recording_url,
                     job_name=job_name,
                     diarize=diarize,
-                    language=lang,
+                    language=language,
                     expiry=expiry
                 )
             except Exception as e:
@@ -111,11 +218,28 @@ class AcsSpeechDetectionProcessor(object):
             self.logger.info('Deleting transcript')
             self.acs.delete_transcription(output_loc)
 
+        if speaker is not None:
+            # Create parallel lists for the beginning, end, and length of each
+            #  feedforward segment, so that utterance timestamps can be shifted
+            #  to be relative to the beginning of the input audio file.
+            segbegs, segends, seglens = zip(*(
+                (t0, t1, t1-t0) for t0, t1 in sorted(speaker.speech_segs)
+            ))
+
+            # The dividing line between each segment relative to utterances
+            segdivs = list(accumulate(seglens))
+
+            # The offset to add to utterance times, according to their segment
+            offsets = [a-b for a, b in zip(segbegs, [0] + segdivs)]
+
         self.logger.info('Completed process audio')
         self.logger.info('Creating AudioTracks')
         audio_tracks = []
         for utt in transcription['recognizedPhrases']:
+            # Speaker ID returned by Azure diarization, default 0
             speaker_id = utt.get('speaker', '0')
+
+            # Transcript text
             display = utt['nBest'][0]['display']
 
             # Confidence information. Utterance confidence does not seem
@@ -131,19 +255,57 @@ class AcsSpeechDetectionProcessor(object):
             utterance_start = utt['offsetInTicks'] * 1e-4
             utterance_duration = utt['durationInTicks'] * 1e-4
             utterance_stop = utterance_start + utterance_duration
-            word_segments = ', '.join([
-                f"{w['offsetInTicks'] * 1e-4:f}-"
-                f"{(w['offsetInTicks'] + w['durationInTicks']) * 1e-4:f}"
-                for w in utt['nBest'][0]['words']
+            word_starts, word_ends = zip(*[
+                (
+                    w['offsetInTicks'] * 1e-4,
+                    (w['offsetInTicks'] + w['durationInTicks']) * 1e-4
+                ) for w in utt['nBest'][0]['words']
             ])
 
             properties = dict(
                 SPEAKER_ID=speaker_id,
                 TRANSCRIPT=display,
                 WORD_CONFIDENCES=word_confidences,
-                WORD_SEGMENTS=word_segments,
-                DECODED_LANGUAGE=lang,
+                DECODED_LANGUAGE=language
             )
+
+            if speaker is not None:
+                # If feed-forward track exists, use provided speaker info
+                speaker_id = speaker.speaker_id
+                gender = speaker.gender
+                gender_score = speaker.gender_score
+
+                ldict = speaker.language_scores
+                languages = [n for n, s in ldict.items()]
+                languages = sorted(
+                    languages,
+                    key=lambda lab: ldict.get(lab, -1.0),
+                    reverse=True
+                )
+                language_confs = ', '.join(str(ldict[lab]) for lab in languages)
+                language_labels = ', '.join(languages)
+
+                # Get index of the segment containing the region start time,
+                #  and offset utterance time information by appropriate delta
+                i = min(bisect_right(segdivs, utterance_start), len(segdivs) - 1)
+                utterance_start += offsets[i]
+                utterance_stop += offsets[i]
+                word_starts = [t + offsets[i] for t in word_starts]
+                word_ends = [t + offsets[i] for t in word_ends]
+
+                # Add or update properties according to fed-forward info
+                properties.update(
+                    SPEAKER_ID=speaker_id,
+                    SPEAKER_LANGUAGES=language_labels,
+                    SPEAKER_LANGUAGE_CONFIDENCES=language_confs,
+                    GENDER=gender,
+                    GENDER_CONFIDENCE=gender_score
+                )
+
+            properties['WORD_SEGMENTS'] = ', '.join([
+                f"{t0:f}-{t1:f}" for t0, t1 in zip(word_starts, word_ends)
+            ])
+
             track = mpf.AudioTrack(
                 start_time=utterance_start,
                 stop_time=utterance_stop,
