@@ -30,6 +30,7 @@
 #include <cmath>
 #include <future>
 #include <iostream>
+#include <random>
 
 #include <boost/regex.hpp>
 #include <boost/locale.hpp>
@@ -115,17 +116,6 @@ bool TesseractOCRTextDetection::Init() {
     LOG4CXX_DEBUG(hw_logger_, "Plugin path: " << plugin_path);
     LOG4CXX_INFO(hw_logger_, "Initializing TesseractOCRTextDetection");
     set_default_parameters();
-    default_ocr_fset.model_dir = "";
-
-    // Once this is done - parameters will be set and set_read_config_parameters() can be called again to revert back
-    // to the params read at initialization.
-    string config_params_path = config_path + "/mpfOCR.ini";
-    int rc = LoadConfig(config_params_path, parameters);
-    if (rc) {
-        LOG4CXX_ERROR(hw_logger_, "Could not parse config file: " << config_params_path);
-        return false;
-    }
-    set_read_config_parameters();
 
     LOG4CXX_INFO(hw_logger_, "INITIALIZED COMPONENT.");
     return true;
@@ -159,16 +149,16 @@ void TesseractOCRTextDetection::set_default_parameters() {
     default_ocr_fset.psm = 3;
     default_ocr_fset.oem = 3;
     default_ocr_fset.sharpen = -1.0;
-    default_ocr_fset.scale = 2.4;
+    default_ocr_fset.scale = 1.6;
     default_ocr_fset.invert = false;
     default_ocr_fset.enable_otsu_thrs = false;
     default_ocr_fset.enable_adaptive_thrs = false;
     default_ocr_fset.tesseract_lang = "eng";
-    default_ocr_fset.adaptive_thrs_pixel = 11;
-    default_ocr_fset.adaptive_thrs_c = 0;
+    default_ocr_fset.adaptive_thrs_pixel = 51;
+    default_ocr_fset.adaptive_thrs_c = 5;
     default_ocr_fset.enable_osd = true;
     default_ocr_fset.combine_detected_scripts = true;
-    default_ocr_fset.min_script_confidence = 2.0;
+    default_ocr_fset.min_script_confidence = 0.5;
     default_ocr_fset.min_script_score = 50.0;
     default_ocr_fset.min_orientation_confidence = 2.0;
     default_ocr_fset.max_pixels = 10000000;
@@ -180,8 +170,8 @@ void TesseractOCRTextDetection::set_default_parameters() {
 
     default_ocr_fset.enable_hist_equalization = false;
     default_ocr_fset.enable_adaptive_hist_equalization = false;
-    default_ocr_fset.invalid_min_image_size = 4;
-    default_ocr_fset.min_height = -1;
+    default_ocr_fset.invalid_min_image_size = 3;
+    default_ocr_fset.min_height = 60;
     default_ocr_fset.adaptive_hist_tile_size = 5;
     default_ocr_fset.adaptive_hist_clip_limit = 2.0;
 
@@ -191,130 +181,6 @@ void TesseractOCRTextDetection::set_default_parameters() {
     default_ocr_fset.max_parallel_pdf_threads = 4;
 }
 
-/*
- * Called during Init.
- * Copy over parameters values from .ini file.
- */
-void TesseractOCRTextDetection::set_read_config_parameters() {
-
-    // Load wild image preprocessing settings.
-    if (parameters.contains("UNSTRUCTURED_TEXT_ENABLE_PREPROCESSING")) {
-        default_ocr_fset.processing_wild_text = (parameters["UNSTRUCTURED_TEXT_ENABLE_PREPROCESSING"].toInt() > 0);
-    }
-    if (default_ocr_fset.processing_wild_text) {
-        if (parameters.contains("UNSTRUCTURED_TEXT_ENABLE_OTSU_THRS")) {
-            default_ocr_fset.enable_otsu_thrs = (parameters["UNSTRUCTURED_TEXT_ENABLE_OTSU_THRS"].toInt() > 0);
-        }
-        if (parameters.contains("UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS")) {
-            default_ocr_fset.enable_adaptive_thrs = (parameters["UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS"].toInt() > 0);
-        }
-        if (parameters.contains("UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION")) {
-            default_ocr_fset.enable_adaptive_hist_equalization= (parameters["UNSTRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION"].toInt() > 0);
-        }
-        if (parameters.contains("UNSTRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION")) {
-            default_ocr_fset.enable_hist_equalization= (parameters["UNSTRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION "].toInt() > 0);
-        }
-        if (parameters.contains("UNSTRUCTURED_TEXT_SHARPEN")) {
-            default_ocr_fset.sharpen = parameters["UNSTRUCTURED_TEXT_SHARPEN"].toDouble();
-        }
-        if (parameters.contains("UNSTRUCTURED_TEXT_SCALE")) {
-            default_ocr_fset.scale = parameters["UNSTRUCTURED_TEXT_SCALE"].toDouble();
-        }
-    } else {
-        // Load default image preprocessing settings.
-
-        if (parameters.contains("STRUCTURED_TEXT_ENABLE_OTSU_THRS")) {
-            default_ocr_fset.enable_otsu_thrs = (parameters["STRUCTURED_TEXT_ENABLE_OTSU_THRS"].toInt() > 0);
-        }
-        if (parameters.contains("STRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS")) {
-            default_ocr_fset.enable_adaptive_thrs = (parameters["STRUCTURED_TEXT_ENABLE_ADAPTIVE_THRS"].toInt() > 0);
-        }
-        if (parameters.contains("STRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION")) {
-            default_ocr_fset.enable_adaptive_hist_equalization= (parameters["STRUCTURED_TEXT_ENABLE_ADAPTIVE_HIST_EQUALIZATION"].toInt() > 0);
-        }
-        if (parameters.contains("STRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION")) {
-            default_ocr_fset.enable_hist_equalization= (parameters["STRUCTURED_TEXT_ENABLE_HIST_EQUALIZATION "].toInt() > 0);
-        }
-        if (parameters.contains("STRUCTURED_TEXT_SHARPEN")) {
-            default_ocr_fset.sharpen = parameters["STRUCTURED_TEXT_SHARPEN"].toDouble();
-        }
-        if (parameters.contains("STRUCTURED_TEXT_SCALE")) {
-            default_ocr_fset.scale = parameters["STRUCTURED_TEXT_SCALE"].toDouble();
-        }
-    }
-    if (parameters.contains("INVERT")) {
-        default_ocr_fset.invert = (parameters["INVERT"].toInt() > 0);
-    }
-    if (parameters.contains("MIN_HEIGHT")) {
-        default_ocr_fset.min_height = parameters["MIN_HEIGHT"].toInt();
-    }
-    if (parameters.contains("INVALID_MIN_IMAGE_SIZE")) {
-        default_ocr_fset.invalid_min_image_size = parameters["INVALID_MIN_IMAGE_SIZE"].toInt();
-    }
-    if (parameters.contains("ADAPTIVE_HIST_TILE_SIZE")){
-        default_ocr_fset.adaptive_hist_tile_size = parameters["ADAPTIVE_HIST_TILE_SIZE"].toInt();
-    }
-    if (parameters.contains("ADAPTIVE_HIST_CLIP_LIMIT")) {
-        default_ocr_fset.adaptive_hist_clip_limit = parameters["ADAPTIVE_HIST_CLIP_LIMIT"].toDouble();
-    }
-    if (parameters.contains("ADAPTIVE_THRS_CONSTANT")) {
-        default_ocr_fset.adaptive_thrs_c = parameters["ADAPTIVE_THRS_CONSTANT"].toDouble();
-    }
-    if (parameters.contains("ADAPTIVE_THRS_BLOCKSIZE")) {
-        default_ocr_fset.adaptive_thrs_pixel = parameters["ADAPTIVE_THRS_BLOCKSIZE"].toInt();
-    }
-    if (parameters.contains("TESSERACT_LANGUAGE")) {
-        default_ocr_fset.tesseract_lang = parameters["TESSERACT_LANGUAGE"].toStdString();
-    }
-    if (parameters.contains("TESSERACT_PSM")) {
-        default_ocr_fset.psm = parameters["TESSERACT_PSM"].toInt();
-    }
-    if (parameters.contains("TESSERACT_OEM")) {
-        default_ocr_fset.oem = parameters["TESSERACT_OEM"].toInt();
-    }
-    if (parameters.contains("ENABLE_OSD_AUTOMATION")) {
-        default_ocr_fset.enable_osd = (parameters["ENABLE_OSD_AUTOMATION"].toInt() > 0);
-    }
-    if (parameters.contains("COMBINE_OSD_SCRIPTS")) {
-        default_ocr_fset.combine_detected_scripts = parameters["COMBINE_OSD_SCRIPTS"].toInt() > 0;
-    }
-    if (parameters.contains("MAX_OSD_SCRIPTS")) {
-        default_ocr_fset.max_scripts = parameters["MAX_OSD_SCRIPTS"].toInt();
-    }
-    if (parameters.contains("MAX_PIXELS")){
-        default_ocr_fset.max_pixels = parameters["MAX_PIXELS"].toInt();
-    }
-    if (parameters.contains("MAX_TEXT_TRACKS")) {
-        default_ocr_fset.max_text_tracks = parameters["MAX_TEXT_TRACKS"].toInt();
-    }
-    if (parameters.contains("MIN_OSD_SECONDARY_SCRIPT_THRESHOLD")) {
-        default_ocr_fset.min_secondary_script_thrs = parameters["MIN_OSD_SECONDARY_SCRIPT_THRESHOLD"].toDouble();
-    }
-    if (parameters.contains("MIN_OSD_TEXT_ORIENTATION_CONFIDENCE")) {
-        default_ocr_fset.min_orientation_confidence = parameters["MIN_OSD_TEXT_ORIENTATION_CONFIDENCE"].toDouble();
-    }
-    if (parameters.contains("MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE")) {
-        default_ocr_fset.min_script_confidence = parameters["MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE"].toDouble();
-    }
-    if (parameters.contains("MIN_OSD_SCRIPT_SCORE")) {
-        default_ocr_fset.min_script_score = parameters["MIN_OSD_SCRIPT_SCORE"].toDouble();
-    }
-    if (parameters.contains("ROTATE_AND_DETECT")) {
-        default_ocr_fset.rotate_and_detect = parameters["ROTATE_AND_DETECT"].toInt() > 0;
-    }
-    if (parameters.contains("ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE")) {
-        default_ocr_fset.rotate_and_detect_min_confidence = parameters["ROTATE_AND_DETECT_MIN_OCR_CONFIDENCE"].toDouble();
-    }
-    if (parameters.contains("ENABLE_OSD_FALLBACK")) {
-        default_ocr_fset.enable_osd_fallback = parameters["ENABLE_OSD_FALLBACK"].toInt() > 0;
-    }
-    if (parameters.contains("MAX_PARALLEL_SCRIPT_THREADS")) {
-        default_ocr_fset.max_parallel_ocr_threads = parameters["MAX_PARALLEL_SCRIPT_THREADS"].toInt();
-    }
-    if (parameters.contains("MAX_PARALLEL_PAGE_THREADS")) {
-        default_ocr_fset.max_parallel_pdf_threads = parameters["MAX_PARALLEL_PAGE_THREADS"].toInt();
-    }
-}
 
 /*
  * Image preprocessing to improve text extraction.
@@ -398,7 +264,7 @@ string random_string(size_t length) {
                         "abcdefghijklmnopqrstuvwxyz"
                         "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    thread_local static mt19937 rg{random_device{}()};
+    thread_local static std::mt19937 rg{random_device{}()};
     thread_local static uniform_int_distribution<string::size_type> pick(0, sizeof(chrs) - 2);
 
     string s;

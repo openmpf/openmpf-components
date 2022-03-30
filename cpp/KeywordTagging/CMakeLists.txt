@@ -26,31 +26,26 @@
 
 cmake_minimum_required(VERSION 3.6)
 project(KeywordTagging)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 include(../ComponentSetup.cmake)
 
-set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
-message("Package in ${PACKAGE_DIR}")
+find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0 COMPONENTS opencv_core)
 
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
-find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0 COMPONENTS opencv_core)
-
-find_package(Qt4 REQUIRED)
 
 find_package(Boost 1.53.0 COMPONENTS regex locale filesystem)
 include_directories(${Boost_INCLUDE_DIRS})
 
 set(KEYWORD_TAGGING_SOURCES KeywordTagging.cpp KeywordTagging.h JSON.cpp JSONValue.cpp JSON.h JSONValue.h)
 
-
 # Build library
 add_library(mpfKeywordTagging SHARED ${KEYWORD_TAGGING_SOURCES})
+target_link_libraries(mpfKeywordTagging mpfComponentInterface mpfDetectionComponentApi
+        mpfComponentUtils ${Boost_LIBRARIES} ${LOG4CXX_LIBRARIES} ${OpenCV_LIBS})
 
-
-target_link_libraries(mpfKeywordTagging mpfComponentInterface mpfDetectionComponentApi mpfComponentUtils ${Boost_LIBRARIES} ${LOG4CXX_LIBRARIES})
-configure_mpf_component(KeywordTagging TARGETS mpfKeywordTagging EXTRA_LIB_PATHS "${extra_lib_dirs}")
+configure_mpf_component(KeywordTagging TARGETS mpfKeywordTagging)
 
 add_subdirectory(test)
 

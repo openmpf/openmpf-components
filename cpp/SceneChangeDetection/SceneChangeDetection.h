@@ -28,16 +28,12 @@
 #ifndef OPENMPF_COMPONENTS_SceneChangeDetection_H
 #define OPENMPF_COMPONENTS_SceneChangeDetection_H
 
-#include <map>
 #include <string>
 #include <vector>
 
 #include <log4cxx/logger.h>
 
 #include <opencv2/core.hpp>
-
-#include <QHash>
-#include <QString>
 
 #include <adapters/MPFVideoDetectionComponentAdapter.h>
 #include <MPFDetectionObjects.h>
@@ -46,34 +42,57 @@
 
 class SceneChangeDetection : public MPF::COMPONENT::MPFVideoDetectionComponentAdapter {
 public:
-    bool Init();
+    bool Init() override;
 
-    bool Close();
+    bool Close() override;
 
-    std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPF::COMPONENT::MPFVideoJob &job);
+    std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(
+            const MPF::COMPONENT::MPFVideoJob &job) override;
 
-    std::string GetDetectionType();
+    std::string GetDetectionType() override;
 
 private:
-    QHash<QString, QString> parameters;
     log4cxx::LoggerPtr logger_;
     cv::Mat dilateKernel;
     int numPixels;
-    double edge_thresh;
-    double hist_thresh;
-    double cont_thresh;
-    double thrs_thresh;
-    double minPercent;
-    std::map<int,int> keyframes;
+
+    // Sets threshold for edge detection (range 0-255).
+    // Fepresents cutoff score for fraction of mismatches between two frames.
+    // Higher thresholds = less frame detections = lower sensitivity.
+    double edge_thresh = 70;
+
+    // Threshold for histogram detection.
+    // Higher values result in more detections (higher sensitivity).
+    // Range 0-1.
+    double hist_thresh = 0.9;
+
+    // Threshold for content detection.
+    // Higher values result in less detections (lower sensitivity).
+    // Range 0-1.
+    double cont_thresh = 35;
+
+    // Threshold for thrs detection.
+    // Higher values result in more detections (higher sensitivity).
+    // Range 0-1? (most likely 0-255).
+    double thrs_thresh = 15;
+
+    // Second threshold for thrs detection (combines with thrs_thres).
+    // Higher values decrease sensitivity.
+    // Range 0-1.
+    double minPercent = 0.95;
     int channels[2] = {0,1};
     bool fadeOut;
-    int minScene;
 
-    bool do_hist, do_edge, do_cont, do_thrs, use_middle_frame;
+    // Expected min number of frames between scene changes.
+    int minScene = 15;
 
-    bool DetectChangeEdges(const cv::Mat &frameGray, cv::Mat &lastFrameEdgeFinal);
-    bool DetectChangeHistogram(const cv::Mat &frame, cv::Mat &lastHist);
-    bool DetectChangeContent(const cv::Mat &frame, cv::Mat &lastFrameHSV);
+    // Toggles each type of detection (true = perform detection).
+    bool do_hist = true, do_edge = true, do_cont = true, do_thrs = true;
+    bool use_middle_frame = true;
+
+    bool DetectChangeEdges(const cv::Mat &frameGray, cv::Mat &lastFrameEdgeFinal) const;
+    bool DetectChangeHistogram(const cv::Mat &frame, cv::Mat &lastHist) const;
+    bool DetectChangeContent(const cv::Mat &frame, cv::Mat &lastFrameHSV) const;
     bool DetectChangeThreshold(const cv::Mat &frame, cv::Mat &lastFrame);
 
 
@@ -83,11 +102,7 @@ private:
     // Saturation varies from 0 (black-gray-white) to
     // 255 (pure spectrum color).
     float sranges[2] = {0,256};
-    bool frameUnderThreshold(const cv::Mat &image, double threshold, double numPixels);
-
-    // Support for reading .ini files.
-    void SetDefaultParameters();
-    void SetReadConfigParameters();
+    bool frameUnderThreshold(const cv::Mat &image, double threshold, double numPixels) const;
 };
 
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -24,41 +25,35 @@
 # limitations under the License.                                            #
 #############################################################################
 
-#display options
-#IMSHOW_ON = 0: no visual output
-#IMSHOW_ON = 1: display detection and tracking windows
-#IMSHOW_ON should only be set to 1 when DEBUGGING
-IMSHOW_ON: 0
+set -o errexit -o pipefail -o xtrace
 
-#ActiveMQ polling interval in seconds
-POLLING_INTERVAL: 1
+cleanup() {
+    if [ "$server_cid" ]; then
+        docker stop "$server_cid" ||:
+    fi
+    if [ "$trt_test_net" ]; then
+        docker network rm "$trt_test_net"
+    fi
+}
 
-#minimum x and y pixel size passed to the opencv face detector
-MIN_FACE_SIZE: 48
+trap cleanup EXIT
 
-#max feature points
-MAX_FEATURE: 250
+script_dir=$(dirname "$0")
+image_id=$(DOCKER_BUILDKIT=1 docker build "$script_dir" --target build_component --quiet \
+            --build-arg BUILD_REGISTRY --build-arg BUILD_TAG)
 
-#minimum points needed by feature detector within detected face bounding box
-MIN_INIT_POINT_COUNT: 45
+trt_test_net="trt_test_net_$RANDOM"
+docker network create "$trt_test_net"
 
-#min point percentage when comparing current feature points to initial feature points
-MIN_POINT_PERCENT: 0.70
+server_cid=$(docker run --rm --detach --network "$trt_test_net" --network-alias trtserver \
+                "${BUILD_REGISTRY}openmpf_trtis_detection_server:${BUILD_TAG:-latest}" \
+                trtserver --model-store=/models)
 
-#minimum face detection confidence value needed to start a track, must be greater than 0
-MIN_INITIAL_CONFIDENCE: 10.0
+until docker logs "$server_cid" |& grep -q 'Successfully loaded servable version'; do
+    sleep 1
+done
 
-#unused option to ignore certain points that do not meet a certain quality when using the calcopticalflow alg
-MAX_OPTICAL_FLOW_ERROR: 4.7
+docker run --rm --network "$trt_test_net" --env TRTIS_SERVER=trtserver:8001 \
+    --workdir /home/mpf/component_build/test --entrypoint ./TrtisDetectionTest "$image_id"
 
-# VERBOSE = 0: no debugging output
-# VERBOSE = 1: print settings and detection results
-
-VERBOSE: 0
-
-
-SEARCH_REGION_ENABLE_DETECTION: false
-SEARCH_REGION_TOP_LEFT_X_DETECTION: 0
-SEARCH_REGION_TOP_LEFT_Y_DETECTION: 0
-SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION: 0
-SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION: 0
+echo Tests passed

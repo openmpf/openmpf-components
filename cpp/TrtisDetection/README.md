@@ -74,3 +74,17 @@ When a newly detected object fails to match to a preexisting track, a new track 
 If the `S3_RESULTS_BUCKET`, `S3_ACCESS_KEY`, and `S3_SECRET_KEY` properties are defined, then the feature vector for each detection will be stored in the specified S3 bucket. Each detection will have a `FEATURE URI` detection property that represents the full URL to that object in that bucket. Refer to the [S3 Object Storage](https://openmpf.github.io/docs/site/Object-Storage-Guide/index.html#s3-object-storage) section of the Object Storage Guide for more information about these properties.
 
 Alternatively, if the S3 properties are not defined, then each detection will have a `FEATURE` detection property set to the value of the base64-encoded version of the feature vector.
+
+
+# Test Script
+`run_tests.sh` runs the tests from the `TrtisDetectionTest` test executable. `run_tests.sh` will 
+first build a Docker image containing the test executable. When invoking `run_tests.sh` 
+environment variables for `BUILD_REGISTRY` and `BUILD_TAG` can be set. They should correspond
+to the `openmpf_cpp_component_build` base image that will be used to build the test image. 
+For example, if you wanted to use `openmpf/openmpf_cpp_component_build:some-tag` as the base image,
+the script should be invoked as: `BUILD_REGISTRY=openmpf/ BUILD_TAG=some-tag ./run_tests.sh`.
+There is another test executable, `TrtisDetectionS3Test`, but `run_tests.sh` does not run it.
+`TrtisDetectionS3Test` requires an S3 provider such as Minio.
+
+
+

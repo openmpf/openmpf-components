@@ -27,7 +27,7 @@
 cmake_minimum_required(VERSION 3.6)
 project(ocv-yolo-detection)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 #ADD_DEFINITIONS("-std=c++11")
 add_definitions(-Wfatal-errors)
 
@@ -61,14 +61,13 @@ find_package(OpenCV 4.5.0 EXACT REQUIRED COMPONENTS opencv_dnn opencv_videoio op
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
-find_package(Qt4 REQUIRED)
 
 if ($ENV{TRITON_SUPPORT})
-    find_package(gRPC REQUIRED)
-    find_package(CUDAToolkit REQUIRED)
-    find_package(TritonCommon REQUIRED)
-    find_package(TritonClient REQUIRED)
+    include_directories(/opt/triton/include)
+    find_library(grpc_client grpcclient REQUIRED PATHS /opt/triton/lib)
+    find_library(protobuf protobuf REQUIRED PATHS /opt/triton/lib)
 endif ()
+
 
 set(COMMON_OCV_YOLO_DETECTION_SOURCE_FILES
         util.cpp util.h
@@ -99,7 +98,8 @@ if ($ENV{TRITON_SUPPORT})
             mpfComponentInterface
             mpfDetectionComponentApi
             mpfComponentUtils
-            TritonClient::grpcclient_static
+            ${grpc_client}
+            ${protobuf}
             ${OpenCV_LIBS}
             dlib)
 else ()

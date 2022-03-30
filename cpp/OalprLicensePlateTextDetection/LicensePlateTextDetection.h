@@ -29,19 +29,16 @@
 #define OPENMPF_COMPONENTS_LICENSEPLATETEXTDETECTION_H
 
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <log4cxx/logger.h>
 #include <alpr.h>
-#include <QHash>
-#include <QString>
 
 #include <MPFDetectionComponent.h>
 #include <MPFVideoCapture.h>
 #include <adapters/MPFImageAndVideoDetectionComponentAdapter.h>
-
-#include "alpr.h"
 
 /**
  * The TextDetection class implements license plate text detection
@@ -51,30 +48,14 @@
 class LicensePlateTextDetection : public MPF::COMPONENT::MPFImageAndVideoDetectionComponentAdapter {
 
 public:
-
-    /**
-     * Constructor
-     *
-     */
-    LicensePlateTextDetection();
-
-    /**
-     * Destructor
-     */
-    ~LicensePlateTextDetection();
-
     /**
      * The Init method instantiates and configures OpenALPR.  This method
      * must be called once after the constructor but before any other methods
      * are invoked.
      */
-    bool Init();
+    bool Init() override;
 
-    /**
-     * The Close method frees resources used by OpenALPR.  This method
-     * should be called prior to the destructor.
-     */
-    bool Close();
+    bool Close() override;
 
     /**
      * The GetDetections method returns license plate text detected in
@@ -92,7 +73,7 @@ public:
      */
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPF::COMPONENT::MPFVideoJob &job) override;
 
-    std::string GetDetectionType();
+    std::string GetDetectionType() override;
 
 private:
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetectionsFromVideoCapture(
@@ -126,15 +107,11 @@ private:
     static std::string GetText(const MPF::COMPONENT::MPFImageLocation &detection);
 
     log4cxx::LoggerPtr td_logger_;
-    /**< log4cxx Logger pointer passed in from the calling program */
-    QHash <QString, QString> parameters;
-    /**< Qt hash table that holds input config parameters */
-    alpr::Alpr *alpr_;
-    /**< Pointer to the created OpenALPR instance */
-    float rectangle_intersection_min_;
-    /**< minimum amount of license plate area overlap from frame to frame, for location based tracking */
-    float levenshtein_score_min_;        /**< minimum string similarity value that should be used to associate detected text with an existing track */
-
+    std::unique_ptr<alpr::Alpr> alpr_;
+    /** minimum amount of license plate area overlap from frame to frame, for location based tracking */
+    float rectangle_intersection_min_ = 0.75;
+    /** minimum string similarity value that should be used to associate detected text with an existing track */
+    float levenshtein_score_min_ = 0.667;
 };
 
 

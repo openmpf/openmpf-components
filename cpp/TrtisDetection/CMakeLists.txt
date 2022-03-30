@@ -36,16 +36,12 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
 
 include(../ComponentSetup.cmake)
 
-set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
-message("Package in ${PACKAGE_DIR}")
-
 find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0
     COMPONENTS opencv_core)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
-find_package(Qt4 REQUIRED)
-find_package(request REQUIRED)
+find_library(request REQUIRED)
 find_package(CURL REQUIRED)
 
 set(BUILD_SHARED_LIBS ON)  # make AWS use shared linking

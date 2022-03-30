@@ -31,10 +31,13 @@
 #include <string>
 #include <vector>
 
+#include <grpc_client.h>
+
 #include "../Config.h"
 #include "../Frame.h"
 
-#include <triton/core/tritonbackend.h>
+#include "TritonTensorMeta.h"
+#include "TritonClient.h"
 
 class TritonInferencer {
 

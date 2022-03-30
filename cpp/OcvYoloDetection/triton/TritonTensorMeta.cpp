@@ -24,13 +24,16 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include "TritonTensorMeta.h"
+
+#include <numeric>
+
 #include <grpc_client.h>
 #include <MPFDetectionException.h>
 
 #include "../Config.h"
 
 #include "TritonUtils.h"
-#include "TritonTensorMeta.h"
 
 using namespace MPF::COMPONENT;
 

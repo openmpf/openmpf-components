@@ -27,5 +27,5 @@
 cmake_minimum_required(VERSION 3.6)
 project(mpf-tesseractocr-tessdata-updater)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 

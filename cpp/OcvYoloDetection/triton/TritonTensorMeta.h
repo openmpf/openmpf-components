@@ -27,6 +27,11 @@
 #ifndef OPENMPF_COMPONENTS_TRITON_TENSOR_META_H
 #define OPENMPF_COMPONENTS_TRITON_TENSOR_META_H
 
+#include <string>
+#include <vector>
+
+#include <grpc_client.h>
+
 class TritonTensorMeta {
 public:
     const std::string name;
