@@ -54,9 +54,7 @@ RUN mkdir /opt/triton \
 
 
 
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_setup
-
-FROM build_setup as build_component
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
 ENV TRITON_SUPPORT=ON
 
@@ -79,63 +77,6 @@ RUN --mount=target=. \
         ./OcvTritonYoloDetectionTest $TRITON_SERVER; \
     fi
 
-########################################################################
-# CLion
-# Refer to: https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
-# Based on: https://github.com/JetBrains/clion-remote/blob/master/Dockerfile.centos7-cpp-env
-#
-# CLion toolchain settings:
-# - CMake: /usr/bin/cmake3
-# - Make: /usr/bin/gmake
-# - C Compiler: /usr/local/bin/gcc
-# - C++ Compiler: /usr/local/bin/g++
-# - Debugger: /usr/bin/gdb
-#
-# CLion CMake settings:
-# - CMake options: -DCMAKE_PREFIX_PATH=/opt/triton/lib64/cmake;/home/mpf/mpf-sdk-install/lib/cmake
-# - Environment: TRITON_SUPPORT=ON
-#
-# CLion deployment settings (SFTP Remote Development):
-# - [Connection] SSH configuration: root@localhost:2222
-# - [Connection] Root path: /home/mpf/component_src
-# - [Mappings] Deployment path: .
-#
-# Build command:
-#   COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker build . --progress=plain --target=clion \
-#   -t openmpf_ocv_yolo_detection:triton-clion
-#
-# Run command:
-#   docker run -d --cap-add sys_ptrace -p127.0.0.1:2222:22 --name clion_remote_env \
-#   openmpf_ocv_yolo_detection:triton-clion
-########################################################################
-FROM build_setup as clion
-
-COPY --from=download_library_source /apps/source/dlib-sources /apps/source/dlib-sources
-
-RUN --mount=type=tmpfs,target=/tmp \
-    --mount=type=tmpfs,target=/var/cache/yum \
-    yum install --assumeyes openssh-server gdb; \
-    yum clean all
-
-RUN ssh-keygen -A
-
-RUN mkdir /root/.ssh; \
-  ( \
-    echo 'LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64'; \
-  ) > /root/.ssh/environment
-
-RUN ( \
-    echo 'LogLevel DEBUG2'; \
-    echo 'PermitRootLogin yes'; \
-    echo 'PasswordAuthentication yes'; \
-    echo 'PermitUserEnvironment yes'; \
-    echo 'Subsystem sftp /usr/libexec/openssh/sftp-server'; \
-  ) > /etc/ssh/sshd_config_test_clion
-
-# Set root user password for SSH access.
-RUN echo "openmpf123" | passwd root --stdin
-
-CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 

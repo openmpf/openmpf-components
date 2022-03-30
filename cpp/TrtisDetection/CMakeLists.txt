@@ -36,9 +36,6 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
 
 include(../ComponentSetup.cmake)
 
-set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
-message("Package in ${PACKAGE_DIR}")
-
 find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0
     COMPONENTS opencv_core)
 find_package(mpfComponentInterface REQUIRED)

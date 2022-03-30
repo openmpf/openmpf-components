@@ -29,8 +29,6 @@ project(TesseractOCRTextDetection)
 ADD_DEFINITIONS("-std=c++11")
 include(../ComponentSetup.cmake)
 
-set(PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugin/${PROJECT_NAME})
-message("Package in ${PACKAGE_DIR}")
 
 unset(OpenCV_CONFIG_PATH CACHE)
 find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0
