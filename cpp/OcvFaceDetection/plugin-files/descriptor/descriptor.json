@@ -62,7 +62,7 @@
         },
         {
           "name": "VERBOSE",
-          "description": "VERBOSE = 1: print settings and detection results and VERBOSE = 0: no debugging output.",
+          "description": "VERBOSE = 1: print detection results and VERBOSE = 0: no debugging output.",
           "type": "INT",
           "defaultValue": "0"
         }

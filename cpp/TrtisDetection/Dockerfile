@@ -28,11 +28,6 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-ARG MODELS_REGISTRY=openmpf/
-
-FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:6.3 as models
-
-
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
@@ -105,7 +100,6 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
 
 ENV LD_LIBRARY_PATH $PLUGINS_DIR/TrtisDetection/lib
 
-# Must copy from openmpf_trtis_test_server so that Docker BuildKit does not skip test stage.
 COPY --from=build_component $BUILD_DIR/plugin/TrtisDetection \
                             $PLUGINS_DIR/TrtisDetection
 COPY --from=build_component $BUILD_DIR/libmpfTrtisDetection.so \

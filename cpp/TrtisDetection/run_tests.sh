@@ -39,7 +39,7 @@ cleanup() {
 trap cleanup EXIT
 
 script_dir=$(dirname "$0")
-image_id=$(docker build "$script_dir" --target build_component --quiet \
+image_id=$(DOCKER_BUILDKIT=1 docker build "$script_dir" --target build_component --quiet \
             --build-arg BUILD_REGISTRY --build-arg BUILD_TAG)
 
 trt_test_net="trt_test_net_$RANDOM"
