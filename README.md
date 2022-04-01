@@ -81,7 +81,7 @@ If you would like to only build a single component, you can `cd` into that compo
 ### Building a Python Component Outside of Docker
 
 - In order to build the Python components you must first install the [OpenMPF Python Component SDK](https://github.com/openmpf/openmpf-python-component-sdk#build-and-install-the-component-sdk).
-- `cd` into the Python component directory that contains the `setup.py` file
+- `cd` into the Python component directory that contains the `pyproject.toml` file
 - Run the following commands to install the component in a virtual environment:
 ```
 python3 -m venv venv
