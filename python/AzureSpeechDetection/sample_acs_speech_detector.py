@@ -65,6 +65,7 @@ if __name__ == '__main__':
     parser.add_argument('--no-cleanup', action='store_true')
     parser.add_argument('--blob-access-time', type=int, default=120)
     parser.add_argument('--transcription-expiration', type=int, default=120)
+    parser.add_argument('--ff-track', type=str)
     parser.add_argument('--json-file', type=str, default=None)
     parser.add_argument(
         'files',
@@ -72,6 +73,15 @@ if __name__ == '__main__':
         help='locations of the audio or video files'
     )
     args = parser.parse_args()
+
+    ff_track = None
+    if args.ff_track is not None:
+        ff_track = mpf.AudioTrack(
+            start_time=0,
+            stop_time=-1,
+            confidence=1,
+            detection_properties=json.loads(args.ff_track)
+        )
 
     properties = dict(
         LANGUAGE=str(args.language),
@@ -152,7 +162,7 @@ if __name__ == '__main__':
                 stop_time=stop,
                 job_properties=properties,
                 media_properties=media_properties,
-                feed_forward_track=None
+                feed_forward_track=ff_track
             ))
 
         elif filetype == 'video':
@@ -169,7 +179,7 @@ if __name__ == '__main__':
                 stop_frame=stop,
                 job_properties=properties,
                 media_properties=media_properties,
-                feed_forward_track=None
+                feed_forward_track=ff_track
             ))
 
         if args.json_file is not None:
@@ -205,4 +215,5 @@ if __name__ == '__main__':
                     det.stop_frame
                 ))
 
+            print(f"  DECODED LANGUAGE:  {props['DECODED_LANGUAGE']}")
             print('  TRANSCRIPT: {:s}'.format(transcript))
