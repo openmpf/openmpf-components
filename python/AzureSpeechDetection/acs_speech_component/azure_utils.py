@@ -35,7 +35,7 @@ ISO6393_2_BCP47 = dict(
     # LUO=[],
     MKD=["mk-MK"],
     MYA=["my-MM"],
-    NAN=["nan-TW", "zh-CN"],
+    NAN=["zh-HK", "nan-TW"],
     # NDE=["nd"],
     # ORM=["om"],
     # PAN=["pa-IN"],
@@ -50,7 +50,7 @@ ISO6393_2_BCP47 = dict(
     SLK=["sk-SK"],
     # SNA=["sn"],
     # SOM=["so-SO"],
-    SPA=["es-US", "es-MX", "es-AR", "es-BO", "es-CL", "es-CO", "es-CR", "es-CU",
+    SPA=["es-MX", "es-US", "es-AR", "es-BO", "es-CL", "es-CO", "es-CR", "es-CU",
          "es-DO", "es-EC", "es-SV", "es-GQ", "es-GT", "es-HN", "es-NI", "es-PA",
          "es-PY", "es-PE", "es-PR", "es-ES", "es-UY", "es-VE"],
     # SQI=["sq-AL"],
@@ -67,6 +67,6 @@ ISO6393_2_BCP47 = dict(
     # URD=["ur-IN"],
     UZB=["uz-UZ"],
     VIE=["vi-VN"],
-    YUE=["yue-CN", "zh-CN"],
+    YUE=["zh-CN", "yue-CN"],
     ZUL=["zu-ZA"]
 )
