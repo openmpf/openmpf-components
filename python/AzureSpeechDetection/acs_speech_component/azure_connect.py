@@ -89,6 +89,15 @@ class AzureConnection(object):
         }
         self.http_retry = server_info.http_retry
 
+        self.logger.info('Retrieving valid transcription locales')
+        req = request.Request(
+            url=self.url + '/locales',
+            headers=self.acs_headers,
+            method='GET'
+        )
+        with self.http_retry.urlopen(req) as response:
+            self.supported_locales = json.load(response)
+
         if (self.blob_container_url != server_info.blob_container_url
                 or self.blob_service_key != server_info.blob_service_key
                 or self.http_max_attempts != server_info.http_max_attempts):
@@ -104,6 +113,7 @@ class AzureConnection(object):
                 retry_read=server_info.http_max_attempts,
                 retry_status=server_info.http_max_attempts
             )
+
         else:
             self.logger.debug('ACS arguments unchanged')
 
@@ -142,6 +152,11 @@ class AzureConnection(object):
 
     def submit_batch_transcription(self, recording_url, job_name,
                                    diarize, language, expiry):
+        if language not in self.supported_locales:
+            raise ValueError(f"Provided language ({language}) not supported."
+                             " Refer to component README for list of supported"
+                             " locales for Azure Speech.")
+
         self.logger.info('Submitting batch transcription...')
         data = dict(
             contentUrls=[recording_url],
