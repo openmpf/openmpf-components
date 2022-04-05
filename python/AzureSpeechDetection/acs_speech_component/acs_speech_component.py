@@ -162,13 +162,6 @@ class AcsSpeechComponent(object):
             prop_type=bool
         )
 
-        confidence_threshold = mpf_util.get_property(
-            properties=job_properties,
-            key='CONFIDENCE_THRESHOLD',
-            default_value=-1.0,
-            prop_type=float
-        )
-
         return dict(
             server_info=server_info,
             blob_access_time=blob_access_time,
@@ -176,7 +169,6 @@ class AcsSpeechComponent(object):
             language=language,
             diarize=diarize,
             cleanup=cleanup,
-            confidence_threshold=confidence_threshold
         )
 
     @staticmethod
@@ -263,7 +255,7 @@ class AcsSpeechComponent(object):
         )
 
     @classmethod
-    def _parse_properties(cls, job):
+    def parse_properties(cls, job):
         """
         :param job_properties: Properties object from AudioJob or VideoJob
         :return: Dictionary of properties, pass as **kwargs to process_audio
