@@ -42,6 +42,7 @@ class SpeakerInfo(NamedTuple):
     speaker_id: str
     gender: str
     gender_score: float
+    language: str
     language_scores: Mapping[str, float]
     speech_segs: List[Tuple[float, float]]
 
@@ -100,7 +101,7 @@ class AcsSpeechDetectionProcessor(object):
         if not segments:
             return None
 
-        return sorted(segments, key=lambda s: s.start_t)
+        return sorted(segments)
 
     @staticmethod
     def desegment_times(
