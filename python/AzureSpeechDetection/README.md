@@ -43,7 +43,7 @@ The following are the BCP-47 codes and their corresponding languages which Azure
 | Amharic                        | `am-ET` |   `AMH`   |
 | Arabic (Algeria)               | `ar-DZ` |           |
 | Arabic (Bahrain)               | `ar-BH` |           |
-| Arabic (Egypt)                 | `ar-EG` |           |
+| Arabic (Egypt)                 | `ar-EG` |  `ARA`*   |
 | Arabic (Iraq)                  | `ar-IQ` |           |
 | Arabic (Israel)                | `ar-IL` |           |
 | Arabic (Jordan)                | `ar-JO` |           |
@@ -54,7 +54,7 @@ The following are the BCP-47 codes and their corresponding languages which Azure
 | Arabic (Oman)                  | `ar-OM` |           |
 | Arabic (Palestinian Authority) | `ar-PS` |           |
 | Arabic (Qatar)                 | `ar-QA` |           |
-| Arabic (Saudi Arabia)          | `ar-SA` |  `ARA`*   |
+| Arabic (Saudi Arabia)          | `ar-SA` |           |
 | Arabic (Syria)                 | `ar-SY` |           |
 | Arabic (Tunisia)               | `ar-TN` |           |
 | Arabic (United Arab Emirates)  | `ar-AE` |           |

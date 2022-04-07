@@ -1,7 +1,7 @@
 
 ISO6393_2_BCP47 = dict(
     AMH=["am-ET"],
-    ARA=["ar-SA", "ar-EG", "ar-IQ", "ar-IL", "ar-AE", "ar-SY", "ar-LY", "ar-DZ",
+    ARA=["ar-EG", "ar-SA", "ar-IQ", "ar-IL", "ar-AE", "ar-SY", "ar-LY", "ar-DZ",
          "ar-BH", "ar-JO", "ar-KW", "ar-LB", "ar-MA", "ar-OM", "ar-PS", "ar-QA",
          "ar-TN", "ar-YE"],
     # AZE=["az-AZ"],
