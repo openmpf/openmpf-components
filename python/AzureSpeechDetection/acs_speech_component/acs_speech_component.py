@@ -28,6 +28,7 @@ import os
 import logging
 from math import floor, ceil
 from collections import defaultdict
+from typing import Union, Optional, List
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -172,7 +173,7 @@ class AcsSpeechComponent(object):
         )
 
     @staticmethod
-    def _parse_ff_props(ff_props):
+    def _parse_ff_props(ff_props, start_time, stop_time):
         speaker_id = mpf_util.get_property(
             properties=ff_props,
             key='SPEAKER_ID',
@@ -229,6 +230,11 @@ class AcsSpeechComponent(object):
             default_value='',
             prop_type=str
         )
+        speech_segs = AcsSpeechDetectionProcessor.parse_segments_str(
+            segments_string=segments_str,
+            media_start_time=start_time,
+            media_stop_time=stop_time
+        )
 
         language_iso = mpf_util.get_property(
             properties=ff_props,
@@ -246,13 +252,16 @@ class AcsSpeechComponent(object):
                 mpf.DetectionError.INVALID_PROPERTY
             )
 
-        return languages[0], dict(
+        speaker = SpeakerInfo(
             speaker_id=speaker_id,
+            language=languages[0],
             language_scores=language_scores,
             gender=gender,
             gender_score=gender_score,
-            speech_segs=segments_str
+            speech_segs=speech_segs
         )
+
+        return speaker
 
     @classmethod
     def parse_properties(cls, job):
@@ -270,185 +279,149 @@ class AcsSpeechComponent(object):
 
         job_props = cls._parse_job_props(job.job_properties)
 
-        skip = False
-        feed_forward = False
-        speaker_props = None
+        if isinstance(job, mpf.VideoJob):
+            start_frame = job.start_frame
+            stop_frame = job.stop_frame
+            if stop_frame < 0:
+                stop_frame = None
+
+            # Convert frame locations to timestamps
+            media_frame_count = int(job.media_properties.get('FRAME_COUNT', -1))
+            media_duration = float(job.media_properties.get('DURATION', -1))
+            fpms = float(job.media_properties['FPS']) / 1000.0
+            start_time = int(start_frame / fpms)
+
+            # The WFM will pass a job stop frame equal to FRAME_COUNT-1 for the
+            #  last video segment. We want to use the detected DURATION in such
+            #  cases instead to ensure we process the entire audio track.
+            #  Only use the job stop frame if it differs from FRAME_COUNT-1.
+            if stop_frame is not None and stop_frame < media_frame_count - 1:
+                stop_time = int(stop_frame / fpms)
+            elif media_duration > 0:
+                stop_time = int(media_duration)
+            elif media_frame_count > 0:
+                stop_time = int(media_frame_count / fpms)
+            else:
+                stop_time = None
+        else:
+            start_time = job.start_time
+            stop_time = job.stop_time
+            if stop_time < 0:
+                stop_time = None
+
         if job.feed_forward_track is not None:
             det_props = job.feed_forward_track.detection_properties
 
             # If trigger key is in feed-forward properties, only run
             #  transcription if the value matches trigger_val
-            if t_key in det_props:
-                skip = (det_props[t_key] != t_val)
+            if t_key in det_props and det_props[t_key] != t_val:
+                return None
 
             if 'LANGUAGE' in det_props:
                 logger.debug("Getting properties from feed-forward track")
-                lang, speaker_props = cls._parse_ff_props(det_props)
-                job_props['language'] = lang
-                job_props['diarize'] = False
-                feed_forward = True
-        return (
-            skip,
-            feed_forward,
-            job_props,
-            speaker_props
+                speaker = cls._parse_ff_props(
+                    det_props,
+                    start_time=start_time,
+                    stop_time=stop_time
+                )
+                job_props.update(
+                    language=speaker.language,
+                    diarize=False,
+                    speaker=speaker
+                )
+
+        job_props.update(
+            target_file=job.data_uri,
+            job_name=job.job_name,
+            start_time=start_time,
+            stop_time=stop_time
         )
 
-    def get_detections_from_audio(self, audio_job):
-        logger.extra['job_name'] = audio_job.job_name
-        logger.info('Received audio job')
+        return job_props
 
-        start_time = audio_job.start_time
-        stop_time = audio_job.stop_time
-
-        if stop_time < 0:
-            stop_time = None
+    def get_detections_from_job(self,
+                                job: Union[mpf.AudioJob, mpf.VideoJob]
+                                ) -> Optional[List[mpf.AudioTrack]]:
         try:
-            (skip, feed_forward, job_props,
-                speaker_props) = self.parse_properties(audio_job)
+            job_props = self.parse_properties(job)
         except Exception as e:
-            # Pass the exception up
-            logger.exception(
-                'Exception raised while parsing properties: ' + str(e)
-            )
+            logger.exception(f'Exception raised while parsing properties: {e}')
             raise
 
-        if skip:
-            return [audio_job.feed_forward_track]
-
-        # If we suspect this is a subjob, overwrite SPEAKER_ID with 0 to
-        #  avoid confusion
-        overwrite_ids = False
-        if audio_job.feed_forward_track is not None:
-            overwrite_ids = True
-        elif stop_time is None:
-            pass
-        elif start_time > 0:
-            overwrite_ids = True
-        elif 'DURATION' in audio_job.media_properties:
-            if stop_time < float(audio_job.media_properties['DURATION']):
-                overwrite_ids = True
+        # If parse_properties returned None, this component should be skipped
+        if job_props is None:
+            return None
 
         try:
             logger.debug("Getting transcription tracks")
-            if feed_forward:
-                logger.debug("Using feed-forward speaker information")
-                speech_segs = AcsSpeechDetectionProcessor.parse_segments_str(
-                    segments_string=speaker_props['speech_segs'],
-                    media_start_time=start_time,
-                    media_stop_time=stop_time
-                )
-                speaker_props['speech_segs'] = speech_segs
-                job_props['speaker'] = SpeakerInfo(**speaker_props)
-
-            audio_tracks = self.processor.process_audio(
-                target_file=audio_job.data_uri,
-                start_time=start_time,
-                stop_time=stop_time,
-                job_name=audio_job.job_name,
-                **job_props
-            )
+            audio_tracks = self.processor.process_audio(**job_props)
         except Exception as e:
-            # Pass the exception up
-            logger.exception(
-                'Exception raised while processing audio: ' + str(e)
-            )
+            logger.exception(f'Exception raised while processing audio: {e}')
             raise
 
-        for track in audio_tracks:
-            track.detection_properties['LONG_SPEAKER_ID'] = '{}-{}-{}'.format(
-                audio_job.start_time,
-                audio_job.stop_time if audio_job.stop_time > 0 else 'EOF',
-                track.detection_properties['SPEAKER_ID']
+        if isinstance(job, mpf.VideoJob):
+            t0, t1 = job.start_frame, job.stop_frame
+        elif isinstance(job, mpf.AudioJob):
+            t0, t1 = job.start_time, job.stop_time
+        else:
+            raise mpf.DetectionException(
+                "Can only process AudioJobs and VideoJobs",
+                mpf.DetectionError.UNSUPPORTED_DATA_TYPE
             )
+
+        # If we suspect this is a subjob, overwrite SPEAKER_ID with 0 to
+        #  avoid confusion
+        overwrite_ids = job.feed_forward_track is not None
+        if t1 > 0:
+            if t0 > 0:
+                overwrite_ids = True
+            elif 'DURATION' in job.media_properties:
+                if t1 < float(job.media_properties['DURATION']):
+                    overwrite_ids = True
+            elif 'FRAME_COUNT' in job.media_properties:
+                if t1 < int(job.media_properties['FRAME_COUNT']) - 1:
+                    overwrite_ids = True
+        else:
+            t1 = 'EOF'
+
+        for track in audio_tracks:
+            sid = track.detection_properties['SPEAKER_ID']
+            track.detection_properties['LONG_SPEAKER_ID'] = f"{t0}-{t1}-{sid}"
             if overwrite_ids:
                 track.detection_properties['SPEAKER_ID'] = '0'
 
         logger.info('Processing complete. Found %d tracks.' % len(audio_tracks))
         return audio_tracks
 
-    def get_detections_from_video(self, video_job):
-        logger.extra['job_name'] = video_job.job_name
-        logger.info('Received video job')
+    def get_detections_from_audio(
+            self,
+            job: mpf.AudioJob) -> List[mpf.AudioTrack]:
+        logger.extra['job_name'] = job.job_name
 
-        start_frame = video_job.start_frame
-        stop_frame = video_job.stop_frame
-        try:
-            (skip, feed_forward, job_props,
-                speaker_props) = self.parse_properties(video_job)
-        except Exception as e:
-            # Pass the exception up
-            logger.exception(
-                'Exception raised while parsing properties: ' + str(e)
-            )
-            raise
+        tracks = self.get_detections_from_job(job)
 
-        if skip:
-            return [video_job.feed_forward_track]
+        # If parse_properties returned None, this component should be skipped
+        return tracks if tracks is not None else [job.feed_forward_track]
 
-        if 'FPS' not in video_job.media_properties:
+    def get_detections_from_video(
+            self,
+            job: mpf.VideoJob) -> List[mpf.VideoTrack]:
+        logger.extra['job_name'] = job.job_name
+
+        if 'FPS' not in job.media_properties:
             error_str = 'FPS must be included in video job media properties.'
             logger.error(error_str)
             raise mpf.DetectionException(
                 error_str,
                 mpf.DetectionError.MISSING_PROPERTY
             )
+        fpms = float(job.media_properties['FPS']) / 1000.0
 
-        media_properties = video_job.media_properties
-        media_frame_count = int(media_properties.get('FRAME_COUNT', -1))
-        media_duration = float(media_properties.get('DURATION', -1))
+        audio_tracks = self.get_detections_from_job(job)
 
-        # If we suspect this is a subjob, overwrite SPEAKER_ID with 0 to
-        #  avoid confusion
-        overwrite_ids = False
-        if video_job.feed_forward_track is not None:
-            overwrite_ids = True
-        elif stop_frame is None:
-            pass
-        elif start_frame > 0:
-            overwrite_ids = True
-        elif stop_frame < media_frame_count - 1:
-            overwrite_ids = True
-
-        # Convert frame locations to timestamps
-        fpms = float(video_job.media_properties['FPS']) / 1000.0
-        start_time = int(start_frame / fpms)
-
-        # The WFM will pass a job stop frame equal to FRAME_COUNT-1 for the last video segment.
-        #  We want to use the detected DURATION in such cases instead to ensure we process the entire audio track.
-        #  Only use the job stop frame if it differs from FRAME_COUNT-1.
-        if stop_frame is not None and stop_frame < media_frame_count - 1:
-            stop_time = int(stop_frame / fpms)
-        elif media_duration > 0:
-            stop_time = int(media_duration)
-        elif media_frame_count > 0:
-            stop_time = int(media_frame_count / fpms)
-        else:
-            stop_time = None
-
-        try:
-            if feed_forward:
-                logger.debug("Using feed-forward speaker information")
-                speech_segs = AcsSpeechDetectionProcessor.parse_segments_str(
-                    segments_string=speaker_props['speech_segs'],
-                    media_start_time=start_time,
-                    media_stop_time=stop_time
-                )
-                speaker_props['speech_segs'] = speech_segs
-                job_props['speaker'] = SpeakerInfo(**speaker_props)
-
-            audio_tracks = self.processor.process_audio(
-                target_file=video_job.data_uri,
-                start_time=start_time,
-                stop_time=stop_time,
-                job_name=video_job.job_name,
-                **job_props
-            )
-        except Exception as e:
-            # Pass the exception up
-            error_str = 'Exception raised while processing audio: ' + str(e)
-            logger.exception(error_str)
-            raise
+        # If parse_properties returned None, this component should be skipped
+        if audio_tracks is None:
+            return [job.feed_forward_track]
 
         try:
             # Convert audio tracks to video tracks with placeholder frame locs
@@ -457,13 +430,6 @@ class AcsSpeechComponent(object):
                 # Convert timestamps back to frames
                 track_start_frame = int(floor(fpms * track.start_time))
                 track_stop_frame = int(ceil(fpms * track.stop_time))
-                track.detection_properties['LONG_SPEAKER_ID'] = '{}-{}-{}'.format(
-                    video_job.start_frame,
-                    video_job.stop_frame if video_job.stop_frame > 0 else 'EOF',
-                    track.detection_properties['SPEAKER_ID']
-                )
-                if overwrite_ids:
-                    track.detection_properties['SPEAKER_ID'] = '0'
                 video_track = mpf.VideoTrack(
                     start_frame=track_start_frame,
                     stop_frame=track_stop_frame,
@@ -484,10 +450,7 @@ class AcsSpeechComponent(object):
                 video_tracks.append(video_track)
 
         except Exception as e:
-            # Pass the exception up
-            logger.exception(
-                'Exception raised while converting to video track: ' + str(e)
-            )
+            logger.exception('Exception raised while converting to video track: {e}')
             raise
 
         logger.info('Processing complete. Found %d tracks.' % len(video_tracks))
