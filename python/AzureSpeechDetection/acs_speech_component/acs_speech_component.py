@@ -28,7 +28,7 @@ import os
 import logging
 from math import floor, ceil
 from collections import defaultdict
-from typing import Union, Optional, Any, Mapping, Dict
+from typing import Union, Optional, Any, Mapping, Dict, List
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -361,7 +361,7 @@ class AcsSpeechComponent(object):
     def get_detections_from_job(
                 self,
                 job: Union[mpf.AudioJob, mpf.VideoJob]
-            ) -> Optional[list[mpf.AudioTrack]]:
+            ) -> Optional[List[mpf.AudioTrack]]:
         try:
             job_props = self.parse_properties(job)
         except Exception as e:
@@ -415,7 +415,7 @@ class AcsSpeechComponent(object):
     def get_detections_from_audio(
                 self,
                 job: mpf.AudioJob
-            ) -> list[mpf.AudioTrack]:
+            ) -> List[mpf.AudioTrack]:
         logger.extra['job_name'] = job.job_name
         logger.info('Received audio job')
 
@@ -430,7 +430,7 @@ class AcsSpeechComponent(object):
     def get_detections_from_video(
                 self,
                 job: mpf.VideoJob
-            ) -> list[mpf.VideoTrack]:
+            ) -> List[mpf.VideoTrack]:
         logger.extra['job_name'] = job.job_name
         logger.info('Received video job')
 
