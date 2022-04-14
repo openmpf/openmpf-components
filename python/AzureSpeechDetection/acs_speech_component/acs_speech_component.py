@@ -28,7 +28,7 @@ import os
 import logging
 from math import floor, ceil
 from collections import defaultdict
-from typing import Union, Optional, List
+from typing import Union, Optional, Any, Mapping
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -66,7 +66,10 @@ class AcsSpeechComponent(object):
         logger.info('AcsSpeechDetection created')
 
     @staticmethod
-    def _get_job_property_or_env_value(property_name, job_properties):
+    def _get_job_property_or_env_value(
+                property_name: str,
+                job_properties: Mapping[str, str]
+            ) -> str:
         property_value = job_properties.get(property_name)
         if property_value:
             return property_value
@@ -81,9 +84,12 @@ class AcsSpeechComponent(object):
             mpf.DetectionError.MISSING_PROPERTY)
 
     @classmethod
-    def _parse_job_props(cls, job_properties):
+    def _parse_job_props(
+                cls,
+                job_properties: Mapping[str, str]
+            ) -> dict[str, Any]:
         """
-        :param job_properties: Properties object from AudioJob or VideoJob
+        :param job_properties: job_properties from AudioJob or VideoJob
         :return: Dictionary of properties, pass as **kwargs to process_audio
         """
 
@@ -173,7 +179,18 @@ class AcsSpeechComponent(object):
         )
 
     @staticmethod
-    def _parse_ff_props(ff_props, start_time, stop_time):
+    def _parse_ff_props(
+                ff_props: Mapping[str, str],
+                start_time: int,
+                stop_time: int
+            ) -> SpeakerInfo:
+        """
+        :param ff_props: detection_properties from job's feed_forward_track
+        :param start_time: Job start time (in milliseconds)
+        :param stop_time: Job stop time (in milliseconds)
+        :return: SpeakerInfo object holding speaker information from upstream
+            component, including ID and language.
+        """
         speaker_id = mpf_util.get_property(
             properties=ff_props,
             key='SPEAKER_ID',
@@ -252,7 +269,7 @@ class AcsSpeechComponent(object):
                 mpf.DetectionError.INVALID_PROPERTY
             )
 
-        speaker = SpeakerInfo(
+        return SpeakerInfo(
             speaker_id=speaker_id,
             language=languages[0],
             language_scores=language_scores,
@@ -261,13 +278,15 @@ class AcsSpeechComponent(object):
             speech_segs=speech_segs
         )
 
-        return speaker
-
     @classmethod
-    def parse_properties(cls, job):
+    def parse_properties(
+                cls,
+                job: Union[mpf.AudioJob, mpf.VideoJob]
+            ) -> Optional[dict[str, Any]]:
         """
-        :param job_properties: Properties object from AudioJob or VideoJob
-        :return: Dictionary of properties, pass as **kwargs to process_audio
+        :param job: AudioJob or VideoJob
+        :return: Dictionary of properties, pass as **kwargs to process_audio.
+            If None, then skip this job and return feed-forward track.
         """
         trigger = mpf_util.get_property(
             properties=job.job_properties,
@@ -309,6 +328,7 @@ class AcsSpeechComponent(object):
             if stop_time < 0:
                 stop_time = None
 
+        # Parse feed-forward properties if a feed-forward track exists
         if job.feed_forward_track is not None:
             det_props = job.feed_forward_track.detection_properties
 
@@ -317,18 +337,17 @@ class AcsSpeechComponent(object):
             if t_key in det_props and det_props[t_key] != t_val:
                 return None
 
-            if 'LANGUAGE' in det_props:
-                logger.debug("Getting properties from feed-forward track")
-                speaker = cls._parse_ff_props(
-                    det_props,
-                    start_time=start_time,
-                    stop_time=stop_time
-                )
-                job_props.update(
-                    language=speaker.language,
-                    diarize=False,
-                    speaker=speaker
-                )
+            logger.debug("Getting properties from feed-forward track")
+            speaker = cls._parse_ff_props(
+                det_props,
+                start_time=start_time,
+                stop_time=stop_time
+            )
+            job_props.update(
+                language=speaker.language,
+                diarize=False,
+                speaker=speaker
+            )
 
         job_props.update(
             target_file=job.data_uri,
@@ -339,9 +358,10 @@ class AcsSpeechComponent(object):
 
         return job_props
 
-    def get_detections_from_job(self,
-                                job: Union[mpf.AudioJob, mpf.VideoJob]
-                                ) -> Optional[List[mpf.AudioTrack]]:
+    def get_detections_from_job(
+                self,
+                job: Union[mpf.AudioJob, mpf.VideoJob]
+            ) -> Optional[list[mpf.AudioTrack]]:
         try:
             job_props = self.parse_properties(job)
         except Exception as e:
@@ -390,22 +410,24 @@ class AcsSpeechComponent(object):
             if overwrite_ids:
                 track.detection_properties['SPEAKER_ID'] = '0'
 
-        logger.info('Processing complete. Found %d tracks.' % len(audio_tracks))
         return audio_tracks
 
     def get_detections_from_audio(
-            self,
-            job: mpf.AudioJob) -> List[mpf.AudioTrack]:
+                self,
+                job: mpf.AudioJob
+            ) -> list[mpf.AudioTrack]:
         logger.extra['job_name'] = job.job_name
 
         tracks = self.get_detections_from_job(job)
+        logger.info('Processing complete. Found %d tracks.' % len(tracks))
 
         # If parse_properties returned None, this component should be skipped
         return tracks if tracks is not None else [job.feed_forward_track]
 
     def get_detections_from_video(
-            self,
-            job: mpf.VideoJob) -> List[mpf.VideoTrack]:
+                self,
+                job: mpf.VideoJob
+            ) -> list[mpf.VideoTrack]:
         logger.extra['job_name'] = job.job_name
 
         if 'FPS' not in job.media_properties:
