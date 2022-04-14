@@ -417,18 +417,22 @@ class AcsSpeechComponent(object):
                 job: mpf.AudioJob
             ) -> list[mpf.AudioTrack]:
         logger.extra['job_name'] = job.job_name
+        logger.info('Received audio job')
 
         tracks = self.get_detections_from_job(job)
-        logger.info('Processing complete. Found %d tracks.' % len(tracks))
+        if tracks is not None:
+            logger.info('Processing complete. Found %d tracks.' % len(tracks))
+            return tracks
 
         # If parse_properties returned None, this component should be skipped
-        return tracks if tracks is not None else [job.feed_forward_track]
+        return [job.feed_forward_track]
 
     def get_detections_from_video(
                 self,
                 job: mpf.VideoJob
             ) -> list[mpf.VideoTrack]:
         logger.extra['job_name'] = job.job_name
+        logger.info('Received video job')
 
         if 'FPS' not in job.media_properties:
             error_str = 'FPS must be included in video job media properties.'
