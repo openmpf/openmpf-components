@@ -28,7 +28,7 @@ import os
 import logging
 from math import floor, ceil
 from collections import defaultdict
-from typing import Union, Optional, Any, Mapping
+from typing import Union, Optional, Any, Mapping, Dict
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -87,7 +87,7 @@ class AcsSpeechComponent(object):
     def _parse_job_props(
                 cls,
                 job_properties: Mapping[str, str]
-            ) -> dict[str, Any]:
+            ) -> Dict[str, Any]:
         """
         :param job_properties: job_properties from AudioJob or VideoJob
         :return: Dictionary of properties, pass as **kwargs to process_audio
@@ -282,7 +282,7 @@ class AcsSpeechComponent(object):
     def parse_properties(
                 cls,
                 job: Union[mpf.AudioJob, mpf.VideoJob]
-            ) -> Optional[dict[str, Any]]:
+            ) -> Optional[Dict[str, Any]]:
         """
         :param job: AudioJob or VideoJob
         :return: Dictionary of properties, pass as **kwargs to process_audio.
