@@ -32,7 +32,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 include(../ComponentSetup.cmake)
 
-find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0
+find_package(OpenCV 4.5.5 EXACT REQUIRED PATHS /opt/opencv-4.5.5
     COMPONENTS opencv_dnn)
 
 find_package(mpfComponentInterface REQUIRED)

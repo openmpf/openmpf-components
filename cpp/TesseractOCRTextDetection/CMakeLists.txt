@@ -31,7 +31,7 @@ include(../ComponentSetup.cmake)
 
 
 unset(OpenCV_CONFIG_PATH CACHE)
-find_package(OpenCV 4.5.0 EXACT REQUIRED PATHS /opt/opencv-4.5.0
+find_package(OpenCV 4.5.5 EXACT REQUIRED PATHS /opt/opencv-4.5.5
     COMPONENTS opencv_highgui opencv_objdetect opencv_features2d opencv_ml opencv_flann opencv_video)
 
 
