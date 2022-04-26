@@ -39,6 +39,8 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/tracking.hpp>
+#include <opencv2/tracking/tracking_legacy.hpp>
+
 
 // 3rd party code for solving assignment problem
 #include <dlib/matrix.h>
@@ -248,7 +250,7 @@ private:
     std::vector<DetectionLocation> locations_;
 
     /// openCV tracker to help bridge gaps when detector fails
-    cv::Ptr<cv::Tracker> ocvTracker_;
+    cv::Ptr<cv::legacy::Tracker> ocvTracker_;
 
     /// frame index at which the tracker was initialized
     size_t ocvTrackerStartFrameIdx_ = 0;

@@ -116,7 +116,7 @@ bool Track::ocvTrackerPredict(const Frame &frame, const long maxFrameGap, cv::Re
                                                back().frame.data.rows - 1);
         if (overlap.width > 1 && overlap.height > 1) {
             // could try different trackers here. e.g. cv::TrackerKCF::create();
-            ocvTracker_ = cv::TrackerMOSSE::create();
+            ocvTracker_ = cv::legacy::TrackerMOSSE::create();
             ocvTracker_->init(back().frame.data, bbox);
             LOG_TRACE("tracker created for " << back());
             ocvTrackerStartFrameIdx_ = frame.idx;

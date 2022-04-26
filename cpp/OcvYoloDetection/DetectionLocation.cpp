@@ -248,7 +248,7 @@ cv::Mat DetectionLocation::getDFTFeature() {
     // make normalized grayscale float image
     cv::Mat gray;
     // Convert to gray scale
-    cv::cvtColor(frame.data(getRect()), gray, CV_BGR2GRAY);
+    cv::cvtColor(frame.data(getRect()), gray, cv::COLOR_BGR2GRAY);
     cv::Scalar mean;
     cv::Scalar stdDeviation;
     cv::meanStdDev(gray, mean, stdDeviation);
