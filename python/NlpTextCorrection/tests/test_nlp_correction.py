@@ -167,17 +167,21 @@ class TestNlpCorrection(unittest.TestCase):
             feed_forward_track=None
         )
 
-        expected_text = "This [sentence, sentience, entrance, stance, senescent] ends in a [conman, comma, command, " \
-                        "commas, common, cowman, com man, com-man, comm an, comm-an, comma n, coma] ," \
-                        "\nAnd this one two periods .." \
-                        "\n\'\' Begin with quotes here" \
-                        "\n\n** stars **stars ..periods commas,, periods .." \
-                        "\n\ninfinite: : a thing,"
+        # Sometimes "comma n" is the last suggestion, and sometimes it's both "comma n, coma". Only check for "comma n".
+        expected_text_start = "This [sentence, sentience, entrance, stance, senescent] ends in a [conman, comma, " \
+                              "command, commas, common, cowman, com man, com-man, comm an, comm-an, comma n"
+
+        expected_text_end = "And this one two periods .." \
+                            "\n\'\' Begin with quotes here" \
+                            "\n\n** stars **stars ..periods commas,, periods .." \
+                            "\n\ninfinite: : a thing,"
 
         results = list(NlpCorrectionComponent().get_detections_from_generic(job))
-
         self.assertEqual(1, len(results))
-        self.assertEqual(expected_text, results[0].detection_properties.get("CORRECTED TEXT"))
+
+        parts = results[0].detection_properties.get("CORRECTED TEXT").split('\n', 1)
+        self.assertIn(expected_text_start, parts[0])
+        self.assertEqual(expected_text_end, parts[1])
 
     def test_acronyms(self):
         job = mpf.GenericJob(
