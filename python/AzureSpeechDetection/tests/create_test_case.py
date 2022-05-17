@@ -124,6 +124,8 @@ if __name__ == '__main__':
             job_name += "_diar"
         job_name += "_" + args.language
 
+    start_time = 0
+    stop_time = -1
     if filetype == 'audio':
         start_time = args.start_time
         stop_time = args.stop_time
@@ -200,6 +202,18 @@ if __name__ == '__main__':
         os.path.realpath(os.path.dirname(__file__)),
         'test_data'
     )
+
+    # Write locales response
+    req = request.Request(
+        url=comp.processor.url + '/locales',
+        headers=comp.processor.acs_headers,
+        method='GET'
+    )
+    response = request.urlopen(req)
+    supported_locales = json.load(response)
+    path = os.path.join(base_local_path, 'transcriptions', 'locales') + '.json'
+    with open(path, 'w') as fout:
+        json.dump(result, fout, indent=4)
 
     # Update result object to point to files path
     result['self'] = f"{job_url}.json"
