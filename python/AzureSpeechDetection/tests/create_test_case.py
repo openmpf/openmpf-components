@@ -34,6 +34,7 @@ from urllib import request
 from test_acs_speech import (
     transcription_url, blobs_url, outputs_url, models_url
 )
+import mpf_component_util as util
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from acs_speech_component import AcsSpeechComponent
@@ -106,13 +107,8 @@ if __name__ == '__main__':
             )
 
     comp = AcsSpeechComponent()
-    parsed_properties = comp._parse_properties(properties)
-    comp.processor.update_acs(
-        acs_url=parsed_properties['acs_url'],
-        acs_subscription_key=parsed_properties['acs_subscription_key'],
-        acs_blob_container_url=parsed_properties['acs_blob_container_url'],
-        acs_blob_service_key=parsed_properties['acs_blob_service_key']
-    )
+    parsed_properties = comp._parse_job_props(properties)
+    comp.processor.acs.update_acs(parsed_properties['server_info'])
 
     job_name = args.job_name
     gen_job_name = (job_name is None)
@@ -155,19 +151,38 @@ if __name__ == '__main__':
         start_time = 0 if start_frame is None else start_frame / fpms
         stop_time = -1 if stop_frame is None else stop_frame / fpms
 
+    job_url = f"{transcription_url}/{job_name}"
+    base_local_path = os.path.join(
+        os.path.realpath(os.path.dirname(__file__)),
+        'test_data'
+    )
+
+    # Write locales response
+    req = request.Request(
+        url=comp.processor.acs.url + '/locales',
+        headers=comp.processor.acs.acs_headers,
+        method='GET'
+    )
+    response = request.urlopen(req)
+    supported_locales = json.load(response)
+    path = os.path.join(base_local_path, 'transcriptions', 'locales') + '.json'
+    with open(path, 'w') as fout:
+        json.dump(supported_locales, fout, indent=4)
+
     recording_url = comp.processor.acs.upload_file_to_blob(
-        filepath=args.filepath,
+        audio_bytes=util.transcode_to_wav(
+            args.filepath,
+            start_time=start_time,
+            stop_time=stop_time),
         recording_id=recording_id,
         blob_access_time=args.blob_access_time,
-        start_time=start_time,
-        stop_time=stop_time
     )
     try:
         output_loc = comp.processor.acs.submit_batch_transcription(
             recording_url=recording_url,
             job_name=job_name,
             diarize=parsed_properties['diarize'],
-            language=parsed_properties['lang'],
+            language=parsed_properties['language'],
             expiry=args.transcription_expiration
         )
     except Exception:
@@ -196,24 +211,6 @@ if __name__ == '__main__':
     finally:
         comp.processor.acs.delete_blob(recording_id)
         comp.processor.acs.delete_transcription(output_loc)
-
-    job_url = f"{transcription_url}/{job_name}"
-    base_local_path = os.path.join(
-        os.path.realpath(os.path.dirname(__file__)),
-        'test_data'
-    )
-
-    # Write locales response
-    req = request.Request(
-        url=comp.processor.url + '/locales',
-        headers=comp.processor.acs_headers,
-        method='GET'
-    )
-    response = request.urlopen(req)
-    supported_locales = json.load(response)
-    path = os.path.join(base_local_path, 'transcriptions', 'locales') + '.json'
-    with open(path, 'w') as fout:
-        json.dump(result, fout, indent=4)
 
     # Update result object to point to files path
     result['self'] = f"{job_url}.json"
