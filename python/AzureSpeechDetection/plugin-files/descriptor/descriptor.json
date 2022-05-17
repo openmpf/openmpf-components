@@ -88,8 +88,8 @@
         {
           "name": "TRIGGER",
           "description": "Trigger condition for this component when used as a downstream action, of the form `TRACK_PROPERTY=VALUE`. Example: 'SPEECH_DETECTOR=AZURESPEECH' will result in this action only being run if the feed-forward track has the property SPEECH_DETECTOR with the value AZURESPEECH.",
-          "type": "FLOAT",
-          "defaultValue": "0.5"
+          "type": "STRING",
+          "defaultValue": ""
         }
       ]
     }
