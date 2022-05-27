@@ -30,6 +30,8 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
+RUN pip install --no-cache-dir --use-pep517 'cyhunspell>=2.0.2'
+
 ARG RUN_TESTS=false
 
 RUN --mount=target=.,readwrite \

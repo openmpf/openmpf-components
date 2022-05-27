@@ -41,9 +41,6 @@
 
 #include <opencv2/opencv.hpp>
 
-#include <QHash>
-#include <QString>
-
 #include <tesseract/baseapi.h>
 #include <tesseract/osdetect.h>
 
@@ -216,7 +213,6 @@ namespace MPF {
             void process_serial_pdf_pages(PDF_page_inputs &page_inputs, PDF_page_results &page_results);
 
             log4cxx::LoggerPtr hw_logger_;
-            QHash<QString, QString> parameters;
             OCR_filter_settings default_ocr_fset;
 
             // Map of {OCR engine, language} pairs to TessApiWrapper
@@ -234,8 +230,6 @@ namespace MPF {
             static void process_tesseract_lang_model(OCR_job_inputs &input, OCR_results  &result);
 
             void set_default_parameters();
-
-            void set_read_config_parameters();
 
             void load_settings(const MPFJob &job, OCR_filter_settings &ocr_fset);
             void load_image_preprocessing_settings(const MPFJob &job,

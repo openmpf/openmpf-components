@@ -24,19 +24,20 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include <triton/core/tritonbackend.h>
+#include "TritonClient.h"
+
+#include <cstddef>
+
 #include <grpc_client.h>
 #include <MPFDetectionException.h>
 
 #include "shm_utils.h"
-
 #include "../util.h"
 #include "../Config.h"
 #include "../Frame.h"
 
 #include "TritonTensorMeta.h"
 #include "TritonUtils.h"
-#include "TritonClient.h"
 #include "TritonInferencer.h"
 
 using namespace MPF::COMPONENT;

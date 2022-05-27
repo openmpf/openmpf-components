@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2021 The MITRE Corporation                                      #
+# Copyright 2022 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -24,16 +24,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-OALPR_TEXT_VIDEO_FILE: ./test/test_vids/oalpr_text_video.avi
-OALPR_TEXT_KNOWN_TRACKS: ./test/test_vids/oalpr_text_known_tracks.txt
-OALPR_TEXT_VIDEO_OUTPUT_FILE: oalpr_text_found_tracks.avi
-OALPR_TEXT_FOUND_TRACKS: oalpr_text_found_tracks.txt
-OALPR_TEXT_START_FRAME: 0
-OALPR_TEXT_STOP_FRAME: 49
-OALPR_TEXT_FRAME_RATE: 1
-OALPR_TEXT_COMPARISON_SCORE_VIDEO: 0.3
-OALPR_TEXT_IMAGE_FILE: ./test/test_imgs/oalpr_text_image.png
-OALPR_TEXT_KNOWN_DETECTIONS: ./test/test_imgs/oalpr_text_known_detections.txt
-OALPR_TEXT_IMAGE_OUTPUT_FILE: oalpr_text_found_detections.png
-OALPR_TEXT_FOUND_DETECTIONS: oalpr_text_found_detections.txt
-OALPR_TEXT_COMPARISON_SCORE_IMAGE: 0.6
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

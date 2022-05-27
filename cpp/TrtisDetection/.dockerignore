@@ -31,3 +31,4 @@ README.md
 Dockerfile
 trtserver_dockerfile
 .dockerignore
+run_tests.sh

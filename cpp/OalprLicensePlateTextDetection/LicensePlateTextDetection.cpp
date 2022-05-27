@@ -24,18 +24,16 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include "LicensePlateTextDetection.h"
+
 #include <iostream>
-#include <fstream>
 #include <map>
-#include <QString>
-#include <QDir>
+
 #include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
+
 #include <detectionComponentUtils.h>
 #include <MPFImageReader.h>
-#include "LicensePlateTextDetection.h"
 #include <Utils.h>
-#include <MPFSimpleConfigLoader.h>
 
 using namespace MPF;
 using namespace COMPONENT;
@@ -45,15 +43,6 @@ using namespace alpr;
 
 using log4cxx::Logger;
 
-//-----------------------------------------------------------------------------
-LicensePlateTextDetection::LicensePlateTextDetection() {
-
-}
-
-//-----------------------------------------------------------------------------
-LicensePlateTextDetection::~LicensePlateTextDetection() {
-
-}
 
 //-----------------------------------------------------------------------------
 /* virtual */ std::string LicensePlateTextDetection::GetDetectionType() {
@@ -62,7 +51,6 @@ LicensePlateTextDetection::~LicensePlateTextDetection() {
 
 //-----------------------------------------------------------------------------
 /* virtual */ bool LicensePlateTextDetection::Init() {
-
     //Set locale
     std::setlocale(LC_ALL, "C");
 
@@ -78,103 +66,29 @@ LicensePlateTextDetection::~LicensePlateTextDetection() {
 
     LOG4CXX_DEBUG(td_logger_, "Plugin path: " << plugin_path);
 
-    // Load the config file
-    int rc;
-    rc = LoadConfig(config_path + "/mpfOALPRLicensePlateTextDetection.ini", parameters);
-    if (rc) {
-        LOG4CXX_ERROR(td_logger_, "loadConfig failed: config_path = "
-                << config_path);
-        return (false);
-    }
-
     // Instantiate and initialize ALPR
 
-    // Check whether the TESSDATA_PREFIX variable is set in the environment
-    // If not, then read the value stored in the config file, and set it in the
-    // environment.
-    string env_name("TESSDATA_PREFIX");
-    char *tmp = getenv(env_name.c_str());
-    if (NULL != tmp) {
-        LOG4CXX_DEBUG(td_logger_, "TESSDATA_PREFIX current value: " << tmp);
-    }
-    else {
-        string env_value = parameters["TESSDATA_PREFIX"].toStdString();
-        LOG4CXX_DEBUG(td_logger_, "setting TESSDATA_PREFIX to " << env_value);
-        rc = setenv(env_name.c_str(), env_value.c_str(), 1 /* overwrite existing */);
-        if (rc) {
-            LOG4CXX_ERROR(td_logger_, "setenv failed: env_name = " << env_name
-                                                                   << " env_value = " << env_value);
-            return (false);
-        }
-    }
-    string config_file_name = parameters["OPENALPR_CONFIG_FILE"].toStdString();
-    string config_file = config_path + "/" + config_file_name;
+    // Set TESSDATA_PREFIX if not already set.
+    setenv("TESSDATA_PREFIX", "/usr/share/openalpr/runtime_data/ocr", false);
+
+    string config_file = config_path + "/openalpr.conf";
     LOG4CXX_DEBUG(td_logger_, "OALPR config file: " << config_file);
 
-    // Put the path to the runtime_data directory in the config file, if it
-    // hasn't already been done
-    std::ifstream conf_file_in(config_file);
-    if (!conf_file_in.is_open()) {
-        LOG4CXX_ERROR(td_logger_, "Failed to open config file " << config_file
-                                                                << ": " << strerror(errno));
-        return false;
-    }
-    bool found = false;
-    string line;
-    size_t pos;
-    while (!conf_file_in.eof()) {
-        while ( getline(conf_file_in, line) ) {
-            pos = line.find("runtime_dir");
-            if (pos != string::npos) {
-                found = true;
-                break;
-            }
-        }
-    }
-    conf_file_in.close();
-    if (!found) {
-        std::ofstream conf_file_out(config_file, ios::app);
-        if (!conf_file_out.is_open()) {
-            LOG4CXX_ERROR(td_logger_, "Failed to open config file " << config_file
-                                                                    << ": " << strerror(errno));
-            return false;
-        }
-        std::string outpath = "runtime_dir = " + plugin_path + "/runtime_data\n";
-        conf_file_out << outpath;
-    }
-    string country = parameters["OPENALPR_COUNTRY_CODE"].toStdString();
-    string template_region;
-    bool detect_region = false;
-    int top_n = parameters["OPENALPR_TOP_N"].toInt();
-    rectangle_intersection_min_ = parameters["RECTANGLE_INTERSECTION_MIN"].toFloat();
-    levenshtein_score_min_ = parameters["LEVENSHTEIN_SCORE_MIN"].toFloat();
+    string runtime_dir = plugin_path + "/runtime_data";
+    LOG4CXX_DEBUG(td_logger_, "config_file = " << config_file << " runtimeDir = " << runtime_dir);
 
-    string runtimeDir = plugin_path + "/runtime_data";
-    LOG4CXX_DEBUG(td_logger_, "config_file = " << config_file << " runtimeDir = " << runtimeDir);
-    alpr_ = new Alpr(country, config_file, runtimeDir);
-    alpr_->setTopN(top_n);
-
-    if (detect_region)
-        alpr_->setDetectRegion(detect_region);
-
-    if (template_region.empty() == false)
-        alpr_->setDefaultRegion(template_region);
-
-    if (alpr_->isLoaded() == false) {
+    alpr_ = std::unique_ptr<alpr::Alpr>(new Alpr("us", config_file, runtime_dir));
+    alpr_->setTopN(10);
+    if (!alpr_->isLoaded()) {
         LOG4CXX_ERROR(td_logger_, "Error loading OpenALPR");
         return false;
     }
-
     return true;
-
 }
 
 //-----------------------------------------------------------------------------
 /* virtual */ bool LicensePlateTextDetection::Close() {
-
-    delete alpr_;
     return true;
-
 }
 
 //-----------------------------------------------------------------------------

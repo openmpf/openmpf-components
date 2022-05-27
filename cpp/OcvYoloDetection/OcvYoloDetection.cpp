@@ -52,10 +52,10 @@ namespace {
         std::vector<Frame> frames;
         frames.reserve(numFrames);
         for (int i = 0; i < numFrames; i++) {
-            if (MPFFrame mpfFrame = videoCapture.Read()) {
-                double time = mpfFrame.index / fps;
-                frames.emplace_back(mpfFrame.index, time, 1 / fps,
-                                    std::move(mpfFrame.data));
+            if (auto optMpfFrame = videoCapture.Read()) {
+                double time = optMpfFrame->index / fps;
+                frames.emplace_back(optMpfFrame->index, time, 1 / fps,
+                                    std::move(optMpfFrame->data));
             } else {
                 break;
             }

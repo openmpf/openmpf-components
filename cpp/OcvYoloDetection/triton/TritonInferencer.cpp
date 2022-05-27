@@ -24,6 +24,10 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include "TritonInferencer.h"
+
+#include <random>
+
 #include <dirent.h>
 
 #include <grpc_client.h>
@@ -35,7 +39,6 @@
 
 #include "TritonTensorMeta.h"
 #include "TritonClient.h"
-#include "TritonInferencer.h"
 #include "TritonUtils.h"
 
 using namespace MPF::COMPONENT;

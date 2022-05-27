@@ -27,11 +27,11 @@
 cmake_minimum_required(VERSION 3.6)
 project(ocv-yolo-detection-tests)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 find_package(GTest)
 if (${GTEST_FOUND})
     enable_testing()
-    find_package(Qt4 REQUIRED)
+    find_package(mpfComponentTestUtils REQUIRED)
 
     include_directories(..)
 

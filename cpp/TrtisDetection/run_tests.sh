@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -24,20 +25,35 @@
 # limitations under the License.                                            #
 #############################################################################
 
+set -o errexit -o pipefail -o xtrace
 
-import setuptools
+cleanup() {
+    if [ "$server_cid" ]; then
+        docker stop "$server_cid" ||:
+    fi
+    if [ "$trt_test_net" ]; then
+        docker network rm "$trt_test_net"
+    fi
+}
 
-setuptools.setup(
-    name='AzureSpeechDetection',
-    version='6.3',
-    packages=setuptools.find_packages(exclude=('*test*',)),
-    install_requires=(
-        'mpf_component_api>=6.3',
-        'mpf_component_util>=6.3',
-        'azure-storage-blob>=12.3',
-        'python-dateutil'
-    ),
-    entry_points={
-        'mpf.exported_component': 'component = acs_speech_component.acs_speech_component:AcsSpeechComponent'
-    }
-)
+trap cleanup EXIT
+
+script_dir=$(dirname "$0")
+image_id=$(DOCKER_BUILDKIT=1 docker build "$script_dir" --target build_component --quiet \
+            --build-arg BUILD_REGISTRY --build-arg BUILD_TAG)
+
+trt_test_net="trt_test_net_$RANDOM"
+docker network create "$trt_test_net"
+
+server_cid=$(docker run --rm --detach --network "$trt_test_net" --network-alias trtserver \
+                "${BUILD_REGISTRY}openmpf_trtis_detection_server:${BUILD_TAG:-latest}" \
+                trtserver --model-store=/models)
+
+until docker logs "$server_cid" |& grep -q 'Successfully loaded servable version'; do
+    sleep 1
+done
+
+docker run --rm --network "$trt_test_net" --env TRTIS_SERVER=trtserver:8001 \
+    --workdir /home/mpf/component_build/test --entrypoint ./TrtisDetectionTest "$image_id"
+
+echo Tests passed

@@ -27,6 +27,13 @@
 #ifndef OPENMPF_COMPONENTS_TRITON_CLIENT_H
 #define OPENMPF_COMPONENTS_TRITON_CLIENT_H
 
+#include <functional>
+#include <string>
+
+#include <opencv2/core.hpp>
+
+#include "TritonTensorMeta.h"
+
 class TritonInferencer;
 
 class TritonClient {

@@ -29,7 +29,6 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
-#include <QCoreApplication>
 #include <log4cxx/simplelayout.h>
 #include <log4cxx/consoleappender.h>
 #include <log4cxx/logmanager.h>
@@ -43,9 +42,7 @@ inline bool sort_by_start_frame(
         const MPFVideoTrack& track1, const MPFVideoTrack& track2);
 
 int main(int argc, char* argv[]) {
-    QCoreApplication *this_app = new QCoreApplication(argc, argv);
-    std::string app_dir = (this_app->applicationDirPath()).toStdString();
-    delete this_app;
+    std::string app_dir = DetectionComponentUtils::GetAppDir(argv[0]);
 
     std::map<std::string, std::string> algorithm_properties;
     MPFDetectionDataType media_type = IMAGE;
