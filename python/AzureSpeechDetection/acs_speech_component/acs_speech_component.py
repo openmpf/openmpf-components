@@ -334,7 +334,7 @@ class AcsSpeechComponent(object):
 
             # If trigger key is in feed-forward properties, only run
             #  transcription if the value matches trigger_val
-            if t_key in det_props and det_props[t_key] != t_val:
+            if not (t_key in det_props and det_props[t_key] == t_val):
                 return None
 
             logger.debug("Getting properties from feed-forward track")

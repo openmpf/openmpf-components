@@ -129,7 +129,11 @@
         {
           "name": "TRIGGER",
           "value": "SPEECH_DETECTOR=AZURESPEECH"
-        }
+        },
+	{
+	  "name": "FEED_FORWARD_TYPE",
+	  "value": "REGION"
+	}
       ]
     }
   ],
