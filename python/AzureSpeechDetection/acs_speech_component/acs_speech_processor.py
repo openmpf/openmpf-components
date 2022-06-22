@@ -144,8 +144,8 @@ class AcsSpeechDetectionProcessor(object):
         return utterance_times
 
     def process_audio(
-                self, target_file: str, start_time: float,
-                stop_time: Optional[float], job_name: str,
+                self, target_file: str, start_time: int,
+                stop_time: Optional[int], job_name: str,
                 server_info: AcsServerInfo, language: str, diarize: bool,
                 cleanup: bool, blob_access_time: int, expiry: int,
                 speaker: Optional[SpeakerInfo] = None

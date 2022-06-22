@@ -63,7 +63,7 @@ class AcsServerInfo(NamedTuple):
     subscription_key: str
     blob_container_url: str
     blob_service_key: str
-    http_retry: int
+    http_retry: mpf_util.HttpRetry
     http_max_attempts: int
 
 
