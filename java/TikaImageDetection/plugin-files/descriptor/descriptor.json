@@ -29,7 +29,7 @@
           "name": "SAVE_PATH",
           "description": "Specifies main directory for storing extracted images.",
           "type": "STRING",
-          "defaultValue": "$MPF_HOME/share/derivatives"
+          "defaultValue": "$MPF_HOME/share/tmp/derivative-media"
         },
         {
           "name": "ORGANIZE_BY_PAGE",

@@ -118,29 +118,33 @@ public class TestTikaImageDetectionComponent {
 
         // Test extraction of image 0.
         MPFGenericTrack testTrack = tracks.get(0);
+        String tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
         assertEquals("1; 2; 3", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_PATH").contains("image0.jpg"));
-        assertTrue(pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_PATH")));
+        assertTrue(tempPath.contains("image0.jpg"));
+        assertTrue(pageCheck(tempPath));
 
         // Test extraction of image 1.
         testTrack = tracks.get(1);
+        tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
         assertEquals("2; 3", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_PATH").contains("image1.jpg"));
-        assertTrue(pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_PATH")));
+        assertTrue(tempPath.contains("image1.jpg"));
+        assertTrue(pageCheck(tempPath));
 
         // Test extraction of image 2.
         testTrack = tracks.get(2);
+        tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
         assertEquals("6", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_PATH").contains("image2.jpg"));
-        assertTrue(pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_PATH")));
+        assertTrue(tempPath.contains("image2.jpg"));
+        assertTrue(pageCheck(tempPath));
 
         // Test extraction of image 3.
         testTrack = tracks.get(3);
+        tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
         assertEquals("6", testTrack.getDetectionProperties().get("PAGE_NUM"));
-        assertTrue(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_PATH").contains("image3.png"));
-        assertTrue(pageCheck(testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_PATH")));
+        assertTrue(tempPath.contains("image3.png"));
+        assertTrue(pageCheck(tempPath));
 
-        String uuid = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_PATH").split("/")[5];
+        String uuid = tempPath.split("/")[5];
 
         // Check that images were saved correctly, then clean up test folder.
         assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
@@ -173,8 +177,8 @@ public class TestTikaImageDetectionComponent {
         List<MPFGenericTrack> tracks1 = tikaComponent.getDetections(genericSubJob1);
         List<MPFGenericTrack> tracks2 = tikaComponent.getDetections(genericSubJob2);
 
-        String uuid1 = tracks1.get(0).getDetectionProperties().get("DERIVATIVE_MEDIA_PATH").split("/")[5];
-        String uuid2 = tracks2.get(0).getDetectionProperties().get("DERIVATIVE_MEDIA_PATH").split("/")[5];
+        String uuid1 = tracks1.get(0).getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH").split("/")[5];
+        String uuid2 = tracks2.get(0).getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH").split("/")[5];
 
         assertNotEquals(uuid1, uuid2);
 

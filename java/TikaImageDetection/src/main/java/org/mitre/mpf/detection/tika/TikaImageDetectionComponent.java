@@ -124,7 +124,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         // Tika Detection
         // =========================
 
-        String defaultSavePath = "$MPF_HOME/share/derivatives";
+        String defaultSavePath = "$MPF_HOME/share/tmp/derivative-media";
 
         Map<String,String> properties = mpfGenericJob.getJobProperties();
         boolean separatePages = false;
@@ -155,7 +155,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         if (imageMap.size() > 0){
             for(Map.Entry<String, TreeSet<String>> entry : imageMap.entrySet()) {
             Map genericDetectionProperties = new HashMap<String, String>();
-                genericDetectionProperties.put("DERIVATIVE_MEDIA_PATH", entry.getKey());
+                genericDetectionProperties.put("DERIVATIVE_MEDIA_TEMP_PATH", entry.getKey());
                 genericDetectionProperties.put("PAGE_NUM", String.join("; ", entry.getValue()));
 
                 MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
