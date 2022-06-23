@@ -32,9 +32,6 @@
 #include <string>
 #include <vector>
 
-#include <QHash>
-#include <QString>
-
 #include <opencv2/features2d.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/highgui.hpp>
@@ -96,12 +93,9 @@ private:
     std::vector <Track> current_tracks;
     std::vector <Track> saved_tracks;
 
-    QHash <QString, QString> parameters;
-
     log4cxx::LoggerPtr OpenFaceDetectionLogger;
 
     void SetDefaultParameters();
-    void SetReadConfigParameters();
     void GetPropertySettings(const std::map <std::string, std::string> &algorithm_properties);
 
     void Display(const std::string title, const cv::Mat &img);
@@ -136,10 +130,10 @@ public :
     void SetModes(bool display_window, bool print_debug_info);
 
     //should continue to define virtual to help identify virtual functions
-    virtual bool Init();
-    virtual bool Close();
+    bool Init() override;
+    bool Close() override;
 
-    std::string GetDetectionType();
+    std::string GetDetectionType() override;
 
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPF::COMPONENT::MPFVideoJob &job) override;
 

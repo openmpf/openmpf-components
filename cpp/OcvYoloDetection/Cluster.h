@@ -49,10 +49,10 @@ public:
         members.push_back(std::move(member));
     }
 
-    // These are needed to prevent a template error when Clusters are inserted in to vectors.
-    Cluster(Cluster&&) = default;
-    Cluster(const Cluster&) = delete;
+    // These are needed to prevent a template error when Clusters are inserted into vectors.
+    Cluster(Cluster &&) = default;
 
+    Cluster(const Cluster &) = delete;
 
 
     /** ***************************************************************************
@@ -66,15 +66,13 @@ public:
     void add(T newMember) {
         if (members.empty()) {
             averageFeature = newMember.getClassFeature();
-        }
-        else {
+        } else {
             cv::normalize((averageFeature * members.size()) + newMember.getClassFeature(),
                           averageFeature);
         }
         members.push_back(std::move(newMember));
     }
 };
-
 
 
 /** ***************************************************************************
@@ -92,11 +90,11 @@ public:
 * @returns vector of clusters that object have been moved into
 *
 **************************************************************************** */
-template <typename T, typename TDistanceFunc = decltype(cosDist)>
+template<typename T, typename TDistanceFunc = decltype(cosDist)>
 std::vector<Cluster<T>> clusterItems(std::vector<T> items, float maxDist,
-                                     TDistanceFunc&& distanceFunc = cosDist) {
+                                     TDistanceFunc &&distanceFunc = cosDist) {
     std::vector<Cluster<T>> clusters;
-    for (auto& item : items) {
+    for (auto &item: items) {
         auto feature = item.getClassFeature();
         // find 1st cluster item can join
         // TODO: Should we be using the minimum rather than the first?
@@ -108,8 +106,7 @@ std::vector<Cluster<T>> clusterItems(std::vector<T> items, float maxDist,
         if (matchingCluster != clusters.end()) {
             // found a cluster to join
             matchingCluster->add(std::move(item));
-        }
-        else {
+        } else {
             // no cluster found, make a new one
             clusters.emplace_back(std::move(item));
         }

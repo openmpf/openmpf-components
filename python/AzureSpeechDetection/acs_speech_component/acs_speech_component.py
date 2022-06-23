@@ -113,6 +113,7 @@ class AcsSpeechComponent(object):
 
         start_time = audio_job.start_time
         stop_time = audio_job.stop_time
+
         if stop_time < 0:
             stop_time = None
         try:
@@ -187,12 +188,9 @@ class AcsSpeechComponent(object):
                 mpf.DetectionError.MISSING_PROPERTY
             )
 
-        # Convert frame locations to timestamps
-        fpms = float(video_job.media_properties['FPS']) / 1000.0
-        start_time = start_frame / fpms
-        stop_time = stop_frame / fpms
-        if stop_time < 0:
-            stop_time = None
+        media_properties = video_job.media_properties
+        media_frame_count = int(media_properties.get('FRAME_COUNT', -1))
+        media_duration = float(media_properties.get('DURATION', -1))
 
         # If we suspect this is a subjob, overwrite SPEAKER_ID with 0 to
         #  avoid confusion
@@ -203,9 +201,24 @@ class AcsSpeechComponent(object):
             pass
         elif start_frame > 0:
             overwrite_ids = True
-        elif 'FRAME_COUNT' in video_job.media_properties:
-            if stop_frame < int(video_job.media_properties['FRAME_COUNT']) - 1:
-                overwrite_ids = True
+        elif stop_frame < media_frame_count - 1:
+            overwrite_ids = True
+
+        # Convert frame locations to timestamps
+        fpms = float(video_job.media_properties['FPS']) / 1000.0
+        start_time = int(start_frame / fpms)
+
+        # The WFM will pass a job stop frame equal to FRAME_COUNT-1 for the last video segment.
+        #  We want to use the detected DURATION in such cases instead to ensure we process the entire audio track.
+        #  Only use the job stop frame if it differs from FRAME_COUNT-1.
+        if stop_frame is not None and stop_frame < media_frame_count - 1:
+            stop_time = int(stop_frame / fpms)
+        elif media_duration > 0:
+            stop_time = int(media_duration)
+        elif media_frame_count > 0:
+            stop_time = int(media_frame_count / fpms)
+        else:
+            stop_time = None
 
         try:
             audio_tracks = self.processor.process_audio(

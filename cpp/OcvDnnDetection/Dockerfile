@@ -38,15 +38,17 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvDnnDetectio
 
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as ocv_dnn_component
 
-ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvDnnDetection/lib
+COPY --from=build_component /usr/lib/x86_64-linux-gnu/libcudnn_ops_infer.so.8 /usr/lib/x86_64-linux-gnu/
+
+COPY --from=build_component /usr/lib/x86_64-linux-gnu/libcudnn_cnn_infer.so.8 /usr/lib/x86_64-linux-gnu/
 
 COPY --from=build_component $BUILD_DIR/plugin/OcvDnnDetection $PLUGINS_DIR/OcvDnnDetection
 
-COPY --from=build_component $BUILD_DIR/libmpfOcvDnnDetection.so \
-                            $PLUGINS_DIR/OcvDnnDetection/lib/
+COPY --from=build_component $BUILD_DIR/libmpfOcvDnnDetection.so $PLUGINS_DIR/OcvDnnDetection/lib/
 
+ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvDnnDetection/lib
 
-LABEL org.label-schema.license="Apache 2.0" \
+LABEL org.label-schema.license="Mixed" \
       org.label-schema.name="OpenMPF OpenCV Deep Neural Network (DNN) Classification" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \

@@ -32,9 +32,6 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/video/tracking.hpp>
 
-#include <QFile>
-#include <QFileInfo>
-
 #include "Utils.h"
 #include "detectionComponentUtils.h"
 #include "MPFSimpleConfigLoader.h"
@@ -82,12 +79,9 @@ void OcvFaceDetection::SetModes(bool display_window, bool print_debug_info) {
 }
 
 bool OcvFaceDetection::Init() {
-    string run_dir = GetRunDirectory();
-    string plugin_path = run_dir + "/OcvFaceDetection";
-    string config_path = plugin_path + "/config";
-
     OpenFaceDetectionLogger = log4cxx::Logger::getLogger("OcvFaceDetection");
 
+    string plugin_path = GetRunDirectory() + "/OcvFaceDetection";
     //must initialize opencv face detection
     if (!ocv_detection.Init(plugin_path)) {
         LOG4CXX_ERROR(OpenFaceDetectionLogger, "Failed to initialize OpenCV Detection");
@@ -95,18 +89,6 @@ bool OcvFaceDetection::Init() {
     }
 
     SetDefaultParameters();
-
-    //once this is done - parameters will be set and SetReadConfigParameters() can be called again to revert back
-    //to the params read at intialization
-    string config_params_path = config_path + "/mpfOcvFaceDetection.ini";
-    int rc = LoadConfig(config_params_path, parameters);
-    if (rc) {
-        LOG4CXX_ERROR(OpenFaceDetectionLogger, "Failed to load the OcvFaceDetection config from: " << config_params_path);
-        return (false);
-    }
-
-    SetReadConfigParameters();
-
     return true;
 }
 
@@ -136,28 +118,12 @@ void OcvFaceDetection::SetDefaultParameters() {
 
     //not currently used - but could be used to help stops tracks earlier when there is a lot
     //of error when detecting the next points using calcopticalflow
-    max_optical_flow_error = 4.7;;
+    max_optical_flow_error = 4.7;
+
+    imshow_on = false;
+    verbosity = 0;
 }
 
-void OcvFaceDetection::SetReadConfigParameters() {
-    //make sure none of the parameters are missed in the config file - double check
-    imshow_on = parameters["IMSHOW_ON"].toInt();
-
-    min_init_point_count = parameters["MIN_INIT_POINT_COUNT"].toInt();
-
-    min_point_percent = parameters["MIN_POINT_PERCENT"].toFloat();
-    min_initial_confidence = parameters["MIN_INITIAL_CONFIDENCE"].toFloat();
-
-    min_face_size = parameters["MIN_FACE_SIZE"].toInt();
-
-    //right now only accepting a verbosity of 1 and just checking for > 0, may need to adjust later
-    //if verbosity 1 set the log level to DEBUG
-    //if verbosity set to 2, think about using TRACE
-    verbosity = parameters["VERBOSE"].toInt();
-    if (verbosity > 0) {
-        OpenFaceDetectionLogger->setLevel(log4cxx::Level::getDebug());
-    }
-}
 
 /* This function reads a property value map and adjusts the settings for this component. */
 void OcvFaceDetection::GetPropertySettings(const map <string, string> &algorithm_properties) {
@@ -414,7 +380,6 @@ void OcvFaceDetection::AdjustRectToEdges(Rect &rect, const Mat &src) {
 vector<MPFVideoTrack> OcvFaceDetection::GetDetections(const MPFVideoJob &job) {
     try {
         SetDefaultParameters();
-        SetReadConfigParameters();
         GetPropertySettings(job.job_properties);
 
         MPFVideoCapture video_capture(job, true, true);
@@ -994,7 +959,6 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
 vector<MPFImageLocation> OcvFaceDetection::GetDetections(const MPFImageJob &job) {
     try {
         SetDefaultParameters();
-        SetReadConfigParameters();
         GetPropertySettings(job.job_properties);
 
         MPFImageReader imreader(job);
@@ -1078,11 +1042,7 @@ vector<MPFImageLocation> OcvFaceDetection::GetDetectionsFromImageData(
             //cv::waitKey(0);
             cv::waitKey(5);
         }
-        QString imstr(job.data_uri.c_str());
-        QFile f(imstr);
-        QFileInfo fileInfo(f);
-        QString fstr(fileInfo.fileName());
-        string outfile_name = "output_" + fstr.toStdString();
+        string outfile_name = "output_" + job.data_uri;
         try {
             imwrite(outfile_name, image_data);
         }

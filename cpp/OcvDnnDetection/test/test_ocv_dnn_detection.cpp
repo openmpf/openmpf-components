@@ -53,6 +53,7 @@ Properties getVehicleColorProperties() {
             { "MODEL_INPUT_NAME", "input_placeholder" },
             { "RESIZE_HEIGHT", "224" },
             { "RESIZE_WIDTH", "224" },
+            { "SWAP_RB", "TRUE" },
             { "SUBTRACT_BLUE_VALUE", "92.81" },
             { "SUBTRACT_GREEN_VALUE", "88.55" },
             { "SUBTRACT_RED_VALUE", "84.77" },

@@ -30,6 +30,15 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
 
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
+
+RUN --mount=type=tmpfs,target=/var/cache/apt \
+    --mount=type=tmpfs,target=/var/lib/apt/lists  \
+    --mount=type=tmpfs,target=/tmp \
+    apt-get update; \
+    apt-get install --no-install-recommends -y libboost-regex-dev libboost-locale-dev;
+
 RUN --mount=target=. build-component.sh
 
 ARG RUN_TESTS=false

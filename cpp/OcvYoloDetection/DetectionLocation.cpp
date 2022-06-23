@@ -44,12 +44,9 @@ DetectionLocation::DetectionLocation(const Config &config,
                                      float confidence,
                                      cv::Mat classFeature,
                                      cv::Mat dftFeature)
-        : frame(std::move(frame))
-        , dftSize_(config.dftSize)
-        , dftHanningWindowEnabled_(config.dftHannWindowEnabled)
-        , edgeSnapDist_(config.edgeSnapDist)
-        , classFeature_(std::move(classFeature))
-        , dftFeature_(std::move(dftFeature)) {
+        : frame(std::move(frame)), dftSize_(config.dftSize), dftHanningWindowEnabled_(config.dftHannWindowEnabled),
+          edgeSnapDist_(config.edgeSnapDist), classFeature_(std::move(classFeature)),
+          dftFeature_(std::move(dftFeature)) {
     this->confidence = confidence;
     setRect(boundingBox & cv::Rect2d(0, 0, DetectionLocation::frame.data.cols,
                                      DetectionLocation::frame.data.rows));
@@ -104,7 +101,6 @@ float DetectionLocation::center2CenterDist(const Track &track) const {
 *************************************************************************** */
 cv::Point2d DetectionLocation::phaseCorrelate(Track &track) {
     // This code is based on: https://github.com/opencv/opencv/blob/4.5.1/modules/imgproc/src/phasecorr.cpp#L518
-    // TODO: Use words instead of single letters and explain what this does
     cv::Mat1f P, Pm, C;
     cv::mulSpectrums(getDFTFeature(), track.back().getDFTFeature(), P, 0, true);
     cv::magSpectrums(P, Pm);
@@ -137,8 +133,8 @@ float DetectionLocation::featureDist(Track &track) {
 
     // center of shifted track roi
     cv::Point2d center
-        = cv::Point2d(x_left_upper + 0.5 * width, y_left_upper + 0.5 * height)
-                  - phaseCorrelate(track);
+            = cv::Point2d(x_left_upper + 0.5 * width, y_left_upper + 0.5 * height)
+              - phaseCorrelate(track);
 
     // center not ok
     if (!cv::Rect2d({0, 0}, frame.data.size()).contains(center)) {
@@ -157,7 +153,7 @@ float DetectionLocation::featureDist(Track &track) {
     // This does pixel interpolation since the center may not correspond to an exact pixel location.
     cv::getRectSubPix(frame.data, trackRoi.size(), center, comp);
 
-    // compute pixel wise absolute diff (could do HSV transform 1st?!)
+    // compute pixel wise absolute diff (could do HSV transform first ?!)
     cv::absdiff(track.back().frame.data(trackRoi), comp, comp);
     assert(frame.data.depth() == CV_8U);
 
@@ -184,7 +180,7 @@ float DetectionLocation::kfResidualDist(const Track &track) const {
 * get the location as an opencv rectangle
 *************************************************************************** */
 cv::Rect2i DetectionLocation::getRect() const {
-    return { x_left_upper, y_left_upper, width, height };
+    return {x_left_upper, y_left_upper, width, height};
 }
 
 /** **************************************************************************
@@ -215,8 +211,7 @@ cv::Mat1f DetectionLocation::getHanningWindow(const cv::Size &size) const {
             cv::createHanningWindow(defaultWindow, size, CV_32F);
         }
         return defaultWindow;
-    }
-    else {
+    } else {
         cv::Mat1f customWindow;
         //LOG_TRACE("Created custom Hanning window of size " << customWin.size());
         cv::createHanningWindow(customWindow, size, CV_32F);
@@ -248,7 +243,7 @@ cv::Mat DetectionLocation::getDFTFeature() {
     // make normalized grayscale float image
     cv::Mat gray;
     // Convert to gray scale
-    cv::cvtColor(frame.data(getRect()), gray, CV_BGR2GRAY);
+    cv::cvtColor(frame.data(getRect()), gray, cv::COLOR_BGR2GRAY);
     cv::Scalar mean;
     cv::Scalar stdDeviation;
     cv::meanStdDev(gray, mean, stdDeviation);
@@ -283,5 +278,3 @@ cv::Mat DetectionLocation::getDFTFeature() {
     assert(dftFeature_.type() == CV_32FC1);
     return dftFeature_;
 }
-
-

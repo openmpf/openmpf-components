@@ -26,7 +26,7 @@
 
 ARG MODELS_REGISTRY=openmpf/
 
-FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:6.2 as models
+FROM ${MODELS_REGISTRY}openmpf_trtis_detection_models:6.3 as models
 
 
 FROM nvcr.io/nvidia/tensorrtserver:19.04-py3 as openmpf_trtis_server

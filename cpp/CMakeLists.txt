@@ -28,17 +28,18 @@
 cmake_minimum_required(VERSION 3.6)
 project(openmpf-components)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 add_subdirectory(OcvFaceDetection)
-add_subdirectory(DlibFaceDetection)
-add_subdirectory(OalprLicensePlateTextDetection)
 add_subdirectory(OcvDnnDetection)
-add_subdirectory(DarknetDetection)
-add_subdirectory(TesseractOCRTextDetection)
 add_subdirectory(SceneChangeDetection)
 add_subdirectory(KeywordTagging)
-add_subdirectory(OcvYoloDetection)
+
+# The following components require additional dependencies. Refer to their Dockerfiles for
+# installation instructions.
+# add_subdirectory(OalprLicensePlateTextDetection)
+# add_subdirectory(OcvYoloDetection)
+# add_subdirectory(TesseractOCRTextDetection)
 
 
 

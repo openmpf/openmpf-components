@@ -1,7 +1,7 @@
 {
   "componentName": "KeywordTagging",
-  "componentVersion": "6.2",
-  "middlewareVersion": "6.2",
+  "componentVersion": "6.3",
+  "middlewareVersion": "6.3",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/KeywordTagging/lib/libmpfKeywordTagging.so",
   "environmentVariables": [
@@ -38,9 +38,9 @@
         },
         {
           "name": "FEED_FORWARD_PROP_TO_PROCESS",
-          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to consider performing keyword tagging on. If the first property listed is present, then keyword tagging is performed on that property. If it's not then the next property in the list is considered. At most, keyword tagging is only performed on one property.",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to perform keyword tagging on, if present and not just whitespace.",
           "type": "STRING",
-          "defaultValue": "TRANSLATION,TEXT,TRANSCRIPT"
+          "defaultValue": "TEXT,TRANSCRIPT,TRANSLATION"
         }
       ]
     }
@@ -66,6 +66,25 @@
           "value": "TRUE"
         }
       ]
+    },
+    {
+      "name": "KEYWORD TAGGING (WITH FF REGION) ON ORIGINAL AND CORRECTED TEXT ACTION",
+      "description": "Performs keyword tagging on original and corrected text in feed-forward tracks and detections.",
+      "algorithm": "KEYWORDTAGGING",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "value": "TRUE"
+        },
+        {
+          "name": "FEED_FORWARD_PROP_TO_PROCESS",
+          "value": "TEXT, CORRECTED TEXT"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -81,6 +100,13 @@
       "description": "Performs keyword tagging on feed-forward tracks and detections.",
       "actions": [
         "KEYWORD TAGGING (WITH FF REGION) ACTION"
+      ]
+    },
+    {
+      "name": "KEYWORD TAGGING (WITH FF REGION) ON ORIGINAL AND CORRECTED TEXT TASK",
+      "description": "Performs keyword tagging on original and corrected text in feed-forward tracks and detections.",
+      "actions": [
+        "KEYWORD TAGGING (WITH FF REGION) ON ORIGINAL AND CORRECTED TEXT ACTION"
       ]
     }
   ],

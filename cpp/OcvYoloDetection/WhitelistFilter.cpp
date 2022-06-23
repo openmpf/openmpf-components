@@ -38,7 +38,7 @@ using namespace MPF::COMPONENT;
 namespace {
 
     std::unordered_set<std::string> LoadWhitelist(
-            const std::string& whiteListPath, const std::vector<std::string>& names) {
+            const std::string &whiteListPath, const std::vector<std::string> &names) {
         std::string expandedFilePath;
         std::string error = Utils::expandFileName(whiteListPath, expandedFilePath);
         if (!error.empty()) {
@@ -73,7 +73,7 @@ namespace {
         }
 
         std::unordered_set<std::string> whitelist;
-        for (const std::string &name : names) {
+        for (const std::string &name: names) {
             if (tempWhitelist.count(name) > 0) {
                 whitelist.insert(name);
             }
@@ -90,11 +90,9 @@ namespace {
 }
 
 
-
-WhitelistFilter::WhitelistFilter(const std::string& whiteListPath,
-                                 const std::vector<std::string>& names)
-        : whitelist_(LoadWhitelist(whiteListPath, names))
-{
+WhitelistFilter::WhitelistFilter(const std::string &whiteListPath,
+                                 const std::vector<std::string> &names)
+        : whitelist_(LoadWhitelist(whiteListPath, names)) {
 }
 
 

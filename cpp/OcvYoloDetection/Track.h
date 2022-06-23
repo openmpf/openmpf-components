@@ -39,6 +39,8 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/tracking.hpp>
+#include <opencv2/tracking/tracking_legacy.hpp>
+
 
 // 3rd party code for solving assignment problem
 #include <dlib/matrix.h>
@@ -55,13 +57,13 @@
 class Track {
 
 public:
-    DetectionLocation& front();
+    DetectionLocation &front();
 
-    const DetectionLocation& front() const;
+    const DetectionLocation &front() const;
 
-    DetectionLocation& back();
+    DetectionLocation &back();
 
-    const DetectionLocation& back() const;
+    const DetectionLocation &back() const;
 
     void add(DetectionLocation detectionLocation);
 
@@ -93,23 +95,6 @@ public:
                     const cv::Mat1f &qn);
 
 
-    // TODO comment was never accurate
-
-    /** ****************************************************************************
-    *   Compute cost vector and solve it to give detection to track assignment matrix
-    *
-    * \param COST_FUNC     cost function to use
-    * \param TrackPtrList  vector of existing tracks to consider for assignment
-    * \param detections    vector of detections that need assigned to tracks
-    * \param maxCost       maximum assignment cost, if exceeded the particular
-    *                      detection to track assignment will be removed from result
-    * \param maxClassDist  maximum class distance for track to detection
-    *
-
-    * \returns assignment vector am[track,detection] with dim (# tracks x # detections)
-    *          if am[x,y]==0 then detection[y] should be assigned to track[x]
-    *
-    ***************************************************************************** */
     template<typename TCostFunc>
     static void assignDetections(std::vector<Track> &tracks,
                                  std::vector<DetectionLocation> &detections,
@@ -117,7 +102,7 @@ public:
                                  const float maxCost,
                                  const float maxKFResidual,
                                  const float edgeSnap,
-                                 TCostFunc&& costFunc,
+                                 TCostFunc &&costFunc,
                                  const std::string &type,
                                  bool enableDebug) {
 
@@ -138,7 +123,7 @@ public:
         std::unordered_set<int> assignedDetectionIdxs;
 
         for (int trackIdx = 0; trackIdx < tracks.size(); ++trackIdx) {
-            auto& track = tracks[trackIdx];
+            auto &track = tracks[trackIdx];
             int assignedDetectionIdx = assignments.at(trackIdx);
             // dlib required the cost matrix to be square, so columns may not refer to actual
             // detections.
@@ -150,10 +135,10 @@ public:
             }
             DetectionLocation &detection = detections[assignedDetectionIdx];
             LOG_TRACE("assigning det "
-                  << detection << " to track " << track
-                  << " with residual:"
-                  << detection.kfResidualDist(track) << " cost:"
-                  << (INT_MAX - costs(trackIdx, assignedDetectionIdx)) / 1.0E9);
+                              << detection << " to track " << track
+                              << " with residual:"
+                              << detection.kfResidualDist(track) << " cost:"
+                              << (INT_MAX - costs(trackIdx, assignedDetectionIdx)) / 1.0E9);
 
             if (enableDebug) {
                 float dist = (INT_MAX - costs(trackIdx, assignedDetectionIdx)) / 1.0E9;
@@ -186,17 +171,6 @@ public:
     }
 
 
-    // TODO comment was never accurate
-
-    /** ****************************************************************************
-    *   Compute cost vector and solve it to give detection to track assignment matrix
-    *
-    *
-
-    * \returns assignment vector am[track,detection] with dim (# tracks x # detections)
-    *          if am[x,y]==0 then detection[y] should be assigned to track[x]
-    *
-    ***************************************************************************** */
     template<typename TCostFunc>
     static void assignDetections(std::vector<Cluster<Track>> &trackClusterList,
                                  std::vector<Cluster<DetectionLocation>> &detectionClusterList,
@@ -205,14 +179,14 @@ public:
                                  const float maxClassDist,
                                  const float maxKFResidual,
                                  const float edgeSnap,
-                                 TCostFunc&& costFunc,
+                                 TCostFunc &&costFunc,
                                  const std::string &type,
                                  bool enableDebug) {
-        for (auto &trackCluster : trackClusterList) {
+        for (auto &trackCluster: trackClusterList) {
             if (trackCluster.members.empty()) {
                 continue;
             }
-            for (auto &detectionCluster : detectionClusterList) {
+            for (auto &detectionCluster: detectionClusterList) {
                 if (detectionCluster.members.empty()) {
                     continue;
                 }
@@ -248,7 +222,7 @@ private:
     std::vector<DetectionLocation> locations_;
 
     /// openCV tracker to help bridge gaps when detector fails
-    cv::Ptr<cv::Tracker> ocvTracker_;
+    cv::Ptr<cv::legacy::Tracker> ocvTracker_;
 
     /// frame index at which the tracker was initialized
     size_t ocvTrackerStartFrameIdx_ = 0;
@@ -261,7 +235,7 @@ private:
                                             std::vector<DetectionLocation> &detections,
                                             float maxCost,
                                             float maxKFResidual,
-                                            TCostFunc&& costFunc) {
+                                            TCostFunc &&costFunc) {
         int matSize = std::max(tracks.size(), detections.size());
         // dlib::max_cost_assignment requires a square matrix, so some entries will be zero'ed out.
         // Each row is a track and each column is detection.
@@ -270,21 +244,21 @@ private:
 
         // fill in actual costs for non-dummy entries
         for (int trackIdx = 0; trackIdx < tracks.size(); ++trackIdx) {
-            auto& track = tracks[trackIdx];
+            auto &track = tracks[trackIdx];
 
             for (int detectionIdx = 0; detectionIdx < detections.size(); ++detectionIdx) {
-                auto& detection = detections[detectionIdx];
+                auto &detection = detections[detectionIdx];
 
                 if (track.back().frame.idx < detection.frame.idx
-                        // must produce a reasonable normalized residual
-                        && detection.kfResidualDist(track) <= maxKFResidual) {
+                    // must produce a reasonable normalized residual
+                    && detection.kfResidualDist(track) <= maxKFResidual) {
                     float cost = costFunc(detection, track);
                     // dlib::max_cost_assignment requires the matrix either be ints or longs.
                     // We also need a way to invert the costs because there is no min version of
                     // dlib::max_cost_assignment.
                     long longCost = cost <= maxCost
-                            ? (INT_MAX - static_cast<long>(1.0E9 * cost))
-                            : 0;
+                                    ? (INT_MAX - static_cast<long>(1.0E9 * cost))
+                                    : 0;
                     costs(trackIdx, detectionIdx) = longCost;
                 }
             }

@@ -32,7 +32,6 @@
 #include <string>
 #include <vector>
 #include "SceneChangeDetection.h"
-#include <QDir>
 
 using namespace MPF::COMPONENT;
 using namespace std;
