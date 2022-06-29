@@ -41,17 +41,18 @@ import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
 import java.io.*;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
 
-    private static final Logger log = LoggerFactory.getLogger(TikaImageDetectionComponent.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TikaImageDetectionComponent.class);
 
-    private String configDirectory;
+    private Path _configDirectory;
 
     private static void setPdfConfig(ParseContext context) {
-
         PDFParserConfig pdfConfig = new PDFParserConfig();
         pdfConfig.setExtractInlineImages(true);
         pdfConfig.setExtractUniqueInlineImagesOnly(false);
@@ -59,26 +60,27 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
     }
 
     public void setConfigDirectory(String configDirectory) {
-        this.configDirectory = configDirectory;
+        _configDirectory = Path.of(configDirectory);
     }
 
+    @Override
     public void init() {
-        if (configDirectory == null) {
-            configDirectory = getRunDirectory() + "/TikaImageDetection/config";
+        if (_configDirectory == null) {
+            _configDirectory = Path.of(getRunDirectory(), "TikaImageDetection/config");
         }
     }
 
-    private LinkedHashMap<String, TreeSet<String>> parseDocument(final String input, final String docPath,
-                                                                 final boolean separatePages)
+    private Map<Path, SortedSet<Integer>> parseDocument(String input, String docPath,
+                                                        boolean separatePages)
             throws MPFComponentDetectionError {
         TikaConfig config;
-        String configPath = configDirectory + "/tika-config.xml";
+        String configPath = _configDirectory + "/tika-config.xml";
 
         try {
             config = new TikaConfig(configPath);
         } catch (SAXException | IOException | TikaException e) {
             String errMsg = "Failed to load tika config file: " + configPath;
-            log.error(errMsg, e);
+            LOG.error(errMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_OPEN_DATAFILE, errMsg);
         }
 
@@ -86,12 +88,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         ContentHandler handler = new ImageExtractionContentHandler();
         Metadata metadata = new Metadata();
         ParseContext context = new ParseContext();
-        EmbeddedDocumentExtractor embeddedDocumentExtractor = new EmbeddedContentExtractor(docPath, separatePages);
-        String errMsg = ((EmbeddedContentExtractor) embeddedDocumentExtractor).init(log);
-
-        if( errMsg.length() > 0) {
-            throw new MPFComponentDetectionError(MPFDetectionError.MPF_FILE_WRITE_ERROR, errMsg);
-        }
+        var embeddedDocumentExtractor = new EmbeddedContentExtractor(docPath, separatePages);
 
         context.set(EmbeddedDocumentExtractor.class, embeddedDocumentExtractor);
         context.set(AutoDetectParser.class, parser);
@@ -100,23 +97,23 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
             InputStream stream = new FileInputStream(input);
             parser.parse(stream, handler, metadata, context);
         } catch (FileNotFoundException e) {
-            errMsg = "Error opening file at : " + docPath;
-            log.error(errMsg, e);
+            var errMsg = "Error opening file at : " + docPath;
+            LOG.error(errMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_OPEN_MEDIA, errMsg);
         } catch (SAXException | IOException | TikaException e) {
-            errMsg = "Error processing file at : " + docPath;
-            log.error(errMsg, e);
+            var errMsg = "Error processing file at : " + docPath;
+            LOG.error(errMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA,
                     "Error processing file at : " + docPath);
         }
-        EmbeddedContentExtractor ex = ((EmbeddedContentExtractor) embeddedDocumentExtractor);
-        return ex.getImageMap();
+        return embeddedDocumentExtractor.getImageMap();
     }
 
     // Handles the case where the media is a generic type.
-    public List<MPFGenericTrack>  getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
-        log.info("[{}] Starting job.", mpfGenericJob.getJobName());
-        log.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
+    @Override
+    public List<MPFGenericTrack> getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
+        LOG.info("[{}] Starting job.", mpfGenericJob.getJobName());
+        LOG.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
                 mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
                 mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
 
@@ -126,50 +123,49 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
 
         String defaultSavePath = "$MPF_HOME/share/tmp/derivative-media";
 
-        Map<String,String> properties = mpfGenericJob.getJobProperties();
-        boolean separatePages = false;
+        Map<String, String> properties = mpfGenericJob.getJobProperties();
+        boolean separatePages = Boolean.parseBoolean(properties.get("ORGANIZE_BY_PAGE"));
 
         if (properties.get("SAVE_PATH") != null) {
             defaultSavePath = properties.get("SAVE_PATH");
         }
         defaultSavePath = MPFEnvironmentVariablePathExpander.expand(defaultSavePath);
 
-        if (properties.get("ORGANIZE_BY_PAGE") != null) {
-            separatePages = Boolean.valueOf(properties.get("ORGANIZE_BY_PAGE"));
-        }
 
-        if (mpfGenericJob.getJobName().length() != 0) {
+        if (!mpfGenericJob.getJobName().isEmpty()) {
             String jobId = mpfGenericJob.getJobName().split(":")[0];
             jobId = Pattern.compile("job"
                     , Pattern.LITERAL | Pattern.CASE_INSENSITIVE).matcher(jobId).replaceAll("");
             jobId = jobId.trim();
-            defaultSavePath += "/" + jobId;
+            defaultSavePath += '/' + jobId;
         }
 
-        List tracks = new LinkedList<MPFGenericTrack>();
-        float confidence = -1.0f;
+        var tracks = new ArrayList<MPFGenericTrack>();
 
-
-        LinkedHashMap<String, TreeSet<String>> imageMap =
+        Map<Path, SortedSet<Integer>> imageMap =
                 parseDocument(mpfGenericJob.getDataUri(), defaultSavePath, separatePages);
-        if (imageMap.size() > 0){
-            for(Map.Entry<String, TreeSet<String>> entry : imageMap.entrySet()) {
-            Map genericDetectionProperties = new HashMap<String, String>();
-                genericDetectionProperties.put("DERIVATIVE_MEDIA_TEMP_PATH", entry.getKey());
-                genericDetectionProperties.put("PAGE_NUM", String.join("; ", entry.getValue()));
+        if (imageMap.isEmpty()) {
+            LOG.info("No images detected in document");
+        }
+        else {
+            for (Map.Entry<Path, SortedSet<Integer>> entry : imageMap.entrySet()) {
+                var genericDetectionProperties = new HashMap<String, String>();
+                genericDetectionProperties.put("DERIVATIVE_MEDIA_TEMP_PATH", entry.getKey().toString());
 
-                MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
+                var pageNumsStr = entry.getValue()
+                        .stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.joining("; "));
+                genericDetectionProperties.put("PAGE_NUM", pageNumsStr);
+
+                MPFGenericTrack genericTrack = new MPFGenericTrack(-1, genericDetectionProperties);
                 tracks.add(genericTrack);
             }
         }
-        else {
-            // If no images were found at all, wipe out empty tracks.
-            log.info("No images detected in document");
-            tracks.clear();
-        }
+
         deleteEmptySubDirectories(new File(defaultSavePath + "/tika-extracted"));
 
-        log.info("[{}] Processing complete. Generated {} generic tracks.",
+        LOG.info("[{}] Processing complete. Generated {} generic tracks.",
                 mpfGenericJob.getJobName(),
                 tracks.size());
 
@@ -178,7 +174,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
 
     // Recursively walks through the given directory and clears out empty subdirectories
     // If all subdirectories are empty and nothing else is contained, the given directory is also deleted.
-    private void deleteEmptySubDirectories(File path){
+    private static void deleteEmptySubDirectories(File path){
         if (path.isDirectory()) {
             for(File file: path.listFiles()) {
                 if (file.isDirectory()) {
@@ -192,24 +188,29 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
     }
 
     // The TikeDetection component supports generic file types (pdfs, documents, txt, etc.).
+    @Override
     public boolean supports(MPFDataType mpfDataType) {
-        return mpfDataType != null && MPFDataType.UNKNOWN.equals(mpfDataType);
+        return MPFDataType.UNKNOWN == mpfDataType;
     }
 
+    @Override
     public String getDetectionType() {
         return "MEDIA";
     }
 
+    @Override
     public List<MPFImageLocation> getDetections(MPFImageJob job) throws MPFComponentDetectionError {
         throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
                 "Image detection not supported.");
     }
 
+    @Override
     public List<MPFVideoTrack> getDetections(MPFVideoJob job) throws MPFComponentDetectionError {
         throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
                 "Video detection not supported.");
     }
 
+    @Override
     public List<MPFAudioTrack> getDetections(MPFAudioJob job) throws MPFComponentDetectionError {
         throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
                 "Audio detection not supported.");

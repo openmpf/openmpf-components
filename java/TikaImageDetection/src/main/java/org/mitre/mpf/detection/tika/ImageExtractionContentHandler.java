@@ -28,31 +28,32 @@ package org.mitre.mpf.detection.tika;
 
 
 import org.xml.sax.Attributes;
-import org.apache.tika.sax.ToTextContentHandler;
+import org.xml.sax.helpers.DefaultHandler;
 
 
-public class ImageExtractionContentHandler extends ToTextContentHandler{
+public class ImageExtractionContentHandler extends DefaultHandler {
 
-    private String pageTag;
-    protected int pageNumber;
-    private boolean skipTitle;
+    private static final String PAGE_TAG = "div";
 
-    public ImageExtractionContentHandler(){
-        super();
-        pageTag = "div";
-        pageNumber = 0;
-        // Enable to avoid storing metadata/title text from ppt document.
-        skipTitle = true;
-    }
+    private int _pageNumber;
 
-    public void startElement (String uri, String localName, String qName, Attributes atts) {
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) { // TODO: NPE on jrobble-test.odp
+    // Enable to avoid storing metadata/title text from ppt document.
+    private boolean _skipTitle = true;
+
+    @Override
+    public void startElement(String uri, String localName, String qName, Attributes atts) {
+        if (!PAGE_TAG.equals(qName)) {
+            return;
+        }
+
+        var classAttr = atts.getValue("class");
+        if (classAttr.equals("page")) { // TODO: NPE on jrobble-test.odp
            startPage();
         }
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
-            if (skipTitle) {
+        else if (classAttr.equals("slide-content")) {
+            if (_skipTitle) {
                 //Skip metadata section of pptx.
-                skipTitle = false;
+                _skipTitle = false;
                 //Discard title text. (not part of slide text nor master slide content).
                 resetPage();
             } else {
@@ -61,28 +62,16 @@ public class ImageExtractionContentHandler extends ToTextContentHandler{
         }
     }
 
-
-    public void endElement (String uri, String localName, String qName) {
-        if (pageTag.equals(qName)) {
-            endPage();
-        }
+    private void startPage() {
+        _pageNumber++;
     }
 
-    public void characters(char[] ch, int start, int length) {}
-
-
-    protected void startPage() {
-        pageNumber++;
+    private void resetPage() {
+        _pageNumber = 0;
     }
 
-    protected void endPage() {}
-
-    protected void resetPage() {
-        pageNumber = 0;
-    }
-
+    @Override
     public String toString(){
-        return String.valueOf(pageNumber);
+        return String.valueOf(_pageNumber);
     }
-
 }

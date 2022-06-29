@@ -28,156 +28,141 @@ package org.mitre.mpf.detection.tika;
 
 import org.apache.tika.extractor.EmbeddedDocumentExtractor;
 import org.apache.tika.metadata.Metadata;
+import org.mitre.mpf.component.api.detection.MPFComponentDetectionError;
+import org.mitre.mpf.component.api.detection.MPFDetectionError;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.ContentHandler;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 
 public class EmbeddedContentExtractor implements EmbeddedDocumentExtractor {
-    private String path;
-    private HashMap<String, String> imagesFound, imagesIndex;
-    private ArrayList<String> commonImages;
-    private boolean separatePages;
-    private int id, pagenum;
-    private ArrayList<ArrayList<String>> imageMap;
 
-    // Stores a collection of images and associated pages.
-    // Each image key holds a list of pages where the image appears.
-    private LinkedHashMap<String, TreeSet<String>> imagePageMap;
-    private String uniqueId;
-    private ArrayList<String> current;
-    private Path outputDir;
-    private Path commonImgDir;
-    private Logger log;
+    private static final Logger LOG = LoggerFactory.getLogger(TikaImageDetectionComponent.class);
 
-    public EmbeddedContentExtractor(String savePath, boolean separate) {
-        path = savePath;
-        pagenum = -1;
-        imagesFound = new HashMap();
-        imagesIndex = new HashMap();
-        commonImages = new ArrayList();
-        imagePageMap = new LinkedHashMap();
-        separatePages = separate;
-        id = 0;
-        imageMap = new ArrayList();
-        current = new ArrayList();
+    private final Map<String, Path> _imgIdToAbsPath = new HashMap<>();
 
-        uniqueId = UUID.randomUUID().toString();
-        outputDir = Paths.get(path + "/tika-extracted/" + uniqueId);
-        commonImgDir = Paths.get(path + "/tika-extracted/" + uniqueId + "/common");
+    private final Set<String> _commonImages = new HashSet<>();
 
-    }
+    private final boolean _separatePages;
 
-    public String init(Logger mainLog) {
-        log = mainLog;
-        String errMsg = "";
+    private int _id;
+
+    private int _pageNum = -1;
+
+    // Maps the path of an extracted image to the page numbers it appeared on.
+    private final Map<Path, SortedSet<Integer>> _imgPathToSrcPages = new LinkedHashMap<>();
+
+    private final Path _baseOutputDir;
+    private final Path _commonImgDir;
+
+    public EmbeddedContentExtractor(String savePath, boolean separate) throws MPFComponentDetectionError {
+        _separatePages = separate;
+
+        var uniqueId = UUID.randomUUID().toString();
+        _baseOutputDir = Path.of(savePath, "tika-extracted", uniqueId);
+        _commonImgDir = _baseOutputDir.resolve("common");
+
         try {
-            if (!Files.exists(outputDir)) {
-                Files.createDirectories(outputDir);
+            Files.createDirectories(_baseOutputDir);
+            if (_separatePages) {
+                Files.createDirectories(_commonImgDir);
             }
-            if (separatePages && !Files.exists(commonImgDir)) {
-                Files.createDirectories(commonImgDir);
-            }
-        } catch (IOException e) {
-            errMsg = String.format("Unable to create the following directories: \n%s\n%s",
-                    outputDir.toAbsolutePath(), commonImgDir.toAbsolutePath());
-            log.error(errMsg, e);
         }
-        return errMsg;
-
+        catch (IOException e) {
+            var errorMsg = String.format(
+                    "Unable to create the following directories: \n%s\n%s",
+                    _baseOutputDir.toAbsolutePath(), _commonImgDir.toAbsolutePath());
+            LOG.error(errorMsg, e);
+            throw new MPFComponentDetectionError(
+                    MPFDetectionError.MPF_FILE_WRITE_ERROR, errorMsg, e);
+        }
     }
 
-    public LinkedHashMap<String, TreeSet<String>> getImageMap() {
-        return imagePageMap;
+
+    public Map<Path, SortedSet<Integer>> getImageMap() {
+        return _imgPathToSrcPages;
     }
 
+    @Override
     public boolean shouldParseEmbedded(Metadata metadata) {
         return true;
     }
 
-    public void updateFileLocation(String originalLocation, String newLocation) {
-        for (ArrayList<String> pageList: imageMap) {
-            if (pageList.indexOf(originalLocation) > -1) {
-                pageList.set(pageList.indexOf(originalLocation), newLocation);
-            }
-        }
-        TreeSet<String> pageMap = imagePageMap.remove(originalLocation);
-        imagePageMap.put(newLocation, pageMap);
+    private void updateFileLocation(Path originalLocation, Path newLocation) {
+        var pageMap = _imgPathToSrcPages.remove(originalLocation);
+        _imgPathToSrcPages.put(newLocation, pageMap);
     }
 
-    public void parseEmbedded(InputStream stream, ContentHandler imHandler, Metadata metadata, boolean outputHtml)
-            throws IOException {
+    @Override
+    public void parseEmbedded(InputStream stream, ContentHandler imHandler,
+                              Metadata metadata, boolean outputHtml) throws IOException {
         //Create a new page
-        int nextpage = Integer.parseInt(imHandler.toString()) - 1;
-        while (pagenum < nextpage) {
-            pagenum++;
-            current = new ArrayList();
-            imageMap.add(current);
-            if (separatePages) {
-                outputDir = Paths.get(path + "/tika-extracted/" + uniqueId + "/page-" + (pagenum + 1));
-                Files.createDirectories(outputDir);
+        int nextPage = Integer.parseInt(imHandler.toString()) - 1;
+
+        Path localOutputDir;
+        if (_separatePages) {
+            localOutputDir = _baseOutputDir.resolve("page-" + (_pageNum + 1));
+            while (_pageNum < nextPage) {
+                _pageNum++;
+                localOutputDir = _baseOutputDir.resolve("page-" + (_pageNum + 1));
+                Files.createDirectories(localOutputDir);
             }
         }
+        else {
+            _pageNum = nextPage;
+            localOutputDir = _baseOutputDir;
+        }
+
 
         String cosId = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
-        String filename = "image" + id + "." + metadata.get(Metadata.CONTENT_TYPE);
-        if (imagesFound.containsKey(cosId) ) {
-            if (separatePages && !commonImages.contains(cosId)) {
+        Path imgAbsPath;
+        if (_imgIdToAbsPath.containsKey(cosId) ) {
+            if (_separatePages && !_commonImages.contains(cosId)) {
                 // For images already encountered, save into a common images folder.
                 // Save each image only once in the common images folder.
-                commonImages.add(cosId);
-                String imageFile = imagesIndex.get(cosId);
-                Path originalFile = Paths.get(imagesFound.get(cosId));
-                Path outputPath = Paths.get(commonImgDir.toString() + "/" + imageFile);
-
+                _commonImages.add(cosId);
+                Path originalPath = _imgIdToAbsPath.get(cosId);
+                Path outputPath = _commonImgDir.resolve(originalPath.getFileName());
 
                 if (Files.exists(outputPath)) {
                     // Warn users that folder already contains images being overwritten
                     // This only happens if the same jobID was used on separate runs.
-                    log.warn("File {} already exists. Can't write file.", outputPath.toAbsolutePath());
+                    LOG.warn("File {} already exists. Can't write file.", outputPath.toAbsolutePath());
                     throw new IOException(String.format("File %s already exists. Can't write new file.",
                             outputPath.toAbsolutePath()));
                 }
 
-                Files.move(originalFile, outputPath);
-                updateFileLocation(originalFile.toString(), outputPath.toString());
+                Files.move(originalPath, outputPath);
+                updateFileLocation(originalPath, outputPath);
 
-                filename = outputPath.toAbsolutePath().toString();
-                imagesFound.put(cosId, filename);
+                imgAbsPath = outputPath.toAbsolutePath();
+                _imgIdToAbsPath.put(cosId, imgAbsPath);
             } else {
-                filename = imagesFound.get(cosId);
+                imgAbsPath = _imgIdToAbsPath.get(cosId);
             }
         } else {
-            imagesIndex.put(cosId, filename);
-            Path outputPath = Paths.get(outputDir.toString() + "/" + filename);
+            String filename = "image" + _id + '.' + metadata.get(Metadata.CONTENT_TYPE);
+            Path outputPath = localOutputDir.resolve(filename);
 
             if (Files.exists(outputPath)) {
                 // Warn users that folder already contains images being overwritten
                 // This only happens if the same jobID was used on separate runs.
-                log.warn("File {} already exists. Can't write new file.", outputPath.toAbsolutePath());
+                LOG.warn("File {} already exists. Can't write new file.", outputPath.toAbsolutePath());
                 throw new IOException(String.format("File %s already exists. Can't write file.",
                         outputPath.toAbsolutePath()));
             }
             Files.copy(stream, outputPath);
-            filename = outputPath.toAbsolutePath().toString();
-            imagesFound.put(cosId, filename);
-            id++;
+            imgAbsPath = outputPath.toAbsolutePath();
+            _imgIdToAbsPath.put(cosId, imgAbsPath);
+            _id++;
         }
 
-        if (imagePageMap.containsKey(filename)) {
-            imagePageMap.get(filename).add(String.valueOf(pagenum+1));
-        } else {
-            TreeSet<String> pageSet = new TreeSet<String>();
-            pageSet.add(String.valueOf(pagenum+1));
-            imagePageMap.put(filename, pageSet);
-        }
-
-        current.add(filename);
+        _imgPathToSrcPages.computeIfAbsent(imgAbsPath, k -> new TreeSet<>()).add(_pageNum + 1);
     }
 }
