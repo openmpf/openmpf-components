@@ -41,6 +41,8 @@ import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
 import java.io.*;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -85,10 +87,13 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         }
 
         AutoDetectParser parser = new AutoDetectParser(config);
-        ContentHandler handler = new ImageExtractionContentHandler();
+        ContentHandler handler = new PageNumberExtractionContentHandler();
         Metadata metadata = new Metadata();
         ParseContext context = new ParseContext();
-        var embeddedDocumentExtractor = new EmbeddedContentExtractor(docPath, separatePages);
+
+        var embeddedDocumentExtractor = separatePages
+                ? new SeparateDirImageExtractor(docPath)
+                : new SameDirImageExtractor(docPath);
 
         context.set(EmbeddedDocumentExtractor.class, embeddedDocumentExtractor);
         context.set(AutoDetectParser.class, parser);
@@ -96,15 +101,29 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         try {
             InputStream stream = new FileInputStream(input);
             parser.parse(stream, handler, metadata, context);
+        } catch (FileAlreadyExistsException e) {
+            throw new MPFComponentDetectionError(
+                MPFDetectionError.MPF_FILE_WRITE_ERROR,
+                String.format("Failed to write file \"%s\" because that file already existed", e.getFile()),
+                e);
         } catch (FileNotFoundException e) {
             var errMsg = "Error opening file at : " + docPath;
             LOG.error(errMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_OPEN_MEDIA, errMsg);
         } catch (SAXException | IOException | TikaException e) {
+            if (e.getCause() instanceof FileAlreadyExistsException) {
+                var alreadyExistedFile = ((FileSystemException) e.getCause()).getFile();
+                var errMsg = String.format(
+                    "Error processing file at \"%s\": Couldn't write new file to \"%s\" because it already existed.",
+                    docPath, alreadyExistedFile);
+                LOG.error(errMsg, e);
+                throw new MPFComponentDetectionError(
+                        MPFDetectionError.MPF_FILE_WRITE_ERROR, errMsg, e);
+            }
             var errMsg = "Error processing file at : " + docPath;
             LOG.error(errMsg, e);
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA,
-                    "Error processing file at : " + docPath);
+                    "Error processing file at : " + docPath, e);
         }
         return embeddedDocumentExtractor.getImageMap();
     }
