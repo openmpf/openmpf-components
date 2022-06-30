@@ -84,10 +84,27 @@ public abstract class BaseImageExtractor implements EmbeddedDocumentExtractor {
         _imgPathToSrcPages.get(newPath).add(page);
     }
 
+    private String getExtension(Metadata metadata) {
+        String contentType = metadata.get(Metadata.CONTENT_TYPE);
+        if (contentType != null) {
+            return contentType;
+        }
+        String resourceName = metadata.get(Metadata.RESOURCE_NAME_KEY);
+        if (resourceName != null) {
+            int lastDotPos = resourceName.lastIndexOf('.');
+            if (lastDotPos != -1) {
+                return resourceName.substring(lastDotPos + 1);
+            }
+        }
+        return "";
+    }
 
     private Path writeNewImage(Path dir, InputStream stream, Metadata metadata) throws IOException {
-        var outputPath = dir.resolve(String.format(
-                "image%s.%s", _id, metadata.get(Metadata.CONTENT_TYPE))).toAbsolutePath();
+        String extension = getExtension(metadata);
+        String fileName = extension.isBlank() ?
+                String.format("image%s", _id) :
+                String.format("image%s.%s", _id, extension);
+        var outputPath = dir.resolve(fileName).toAbsolutePath();
         Files.copy(stream, outputPath);
         _id++;
         return outputPath;
