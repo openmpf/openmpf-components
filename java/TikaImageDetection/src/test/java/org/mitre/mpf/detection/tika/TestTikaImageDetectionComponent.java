@@ -59,8 +59,7 @@ public class TestTikaImageDetectionComponent {
         _testDir = _tempFolder.getRoot().toPath();
 
         _tikaComponent = new TikaImageDetectionComponent();
-//        tikaComponent.setConfigDirectory("plugin-files/config");
-        _tikaComponent.setConfigDirectory("/home/mpf/openmpf-projects/openmpf-components/java/TikaImageDetection/plugin-files/config/");
+        _tikaComponent.setConfigDirectory("plugin-files/config");
         _tikaComponent.init();
     }
 
