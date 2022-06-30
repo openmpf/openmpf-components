@@ -26,15 +26,15 @@
 
 package org.mitre.mpf.detection.tika;
 
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.mitre.mpf.component.api.detection.MPFComponentDetectionError;
 import org.mitre.mpf.component.api.detection.MPFGenericJob;
 import org.mitre.mpf.component.api.detection.MPFGenericTrack;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,35 +43,32 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class TestTikaImageDetectionComponent {
 
-    private TikaImageDetectionComponent tikaComponent;
+    private TikaImageDetectionComponent _tikaComponent;
+
+    @Rule
+    public TemporaryFolder _tempFolder = new TemporaryFolder();
+
+    private Path _testDir;
 
     @Before
     public void setUp() {
-        tikaComponent = new TikaImageDetectionComponent();
-        tikaComponent.setConfigDirectory("plugin-files/config");
-        tikaComponent.init();
+        _testDir = _tempFolder.getRoot().toPath();
+
+        _tikaComponent = new TikaImageDetectionComponent();
+        _tikaComponent.setConfigDirectory("plugin-files/config");
+        _tikaComponent.init();
     }
 
     @After
     public void tearDown() {
-        tikaComponent.close();
+        _tikaComponent.close();
     }
 
 
-    private void markTempFiles(File directory){
-        for (File tmpfile: directory.listFiles()) {
-            tmpfile.deleteOnExit();
-            if (tmpfile.isDirectory()) {
-               markTempFiles(tmpfile);
-            }
-        }
-    }
 
     private boolean pageCheck(String filepath) {
        String[] files = filepath.split(";");
@@ -91,17 +88,13 @@ public class TestTikaImageDetectionComponent {
         Map<String, String> jobProperties = new HashMap<>();
         Map<String, String> mediaProperties = new HashMap<>();
 
-        Path testDir = Files.createTempDirectory("tmp");
-        testDir.toFile().deleteOnExit();
-
-        jobProperties.put("SAVE_PATH", testDir.toString());
+        jobProperties.put("SAVE_PATH", _testDir.toString());
         jobProperties.put("ORGANIZE_BY_PAGE", "false");
         jobProperties.put("ALLOW_EMPTY_PAGES", "true");
         MPFGenericJob genericJob = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath, jobProperties, mediaProperties);
         boolean debug = false;
 
-        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        markTempFiles(testDir.toFile());
+        List<MPFGenericTrack> tracks = _tikaComponent.getDetections(genericJob);
 
         // For human testing.
         if (debug) {
@@ -147,13 +140,11 @@ public class TestTikaImageDetectionComponent {
         String uuid = tempPath.split("/")[5];
 
         // Check that images were saved correctly, then clean up test folder.
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image0.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image1.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image2.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid + "/image3.png")));
-
-        FileUtils.deleteDirectory(testDir.toFile());
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid + "/image0.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid + "/image1.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid + "/image2.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid + "/image3.png")));
     }
 
     @Test
@@ -163,10 +154,7 @@ public class TestTikaImageDetectionComponent {
         Map<String, String> jobProperties = new HashMap<>();
         Map<String, String> mediaProperties = new HashMap<>();
 
-        Path testDir = Files.createTempDirectory("tmp");
-        testDir.toFile().deleteOnExit();
-
-        jobProperties.put("SAVE_PATH", testDir.toString());
+        jobProperties.put("SAVE_PATH", _testDir.toString());
         jobProperties.put("ORGANIZE_BY_PAGE", "false");
         jobProperties.put("ALLOW_EMPTY_PAGES", "true");
 
@@ -174,8 +162,8 @@ public class TestTikaImageDetectionComponent {
         MPFGenericJob genericSubJob1 = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath1, jobProperties, mediaProperties);
         MPFGenericJob genericSubJob2 = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath2, jobProperties, mediaProperties);
 
-        List<MPFGenericTrack> tracks1 = tikaComponent.getDetections(genericSubJob1);
-        List<MPFGenericTrack> tracks2 = tikaComponent.getDetections(genericSubJob2);
+        List<MPFGenericTrack> tracks1 = _tikaComponent.getDetections(genericSubJob1);
+        List<MPFGenericTrack> tracks2 = _tikaComponent.getDetections(genericSubJob2);
 
         String uuid1 = tracks1.get(0).getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH").split("/")[5];
         String uuid2 = tracks2.get(0).getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH").split("/")[5];
@@ -183,17 +171,52 @@ public class TestTikaImageDetectionComponent {
         assertNotEquals(uuid1, uuid2);
 
         // Check that images were saved correctly, then clean up test folder.
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image0.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image1.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image2.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid1 + "/image3.png")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid1 + "/image0.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid1 + "/image1.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid1 + "/image2.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid1 + "/image3.png")));
 
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image0.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image1.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image2.jpg")));
-        assertTrue(Files.exists(Paths.get(testDir + "/TestRun/tika-extracted/" + uuid2 + "/image3.png")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid2 + "/image0.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid2 + "/image1.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid2 + "/image2.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid2 + "/image3.png")));
+    }
 
-        FileUtils.deleteDirectory(testDir.toFile());
+
+    @Test
+    public void testMultiMediaJobWithSeparatePages() throws IOException, MPFComponentDetectionError {
+        String mediaPath1 = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
+        String mediaPath2 = this.getClass().getResource("/data/test-tika-image-extraction.pdf").getPath();
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+
+        jobProperties.put("SAVE_PATH", _testDir.toString());
+        jobProperties.put("ORGANIZE_BY_PAGE", "true");
+        jobProperties.put("ALLOW_EMPTY_PAGES", "true");
+
+        // Test that multiple documents submitted under one job ID are processed properly.
+        MPFGenericJob genericSubJob1 = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath1, jobProperties, mediaProperties);
+        MPFGenericJob genericSubJob2 = new MPFGenericJob("Job TestRun:TestGenericJob", mediaPath2, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks1 = _tikaComponent.getDetections(genericSubJob1);
+        List<MPFGenericTrack> tracks2 = _tikaComponent.getDetections(genericSubJob2);
+
+        String uuid1 = tracks1.get(0).getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH").split("/")[5];
+        String uuid2 = tracks2.get(0).getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH").split("/")[5];
+
+        assertNotEquals(uuid1, uuid2);
+
+        // Check that images were saved correctly, then clean up test folder.
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid1 + "/common/image0.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid1 + "/common/image1.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid1 + "/page-6/image2.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid1 + "/page-6/image3.png")));
+
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid2 + "/common/image0.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid2 + "/common/image1.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid2 + "/page-6/image2.jpg")));
+        assertTrue(Files.exists(Paths.get(_testDir + "/TestRun/tika-extracted/" + uuid2 + "/page-6/image3.png")));
     }
 }

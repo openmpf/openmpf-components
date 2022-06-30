@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2022 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2021 The MITRE Corporation                                       *
+ * Copyright 2022 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -24,65 +24,52 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+
 package org.mitre.mpf.detection.tika;
 
+import org.mitre.mpf.component.api.detection.MPFComponentDetectionError;
 
-import org.xml.sax.Attributes;
-import org.apache.tika.sax.ToTextContentHandler;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.UUID;
 
+public class SeparateDirImageExtractor extends BaseImageExtractor {
 
-public class ImageExtractionContentHandler extends ToTextContentHandler{
+    private final Path _baseOutputDir;
 
-    private String pageTag;
-    protected int pageNumber;
-    private boolean skipTitle;
+    private final Path _commonImgDir;
 
-    public ImageExtractionContentHandler(){
-        super();
-        pageTag = "div";
-        pageNumber = 0;
-        // Enable to avoid storing metadata/title text from ppt document.
-        skipTitle = true;
+    private final Collection<String> _commonImages = new HashSet<>();
+
+    public SeparateDirImageExtractor(String savePath) throws MPFComponentDetectionError {
+        var uniqueId = UUID.randomUUID().toString();
+        _baseOutputDir = Path.of(savePath, "tika-extracted", uniqueId).toAbsolutePath();
+        _commonImgDir = _baseOutputDir.resolve("common").toAbsolutePath();
+
+        createInitialDirectory(_commonImgDir);
     }
 
-    public void startElement (String uri, String localName, String qName, Attributes atts) {
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) { // TODO: NPE on jrobble-test.odp
-           startPage();
+    @Override
+    protected Path getOutputDir(int page) throws IOException {
+        var pageOutputDir = _baseOutputDir.resolve("page-" + page);
+        Files.createDirectories(pageOutputDir);
+        return pageOutputDir;
+    }
+
+    @Override
+    protected Path processDuplicate(String cosId, Path existingPath, int pageNum) throws IOException {
+        // For images already encountered, save into a common images folder.
+        // Save each image only once in the common images folder.
+        if (_commonImages.contains(cosId)) {
+            return existingPath;
         }
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
-            if (skipTitle) {
-                //Skip metadata section of pptx.
-                skipTitle = false;
-                //Discard title text. (not part of slide text nor master slide content).
-                resetPage();
-            } else {
-                startPage();
-            }
-        }
+
+        var outputPath = _commonImgDir.resolve(existingPath.getFileName());
+        Files.move(existingPath, outputPath);
+        _commonImages.add(cosId);
+        return outputPath;
     }
-
-
-    public void endElement (String uri, String localName, String qName) {
-        if (pageTag.equals(qName)) {
-            endPage();
-        }
-    }
-
-    public void characters(char[] ch, int start, int length) {}
-
-
-    protected void startPage() {
-        pageNumber++;
-    }
-
-    protected void endPage() {}
-
-    protected void resetPage() {
-        pageNumber = 0;
-    }
-
-    public String toString(){
-        return String.valueOf(pageNumber);
-    }
-
 }
