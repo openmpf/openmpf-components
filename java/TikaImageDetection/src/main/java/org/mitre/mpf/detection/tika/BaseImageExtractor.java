@@ -54,7 +54,7 @@ public abstract class BaseImageExtractor implements EmbeddedDocumentExtractor {
 
     protected abstract Path getOutputDir(int page) throws IOException;
 
-    protected abstract Path processDuplicate(String imgId, Path existingPath, int pageNum) throws IOException;
+    protected abstract Path processDuplicate(String imgId, Path existingPath, int page) throws IOException;
 
 
     @Override
@@ -66,6 +66,11 @@ public abstract class BaseImageExtractor implements EmbeddedDocumentExtractor {
     public void parseEmbedded(InputStream stream, ContentHandler imHandler,
                               Metadata metadata, boolean outputHtml) throws IOException {
         String imgId = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
+        if (imgId == null) {
+            // Certain formats (i.e. odp) will not set a relationship ID for embedded files.
+            // Assign a unique ID for each null ID.
+            imgId = UUID.randomUUID().toString();
+        }
         int page = Integer.parseInt(imHandler.toString());
         var existingPath = _imgIdToAbsPath.get(imgId);
         if (existingPath == null) {
@@ -87,6 +92,10 @@ public abstract class BaseImageExtractor implements EmbeddedDocumentExtractor {
     private String getExtension(Metadata metadata) {
         String contentType = metadata.get(Metadata.CONTENT_TYPE);
         if (contentType != null) {
+            int lastSlashPos = contentType.lastIndexOf('/'); // handle things like "image/png"
+            if (lastSlashPos != -1) {
+                return contentType.substring(lastSlashPos + 1);
+            }
             return contentType;
         }
         String resourceName = metadata.get(Metadata.RESOURCE_NAME_KEY);

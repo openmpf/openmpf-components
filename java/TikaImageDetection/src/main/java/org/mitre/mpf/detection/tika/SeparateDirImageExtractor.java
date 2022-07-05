@@ -60,7 +60,7 @@ public class SeparateDirImageExtractor extends BaseImageExtractor {
     }
 
     @Override
-    protected Path processDuplicate(String cosId, Path existingPath, int pageNum) throws IOException {
+    protected Path processDuplicate(String cosId, Path existingPath, int page) throws IOException {
         // For images already encountered, save into a common images folder.
         // Save each image only once in the common images folder.
         if (_commonImages.contains(cosId)) {

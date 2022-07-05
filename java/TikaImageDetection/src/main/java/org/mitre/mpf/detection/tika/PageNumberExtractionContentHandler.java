@@ -37,37 +37,22 @@ public class PageNumberExtractionContentHandler extends DefaultHandler {
 
     private int _pageNumber;
 
-    // Enable to avoid storing metadata/title text from ppt document.
-    private boolean _skipTitle = true;
-
     @Override
     public void startElement(String uri, String localName, String qName, Attributes atts) {
         if (!PAGE_TAG.equals(qName)) {
             return;
         }
-
         var classAttr = atts.getValue("class");
-        if (classAttr.equals("page")) { // TODO: NPE on jrobble-test.odp
-           startPage();
+        if (classAttr == null) {
+            return;
         }
-        else if (classAttr.equals("slide-content")) {
-            if (_skipTitle) {
-                //Skip metadata section of pptx.
-                _skipTitle = false;
-                //Discard title text. (not part of slide text nor master slide content).
-                resetPage();
-            } else {
-                startPage();
-            }
+        if (classAttr.equals("page") || classAttr.equals("slide-content")) {
+           startPage();
         }
     }
 
     private void startPage() {
         _pageNumber++;
-    }
-
-    private void resetPage() {
-        _pageNumber = 0;
     }
 
     @Override

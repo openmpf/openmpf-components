@@ -48,7 +48,7 @@ public class SameDirImageExtractor extends BaseImageExtractor {
     }
 
     @Override
-    protected Path processDuplicate(String cosId, Path existingPath, int pageNum) {
+    protected Path processDuplicate(String cosId, Path existingPath, int page) {
         return existingPath;
     }
 }
