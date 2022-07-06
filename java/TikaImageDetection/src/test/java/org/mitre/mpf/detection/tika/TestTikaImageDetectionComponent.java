@@ -311,8 +311,7 @@ public class TestTikaImageDetectionComponent {
 
     @Test
     public void testGetDetectionsOdt() throws MPFComponentDetectionError {
-        // String mediaPath = this.getClass().getResource("/data/test-tika-image-extraction.odt").getPath(); // TODO
-        String mediaPath = this.getClass().getResource("/data/jrobble-test.odp").getPath(); // TODO
+        String mediaPath = this.getClass().getResource("/data/test-tika-image-extraction.odt").getPath();
         Map<String, String> jobProperties = new HashMap<>();
         Map<String, String> mediaProperties = new HashMap<>();
 
