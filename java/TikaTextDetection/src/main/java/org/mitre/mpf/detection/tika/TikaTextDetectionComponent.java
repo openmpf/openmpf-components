@@ -58,7 +58,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
     }
 
     // Handles the case where the media is a generic type.
-    public List<MPFGenericTrack>  getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
+    public List<MPFGenericTrack> getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
         log.info("[{}] Starting job.", mpfGenericJob.getJobName());
         log.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
@@ -119,90 +119,92 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         }
 
         boolean listAllPages = MapUtils.getBooleanValue(properties, "LIST_ALL_PAGES", false);
-        // If output exists, separate all output into separate pages.
-        // Tag each page by detected language.
-        if (!pageToSections.isEmpty()) {
-            // Load language identifier.
-            OptimaizeLangDetector identifier = new OptimaizeLangDetector();
 
-            identifier.loadModels();
+        // Load language identifier.
+        OptimaizeLangDetector identifier = new OptimaizeLangDetector();
+        identifier.loadModels();
 
-            var pageNums = pageToSections.keySet();
-            int maxPage = Collections.max(pageNums);
+        var pageNums = pageToSections.keySet();
+        int maxPage = Collections.max(pageNums);
 
-            int maxIdLength = (int) (Math.log10(maxPage)) + 1;
+        int maxIdLength = (int) (Math.log10(maxPage)) + 1;
 
-            int maxSectionsOnPage = pageToSections.values().stream().mapToInt(List::size).max().getAsInt();
-            int sectionIdLength = (int) (Math.log10(maxSectionsOnPage)) + 1;
+        int maxSectionsOnPage = pageToSections.values().stream().mapToInt(List::size).max().getAsInt();
+        int sectionIdLength = (int) (Math.log10(maxSectionsOnPage)) + 1;
 
-            if (sectionIdLength > maxIdLength) {
-                maxIdLength = sectionIdLength;
-            }
-            for (int p = 0; p < pageToSections.size(); p++) {
-                var sections = pageToSections.get(p);
+        if (sectionIdLength > maxIdLength) {
+            maxIdLength = sectionIdLength;
+        }
 
-                if (sections.size() == 1 && sections.get(0).toString().isBlank()) {
-                    // If LIST_ALL_PAGES is true, create empty tracks for empty pages.
-                    if (listAllPages) {
-                        Map<String, String> genericDetectionProperties = new HashMap<>();
-                        genericDetectionProperties.put("TEXT", "");
-                        genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                        genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
-                        genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", 1));
-                        MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
-                        tracks.add(genericTrack);
-                    }
-                    continue;
-                }
+        // Separate all output into separate pages. Tag each page by detected language.
+        for (int p = 0; p < pageToSections.size(); p++) {
+            var sections = pageToSections.get(p);
 
-                for (int s = 0; s < sections.size(); s++) {
-
+            if (sections.size() == 1 && sections.get(0).toString().isBlank()) {
+                // If LIST_ALL_PAGES is true, create empty tracks for empty pages.
+                if (listAllPages) {
                     Map<String, String> genericDetectionProperties = new HashMap<>();
-
-                    try {
-                        String text = sections.get(s).toString();
-
-                        // By default, trim out detected text.
-                        text = text.trim();
-                        if (text.isEmpty()) {
-                            continue;
-                        }
-
-                        genericDetectionProperties.put("TEXT", text);
-
-                        // Process text languages.
-                        if (text.length() >= charLimit) {
-                            LanguageResult langResult = identifier.detect(text);
-                            String language = langResult.getLanguage();
-
-                            if (langMap.containsKey(language)) {
-                                language = langMap.get(language);
-                            }
-                            if (!langResult.isReasonablyCertain()) {
-                                language = null;
-                            }
-                            if (language != null && language.length() > 0) {
-                                genericDetectionProperties.put("TEXT_LANGUAGE", language);
-                            } else {
-                                genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                            }
-                        } else {
-                            genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                        }
-
-                    } catch (Exception e) {
-                        String errorMsg = "Failed to process text detections.";
-                        log.error(errorMsg, e);
-                        throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg);
-                    }
-
+                    genericDetectionProperties.put("TEXT", "");
+                    genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
                     genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
-                    genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", s + 1));
+                    genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", 1));
                     MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                     tracks.add(genericTrack);
                 }
+                continue;
+            }
+
+            int sectionNum = 0;
+            for (var section : sections) {
+
+                Map<String, String> genericDetectionProperties = new HashMap<>();
+
+                try {
+                    String text = section.toString();
+
+                    // By default, trim out detected text.
+                    text = text.trim();
+                    if (text.isEmpty()) {
+                        continue;
+                    }
+
+                    genericDetectionProperties.put("TEXT", text);
+
+                    // Process text languages.
+                    if (text.length() >= charLimit) {
+                        LanguageResult langResult = identifier.detect(text);
+                        String language = langResult.getLanguage();
+
+                        if (langMap.containsKey(language)) {
+                            language = langMap.get(language);
+                        }
+                        if (!langResult.isReasonablyCertain()) {
+                            language = null;
+                        }
+                        if (language != null && language.length() > 0) {
+                            genericDetectionProperties.put("TEXT_LANGUAGE", language);
+                        } else {
+                            genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                        }
+                    } else {
+                        genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                    }
+
+                } catch (Exception e) {
+                    String errorMsg = "Failed to process text detections.";
+                    log.error(errorMsg, e);
+                    throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg);
+                }
+
+                genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
+                genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", sectionNum + 1));
+                MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
+                tracks.add(genericTrack);
+
+                sectionNum++;
             }
         }
+
         // If entire document is empty, generate a single track reporting no detections.
         if (tracks.isEmpty()) {
             log.warn("Empty or invalid document. No extracted text.");

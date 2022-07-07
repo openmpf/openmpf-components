@@ -29,10 +29,7 @@ package org.mitre.mpf.detection.tika;
 import org.apache.tika.sax.ToTextContentHandler;
 import org.xml.sax.Attributes;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class TextExtractionContentHandler extends ToTextContentHandler {
 
@@ -47,7 +44,7 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     private final StringBuilder _allText = new StringBuilder();
     private StringBuilder _sectionText;
 
-    private final Map<Integer, List<StringBuilder>> _pageToSections = new LinkedHashMap<>();
+    private final Map<Integer, List<StringBuilder>> _pageToSections = new HashMap<>();
 
     // Enable to avoid storing metadata/title text from pdf and ppt documents
     private boolean _skipTitle = true;
