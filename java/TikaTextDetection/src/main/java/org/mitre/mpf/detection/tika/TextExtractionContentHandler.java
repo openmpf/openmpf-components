@@ -29,7 +29,10 @@ package org.mitre.mpf.detection.tika;
 import org.apache.tika.sax.ToTextContentHandler;
 import org.xml.sax.Attributes;
 
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 public class TextExtractionContentHandler extends ToTextContentHandler {
 
@@ -40,30 +43,23 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     private static final String SLIDE_LABEL = "slide-content";
     
     private int _pageNumber;
-    private int _sectionNumber;
-    private StringBuilder _textResults;
-    private ArrayList<ArrayList<StringBuilder>> _pageMap; // TODO: Use HashMap
-    private ArrayList<StringBuilder> _currentSectionMap; // TODO: Use HashMap
+
+    private final StringBuilder _allText = new StringBuilder();
+    private StringBuilder _sectionText;
+
+    private final Map<Integer, List<StringBuilder>> _pageToSections = new LinkedHashMap<>();
 
     // Enable to avoid storing metadata/title text from pdf and ppt documents
     private boolean _skipTitle = true;
 
-    // Disable to skip recording empty sections (warning: could produce an excessive number of empty tracks)
-    private final boolean _skipBlankSections = true;
-
     public TextExtractionContentHandler(){
         super();
         _pageNumber = 0;
-        _sectionNumber = 0;
-        _textResults = new StringBuilder();
-        _pageMap = new ArrayList<>(); // TODO: Use HashMap
-        _currentSectionMap = new ArrayList<>(); // TODO: Use HashMap
-        _pageMap.add(_currentSectionMap);
-        _currentSectionMap.add(new StringBuilder());
+        createPage();
     }
 
     @Override
-    public void startElement (String uri, String localName, String qName, Attributes atts) {
+    public void startElement(String uri, String localName, String qName, Attributes atts) {
         if (SECTION_TAG.equals(qName)) {
             newSection();
             return;
@@ -79,9 +75,10 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
                 _skipTitle = false;
                 // If slides: Discard title text. (not part of slide text nor master slide content).
                 // If pdf: Discard blank page.
-                resetPage();
+                reset();
             } else {
-                startPage();
+                _pageNumber++;
+                createPage();
             }
         }
     }
@@ -92,44 +89,39 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     @Override
     public void characters(char[] ch, int start, int length) {
         if (length > 0) {
-            _textResults.append(ch, start, length);
-            _pageMap.get(_pageNumber).get(_sectionNumber).append(ch, start, length);
+            _allText.append(ch, start, length);
+            _sectionText.append(ch, start, length);
         }
     }
 
-    private void startPage() {
-        _pageNumber++;
-        _sectionNumber = 0;
-        _currentSectionMap = new ArrayList<>();
-        _currentSectionMap.add(new StringBuilder());
-        _pageMap.add(_currentSectionMap);
+    private void createPage() {
+        _sectionText = new StringBuilder();
+        _pageToSections.put(_pageNumber, new LinkedList<>());
+        _pageToSections.get(_pageNumber).add(_sectionText);
     }
 
-    private void resetPage() {
+    private void reset() {
         _pageNumber = 0;
-        _sectionNumber = 0;
-        _currentSectionMap.clear();
-        _currentSectionMap.add(new StringBuilder());
-        _pageMap.clear();
-        _pageMap.add(_currentSectionMap);
-
+        _pageToSections.clear();
+        createPage();
     }
 
     private void newSection() {
-        if (_skipBlankSections && _currentSectionMap.get(_sectionNumber).toString().trim().isEmpty()){
+        // Skip blank sections.
+        if (_sectionText.toString().isBlank()) {
             return;
         }
-        _sectionNumber++;
-        _currentSectionMap.add(new StringBuilder());
+        _sectionText = new StringBuilder();
+        _pageToSections.get(_pageNumber).add(_sectionText);
     }
 
     @Override
     public String toString(){
-        return _textResults.toString();
+        return _allText.toString();
     }
 
     // Returns the text detections, subdivided by page number and section.
-    public ArrayList<ArrayList<StringBuilder>> getPages(){
-        return _pageMap;
+    public Map<Integer, List<StringBuilder>> getPages(){
+        return _pageToSections;
     }
 }
