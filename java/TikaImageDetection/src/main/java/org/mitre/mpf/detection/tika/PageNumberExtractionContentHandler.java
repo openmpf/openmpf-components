@@ -34,6 +34,9 @@ import org.xml.sax.helpers.DefaultHandler;
 public class PageNumberExtractionContentHandler extends DefaultHandler {
 
     private static final String PAGE_TAG = "div";
+    private static final String CLASS_ATTRIBUTE = "class";
+    private static final String PAGE_LABEL = "page";
+    private static final String SLIDE_LABEL = "slide-content";
 
     private int _pageNumber;
 
@@ -42,11 +45,11 @@ public class PageNumberExtractionContentHandler extends DefaultHandler {
         if (!PAGE_TAG.equals(qName)) {
             return;
         }
-        var classAttr = atts.getValue("class");
+        var classAttr = atts.getValue(CLASS_ATTRIBUTE);
         if (classAttr == null) {
             return;
         }
-        if (classAttr.equals("page") || classAttr.equals("slide-content")) {
+        if (classAttr.equals(PAGE_LABEL) || classAttr.equals(SLIDE_LABEL)) {
            startPage();
         }
     }
