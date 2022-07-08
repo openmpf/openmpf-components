@@ -41,7 +41,7 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     
     private int _pageNumber;
 
-    private final StringBuilder _allText = new StringBuilder();
+    private StringBuilder _allText;
     private StringBuilder _sectionText;
 
     private final Map<Integer, List<StringBuilder>> _pageToSections = new HashMap<>();
@@ -51,6 +51,7 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
 
     public TextExtractionContentHandler(){
         super();
+        _allText = new StringBuilder();
         _pageNumber = 0;
         createPage();
     }
@@ -93,11 +94,12 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
 
     private void createPage() {
         _sectionText = new StringBuilder();
-        _pageToSections.put(_pageNumber, new LinkedList<>());
+        _pageToSections.put(_pageNumber, new ArrayList<>());
         _pageToSections.get(_pageNumber).add(_sectionText);
     }
 
     private void reset() {
+        _allText = new StringBuilder();
         _pageNumber = 0;
         _pageToSections.clear();
         createPage();

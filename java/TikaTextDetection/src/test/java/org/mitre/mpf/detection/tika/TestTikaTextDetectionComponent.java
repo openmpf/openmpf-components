@@ -57,7 +57,49 @@ public class TestTikaTextDetectionComponent {
     }
 
     @Test
-    public void testGetDetectionsPowerPointFile() throws MPFComponentDetectionError {
+    public void testGetDetectionsTxt() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.txt").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "false");
+        jobProperties.put("STORE_METADATA", "true");
+
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        assertEquals(2, tracks.size());
+
+        assertThat(tracks.get(0).getDetectionProperties().get("METADATA"),
+                containsString("\"X-Parsed-By\":\"org.apache.tika.parser.DefaultParser\",\"Content-Encoding\""));
+
+        assertSection(tracks.get(1), "1", "1", "English", "Testing, this is the first section");
+    }
+
+    @Test
+    public void testGetDetectionsPdf() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.pdf").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "false");
+
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        assertEquals(30, tracks.size());
+
+        assertSection(tracks.get(0), "01", "01", "English", "OpenMPF");
+        assertSection(tracks.get(0), "01", "01", "English", "Bridging the Gap in Media Analytics");
+        assertSection(tracks.get(2), "01", "03", "Unknown", "Data Filtering");
+        assertSection(tracks.get(23), "01", "24", "English", "The MITRE Corporation");
+        assertSection(tracks.get(29), "03", "01", "Unknown", "page 3"); // cannot determine language
+    }
+
+    @Test
+    public void testGetDetectionsPptx() throws MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-tika-detection.pptx").getPath();
 
         Map<String, String> jobProperties = new HashMap<>();
@@ -99,28 +141,38 @@ public class TestTikaTextDetectionComponent {
     }
 
     @Test
-    public void testGetDetectionsPdfFile() throws MPFComponentDetectionError {
-        String mediaPath = this.getClass().getResource("/data/test-tika-detection.pdf").getPath();
+    public void testGetDetectionsOdp() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.odp").getPath();
 
         Map<String, String> jobProperties = new HashMap<>();
         Map<String, String> mediaProperties = new HashMap<>();
         jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
-        jobProperties.put("LIST_ALL_PAGES", "false");
+        jobProperties.put("LIST_ALL_PAGES", "true");
 
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        assertEquals(30, tracks.size());
 
-        assertSection(tracks.get(0), "01", "01", "English", "OpenMPF"); // Not enough text.
-        assertSection(tracks.get(0), "01", "01", "English", "Bridging the Gap in Media Analytics");
-        assertSection(tracks.get(2), "01", "03", "Unknown", "Data Filtering");
-        assertSection(tracks.get(23), "01", "24", "English", "The MITRE Corporation");
-        assertSection(tracks.get(29), "03", "01", "Unknown", "page 3"); // cannot determine language
+        // All detections are reported on page 1.
+        // TODO: Text is broken up into more sections than tracks generated from test-tika-detection.pptx.
+        assertEquals(23 ,tracks.size());
+
+        // Test language extraction
+        assertSection(tracks.get(0), "01", "01", "English", "Testing Text Detection");
+        assertSection(tracks.get(3), "01", "04", "Japanese", "ジアゼパム");
+
+        // TODO: Unlike tracks generated from test-tika-detection.pptx, there is no track for blank slide 5.
+
+        assertSection(tracks.get(19), "01", "20", "English", "All human beings are born free");
+        assertSection(tracks.get(20), "01", "21", "Unknown", "End"); // cannot determine language
+        assertSection(tracks.get(21), "01", "22", "Unknown", "End slide test text"); // cannot determine language
+
+        // TODO: Last section matches first section for some reason, although the text is not on the last slide.
+        assertSection(tracks.get(22), "01", "23", "English", "Testing Text Detection");
     }
 
     @Test
-    public void testGetDetectionsDocumentFile() throws MPFComponentDetectionError {
+    public void testGetDetectionsDocx() throws MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-tika-detection.docx").getPath();
 
         Map<String, String> jobProperties = new HashMap<>();
@@ -131,21 +183,50 @@ public class TestTikaTextDetectionComponent {
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+
+        // All detections are reported on page 1.
         assertEquals(6, tracks.size());
 
+        // page 1
         assertSection(tracks.get(0), "1", "1", "English", "first section of page 1");
         assertSection(tracks.get(1), "1", "2", "English", "second section of page 1");
         assertSection(tracks.get(2), "1", "3", "English", "third section of page 1");
 
-        // Can't detect page numbers in documents, so page 1 is used for every track,
-        // and the section numbers continue across actual pages.
+        // page 2
         assertSection(tracks.get(3), "1", "4", "English", "first section of page 2");
         assertSection(tracks.get(4), "1", "5", "English", "second section of page 2");
         assertSection(tracks.get(5), "1", "6", "English", "third section of page 2");
     }
 
     @Test
-    public void testGetDetectionsExcelFile() throws MPFComponentDetectionError {
+    public void testGetDetectionsOdt() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.odt").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "true");
+
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+
+        // All of the sheets are reported for page 1.
+        assertEquals(6, tracks.size());
+
+        // page 1
+        assertSection(tracks.get(0), "1", "1", "English", "first section of page 1");
+        assertSection(tracks.get(1), "1", "2", "English", "second section of page 1");
+        assertSection(tracks.get(2), "1", "3", "English", "third section of page 1");
+
+        // page 2
+        assertSection(tracks.get(3), "1", "4", "English", "first section of page 2");
+        assertSection(tracks.get(4), "1", "5", "English", "second section of page 2");
+        assertSection(tracks.get(5), "1", "6", "English", "third section of page 2");
+    }
+
+    @Test
+    public void testGetDetectionsXlsx() throws MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-tika-detection.xlsx").getPath();
 
         Map<String, String> jobProperties = new HashMap<>();
@@ -156,12 +237,66 @@ public class TestTikaTextDetectionComponent {
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
-        assertEquals(1, tracks.size());
 
-        assertSection(tracks.get(0), "1", "1", "Unknown", "Test"); // cannot determine language
-        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"), containsString("1"));
-        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"), containsString("3"));
-        assertThat(tracks.get(0).getDetectionProperties().get("TEXT"), containsString("6"));
+        // All of the sheets are reported in track 0 for page 1, section 1.
+        // TODO: Tracks 1 and 2 contain font info. Oddly, font info is not reported for a single-page .xlsx file.
+        assertEquals(3, tracks.size());
+
+        MPFGenericTrack testTrack = tracks.get(0);
+        String testTrackText = testTrack.getDetectionProperties().get("TEXT");
+
+        // sheet 1
+        assertSection(testTrack, "1", "1", "Unknown", "Test"); // cannot determine language
+        assertThat(testTrackText, containsString("1"));
+        assertThat(testTrackText, containsString("2"));
+        assertThat(testTrackText, containsString("3"));
+        assertThat(testTrackText, containsString("4"));
+        assertThat(testTrackText, containsString("5"));
+        assertThat(testTrackText, containsString("6"));
+
+        // sheet 2
+        assertThat(testTrackText, containsString("Test 2"));
+        assertThat(testTrackText, containsString("7"));
+        assertThat(testTrackText, containsString("8"));
+        assertThat(testTrackText, containsString("9"));
+        assertThat(testTrackText, containsString("10"));
+        assertThat(testTrackText, containsString("11"));
+        assertThat(testTrackText, containsString("12"));
+    }
+
+    @Test
+    public void testGetDetectionsOds() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.ods").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "true");
+
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+
+        // TODO: Each cell is reported in a different track.
+        assertEquals(19, tracks.size());
+
+        // sheet 1
+        assertSection(tracks.get(5), "01", "06", "Unknown", "Test"); // cannot determine language
+        assertThat(tracks.get(6).getDetectionProperties().get("TEXT"), containsString("1"));
+        assertThat(tracks.get(7).getDetectionProperties().get("TEXT"), containsString("2"));
+        assertThat(tracks.get(8).getDetectionProperties().get("TEXT"), containsString("3"));
+        assertThat(tracks.get(9).getDetectionProperties().get("TEXT"), containsString("4"));
+        assertThat(tracks.get(10).getDetectionProperties().get("TEXT"), containsString("5"));
+        assertThat(tracks.get(11).getDetectionProperties().get("TEXT"), containsString("6"));
+
+        // sheet 2
+        assertThat(tracks.get(12).getDetectionProperties().get("TEXT"), containsString("Test 2"));
+        assertThat(tracks.get(13).getDetectionProperties().get("TEXT"), containsString("7"));
+        assertThat(tracks.get(14).getDetectionProperties().get("TEXT"), containsString("8"));
+        assertThat(tracks.get(15).getDetectionProperties().get("TEXT"), containsString("9"));
+        assertThat(tracks.get(16).getDetectionProperties().get("TEXT"), containsString("10"));
+        assertThat(tracks.get(17).getDetectionProperties().get("TEXT"), containsString("11"));
+        assertThat(tracks.get(18).getDetectionProperties().get("TEXT"), containsString("12"));
     }
 
     private void assertSection(MPFGenericTrack track, String page, String section, String language, String text) {

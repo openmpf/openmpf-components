@@ -43,7 +43,6 @@ import org.xml.sax.SAXException;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
 
@@ -96,7 +95,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
         // Store metadata as a unique track.
         // Disabled by default for format consistency.
-        if (MapUtils.getBooleanValue(properties, "STORE_METADATA")) { // TODO: Test this, odp, odt and OpenDoc calc
+        if (MapUtils.getBooleanValue(properties, "STORE_METADATA")) {
             Map<String, String> genericDetectionProperties = new HashMap<>();
             Map<String, String> metadataMap = new HashMap<>();
 
@@ -154,13 +153,12 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                 continue;
             }
 
-            int sectionNum = 0;
-            for (var section : sections) {
+            for (int s = 0; s < sections.size(); s++) {
 
                 Map<String, String> genericDetectionProperties = new HashMap<>();
 
                 try {
-                    String text = section.toString();
+                    String text = sections.get(s).toString();
 
                     // By default, trim out detected text.
                     text = text.trim();
@@ -197,11 +195,9 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                 }
 
                 genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
-                genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", sectionNum + 1));
+                genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", s + 1));
                 MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                 tracks.add(genericTrack);
-
-                sectionNum++;
             }
         }
 

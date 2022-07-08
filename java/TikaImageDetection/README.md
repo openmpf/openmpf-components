@@ -6,7 +6,7 @@ This component extracts images embedded in document formats, such as PDF (`.pdf`
 Word (`.docx`), OpenDocument Presentation (`.odp`), and OpenDocument Text (`.odt`) documents.
 
 In general, the Tika parsers will extract unique images, once per track. Each track will contain a `PAGE_NUM` property
-specifying where the image is embedded.
+specifying where the image is embedded. Note that page numbers start at 1, not 0, unless otherwise noted.
 
 The path where the extracted image is stored will be reported in the `DERIVATIVE_MEDIA_TEMP_PATH` property for each
 track.
@@ -28,10 +28,10 @@ The following format-specific behaviors were observed using Tika 1.28.1 on Ubunt
   , would indicate the embedded image appears on pages 1, 2, and 4 of a PDF document.
 
 - For PowerPoint documents, all images will be reported on the last page of the document. For example, if the document
-  is 5 pages in length, all images will be report with `PAGE_NUM = 5`.
+  is 5 pages in length, all images will be reported with `PAGE_NUM = 5`.
 
 - For Word documents, OpenDocument Text documents, and OpenDocument Presentation documents, all images will be reported
-  on `PAGE_NUM = 0`.
+  with `PAGE_NUM = 0`.
 
 - OpenDocument Presentation documents will generate a thumbnail / preview `.png` of the content of the last modified
   slide, including text, even if it's blank.
