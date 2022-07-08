@@ -155,43 +155,33 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
             for (int s = 0; s < sections.size(); s++) {
 
+                // By default, trim out detected text.
+                String text = sections.get(s).toString().trim();
+                if (text.isEmpty()) {
+                    continue;
+                }
+
                 Map<String, String> genericDetectionProperties = new HashMap<>();
+                genericDetectionProperties.put("TEXT", text);
 
-                try {
-                    String text = sections.get(s).toString();
+                // Process text languages.
+                if (text.length() >= charLimit) {
+                    LanguageResult langResult = identifier.detect(text);
+                    String language = langResult.getLanguage();
 
-                    // By default, trim out detected text.
-                    text = text.trim();
-                    if (text.isEmpty()) {
-                        continue;
+                    if (langMap.containsKey(language)) {
+                        language = langMap.get(language);
                     }
-
-                    genericDetectionProperties.put("TEXT", text);
-
-                    // Process text languages.
-                    if (text.length() >= charLimit) {
-                        LanguageResult langResult = identifier.detect(text);
-                        String language = langResult.getLanguage();
-
-                        if (langMap.containsKey(language)) {
-                            language = langMap.get(language);
-                        }
-                        if (!langResult.isReasonablyCertain()) {
-                            language = null;
-                        }
-                        if (language != null && language.length() > 0) {
-                            genericDetectionProperties.put("TEXT_LANGUAGE", language);
-                        } else {
-                            genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                        }
+                    if (!langResult.isReasonablyCertain()) {
+                        language = null;
+                    }
+                    if (language != null && language.length() > 0) {
+                        genericDetectionProperties.put("TEXT_LANGUAGE", language);
                     } else {
                         genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
                     }
-
-                } catch (Exception e) {
-                    String errorMsg = "Failed to process text detections.";
-                    log.error(errorMsg, e);
-                    throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg);
+                } else {
+                    genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
                 }
 
                 genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
