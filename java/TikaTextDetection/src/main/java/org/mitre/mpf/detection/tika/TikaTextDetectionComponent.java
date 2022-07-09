@@ -49,6 +49,7 @@ import java.util.*;
 public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
     private static final Logger log = LoggerFactory.getLogger(TikaTextDetectionComponent.class);
+
     private static final Map<String, String> langMap;
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -87,8 +88,12 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         float confidence = -1.0f;
         List<MPFGenericTrack> tracks = new LinkedList<>();
 
-        Map<String,String> properties = mpfGenericJob.getJobProperties();
+        String contentType = metadata.get("Content-Type");
+        boolean supportsPageNumbers =
+                contentType.equals("application/pdf") ||
+                contentType.startsWith("application/vnd.openxmlformats-officedocument.presentationml");
 
+        Map<String,String> properties = mpfGenericJob.getJobProperties();
 
         // Set language filtering limit.
         int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);
@@ -145,7 +150,11 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                     Map<String, String> genericDetectionProperties = new HashMap<>();
                     genericDetectionProperties.put("TEXT", "");
                     genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                    genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
+                    if (supportsPageNumbers) {
+                        genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
+                    } else {
+                        genericDetectionProperties.put("PAGE_NUM", "-1");
+                    }
                     genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", 1));
                     MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                     tracks.add(genericTrack);
@@ -184,7 +193,11 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                     genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
                 }
 
-                genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
+                if (supportsPageNumbers) {
+                    genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
+                } else {
+                    genericDetectionProperties.put("PAGE_NUM", "-1");
+                }
                 genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", s + 1));
                 MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                 tracks.add(genericTrack);

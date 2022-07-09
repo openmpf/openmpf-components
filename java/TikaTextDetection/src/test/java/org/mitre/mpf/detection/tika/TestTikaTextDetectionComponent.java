@@ -74,7 +74,7 @@ public class TestTikaTextDetectionComponent {
         assertThat(tracks.get(0).getDetectionProperties().get("METADATA"),
                 containsString("\"X-Parsed-By\":\"org.apache.tika.parser.DefaultParser\",\"Content-Encoding\""));
 
-        assertSection(tracks.get(1), "1", "1", "English", "Testing, this is the first section");
+        assertSection(tracks.get(1), "-1", "1", "English", "Testing, this is the first section");
     }
 
     @Test
@@ -153,22 +153,23 @@ public class TestTikaTextDetectionComponent {
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
 
-        // All detections are reported on page 1.
-        // TODO: Text is broken up into more sections than tracks generated from test-tika-detection.pptx.
+        // TODO: Is it possible to get page (slide) number information from .odp files?
+        // NOTE: Text is broken up into more sections than tracks generated from test-tika-detection.pptx.
         assertEquals(23 ,tracks.size());
 
         // Test language extraction
-        assertSection(tracks.get(0), "01", "01", "English", "Testing Text Detection");
-        assertSection(tracks.get(3), "01", "04", "Japanese", "ジアゼパム");
+        assertSection(tracks.get(0), "-1", "01", "English", "Testing Text Detection");
+        assertSection(tracks.get(3), "-1", "04", "Japanese", "ジアゼパム");
 
-        // TODO: Unlike tracks generated from test-tika-detection.pptx, there is no track for blank slide 5.
+        // TODO: Look into why, unlike tracks generated from test-tika-detection.pptx, there is no track for
+        //  blank slide 5.
 
-        assertSection(tracks.get(19), "01", "20", "English", "All human beings are born free");
-        assertSection(tracks.get(20), "01", "21", "Unknown", "End"); // cannot determine language
-        assertSection(tracks.get(21), "01", "22", "Unknown", "End slide test text"); // cannot determine language
+        assertSection(tracks.get(19), "-1", "20", "English", "All human beings are born free");
+        assertSection(tracks.get(20), "-1", "21", "Unknown", "End"); // cannot determine language
+        assertSection(tracks.get(21), "-1", "22", "Unknown", "End slide test text"); // cannot determine language
 
-        // TODO: Last section matches first section for some reason, although the text is not on the last slide.
-        assertSection(tracks.get(22), "01", "23", "English", "Testing Text Detection");
+        // TODO: Look into why last section matches first section although the text is not on the last slide.
+        assertSection(tracks.get(22), "-1", "23", "English", "Testing Text Detection");
     }
 
     @Test
@@ -184,18 +185,18 @@ public class TestTikaTextDetectionComponent {
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
 
-        // All detections are reported on page 1.
+        // TODO: Is it possible to get page number information from .docx files?
         assertEquals(6, tracks.size());
 
         // page 1
-        assertSection(tracks.get(0), "1", "1", "English", "first section of page 1");
-        assertSection(tracks.get(1), "1", "2", "English", "second section of page 1");
-        assertSection(tracks.get(2), "1", "3", "English", "third section of page 1");
+        assertSection(tracks.get(0), "-1", "1", "English", "first section of page 1");
+        assertSection(tracks.get(1), "-1", "2", "English", "second section of page 1");
+        assertSection(tracks.get(2), "-1", "3", "English", "third section of page 1");
 
         // page 2
-        assertSection(tracks.get(3), "1", "4", "English", "first section of page 2");
-        assertSection(tracks.get(4), "1", "5", "English", "second section of page 2");
-        assertSection(tracks.get(5), "1", "6", "English", "third section of page 2");
+        assertSection(tracks.get(3), "-1", "4", "English", "first section of page 2");
+        assertSection(tracks.get(4), "-1", "5", "English", "second section of page 2");
+        assertSection(tracks.get(5), "-1", "6", "English", "third section of page 2");
     }
 
     @Test
@@ -211,18 +212,18 @@ public class TestTikaTextDetectionComponent {
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
 
-        // All of the sheets are reported for page 1.
+        // TODO: Is it possible to get page number information from .odt files?
         assertEquals(6, tracks.size());
 
         // page 1
-        assertSection(tracks.get(0), "1", "1", "English", "first section of page 1");
-        assertSection(tracks.get(1), "1", "2", "English", "second section of page 1");
-        assertSection(tracks.get(2), "1", "3", "English", "third section of page 1");
+        assertSection(tracks.get(0), "-1", "1", "English", "first section of page 1");
+        assertSection(tracks.get(1), "-1", "2", "English", "second section of page 1");
+        assertSection(tracks.get(2), "-1", "3", "English", "third section of page 1");
 
         // page 2
-        assertSection(tracks.get(3), "1", "4", "English", "first section of page 2");
-        assertSection(tracks.get(4), "1", "5", "English", "second section of page 2");
-        assertSection(tracks.get(5), "1", "6", "English", "third section of page 2");
+        assertSection(tracks.get(3), "-1", "4", "English", "first section of page 2");
+        assertSection(tracks.get(4), "-1", "5", "English", "second section of page 2");
+        assertSection(tracks.get(5), "-1", "6", "English", "third section of page 2");
     }
 
     @Test
@@ -238,15 +239,17 @@ public class TestTikaTextDetectionComponent {
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
 
-        // All of the sheets are reported in track 0 for page 1, section 1.
-        // TODO: Tracks 1 and 2 contain font info. Oddly, font info is not reported for a single-page .xlsx file.
+        // TODO: Is it possible to get page (sheet) number information from .xlsx files?
+        // TODO: Is it possible to split up text into different pages / sections based on the sheet it appears in?
+        // TODO: Look into why tracks 1 and 2 contain font info. Oddly, font info is not reported for a
+        //  single-page .xlsx file.
         assertEquals(3, tracks.size());
 
         MPFGenericTrack testTrack = tracks.get(0);
         String testTrackText = testTrack.getDetectionProperties().get("TEXT");
 
         // sheet 1
-        assertSection(testTrack, "1", "1", "Unknown", "Test"); // cannot determine language
+        assertSection(testTrack, "-1", "1", "Unknown", "Test"); // cannot determine language
         assertThat(testTrackText, containsString("1"));
         assertThat(testTrackText, containsString("2"));
         assertThat(testTrackText, containsString("3"));
@@ -277,11 +280,13 @@ public class TestTikaTextDetectionComponent {
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
 
-        // TODO: Each cell is reported in a different track.
+        // TODO: Is it possible to get page (sheet) number information from .ods files?
+        // TODO: Look into why each cell is reported in a different track for .ods files.
+        //  Can we make the .pptx and .ods file behavior the same?
         assertEquals(19, tracks.size());
 
         // sheet 1
-        assertSection(tracks.get(5), "01", "06", "Unknown", "Test"); // cannot determine language
+        assertSection(tracks.get(5), "-1", "06", "Unknown", "Test"); // cannot determine language
         assertThat(tracks.get(6).getDetectionProperties().get("TEXT"), containsString("1"));
         assertThat(tracks.get(7).getDetectionProperties().get("TEXT"), containsString("2"));
         assertThat(tracks.get(8).getDetectionProperties().get("TEXT"), containsString("3"));

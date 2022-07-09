@@ -31,11 +31,11 @@ METADATA = {"X-Parsed-By":"org.apache.tika.parser.DefaultParser","Content-Encodi
 
 The following format-specific behaviors were observed using Tika 1.28.1 on Ubuntu 20.04:
 
-- For `.txt` files and Excel documents, all of the text will be reported in a single track with `PAGE_NUM = 1`
-  and `SECTION_NUM = 1`.
+- For all formats except PDF and PowerPoint documents, we intentionally set `PAGE_NUM = -1` to indicate that the page
+  number cannot be determined.
 
-- For Word documents, OpenDocument Text documents, and OpenDocument Presentation documents, all text will be reported
-  with `PAGE_NUM = 1`. // TODO: This is `PAGE_NUM = 0` for TikaImageDetection
+- For `.txt` files and Excel documents, all of the text will be reported in a single track with `PAGE_NUM = -1`
+  and `SECTION_NUM = 1`.
 
 - OpenDocument Spreadsheet documents will generate one track per cell, as well as some additional tracks with
   date and time information, "Page /", and "???".

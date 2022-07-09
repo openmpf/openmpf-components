@@ -159,35 +159,35 @@ public class TestTikaImageDetectionComponent {
 
         assertEquals(5 ,tracks.size());
 
-        // Test extraction of images from *.pptx format.
-        // A quirk of that format is that all images will be reported for the last slide, which is slide 5 in this case.
+        // TODO: Is it possible to get page (slide) number information from .pptx files?
+        // NOTE: By default, Tika will report all images from a .pptx file on the last slide. We override that to -1.
         MPFGenericTrack testTrack = tracks.get(0);
         String tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("5", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image0.x-emf"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(1);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("5", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image1.jpeg"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(2);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("5", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image2.jpeg"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(3);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("5", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image3.png"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(4);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("5", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image4.jpeg"));
         assertTrue(pageCheck(tempPath));
 
@@ -216,35 +216,35 @@ public class TestTikaImageDetectionComponent {
 
         assertEquals(5, tracks.size());
 
-        // Test extraction of images from *.odp format.
-        // A quirk of that format is that all images will be reported for slide 0.
+        // TODO: Is it possible to get page (slide) number information from .odp files?
+        // NOTE: By default, Tika will report all images from an .odp file on slide 0. We override that to -1.
         MPFGenericTrack testTrack = tracks.get(0);
         String tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image0.png"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(1);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image1.png"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(2);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image2.jpeg"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(3);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image3.jpeg"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(4);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image4.emf"));
         assertTrue(pageCheck(tempPath));
 
@@ -273,29 +273,29 @@ public class TestTikaImageDetectionComponent {
 
         assertEquals(4, tracks.size());
 
-        // Test extraction of images from *.docx format.
-        // A quirk of that format is that all images will be reported for page 0.
+        // TODO: Is it possible to get page (slide) number information from .docx files?
+        // NOTE: By default, Tika will report all images from a .docx file on slide 0. We override that to -1.
         MPFGenericTrack testTrack = tracks.get(0);
         String tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image0.jpeg"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(1);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image1.jpeg"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(2);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image2.jpeg"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(3);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image3.png"));
         assertTrue(pageCheck(tempPath));
 
@@ -323,35 +323,35 @@ public class TestTikaImageDetectionComponent {
 
         assertEquals(5, tracks.size());
 
-        // Test extraction of images from *.odt format.
-        // A quirk of that format is that all images will be reported for page 0.
+        // TODO: Is it possible to get page (slide) number information from .odt files?
+        // NOTE: By default, Tika will report all images from an .odt file on slide 0. We override that to -1.
         MPFGenericTrack testTrack = tracks.get(0);
         String tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image0.png"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(1);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image1.png"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(2);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image2.jpeg"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(3);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image3.jpeg"));
         assertTrue(pageCheck(tempPath));
 
         testTrack = tracks.get(4);
         tempPath = testTrack.getDetectionProperties().get("DERIVATIVE_MEDIA_TEMP_PATH");
-        assertEquals("0", testTrack.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals("-1", testTrack.getDetectionProperties().get("PAGE_NUM"));
         assertTrue(tempPath.contains("image4.jpeg"));
         assertTrue(pageCheck(tempPath));
 

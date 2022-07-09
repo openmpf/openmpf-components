@@ -73,7 +73,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
     }
 
     private Map<Path, SortedSet<Integer>> parseDocument(String input, String docPath,
-                                                        boolean separatePages)
+                                                        boolean separatePages, Metadata metadata)
             throws MPFComponentDetectionError {
         TikaConfig config;
         String configPath = _configDirectory + "/tika-config.xml";
@@ -88,7 +88,6 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
 
         AutoDetectParser parser = new AutoDetectParser(config);
         ContentHandler handler = new PageNumberExtractionContentHandler();
-        Metadata metadata = new Metadata();
         ParseContext context = new ParseContext();
 
         var embeddedDocumentExtractor = separatePages
@@ -150,32 +149,38 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         }
         defaultSavePath = MPFEnvironmentVariablePathExpander.expand(defaultSavePath);
 
-
         if (!mpfGenericJob.getJobName().isEmpty()) {
             String jobId = mpfGenericJob.getJobName().split(":")[0];
-            jobId = Pattern.compile("job"
-                    , Pattern.LITERAL | Pattern.CASE_INSENSITIVE).matcher(jobId).replaceAll("");
+            jobId = Pattern.compile("job", Pattern.LITERAL | Pattern.CASE_INSENSITIVE).matcher(jobId).replaceAll("");
             jobId = jobId.trim();
             defaultSavePath += '/' + jobId;
         }
 
         var tracks = new ArrayList<MPFGenericTrack>();
 
+        Metadata metadata = new Metadata();
         Map<Path, SortedSet<Integer>> imageMap =
-                parseDocument(mpfGenericJob.getDataUri(), defaultSavePath, separatePages);
+                parseDocument(mpfGenericJob.getDataUri(), defaultSavePath, separatePages, metadata);
         if (imageMap.isEmpty()) {
             LOG.info("No images detected in document");
         }
         else {
+            String contentType = metadata.get("Content-Type");
+            boolean supportsPageNumbers = contentType.equals("application/pdf");
+
             for (Map.Entry<Path, SortedSet<Integer>> entry : imageMap.entrySet()) {
                 var genericDetectionProperties = new HashMap<String, String>();
                 genericDetectionProperties.put("DERIVATIVE_MEDIA_TEMP_PATH", entry.getKey().toString());
 
-                var pageNumsStr = entry.getValue()
-                        .stream()
-                        .map(String::valueOf)
-                        .collect(Collectors.joining("; "));
-                genericDetectionProperties.put("PAGE_NUM", pageNumsStr);
+                if (supportsPageNumbers) {
+                    var pageNumsStr = entry.getValue()
+                            .stream()
+                            .map(String::valueOf)
+                            .collect(Collectors.joining("; "));
+                    genericDetectionProperties.put("PAGE_NUM", pageNumsStr);
+                } else {
+                    genericDetectionProperties.put("PAGE_NUM", "-1");
+                }
 
                 MPFGenericTrack genericTrack = new MPFGenericTrack(-1, genericDetectionProperties);
                 tracks.add(genericTrack);

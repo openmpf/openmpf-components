@@ -27,11 +27,7 @@ The following format-specific behaviors were observed using Tika 1.28.1 on Ubunt
   example, `PAGE_NUM = 1; 2; 4`
   , would indicate the embedded image appears on pages 1, 2, and 4 of a PDF document.
 
-- For PowerPoint documents, all images will be reported on the last page of the document. For example, if the document
-  is 5 pages in length, all images will be reported with `PAGE_NUM = 5`.
-
-- For Word documents, OpenDocument Text documents, and OpenDocument Presentation documents, all images will be reported
-  with `PAGE_NUM = 0`.
+- For non-PDF files we intentionally set `PAGE_NUM = -1` to indicate that the page number cannot be determined.
 
 - OpenDocument Presentation documents will generate a thumbnail / preview `.png` of the content of the last modified
   slide, including text, even if it's blank.
