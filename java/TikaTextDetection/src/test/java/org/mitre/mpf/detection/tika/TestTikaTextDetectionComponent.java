@@ -91,11 +91,11 @@ public class TestTikaTextDetectionComponent {
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
         assertEquals(30, tracks.size());
 
-        assertSection(tracks.get(0), "01", "01", "English", "OpenMPF");
-        assertSection(tracks.get(0), "01", "01", "English", "Bridging the Gap in Media Analytics");
-        assertSection(tracks.get(2), "01", "03", "Unknown", "Data Filtering");
-        assertSection(tracks.get(23), "01", "24", "English", "The MITRE Corporation");
-        assertSection(tracks.get(29), "03", "01", "Unknown", "page 3"); // cannot determine language
+        assertSection(tracks.get(0), "1", "1", "English", "OpenMPF");
+        assertSection(tracks.get(0), "1", "1", "English", "Bridging the Gap in Media Analytics");
+        assertSection(tracks.get(2), "1", "3", "Unknown", "Data Filtering");
+        assertSection(tracks.get(23), "1", "24", "English", "The MITRE Corporation");
+        assertSection(tracks.get(29), "3", "1", "Unknown", "page 3"); // cannot determine language
     }
 
     @Test
@@ -129,15 +129,15 @@ public class TestTikaTextDetectionComponent {
         assertEquals(23 ,tracks.size());
 
         // Test language extraction
-        assertSection(tracks.get(0), "01", "01", "English", "Testing Text Detection");
-        assertSection(tracks.get(3), "02", "02", "Japanese", "ジアゼパム");
+        assertSection(tracks.get(0), "1", "1", "English", "Testing Text Detection");
+        assertSection(tracks.get(3), "2", "2", "Japanese", "ジアゼパム");
 
         // Test no detections
         assertTrue(tracks.get(9).getDetectionProperties().get("TEXT").isEmpty());
         assertEquals("Unknown", tracks.get(9).getDetectionProperties().get("TEXT_LANGUAGE"));
 
-        assertSection(tracks.get(20), "10", "04", "English", "All human beings are born free");
-        assertSection(tracks.get(22), "11", "02", "Unknown", "End slide test text"); // cannot determine language
+        assertSection(tracks.get(20), "10", "4", "English", "All human beings are born free");
+        assertSection(tracks.get(22), "11", "2", "Unknown", "End slide test text"); // cannot determine language
     }
 
     @Test
@@ -159,8 +159,8 @@ public class TestTikaTextDetectionComponent {
         assertTrue(tracks.size() == 22 || tracks.size() == 23);
 
         // Test language extraction
-        assertSection(tracks.get(0), "-1", "01", "English", "Testing Text Detection");
-        assertSection(tracks.get(3), "-1", "04", "Japanese", "ジアゼパム");
+        assertSection(tracks.get(0), "-1", "1", "English", "Testing Text Detection");
+        assertSection(tracks.get(3), "-1", "4", "Japanese", "ジアゼパム");
 
         // TODO: Look into why, unlike tracks generated from test-tika-detection.pptx, there is no track for
         //  blank slide 5.
@@ -289,7 +289,7 @@ public class TestTikaTextDetectionComponent {
         assertEquals(19, tracks.size());
 
         // sheet 1
-        assertSection(tracks.get(5), "-1", "06", "Unknown", "Test"); // cannot determine language
+        assertSection(tracks.get(5), "-1", "6", "Unknown", "Test"); // cannot determine language
         assertThat(tracks.get(6).getDetectionProperties().get("TEXT"), containsString("1"));
         assertThat(tracks.get(7).getDetectionProperties().get("TEXT"), containsString("2"));
         assertThat(tracks.get(8).getDetectionProperties().get("TEXT"), containsString("3"));

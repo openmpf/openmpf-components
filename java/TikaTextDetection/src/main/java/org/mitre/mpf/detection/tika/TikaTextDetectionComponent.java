@@ -128,18 +128,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         OptimaizeLangDetector identifier = new OptimaizeLangDetector();
         identifier.loadModels();
 
-        var pageNums = pageToSections.keySet();
-        int maxPage = Collections.max(pageNums);
-
-        int maxIdLength = (int) (Math.log10(maxPage)) + 1;
-
-        int maxSectionsOnPage = pageToSections.values().stream().mapToInt(List::size).max().getAsInt();
-        int sectionIdLength = (int) (Math.log10(maxSectionsOnPage)) + 1;
-
-        if (sectionIdLength > maxIdLength) {
-            maxIdLength = sectionIdLength;
-        }
-
         // Separate all output into separate pages. Tag each page by detected language.
         for (int p = 0; p < pageToSections.size(); p++) {
             var sections = pageToSections.get(p);
@@ -151,11 +139,11 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                     genericDetectionProperties.put("TEXT", "");
                     genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
                     if (supportsPageNumbers) {
-                        genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
+                        genericDetectionProperties.put("PAGE_NUM", String.format("%d", p + 1));
                     } else {
                         genericDetectionProperties.put("PAGE_NUM", "-1");
                     }
-                    genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", 1));
+                    genericDetectionProperties.put("SECTION_NUM", String.format("%d", 1));
                     MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                     tracks.add(genericTrack);
                 }
@@ -194,11 +182,11 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                 }
 
                 if (supportsPageNumbers) {
-                    genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
+                    genericDetectionProperties.put("PAGE_NUM", String.format("%d", p + 1));
                 } else {
                     genericDetectionProperties.put("PAGE_NUM", "-1");
                 }
-                genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", s + 1));
+                genericDetectionProperties.put("SECTION_NUM", String.format("%d", s + 1));
                 MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                 tracks.add(genericTrack);
             }
