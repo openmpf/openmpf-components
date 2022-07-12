@@ -72,7 +72,11 @@ public class TestTikaTextDetectionComponent {
         assertEquals(2, tracks.size());
 
         assertThat(tracks.get(0).getDetectionProperties().get("METADATA"),
-                containsString("\"X-Parsed-By\":\"org.apache.tika.parser.DefaultParser\",\"Content-Encoding\""));
+                containsString("{\"X-TIKA:Parsed-By\":\"org.apache.tika.parser.DefaultParser\"," +
+                        "\"X-TIKA:Parsed-By-Full-Set\":\"org.apache.tika.parser.DefaultParser\"," +
+                        "\"Content-Encoding\":\"ISO-8859-1\",\"Content-Type\":\"text/plain; charset=ISO-8859-1\"}"));
+
+
 
         assertSection(tracks.get(1), "-1", "1", "English", "Testing, this is the first section");
     }

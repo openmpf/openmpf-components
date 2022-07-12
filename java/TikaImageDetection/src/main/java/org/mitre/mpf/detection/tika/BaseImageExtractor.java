@@ -29,6 +29,7 @@ package org.mitre.mpf.detection.tika;
 
 import org.apache.tika.extractor.EmbeddedDocumentExtractor;
 import org.apache.tika.metadata.Metadata;
+import org.apache.tika.metadata.TikaCoreProperties;
 import org.mitre.mpf.component.api.detection.MPFComponentDetectionError;
 import org.mitre.mpf.component.api.detection.MPFDetectionError;
 import org.slf4j.Logger;
@@ -65,7 +66,7 @@ public abstract class BaseImageExtractor implements EmbeddedDocumentExtractor {
     @Override
     public void parseEmbedded(InputStream stream, ContentHandler imHandler,
                               Metadata metadata, boolean outputHtml) throws IOException {
-        String imgId = metadata.get(Metadata.EMBEDDED_RELATIONSHIP_ID);
+        String imgId = metadata.get(TikaCoreProperties.EMBEDDED_RELATIONSHIP_ID);
         if (imgId == null) {
             // Certain formats (i.e. odp) will not set a relationship ID for embedded files.
             // Assign a unique ID for each null ID.
@@ -98,7 +99,7 @@ public abstract class BaseImageExtractor implements EmbeddedDocumentExtractor {
             }
             return contentType;
         }
-        String resourceName = metadata.get(Metadata.RESOURCE_NAME_KEY);
+        String resourceName = metadata.get(TikaCoreProperties.RESOURCE_NAME_KEY);
         if (resourceName != null) {
             int lastDotPos = resourceName.lastIndexOf('.');
             if (lastDotPos != -1) {

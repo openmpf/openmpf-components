@@ -33,6 +33,7 @@ import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.pdf.PDFParserConfig;
+import org.apache.tika.parser.pdf.PDFParserConfig.OCR_STRATEGY;
 import org.mitre.mpf.component.api.detection.*;
 import org.mitre.mpf.component.api.detection.util.MPFEnvironmentVariablePathExpander;
 import org.slf4j.Logger;
@@ -58,6 +59,7 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
         PDFParserConfig pdfConfig = new PDFParserConfig();
         pdfConfig.setExtractInlineImages(true);
         pdfConfig.setExtractUniqueInlineImagesOnly(false);
+        pdfConfig.setOcrStrategy(OCR_STRATEGY.NO_OCR);
         context.set(PDFParserConfig.class, pdfConfig);
     }
 
