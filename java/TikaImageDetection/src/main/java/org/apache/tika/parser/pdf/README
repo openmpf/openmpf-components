@@ -1,3 +1,3 @@
-From Apache Tika 1.27 Parsers library.
-Modifications to pdf parsers to access image ID information during content
+From Apache Tika 2.4.1 Parsers library.
+Modifications to pdf parsers (ImageGraphicsEngine.java) to access image ID information during content
 extraction.
