@@ -491,11 +491,11 @@ public class ImageGraphicsEngine extends PDFGraphicsStreamEngine {
         } else {
             //TODO: determine if we need to add more image types
 //                    throw new RuntimeException("EXTEN:" + extension);
-            // MPF Modification (1 new line below): Add additional image suffix types.
+            // OpenMPF Modification (1 new line below): Add additional image suffix types.
             metadata.set(Metadata.CONTENT_TYPE, "image/" + suffix);
         }
 
-        // MPF Modification (3 new lines below comments): Store embedded object ID in TikaCoreProperties field.
+        // OpenMPF Modification (3 new lines below comments): Store embedded object ID in TikaCoreProperties field.
         // This will enable us to track unique image IDs for images extracted from a PDF and similar documents.
         PDImageXObject xobject = (PDImageXObject) pdImage;
         COSStream cosStream = xobject.getCOSObject();
