@@ -77,6 +77,17 @@
       "properties": []
     },
     {
+      "name": "OCV FACE DETECTION DERIVATIVE MEDIA ONLY ACTION",
+      "description": "Executes the OpenCV face detection algorithm using the default parameters on derivative media only.",
+      "algorithm": "FACECV",
+      "properties": [
+        {
+          "name": "DERIVATIVE_MEDIA_ONLY",
+          "value": "TRUE"
+        }
+      ]
+    },
+    {
       "name": "OCV FACE DETECTION (WITH AUTO-ORIENTATION) ACTION",
       "description": "Executes the OpenCV face detection algorithm and rotates and/or flips media based on EXIF data or video metadata.",
       "algorithm": "FACECV",
@@ -98,6 +109,13 @@
       "description": "Performs OpenCV face detection.",
       "actions": [
         "OCV FACE DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "OCV FACE DETECTION DERIVATIVE MEDIA ONLY TASK",
+      "description": "Performs OpenCV face detection on derivative media only.",
+      "actions": [
+        "OCV FACE DETECTION DERIVATIVE MEDIA ONLY ACTION"
       ]
     },
     {

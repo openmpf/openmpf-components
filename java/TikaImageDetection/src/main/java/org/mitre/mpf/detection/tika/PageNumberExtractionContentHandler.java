@@ -28,61 +28,38 @@ package org.mitre.mpf.detection.tika;
 
 
 import org.xml.sax.Attributes;
-import org.apache.tika.sax.ToTextContentHandler;
+import org.xml.sax.helpers.DefaultHandler;
 
 
-public class ImageExtractionContentHandler extends ToTextContentHandler{
+public class PageNumberExtractionContentHandler extends DefaultHandler {
 
-    private String pageTag;
-    protected int pageNumber;
-    private boolean skipTitle;
+    private static final String PAGE_TAG = "div";
+    private static final String CLASS_ATTRIBUTE = "class";
+    private static final String PAGE_LABEL = "page";
+    private static final String SLIDE_LABEL = "slide-content";
 
-    public ImageExtractionContentHandler(){
-        super();
-        pageTag = "div";
-        pageNumber = 0;
-        // Enable to avoid storing metadata/title text from ppt document.
-        skipTitle = true;
-    }
+    private int _pageNumber;
 
-    public void startElement (String uri, String localName, String qName, Attributes atts) {
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) {
+    @Override
+    public void startElement(String uri, String localName, String qName, Attributes atts) {
+        if (!PAGE_TAG.equals(qName)) {
+            return;
+        }
+        var classAttr = atts.getValue(CLASS_ATTRIBUTE);
+        if (classAttr == null) {
+            return;
+        }
+        if (classAttr.equals(PAGE_LABEL) || classAttr.equals(SLIDE_LABEL)) {
            startPage();
         }
-        if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
-            if (skipTitle) {
-                //Skip metadata section of pptx.
-                skipTitle = false;
-                //Discard title text. (not part of slide text nor master slide content).
-                resetPage();
-            } else {
-                startPage();
-            }
-        }
     }
 
-
-    public void endElement (String uri, String localName, String qName) {
-        if (pageTag.equals(qName)) {
-            endPage();
-        }
+    private void startPage() {
+        _pageNumber++;
     }
 
-    public void characters(char[] ch, int start, int length) {}
-
-
-    protected void startPage() {
-        pageNumber++;
-    }
-
-    protected void endPage() {}
-
-    protected void resetPage() {
-        pageNumber = 0;
-    }
-
+    @Override
     public String toString(){
-        return String.valueOf(pageNumber);
+        return String.valueOf(_pageNumber);
     }
-
 }

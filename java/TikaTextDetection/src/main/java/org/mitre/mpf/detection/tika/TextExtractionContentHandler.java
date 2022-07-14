@@ -29,110 +29,98 @@ package org.mitre.mpf.detection.tika;
 import org.apache.tika.sax.ToTextContentHandler;
 import org.xml.sax.Attributes;
 
-import java.util.ArrayList;
+import java.util.*;
 
 public class TextExtractionContentHandler extends ToTextContentHandler {
-    private static final String pageTag = "div";
-    private static final String sectionTag = "p";
-    protected int pageNumber;
-    protected int sectionNumber;
-    public StringBuilder textResults;
-    public ArrayList<ArrayList<StringBuilder>> pageMap;
-    private ArrayList<StringBuilder> sectionMap;
-    private boolean skipTitle;
-    private boolean skipBlankSections;
+
+    private static final String PAGE_TAG = "div";
+    private static final String CLASS_ATTRIBUTE = "class";
+    private static final String SECTION_TAG = "p";
+    private static final String PAGE_LABEL = "page";
+    private static final String SLIDE_LABEL = "slide-content";
+    
+    private int _pageNumber;
+
+    private StringBuilder _allText;
+    private StringBuilder _sectionText;
+
+    private final Map<Integer, List<StringBuilder>> _pageToSections = new HashMap<>();
+
+    // Enable to avoid storing metadata/title text from pdf and ppt documents
+    private boolean _skipTitle = true;
 
     public TextExtractionContentHandler(){
         super();
-        pageNumber = 0;
-        sectionNumber = 0;
-        // Enable to avoid storing metadata/title text from pdf and ppt documents.
-        skipTitle = true;
-
-        // Disable to skip recording empty sections (warning: could produce an excessive number of empty tracks).
-        skipBlankSections = true;
-
-        textResults = new StringBuilder();
-        pageMap = new ArrayList<>();
-        sectionMap = new ArrayList<>();
-        pageMap.add(sectionMap);
-        sectionMap.add(new StringBuilder());
+        _allText = new StringBuilder();
+        _pageNumber = 0;
+        createPage();
     }
 
-    public void startElement (String uri, String localName, String qName, Attributes atts) {
-        if (atts.getValue("class") != null) {
-            if (pageTag.equals(qName) && (atts.getValue("class").equals("page"))) {
-                if (skipTitle) {
-                    // Skip metadata section of pdf.
-                    skipTitle = false;
-                    resetPage();
-                } else {
-                    startPage();
-                }
-            }
-            if (pageTag.equals(qName) && (atts.getValue("class").equals("slide-content"))) {
-                if (skipTitle) {
-                    // Skip metadata section of pptx.
-                    skipTitle = false;
-                    // Discard title text. (not part of slide text nor master slide content).
-                    resetPage();
-                } else {
-                    startPage();
-                }
-            }
-        } else if (sectionTag.equals(qName)) {
+    @Override
+    public void startElement(String uri, String localName, String qName, Attributes atts) {
+        if (SECTION_TAG.equals(qName)) {
             newSection();
-        }
-    }
-
-
-    public void endElement (String uri, String localName, String qName) {
-        if (pageTag.equals(qName)) {
-            endPage();
-        }
-    }
-
-    public void characters(char[] ch, int start, int length) {
-        if (length > 0) {
-            textResults.append(ch, start, length);
-            pageMap.get(pageNumber).get(sectionNumber).append(ch, start, length);
-        }
-    }
-
-    protected void startPage() {
-        pageNumber ++;
-        sectionNumber = 0;
-        sectionMap = new ArrayList<>();
-        sectionMap.add(new StringBuilder());
-        pageMap.add(sectionMap);
-    }
-
-    protected void endPage() {}
-
-    protected void resetPage() {
-        pageNumber = 0;
-        sectionNumber = 0;
-        sectionMap.clear();
-        sectionMap.add(new StringBuilder());
-        pageMap.clear();
-        pageMap.add(sectionMap);
-
-    }
-
-    protected void newSection() {
-        if (skipBlankSections && sectionMap.get(sectionNumber).toString().trim().isEmpty()){
             return;
         }
-        sectionNumber++;
-        sectionMap.add(new StringBuilder());
+        var classAttr = atts.getValue(CLASS_ATTRIBUTE);
+        if (classAttr == null) {
+            return;
+        }
+        if (PAGE_TAG.equals(qName) &&
+                classAttr.equals(PAGE_LABEL) || classAttr.equals(SLIDE_LABEL)) {
+            if (_skipTitle) {
+                // Skip metadata section of pdf or pptx.
+                _skipTitle = false;
+                // If slides: Discard title text. (not part of slide text nor master slide content).
+                // If pdf: Discard blank page.
+                reset();
+            } else {
+                _pageNumber++;
+                createPage();
+            }
+        }
     }
 
+    @Override
+    public void endElement (String uri, String localName, String qName) {}
+
+    @Override
+    public void characters(char[] ch, int start, int length) {
+        if (length > 0) {
+            _allText.append(ch, start, length);
+            _sectionText.append(ch, start, length);
+        }
+    }
+
+    private void createPage() {
+        _sectionText = new StringBuilder();
+        _pageToSections.put(_pageNumber, new ArrayList<>());
+        _pageToSections.get(_pageNumber).add(_sectionText);
+    }
+
+    private void reset() {
+        _allText = new StringBuilder();
+        _pageNumber = 0;
+        _pageToSections.clear();
+        createPage();
+    }
+
+    private void newSection() {
+        // Skip blank sections.
+        if (_sectionText.toString().isBlank()) {
+            return;
+        }
+        _sectionText = new StringBuilder();
+        _pageToSections.get(_pageNumber).add(_sectionText);
+    }
+
+    @Override
     public String toString(){
-        return textResults.toString();
+        return _allText.toString();
     }
 
     // Returns the text detections, subdivided by page number and section.
-    public ArrayList<ArrayList<StringBuilder>> getPages(){
-        return pageMap;
+    public Map<Integer, List<StringBuilder>> getPages(){
+        return _pageToSections;
     }
 }
