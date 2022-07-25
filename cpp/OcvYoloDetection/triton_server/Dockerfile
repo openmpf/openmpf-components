@@ -34,6 +34,9 @@ FROM nvcr.io/nvidia/tritonserver:21.06-py3 as openmpf_triton_server
 # Weights will later be used to generate TensorRT engine files in the entrypoint.
 COPY --from=models /models/yolov4.wts /model-gen/yolo/yolov4.wts
 
+RUN wget -O- https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
+        | apt-key add -;
+
 RUN apt-get update; \
     apt-get install -y cmake; \
     rm -rf /var/lib/apt/lists/*
