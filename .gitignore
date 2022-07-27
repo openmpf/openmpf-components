@@ -1,7 +1,6 @@
 *.class
-*.pyc
 
-# Package Files #
+# Package Files
 *.jar
 *.war
 *.ear
@@ -14,9 +13,7 @@ hs_err_pid*
 *.vscode*
 *.devcontainer*
 
-
 target/
-
 
 # CMake Files
 CMakeCache.txt
@@ -59,3 +56,7 @@ cmake-build-release/
 *.exe
 *.out
 *.app
+
+# Python
+*.egg-info
+*.pyc
