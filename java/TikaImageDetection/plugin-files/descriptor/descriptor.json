@@ -85,6 +85,17 @@
       ]
     },
     {
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR (WITH EAST REGIONS) AND KEYWORD TAGGING PIPELINE",
+      "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR on feed-forward regions from EAST on derivative media. Keyword tagging is performed on all TEXT results.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+        "EAST TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
+      ]
+    },
+    {
       "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR (WITH EAST REGIONS) AND KEYWORD TAGGING AND MARKUP PIPELINE",
       "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR and markup on feed-forward regions from EAST on derivative media. Keyword tagging is performed on all TEXT results.",
       "tasks": [
