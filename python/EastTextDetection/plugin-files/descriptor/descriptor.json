@@ -1,7 +1,7 @@
 {
   "componentName": "EastTextDetection",
-  "componentVersion": "6.3",
-  "middlewareVersion": "6.3",
+  "componentVersion": "7.0",
+  "middlewareVersion": "7.0",
   "sourceLanguage": "python",
   "batchLibrary": "EastTextDetection",
   "environmentVariables": [],
@@ -112,6 +112,17 @@
       "description": "Runs EAST text detection.",
       "algorithm": "EAST",
       "properties": []
+    },
+    {
+      "name": "EAST TEXT DETECTION DERIVATIVE MEDIA ONLY ACTION",
+      "description": "Runs EAST text detection on derivative media only.",
+      "algorithm": "EAST",
+      "properties": [
+        {
+          "name": "DERIVATIVE_MEDIA_ONLY",
+          "value": "TRUE"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -120,6 +131,13 @@
       "description": "Runs EAST text detection.",
       "actions": [
         "EAST TEXT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "EAST TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
+      "description": "Runs EAST text detection on derivative media only.",
+      "actions": [
+        "EAST TEXT DETECTION DERIVATIVE MEDIA ONLY ACTION"
       ]
     }
   ],

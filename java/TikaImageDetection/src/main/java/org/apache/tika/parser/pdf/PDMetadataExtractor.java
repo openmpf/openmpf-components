@@ -22,6 +22,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.jempbox.xmp.XMPMetadata;
 import org.apache.jempbox.xmp.XMPSchema;
 import org.apache.jempbox.xmp.XMPSchemaBasic;
@@ -33,28 +34,30 @@ import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSString;
 import org.apache.pdfbox.pdmodel.common.PDMetadata;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
+
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.extractor.EmbeddedDocumentUtil;
-import org.apache.tika.io.IOUtils;
 import org.apache.tika.metadata.DublinCore;
 import org.apache.tika.metadata.Metadata;
+import org.apache.tika.metadata.Office;
 import org.apache.tika.metadata.PDF;
 import org.apache.tika.metadata.Property;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.metadata.XMP;
 import org.apache.tika.mime.MediaType;
 import org.apache.tika.parser.ParseContext;
-import org.apache.tika.parser.image.xmp.JempboxExtractor;
+import org.apache.tika.parser.xmp.JempboxExtractor;
+import org.apache.tika.utils.StringUtils;
 import org.apache.tika.utils.XMLReaderUtils;
-import org.w3c.dom.Document;
-import org.xml.sax.SAXException;
 
-class PDMetadataExtractor {
+public class PDMetadataExtractor {
 
     private static final MediaType MEDIA_TYPE = MediaType.application("pdf");
 
 
-    static void extract(PDMetadata pdMetadata, Metadata metadata, ParseContext context) {
+    public static void extract(PDMetadata pdMetadata, Metadata metadata, ParseContext context) {
         if (pdMetadata == null) {
             metadata.set(PDF.HAS_XMP, "false");
             return;
@@ -72,6 +75,7 @@ class PDMetadataExtractor {
         try {
             dcSchema = xmp.getDublinCoreSchema();
         } catch (IOException e) {
+            //swallow
         }
         if (dcSchema != null) {
             extractMultilingualItems(metadata, TikaCoreProperties.DESCRIPTION, null, dcSchema);
@@ -84,23 +88,25 @@ class PDMetadataExtractor {
         JempboxExtractor.extractXMPMM(xmp, metadata);
 
         try {
-                xmp.addXMLNSMapping(XMPSchemaPDFAId.NAMESPACE, XMPSchemaPDFAId.class);
-                XMPSchemaPDFAId pdfaxmp = (XMPSchemaPDFAId) xmp.getSchemaByClass(XMPSchemaPDFAId.class);
-                if (pdfaxmp != null) {
-                    if (pdfaxmp.getPart() != null) {
-                        metadata.set(PDF.PDFAID_PART, Integer.toString(pdfaxmp.getPart()));
-                    }
-                    if (pdfaxmp.getConformance() != null) {
-                        metadata.set(PDF.PDFAID_CONFORMANCE, pdfaxmp.getConformance());
-                        String version = "A-" + pdfaxmp.getPart() + pdfaxmp.getConformance().toLowerCase(Locale.ROOT);
-                        metadata.set(PDF.PDFA_VERSION, version);
-                        metadata.add(TikaCoreProperties.FORMAT.getName(),
-                                MEDIA_TYPE.toString() + "; version=\"" + version + "\"");
-                    }
+            xmp.addXMLNSMapping(XMPSchemaPDFAId.NAMESPACE, XMPSchemaPDFAId.class);
+            XMPSchemaPDFAId pdfaxmp = (XMPSchemaPDFAId) xmp.getSchemaByClass(XMPSchemaPDFAId.class);
+            if (pdfaxmp != null) {
+                if (pdfaxmp.getPart() != null) {
+                    metadata.set(PDF.PDFAID_PART, Integer.toString(pdfaxmp.getPart()));
                 }
-                // TODO WARN if this XMP version is inconsistent with document header version?
+                if (pdfaxmp.getConformance() != null) {
+                    metadata.set(PDF.PDFAID_CONFORMANCE, pdfaxmp.getConformance());
+                    String version = "A-" + pdfaxmp.getPart() +
+                            pdfaxmp.getConformance().toLowerCase(Locale.ROOT);
+                    metadata.set(PDF.PDFA_VERSION, version);
+                    metadata.add(TikaCoreProperties.FORMAT.getName(),
+                            MEDIA_TYPE.toString() + "; version=\"" + version + "\"");
+                }
+            }
+            // TODO WARN if this XMP version is inconsistent with document header version?
         } catch (IOException e) {
-            metadata.set(TikaCoreProperties.TIKA_META_PREFIX + "pdf:metadata-xmp-parse-failed", "" + e);
+            metadata.set(TikaCoreProperties.TIKA_META_PREFIX + "pdf:metadata-xmp-parse-failed",
+                    "" + e);
         }
     }
 
@@ -119,7 +125,7 @@ class PDMetadataExtractor {
             return;
         }
         setNotNull(PDF.PRODUCER, pdf.getProducer(), metadata);
-        setNotNull(TikaCoreProperties.KEYWORDS, pdf.getKeywords(), metadata);
+        setNotNull(Office.KEYWORDS, pdf.getKeywords(), metadata);
         setNotNull(PDF.PDF_VERSION, pdf.getPDFVersion(), metadata);
     }
 
@@ -146,14 +152,17 @@ class PDMetadataExtractor {
         try {
             setNotNull(XMP.CREATE_DATE, basic.getCreateDate(), metadata);
         } catch (IOException e) {
+            //swallow
         }
         try {
             setNotNull(XMP.MODIFY_DATE, basic.getModifyDate(), metadata);
         } catch (IOException e) {
+            //swallow
         }
         try {
             setNotNull(XMP.METADATA_DATE, basic.getMetadataDate(), metadata);
         } catch (IOException e) {
+            //swallow
         }
 
         List<String> identifiers = basic.getIdentifiers();
@@ -215,7 +224,8 @@ class PDMetadataExtractor {
      * <p/>
      * This relies on the property having a valid xmp getName()
      * <p/>
-     * For now, this only extracts the first language if the property does not allow multiple values (see TIKA-1295)
+     * For now, this only extracts the first language if the property does not allow multiple
+     * values (see TIKA-1295)
      *
      * @param metadata
      * @param property
@@ -223,7 +233,7 @@ class PDMetadataExtractor {
      * @param schema
      */
     private static void extractMultilingualItems(Metadata metadata, Property property,
-                                          String pdfBoxBaseline, XMPSchema schema) {
+                                                 String pdfBoxBaseline, XMPSchema schema) {
         //if schema is null, just go with pdfBoxBaseline
         if (schema == null) {
             if (pdfBoxBaseline != null && pdfBoxBaseline.length() > 0) {
@@ -273,7 +283,8 @@ class PDMetadataExtractor {
      * @param dc
      * @param metadata
      */
-    private static void extractDublinCoreListItems(Metadata metadata, Property property, XMPSchemaDublinCore dc) {
+    private static void extractDublinCoreListItems(Metadata metadata, Property property,
+                                                   XMPSchemaDublinCore dc) {
         //if no dc, add baseline and return
         if (dc == null) {
             return;
@@ -291,7 +302,15 @@ class PDMetadataExtractor {
     static void addMetadata(Metadata metadata, Property property, String value) {
         if (value != null) {
             String decoded = decode(value);
+            if (StringUtils.isBlank(decoded)) {
+                return;
+            }
             if (property.isMultiValuePermitted() || metadata.get(property) == null) {
+                for (String v : metadata.getValues(property)) {
+                    if (v.equals(decoded)) {
+                        return;
+                    }
+                }
                 metadata.add(property, decoded);
             }
             //silently skip adding property that already exists if multiple values are not permitted
@@ -300,7 +319,16 @@ class PDMetadataExtractor {
 
     static void addMetadata(Metadata metadata, String name, String value) {
         if (value != null) {
-            metadata.add(name, decode(value));
+            String decoded = decode(value);
+            if (StringUtils.isBlank(decoded)) {
+                return;
+            }
+            for (String v : metadata.getValues(name)) {
+                if (v.equals(decoded)) {
+                    return;
+                }
+            }
+            metadata.add(name, decoded);
         }
     }
 
@@ -313,7 +341,8 @@ class PDMetadataExtractor {
     }
 
     //can return null!
-    private static Document loadDOM(PDMetadata pdMetadata, Metadata metadata, ParseContext context) {
+    private static Document loadDOM(PDMetadata pdMetadata, Metadata metadata,
+                                    ParseContext context) {
         if (pdMetadata == null) {
             return null;
         }
@@ -327,7 +356,7 @@ class PDMetadataExtractor {
                 return null;
             }
             return XMLReaderUtils.buildDOM(is, context);
-        } catch (IOException| SAXException | TikaException e) {
+        } catch (IOException | SAXException | TikaException e) {
             EmbeddedDocumentUtil.recordException(e, metadata);
         } finally {
             IOUtils.closeQuietly(is);

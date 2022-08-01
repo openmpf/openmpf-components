@@ -2,24 +2,35 @@
 
 This directory contains source code for the OpenMPF Tika image detection component.
 
-Extracts images embedded in document formats (.pdf, .ppt, .doc)
+This component extracts images embedded in document formats, such as PDF (`.pdf`), PowerPoint (`.pptx`),
+Word (`.docx`), OpenDocument Presentation (`.odp`), and OpenDocument Text (`.odt`) documents.
 
-For PDF documents, images will be extracted and processed per
-page/slide. Detected images will be reported in the detection property
-(IMAGE_FILES) in the order they were extracted. The first track (with
-detection property PAGE = 1) corresponds to first page of each document by
-default.
+In general, the Tika parsers will extract unique images, once per track. Each track will contain a `PAGE_NUM` property
+specifying where the image is embedded. Note that page numbers start at 1, not 0, unless otherwise noted.
 
-The extractor only extracts unique images once per page.
-Images that are reused or duplicated in the PDF are ignored to save processing
-time and avoid infinite recursion. However, modifications were made to the PDF
-parser to allow for tracking of images repeatedly used across multiple pages.
-If an image occurs across two or more pages it will be extracted once from the
-first page then reported in the detection tracks of the following pages whenever
-it found again. For empty pages or pages with no extracted images,
-users can allow empty tracks to be reported by setting ALLOW_EMPTY_PAGES to true.
+The path where the extracted image is stored will be reported in the `DERIVATIVE_MEDIA_TEMP_PATH` property for each
+track.
 
-By default, extracted images are stored in `$MPF_HOME/share/artifacts/<job#>/tika-extracted`.
-Users can set ORGANIZE_BY_PAGE to true to store each image in a sub-directory labeled by
-page number - for example, `page-1` - and images that appear on more than one page will be
-placed in a `common` directory instead.
+By default, extracted images are stored in `$MPF_HOME/share/tmp/derivative-media/<job#>/<uuid>/tika-extracted`. Users
+can set `ORGANIZE_BY_PAGE` to true to store each image in a sub-directory labeled by page number (for example, `page-1`)
+. Images that appear on more than one page will be placed in a `common` directory instead.
+
+Note that the OpenMPF Workflow Manager will move those files to a more persistent storage location reported in
+the JSON output object for each piece of derivative media with the job is complete.
+
+# Format-Specific Behaviors
+
+The following format-specific behaviors were observed using Tika 1.28.1 on Ubuntu 20.04:
+
+- For PDF files, the first page corresponds to a `PAGE_NUM` value of `
+  1`. Multiple pages can be reported in a PDF document and are separated by semicolons. For
+  example, `PAGE_NUM = 1; 2; 4`
+  , would indicate the embedded image appears on pages 1, 2, and 4 of a PDF document.
+
+- For non-PDF files we intentionally set `PAGE_NUM = -1` to indicate that the page number cannot be determined.
+
+- OpenDocument Presentation documents will generate a thumbnail / preview `.png` of the content of the last modified
+  slide, including text, even if it's blank.
+
+- OpenDocument Text documents will generate a thumbnail / preview `.png` of the content of the first page, including
+  text, even if it's blank.

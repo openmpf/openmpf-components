@@ -1,9 +1,9 @@
 {
   "componentName" : "TikaImageDetection",
-  "componentVersion" : "6.3",
-  "middlewareVersion" : "6.3",
+  "componentVersion" : "7.0",
+  "middlewareVersion" : "7.0",
   "sourceLanguage" : "java",
-  "batchLibrary" : "mpf-tika-image-detection-component-6.3.jar",
+  "batchLibrary" : "mpf-tika-image-detection-component-7.0.jar",
   "environmentVariables" : [],
   "algorithm" : {
     "name": "TIKAIMAGE",
@@ -15,8 +15,8 @@
     "providesCollection": {
       "states": [
         "DETECTION",
-        "DETECTION_IMAGE",
-        "DETECTION_IMAGE_TIKA"
+        "DETECTION_MEDIA",
+        "DETECTION_MEDIA_TIKA"
       ],
       "properties": [
         {
@@ -29,13 +29,7 @@
           "name": "SAVE_PATH",
           "description": "Specifies main directory for storing extracted images.",
           "type": "STRING",
-          "defaultValue": "$MPF_HOME/share/artifacts"
-        },
-        {
-          "name": "ALLOW_EMPTY_PAGES",
-          "description": "When true, pages with no images are still stored as tracks with an empty IMAGE_FILES field. When false, empty pages are not stored at all.",
-          "type": "BOOLEAN",
-          "defaultValue": "false"
+          "defaultValue": "$MPF_HOME/share/tmp/derivative-media"
         },
         {
           "name": "ORGANIZE_BY_PAGE",
@@ -69,6 +63,65 @@
       "description": "Performs Tika image detection.",
       "tasks": [
         "TIKA IMAGE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR PIPELINE",
+      "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR on derivative media.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+        "TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK"
+      ]
+    },
+    {
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR AND KEYWORD TAGGING PIPELINE",
+      "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR on derivative media. Keyword tagging is performed on all TEXT results.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+        "TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR (WITH EAST REGIONS) AND KEYWORD TAGGING PIPELINE",
+      "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR on feed-forward regions from EAST on derivative media. Keyword tagging is performed on all TEXT results.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+        "EAST TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR (WITH EAST REGIONS) AND KEYWORD TAGGING AND MARKUP PIPELINE",
+      "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR and markup on feed-forward regions from EAST on derivative media. Keyword tagging is performed on all TEXT results.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+        "EAST TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK",
+        "OCV GENERIC MARKUP DERIVATIVE MEDIA ONLY TASK"
+      ]
+    },
+    {
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA OCV FACE PIPELINE",
+      "description": "Performs Tika image detection on source media followed by OpenCV face detection on derivative media.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "OCV FACE DETECTION DERIVATIVE MEDIA ONLY TASK"
+      ]
+    },
+    {
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA OCV FACE AND MARKUP PIPELINE",
+      "description": "Performs Tika image detection on source media followed by OpenCV face detection and markup on derivative media.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "OCV FACE DETECTION DERIVATIVE MEDIA ONLY TASK",
+        "OCV GENERIC MARKUP DERIVATIVE MEDIA ONLY TASK"
       ]
     }
   ]

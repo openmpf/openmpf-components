@@ -1,7 +1,7 @@
 {
   "componentName": "TesseractOCRTextDetection",
-  "componentVersion": "6.3",
-  "middlewareVersion": "6.3",
+  "componentVersion": "7.0",
+  "middlewareVersion": "7.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib/libmpfTesseractOCRTextDetection.so",
   "environmentVariables": [
@@ -91,7 +91,6 @@
           "type": "BOOLEAN",
           "defaultValue": "true"
         },
-
         {
           "name": "MIN_OSD_TEXT_ORIENTATION_CONFIDENCE",
           "description": "Specifies the minimum confidence value (>= 0) required to use the detected text orientation when OSD automation is enabled. Top rotation confidence is calculated based on comparison of top-detected rotation score against secondary (lower confidence) rotation scores.",
@@ -283,6 +282,17 @@
       "properties": []
     },
     {
+      "name": "TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY ACTION",
+      "description": "Performs Tesseract OCR on derivative media only.",
+      "algorithm": "TESSERACTOCR",
+      "properties": [
+        {
+          "name": "DERIVATIVE_MEDIA_ONLY",
+          "value": "TRUE"
+        }
+      ]
+    },
+    {
       "name": "TESSERACT OCR TEXT DETECTION ACTION SPARSE TEXT",
       "description": "Performs Tesseract OCR with page segmentation mode set to 11 (sparse text).",
       "algorithm": "TESSERACTOCR",
@@ -327,6 +337,45 @@
           "value": "3.2"
         }
       ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY ACTION",
+      "description": "Performs Tesseract OCR on feed-forward regions on derivative media only.",
+      "algorithm": "TESSERACTOCR",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "MIN_OSD_TEXT_ORIENTATION_CONFIDENCE",
+          "value": "0"
+        },
+        {
+          "name": "MIN_OSD_PRIMARY_SCRIPT_CONFIDENCE",
+          "value": "0"
+        },
+        {
+          "name": "MIN_OSD_SCRIPT_SCORE",
+          "value": "0"
+        },
+        {
+          "name": "MIN_OSD_SECONDARY_SCRIPT_THRESHOLD",
+          "value": "0.40"
+        },
+        {
+          "name": "MAX_OSD_SCRIPTS",
+          "value": "2"
+        },
+        {
+          "name": "UNSTRUCTURED_TEXT_SCALE",
+          "value": "3.2"
+        },
+        {
+          "name": "DERIVATIVE_MEDIA_ONLY",
+          "value": "TRUE"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -335,6 +384,13 @@
       "description": "Performs Tesseract OCR.",
       "actions": [
         "TESSERACT OCR TEXT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
+      "description": "Performs Tesseract OCR on derivative media only.",
+      "actions": [
+        "TESSERACT OCR TEXT DETECTION DERIVATIVE MEDIA ONLY ACTION"
       ]
     },
     {
@@ -349,6 +405,13 @@
       "description": "Performs Tesseract OCR on feed-forward regions.",
       "actions": [
         "TESSERACT OCR TEXT DETECTION (WITH FF REGION) ACTION"
+      ]
+    },
+    {
+      "name": "TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY TASK",
+      "description": "Performs Tesseract OCR on feed-forward regions on derivative media only.",
+      "actions": [
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY ACTION"
       ]
     }
   ],

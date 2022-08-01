@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2022 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2021 The MITRE Corporation                                       *
+ * Copyright 2022 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -29,7 +29,8 @@ package org.mitre.mpf.detection.tika;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.collections4.MapUtils;
-import org.apache.tika.langdetect.OptimaizeLangDetector;
+import org.apache.tika.exception.TikaException;
+import org.apache.tika.langdetect.optimaize.OptimaizeLangDetector;
 import org.apache.tika.language.detect.LanguageResult;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
@@ -38,14 +39,17 @@ import org.apache.tika.parser.Parser;
 import org.mitre.mpf.component.api.detection.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
 
 public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
     private static final Logger log = LoggerFactory.getLogger(TikaTextDetectionComponent.class);
+
     private static final Map<String, String> langMap;
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -54,7 +58,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
     }
 
     // Handles the case where the media is a generic type.
-    public List<MPFGenericTrack>  getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
+    public List<MPFGenericTrack> getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
         log.info("[{}] Starting job.", mpfGenericJob.getJobName());
         log.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
@@ -63,7 +67,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         // Specify filename for tika parsers here.
         File file = new File(mpfGenericJob.getDataUri());
 
-        ArrayList<ArrayList<StringBuilder>> pageOutput;
+        Map<Integer, List<StringBuilder>> pageToSections;
         Metadata metadata = new Metadata();
         try (FileInputStream inputstream = new FileInputStream(file)) {
             // Init parser with custom content handler for parsing text per page (PDF/PPTX).
@@ -73,19 +77,23 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             // Parse file.
             // If the format is .pdf or .pptx, output will be divided by page/slide.
             parser.parse(inputstream, handler, metadata, context);
-            pageOutput = handler.getPages();
+            pageToSections = handler.getPages();
 
-        } catch (Exception e) {
+        } catch (IOException | TikaException | SAXException e) {
             String errorMsg = String.format("Error parsing file. Filepath = %s", file);
             log.error(errorMsg, e);
-            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, errorMsg);
+            throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, errorMsg, e);
         }
 
         float confidence = -1.0f;
         List<MPFGenericTrack> tracks = new LinkedList<>();
 
-        Map<String,String> properties = mpfGenericJob.getJobProperties();
+        String contentType = metadata.get("Content-Type");
+        boolean supportsPageNumbers =
+                contentType.equals("application/pdf") ||
+                contentType.startsWith("application/vnd.openxmlformats-officedocument.presentationml");
 
+        Map<String,String> properties = mpfGenericJob.getJobProperties();
 
         // Set language filtering limit.
         int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);
@@ -115,88 +123,75 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         }
 
         boolean listAllPages = MapUtils.getBooleanValue(properties, "LIST_ALL_PAGES", false);
-        // If output exists, separate all output into separate pages.
-        // Tag each page by detected language.
-        if (!pageOutput.isEmpty()) {
-            // Load language identifier.
-            OptimaizeLangDetector identifier = new OptimaizeLangDetector();
 
-            identifier.loadModels();
+        // Load language identifier.
+        OptimaizeLangDetector identifier = new OptimaizeLangDetector();
+        identifier.loadModels();
 
-            int maxIdLength = (int) (Math.log10(pageOutput.size())) + 1;
+        // Separate all output into separate pages. Tag each page by detected language.
+        for (int p = 0; p < pageToSections.size(); p++) {
+            var sections = pageToSections.get(p);
 
-            int maxSectionsOnPage = pageOutput.stream().mapToInt(ArrayList::size).max().getAsInt();
-            int sectionIdLength = (int) (Math.log10(maxSectionsOnPage)) + 1;
-
-            if (sectionIdLength > maxIdLength) {
-                maxIdLength = sectionIdLength;
-            }
-            for (int p = 0; p < pageOutput.size(); p++) {
-
-                if (pageOutput.get(p).size() == 1 && pageOutput.get(p).get(0).toString().trim().isEmpty()) {
-                    // If LIST_ALL_PAGES is true, create empty tracks for empty pages.
-                    if (listAllPages) {
-                        Map<String, String> genericDetectionProperties = new HashMap<>();
-                        genericDetectionProperties.put("TEXT", "");
-                        genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                        genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
-                        genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", 1));
-                        MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
-                        tracks.add(genericTrack);
-                    }
-                    continue;
-                }
-
-                for (int s = 0; s < pageOutput.get(p).size(); s++) {
-
+            if (sections.size() == 1 && sections.get(0).toString().isBlank()) {
+                // If LIST_ALL_PAGES is true, create empty tracks for empty pages.
+                if (listAllPages) {
                     Map<String, String> genericDetectionProperties = new HashMap<>();
-
-                    try {
-                        String textDetect = pageOutput.get(p).get(s).toString();
-
-                        // By default, trim out detected text.
-                        textDetect = textDetect.trim();
-                        if (textDetect.isEmpty()) {
-                            continue;
-                        }
-
-                        genericDetectionProperties.put("TEXT", textDetect);
-
-                        // Process text languages.
-                        if (textDetect.length() >= charLimit) {
-                            LanguageResult langResult = identifier.detect(textDetect);
-                            String language = langResult.getLanguage();
-
-                            if (langMap.containsKey(language)) {
-                                language = langMap.get(language);
-                            }
-                            if (!langResult.isReasonablyCertain()) {
-                                language = null;
-                            }
-                            if (language != null && language.length() > 0) {
-                                genericDetectionProperties.put("TEXT_LANGUAGE", language);
-                            } else {
-                                genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                            }
-                        } else {
-                            genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                        }
-
-
-                    } catch (Exception e) {
-                        String errorMsg = "Failed to process text detections.";
-                        log.error(errorMsg, e);
-                        throw new MPFComponentDetectionError(MPFDetectionError.MPF_DETECTION_FAILED, errorMsg);
+                    genericDetectionProperties.put("TEXT", "");
+                    genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                    if (supportsPageNumbers) {
+                        genericDetectionProperties.put("PAGE_NUM", String.format("%d", p + 1));
+                    } else {
+                        genericDetectionProperties.put("PAGE_NUM", "-1");
                     }
-
-
-                    genericDetectionProperties.put("PAGE_NUM", String.format("%0" + maxIdLength + "d", p + 1));
-                    genericDetectionProperties.put("SECTION_NUM", String.format("%0" + maxIdLength + "d", s + 1));
+                    genericDetectionProperties.put("SECTION_NUM", String.format("%d", 1));
                     MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
                     tracks.add(genericTrack);
                 }
+                continue;
+            }
+
+            for (int s = 0; s < sections.size(); s++) {
+
+                // By default, trim out detected text.
+                String text = sections.get(s).toString().trim();
+                if (text.isEmpty()) {
+                    continue;
+                }
+
+                Map<String, String> genericDetectionProperties = new HashMap<>();
+                genericDetectionProperties.put("TEXT", text);
+
+                // Process text languages.
+                if (text.length() >= charLimit) {
+                    LanguageResult langResult = identifier.detect(text);
+                    String language = langResult.getLanguage();
+
+                    if (langMap.containsKey(language)) {
+                        language = langMap.get(language);
+                    }
+                    if (!langResult.isReasonablyCertain()) {
+                        language = null;
+                    }
+                    if (language != null && language.length() > 0) {
+                        genericDetectionProperties.put("TEXT_LANGUAGE", language);
+                    } else {
+                        genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                    }
+                } else {
+                    genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                }
+
+                if (supportsPageNumbers) {
+                    genericDetectionProperties.put("PAGE_NUM", String.format("%d", p + 1));
+                } else {
+                    genericDetectionProperties.put("PAGE_NUM", "-1");
+                }
+                genericDetectionProperties.put("SECTION_NUM", String.format("%d", s + 1));
+                MPFGenericTrack genericTrack = new MPFGenericTrack(confidence, genericDetectionProperties);
+                tracks.add(genericTrack);
             }
         }
+
         // If entire document is empty, generate a single track reporting no detections.
         if (tracks.isEmpty()) {
             log.warn("Empty or invalid document. No extracted text.");

@@ -1,0 +1,4 @@
+Testing, this is the first section. This test will determine if multiple sections of text can be properly sectioned with the TikaTextDetection component.
+
+Testing, this is the second section. This test will determine if multiple sections of text can be properly sectioned with the TikaTextDetection component.
+

@@ -1,9 +1,9 @@
 {
   "componentName" : "TikaTextDetection",
-  "componentVersion" : "6.3",
-  "middlewareVersion" : "6.3",
+  "componentVersion" : "7.0",
+  "middlewareVersion" : "7.0",
   "sourceLanguage" : "java",
-  "batchLibrary" : "mpf-tika-text-detection-component-6.3.jar",
+  "batchLibrary" : "mpf-tika-text-detection-component-7.0.jar",
   "environmentVariables" : [],
   "algorithm" : {
     "name": "TIKATEXT",
@@ -53,6 +53,17 @@
       "description": "Executes the Tika text detection algorithm using the default parameters.",
       "algorithm": "TIKATEXT",
       "properties": []
+    },
+    {
+      "name": "TIKA TEXT DETECTION SOURCE MEDIA ONLY ACTION",
+      "description": "Executes the Tika text detection algorithm using the default parameters on source media only, no derivatives.",
+      "algorithm": "TIKATEXT",
+      "properties": [
+        {
+          "name": "SOURCE_MEDIA_ONLY",
+          "value": "TRUE"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -61,6 +72,13 @@
       "description": "Performs Tika text detection.",
       "actions": [
         "TIKA TEXT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+      "description": "Performs Tika text detection on source media only, no derivatives.",
+      "actions": [
+        "TIKA TEXT DETECTION SOURCE MEDIA ONLY ACTION"
       ]
     }
   ],
