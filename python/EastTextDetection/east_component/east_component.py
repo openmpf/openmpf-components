@@ -41,7 +41,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
 
     def __init__(self):
         logger.info('Creating instance of EastComponent')
-        self.processor = EastProcessor(logger)
+        self.processor = EastProcessor()
 
     @staticmethod
     def _parse_properties(props):
@@ -90,38 +90,27 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         )
 
     def get_detections_from_image_reader(self, image_job, image_reader):
-        logger.info(
-            '[%s] Received image job: %s',
-            image_job.job_name,
-            image_job
-        )
+        logger.info('Received image job: %s', image_job)
 
         kwargs = self._parse_properties(image_job.job_properties)
         image = image_reader.get_image()
 
         try:
-            logger.info('[%s] Loading model...', image_job.job_name)
+            logger.info('Loading model...')
             self.processor.load_model(
                 frame_width=image.shape[1],
                 frame_height=image.shape[0],
                 max_side_len=kwargs['max_side_len'],
                 rotate_on=kwargs['rotate_on']
             )
-            logger.info('[%s] Model loaded.', image_job.job_name)
+            logger.info('Model loaded.')
         except Exception as e:
-            error_str = "[{:s}] Exception occurred while loading model: {:s}".format(
-                image_job.job_name,
-                str(e)
-            )
+            error_str = "Exception occurred while loading model: {}".format(e)
             logger.exception(error_str)
             raise mpf.DetectionException(error_str, mpf.DetectionError.DETECTION_NOT_INITIALIZED)
 
         dets = self.processor.process_image(image, **kwargs)
-        logger.info(
-            '[%s] Processing complete. Found %d detections',
-            image_job.job_name,
-            len(dets)
-        )
+        logger.info('Processing complete. Found %d detections', len(dets))
         return dets
 
     @staticmethod
@@ -144,17 +133,13 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             yield len(frames), padded
 
     def get_detections_from_video_capture(self, video_job, video_capture):
-        logger.info(
-            '[%s] Received video job: %s',
-            video_job.job_name,
-            video_job
-        )
+        logger.info('Received video job: %s', video_job)
 
         kwargs = self._parse_properties(video_job.job_properties)
 
         try:
             frame_width, frame_height = video_capture.frame_size
-            logger.info('[%s] Loading model...', video_job.job_name)
+            logger.info('Loading model...')
             self.processor.load_model(
                 frame_width=frame_width,
                 frame_height=frame_height,
@@ -162,12 +147,9 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
                 rotate_on=kwargs['rotate_on'],
                 batch_size=kwargs['batch_size']
             )
-            logger.info('[%s] Model loaded.', video_job.job_name)
+            logger.info('Model loaded.')
         except Exception as e:
-            error_str = "[{:s}] Exception occurred while loading model: {:s}".format(
-                video_job.job_name,
-                str(e)
-            )
+            error_str = "Exception occurred while loading model: {}".format(e)
             logger.exception(error_str)
             raise mpf.DetectionException(error_str, mpf.DetectionError.DETECTION_NOT_INITIALIZED)
 
@@ -182,10 +164,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
             try:
                 frames_dets = self.processor.process_frames(batch, **kwargs)[:n]
             except Exception as e:
-                error_str = "[{:s}] Exception occurred while processing batch: {:s}".format(
-                    video_job.job_name,
-                    str(e)
-                )
+                error_str = "Exception occurred while processing batch: {}".format(e)
                 logger.exception(error_str)
                 raise mpf.DetectionException(error_str, mpf.DetectionError.DETECTION_FAILED)
 
@@ -202,12 +181,5 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
                     ))
             batch_offset += len(batch)
 
-        logger.info(
-            '[%s] Processing complete. Found %d tracks',
-            video_job.job_name,
-            len(tracks)
-        )
+        logger.info('Processing complete. Found %d tracks', len(tracks))
         return tracks
-
-
-EXPORT_MPF_COMPONENT = EastComponent

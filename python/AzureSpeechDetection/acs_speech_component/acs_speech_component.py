@@ -33,20 +33,7 @@ import mpf_component_util as mpf_util
 from .acs_speech_processor import AcsSpeechDetectionProcessor
 
 
-class MPFJobNameLoggerAdapter(logging.LoggerAdapter):
-    def process(self, msg, kwargs):
-        if 'job_name' in kwargs:
-            job_name = kwargs.pop('job_name')
-        elif self.extra is not None and 'job_name' in self.extra:
-            job_name = self.extra['job_name']
-        else:
-            return msg, kwargs
-        return '[%s] %s' % (job_name, msg), kwargs
-
-logger = MPFJobNameLoggerAdapter(
-    logging.getLogger('AcsSpeechComponent'),
-    extra={}
-)
+logger = logging.getLogger('AcsSpeechComponent')
 
 logging.getLogger('azure').setLevel('WARN')
 
@@ -54,9 +41,8 @@ class AcsSpeechComponent(object):
     detection_type = 'SPEECH'
 
     def __init__(self):
-        logger.extra = {}
         logger.info('Creating instance of AcsSpeechDetectionProcessor')
-        self.processor = AcsSpeechDetectionProcessor(logger)
+        self.processor = AcsSpeechDetectionProcessor()
         logger.info('AcsSpeechDetection created')
 
     @staticmethod
@@ -108,7 +94,6 @@ class AcsSpeechComponent(object):
         )
 
     def get_detections_from_audio(self, audio_job):
-        logger.extra['job_name'] = audio_job.job_name
         logger.info('Received audio job')
 
         start_time = audio_job.start_time
@@ -166,7 +151,6 @@ class AcsSpeechComponent(object):
         return audio_tracks
 
     def get_detections_from_video(self, video_job):
-        logger.extra['job_name'] = video_job.job_name
         logger.info('Received video job')
 
         start_frame = video_job.start_frame
