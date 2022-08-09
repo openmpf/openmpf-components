@@ -501,9 +501,9 @@ void TesseractOCRTextDetection::process_tesseract_lang_model(OCR_job_inputs &inp
                     forward_as_tuple(tessdata_dir, results.lang, (tesseract::OcrEngineMode) inputs.ocr_fset->oem));
         }
     } else if (!missing_languages.empty()) {
-        LOG4CXX_WARN(inputs.hw_logger_, "Tesseract language models no longer found in " +
-                                        "tessdata directory. " +
-                                        "Reverting to cached models.");
+        LOG4CXX_WARN(inputs.hw_logger_,
+                     "Tesseract language models no longer found in tessdata directory. "
+                     "Reverting to cached models.");
     }
 
     TessApiWrapper &tess_api = inputs.parallel_processing
@@ -600,7 +600,7 @@ bool TesseractOCRTextDetection::process_ocr_text(Properties &detection_propertie
     full_text = clean_whitespace(full_text);
 
     LOG4CXX_DEBUG(hw_logger_, "Processing text for Tesseract OCR output: ");
-    LOG4CXX_DEBUG(hw_logger_, "Tesseract OCR output was: " +
+    LOG4CXX_DEBUG(hw_logger_, "Tesseract OCR output was: " <<
                               boost::locale::conv::utf_to_utf<char>(full_text));
 
     if (is_only_ascii_whitespace(full_text)) {
@@ -641,7 +641,7 @@ string TesseractOCRTextDetection::return_valid_tessdir(const string &job_name, c
                                                        const string &directory, const string &run_directory,
                                                        log4cxx::LoggerPtr &hw_logger_, const bool &secondary_pass,
                                                        set<string> &missing_languages, set<string> &found_languages) {
-    LOG4CXX_DEBUG(hw_logger_, "Checking tessdata models in " + directory + ".");
+    LOG4CXX_DEBUG(hw_logger_, "Checking tessdata models in " << directory << ".");
     set<string> missing_first, missing_second;
     set<string> partial_first, partial_second;
 
@@ -658,8 +658,8 @@ string TesseractOCRTextDetection::return_valid_tessdir(const string &job_name, c
     // If user specified tessdata directory fails, revert to default plugin directory and tessdata models.
     string local_plugin_directory = run_dir + "/TesseractOCRTextDetection/tessdata";
     LOG4CXX_DEBUG(hw_logger_,
-                  "Not all models found in " + directory + ". Checking local plugin directory "
-                  + local_plugin_directory + ".");
+                  "Not all models found in " << directory << ". Checking local plugin directory "
+                  << local_plugin_directory << ".");
 
     if (check_tess_model_directory(job_name, lang_str, local_plugin_directory, hw_logger_, secondary_pass,
                                    missing_second, partial_second)) {
@@ -668,10 +668,10 @@ string TesseractOCRTextDetection::return_valid_tessdir(const string &job_name, c
     }
 
 
-    LOG4CXX_WARN(hw_logger_, "Tessdata models were not found, or are not co-located." +
-                             " Please ensure that the following models exist in the same directory, either " +
-                             directory + " or " +
-                             local_plugin_directory + ": " + lang_str + ".");
+    LOG4CXX_WARN(hw_logger_, "Tessdata models were not found, or are not co-located."
+                             " Please ensure that the following models exist in the same directory, either "
+                             << directory << " or " <<
+                             local_plugin_directory << ": " + lang_str << ".");
 
     // Return directory with greater number of valid scripts.
     if (partial_first.size() > 0 || partial_second.size() > 0) {
@@ -705,19 +705,19 @@ bool TesseractOCRTextDetection::check_tess_model_directory(const string &job_nam
             continue;
         }
         if (!boost::filesystem::exists(directory + "/" + lang + ".traineddata")) {
-            LOG4CXX_DEBUG(hw_logger_, "Tessdata file " + lang + ".traineddata does not exist in "
-                                      + directory + ".");
+            LOG4CXX_DEBUG(hw_logger_, "Tessdata file " << lang << ".traineddata does not exist in "
+                                      << directory << ".");
             missing.insert(lang);
             status = false;
         } else {
             partial_match.insert(lang);
             LOG4CXX_DEBUG(hw_logger_,
-                          "Tessdata file " + lang + ".traineddata found in  " + directory + ".");
+                          "Tessdata file " << lang << ".traineddata found in  " << directory << ".");
         }
     }
     if (status && !secondary_pass) {
         LOG4CXX_INFO(hw_logger_,
-                     "Tessdata models found in " + directory + ": " + lang_str + ".");
+                     "Tessdata models found in " << directory << ": " << lang_str << ".");
     }
 
     return status;
@@ -1058,7 +1058,7 @@ void TesseractOCRTextDetection::get_OSD(OSBestResult &best_result, cv::Mat &imi,
         found_languages.clear();
         if (lang_str.empty() || lang_str == "script/NULL") {
             LOG4CXX_WARN(hw_logger_, "OSD could not find all required script models,"
-                                     + " reverting to default language setting: " + ocr_fset.tesseract_lang);
+                                     " reverting to default language setting: " << ocr_fset.tesseract_lang);
             tessdata_script_dir = "";
         } else {
             // Check if selected models are present in either models or tessdata directory.
@@ -1083,7 +1083,7 @@ void TesseractOCRTextDetection::get_OSD(OSBestResult &best_result, cv::Mat &imi,
                     ocr_fset.tesseract_lang = boost::algorithm::join(found_languages, join_type);
                 } else {
                     LOG4CXX_WARN(hw_logger_, "Script models not found in model and tessdata directories,"
-                                             + " switching to default language setting: " + ocr_fset.tesseract_lang);
+                                             " switching to default language setting: " << ocr_fset.tesseract_lang);
                 }
                 // Reset script directory, run check again while processing with default languages.
                 tessdata_script_dir = "";
@@ -1236,7 +1236,7 @@ void TesseractOCRTextDetection::check_default_languages(const OCR_filter_setting
             throw MPFDetectionException(MPF_COULD_NOT_OPEN_DATAFILE,
                                         "User-specified Tesseract language models not found.");
         } else {
-            LOG4CXX_WARN(hw_logger_, "User-specified Tesseract language models no longer found. " +
+            LOG4CXX_WARN(hw_logger_, "User-specified Tesseract language models no longer found. "
                                       "Using cached language models.");
         }
     }
@@ -1275,8 +1275,8 @@ vector<MPFVideoTrack> TesseractOCRTextDetection::GetDetections(const MPFVideoJob
                     text_type = Structured;
                 }
 
-                LOG4CXX_DEBUG(hw_logger_, "Identified text type:  \"" +
-                                          job_text_type + "\".");
+                LOG4CXX_DEBUG(hw_logger_, "Identified text type:  \"" <<
+                                          job_text_type << "\".");
             }
 
             load_image_preprocessing_settings(job, ocr_fset, text_type);
@@ -1297,7 +1297,7 @@ vector<MPFVideoTrack> TesseractOCRTextDetection::GetDetections(const MPFVideoJob
         }
 
         LOG4CXX_INFO(hw_logger_,
-                     "Processing complete. Found " + to_string(tracks.size()) + " tracks.");
+                     "Processing complete. Found " << tracks.size() << " tracks.");
 
         return tracks;
     }
@@ -1320,8 +1320,8 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
                 text_type = Structured;
             }
 
-            LOG4CXX_DEBUG(hw_logger_, "Identified text type:  \"" +
-                                      job.feed_forward_location.detection_properties.at("TEXT_TYPE") + "\".");
+            LOG4CXX_DEBUG(hw_logger_, "Identified text type:  \"" <<
+                                      job.feed_forward_location.detection_properties.at("TEXT_TYPE") << "\".");
         }
         load_settings(job, ocr_fset);
         load_image_preprocessing_settings(job, ocr_fset, text_type);
@@ -1340,7 +1340,7 @@ vector<MPFImageLocation> TesseractOCRTextDetection::GetDetections(const MPFImage
         }
 
         LOG4CXX_INFO(hw_logger_,
-                     "Processing complete. Found " + to_string(locations.size()) + " locations.");
+                     "Processing complete. Found " << locations.size() << " locations.");
 
         return locations;
     }
@@ -1387,7 +1387,7 @@ vector<MPFImageLocation> TesseractOCRTextDetection::process_image_job(const MPFJ
         // When PSM is set to 0, there is no need to process any further.
         if (ocr_fset.psm == 0) {
             LOG4CXX_INFO(hw_logger_,
-                         "Processing complete. Found " + to_string(locations.size()) +
+                         "Processing complete. Found " << locations.size() <<
                          " tracks.");
             osd_detection_properties["MISSING_LANGUAGE_MODELS"] = boost::algorithm::join(missing_languages, ", ");
             MPFImageLocation osd_detection(xLeftUpper, yLeftUpper, width, height, -1, osd_detection_properties);
@@ -1756,7 +1756,7 @@ vector<MPFGenericTrack> TesseractOCRTextDetection::GetDetections(const MPFGeneri
                                                                                            ", ");
         }
         LOG4CXX_INFO(hw_logger_,
-                     "Processing complete. Found " + to_string(tracks.size()) + " tracks.");
+                     "Processing complete. Found " << tracks.size() << " tracks.");
         return tracks;
     }
     catch (...) {
