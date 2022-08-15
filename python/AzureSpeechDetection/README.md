@@ -56,129 +56,112 @@ AudioTracks also have the `start_time` and `stop_time` of their associated utter
 
 
 # Language Identifiers
-The following are the BCP-47 codes and their corresponding languages which Azure Speech-to-Text supports. The third column indicates whether the language is also supported by a proprietary upstream language identification component, and the corresponding ISO 639-3 language code that it will pass forward in a feed-forward track. For languages with multiple dialects, a BCP-47 locale was chosen according to internal data, which may not be desirable in all cases. This selection can be altered by editing `acs_speech_component/azure_utils.py`.
+The following are the BCP-47 codes and their corresponding languages which Azure Speech-to-Text supports. 
 
 
-| Language                       | BCP-47 | ISO 639-3 |
-|--------------------------------|--------|:---------:|
-| Afrikaans                      | `af-ZA` |           |
-| Amharic                        | `am-ET` |   `AMH`   |
-| Arabic (Algeria)               | `ar-DZ` |           |
-| Arabic (Bahrain)               | `ar-BH` |           |
-| Arabic (Egypt)                 | `ar-EG` |  `ARA`*   |
-| Arabic (Iraq)                  | `ar-IQ` |           |
-| Arabic (Israel)                | `ar-IL` |           |
-| Arabic (Jordan)                | `ar-JO` |           |
-| Arabic (Kuwait)                | `ar-KW` |           |
-| Arabic (Lebanon)               | `ar-LB` |           |
-| Arabic (Libya)                 | `ar-LY` |           |
-| Arabic (Morocco)               | `ar-MA` |           |
-| Arabic (Oman)                  | `ar-OM` |           |
-| Arabic (Palestinian Authority) | `ar-PS` |           |
-| Arabic (Qatar)                 | `ar-QA` |           |
-| Arabic (Saudi Arabia)          | `ar-SA` |           |
-| Arabic (Syria)                 | `ar-SY` |           |
-| Arabic (Tunisia)               | `ar-TN` |           |
-| Arabic (United Arab Emirates)  | `ar-AE` |           |
-| Arabic (Yemen)                 | `ar-YE` |           |
-| Bulgarian                      | `bg-BG` |   `BUL`   |
-| Burmese                        | `my-MM` |   `MYA`   |
-| Catalan                        | `ca-ES` |           |
-| Chinese (Cantonese)            | `zh-HK` |  `YUE`*   |
-| Chinese (Mandarin)             | `zh-CN` |  `CMN`*   |
-| Chinese (Taiwan)               | `zh-TW` |  `NAN`*   |
-| Croatian                       | `hr-HR` |           |
-| Czech                          | `cs-CZ` |   `CES`   |
-| Danish                         | `da-DK` |           |
-| Dutch (Belgium)                | `nl-BE` |           |
-| Dutch (Netherlands)            | `nl-NL` |           |
-| English (Australia)            | `en-AU` |           |
-| English (Canada)               | `en-CA` |           |
-| English (Ghana)                | `en-GH` |           |
-| English (Hong Kong)            | `en-HK` |           |
-| English (India)                | `en-IN` |           |
-| English (Ireland)              | `en-IE` |           |
-| English (Kenya)                | `en-KE` |           |
-| English (New Zealand)          | `en-NZ` |           |
-| English (Nigeria)              | `en-NG` |           |
-| English (Philippines)          | `en-PH` |           |
-| English (Singapore)            | `en-SG` |           |
-| English (South Africa)         | `en-ZA` |           |
-| English (Tanzania)             | `en-TZ` |           |
-| English (United Kingdom)       | `en-GB` |           |
-| English (United States)        | `en-US` |  `ENG`*   |
-| Estonian                       | `et-EE` |           |
-| Farsi                          | `fa-IR` |   `PES`   |
-| Finnish                        | `fi-FI` |           |
-| Filipino                       | `fil-P` |           |
-| French (Belgium)               | `fr-BE` |           |
-| French (Canada)                | `fr-CA` |           |
-| French (France)                | `fr-FR` |  `FRE`*   |
-| French (Switzerland)           | `fr-CH` |           |
-| German (Austria)               | `de-AT` |           |
-| German (Germany)               | `de-DE` |           |
-| German (Switzerland)           | `de-CH` |           |
-| Greek                          | `el-GR` |   `ELL`   |
-| Gujarati                       | `gu-IN` |           |
-| Hebrew                         | `he-IL` |           |
-| Hindi                          | `hi-IN` |   `HIN`   |
-| Hungarian                      | `hu-HU` |           |
-| Icelandic                      | `is-IS` |           |
-| Indonesian                     | `id-ID` |   `IND`   |
-| Irish                          | `ga-IE` |           |
-| Italian                        | `it-IT` |           |
-| Japanese                       | `ja-JP` |   `JPN`   |
-| Javanese                       | `jv-ID` |   `JAV`   |
-| Kannada                        | `kn-IN` |           |
-| Khmer                          | `km-KH` |           |
-| Korean                         | `ko-KR` |   `KOR`   |
-| Lao                            | `lo-LA` |   `LAO`   |
-| Latvian                        | `lv-LV` |           |
-| Lithuanian                     | `lt-LT` |   `LIT`   |
-| Macedonian                     | `mk-MK` |   `MKD`   |
-| Malay                          | `ms-MY` |           |
-| Maltese                        | `mt-MT` |           |
-| Marathi                        | `mr-IN` |           |
-| Norwegian                      | `nb-NO` |           |
-| Polish                         | `pl-PL` |   `POL`   |
-| Portuguese (Brazil)            | `pt-BR` |   `POR`   |
-| Portuguese (Portugal)          | `pt-PT` |           |
-| Romanian                       | `ro-RO` |   `RON`   |
-| Russian                        | `ru-RU` |   `RUS`   |
-| Serbian                        | `sr-RS` |           |
-| Sinhala                        | `si-LK` |           |
-| Slovak                         | `sk-SK` |   `SLK`   |
-| Slovenian                      | `sl-SI` |           |
-| Spanish (Argentina)            | `es-AR` |           |
-| Spanish (Bolivia)              | `es-BO` |           |
-| Spanish (Chile)                | `es-CL` |           |
-| Spanish (Colombia)             | `es-CO` |           |
-| Spanish (Costa Rica)           | `es-CR` |           |
-| Spanish (Cuba)                 | `es-CU` |           |
-| Spanish (Dominican Republic)   | `es-DO` |           |
-| Spanish (Ecuador)              | `es-EC` |           |
-| Spanish (El Salvador)          | `es-SV` |           |
-| Spanish (Equatorial Guinea)    | `es-GQ` |           |
-| Spanish (Guatemala)            | `es-GT` |           |
-| Spanish (Honduras)             | `es-HN` |           |
-| Spanish (Mexico)               | `es-MX` |  `SPA`*   |
-| Spanish (Nicaragua)            | `es-NI` |           |
-| Spanish (Panama)               | `es-PA` |           |
-| Spanish (Paraguay)             | `es-PY` |           |
-| Spanish (Peru)                 | `es-PE` |           |
-| Spanish (Puerto Rico)          | `es-PR` |           |
-| Spanish (Spain)                | `es-ES` |           |
-| Spanish (United States)        | `es-US` |           |
-| Spanish (Uruguay)              | `es-UY` |           |
-| Spanish (Venezuela)            | `es-VE` |           |
-| Swahili (Kenya)                | `sw-KE` |  `SWA`*   |
-| Swahili (Tanzania)             | `sw-TZ` |           |
-| Swedish                        | `sv-SE` |           |
-| Tamil                          | `ta-IN` |   `TAM`   |
-| Telugu                         | `te-IN` |           |
-| Thai                           | `th-TH` |   `THA`   |
-| Turkish                        | `tr-TR` |   `TUR`   |
-| Ukrainian                      | `uk-UA` |   `UKR`   |
-| Uzbek                          | `uz-UZ` |   `UZB`   |
-| Vietnamese                     | `vi-VN` |   `VIE`   |
-| Zulu                           | `zu-ZA` |   `ZUL`   |
+| Language                       | BCP-47 | Language                     | BCP-47  |
+|--------------------------------|--------|------------------------------|---------|
+| Afrikaans                      | `af-ZA` | Hungarian                    | `hu-HU` |
+| Amharic                        | `am-ET` | Icelandic                    | `is-IS` |
+| Arabic (Algeria)               | `ar-DZ` | Indonesian                   | `id-ID` |
+| Arabic (Bahrain)               | `ar-BH` | Irish                        | `ga-IE` |
+| Arabic (Egypt)                 | `ar-EG` | Italian                      | `it-IT` |
+| Arabic (Iraq)                  | `ar-IQ` | Japanese                     | `ja-JP` |
+| Arabic (Israel)                | `ar-IL` | Javanese                     | `jv-ID` |
+| Arabic (Jordan)                | `ar-JO` | Kannada                      | `kn-IN` |
+| Arabic (Kuwait)                | `ar-KW` | Khmer                        | `km-KH` |
+| Arabic (Lebanon)               | `ar-LB` | Korean                       | `ko-KR` |
+| Arabic (Libya)                 | `ar-LY` | Lao                          | `lo-LA` |
+| Arabic (Morocco)               | `ar-MA` | Latvian                      | `lv-LV` |
+| Arabic (Oman)                  | `ar-OM` | Lithuanian                   | `lt-LT` |
+| Arabic (Palestinian Authority) | `ar-PS` | Macedonian                   | `mk-MK` |
+| Arabic (Qatar)                 | `ar-QA` | Malay                        | `ms-MY` |
+| Arabic (Saudi Arabia)          | `ar-SA` | Maltese                      | `mt-MT` |
+| Arabic (Syria)                 | `ar-SY` | Marathi                      | `mr-IN` |
+| Arabic (Tunisia)               | `ar-TN` | Norwegian                    | `nb-NO` |
+| Arabic (United Arab Emirates)  | `ar-AE` | Polish                       | `pl-PL` |
+| Arabic (Yemen)                 | `ar-YE` | Portuguese (Brazil)          | `pt-BR` |
+| Bulgarian                      | `bg-BG` | Portuguese (Portugal)        | `pt-PT` |
+| Burmese                        | `my-MM` | Romanian                     | `ro-RO` |
+| Catalan                        | `ca-ES` | Russian                      | `ru-RU` |
+| Chinese (Cantonese)            | `zh-HK` | Serbian                      | `sr-RS` |
+| Chinese (Mandarin)             | `zh-CN` | Sinhala                      | `si-LK` |
+| Chinese (Taiwan)               | `zh-TW` | Slovak                       | `sk-SK` |
+| Croatian                       | `hr-HR` | Slovenian                    | `sl-SI` |
+| Czech                          | `cs-CZ` | Spanish (Argentina)          | `es-AR` |
+| Danish                         | `da-DK` | Spanish (Bolivia)            | `es-BO` |
+| Dutch (Belgium)                | `nl-BE` | Spanish (Chile)              | `es-CL` |
+| Dutch (Netherlands)            | `nl-NL` | Spanish (Colombia)           | `es-CO` |
+| English (Australia)            | `en-AU` | Spanish (Costa Rica)         | `es-CR` |
+| English (Canada)               | `en-CA` | Spanish (Cuba)               | `es-CU` |
+| English (Ghana)                | `en-GH` | Spanish (Dominican Republic) | `es-DO` |
+| English (Hong Kong)            | `en-HK` | Spanish (Ecuador)            | `es-EC` |
+| English (India)                | `en-IN` | Spanish (El Salvador)        | `es-SV` |
+| English (Ireland)              | `en-IE` | Spanish (Equatorial Guinea)  | `es-GQ` |
+| English (Kenya)                | `en-KE` | Spanish (Guatemala)          | `es-GT` |
+| English (New Zealand)          | `en-NZ` | Spanish (Honduras)           | `es-HN` |
+| English (Nigeria)              | `en-NG` | Spanish (Mexico)             | `es-MX` |
+| English (Philippines)          | `en-PH` | Spanish (Nicaragua)          | `es-NI` |
+| English (Singapore)            | `en-SG` | Spanish (Panama)             | `es-PA` |
+| English (South Africa)         | `en-ZA` | Spanish (Paraguay)           | `es-PY` |
+| English (Tanzania)             | `en-TZ` | Spanish (Peru)               | `es-PE` |
+| English (United Kingdom)       | `en-GB` | Spanish (Puerto Rico)        | `es-PR` |
+| English (United States)        | `en-US` | Spanish (Spain)              | `es-ES` |
+| Estonian                       | `et-EE` | Spanish (United States)      | `es-US` |
+| Farsi                          | `fa-IR` | Spanish (Uruguay)            | `es-UY` |
+| Finnish                        | `fi-FI` | Spanish (Venezuela)          | `es-VE` |
+| Filipino                       | `fil-P` | Swahili (Kenya)              | `sw-KE` |
+| French (Belgium)               | `fr-BE` | Swahili (Tanzania)           | `sw-TZ` |
+| French (Canada)                | `fr-CA` | Swedish                      | `sv-SE` |
+| French (France)                | `fr-FR` | Tamil                        | `ta-IN` |
+| French (Switzerland)           | `fr-CH` | Telugu                       | `te-IN` |
+| German (Austria)               | `de-AT` | Thai                         | `th-TH` |
+| German (Germany)               | `de-DE` | Turkish                      | `tr-TR` |
+| German (Switzerland)           | `de-CH` | Ukrainian                    | `uk-UA` |
+| Greek                          | `el-GR` | Uzbek                        | `uz-UZ` |
+| Gujarati                       | `gu-IN` | Vietnamese                   | `vi-VN` |
+| Hebrew                         | `he-IL` | Zulu                         | `zu-ZA` |
+ | Hindi                          | `hi-IN` |                              |         |
+
+## Dynamic Speech Selection
+
+The below table describes the component's default behavior when supplied an ISO 639-3 language code by an upstream language identification component in a feed-forward track. For languages with multiple dialects (indicated by an asterisk), a BCP-47 locale was chosen according to internal data, which may not be desirable in all cases. This selection can be altered by editing `acs_speech_component/azure_utils.py`.
+
+If the language code supplied by a feed-forward track is not handled in `acs_speech_component/azure_utils.py`, the component will raise an `INVALID_PROPERTY` exception.
+
+| ISO 639-3 | Language            | BCP-47   |
+|:---------:|---------------------|----------|
+|   `AMH`   | Amharic             | `am-ET`  |
+|   `ARA`   | Arabic              | `ar-EG`* |
+|   `BUL`   | Bulgarian           | `bg-BG`  |
+|   `CES`   | Czech               | `cs-CZ`  |
+|   `CMN`   | Chinese (Mandarin)  | `zh-CN`* |
+|   `ELL`   | Greek               | `el-GR`  |
+|   `ENG`   | English             | `en-US`* |
+|   `FRE`   | French              | `fr-FR`* |
+|   `HIN`   | Hindi               | `hi-IN`  |
+|   `IND`   | Indonesian          | `id-ID`  |
+|   `JAV`   | Javanese            | `jv-ID`  |
+|   `JPN`   | Japanese            | `ja-JP`  |
+|   `KOR`   | Korean              | `ko-KR`  |
+|   `LAO`   | Lao                 | `lo-LA`  |
+|   `LIT`   | Lithuanian          | `lt-LT`  |
+|   `MKD`   | Macedonian          | `mk-MK`  |
+|   `MYA`   | Burmese             | `my-MM`  |
+|   `NAN`   | Chinese (Taiwan)    | `zh-TW`* |
+|   `PES`   | Farsi               | `fa-IR`  |
+|   `POL`   | Polish              | `pl-PL`  |
+|   `POR`   | Portuguese          | `pt-BR`  |
+|   `RON`   | Romanian            | `ro-RO`  |
+|   `RUS`   | Russian             | `ru-RU`  |
+|   `SLK`   | Slovak              | `sk-SK`  |
+|   `SPA`   | Spanish             | `es-MX`* |
+|   `SWA`   | Swahili             | `sw-KE`* |
+|   `TAM`   | Tamil               | `ta-IN`  |
+|   `THA`   | Thai                | `th-TH`  |
+|   `TUR`   | Turkish             | `tr-TR`  |
+|   `UKR`   | Ukrainian           | `uk-UA`  |
+|   `UZB`   | Uzbek               | `uz-UZ`  |
+|   `VIE`   | Vietnamese          | `vi-VN`  |
+|   `YUE`   | Chinese (Cantonese) | `zh-HK`* |
+|   `ZUL`   | Zulu                | `zu-ZA`  |
