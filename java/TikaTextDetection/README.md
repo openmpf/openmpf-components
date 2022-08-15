@@ -39,3 +39,166 @@ The following format-specific behaviors were observed using Tika 1.28.1 on Ubunt
 
 - OpenDocument Spreadsheet documents will generate one track per cell, as well as some additional tracks with
   date and time information, "Page /", and "???".
+
+# Supported Language Detectors:
+
+This component supports the following language detectors. Users can select their preferred detector using
+the `LANG_DETECTOR` option:
+                                                                                                                                                                          
+- `LANG_DETECTOR = opennlp`: [Apache Tika OpenNLP Language Detector](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/opennlp/OpenNLPDetector.html)           
+                                                                                                                                                                          
+  Apache Tika's latest in-house language detection capability based on OpenNLP's language detector.                                                                       
+  Uses Machine Learning (ML) models trained on the following datasets and supports 148 languages in total                                                                   
+    - [Leipzig corpus](https://wortschatz.uni-leipzig.de/en/download)                                                                                                     
+    - [cc-100](https://data.statmt.org/cc-100/)                                                                                                                           
+                                                                                                                                                                          
+  Supports almost every language in Optimaize and Tika Language Detectors except Aragonese.    
+
+
+- `LANG_DETECTOR = optimaize`: [Optimaize Language Detector](https://github.com/optimaize/language-detector)
+
+  Third party language detection project that supports 71 languages.
+  Predicts target language using N-gram frequency matching between input and language profiles.
+  Supports almost every language present in Tika's Language Detector except Esperanto.
+ Please note that Optimaize supports Punjabi/Panjabi while OpenNLP supports Western Punjabi/Panjabi.      
+   
+                                                                                                                                                          
+- (Depreciated) `LANG_DETECTOR = tika`: [Apache Tika Language Detector](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/tika/TikaLanguageDetector.html)     
+                                                                                                                                                           
+  Apache Tika's original in-house language detection capability.                                                                                           
+  Predicts target language using vector distance of trigrams between input string and language models.                                                     
+  Supports 28 languages (listed in following section).                                                                                                                                                                                                                                          
+  **NOTE: Developers have warned that this legacy detector is depreciated and won't work well on short snippets of text.**                                 
+
+       
+# Supported Language List:
+
+- Tika Language Detector:
+  - Belarusian
+  - Catalan
+  - Danish
+  - German
+  - Esperanto
+  - Estonian
+  - Greek
+  - English
+  - Spanish
+  - Finnish
+  - French
+  - Persian
+  - Galician
+  - Hungarian
+  - Icelandic
+  - Italian
+  - Lithuanian
+  - Dutch
+  - Norwegian
+  - Polish
+  - Portuguese
+  - Romanian
+  - Russian
+  - Slovakian
+  - Slovenian
+  - Swedish
+  - Thai
+  - Ukrainian
+                 
+
+- Optimaize Language Detector:
+  - Every language in Tika's language detector, except Esperanto.
+  - Afrikaans
+  - **Aragonese** (Unique to this detector)
+  - Arabic
+  - Asturian
+  - Breton
+  - Bulgarian
+  - Bengali
+  - Czech
+  - Welsh
+  - Basque
+  - Irish
+  - Gujarati
+  - Hebrew
+  - Hindi
+  - Croatian
+  - Haitian
+  - Indonesian
+  - Japanese
+  - Khmer
+  - Kannada
+  - Korean
+  - Latvian
+  - Macedonian
+  - Malayalam
+  - Marathi
+  - Malay
+  - Maltese
+  - Nepali
+  - Occitan
+  - Punjabi
+  - Slovak
+  - Slovene
+  - Somali
+  - Albanian
+  - Serbian
+  - Swahili
+  - Tamil
+  - Telugu
+  - Tagalog
+  - Turkish
+  - Urdu
+  - Vietnamese
+  - Walloon
+  - Yiddish
+  - Simplified Chinese
+  - Traditional Chinese
+                        
+
+- OpenNLP Language Detector:
+  - Every language in Tika and Optimaize Language Detectors except Aragonese. 
+  - Bihari languages 
+  - Swiss German
+  - Turkmen
+  - Bashkir
+  - Mongolian
+  - Balinese
+  - Pushto
+  - Faroese
+  - Swati
+  - Min Nan Chinese
+  - Yoruba
+  - Scottish Gaelic
+  - Javanese
+  - Iranian Persian
+  - Esperanto
+  - Western Panjabi
+  - Standard Latvian
+  - Western Frisian
+  - Burmese
+  - Eastern Mari
+  - Paraguayan Guaraní
+  - Slovenian
+  - Cebuano
+  - Mandarin Chinese
+  - Kurdish
+  - Pedi
+  - Azerbaijani
+  - Uighur
+  - Minangkabau
+  - Tajik
+  - Uzbek
+  - Maori
+  - Sindhi
+  - Konkani
+  - Armenian
+  - Igbo
+  - Assamese
+  - Malay
+  - Low German
+  - Fulah
+  - Xhosa
+  - Standard Estonian
+  - Goan Konkani
+  - Lingala
+  - Dhivehi
+  - Zulu

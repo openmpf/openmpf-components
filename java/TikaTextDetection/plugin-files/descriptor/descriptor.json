@@ -32,6 +32,18 @@
           "defaultValue": "false"
         },
         {
+          "name": "LANG_DETECTOR",
+          "description": "Specifies which Tika Language detector to use. Current options are `opennlp`, `optimaize` and `tika` (Note: `tika` is depreciated and does not work for short text). Defaults to `opennlp`.",
+          "type": "STRING",
+          "defaultValue": "opennlp"
+        },
+        {
+          "name": "LANG_DETECTOR_FILTER",
+          "description": "Specifies whether or not to filter out low confidence predictions. Disabled by default.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
           "name": "LIST_ALL_PAGES",
           "description": "Specifies whether or not to store each page as a track, even if no text is extracted.",
           "type": "BOOLEAN",
