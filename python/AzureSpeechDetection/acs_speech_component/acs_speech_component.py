@@ -395,11 +395,11 @@ class AcsSpeechComponent(object):
         if t1 > 0:
             if t0 > 0:
                 overwrite_ids = True
-            elif 'DURATION' in job.media_properties:
-                if t1 < float(job.media_properties['DURATION']):
-                    overwrite_ids = True
             elif 'FRAME_COUNT' in job.media_properties:
                 if t1 < int(job.media_properties['FRAME_COUNT']) - 1:
+                    overwrite_ids = True
+            elif 'DURATION' in job.media_properties:
+                if t1 < float(job.media_properties['DURATION']):
                     overwrite_ids = True
         else:
             t1 = 'EOF'
@@ -476,7 +476,7 @@ class AcsSpeechComponent(object):
                 video_tracks.append(video_track)
 
         except Exception as e:
-            logger.exception('Exception raised while converting to video track: {e}')
+            logger.exception(f'Exception raised while converting to video track: {e}')
             raise
 
         logger.info('Processing complete. Found %d tracks.' % len(video_tracks))

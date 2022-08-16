@@ -87,7 +87,6 @@ class AcsSpeechDetectionProcessor(object):
                 start -= media_start_time
                 stop -= media_start_time
 
-                # Convert from integer milliseconds to float seconds
                 segments.append((start, stop))
         except Exception as e:
             raise mpf.DetectionException(
