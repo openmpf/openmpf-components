@@ -123,17 +123,17 @@
     },
     {
       "name": "AZURE SPEECH DETECTION WITH UPSTREAM SPEAKER ACTION",
-      "description": "Uses Azure Cognitive Services to perform speech-to-text in with language determined by an upstream language detection component.",
+      "description": "Runs speech-to-text with Azure Cognitive Services on audio or video using language provided in feed-forward track.",
       "algorithm": "AZURESPEECH",
       "properties": [
         {
           "name": "TRIGGER",
           "value": "SPEECH_DETECTOR=AZURESPEECH"
         },
-	{
-	  "name": "FEED_FORWARD_TYPE",
-	  "value": "REGION"
-	}
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        }
       ]
     }
   ],
@@ -154,7 +154,7 @@
     },
     {
       "name": "AZURE SPEECH DETECTION WITH UPSTREAM SPEAKER TASK",
-      "description": "Uses Azure Cognitive Services to perform speech-to-text in with language determined by an upstream language detection component.",
+      "description": "Runs speech-to-text with Azure Cognitive Services on audio or video using language provided in feed-forward track.",
       "actions": [
         "AZURE SPEECH DETECTION WITH UPSTREAM SPEAKER ACTION"
       ]
