@@ -34,7 +34,7 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 from .acs_speech_processor import AcsSpeechDetectionProcessor, SpeakerInfo
 from .azure_connect import AcsServerInfo
-from .azure_utils import ISO6393_2_BCP47
+from .azure_utils import ISO6393_TO_BCP47
 
 
 class MPFJobNameLoggerAdapter(logging.LoggerAdapter):
@@ -260,7 +260,7 @@ class AcsSpeechComponent(object):
             prop_type=str
         )
         language_iso = language_iso.strip().upper()
-        languages = ISO6393_2_BCP47.get(language_iso, None)
+        languages = ISO6393_TO_BCP47.get(language_iso, None)
         if languages is None:
             raise mpf.DetectionException(
                 f"ISO 639-3 code '{language_iso}' provided in feed-forward track"
