@@ -29,10 +29,7 @@ import time
 from urllib import request
 from datetime import datetime, timedelta
 from dateutil import relativedelta
-from typing import (
-    Dict, Optional, Sequence, List,
-    Iterable, Set, Tuple, Mapping, NamedTuple
-)
+from typing import NamedTuple
 
 from azure.storage.blob import (
     ResourceTypes, AccountSasPermissions,

@@ -24,7 +24,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import os
 import uuid
 from typing import (
     Optional, List, Iterable, Tuple, Mapping, NamedTuple, Any
@@ -203,7 +202,7 @@ class AcsSpeechDetectionProcessor(object):
             except Exception as e:
                 if 'This locale does not support diarization' in str(e):
                     self.logger.warning(
-                        f'Locale "{lang}" does not support diarization. '
+                        f'Locale "{language}" does not support diarization. '
                         'Completing job with diarization disabled.')
                     diarize = False
                 else:
