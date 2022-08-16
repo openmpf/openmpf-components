@@ -28,7 +28,7 @@ import os
 import logging
 from math import floor, ceil
 from collections import defaultdict
-from typing import Union, Optional, Any, Mapping, Dict, List
+from typing import Union, Any, Mapping, Dict, List
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -54,6 +54,25 @@ logger = MPFJobNameLoggerAdapter(
 )
 
 logging.getLogger('azure').setLevel('WARN')
+
+
+class TriggerMismatch(Exception):
+    """ Exception raised when the feed-forward track does not meet the trigger.
+
+        :param trigger_key: The trigger key defined by TRIGGER property
+        :param expected: The expected value defined by TRIGGER property
+        :param trigger_val: The actual value of the trigger property (if present)
+
+    """
+    def __init__(self, trigger_key, expected, trigger_val=None):
+        self.trigger_key = trigger_key
+        self.expected = expected
+        self.trigger_val = trigger_val
+
+    def __str__(self):
+        if self.trigger_val is None:
+            return f"Trigger property {self.trigger_key} not present in feed-forward detection properties"
+        return f"Expected {self.trigger_key} to be {self.expected}, got {self.trigger_val}"
 
 
 class AcsSpeechComponent(object):
@@ -282,7 +301,7 @@ class AcsSpeechComponent(object):
     def parse_properties(
                 cls,
                 job: Union[mpf.AudioJob, mpf.VideoJob]
-            ) -> Optional[Dict[str, Any]]:
+            ) -> Dict[str, Any]:
         """
         :param job: AudioJob or VideoJob
         :return: Dictionary of properties, pass as **kwargs to process_audio.
@@ -334,8 +353,10 @@ class AcsSpeechComponent(object):
 
             # If trigger key is in feed-forward properties, only run
             #  transcription if the value matches trigger_val
-            if not (t_key in det_props and det_props[t_key] == t_val):
-                return None
+            if t_key not in det_props:
+                raise TriggerMismatch(t_key, t_val)
+            if det_props[t_key] != t_val:
+                raise TriggerMismatch(t_key, t_val, det_props[t_key])
 
             logger.debug("Getting properties from feed-forward track")
             speaker = cls._parse_ff_props(
@@ -361,16 +382,15 @@ class AcsSpeechComponent(object):
     def get_detections_from_job(
                 self,
                 job: Union[mpf.AudioJob, mpf.VideoJob]
-            ) -> Optional[List[mpf.AudioTrack]]:
+            ) -> List[mpf.AudioTrack]:
         try:
             job_props = self.parse_properties(job)
+        except TriggerMismatch as e:
+            logger.info(f"Feed-forward track does not meet trigger condition: {e}")
+            raise
         except Exception as e:
             logger.exception(f'Exception raised while parsing properties: {e}')
             raise
-
-        # If parse_properties returned None, this component should be skipped
-        if job_props is None:
-            return None
 
         try:
             logger.debug("Getting transcription tracks")
@@ -410,6 +430,7 @@ class AcsSpeechComponent(object):
             if overwrite_ids:
                 track.detection_properties['SPEAKER_ID'] = '0'
 
+        logger.info('Processing complete. Found %d tracks.' % len(audio_tracks))
         return audio_tracks
 
     def get_detections_from_audio(
@@ -419,13 +440,10 @@ class AcsSpeechComponent(object):
         logger.extra['job_name'] = job.job_name
         logger.info('Received audio job')
 
-        tracks = self.get_detections_from_job(job)
-        if tracks is not None:
-            logger.info('Processing complete. Found %d tracks.' % len(tracks))
-            return tracks
-
-        # If parse_properties returned None, this component should be skipped
-        return [job.feed_forward_track]
+        try:
+            return self.get_detections_from_job(job)
+        except TriggerMismatch:
+            return [job.feed_forward_track]
 
     def get_detections_from_video(
                 self,
@@ -443,10 +461,9 @@ class AcsSpeechComponent(object):
             )
         fpms = float(job.media_properties['FPS']) / 1000.0
 
-        audio_tracks = self.get_detections_from_job(job)
-
-        # If parse_properties returned None, this component should be skipped
-        if audio_tracks is None:
+        try:
+            audio_tracks = self.get_detections_from_job(job)
+        except TriggerMismatch:
             return [job.feed_forward_track]
 
         try:
@@ -479,5 +496,4 @@ class AcsSpeechComponent(object):
             logger.exception(f'Exception raised while converting to video track: {e}')
             raise
 
-        logger.info('Processing complete. Found %d tracks.' % len(video_tracks))
         return video_tracks
