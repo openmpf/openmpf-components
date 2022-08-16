@@ -107,8 +107,11 @@ class AcsSpeechDetectionProcessor(object):
                 utterances: Iterable[Mapping[str, Any]],
                 speaker: Optional[SpeakerInfo] = None
             ) -> Iterable[Tuple[int, int, Iterable[Tuple[int, int]]]]:
-        """ Adjust region start and stop times to account for the passed
-            annotation_regions.
+        """ Get region and word timing information. Converts from AWS timing
+            scale and format to MPF's millisecond start and stop times. Also
+            "desegments" when there is a speaker with speech segments supplied.
+            This means to correspond returned utterances to where they are
+            positioned within the original audio file.
 
             :param utterances: A list of utterances returned by ACS
             :param speaker: SpeakerInfo. None of no feed-forward track exists
