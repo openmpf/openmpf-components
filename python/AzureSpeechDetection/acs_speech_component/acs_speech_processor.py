@@ -104,24 +104,29 @@ class AcsSpeechDetectionProcessor(object):
 
     @staticmethod
     def desegment_times(
-            utterances: Iterable[Mapping[str, Any]],
-            segments: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+                utterances: Iterable[Mapping[str, Any]],
+                speaker: Optional[SpeakerInfo] = None
+            ) -> Iterable[Tuple[int, int, Iterable[Tuple[int, int]]]]:
         """ Adjust region start and stop times to account for the passed
-            annotation_regions. Updates regions in place.
+            annotation_regions.
 
-            :param regions: sorted RegionScores
-            :param annotation_regions: sorted AnnotationRegions
+            :param utterances: A list of utterances returned by ACS
+            :param speaker: SpeakerInfo. None of no feed-forward track exists
+            :returns: An iterable of utterance starts, stops, and word segments.
         """
-        # The beginning, end, and length of each segment
-        segbegs, segends, seglens = zip(*(
-            (t0, t1, t1-t0) for t0, t1 in sorted(segments)
-        ))
+        if speaker is not None:
+            # Create parallel lists for the beginning, end, and length of each
+            #  feedforward segment, so that utterance timestamps can be shifted
+            #  to be relative to the beginning of the input audio file.
+            segbegs, seglens = zip(*(
+                (t0, t1-t0) for t0, t1 in sorted(speaker.speech_segs)
+            ))
 
-        # The dividing line between each segment relative to regions
-        segdivs = list(accumulate(seglens))
+            # The dividing line between each segment relative to regions
+            segdivs = list(accumulate(seglens))
 
-        # The offset to add to region times, according to their segment
-        offsets = [a-b for a, b in zip(segbegs, [0] + segdivs)]
+            # The offset to add to region times, according to their segment
+            offsets = [a-b for a, b in zip(segbegs, [0] + segdivs)]
 
         utterance_times = []
         for utt in utterances:
@@ -130,17 +135,23 @@ class AcsSpeechDetectionProcessor(object):
             utterance_start = utt['offsetInTicks'] * 1e-4
             utterance_duration = utt['durationInTicks'] * 1e-4
             utterance_stop = utterance_start + utterance_duration
+            word_starts, word_ends = zip(*[
+                (
+                    w['offsetInTicks'] * 1e-4,
+                    (w['offsetInTicks'] + w['durationInTicks']) * 1e-4
+                ) for w in utt['nBest'][0]['words']
+            ])
 
-            # Index of the segment containing the region start time
-            i = min(bisect_right(segdivs, utterance_start), len(segdivs)-1)
+            if speaker is not None:
+                # Get index of the segment containing the region start time,
+                #  and offset utterance time information by appropriate delta
+                i = min(bisect_right(segdivs, utterance_start), len(segdivs)-1)
+                utterance_start += offsets[i]
+                utterance_stop += offsets[i]
+                word_starts = [t + offsets[i] for t in word_starts]
+                word_ends = [t + offsets[i] for t in word_ends]
 
-            # Offset the region start and end times
-            utterance_times.append((
-                utterance_start + offsets[i],
-                utterance_stop + offsets[i]
-            ))
-
-        return utterance_times
+            yield utterance_start, utterance_stop, zip(word_starts, word_ends)
 
     def process_audio(
                 self, target_file: str, start_time: int,
@@ -217,63 +228,47 @@ class AcsSpeechDetectionProcessor(object):
             self.logger.info('Deleting transcript')
             self.acs.delete_transcription(output_loc)
 
-        if speaker is not None:
-            # Create parallel lists for the beginning, end, and length of each
-            #  feedforward segment, so that utterance timestamps can be shifted
-            #  to be relative to the beginning of the input audio file.
-            segbegs, segends, seglens = zip(*(
-                (t0, t1, t1-t0) for t0, t1 in sorted(speaker.speech_segs)
-            ))
-
-            # The dividing line between each segment relative to utterances
-            segdivs = list(accumulate(seglens))
-
-            # The offset to add to utterance times, according to their segment
-            offsets = [a-b for a, b in zip(segbegs, [0] + segdivs)]
+        utterances = transcription['recognizedPhrases']
+        desegmented_times = self.desegment_times(
+            utterances=utterances,
+            speaker=speaker)
 
         self.logger.info('Completed process audio')
         self.logger.info('Creating AudioTracks')
         audio_tracks = []
-        for utt in transcription['recognizedPhrases']:
+        for utt, times in zip(utterances, desegmented_times):
             # Speaker ID returned by Azure diarization, default 0
             speaker_id = utt.get('speaker', '0')
 
             # Transcript text
             display = utt['nBest'][0]['display']
 
-            # Confidence information. Utterance confidence does not seem
-            #  to be a simple aggregate of word confidences.
+            # Timing information, desegmented if feed-forward track exists
+            utterance_start, utterance_stop, word_segments = times
+
+            # Utterance confidence (seemingly not an aggregate of word confidences)
             utterance_confidence = utt['nBest'][0]['confidence']
+
+            # Build word confidence and segment strings
             word_confidences = ', '.join([
                 str(w['confidence'])
                 for w in utt['nBest'][0]['words']
             ])
-
-            # Timing information. Azure works in 100-nanosecond ticks,
-            #  so multiply by 1e-4 to obtain milliseconds.
-            utterance_start = utt['offsetInTicks'] * 1e-4
-            utterance_duration = utt['durationInTicks'] * 1e-4
-            utterance_stop = utterance_start + utterance_duration
-            word_starts, word_ends = zip(*[
-                (
-                    w['offsetInTicks'] * 1e-4,
-                    (w['offsetInTicks'] + w['durationInTicks']) * 1e-4
-                ) for w in utt['nBest'][0]['words']
+            word_segments = ', '.join([
+                f"{t0:f}-{t1:f}"
+                for t0, t1 in word_segments
             ])
 
             properties = dict(
                 SPEAKER_ID=speaker_id,
                 TRANSCRIPT=display,
                 WORD_CONFIDENCES=word_confidences,
-                DECODED_LANGUAGE=language
+                DECODED_LANGUAGE=language,
+                WORD_SEGMENTS=word_segments
             )
 
             if speaker is not None:
                 # If feed-forward track exists, use provided speaker info
-                speaker_id = speaker.speaker_id
-                gender = speaker.gender
-                gender_score = speaker.gender_score
-
                 ldict = speaker.language_scores
                 languages = [n for n, s in ldict.items()]
                 languages = sorted(
@@ -284,26 +279,14 @@ class AcsSpeechDetectionProcessor(object):
                 language_confs = ', '.join(str(ldict[lab]) for lab in languages)
                 language_labels = ', '.join(languages)
 
-                # Get index of the segment containing the region start time,
-                #  and offset utterance time information by appropriate delta
-                i = min(bisect_right(segdivs, utterance_start), len(segdivs) - 1)
-                utterance_start += offsets[i]
-                utterance_stop += offsets[i]
-                word_starts = [t + offsets[i] for t in word_starts]
-                word_ends = [t + offsets[i] for t in word_ends]
-
                 # Add or update properties according to fed-forward info
                 properties.update(
-                    SPEAKER_ID=speaker_id,
+                    SPEAKER_ID=speaker.speaker_id,
+                    GENDER=speaker.gender,
+                    GENDER_CONFIDENCE=speaker.gender_score,
                     SPEAKER_LANGUAGES=language_labels,
-                    SPEAKER_LANGUAGE_CONFIDENCES=language_confs,
-                    GENDER=gender,
-                    GENDER_CONFIDENCE=gender_score
+                    SPEAKER_LANGUAGE_CONFIDENCES=language_confs
                 )
-
-            properties['WORD_SEGMENTS'] = ', '.join([
-                f"{t0:f}-{t1:f}" for t0, t1 in zip(word_starts, word_ends)
-            ])
 
             track = mpf.AudioTrack(
                 start_time=utterance_start,
