@@ -25,6 +25,7 @@
 #############################################################################
 
 import json
+import logging
 import time
 from urllib import request
 from datetime import datetime, timedelta
@@ -33,6 +34,9 @@ from azure.storage.blob import ResourceTypes, AccountSasPermissions, generate_ac
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
+
+logger = logging.getLogger('AcsSpeechComponent')
 
 
 def minutes_to_iso8601(mins):
@@ -51,8 +55,7 @@ def minutes_to_iso8601(mins):
 
 
 class AzureConnection(object):
-    def __init__(self, logger):
-        self.logger = logger
+    def __init__(self):
         self.url = None
         self.subscription_key = None
         self.blob_container_url = None
@@ -76,7 +79,7 @@ class AzureConnection(object):
         if (self.blob_container_url != blob_container_url
                 or self.blob_service_key != blob_service_key
                 or self.http_max_attempts != http_max_attempts):
-            self.logger.debug('Updating ACS connection')
+            logger.debug('Updating ACS connection')
             self.blob_container_url = blob_container_url
             self.blob_service_key = blob_service_key
             self.http_max_attempts = http_max_attempts
@@ -89,7 +92,7 @@ class AzureConnection(object):
                 retry_status=http_max_attempts
             )
         else:
-            self.logger.debug('ACS arguments unchanged')
+            logger.debug('ACS arguments unchanged')
 
     def get_blob_client(self, recording_id):
         return self.container_client.get_blob_client(recording_id)
@@ -117,9 +120,9 @@ class AzureConnection(object):
             blob_client.upload_blob(audio_bytes)
         except Exception as e:
             if 'blob already exists' in str(e):
-                self.logger.info('Blob exists for file {}'.format(recording_id))
+                logger.info('Blob exists for file {}'.format(recording_id))
             else:
-                self.logger.error('Uploading file to blob failed for file {}'.format(recording_id))
+                logger.error('Uploading file to blob failed for file {}'.format(recording_id))
                 raise mpf.DetectionError.NETWORK_ERROR.exception(
                     'Uploading file to blob failed due to: ' + str(e)) from e
 
@@ -132,7 +135,7 @@ class AzureConnection(object):
 
     def submit_batch_transcription(self, recording_url, job_name,
                                    diarize, language, expiry):
-        self.logger.info('Submitting batch transcription...')
+        logger.info('Submitting batch transcription...')
         data = dict(
             contentUrls=[recording_url],
             displayName=job_name,
@@ -169,20 +172,20 @@ class AzureConnection(object):
             headers=self.acs_headers,
             method='GET'
         )
-        self.logger.info('Polling for transcription success')
+        logger.info('Polling for transcription success')
         while True:
             with self.http_retry.urlopen(req) as response:
                 result = json.load(response)
                 status = result['status']
                 if status == 'Succeeded':
-                    self.logger.debug('Transcription succeeded')
+                    logger.debug('Transcription succeeded')
                     break
                 elif status == 'Failed':
-                    self.logger.debug('Transcription failed')
+                    logger.debug('Transcription failed')
                     break
                 else:
                     retry_after = int(response.info()['Retry-After'])
-                    self.logger.info(
+                    logger.info(
                         'Status is {}. Retry in {} seconds.'.format(
                             status,
                             retry_after
@@ -199,7 +202,7 @@ class AzureConnection(object):
             method='GET'
         )
 
-        self.logger.info(f'Retrieving transcription file location from {results_uri}')
+        logger.info(f'Retrieving transcription file location from {results_uri}')
         with self.http_retry.urlopen(req) as response:
             files = json.load(response)
 
@@ -207,12 +210,12 @@ class AzureConnection(object):
             v['links']['contentUrl'] for v in files['values']
             if v['kind'] == 'Transcription'
         )
-        self.logger.info(f'Retrieving transcription result from {transcript_uri}')
+        logger.info(f'Retrieving transcription result from {transcript_uri}')
         with self.http_retry.urlopen(transcript_uri) as response:
             return json.load(response)
 
     def delete_transcription(self, location):
-        self.logger.info('Deleting transcription...')
+        logger.info('Deleting transcription...')
         req = request.Request(
             url=location,
             headers=self.acs_headers,
@@ -224,10 +227,10 @@ class AzureConnection(object):
         except mpf.DetectionException:
             # If the transcription task doesn't exist, ignore
             #  This is a temporary solution, to be fixed with v3.0
-            self.logger.warning(
+            logger.warning(
                 f'Transcription task deletion failed. This transcription '
                 f'should be deleted manually: {location}')
 
     def delete_blob(self, recording_id):
-        self.logger.info('Deleting blob...')
+        logger.info('Deleting blob...')
         self.container_client.delete_blob(recording_id)
