@@ -37,6 +37,55 @@ import mpf_component_util as util
 from .azure_connect import AzureConnection, AcsServerInfo
 
 
+def parse_segments_str(
+        segments_string: str,
+        media_start_time: Optional[int] = 0,
+        media_stop_time: Optional[int] = None
+) -> Optional[List[Tuple[int, int]]]:
+    """ Converts a string of the form
+            'start_1-stop_1, start_2-stop_2, ..., start_n-stop_n'
+        where start_x and stop_x are in milliseconds, Olive-compatible
+        AnnotationRegion object list.
+    """
+    try:
+        segments = []
+        start_stops = segments_string.split(",")
+        for ss in start_stops:
+            start, stop = ss.strip().split("-")
+            start = int(start)
+            stop = int(stop)
+
+            # Limit to media start and stop times. If entirely
+            #  outside the limits, drop the segment
+            if media_stop_time is not None and start > media_stop_time:
+                continue
+            if stop < media_start_time:
+                continue
+            start = max(start, media_start_time)
+            if media_stop_time is not None:
+                stop = min(stop, media_stop_time)
+
+            # Offset by media_start_time so that segments are
+            #  relative to the transcoded waveform
+            start -= media_start_time
+            stop -= media_start_time
+
+            segments.append((start, stop))
+    except Exception as e:
+        raise mpf.DetectionException(
+            'Exception raised while parsing voiced segments '
+            f'"{segments_string}": {e}',
+            mpf.DetectionError.INVALID_PROPERTY
+        )
+
+    # If all the voiced segments are outside the time range, signal that
+    #  we should halt and return an empty list.
+    if not segments:
+        return None
+
+    return sorted(segments)
+
+
 class SpeakerInfo(NamedTuple):
     speaker_id: str
     gender: str
@@ -51,55 +100,6 @@ class AcsSpeechDetectionProcessor(object):
     def __init__(self, logger):
         self.logger = logger
         self.acs = AzureConnection(logger)
-
-    @staticmethod
-    def parse_segments_str(
-                segments_string: str,
-                media_start_time: Optional[int] = 0,
-                media_stop_time: Optional[int] = None
-            ) -> Optional[List[Tuple[int, int]]]:
-        """ Converts a string of the form
-                'start_1-stop_1, start_2-stop_2, ..., start_n-stop_n'
-            where start_x and stop_x are in milliseconds, Olive-compatible
-            AnnotationRegion object list.
-        """
-        try:
-            segments = []
-            start_stops = segments_string.split(",")
-            for ss in start_stops:
-                start, stop = ss.strip().split("-")
-                start = int(start)
-                stop = int(stop)
-
-                # Limit to media start and stop times. If entirely
-                #  outside the limits, drop the segment
-                if media_stop_time is not None and start > media_stop_time:
-                    continue
-                if stop < media_start_time:
-                    continue
-                start = max(start, media_start_time)
-                if media_stop_time is not None:
-                    stop = min(stop, media_stop_time)
-
-                # Offset by media_start_time so that segments are
-                #  relative to the transcoded waveform
-                start -= media_start_time
-                stop -= media_start_time
-
-                segments.append((start, stop))
-        except Exception as e:
-            raise mpf.DetectionException(
-                'Exception raised while parsing voiced segments '
-                f'"{segments_string}": {e}',
-                mpf.DetectionError.INVALID_PROPERTY
-            )
-
-        # If all the voiced segments are outside the time range, signal that
-        #  we should halt and return an empty list.
-        if not segments:
-            return None
-
-        return sorted(segments)
 
     @staticmethod
     def desegment_times(
@@ -155,21 +155,15 @@ class AcsSpeechDetectionProcessor(object):
 
             yield utterance_start, utterance_stop, zip(word_starts, word_ends)
 
-    def process_audio(
-                self, target_file: str, start_time: int,
-                stop_time: Optional[int], job_name: str,
-                server_info: AcsServerInfo, language: str, diarize: bool,
-                cleanup: bool, blob_access_time: int, expiry: int,
-                speaker: Optional[SpeakerInfo] = None
-            ) -> List[mpf.AudioTrack]:
-        self.acs.update_acs(server_info)
+    def process_audio(self, job_config) -> List[mpf.AudioTrack]:
+        self.acs.update_acs(job_config.server_info)
 
-        self.logger.debug('Loading file: ' + target_file)
+        self.logger.debug('Loading file: ' + job_config.target_file)
         audio_bytes = util.transcode_to_wav(
-            target_file,
-            start_time=start_time,
-            stop_time=stop_time,
-            segments=speaker.speech_segs if speaker else None
+            job_config.target_file,
+            start_time=job_config.start_time,
+            stop_time=job_config.stop_time,
+            segments=job_config.speaker.speech_segs if job_config.speaker else None
         )
 
         try:
@@ -178,7 +172,7 @@ class AcsSpeechDetectionProcessor(object):
             recording_url = self.acs.upload_file_to_blob(
                 audio_bytes=audio_bytes,
                 recording_id=recording_id,
-                blob_access_time=blob_access_time
+                blob_access_time=job_config.blob_access_time
             )
         except mpf.DetectionException:
             raise
@@ -188,25 +182,26 @@ class AcsSpeechDetectionProcessor(object):
                 mpf.DetectionError.DETECTION_FAILED
             )
 
+        diarize = job_config.diarize
         output_loc = None
         while output_loc is None:
             try:
                 self.logger.info('Submitting speech-to-text job to ACS')
                 output_loc = self.acs.submit_batch_transcription(
                     recording_url=recording_url,
-                    job_name=job_name,
+                    job_name=job_config.job_name,
                     diarize=diarize,
-                    language=language,
-                    expiry=expiry
+                    language=job_config.language,
+                    expiry=job_config.expiry
                 )
             except Exception as e:
                 if 'This locale does not support diarization' in str(e):
                     self.logger.warning(
-                        f'Locale "{language}" does not support diarization. '
+                        f'Locale "{job_config.language}" does not support diarization. '
                         'Completing job with diarization disabled.')
                     diarize = False
                 else:
-                    if cleanup:
+                    if job_config.cleanup:
                         self.logger.info('Marking file blob for deletion')
                         self.acs.delete_blob(recording_id)
                     raise
@@ -224,7 +219,7 @@ class AcsSpeechDetectionProcessor(object):
             transcription = self.acs.get_transcription(result)
             self.logger.info('Speech-to-text processing complete')
         finally:
-            if cleanup:
+            if job_config.cleanup:
                 self.logger.info('Marking file blob for deletion')
                 self.acs.delete_blob(recording_id)
             self.logger.info('Deleting transcript')
@@ -233,7 +228,7 @@ class AcsSpeechDetectionProcessor(object):
         utterances = transcription['recognizedPhrases']
         desegmented_times = self.desegment_times(
             utterances=utterances,
-            speaker=speaker)
+            speaker=job_config.speaker)
 
         self.logger.info('Completed process audio')
         self.logger.info('Creating AudioTracks')
@@ -265,13 +260,13 @@ class AcsSpeechDetectionProcessor(object):
                 SPEAKER_ID=speaker_id,
                 TRANSCRIPT=display,
                 WORD_CONFIDENCES=word_confidences,
-                DECODED_LANGUAGE=language,
+                DECODED_LANGUAGE=job_config.language,
                 WORD_SEGMENTS=word_segments
             )
 
-            if speaker is not None:
+            if job_config.speaker is not None:
                 # If feed-forward track exists, use provided speaker info
-                ldict = speaker.language_scores
+                ldict = job_config.speaker.language_scores
                 languages = [n for n, s in ldict.items()]
                 languages = sorted(
                     languages,
@@ -283,9 +278,9 @@ class AcsSpeechDetectionProcessor(object):
 
                 # Add or update properties according to fed-forward info
                 properties.update(
-                    SPEAKER_ID=speaker.speaker_id,
-                    GENDER=speaker.gender,
-                    GENDER_CONFIDENCE=speaker.gender_score,
+                    SPEAKER_ID=job_config.speaker.speaker_id,
+                    GENDER=job_config.speaker.gender,
+                    GENDER_CONFIDENCE=job_config.speaker.gender_score,
                     SPEAKER_LANGUAGES=language_labels,
                     SPEAKER_LANGUAGE_CONFIDENCES=language_confs
                 )
