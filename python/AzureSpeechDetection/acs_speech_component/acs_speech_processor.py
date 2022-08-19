@@ -158,9 +158,9 @@ class AcsSpeechDetectionProcessor(object):
     def process_audio(self, job_config) -> List[mpf.AudioTrack]:
         self.acs.update_acs(job_config.server_info)
 
-        self.logger.debug('Loading file: ' + job_config.target_file)
+        self.logger.debug(f'Loading file: {job_config.target_file}')
         audio_bytes = util.transcode_to_wav(
-            job_config.target_file,
+            str(job_config.target_file),
             start_time=job_config.start_time,
             stop_time=job_config.stop_time,
             segments=job_config.speaker.speech_segs if job_config.speaker else None
