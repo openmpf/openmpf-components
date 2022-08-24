@@ -56,6 +56,10 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
         self.cleanup: bool
         super().__init__(job)
 
+        if self.is_feed_forward_job:
+            self.diarize = False
+            self.language = self.speaker.language
+
     def _add_feed_forward_properties(self, job: Union[mpf.AudioJob, mpf.VideoJob]):
         super()._add_feed_forward_properties(job)
 
@@ -146,9 +150,6 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
             default_value=True,
             prop_type=bool
         )
-        if self.is_feed_forward_job:
-            self.diarize = False
-            self.language = self.speaker.language
 
         self.cleanup = mpf_util.get_property(
             properties=job_properties,
