@@ -29,8 +29,10 @@ from math import floor, ceil
 from typing import Union, List
 
 import mpf_component_api as mpf
-from .acs_speech_processor import AcsSpeechDetectionProcessor
-from .job_parsing import JobConfig, TriggerMismatch
+import mpf_component_util as mpf_util
+
+from acs_speech_component.acs_speech_processor import AcsSpeechDetectionProcessor
+from acs_speech_component.job_parsing import AzureJobConfig
 
 
 class MPFJobNameLoggerAdapter(logging.LoggerAdapter):
@@ -66,8 +68,8 @@ class AcsSpeechComponent(object):
                 job: Union[mpf.AudioJob, mpf.VideoJob]
             ) -> List[mpf.AudioTrack]:
         try:
-            job_config = JobConfig(job)
-        except TriggerMismatch as e:
+            job_config = AzureJobConfig(job)
+        except mpf_util.TriggerMismatch as e:
             logger.info(f"Feed-forward track does not meet trigger condition: {e}")
             raise
         except Exception as e:
@@ -124,7 +126,7 @@ class AcsSpeechComponent(object):
 
         try:
             return self.get_detections_from_job(job)
-        except TriggerMismatch:
+        except mpf_util.TriggerMismatch:
             return [job.feed_forward_track]
 
     def get_detections_from_video(
@@ -145,7 +147,7 @@ class AcsSpeechComponent(object):
 
         try:
             audio_tracks = self.get_detections_from_job(job)
-        except TriggerMismatch:
+        except mpf_util.TriggerMismatch:
             return [job.feed_forward_track]
 
         try:

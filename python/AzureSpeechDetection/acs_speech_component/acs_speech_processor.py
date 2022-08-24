@@ -34,7 +34,8 @@ from bisect import bisect_right
 import mpf_component_api as mpf
 import mpf_component_util as util
 
-from .azure_connect import AzureConnection, AcsServerInfo
+from acs_speech_component.azure_connect import AzureConnection
+from acs_speech_component.job_parsing import AzureJobConfig
 
 
 def parse_segments_str(
@@ -155,7 +156,7 @@ class AcsSpeechDetectionProcessor(object):
 
             yield utterance_start, utterance_stop, zip(word_starts, word_ends)
 
-    def process_audio(self, job_config) -> List[mpf.AudioTrack]:
+    def process_audio(self, job_config: AzureJobConfig) -> List[mpf.AudioTrack]:
         self.acs.update_acs(job_config.server_info)
 
         self.logger.debug(f'Loading file: {job_config.target_file}')
