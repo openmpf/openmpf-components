@@ -86,35 +86,10 @@ class AcsSpeechComponent(object):
             logger.exception(f'Exception raised while processing audio: {e}')
             raise
 
-        if isinstance(job, mpf.VideoJob):
-            t0, t1 = job.start_frame, job.stop_frame
-        elif isinstance(job, mpf.AudioJob):
-            t0, t1 = job.start_time, job.stop_time
-        else:
-            raise mpf.DetectionException(
-                "Can only process AudioJobs and VideoJobs",
-                mpf.DetectionError.UNSUPPORTED_DATA_TYPE
-            )
-
-        # If we suspect this is a subjob, overwrite SPEAKER_ID with 0 to
-        #  avoid confusion
-        overwrite_ids = job.feed_forward_track is not None
-        if t1 > 0:
-            if t0 > 0:
-                overwrite_ids = True
-            elif 'FRAME_COUNT' in job.media_properties:
-                if t1 < int(job.media_properties['FRAME_COUNT']) - 1:
-                    overwrite_ids = True
-            elif 'DURATION' in job.media_properties:
-                if t1 < float(job.media_properties['DURATION']):
-                    overwrite_ids = True
-        else:
-            t1 = 'EOF'
-
         for track in audio_tracks:
             sid = track.detection_properties['SPEAKER_ID']
-            track.detection_properties['LONG_SPEAKER_ID'] = f"{t0}-{t1}-{sid}"
-            if overwrite_ids:
+            track.detection_properties['LONG_SPEAKER_ID'] = job_config.speaker_id_prefix + sid
+            if job_config.overwrite_ids:
                 track.detection_properties['SPEAKER_ID'] = '0'
 
         logger.info('Processing complete. Found %d tracks.' % len(audio_tracks))
