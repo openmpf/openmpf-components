@@ -72,6 +72,9 @@ class AcsSpeechComponent(object):
         except mpf_util.TriggerMismatch as e:
             logger.info(f"Feed-forward track does not meet trigger condition: {e}")
             raise
+        except mpf_util.NoInBoundsSpeechSegments as e:
+            logger.warning(f"Feed-forward track does not contain in-bounds segments: {e}")
+            raise
         except Exception as e:
             logger.exception(f'Exception raised while parsing properties: {e}')
             raise
@@ -117,10 +120,7 @@ class AcsSpeechComponent(object):
         logger.info('Processing complete. Found %d tracks.' % len(audio_tracks))
         return audio_tracks
 
-    def get_detections_from_audio(
-                self,
-                job: mpf.AudioJob
-            ) -> List[mpf.AudioTrack]:
+    def get_detections_from_audio(self, job: mpf.AudioJob) -> List[mpf.AudioTrack]:
         logger.extra['job_name'] = job.job_name
         logger.info('Received audio job')
 
