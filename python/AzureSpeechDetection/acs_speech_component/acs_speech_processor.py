@@ -239,7 +239,7 @@ class AcsSpeechDetectionProcessor(object):
         audio_tracks = []
         for utt, times in zip(utterances, desegmented_times):
             # Speaker ID returned by Azure diarization, default 0
-            speaker_id = utt.get('speaker', '0')
+            speaker_id = str(utt.get('speaker', '0'))
 
             # Transcript text
             display = utt['nBest'][0]['display']
