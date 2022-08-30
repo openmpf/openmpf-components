@@ -35,21 +35,10 @@ from acs_speech_component.acs_speech_processor import AcsSpeechDetectionProcesso
 from acs_speech_component.job_parsing import AzureJobConfig
 
 
-class MPFJobNameLoggerAdapter(logging.LoggerAdapter):
-    def process(self, msg, kwargs):
-        if 'job_name' in kwargs:
-            job_name = kwargs.pop('job_name')
-        elif self.extra is not None and 'job_name' in self.extra:
-            job_name = self.extra['job_name']
-        else:
-            return msg, kwargs
-        return '[%s] %s' % (job_name, msg), kwargs
 
 
-logger = MPFJobNameLoggerAdapter(
-    logging.getLogger('AcsSpeechComponent'),
-    extra={}
-)
+
+logger = logging.getLogger('AcsSpeechComponent')
 
 logging.getLogger('azure').setLevel('WARN')
 
@@ -58,9 +47,8 @@ class AcsSpeechComponent(object):
     detection_type = 'SPEECH'
 
     def __init__(self):
-        logger.extra = {}
         logger.info('Creating instance of AcsSpeechDetectionProcessor')
-        self.processor = AcsSpeechDetectionProcessor(logger)
+        self.processor = AcsSpeechDetectionProcessor()
         logger.info('AcsSpeechDetection created')
 
     def get_detections_from_job(
@@ -96,7 +84,6 @@ class AcsSpeechComponent(object):
         return audio_tracks
 
     def get_detections_from_audio(self, job: mpf.AudioJob) -> List[mpf.AudioTrack]:
-        logger.extra['job_name'] = job.job_name
         logger.info('Received audio job')
 
         try:
@@ -108,7 +95,6 @@ class AcsSpeechComponent(object):
                 self,
                 job: mpf.VideoJob
             ) -> List[mpf.VideoTrack]:
-        logger.extra['job_name'] = job.job_name
         logger.info('Received video job')
 
         if 'FPS' not in job.media_properties:

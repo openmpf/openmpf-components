@@ -24,6 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import logging
 import uuid
 from typing import (
     Optional, List, Iterable, Tuple, Mapping, NamedTuple, Any
@@ -96,11 +97,13 @@ class SpeakerInfo(NamedTuple):
     speech_segs: List[Tuple[float, float]]
 
 
+
+logger = logging.getLogger('AcsSpeechComponent')
+
 class AcsSpeechDetectionProcessor(object):
 
-    def __init__(self, logger):
-        self.logger = logger
-        self.acs = AzureConnection(logger)
+    def __init__(self):
+        self.acs = AzureConnection()
 
     @staticmethod
     def desegment_times(
@@ -159,7 +162,7 @@ class AcsSpeechDetectionProcessor(object):
     def process_audio(self, job_config: AzureJobConfig) -> List[mpf.AudioTrack]:
         self.acs.update_acs(job_config.server_info)
 
-        self.logger.debug(f'Loading file: {job_config.target_file}')
+        logger.debug(f'Loading file: {job_config.target_file}')
         audio_bytes = util.transcode_to_wav(
             str(job_config.target_file),
             start_time=job_config.start_time,
@@ -168,7 +171,7 @@ class AcsSpeechDetectionProcessor(object):
         )
 
         try:
-            self.logger.info('Uploading file to blob')
+            logger.info('Uploading file to blob')
             recording_id = str(uuid.uuid4())
             recording_url = self.acs.upload_file_to_blob(
                 audio_bytes=audio_bytes,
@@ -187,7 +190,7 @@ class AcsSpeechDetectionProcessor(object):
         output_loc = None
         while output_loc is None:
             try:
-                self.logger.info('Submitting speech-to-text job to ACS')
+                logger.info('Submitting speech-to-text job to ACS')
                 output_loc = self.acs.submit_batch_transcription(
                     recording_url=recording_url,
                     job_name=job_config.job_name,
@@ -197,18 +200,18 @@ class AcsSpeechDetectionProcessor(object):
                 )
             except Exception as e:
                 if 'This locale does not support diarization' in str(e):
-                    self.logger.warning(
+                    logger.warning(
                         f'Locale "{job_config.language}" does not support diarization. '
                         'Completing job with diarization disabled.')
                     diarize = False
                 else:
                     if job_config.cleanup:
-                        self.logger.info('Marking file blob for deletion')
+                        logger.info('Marking file blob for deletion')
                         self.acs.delete_blob(recording_id)
                     raise
 
         try:
-            self.logger.info('Retrieving transcription')
+            logger.info('Retrieving transcription')
             result = self.acs.poll_for_result(output_loc)
 
             if result['status'] == 'Failed':
@@ -218,12 +221,12 @@ class AcsSpeechDetectionProcessor(object):
                 )
 
             transcription = self.acs.get_transcription(result)
-            self.logger.info('Speech-to-text processing complete')
+            logger.info('Speech-to-text processing complete')
         finally:
             if job_config.cleanup:
-                self.logger.info('Marking file blob for deletion')
+                logger.info('Marking file blob for deletion')
                 self.acs.delete_blob(recording_id)
-            self.logger.info('Deleting transcript')
+            logger.info('Deleting transcript')
             self.acs.delete_transcription(output_loc)
 
         utterances = transcription['recognizedPhrases']
@@ -231,8 +234,8 @@ class AcsSpeechDetectionProcessor(object):
             utterances=utterances,
             speaker=job_config.speaker)
 
-        self.logger.info('Completed process audio')
-        self.logger.info('Creating AudioTracks')
+        logger.info('Completed process audio')
+        logger.info('Creating AudioTracks')
         audio_tracks = []
         for utt, times in zip(utterances, desegmented_times):
             # Speaker ID returned by Azure diarization, default 0
@@ -294,5 +297,5 @@ class AcsSpeechDetectionProcessor(object):
             )
             audio_tracks.append(track)
 
-        self.logger.info('Completed processing transcription results')
+        logger.info('Completed processing transcription results')
         return audio_tracks

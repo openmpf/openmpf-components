@@ -257,7 +257,7 @@ std::vector<MPFVideoTrack> OcvDnnDetection::getDetections(const MPFVideoJob &job
         video_cap.ReverseTransform(track);
     }
 
-    LOG4CXX_INFO(logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
+    LOG4CXX_INFO(logger_, "Processing complete. Found " << tracks.size() << " tracks.");
 
     return tracks;
 }
@@ -311,7 +311,7 @@ std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &
             }
         }
 
-        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Processing complete. Found " << locations.size() << " detections.");
+        LOG4CXX_INFO(logger_, "Processing complete. Found " << locations.size() << " detections.");
 
         return locations;
     }
