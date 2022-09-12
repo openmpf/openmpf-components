@@ -36,6 +36,10 @@ import mpf_component_util as util
 
 from acs_speech_component.azure_connect import AzureConnection
 from acs_speech_component.job_parsing import AzureJobConfig
+from acs_speech_component.azure_utils import ISO6393_TO_BCP47
+
+
+BCP47_TO_ISO6393 = {bcp: iso for iso, bcps in ISO6393_TO_BCP47.items() for bcp in bcps}
 
 
 def parse_segments_str(
@@ -261,7 +265,8 @@ class AcsSpeechDetectionProcessor(object):
                 SPEAKER_ID=speaker_id,
                 TRANSCRIPT=display,
                 WORD_CONFIDENCES=word_confidences,
-                DECODED_LANGUAGE=job_config.language,
+                DECODED_LANGUAGE=BCP47_TO_ISO6393.get(job_config.language, 'UNKNOWN'),
+                BCP_LANGUAGE=job_config.language,
                 WORD_SEGMENTS=word_segments
             )
 
