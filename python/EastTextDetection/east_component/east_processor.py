@@ -24,8 +24,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import numpy as np
-import cv2
 import os
 
 import mpf_component_api as mpf
@@ -45,8 +43,7 @@ _layer_names = ['feature_fusion/concat_3', 'feature_fusion/Conv_7/Sigmoid']
 _mean_rgb = (123.68, 116.78, 103.94)
 
 class EastProcessor(object):
-    def __init__(self, logger):
-        self.logger = logger
+    def __init__(self):
         self._blob_width = None
         self._blob_height = None
         self._batch_size = None

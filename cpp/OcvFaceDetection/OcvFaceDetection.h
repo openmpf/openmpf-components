@@ -112,8 +112,7 @@ private:
 
     void AdjustRectToEdges(cv::Rect &rect, const cv::Mat &src);
 
-    void LogDetection(const MPF::COMPONENT::MPFImageLocation& face,
-                      const std::string& job_name);
+    void LogDetection(const MPF::COMPONENT::MPFImageLocation& face);
 
     void CloseWindows();
 
