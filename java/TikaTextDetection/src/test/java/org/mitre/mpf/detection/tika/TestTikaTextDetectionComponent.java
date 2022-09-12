@@ -108,6 +108,7 @@ public class TestTikaTextDetectionComponent {
         Map<String, String> mediaProperties = new HashMap<>();
         jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
         jobProperties.put("LIST_ALL_PAGES", "true");
+        jobProperties.put("MIN_LANGUAGES", "3");
 
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
         boolean debug = false;
@@ -132,7 +133,7 @@ public class TestTikaTextDetectionComponent {
 
         // Test language extraction
         assertSection(tracks.get(0), "1", "1", "English", "Testing Text Detection");
-        assertSection(tracks.get(3), "2", "2", "Japanese", "ジアゼパム");
+        assertSection(tracks.get(3), "2", "2", "Japanese", "ジアゼパム", "Traditional Chinese, Maori");
 
         // Test no detections
         assertTrue(tracks.get(9).getDetectionProperties().get("TEXT").isEmpty());
@@ -152,6 +153,7 @@ public class TestTikaTextDetectionComponent {
         jobProperties.put("LIST_ALL_PAGES", "true");
         jobProperties.put("LANG_DETECTOR", "optimaize");
         jobProperties.put("LANG_DETECTOR_FILTER", "true");
+        jobProperties.put("MIN_LANGUAGES", "0");
 
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
         boolean debug = false;
@@ -342,5 +344,13 @@ public class TestTikaTextDetectionComponent {
         assertEquals(section, track.getDetectionProperties().get("SECTION_NUM"));
         assertEquals(language, track.getDetectionProperties().get("TEXT_LANGUAGE"));
         assertThat(track.getDetectionProperties().get("TEXT"), containsString(text));
+    }
+
+    private void assertSection(MPFGenericTrack track, String page, String section, String language, String text, String secondaryLanguage) {
+        assertEquals(page, track.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals(section, track.getDetectionProperties().get("SECTION_NUM"));
+        assertEquals(language, track.getDetectionProperties().get("TEXT_LANGUAGE"));
+        assertThat(track.getDetectionProperties().get("TEXT"), containsString(text));
+        assertEquals(secondaryLanguage, track.getDetectionProperties().get("SECONDARY_TEXT_LANGUAGES"));
     }
 }

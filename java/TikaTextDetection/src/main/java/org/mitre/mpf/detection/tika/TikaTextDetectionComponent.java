@@ -31,6 +31,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.language.detect.LanguageDetector;
+import org.apache.tika.language.detect.LanguageConfidence;
 import org.apache.tika.langdetect.optimaize.OptimaizeLangDetector;
 import org.apache.tika.langdetect.opennlp.OpenNLPDetector;
 import org.apache.tika.langdetect.tika.TikaLanguageDetector;
@@ -103,6 +104,8 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
         // Set language filtering limit.
         int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);
+        int maxLang = MapUtils.getIntValue(properties, "MAX_REASONABLE_LANGUAGES", -1);
+        int minLang = MapUtils.getIntValue(properties, "MIN_LANGUAGES", 2);
 
         // Store metadata as a unique track.
         // Disabled by default for format consistency.
@@ -200,32 +203,59 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                 // Process text languages.
                 if (text.length() >= charLimit) {
-                    LanguageResult langResult;
-                    String language;
-                    try{
-                        langResult = identifier.detect(text);
-                        language = langResult.getLanguage();
+                    List<LanguageResult> langResultList;
+                    langResultList = identifier.detectAll(text);
+
+                    List<String> langList = new ArrayList<String>();
+                    List<String> confidenceList = new ArrayList<String>();
+
+                    maxLang = maxLang > langResultList.size() || maxLang < 1 ? langResultList.size(): maxLang;
+                    minLang = minLang > langResultList.size() ? langResultList.size() : minLang;
+
+                    minLang = minLang <= 0 ? 0 : minLang;
+                    maxLang = maxLang < minLang ? minLang: maxLang;
+
+                    for (int i=0; i < maxLang; i++) {
+                        LanguageResult langResult = langResultList.get(i);
+
+                        String language = langResult.getLanguage();
+                        LanguageConfidence langConfidence = langResult.getConfidence();
+
                         if (langMap.containsKey(language)) {
                             language = langMap.get(language);
                         }
-                        if (!langResult.isReasonablyCertain() && filterReasonableDetections) {
-                            language = null;
+                        if (i >= minLang && !langResult.isReasonablyCertain()) {
+                            break;
                         }
-                    } catch (IndexOutOfBoundsException e) {
-                        // TODO: Resolve if possible.
-                        // Right now, the legacy Tika detector is throwing index errors with short snippets of text.
-                        // the other two detectors are able to detect text properly and do not throw this error.
-                        language = "Unknown";
-                        String errorMsg = "Error detecting language using " + langOption + " detector.";
-                        log.error(errorMsg, e);
+                        if (language == null) {
+                            break;
+                        }
+                        langList.add(language);
+                        confidenceList.add(langConfidence.toString());
                     }
-                    if (language != null && language.length() > 0) {
-                        genericDetectionProperties.put("TEXT_LANGUAGE", language);
-                    } else {
+
+                    if(langList.size() < 1) {
                         genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                        genericDetectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", "-1");
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGES", "Unknown");
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGE_CONFIDENCES", "NONE");
+                    } else if(langList.size() == 1) {
+                        genericDetectionProperties.put("TEXT_LANGUAGE", langList.get(0));
+                        genericDetectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", confidenceList.get(0));
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGES", "Unknown");
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGE_CONFIDENCES", "NONE");
+                    } else {
+                        genericDetectionProperties.put("TEXT_LANGUAGE", langList.remove(0));
+                        genericDetectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", confidenceList.remove(0));
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGES", String.join(", ", langList));
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGE_CONFIDENCES",
+                                                        String.join(", ", confidenceList));
                     }
                 } else {
                     genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                    genericDetectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", "NONE");
+                    genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGES", "Unknown");
+                    genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGE_CONFIDENCES", "NONE");
                 }
 
                 if (supportsPageNumbers) {
