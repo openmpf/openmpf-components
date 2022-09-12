@@ -6,11 +6,11 @@
   ~ under contract, and is subject to the Rights in Data-General Clause       ~
   ~ 52.227-14, Alt. IV (DEC 2007).                                            ~
   ~                                                                           ~
-  ~ Copyright 2021 The MITRE Corporation. All Rights Reserved.                ~
+  ~ Copyright 2022 The MITRE Corporation. All Rights Reserved.                ~
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
 
 <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ~ Copyright 2021 The MITRE Corporation                                      ~
+  ~ Copyright 2022 The MITRE Corporation                                      ~
   ~                                                                           ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");           ~
   ~ you may not use this file except in compliance with the License.          ~
@@ -62,20 +62,22 @@
         </dependency>
         <dependency>
             <groupId>org.apache.tika</groupId>
-            <artifactId>tika-parser-scientific-module</artifactId>
-            <version>2.4.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.tika</groupId>
             <artifactId>tika-parser-sqlite3-module</artifactId>
             <version>2.4.1</version>
         </dependency>
         <dependency>
-            <!-- Please note that Apache Tika versions 2.0 and above now support multiple language detection options: -->
-            <!-- https://github.com/apache/tika/tree/main/tika-langdetect -->
-            <!-- TODO: Investigate other language detection capabilities and update this library if needed.-->
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-langdetect-optimaize</artifactId>
+            <version>2.4.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-langdetect-opennlp</artifactId>
+            <version>2.4.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-langdetect-tika</artifactId>
             <version>2.4.1</version>
         </dependency>
         <dependency>

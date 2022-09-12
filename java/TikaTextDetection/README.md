@@ -39,3 +39,192 @@ The following format-specific behaviors were observed using Tika 1.28.1 on Ubunt
 
 - OpenDocument Spreadsheet documents will generate one track per cell, as well as some additional tracks with
   date and time information, "Page /", and "???".
+
+# Language detection parameters
+
+Tika supports the following language detection properties:
+
+- `MAX_REASONABLE_LANGUAGES`: Specifies maximum number of top detected languages. 
+When set to 0 or below, allow any number of language results that are marked as reasonably certain by Tika.
+
+- `MIN_LANGUAGES`: When set to a positive integer, attempt to return specified number of top languages, even if some are not marked as reasonably certain. Non-positive values disable this property to only accept reasonable predictions.
+
+For instance, if `MAX_REASONABLE_LANGUAGES` is set to 5 and `MIN_LANGUAGES` is set to 2, the component will always attempt to return the top 2 predicted languages, followed by the next 3 if they are marked as reasonably certain.
+
+If `MAX_REASONABLE_LANGUAGES` is set to -1 and `MIN_LANGUAGES` is set to 2 (default), the component will always attempt to return the top predicted language and a secondary language, even if they are not set to reasonably confident by Tika.
+
+Please note that the behavior of `MIN_LANGUAGES` is different depending on the language detector:
+- The Optimaize language detector will often produce the exact number of `MIN_LANGUAGES` requested by a user.
+- The OpenNLP language detector tends to only produce 1 language unless `MIN_LANGUAGES` is set to 2 or greater. However, low confidence results are still sometimes thrown out even if the user requested additional language predictions. (This indicates that OpenNLP uses a different filtering mechanism which could be investigated further).
+
+Language results are stored as follows:
+- `TEXT_LANGUAGE` : The primary detected language for a given text. Set to "Unknown" if no language is identified.
+- `TEXT_LANGUAGE_CONFIDENCE` : A confidence setting for the primary language ranging from `NONE` to `HIGH` confidence. See [note here.](https://tika.apache.org/1.21/api/org/apache/tika/language/detect/LanguageConfidence.html)
+
+Secondary languages and their confidence scores are listed as comma separated strings:
+- `SECONDARY_TEXT_LANGUAGES` : A list of secondary languages (from greatest to least confidence) separated by ", " delimiters.
+    Set to "Unknown" if no language is identified.
+- `SECONDARY_TEXT_LANGUAGE_CONFIDENCES` : A confidence list corresponding to the secondary detected languages in order (also separated by commas). 
+
+# Supported Language Detectors:
+
+This component supports the following language detectors. Users can select their preferred detector using
+the `LANG_DETECTOR` option:
+                                                                                                                                                                          
+- `LANG_DETECTOR = opennlp`: [Apache Tika OpenNLP Language Detector](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/opennlp/OpenNLPDetector.html)           
+                                                                                                                                                                          
+  Apache Tika's latest in-house language detection capability based on OpenNLP's language detector.                                                                       
+  Uses Machine Learning (ML) models trained on the following datasets and supports 148 languages in total                                                                   
+    - [Leipzig corpus](https://wortschatz.uni-leipzig.de/en/download)                                                                                                     
+    - [cc-100](https://data.statmt.org/cc-100/)                                                                                                                           
+                                                                                                                                                                          
+  Supports almost every language in Optimaize and Tika Language Detectors except Aragonese.    
+
+
+- `LANG_DETECTOR = optimaize`: [Optimaize Language Detector](https://github.com/optimaize/language-detector)
+
+  Third party language detection project that supports 71 languages.
+  Predicts target language using N-gram frequency matching between input and language profiles.
+  Supports almost every language present in Tika's Language Detector except Esperanto.
+ Please note that Optimaize supports Punjabi/Panjabi while OpenNLP supports Western Punjabi/Panjabi.      
+   
+                                                                                                                                                          
+- (Depreciated) `LANG_DETECTOR = tika`: [Apache Tika Language Detector](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/tika/TikaLanguageDetector.html)     
+                                                                                                                                                           
+  Apache Tika's original in-house language detection capability.                                                                                           
+  Predicts target language using vector distance of trigrams between input string and language models.                                                     
+  Supports 28 languages (listed in following section).                                                                                                                                                                                                                                          
+  **NOTE: Developers have warned that this legacy detector is depreciated and won't work well on short snippets of text.**                                 
+
+       
+# Supported Language List:
+
+- Tika Language Detector:
+  - Belarusian
+  - Catalan
+  - Danish
+  - German
+  - Esperanto
+  - Estonian
+  - Greek
+  - English
+  - Spanish
+  - Finnish
+  - French
+  - Persian
+  - Galician
+  - Hungarian
+  - Icelandic
+  - Italian
+  - Lithuanian
+  - Dutch
+  - Norwegian
+  - Polish
+  - Portuguese
+  - Romanian
+  - Russian
+  - Slovakian
+  - Slovenian
+  - Swedish
+  - Thai
+  - Ukrainian
+                 
+
+- Optimaize Language Detector:
+  - Every language in Tika's language detector, except Esperanto.
+  - Afrikaans
+  - **Aragonese** (Unique to this detector)
+  - Arabic
+  - Asturian
+  - Breton
+  - Bulgarian
+  - Bengali
+  - Czech
+  - Welsh
+  - Basque
+  - Irish
+  - Gujarati
+  - Hebrew
+  - Hindi
+  - Croatian
+  - Haitian
+  - Indonesian
+  - Japanese
+  - Khmer
+  - Kannada
+  - Korean
+  - Latvian
+  - Macedonian
+  - Malayalam
+  - Marathi
+  - Malay
+  - Maltese
+  - Nepali
+  - Occitan
+  - Punjabi
+  - Slovak
+  - Slovene
+  - Somali
+  - Albanian
+  - Serbian
+  - Swahili
+  - Tamil
+  - Telugu
+  - Tagalog
+  - Turkish
+  - Urdu
+  - Vietnamese
+  - Walloon
+  - Yiddish
+  - Simplified Chinese
+  - Traditional Chinese
+                        
+
+- OpenNLP Language Detector:
+  - Every language in Tika and Optimaize Language Detectors except Aragonese. 
+  - Bihari languages 
+  - Swiss German
+  - Turkmen
+  - Bashkir
+  - Mongolian
+  - Balinese
+  - Pushto
+  - Faroese
+  - Swati
+  - Min Nan Chinese
+  - Yoruba
+  - Scottish Gaelic
+  - Javanese
+  - Iranian Persian
+  - Esperanto
+  - Western Panjabi
+  - Standard Latvian
+  - Western Frisian
+  - Burmese
+  - Eastern Mari
+  - Paraguayan Guaraní
+  - Slovenian
+  - Cebuano
+  - Mandarin Chinese
+  - Kurdish
+  - Pedi
+  - Azerbaijani
+  - Uighur
+  - Minangkabau
+  - Tajik
+  - Uzbek
+  - Maori
+  - Sindhi
+  - Konkani
+  - Armenian
+  - Igbo
+  - Assamese
+  - Malay
+  - Low German
+  - Fulah
+  - Xhosa
+  - Standard Estonian
+  - Goan Konkani
+  - Lingala
+  - Dhivehi
+  - Zulu

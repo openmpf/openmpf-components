@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2022 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2021 The MITRE Corporation                                       *
+ * Copyright 2022 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -30,7 +30,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.tika.exception.TikaException;
+import org.apache.tika.language.detect.LanguageDetector;
+import org.apache.tika.language.detect.LanguageConfidence;
 import org.apache.tika.langdetect.optimaize.OptimaizeLangDetector;
+import org.apache.tika.langdetect.opennlp.OpenNLPDetector;
+import org.apache.tika.langdetect.tika.TikaLanguageDetector;
+
 import org.apache.tika.language.detect.LanguageResult;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
@@ -44,6 +49,7 @@ import org.xml.sax.SAXException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.IndexOutOfBoundsException;
 import java.util.*;
 
 public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
@@ -51,10 +57,11 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
     private static final Logger log = LoggerFactory.getLogger(TikaTextDetectionComponent.class);
 
     private static final Map<String, String> langMap;
+    private static final List<String> supportedLangDetectors = Arrays.asList("opennlp", "optimaize", "tika");
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     static {
-         langMap = Collections.unmodifiableMap(initLangMap());
+         langMap = Collections.unmodifiableMap(convertISO639());
     }
 
     // Handles the case where the media is a generic type.
@@ -97,6 +104,8 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
         // Set language filtering limit.
         int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);
+        int maxLang = MapUtils.getIntValue(properties, "MAX_REASONABLE_LANGUAGES", -1);
+        int minLang = MapUtils.getIntValue(properties, "MIN_LANGUAGES", 2);
 
         // Store metadata as a unique track.
         // Disabled by default for format consistency.
@@ -123,10 +132,41 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         }
 
         boolean listAllPages = MapUtils.getBooleanValue(properties, "LIST_ALL_PAGES", false);
+        String langOption = properties.getOrDefault("LANG_DETECTOR", "opennlp");
+        boolean filterReasonableDetections = MapUtils.getBooleanValue(properties, "LANG_DETECTOR_FILTER", false);
 
-        // Load language identifier.
-        OptimaizeLangDetector identifier = new OptimaizeLangDetector();
-        identifier.loadModels();
+        if (!supportedLangDetectors.contains(langOption))
+        {
+            log.warn(langOption + " language option not supported. Defaulting to `opennlp` language detector.");
+        }
+        LanguageDetector identifier;
+        if (langOption == "optimaize") {
+            identifier = new OptimaizeLangDetector();
+            try {
+                identifier.loadModels();
+            } catch (IOException e) {
+                String errorMsg = "Error loading Optimaize Language Model.";
+                log.error(errorMsg, e);
+                throw new MPFComponentDetectionError(MPFDetectionError.MPF_OTHER_DETECTION_ERROR_TYPE, errorMsg);
+            }
+        }
+        else if(langOption == "tika") {
+            //TODO: It appears that the legaacy tika detector has several issues procssing short sections of text.
+            //TODO: If not resolved soon, we should avoid adding this detector. Want to run more tests to confirm.
+            identifier = new TikaLanguageDetector();
+            try {
+                identifier.loadModels();
+            } catch (IOException e) {
+                String errorMsg = "Error loading Tika Language Model.";
+                log.error(errorMsg, e);
+                throw new MPFComponentDetectionError(MPFDetectionError.MPF_OTHER_DETECTION_ERROR_TYPE, errorMsg);
+            }
+        }
+        else {
+            // Default option.
+            // Note: loadModels() call is not needed, OpenNLP models are static.
+            identifier = new OpenNLPDetector();
+        }
 
         // Separate all output into separate pages. Tag each page by detected language.
         for (int p = 0; p < pageToSections.size(); p++) {
@@ -163,22 +203,59 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                 // Process text languages.
                 if (text.length() >= charLimit) {
-                    LanguageResult langResult = identifier.detect(text);
-                    String language = langResult.getLanguage();
+                    List<LanguageResult> langResultList;
+                    langResultList = identifier.detectAll(text);
 
-                    if (langMap.containsKey(language)) {
-                        language = langMap.get(language);
+                    List<String> langList = new ArrayList<String>();
+                    List<String> confidenceList = new ArrayList<String>();
+
+                    maxLang = maxLang > langResultList.size() || maxLang < 1 ? langResultList.size(): maxLang;
+                    minLang = minLang > langResultList.size() ? langResultList.size() : minLang;
+
+                    minLang = minLang <= 0 ? 0 : minLang;
+                    maxLang = maxLang < minLang ? minLang: maxLang;
+
+                    for (int i=0; i < maxLang; i++) {
+                        LanguageResult langResult = langResultList.get(i);
+
+                        String language = langResult.getLanguage();
+                        LanguageConfidence langConfidence = langResult.getConfidence();
+
+                        if (langMap.containsKey(language)) {
+                            language = langMap.get(language);
+                        }
+                        if (i >= minLang && !langResult.isReasonablyCertain()) {
+                            break;
+                        }
+                        if (language == null) {
+                            break;
+                        }
+                        langList.add(language);
+                        confidenceList.add(langConfidence.toString());
                     }
-                    if (!langResult.isReasonablyCertain()) {
-                        language = null;
-                    }
-                    if (language != null && language.length() > 0) {
-                        genericDetectionProperties.put("TEXT_LANGUAGE", language);
-                    } else {
+
+                    if(langList.size() < 1) {
                         genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                        genericDetectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", "-1");
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGES", "Unknown");
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGE_CONFIDENCES", "NONE");
+                    } else if(langList.size() == 1) {
+                        genericDetectionProperties.put("TEXT_LANGUAGE", langList.get(0));
+                        genericDetectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", confidenceList.get(0));
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGES", "Unknown");
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGE_CONFIDENCES", "NONE");
+                    } else {
+                        genericDetectionProperties.put("TEXT_LANGUAGE", langList.remove(0));
+                        genericDetectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", confidenceList.remove(0));
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGES", String.join(", ", langList));
+                        genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGE_CONFIDENCES",
+                                                        String.join(", ", confidenceList));
                     }
                 } else {
                     genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                    genericDetectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", "NONE");
+                    genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGES", "Unknown");
+                    genericDetectionProperties.put("SECONDARY_TEXT_LANGUAGE_CONFIDENCES", "NONE");
                 }
 
                 if (supportsPageNumbers) {
@@ -203,7 +280,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
     }
 
     // Map for translating from ISO 639-2 code to english description.
-    private static Map<String,String> initLangMap() {
+    private static Map<String,String> convertISO639() {
         Map<String,String> map = new HashMap<>();
         map.put("af", "Afrikaans");
         map.put("an", "Aragonese");
@@ -218,7 +295,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         map.put("cy", "Welsh");
         map.put("da", "Danish");
         map.put("de", "German");
-        map.put("el", "Greek");
+        map.put("el", "Modern Greek");
         map.put("en", "English");
         map.put("eo", "Esperanto");
         map.put("es", "Spanish");
@@ -277,6 +354,156 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         map.put("yi", "Yiddish");
         map.put("zh-cn", "Simplified Chinese");
         map.put("zh-tw", "Traditional Chinese");
+
+        map.put("bih", "Bihari languages");
+        map.put("hun", "Hungarian");
+        map.put("heb", "Hebrew");
+        map.put("fin", "Finnish");
+        map.put("gsw", "Swiss German");
+        map.put("tuk", "Turkmen");
+        map.put("bak", "Bashkir");
+        map.put("mon", "Mongolian");
+        map.put("ban", "Balinese");
+        map.put("pus", "Pushto");
+        map.put("tur", "Turkish");
+        map.put("vie", "Vietnamese");
+        map.put("fra", "French");
+        map.put("oci", "Occitan");
+        map.put("bre", "Breton");
+        map.put("fao", "Faroese");
+        map.put("deu", "German");
+        map.put("ssw", "Swati");
+        map.put("fas", "Persian");
+        map.put("tel", "Telugu");
+        map.put("nan", "Min Nan Chinese");
+        map.put("yor", "Yoruba");
+        map.put("gla", "Scottish Gaelic");
+        map.put("jav", "Javanese");
+        map.put("pes", "Iranian Persian");
+        map.put("gle", "Irish");
+        map.put("glg", "Galician");
+        map.put("epo", "Esperanto");
+        map.put("pnb", "Western Punjabi");
+        map.put("lvs", "Standard Latvian");
+        map.put("fry", "Western Frisian");
+        map.put("slk", "Slovak");
+        map.put("mya", "Burmese");
+        map.put("mhr", "Eastern Mari");
+        map.put("gug", "Paraguayan Guaraní");
+        map.put("slv", "Slovenian");
+        map.put("guj", "Gujarati");
+        map.put("ceb", "Cebuano");
+        map.put("cmn", "Mandarin Chinese");
+        map.put("kur", "Kurdish");
+        map.put("nso", "Pedi");
+        map.put("pol", "Polish");
+        map.put("aze", "Azerbaijani");
+        map.put("ces", "Czech");
+        map.put("ara", "Arabic");
+        map.put("uig", "Uighur");
+        map.put("por", "Portuguese");
+        map.put("min", "Minangkabau");
+        map.put("yid", "Yiddish");
+        map.put("tgl", "Tagalog");
+        map.put("tgk", "Tajik");
+        map.put("mal", "Malayalam");
+        map.put("uzb", "Uzbek");
+        map.put("mar", "Marathi");
+        map.put("mri", "Maori");
+        map.put("urd", "Urdu");
+        map.put("nld", "Dutch");
+        map.put("snd", "Sindhi");
+        map.put("knn", "Konkani");
+        map.put("tha", "Thai");
+        map.put("hye", "Armenian");
+        map.put("ibo", "Igbo");
+        map.put("bul", "Bulgarian");
+        map.put("asm", "Assamese");
+        map.put("msa", "Malay");
+        map.put("nds", "Low German");
+        map.put("ful", "Fulah");
+        map.put("swa", "Swahili");
+        map.put("xho", "Xhosa");
+        map.put("swe", "Swedish");
+        map.put("isl", "Icelandic");
+        map.put("ast", "Asturian");
+        map.put("ekk", "Standard Estonian");
+        map.put("gom", "Goan Konkani");
+        map.put("est", "Estonian");
+        map.put("mkd", "Macedonian");
+        map.put("bel", "Belarusian");
+        map.put("ben", "Bengali");
+        map.put("hin", "Hindi");
+        map.put("kor", "Korean");
+        map.put("dan", "Danish");
+        map.put("lin", "Lingala");
+        map.put("div", "Dhivehi");
+        map.put("som", "Somali");
+        map.put("zul", "Zulu");
+        map.put("rus", "Russian");
+        map.put("lim", "Limburgan");
+        map.put("wol", "Wolof");
+        map.put("lit", "Lithuanian");
+        map.put("ita", "Italian");
+        map.put("nep", "Nepali");
+        map.put("hat", "Haitian");
+        map.put("lao", "Lao");
+        map.put("pan", "Panjabi");
+        map.put("ukr", "Ukrainian");
+        map.put("hau", "Hausa");
+        map.put("lat", "Latin");
+        map.put("lav", "Latvian");
+        map.put("tam", "Tamil");
+        map.put("che", "Chechen");
+        map.put("new", "Newari");
+        map.put("ell", "Modern Greek");
+        map.put("spa", "Spanish");
+        map.put("tat", "Tatar");
+        map.put("mlg", "Malagasy");
+        map.put("hrv", "Croatian");
+        map.put("nno", "Norwegian Nynorsk");
+        map.put("khm", "Khmer");
+        map.put("mlt", "Maltese");
+        map.put("cym", "Welsh");
+        map.put("amh", "Amharic");
+        map.put("nob", "Norwegian Bokmål");
+        map.put("eus", "Basque");
+        map.put("bos", "Bosnian");
+        map.put("roh", "Romansh");
+        map.put("sqi", "Albanian");
+        map.put("tsn", "Tswana");
+        map.put("ron", "Romanian");
+        map.put("kin", "Kinyarwanda");
+        map.put("vol", "Volapük");
+        map.put("kir", "Kirghiz");
+        map.put("cat", "Catalan");
+        map.put("quz", "Cusco Quechua");
+        map.put("sin", "Sinhala");
+        map.put("kan", "Kannada");
+        map.put("ind", "Indonesian");
+        map.put("eng", "English");
+        map.put("kat", "Georgian");
+        map.put("san", "Sanskrit");
+        map.put("srd", "Sardinian");
+        map.put("kaz", "Kazakh");
+        map.put("ori", "Oriya");
+        map.put("jpn", "Japanese");
+        map.put("war", "Waray");
+        map.put("orm", "Oromo");
+        map.put("afr", "Afrikaans");
+        map.put("srp", "Serbian");
+        map.put("ltz", "Luxembourgish");
+        map.put("ckb", "Central Kurdish");
+        map.put("lug", "Ganda");
+        map.put("ben-rom", "Romanized Bengali");
+        map.put("urd-rom", "Romanized Urdu");
+        map.put("zho-simp", "Simplified Chinese");
+        map.put("hin-rom", "Romanized Hindi");
+        map.put("mya-zaw", "Burmese (Zawgyi)");
+        map.put("zho-trad", "Traditional Chinese");
+        map.put("tel-rom", "Romanized Telugu");
+        map.put("tam-rom", "Romanized Tamil");
+
         return map;
     }
 
