@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2021 The MITRE Corporation                                      #
+# Copyright 2022 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -24,7 +24,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import collections
 import json
 import logging
 import math
@@ -49,7 +48,7 @@ class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
 
     def get_detections_from_image_reader(self, image_job, image_reader):
         try:
-            logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
+            logger.info('Received image job: %s', image_job)
 
             num_detections = 0
             image = image_reader.get_image()
@@ -59,15 +58,15 @@ class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
                 yield detection
                 num_detections += 1
 
-            logger.info('[%s] Processing complete. Found %s detections.', image_job.job_name, num_detections)
+            logger.info('Processing complete. Found %s detections.', num_detections)
         except Exception:
-            logger.exception('[%s] Failed to complete job due to the following exception:', image_job.job_name)
+            logger.exception('Failed to complete job due to the following exception:')
             raise
 
 
     def get_detections_from_video_capture(self, video_job, video_capture):
         try:
-            logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
+            logger.info('Received video job: %s', video_job)
 
             num_tracks = 0
             detections = JobRunner(video_job.job_properties).get_indexed_detections(video_capture)
@@ -76,9 +75,9 @@ class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
                 yield mpf.VideoTrack(idx, idx, -1, {idx: detection}, detection.detection_properties)
                 num_tracks += 1
 
-            logger.info('[%s] Processing complete. Found %s tracks.', video_job.job_name, num_tracks)
+            logger.info('Processing complete. Found %s tracks.', num_tracks)
         except Exception:
-            logger.exception('[%s] Failed to complete job due to the following exception:', video_job.job_name)
+            logger.exception('Failed to complete job due to the following exception:')
             raise
 
 

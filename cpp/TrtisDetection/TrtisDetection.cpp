@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2022 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2021 The MITRE Corporation                                       *
+ * Copyright 2022 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -860,7 +860,7 @@ void TrtisDetection::_ip_irv2_coco_tracker(
 ***************************************************************************** */
 vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
     try {
-        LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
+        LOG4CXX_INFO(_log, "Starting job");
 
         // if (job.has_feed_forward_track) { do something different ?!}
 
@@ -1064,7 +1064,7 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
 
         // Abort now if an error occurred.
         if (eptr) {
-            LOG4CXX_ERROR(_log, "[" << job.job_name << "] An error occurred. Aborting job.")
+            LOG4CXX_ERROR(_log, "An error occurred. Aborting job.")
             rethrow_exception(eptr);
         }
 
@@ -1089,7 +1089,7 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
             }
         }
 
-        LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << tracks.size() << " tracks.");
+        LOG4CXX_INFO(_log, "Found " << tracks.size() << " tracks.");
 
         return tracks;
     } catch (...) {
@@ -1111,7 +1111,7 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
 ***************************************************************************** */
 vector <MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &job) {
     try {
-        LOG4CXX_INFO(_log, "[" << job.job_name << "] Starting job");
+        LOG4CXX_INFO(_log, "Starting job");
         LOG4CXX_DEBUG(_log, "Data URI = " << job.data_uri);
 
         vector <MPFImageLocation> locations;
@@ -1156,7 +1156,7 @@ vector <MPFImageLocation> TrtisDetection::GetDetections(const MPFImageJob &job) 
             cfg.featureStorage->Store(cfg.data_uri, cfg.model_name, location);
         }
 
-        LOG4CXX_INFO(_log, "[" << job.job_name << "] Found " << locations.size() << " detections.");
+        LOG4CXX_INFO(_log, "Found " << locations.size() << " detections.");
 
         return locations;
     } catch (...) {

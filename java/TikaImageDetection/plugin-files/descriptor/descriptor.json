@@ -1,9 +1,9 @@
 {
   "componentName" : "TikaImageDetection",
-  "componentVersion" : "6.3",
-  "middlewareVersion" : "6.3",
+  "componentVersion" : "7.0",
+  "middlewareVersion" : "7.0",
   "sourceLanguage" : "java",
-  "batchLibrary" : "mpf-tika-image-detection-component-6.3.jar",
+  "batchLibrary" : "mpf-tika-image-detection-component-7.0.jar",
   "environmentVariables" : [],
   "algorithm" : {
     "name": "TIKAIMAGE",
@@ -85,6 +85,20 @@
       ]
     },
     {
+<<<<<<< HEAD
+=======
+      "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR (WITH EAST REGIONS) AND KEYWORD TAGGING PIPELINE",
+      "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR on feed-forward regions from EAST on derivative media. Keyword tagging is performed on all TEXT results.",
+      "tasks": [
+        "TIKA IMAGE DETECTION TASK",
+        "TIKA TEXT DETECTION SOURCE MEDIA ONLY TASK",
+        "EAST TEXT DETECTION DERIVATIVE MEDIA ONLY TASK",
+        "TESSERACT OCR TEXT DETECTION (WITH FF REGION) DERIVATIVE MEDIA ONLY TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
+      ]
+    },
+    {
+>>>>>>> develop
       "name": "TIKA IMAGE DETECTION WITH DERIVATIVE MEDIA TESSERACT OCR (WITH EAST REGIONS) AND KEYWORD TAGGING AND MARKUP PIPELINE",
       "description": "Performs Tika image detection followed by Tika text detection on source media. Performs Tesseract OCR and markup on feed-forward regions from EAST on derivative media. Keyword tagging is performed on all TEXT results.",
       "tasks": [

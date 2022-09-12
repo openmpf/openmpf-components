@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2022 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2021 The MITRE Corporation                                       *
+ * Copyright 2022 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -269,7 +269,7 @@ void OcvYoloDetection::InitYoloNetwork(const Properties &jobProperties, const Co
 
 std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob &job) {
     try {
-        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
+        LOG4CXX_INFO(logger_, "Starting job");
         Config config(job.job_properties);
         InitYoloNetwork(job.job_properties, config);
 
@@ -304,8 +304,7 @@ std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob 
 
         yoloNetwork_->Finish();
 
-        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << results.size()
-                                  << " detections.");
+        LOG4CXX_INFO(logger_, "Found " << results.size() << " detections.");
         return results;
     }
     catch (...) {
@@ -319,7 +318,7 @@ std::vector<MPFImageLocation> OcvYoloDetection::GetDetections(const MPFImageJob 
 
 std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &job) {
     try {
-        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Starting job");
+        LOG4CXX_INFO(logger_, "Starting job");
         std::vector<MPFVideoTrack> completedTracks;
         std::vector<Track> inProgressTracks;
 
@@ -420,7 +419,7 @@ std::vector<MPFVideoTrack> OcvYoloDetection::GetDetections(const MPFVideoJob &jo
             completedTracks.erase(it);
         }
 
-        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Found " << completedTracks.size() << " tracks.");
+        LOG4CXX_INFO(logger_, "Found " << completedTracks.size() << " tracks.");
 
         return completedTracks;
     }

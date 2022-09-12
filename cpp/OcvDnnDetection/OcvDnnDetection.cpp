@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2022 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2021 The MITRE Corporation                                       *
+ * Copyright 2022 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -257,7 +257,7 @@ std::vector<MPFVideoTrack> OcvDnnDetection::getDetections(const MPFVideoJob &job
         video_cap.ReverseTransform(track);
     }
 
-    LOG4CXX_INFO(logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
+    LOG4CXX_INFO(logger_, "Processing complete. Found " << tracks.size() << " tracks.");
 
     return tracks;
 }
@@ -311,7 +311,7 @@ std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &
             }
         }
 
-        LOG4CXX_INFO(logger_, "[" << job.job_name << "] Processing complete. Found " << locations.size() << " detections.");
+        LOG4CXX_INFO(logger_, "Processing complete. Found " << locations.size() << " detections.");
 
         return locations;
     }

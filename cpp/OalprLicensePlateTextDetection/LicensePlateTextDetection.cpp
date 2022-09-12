@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2022 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2021 The MITRE Corporation                                       *
+ * Copyright 2022 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -97,38 +97,38 @@ vector<MPFImageLocation> LicensePlateTextDetection::GetDetections(const MPFImage
     try {
 
         // No algorithm properties are relevant to the image case
-        LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Data_uri: " << job.data_uri);
+        LOG4CXX_DEBUG(td_logger_, "Data_uri: " << job.data_uri);
 
         MPFImageReader image_reader(job);
         cv::Mat frame = image_reader.GetImage();
 
         const vector<AlprPlateResult> &results = alprRecognize(frame);
 
-        LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Results size: " << results.size());
+        LOG4CXX_DEBUG(td_logger_, "Results size: " << results.size());
 
         // NOTE:  for each result, only the detection with the highest confidence is
         // returned since the detection vector passed in is not intended to hold
         // multiple possible detections for a single distinct text object.  However,
         // setting the number of detections (top_n) that alpr should consider to a
         // value greater than 1 tends to improve the quality of all detections.
-        LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Returning highest confidence results for detection");
+        LOG4CXX_DEBUG(td_logger_, "Returning highest confidence results for detection");
         vector<MPFImageLocation> locations;
         for (int i = 0; i < results.size(); i++) {
             MPFImageLocation detection;
             detection.x_left_upper = results[i].plate_points[0].x;
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] X Left Upper: " << detection.x_left_upper);
+            LOG4CXX_DEBUG(td_logger_, "X Left Upper: " << detection.x_left_upper);
             detection.y_left_upper = results[i].plate_points[0].y;
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Y Left Upper: " << detection.y_left_upper);
+            LOG4CXX_DEBUG(td_logger_, "Y Left Upper: " << detection.y_left_upper);
             detection.width = results[i].plate_points[1].x - results[i].plate_points[0].x;
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Width: " << detection.width);
+            LOG4CXX_DEBUG(td_logger_, "Width: " << detection.width);
             detection.height = results[i].plate_points[3].y - results[i].plate_points[0].y;
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Height: " << detection.height);
+            LOG4CXX_DEBUG(td_logger_, "Height: " << detection.height);
             detection.confidence = results[i].topNPlates[0].overall_confidence;
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Confidence: " << detection.confidence);
+            LOG4CXX_DEBUG(td_logger_, "Confidence: " << detection.confidence);
             SetText(detection, results[i].topNPlates[0].characters);
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Text: " << GetText(detection));
+            LOG4CXX_DEBUG(td_logger_, "Text: " << GetText(detection));
             locations.push_back(detection);
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Bounding Polygon points: " <<
+            LOG4CXX_DEBUG(td_logger_, "Bounding Polygon points: " <<
                                           "(" << results[i].plate_points[0].x << "," << results[i].plate_points[0].y
                                           << ") " <<
                                           "(" << results[i].plate_points[1].x << ", " << results[i].plate_points[1].y
@@ -139,14 +139,14 @@ vector<MPFImageLocation> LicensePlateTextDetection::GetDetections(const MPFImage
                                           << ")");
 
 
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] All results");
+            LOG4CXX_DEBUG(td_logger_, "All results");
             for (int k = 0; k < results[i].topNPlates.size(); k++) {
-                LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Text: " << results[i].topNPlates[k].characters);
+                LOG4CXX_DEBUG(td_logger_, "Text: " << results[i].topNPlates[k].characters);
                 LOG4CXX_DEBUG(td_logger_,
-                              "[" << job.job_name << "] Confidence: " << results[i].topNPlates[k].overall_confidence);
+                              "Confidence: " << results[i].topNPlates[k].overall_confidence);
                 LOG4CXX_DEBUG(td_logger_,
-                              "[" << job.job_name << "] Template Match: " << results[i].topNPlates[k].matches_template);
-                LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Bounding Polygon points: " <<
+                              "Template Match: " << results[i].topNPlates[k].matches_template);
+                LOG4CXX_DEBUG(td_logger_, "Bounding Polygon points: " <<
                                               "(" << results[i].plate_points[0].x << ", "
                                               << results[i].plate_points[0].y << ") " <<
                                               "(" << results[i].plate_points[1].x << ", "
@@ -163,7 +163,7 @@ vector<MPFImageLocation> LicensePlateTextDetection::GetDetections(const MPFImage
         }
 
         LOG4CXX_INFO(td_logger_,
-                     "[" << job.job_name << "] Processing complete. Found " << locations.size() << " detections.");
+                     "Processing complete. Found " << locations.size() << " detections.");
         return locations;
     }
     catch (...) {
@@ -207,7 +207,7 @@ vector<MPFVideoTrack> LicensePlateTextDetection::GetDetectionsFromVideoCapture(
     while (video_capture.Read(frame)) {
 
         const vector<AlprPlateResult> &results = alprRecognize(frame);
-        LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Frame: " << frame_num << " results size: " << results.size());
+        LOG4CXX_DEBUG(td_logger_, "Frame: " << frame_num << " results size: " << results.size());
 
         // NOTE:  as in image case, for each result only the detection with the
         // highest confidence is used in forming tracks since the track detection
@@ -225,12 +225,12 @@ vector<MPFVideoTrack> LicensePlateTextDetection::GetDetectionsFromVideoCapture(
                     results[i].plate_points[3].y - results[i].plate_points[0].y;
             detection.confidence = results[i].topNPlates[0].overall_confidence;
             SetText(detection, results[i].topNPlates[0].characters);
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] X Left Upper: " << detection.x_left_upper);
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Y Left Upper: " << detection.y_left_upper);
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Width: " << detection.width);
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Height: " << detection.height);
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Confidence: " << detection.confidence);
-            LOG4CXX_DEBUG(td_logger_, "[" << job.job_name << "] Text: " << GetText(detection));
+            LOG4CXX_DEBUG(td_logger_, "X Left Upper: " << detection.x_left_upper);
+            LOG4CXX_DEBUG(td_logger_, "Y Left Upper: " << detection.y_left_upper);
+            LOG4CXX_DEBUG(td_logger_, "Width: " << detection.width);
+            LOG4CXX_DEBUG(td_logger_, "Height: " << detection.height);
+            LOG4CXX_DEBUG(td_logger_, "Confidence: " << detection.confidence);
+            LOG4CXX_DEBUG(td_logger_, "Text: " << GetText(detection));
 
             // Determine whether to create a new track
             // or add this detection to an existing track.
@@ -295,7 +295,7 @@ vector<MPFVideoTrack> LicensePlateTextDetection::GetDetectionsFromVideoCapture(
         tracks.push_back(tracks_map_iter->second);
     }
 
-    LOG4CXX_INFO(td_logger_, "[" << job.job_name << "] Processing complete. Found " << tracks.size() << " tracks.");
+    LOG4CXX_INFO(td_logger_, "Processing complete. Found " << tracks.size() << " tracks.");
 
     return tracks;
 }

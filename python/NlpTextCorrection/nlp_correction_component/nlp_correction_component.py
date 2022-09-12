@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2021 The MITRE Corporation                                      #
+# Copyright 2022 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -62,38 +62,36 @@ class NlpCorrectionComponent(object):
             custom_dictionary_path = image_job.job_properties.get('CUSTOM_DICTIONARY', "")
 
             if not self.initialized:
-                self.wrapper = HunspellWrapper(image_job.job_properties, image_job.job_name)
+                self.wrapper = HunspellWrapper(image_job.job_properties)
                 self.initialized = True
             else:
                 if custom_dictionary_path != \
                         self.wrapper.get_custom_dictionary_path():
-                    self.wrapper = HunspellWrapper(image_job.job_properties, image_job.job_name)
+                    self.wrapper = HunspellWrapper(image_job.job_properties)
 
-            self.wrapper.get_suggestions(job.job_properties, text, detection_properties)
+            self.wrapper.get_suggestions(image_job.job_properties, text, detection_properties)
 
-            log.info(f'[{image_job.job_name}] Processing complete.')
+            log.info('Processing complete.')
             return ff_track,
 
         except Exception:
-            log.exception(
-                f'[{image_job.job_name}] Failed to complete job due to the following exception:'
-            )
+            log.exception('Failed to complete job due to the following exception:')
             raise
 
     def get_detections_from_generic(self, job: mpf.GenericJob) -> Iterable[mpf.GenericTrack]:
         try:
-            log.info(f'[{job.job_name}] Received generic job: {job}')
+            log.info(f'Received generic job: {job}')
             ff_track = job.feed_forward_track
 
             custom_dictionary_path = job.job_properties.get('CUSTOM_DICTIONARY', "")
 
             if not self.initialized:
-                self.wrapper = HunspellWrapper(job.job_properties, job.job_name)
+                self.wrapper = HunspellWrapper(job.job_properties)
                 self.initialized = True
             else:
                 if custom_dictionary_path != \
                         self.wrapper.get_custom_dictionary_path():
-                    self.wrapper = HunspellWrapper(job.job_properties, job.job_name)
+                    self.wrapper = HunspellWrapper(job.job_properties)
 
             if ff_track is not None:
                 detection_properties = ff_track.detection_properties
@@ -111,18 +109,17 @@ class NlpCorrectionComponent(object):
                 self.wrapper.get_suggestions(job.job_properties, text, detection_properties)
                 generic_track = mpf.GenericTrack(detection_properties=detection_properties)
 
-                log.info(f'[{job.job_name}] Processing complete.')
+                log.info('Processing complete.')
                 return generic_track,
 
         except Exception:
-            log.exception(
-                f'[{job.job_name}] Failed to complete job due to the following exception:')
+            log.exception('Failed to complete job due to the following exception:')
             raise
 
 
 class HunspellWrapper(object):
 
-    def __init__(self, job_properties: Mapping[str, str], job_name):
+    def __init__(self, job_properties: Mapping[str, str]):
         self._job_properties = job_properties
 
         self._hunspell = Hunspell('en_US')
@@ -137,11 +134,10 @@ class HunspellWrapper(object):
             if os.path.exists(self._custom_dictionary_path):
                 self._hunspell.add_dic(self._custom_dictionary_path)
             else:
-                log.exception(f'[{job_name}] '
-                              f'Failed to complete job due incorrect file path for the custom dictionary: '
+                log.exception('Failed to complete job due incorrect file path for the custom dictionary: '
                               f'"{self._custom_dictionary_path}"')
                 raise mpf.DetectionException(
-                    f'Invalid path provided for custom dictionary: '
+                    'Invalid path provided for custom dictionary: '
                     f'"{self._custom_dictionary_path}"',
                     mpf.DetectionError.COULD_NOT_READ_DATAFILE)
 

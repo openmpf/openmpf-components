@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2022 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2021 The MITRE Corporation                                       *
+ * Copyright 2022 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -403,7 +403,7 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
 
 
     long total_frames = video_capture.GetFrameCount();
-    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Total video frames: " << total_frames);
+    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Total video frames: " << total_frames);
 
     int frame_index = 0;
 
@@ -443,8 +443,7 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
             if (track->previous_points.empty()) {
                 //should never get here!! - current points of first detection will be swapped to previous!!
                 //kill the track if this case does occur
-                LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name
-                                                           << "] Track contains no previous points - killing tracks");
+                LOG4CXX_TRACE(OpenFaceDetectionLogger, "Track contains no previous points - killing tracks");
                 continue;
             }
 
@@ -466,8 +465,8 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
 
             if (new_points.empty()) {
                 //no new points - this track will be killed
-                LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name
-                                                           << "] Optical flow could not find any new points - killing track");
+                LOG4CXX_TRACE(OpenFaceDetectionLogger,
+                              "Optical flow could not find any new points - killing track");
                 continue;
             }
             else {
@@ -568,8 +567,8 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
                     if (face_rect.height < 32) //face_rect.width < 32 ||
                     {
                         //if face smaller than 32 pixels then we don't want to keep it
-                        LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name
-                                                                   << "] Face too small to track - killing track");
+                        LOG4CXX_TRACE(OpenFaceDetectionLogger,
+                                      "Face too small to track - killing track");
                         continue;
                     }
 
@@ -577,7 +576,7 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
                     Rect upscaled_face = GetUpscaledFaceRect(face_rect);
                     rectangle(frame_draw_pre_verified, face_rect, Scalar(255, 255, 0));
 
-                    LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name << "] Getting template match");
+                    LOG4CXX_TRACE(OpenFaceDetectionLogger, "Getting template match");
 
                     //try template matching
                     //make sure the template is not out of bounds
@@ -597,23 +596,23 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
                     //draw the previous face even though it was from the previous frame
                     rectangle(new_frame_copy, last_face_rect, Scalar(0, 255, 0), 2);
 
-                    LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name << "] Match rect area: "
-                                                               << match_rect.area());
+                    LOG4CXX_TRACE(OpenFaceDetectionLogger,
+                                  "Match rect area: " << match_rect.area());
 
                     Rect match_intersection = match_rect & last_face_rect; //opencv allows for this operation
                     rectangle(new_frame_copy, match_intersection, Scalar(255, 0, 0), 2);
 
                     //Display("intersection", new_frame_copy);
 
-                    LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name << "] Finished getting match");
+                    LOG4CXX_TRACE(OpenFaceDetectionLogger, "Finished getting match");
 
                     //look for a certain percentage of intersection
                     if (match_intersection.area() > 0) {
                         float intersection_rate = static_cast<float>(match_intersection.area()) /
                                                   static_cast<float>(last_face_rect.area());
 
-                        LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name << "] Intersection rate: "
-                                                                   << intersection_rate);
+                        LOG4CXX_TRACE(OpenFaceDetectionLogger,
+                                      "Intersection rate: " << intersection_rate);
 
                         //was at 0.5 - should be much higher - don't want to be very permissive here - the template
                         //matching is not that good - TODO: need some sort of score could use openbr to do matching
@@ -670,8 +669,8 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
                     if (current_point_percent < min_point_percent) {
                         //lost too many of original points - kill track
                         //set something to continue onto the feature matching portion - no reason to kill the track here
-                        LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name
-                                                                   << "] Lost too many points, current percent: " << current_point_percent);
+                        LOG4CXX_TRACE(OpenFaceDetectionLogger,
+                                      "Lost too many points, current percent: " << current_point_percent);
                         continue;
                     }
                 }
@@ -683,8 +682,7 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
             //if track is not recovered
             if(correct_detected_rect_pair.first.area() > 0 && redetect_feature_points &&
                !track_recovered && track->current_point_percent < min_redetect_point_perecent) {
-                LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name
-                                                           << "] Attempting to redetect feature points");
+                LOG4CXX_TRACE(OpenFaceDetectionLogger, "Attempting to redetect feature points");
                 vector <KeyPoint> keypoints;
                 Mat mask = GetMask(gray, correct_detected_rect_pair.first);
                 //search for keypoints in the frame using a mask
@@ -698,8 +696,9 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
                 //TODO: not sure if I want to kill the track here - just don't update the init point count and continue
                 if(keypoints.size() < min_init_point_count)
                 {
-                    LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name << "] Not enough initial points: " <<
-                                                               static_cast<int>(track->current_points.size()));
+                    LOG4CXX_TRACE(OpenFaceDetectionLogger,
+                                  "Not enough initial points: "
+                                          << static_cast<int>(track->current_points.size()));
 
                     //set the init to min init point count because we are now below that
                     track->init_point_count = min_init_point_count;
@@ -714,15 +713,15 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
 
                     if (current_point_percent < min_point_percent) {
                         //lost too many of original points - kill track
-                        LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name
-                                                                   << "] Lost too many points below min point percent, "
-                                                                   << "current percent: " << current_point_percent);
+                        LOG4CXX_TRACE(OpenFaceDetectionLogger,
+                                  "Lost too many points below min point percent, current percent: "
+                                          << current_point_percent);
                         continue;
                     }
 
-                    LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name
-                                                               << "] Keeping track below min_init_point_count with current percent: "
-                                                               << current_point_percent);
+                    LOG4CXX_TRACE(OpenFaceDetectionLogger,
+                                  "Keeping track below min_init_point_count with current percent: "
+                                          << current_point_percent);
                 }
                 else {
                     //reset the init and current point count also!
@@ -799,8 +798,9 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
                         Display("Open Tracker", frame_draw);
                     }
 
-                    LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name
-                                                               << "] Detected face does not meet initial quality: " << first_face_confidence);
+                    LOG4CXX_TRACE(OpenFaceDetectionLogger,
+                                  "Detected face does not meet initial quality: "
+                                          << first_face_confidence);
                 }
 
                 if (use_face) {
@@ -815,8 +815,8 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
                     //min init point count should be different for each detector!
                     if(keypoints.size() < min_init_point_count)
                     {
-                        LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name << "] Not enough initial points: "
-                                                                   << static_cast<int>(keypoints.size()));
+                        LOG4CXX_TRACE(OpenFaceDetectionLogger,
+                                      "Not enough initial points: " << keypoints.size());
 
                         if(imshow_on) {
                             //draw the track detection red for bad point count
@@ -866,7 +866,7 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
                     //add the new track
                     current_tracks.push_back(track_new);
 
-                    LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name << "] Creating new track");
+                    LOG4CXX_TRACE(OpenFaceDetectionLogger, "Creating new track");
                 }
 
 
@@ -879,7 +879,7 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
         {
             if(track->track_lost)
             {
-                LOG4CXX_TRACE(OpenFaceDetectionLogger, "[" << job.job_name << "] Killing track");
+                LOG4CXX_TRACE(OpenFaceDetectionLogger, "Killing track");
 
                 //did not pass the rules to continue this frame_index, it ended on the previous index
                 track->face_track.stop_frame = frame_index - 1;
@@ -923,8 +923,8 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
     current_tracks.clear();
     saved_tracks.clear();
 
-    LOG4CXX_INFO(OpenFaceDetectionLogger, "[" << job.job_name << "] Processing complete. Found "
-                                              << static_cast<int>(tracks.size()) << " tracks.");
+    LOG4CXX_INFO(OpenFaceDetectionLogger,
+                 "Processing complete. Found " << tracks.size() << " tracks.");
     CloseWindows();
 
     if (verbosity > 0) {
@@ -933,22 +933,22 @@ vector<MPFVideoTrack> OcvFaceDetection::GetDetectionsFromVideoCapture(
         {
             for(unsigned int i=0; i<tracks.size(); i++)
             {
-                LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Track index: " << i);
-                LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Track start index: " << tracks[i] .start_frame);
-                LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Track end index: " << tracks[i] .stop_frame);
+                LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Track index: " << i);
+                LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Track start index: " << tracks[i].start_frame);
+                LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Track end index: " << tracks[i].stop_frame);
 
                 for (map<int, MPFImageLocation>::const_iterator it = tracks[i].frame_locations.begin(); it != tracks[i].frame_locations.end(); ++it)
                 {
-                    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Frame num: " << it->first);
-                    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Bounding rect: (" << it->second .x_left_upper << ","
+                    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Frame num: " << it->first);
+                    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Bounding rect: (" << it->second .x_left_upper << ","
                                                                <<  it->second.y_left_upper << "," << it->second.width << "," << it->second.height << ")");
-                    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Confidence: " << it->second.confidence);
+                    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Confidence: " << it->second.confidence);
                 }
             }
         }
         else
         {
-            LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] No tracks found");
+            LOG4CXX_DEBUG(OpenFaceDetectionLogger, "No tracks found");
         }
     }
 
@@ -986,18 +986,18 @@ vector<MPFImageLocation> OcvFaceDetection::GetDetectionsFromImageData(
     /* Read and Submit Image */
     /**************************/
 
-    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Getting detections");
+    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Getting detections");
 
 
     cv::Mat image_gray = Utils::ConvertToGray(image_data);
 
     frame_width = image_data.cols;
     frame_height = image_data.rows;
-    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Frame_width = " << frame_width);
-    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Frame_height = " << frame_height);
+    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Frame_width = " << frame_width);
+    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Frame_height = " << frame_height);
 
     vector<pair<cv::Rect,int>> face_rects = ocv_detection.DetectFaces(image_gray);
-    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Number of faces detected = " << face_rects.size());
+    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Number of faces detected = " << face_rects.size());
 
     vector<MPFImageLocation> locations;
     for (unsigned int j = 0; j < face_rects.size(); j++) {
@@ -1016,8 +1016,8 @@ vector<MPFImageLocation> OcvFaceDetection::GetDetectionsFromImageData(
     if (verbosity) {
         // log the detections
         for (unsigned int i = 0; i < locations.size(); i++) {
-            LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job.job_name << "] Detection # " << i);
-            LogDetection(locations[i], job.job_name);
+            LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Detection # " << i);
+            LogDetection(locations[i]);
         }
     }
 
@@ -1054,8 +1054,8 @@ vector<MPFImageLocation> OcvFaceDetection::GetDetectionsFromImageData(
         }
     }
 
-    LOG4CXX_INFO(OpenFaceDetectionLogger, "[" << job.job_name << "] Processing complete. Found "
-                                              << static_cast<int>(locations.size()) << " detections.");
+    LOG4CXX_INFO(OpenFaceDetectionLogger,
+                 "Processing complete. Found " << locations.size() << " detections.");
 
     CloseWindows();
 
@@ -1064,13 +1064,13 @@ vector<MPFImageLocation> OcvFaceDetection::GetDetectionsFromImageData(
 }
 
 
-void OcvFaceDetection::LogDetection(const MPFImageLocation& face, const string& job_name)
+void OcvFaceDetection::LogDetection(const MPFImageLocation& face)
 {
-    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job_name << "] XLeftUpper: " << face.x_left_upper);
-    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job_name << "] YLeftUpper: " << face.y_left_upper);
-    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job_name << "] Width:      " << face.width);
-    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job_name << "] Height:     " << face.height);
-    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "[" << job_name << "] Confidence: " << face.confidence);
+    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "XLeftUpper: " << face.x_left_upper);
+    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "YLeftUpper: " << face.y_left_upper);
+    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Width:      " << face.width);
+    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Height:     " << face.height);
+    LOG4CXX_DEBUG(OpenFaceDetectionLogger, "Confidence: " << face.confidence);
 }
 
 

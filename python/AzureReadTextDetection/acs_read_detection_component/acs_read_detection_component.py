@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2021 The MITRE Corporation                                      #
+# Copyright 2022 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -49,15 +49,14 @@ class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReader
     @staticmethod
     def get_detections_from_generic(generic_job):
         try:
-            logger.info('[%s] Received generic job: %s', generic_job.job_name, generic_job)
-            detections = JobRunner(generic_job.job_name,
-                                   generic_job.job_properties,
+            logger.info('Received generic job: %s', generic_job)
+            detections = JobRunner(generic_job.job_properties,
                                    MediaType.PDF).get_pdf_detections(generic_job.data_uri)
             num_detections = len(detections)
-            logger.info('[%s] Processing complete. Found %s detections.', generic_job.job_name, num_detections)
+            logger.info('Processing complete. Found %s detections.', num_detections)
 
         except Exception:
-            logger.exception('[%s] Failed to complete job due to the following exception:', generic_job.job_name)
+            logger.exception('Failed to complete job due to the following exception:')
             raise
 
         return detections
@@ -65,38 +64,38 @@ class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReader
     @staticmethod
     def get_detections_from_image_reader(image_job, image_reader):
         try:
-            logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
+            logger.info('Received image job: %s', image_job)
 
             num_detections = 0
             image = image_reader.get_image()
-            detections = JobRunner(image_job.job_name, image_job.job_properties, MediaType.IMAGE
+            detections = JobRunner(image_job.job_properties, MediaType.IMAGE
                                    ).get_frame_detections(image)
             for detection in detections:
                 yield detection
                 num_detections += 1
-            logger.info('[%s] Processing complete. Found %s detections.', image_job.job_name, num_detections)
+            logger.info('Processing complete. Found %s detections.', num_detections)
         except Exception:
-            logger.exception('[%s] Failed to complete job due to the following exception:', image_job.job_name)
+            logger.exception('Failed to complete job due to the following exception:')
             raise
 
     @staticmethod
     def get_detections_from_video_capture(video_job, video_capture):
         try:
-            logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
+            logger.info('Received video job: %s', video_job)
 
             num_tracks = 0
 
             for frame_idx, frame in enumerate(video_capture):
-                detections = JobRunner(video_job.job_name, video_job.job_properties,
+                detections = JobRunner(video_job.job_properties,
                                        MediaType.VIDEO).get_frame_detections(frame)
                 for detection in detections:
                     yield mpf.VideoTrack(frame_idx, frame_idx, detection.confidence,
                                          {frame_idx: detection}, detection.detection_properties)
                     num_tracks += 1
 
-            logger.info('[%s] Processing complete. Found %s tracks.', video_job.job_name, num_tracks)
+            logger.info('Processing complete. Found %s tracks.', num_tracks)
         except Exception:
-            logger.exception('[%s] Failed to complete job due to the following exception:', video_job.job_name)
+            logger.exception('Failed to complete job due to the following exception:')
             raise
 
 
@@ -112,8 +111,7 @@ def is_image_or_video(media_type: MediaType) -> bool:
 class JobRunner(object):
     """ Class process a single job and hold its configuration info. """
 
-    def __init__(self, job_name, job_properties, media_type):
-        self._job_name = job_name
+    def __init__(self, job_properties, media_type):
         self._acs_url = self.get_acs_url(job_properties)
         self._media_type = media_type
         self._merge_lines = mpf_util.get_property(job_properties, 'MERGE_LINES', True)
@@ -158,12 +156,12 @@ class JobRunner(object):
                                     ).process_read_results(read_results_json)
 
     def _get_acs_result(self, result_request):
-        logger.info('[%s] Contacting ACS server for read results.', self._job_name)
+        logger.info('Contacting ACS server for read results.')
         attempt_num = 0
         wait_sec = 5
         while attempt_num < self._max_attempts or self._max_attempts <= 0:
-            logger.info('[%s] Attempting to retrieve layout Analysis results from %s',
-                        self._job_name, result_request.get_full_url())
+            logger.info('Attempting to retrieve layout Analysis results from %s',
+                        result_request.get_full_url())
 
             with self._http_retry.urlopen(result_request) as results:
                 json_results = json.load(results)
@@ -174,30 +172,30 @@ class JobRunner(object):
 
             status = json_results["status"]
             if status == "succeeded":
-                logger.info('[%s] Layout Analysis succeeded. Processing read results.', self._job_name)
+                logger.info('Layout Analysis succeeded. Processing read results.')
                 return json_results
             if status == "failed":
                 raise mpf.DetectionError.DETECTION_FAILED.exception(
                     f'Layout Analysis failed. HTTP response body: {json_results}')
             # Analysis still running. Wait and then retry GET request.
-            logger.info('[%s] Layout Analysis results not available yet. Recontacting server in %s seconds.',
-                        self._job_name, wait_sec)
+            logger.info('Layout Analysis results not available yet. Recontacting server in %s seconds.',
+                        wait_sec)
 
             time.sleep(wait_sec)
             attempt_num += 1
 
-        logger.error('[%s] Max attempts exceeded. Unable to retrieve server results. Ending job.', self._job_name)
+        logger.error('Max attempts exceeded. Unable to retrieve server results. Ending job.')
         raise mpf.DetectionError.NETWORK_ERROR.exception(
             'Unable to retrieve results from ACS server.')
 
 
     def _post_to_acs(self, encoded_frame):
-        logger.info('[%s] Sending POST request to %s', self._job_name, self._acs_url)
+        logger.info('Sending POST request to %s', self._acs_url)
         request = urllib.request.Request(self._acs_url, bytes(encoded_frame), self._acs_headers)
         with self._http_retry.urlopen(request) as response:
             results_url = response.headers['operation-location']
         result_request = urllib.request.Request(results_url, None, self._acs_headers)
-        logger.info('[%s] Received response from ACS server. Obtained read results url.', self._job_name)
+        logger.info('Received response from ACS server. Obtained read results url.')
         return self._get_acs_result(result_request)
 
     @classmethod

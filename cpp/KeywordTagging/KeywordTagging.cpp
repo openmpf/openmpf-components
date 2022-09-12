@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2022 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2021 The MITRE Corporation                                       *
+ * Copyright 2022 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -78,7 +78,7 @@ KeywordTagging::parse_json(const MPFJob &job, const string &jsonfile_path) {
     root = value->AsObject();
 
     if (root.find(L"TAGS_BY_REGEX") != root.end() && root[L"TAGS_BY_REGEX"]->IsObject()) {
-        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Regex tags found.");
+        LOG4CXX_DEBUG(hw_logger_, "Regex tags found.");
 
         JSONObject key_tags = root[L"TAGS_BY_REGEX"]->AsObject();
         vector<wstring> keys = root[L"TAGS_BY_REGEX"]->ObjectKeys();
@@ -143,7 +143,7 @@ KeywordTagging::parse_json(const MPFJob &job, const string &jsonfile_path) {
                                     "Could not parse tagging file: " + jsonfile_path +
                                     ". TAGS_BY_REGEX not found.");
     }
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] successfully read JSON.");
+    LOG4CXX_DEBUG(hw_logger_, "Successfully read JSON.");
 
     return json_kvs_regex;
 }
@@ -306,8 +306,8 @@ set<wstring> KeywordTagging::search_regex(const MPFJob &job, const wstring &full
 
     int num_found = found_keys_regex.size();
     found_tags_regex = boost::algorithm::join(found_keys_regex, L", ");
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Done searching for regex tags, found: " + to_string(num_found));
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Found regex tags are: " +
+    LOG4CXX_DEBUG(hw_logger_, "Done searching for regex tags, found: " + to_string(num_found));
+    LOG4CXX_DEBUG(hw_logger_, "Found regex tags are: " +
                               boost::locale::conv::utf_to_utf<char>(found_tags_regex));
 
     return found_keys_regex;
@@ -323,7 +323,7 @@ void KeywordTagging::load_tags_json(const MPFJob &job, map<wstring, vector<pair<
 
     string plugin_path = run_dir + "/KeywordTagging";
 
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Running from directory " + plugin_path)
+    LOG4CXX_DEBUG(hw_logger_, "Running from directory " + plugin_path)
 
     string jsonfile_path = DetectionComponentUtils::GetProperty<string>(job.job_properties, "TAGGING_FILE",
                                                                         "text-tags.json");
@@ -336,9 +336,9 @@ void KeywordTagging::load_tags_json(const MPFJob &job, map<wstring, vector<pair<
         jsonfile_path = plugin_path + "/config/" + jsonfile_path;
     }
 
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] About to read JSON from: " + jsonfile_path)
+    LOG4CXX_DEBUG(hw_logger_, "About to read JSON from: " + jsonfile_path)
     json_kvs_regex = parse_json(job, jsonfile_path);
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Read JSON")
+    LOG4CXX_DEBUG(hw_logger_, "Read JSON")
 }
 
 wstring clean_whitespace(const wstring &input) {
@@ -384,7 +384,7 @@ string KeywordTagging::GetDetectionType() {
 }
 
 vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) {
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
+    LOG4CXX_DEBUG(hw_logger_, "Processing \"" + job.data_uri + "\".");
 
     MPFGenericTrack track;
     bool has_prop = true;
@@ -418,7 +418,7 @@ vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) 
 }
 
 vector<MPFAudioTrack> KeywordTagging::GetDetections(const MPFAudioJob &job) {
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
+    LOG4CXX_DEBUG(hw_logger_, "Processing \"" + job.data_uri + "\".");
 
     if (!job.has_feed_forward_track) {
         LOG4CXX_DEBUG(hw_logger_, "Can only process audio files in feed forward jobs.");
@@ -438,7 +438,7 @@ vector<MPFAudioTrack> KeywordTagging::GetDetections(const MPFAudioJob &job) {
 }
 
 vector<MPFImageLocation> KeywordTagging::GetDetections(const MPFImageJob &job) {
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
+    LOG4CXX_DEBUG(hw_logger_, "Processing \"" + job.data_uri + "\".");
 
     if (!job.has_feed_forward_location) {
         LOG4CXX_DEBUG(hw_logger_, "Can only process image files in feed forward jobs.");
@@ -458,7 +458,7 @@ vector<MPFImageLocation> KeywordTagging::GetDetections(const MPFImageJob &job) {
 }
 
 vector<MPFVideoTrack> KeywordTagging::GetDetections(const MPFVideoJob &job) {
-    LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing \"" + job.data_uri + "\".");
+    LOG4CXX_DEBUG(hw_logger_, "Processing \"" + job.data_uri + "\".");
 
     if (!job.has_feed_forward_track) {
         LOG4CXX_DEBUG(hw_logger_, "Can only process video files in feed forward jobs.");
@@ -532,13 +532,13 @@ void KeywordTagging::process_text_tagging(Properties &detection_properties, cons
         prop_text = it.second;
         wstring text = clean_whitespace(prop_text);
 
-        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Processing tags on " +
+        LOG4CXX_DEBUG(hw_logger_, "Processing tags on " +
                                   boost::locale::conv::utf_to_utf<char>(prop))
-        LOG4CXX_DEBUG(hw_logger_, "[" + job.job_name + "] Text is: " +
+        LOG4CXX_DEBUG(hw_logger_, "Text is: " +
                                   boost::locale::conv::utf_to_utf<char>(text))
 
         if (is_only_ascii_whitespace(text)) {
-            LOG4CXX_WARN(hw_logger_, "[" + job.job_name + "] No text to process for " +
+            LOG4CXX_WARN(hw_logger_, "No text to process for " +
                                      boost::locale::conv::utf_to_utf<char>(prop))
             continue;
         }

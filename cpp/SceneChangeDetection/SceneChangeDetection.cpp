@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2021 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2022 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2021 The MITRE Corporation                                       *
+ * Copyright 2022 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -180,24 +180,24 @@ bool SceneChangeDetection::frameUnderThreshold(
  */
 std::vector<MPFVideoTrack> SceneChangeDetection::GetDetections(const MPFVideoJob &job) {
     try {
-        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "Job feed_forward_is: " << job.has_feed_forward_track);
+        LOG4CXX_DEBUG(logger_, "Job feed_forward_is: " << job.has_feed_forward_track);
         if (job.has_feed_forward_track)
         {
-            LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "STARTING FEEDFORWARD GETDETECTIONS" );
+            LOG4CXX_DEBUG(logger_, "STARTING FEEDFORWARD GETDETECTIONS" );
         }
         else
         {
-            LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "STARTING NO FF GETDETECTIONS" );
+            LOG4CXX_DEBUG(logger_, "STARTING NO FF GETDETECTIONS" );
         }
 
-        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "Data URI = " << job.data_uri);
+        LOG4CXX_DEBUG(logger_, "Data URI = " << job.data_uri);
 
         MPFVideoCapture cap(job);
 
         int frame_count = cap.GetFrameCount();
-        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "frame count = " << frame_count);
-        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "begin frame = " << job.start_frame);
-        LOG4CXX_DEBUG(logger_, "[" << job.job_name << "] " << "end frame = " << job.stop_frame);
+        LOG4CXX_DEBUG(logger_, "frame count = " << frame_count);
+        LOG4CXX_DEBUG(logger_, "begin frame = " << job.start_frame);
+        LOG4CXX_DEBUG(logger_, "end frame = " << job.stop_frame);
 
         Mat lastFrameEdgeFinal, frameGray, lastFrameHSV, lastFrame;
         MatND lastHist;
@@ -304,7 +304,7 @@ std::vector<MPFVideoTrack> SceneChangeDetection::GetDetections(const MPFVideoJob
             tracks.push_back(track);
         }
 
-        LOG4CXX_INFO(logger_, "[" + job.job_name + "] Processing complete. Found " + std::to_string(tracks.size()) + " tracks.");
+        LOG4CXX_INFO(logger_, "Processing complete. Found " + std::to_string(tracks.size()) + " tracks.");
         return tracks;
     }
     catch (...) {

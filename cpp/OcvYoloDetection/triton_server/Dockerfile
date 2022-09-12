@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2021 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2021 The MITRE Corporation                                      #
+# Copyright 2022 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -33,6 +33,9 @@ FROM nvcr.io/nvidia/tritonserver:21.06-py3 as openmpf_triton_server
 
 # Weights will later be used to generate TensorRT engine files in the entrypoint.
 COPY --from=models /models/yolov4.wts /model-gen/yolo/yolov4.wts
+
+RUN wget -O- https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
+        | apt-key add -;
 
 RUN apt-get update; \
     apt-get install -y cmake; \
