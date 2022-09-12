@@ -284,7 +284,7 @@ public class TestTikaTextDetectionComponent {
         String testTrackText = testTrack.getDetectionProperties().get("TEXT");
 
         // sheet 1
-        assertSection(testTrack, "-1", "1", "English", "Test"); // cannot determine language
+        assertSection(testTrack, "-1", "1", "English", "Test");
         assertThat(testTrackText, containsString("1"));
         assertThat(testTrackText, containsString("2"));
         assertThat(testTrackText, containsString("3"));
