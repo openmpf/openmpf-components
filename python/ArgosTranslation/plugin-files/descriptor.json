@@ -1,0 +1,91 @@
+{
+  "componentName": "AzureTranslation",
+  "componentVersion": "7.0",
+  "middlewareVersion": "7.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "AzureTranslation",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "AZURETRANSLATION",
+    "description": "Uses Azure Cognitive Services to perform translation.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TRANSLATION",
+        "DETECTION_TRANSLATION_AZURE"
+      ],
+      "properties": [
+        {
+          "name": "FEED_FORWARD_PROP_TO_PROCESS",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to consider translating. If the first property listed is present, then that property will be translated. If it's not, then the next property in the list is considered. At most, one property will be translated.",
+          "type": "STRING",
+          "defaultValue": "TEXT,TRANSCRIPT"
+        },
+        {
+          "name": "LANGUAGE_FEED_FORWARD_PROP",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection determine the language from which to translate. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, fall back to FROM_LANGUAGE.",
+          "type": "STRING",
+          "defaultValue": "DECODED_LANGUAGE,LANGUAGE"
+        },
+        {
+          "name": "TO_LANGUAGE",
+          "description": "The ISO 639 language code for language that the properties should be translated to.",
+          "type": "STRING",
+          "defaultValue": "en"
+        },
+        {
+          "name": "DEFAULT_FROM_LANGUAGE",
+          "description": "Optional property that indicates the source language of the text.",
+          "type": "STRING",
+          "defaultValue": "es"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "",
+      "description": "",
+      "algorithm": "",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "value": "TRUE"
+        }
+      ]
+    },
+    {
+      "name": "",
+      "description": "Uses Argos Translate to perform translation on a plain text file.",
+      "algorithm": "",
+      "properties": [
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "",
+      "description": "",
+      "actions": [
+        ""
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "",
+      "description": "",
+      "tasks": [
+        ""
+      ]
+    }
+  ]
+}
