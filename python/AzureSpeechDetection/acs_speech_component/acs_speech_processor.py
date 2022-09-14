@@ -268,8 +268,9 @@ class AcsSpeechDetectionProcessor(object):
                 SPEAKER_ID=speaker_id,
                 TRANSCRIPT=display,
                 WORD_CONFIDENCES=word_confidences,
-                DECODED_LANGUAGE=BCP47_TO_ISO6393.get(job_config.language, 'UNKNOWN'),
+                ISO_LANGUAGE=BCP47_TO_ISO6393.get(job_config.language, 'UNKNOWN'),
                 BCP_LANGUAGE=job_config.language,
+                DECODED_LANGUAGE=job_config.language,
                 WORD_SEGMENTS=word_segments
             )
 

@@ -35,11 +35,7 @@ from acs_speech_component.acs_speech_processor import AcsSpeechDetectionProcesso
 from acs_speech_component.job_parsing import AzureJobConfig
 
 
-
-
-
 logger = logging.getLogger('AcsSpeechComponent')
-
 logging.getLogger('azure').setLevel('WARN')
 
 
