@@ -40,7 +40,7 @@ The following format-specific behaviors were observed using Tika 1.28.1 on Ubunt
 - OpenDocument Spreadsheet documents will generate one track per cell, as well as some additional tracks with
   date and time information, "Page /", and "???".
 
-# Language detection parameters
+# Language Detection Parameters
 
 Tika supports the following language detection properties:
 
@@ -60,10 +60,11 @@ Please note that the behavior of `MIN_LANGUAGES` is different depending on the l
 Language results are stored as follows:
 - `TEXT_LANGUAGE` : The primary detected language for a given text. Set to "Unknown" if no language is identified.
 - `TEXT_LANGUAGE_CONFIDENCE` : A confidence setting for the primary language ranging from `NONE` to `HIGH` confidence. See [note here.](https://tika.apache.org/1.21/api/org/apache/tika/language/detect/LanguageConfidence.html)
+- `ISO_LANGUAGE` : The primary detected language for a given text in ISO 639-3 format. Set to "UNKNOWN" if no language id identified (as "UNK" is an ISO code).
 
 Secondary languages and their confidence scores are listed as comma separated strings:
 - `SECONDARY_TEXT_LANGUAGES` : A list of secondary languages (from greatest to least confidence) separated by ", " delimiters.
-    Set to "Unknown" if no language is identified.
+    Set to an empty string if no language is identified.
 - `SECONDARY_TEXT_LANGUAGE_CONFIDENCES` : A confidence list corresponding to the secondary detected languages in order (also separated by commas). 
 
 # Supported Language Detectors:
@@ -103,128 +104,128 @@ the `LANG_DETECTOR` option:
   - Belarusian
   - Catalan
   - Danish
-  - German
+  - Dutch
+  - English
   - Esperanto
   - Estonian
-  - Greek
-  - English
-  - Spanish
   - Finnish
   - French
-  - Persian
   - Galician
+  - German
+  - Greek
   - Hungarian
   - Icelandic
   - Italian
   - Lithuanian
-  - Dutch
   - Norwegian
+  - Persian
   - Polish
   - Portuguese
   - Romanian
   - Russian
   - Slovakian
   - Slovenian
+  - Spanish
   - Swedish
   - Thai
   - Ukrainian
-                 
+
 
 - Optimaize Language Detector:
   - Every language in Tika's language detector, except Esperanto.
   - Afrikaans
   - **Aragonese** (Unique to this detector)
+  - Albanian
   - Arabic
   - Asturian
+  - Basque
+  - Bengali
   - Breton
   - Bulgarian
-  - Bengali
+  - Croatian
   - Czech
-  - Welsh
-  - Basque
-  - Irish
   - Gujarati
+  - Haitian
   - Hebrew
   - Hindi
-  - Croatian
-  - Haitian
   - Indonesian
+  - Irish
   - Japanese
-  - Khmer
   - Kannada
+  - Khmer
   - Korean
   - Latvian
   - Macedonian
-  - Malayalam
-  - Marathi
   - Malay
+  - Malayalam
   - Maltese
+  - Marathi
   - Nepali
   - Occitan
   - Punjabi
+  - Serbian
+  - Simplified Chinese
   - Slovak
   - Slovene
   - Somali
-  - Albanian
-  - Serbian
   - Swahili
+  - Tagalog
   - Tamil
   - Telugu
-  - Tagalog
+  - Traditional Chinese
   - Turkish
   - Urdu
   - Vietnamese
   - Walloon
+  - Welsh
   - Yiddish
-  - Simplified Chinese
-  - Traditional Chinese
                         
 
 - OpenNLP Language Detector:
   - Every language in Tika and Optimaize Language Detectors except Aragonese. 
-  - Bihari languages 
-  - Swiss German
-  - Turkmen
-  - Bashkir
-  - Mongolian
-  - Balinese
-  - Pushto
-  - Faroese
-  - Swati
-  - Min Nan Chinese
-  - Yoruba
-  - Scottish Gaelic
-  - Javanese
-  - Iranian Persian
-  - Esperanto
-  - Western Panjabi
-  - Standard Latvian
-  - Western Frisian
-  - Burmese
-  - Eastern Mari
-  - Paraguayan Guaraní
-  - Slovenian
-  - Cebuano
-  - Mandarin Chinese
-  - Kurdish
-  - Pedi
-  - Azerbaijani
-  - Uighur
-  - Minangkabau
-  - Tajik
-  - Uzbek
-  - Maori
-  - Sindhi
-  - Konkani
   - Armenian
-  - Igbo
   - Assamese
-  - Malay
-  - Low German
-  - Fulah
-  - Xhosa
-  - Standard Estonian
-  - Goan Konkani
-  - Lingala
+  - Azerbaijani
+  - Balinese
+  - Bashkir
+  - Bihari languages
+  - Burmese
+  - Cebuano
   - Dhivehi
+  - Eastern Mari
+  - Esperanto
+  - Faroese
+  - Fulah
+  - Goan Konkani
+  - Igbo
+  - Iranian Persian
+  - Javanese
+  - Konkani
+  - Kurdish
+  - Lingala
+  - Low German
+  - Malay
+  - Mandarin Chinese
+  - Maori
+  - Min Nan Chinese
+  - Minangkabau
+  - Mongolian
+  - Paraguayan Guaraní
+  - Pedi
+  - Pushto
+  - Scottish Gaelic
+  - Sindhi
+  - Slovenian
+  - Standard Estonian
+  - Standard Latvian
+  - Swati
+  - Swiss German
+  - Tajik
+  - Turkmen
+  - Uighur
+  - Uzbek
+  - Western Frisian
+  - Western Panjabi
+  - Xhosa
+  - Yoruba
   - Zulu
