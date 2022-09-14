@@ -215,8 +215,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                 // Process text languages.
                 if (text.length() >= charLimit) {
-                    List<LanguageResult> langResultList;
-                    langResultList = identifier.detectAll(text);
+                    List<LanguageResult> langResultList = identifier.detectAll(text);
 
                     List<String> langList = new ArrayList<String>();
                     List<String> isoList = new ArrayList<String>();
