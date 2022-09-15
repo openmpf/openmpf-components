@@ -117,15 +117,17 @@ class AcsSpeechDetectionProcessor(object):
             phrase_dict.update(
                 words=phrase_dict['display'].strip().split(),
                 segment=(t0+d, t1+d),
-                word_segments=[(t0+d, t1+d) for t0, t1 in phrase_dict['word_segments']]
+                word_segments=[(wt0+d, wt1+d) for wt0, wt1 in phrase_dict['word_segments']]
             )
 
         Word = namedtuple('Word', ['display', 'segment', 'confidence'])
-        word_gen = (
+        words = [
             Word(*word_info)
             for p in phrase_dicts
             for word_info in zip(p['words'], p['word_segments'], p['word_confidences'])
-        )
+        ]
+        words = sorted(words, key=lambda w: w.segment)
+        word_gen = (w for w in words)
 
         utterances: List[Utterance] = []
         for t0, t1 in speaker.speech_segs:
