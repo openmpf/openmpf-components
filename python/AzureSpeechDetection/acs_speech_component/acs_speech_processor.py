@@ -27,13 +27,14 @@
 import logging
 import uuid
 from typing import (
-    Optional, List, Iterable, Tuple, Mapping, NamedTuple, Any
+    Optional, List, Iterable, Tuple, Mapping, Any, NamedTuple
 )
-from itertools import accumulate
+from itertools import accumulate, dropwhile, takewhile, tee
 from bisect import bisect_right
+from collections import namedtuple
 
 import mpf_component_api as mpf
-import mpf_component_util as util
+import mpf_component_util as mpf_util
 
 from acs_speech_component.azure_connect import AzureConnection
 from acs_speech_component.job_parsing import AzureJobConfig
@@ -43,66 +44,17 @@ from acs_speech_component.azure_utils import ISO6393_TO_BCP47
 BCP47_TO_ISO6393 = {bcp: iso for iso, bcps in ISO6393_TO_BCP47.items() for bcp in bcps}
 
 
-def parse_segments_str(
-        segments_string: str,
-        media_start_time: Optional[int] = 0,
-        media_stop_time: Optional[int] = None
-) -> Optional[List[Tuple[int, int]]]:
-    """ Converts a string of the form
-            'start_1-stop_1, start_2-stop_2, ..., start_n-stop_n'
-        where start_x and stop_x are in milliseconds, Olive-compatible
-        AnnotationRegion object list.
-    """
-    try:
-        segments = []
-        start_stops = segments_string.split(",")
-        for ss in start_stops:
-            start, stop = ss.strip().split("-")
-            start = int(start)
-            stop = int(stop)
-
-            # Limit to media start and stop times. If entirely
-            #  outside the limits, drop the segment
-            if media_stop_time is not None and start > media_stop_time:
-                continue
-            if stop < media_start_time:
-                continue
-            start = max(start, media_start_time)
-            if media_stop_time is not None:
-                stop = min(stop, media_stop_time)
-
-            # Offset by media_start_time so that segments are
-            #  relative to the transcoded waveform
-            start -= media_start_time
-            stop -= media_start_time
-
-            segments.append((start, stop))
-    except Exception as e:
-        raise mpf.DetectionException(
-            'Exception raised while parsing voiced segments '
-            f'"{segments_string}": {e}',
-            mpf.DetectionError.INVALID_PROPERTY
-        )
-
-    # If all the voiced segments are outside the time range, signal that
-    #  we should halt and return an empty list.
-    if not segments:
-        return None
-
-    return sorted(segments)
-
-
-class SpeakerInfo(NamedTuple):
-    speaker_id: str
-    gender: str
-    gender_score: float
-    language: str
-    language_scores: Mapping[str, float]
-    speech_segs: List[Tuple[float, float]]
-
-
-
 logger = logging.getLogger('AcsSpeechComponent')
+
+
+class Utterance(NamedTuple):
+    display: str
+    segment: Tuple[int, int]
+    confidence: float
+    word_segments: List[Tuple[int, int]]
+    word_confidences: List[float]
+    speaker_id: str
+
 
 class AcsSpeechDetectionProcessor(object):
 
@@ -110,64 +62,100 @@ class AcsSpeechDetectionProcessor(object):
         self.acs = AzureConnection()
 
     @staticmethod
-    def desegment_times(
-                utterances: Iterable[Mapping[str, Any]],
-                speaker: Optional[SpeakerInfo] = None
-            ) -> Iterable[Tuple[int, int, Iterable[Tuple[int, int]]]]:
-        """ Get region and word timing information. Converts from AWS timing
-            scale and format to MPF's millisecond start and stop times. Also
-            "desegments" when there is a speaker with speech segments supplied.
-            This means to correspond returned utterances to where they are
-            positioned within the original audio file.
+    def convert_word_timing(
+                recognized_phrases: Iterable[Mapping[str, Any]],
+                speaker: Optional[mpf_util.SpeakerInfo] = None
+            ) -> Iterable[Utterance]:
+        """ Convert ACS recognized_phrases structure to utterances with correct
+            timing. If speaker is provided, returned utterances will match the
+            speaker's speech_segs. Otherwise, will have the same grouping as
+            given in the recognized_phrases.
 
-            :param utterances: A list of utterances returned by ACS
+            :param recognized_phrases: A list of phrases returned by ACS
             :param speaker: SpeakerInfo. None of no feed-forward track exists
-            :returns: An iterable of utterance starts, stops, and word segments.
+            :returns: An iterable of Utterances
         """
-        if speaker is not None:
-            # Create parallel lists for the beginning, end, and length of each
-            #  feedforward segment, so that utterance timestamps can be shifted
-            #  to be relative to the beginning of the input audio file.
-            segbegs, seglens = zip(*(
-                (t0, t1-t0) for t0, t1 in sorted(speaker.speech_segs)
+        get_seg = lambda w: (
+            int(w['offsetInTicks'] * 1e-4),
+            int((w['offsetInTicks'] + w['durationInTicks']) * 1e-4)
+        )
+
+        phrase_dicts = [
+            dict(
+                display=phrase['nBest'][0]['display'],
+                segment=get_seg(phrase),
+                confidence=phrase['nBest'][0]['confidence'],
+                word_segments=list(map(get_seg, phrase['nBest'][0]['words'])),
+                word_confidences=[w['confidence'] for w in phrase['nBest'][0]['words']],
+                speaker_id=str(phrase.get('speaker', '0'))
+            )
+            for phrase in recognized_phrases
+        ]
+
+        if speaker is None:
+            return [Utterance(**d) for d in phrase_dicts]
+
+        # Create parallel lists for the beginning, end, and length of each
+        #  feedforward segment, so that utterance timestamps can be shifted
+        #  to be relative to the beginning of the input audio file.
+        segbegs, seglens = zip(*(
+            (t0, t1-t0) for t0, t1 in sorted(speaker.speech_segs)
+        ))
+
+        # The dividing line between each segment relative to regions
+        segdivs = list(accumulate(seglens))
+
+        # The offset to add to region times, according to their segment
+        offsets = [a-b for a, b in zip(segbegs, [0] + segdivs)]
+
+        for phrase_dict in phrase_dicts:
+            t0, t1 = phrase_dict['segment']
+            # Get index of the segment containing the region start time,
+            #  and offset utterance time information by appropriate delta
+            i = min(bisect_right(segdivs, t0), len(segdivs) - 1)
+            d = offsets[i]
+            phrase_dict.update(
+                words=phrase_dict['display'].strip().split(),
+                segment=(t0+d, t1+d),
+                word_segments=[(t0+d, t1+d) for t0, t1 in phrase_dict['word_segments']]
+            )
+
+        Word = namedtuple('Word', ['display', 'segment', 'confidence'])
+        word_gen = (
+            Word(*word_info)
+            for p in phrase_dicts
+            for word_info in zip(p['words'], p['word_segments'], p['word_confidences'])
+        )
+
+        utterances: List[Utterance] = []
+        for t0, t1 in speaker.speech_segs:
+            # Advance the word generator to overlap with the DIA region. Word
+            #  regions must start within the DIA regions.
+            word_gen = dropwhile(lambda w: w.segment[0] < t0, word_gen)
+
+            # Get the word regions contained in the DIA region, construct an
+            #  Utterance object from them. Make sure not to advance the word
+            #  generator and skip words.
+            word_gen, seg_words = tee(word_gen, 2)
+            seg_words = list(takewhile(lambda w: w.segment[0] < t1, seg_words))
+            display, segs, confs = zip(*seg_words)
+            display = ' '.join(display)
+            utterances.append(Utterance(
+                display=display,
+                segment=(t0, t1),
+                confidence=sum(confs)/len(confs),
+                word_segments=segs,
+                word_confidences=confs,
+                speaker_id=speaker.speaker_id
             ))
 
-            # The dividing line between each segment relative to regions
-            segdivs = list(accumulate(seglens))
-
-            # The offset to add to region times, according to their segment
-            offsets = [a-b for a, b in zip(segbegs, [0] + segdivs)]
-
-        utterance_times = []
-        for utt in utterances:
-            # Timing information. Azure works in 100-nanosecond ticks,
-            #  so multiply by 1e-4 to obtain milliseconds.
-            utterance_start = utt['offsetInTicks'] * 1e-4
-            utterance_duration = utt['durationInTicks'] * 1e-4
-            utterance_stop = utterance_start + utterance_duration
-            word_starts, word_ends = zip(*[
-                (
-                    w['offsetInTicks'] * 1e-4,
-                    (w['offsetInTicks'] + w['durationInTicks']) * 1e-4
-                ) for w in utt['nBest'][0]['words']
-            ])
-
-            if speaker is not None:
-                # Get index of the segment containing the region start time,
-                #  and offset utterance time information by appropriate delta
-                i = min(bisect_right(segdivs, utterance_start), len(segdivs)-1)
-                utterance_start += offsets[i]
-                utterance_stop += offsets[i]
-                word_starts = [t + offsets[i] for t in word_starts]
-                word_ends = [t + offsets[i] for t in word_ends]
-
-            yield utterance_start, utterance_stop, zip(word_starts, word_ends)
+        return utterances
 
     def process_audio(self, job_config: AzureJobConfig) -> List[mpf.AudioTrack]:
         self.acs.update_acs(job_config.server_info)
 
         logger.debug(f'Loading file: {job_config.target_file}')
-        audio_bytes = util.transcode_to_wav(
+        audio_bytes = mpf_util.transcode_to_wav(
             str(job_config.target_file),
             start_time=job_config.start_time,
             stop_time=job_config.stop_time,
@@ -233,40 +221,25 @@ class AcsSpeechDetectionProcessor(object):
             logger.info('Deleting transcript')
             self.acs.delete_transcription(output_loc)
 
-        utterances = transcription['recognizedPhrases']
-        desegmented_times = self.desegment_times(
-            utterances=utterances,
+        recognized_phrases = transcription['recognizedPhrases']
+        utterances = self.convert_word_timing(
+            recognized_phrases=recognized_phrases,
             speaker=job_config.speaker)
 
         logger.info('Completed process audio')
         logger.info('Creating AudioTracks')
         audio_tracks = []
-        for utt, times in zip(utterances, desegmented_times):
-            # Speaker ID returned by Azure diarization, default 0
-            speaker_id = str(utt.get('speaker', '0'))
-
-            # Transcript text
-            display = utt['nBest'][0]['display']
-
+        for utt in utterances:
             # Timing information, desegmented if feed-forward track exists
-            utterance_start, utterance_stop, word_segments = times
-
-            # Utterance confidence (seemingly not an aggregate of word confidences)
-            utterance_confidence = utt['nBest'][0]['confidence']
+            utterance_start, utterance_stop = utt.segment
 
             # Build word confidence and segment strings
-            word_confidences = ', '.join([
-                str(w['confidence'])
-                for w in utt['nBest'][0]['words']
-            ])
-            word_segments = ', '.join([
-                f"{t0:f}-{t1:f}"
-                for t0, t1 in word_segments
-            ])
+            word_confidences = ', '.join(f"{c:f}" for c in utt.word_confidences)
+            word_segments = ', '.join(f"{t0:d}-{t1:d}" for t0, t1 in utt.word_segments)
 
             properties = dict(
-                SPEAKER_ID=speaker_id,
-                TRANSCRIPT=display,
+                SPEAKER_ID=utt.speaker_id,
+                TRANSCRIPT=utt.display,
                 WORD_CONFIDENCES=word_confidences,
                 ISO_LANGUAGE=BCP47_TO_ISO6393.get(job_config.language, 'UNKNOWN'),
                 BCP_LANGUAGE=job_config.language,
@@ -277,9 +250,8 @@ class AcsSpeechDetectionProcessor(object):
             if job_config.speaker is not None:
                 # If feed-forward track exists, use provided speaker info
                 ldict = job_config.speaker.language_scores
-                languages = [n for n, s in ldict.items()]
                 languages = sorted(
-                    languages,
+                    ldict,
                     key=lambda lab: ldict.get(lab, -1.0),
                     reverse=True
                 )
@@ -288,7 +260,6 @@ class AcsSpeechDetectionProcessor(object):
 
                 # Add or update properties according to fed-forward info
                 properties.update(
-                    SPEAKER_ID=job_config.speaker.speaker_id,
                     GENDER=job_config.speaker.gender,
                     GENDER_CONFIDENCE=job_config.speaker.gender_score,
                     SPEAKER_LANGUAGES=language_labels,
@@ -298,7 +269,7 @@ class AcsSpeechDetectionProcessor(object):
             track = mpf.AudioTrack(
                 start_time=utterance_start,
                 stop_time=utterance_stop,
-                confidence=utterance_confidence,
+                confidence=utt.confidence,
                 detection_properties=properties
             )
             audio_tracks.append(track)
