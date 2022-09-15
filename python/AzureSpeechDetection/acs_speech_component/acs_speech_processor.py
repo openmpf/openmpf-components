@@ -138,6 +138,8 @@ class AcsSpeechDetectionProcessor(object):
             #  generator and skip words.
             word_gen, seg_words = tee(word_gen, 2)
             seg_words = list(takewhile(lambda w: w.segment[0] < t1, seg_words))
+            if not seg_words:
+                continue
             display, segs, confs = zip(*seg_words)
             display = ' '.join(display)
             utterances.append(Utterance(
