@@ -80,23 +80,47 @@ class AcsSpeechDetectionProcessor(object):
             int((w['offsetInTicks'] + w['durationInTicks']) * 1e-4)
         )
 
-        phrase_dicts = [
-            dict(
-                display=phrase['nBest'][0]['display'],
-                segment=get_seg(phrase),
-                confidence=phrase['nBest'][0]['confidence'],
-                word_segments=list(map(get_seg, phrase['nBest'][0]['words'])),
-                word_confidences=[w['confidence'] for w in phrase['nBest'][0]['words']],
-                speaker_id=str(phrase.get('speaker', '0'))
-            )
-            for phrase in recognized_phrases
-        ]
+        phrase_dicts = []
+        for phrase in recognized_phrases:
+            display = phrase['nBest'][0]['display'].strip()
+            segment = get_seg(phrase)
+            confidence = phrase['nBest'][0]['confidence']
+            word_segments = list(map(get_seg, phrase['nBest'][0]['words']))
+            word_confidences = [w['confidence'] for w in phrase['nBest'][0]['words']]
+            speaker_id = str(phrase.get('speaker', '0'))
 
+            # Ensure display text tokens are one-to-one with word segments
+            #  If not, replace with bare words. This loses punctuation and
+            #  capitalization, but keeps correspondence between detection props
+            if len(display.split()) != len(word_segments):
+                logger.warning(
+                    "Display text did not match number of segments, using bare "
+                    "words instead (will lose punctuation and capitalization "
+                    "information)")
+                display = ' '.join(w['word'].strip() for w in phrase['nBest'][0]['words'])
+
+            phrase_dicts.append(dict(
+                display=display,
+                segment=segment,
+                confidence=confidence,
+                word_segments=word_segments,
+                word_confidences=word_confidences,
+                speaker_id=speaker_id
+            ))
+
+        # If there are no feed-forward speech segments, then each phrase
+        #  is its own utterance
         if speaker is None:
             return [Utterance(**d) for d in phrase_dicts]
 
-        # Create parallel lists for the beginning, end, and length of each
-        #  feedforward segment, so that utterance timestamps can be shifted
+        # Preserve only word-level information, other utterance data is
+        #  determined by feed-forward speaker information
+        words = [w for p in phrase_dicts for w in p['display'].split()]
+        word_segments = [s for p in phrase_dicts for s in p['word_segments']]
+        word_confidences = [c for p in phrase_dicts for c in p['word_confidences']]
+
+        # Create parallel lists for the beginning and length of each
+        #  feedforward segment, so that word timestamps can be shifted
         #  to be relative to the beginning of the input audio file.
         segbegs, seglens = zip(*(
             (t0, t1-t0) for t0, t1 in sorted(speaker.speech_segs)
@@ -108,24 +132,16 @@ class AcsSpeechDetectionProcessor(object):
         # The offset to add to region times, according to their segment
         offsets = [a-b for a, b in zip(segbegs, [0] + segdivs)]
 
-        for phrase_dict in phrase_dicts:
-            t0, t1 = phrase_dict['segment']
-            # Get index of the segment containing the region start time,
-            #  and offset utterance time information by appropriate delta
-            i = min(bisect_right(segdivs, t0), len(segdivs) - 1)
-            d = offsets[i]
-            phrase_dict.update(
-                words=phrase_dict['display'].strip().split(),
-                segment=(t0+d, t1+d),
-                word_segments=[(wt0+d, wt1+d) for wt0, wt1 in phrase_dict['word_segments']]
-            )
-
-        Word = namedtuple('Word', ['display', 'segment', 'confidence'])
-        words = [
-            Word(*word_info)
-            for p in phrase_dicts
-            for word_info in zip(p['words'], p['word_segments'], p['word_confidences'])
+        # Offset time for each word
+        word_deltas = [
+            offsets[min(bisect_right(segdivs, t0), len(segdivs) - 1)]
+            for t0, t1 in word_segments
         ]
+        word_segments = [(t0+d, t1+d) for (t0, t1), d in zip(word_segments, word_deltas)]
+
+        # Collect word information into named tuple for easy access
+        Word = namedtuple('Word', ['display', 'segment', 'confidence'])
+        words = [Word(*w) for w in zip(words, word_segments, word_confidences)]
         words = sorted(words, key=lambda w: w.segment)
         word_gen = (w for w in words)
 
