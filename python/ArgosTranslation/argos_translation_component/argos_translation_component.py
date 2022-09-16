@@ -40,9 +40,6 @@ logger = logging.getLogger('ArgosTranslationComponent')
 class ArgosTranslationComponent:
     detection_type = 'TRANSLATION'
 
-    def __init__(self):
-        logger.extra = {}
-
     @staticmethod
     def get_detections_from_video(job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         logger.info(f'Received video job')
@@ -74,7 +71,7 @@ class ArgosTranslationComponent:
             if job.feed_forward_location is None:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                     f'Component can only process feed forward '
-                    ' jobs, but no feed forward track provided. ')
+                    'jobs, but no feed forward track provided. ')
 
             tw = TranslationWrapper(job.job_properties)
             tw.add_translations(job.feed_forward_location.detection_properties)
@@ -94,7 +91,7 @@ class ArgosTranslationComponent:
             if job.feed_forward_track is None:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                     f'Component can only process feed forward '
-                    ' jobs, but no feed forward track provided. ')
+                    'jobs, but no feed forward track provided. ')
 
             tw = TranslationWrapper(job.job_properties)
             tw.add_translations(job.feed_forward_track.detection_properties)
@@ -133,7 +130,7 @@ class ArgosTranslationComponent:
 
 class TranslationWrapper:
     def __init__(self, job_props):
-        self.supported_languages = self.get_supported_languages()
+        self.supported_languages = self.get_supported_languages_codes()
 
         self._installed_languages = translate.get_installed_languages()
         self.installed_lang_codes = [lang.code for lang in self._installed_languages]
@@ -160,7 +157,7 @@ class TranslationWrapper:
 
         self._from_lang = mpf_util.get_property(
             properties=job_props,
-            key='DEFAULT_FROM_LANGUAGE',
+            key='DEFAULT_SOURCE_LANGUAGE',
             default_value='es',
             prop_type=str
         ).lower().strip()
@@ -168,11 +165,11 @@ class TranslationWrapper:
         self._to_lang = "en"
 
     @staticmethod
-    def get_supported_languages():
+    def get_supported_languages_codes():
         try:
             available_packages = package.get_available_packages()
         except Exception:
-            # TODO log downloading package index
+            logger.info("Downloading package index.")
             package.update_package_index()
             available_packages = package.get_available_packages()
 
@@ -198,8 +195,12 @@ class TranslationWrapper:
                 if lang in self.supported_languages:
                     self._from_lang = lang
                     break
-                if lang == 'en':
+                elif lang == 'en':
                     self._from_lang = lang
+                else:
+                    raise mpf.DetectionError.DETECTION_FAILED.exception(
+                        f"Source language, {lang}, is not supported."
+                    )
         else:
             if self._from_lang == 'en':
                 ff_props['SKIPPED_TRANSLATION'] = 'TRUE'
@@ -208,29 +209,22 @@ class TranslationWrapper:
                 return
             if self._from_lang not in self.supported_languages:
                 raise mpf.DetectionError.DETECTION_FAILED.exception(
-                    f"Source language, {self._from_lang}, is not "
-                    "supported."
+                    f"Default source language, {self._from_lang}, is not supported."
                 )
 
-        # print(self._from_lang)
-        print(self.supported_languages)
-        # TODO use valid translations to determine if package needs to be downloaded
-        # valid_translations = list(
-        #     filter(lambda x: x.to_lang.code == self._to_lang, from_lang.translations_from)
-        # )
         if self._from_lang not in self.installed_lang_codes:
-            # print("installing language", self._from_lang)
+            logger.info(f"Language {self._from_lang} is not installed. Installing package.")
             available_packages = package.get_available_packages()
-            # print(available_packages)
             available_package = list(
                 filter(
                     lambda x: x.from_code == self._from_lang and x.to_code == self._to_lang, available_packages
                 )
             )[0]
-            # print(available_package)
+
             download_path = available_package.download()
-            # print(download_path)
             package.install_from_path(download_path)
+
+            logger.info(f"Successfully installed {self._from_lang}")
 
             self.installed_lang_codes = [lang.code for lang in translate.get_installed_languages()]
             self._installed_languages = translate.get_installed_languages()
@@ -242,12 +236,19 @@ class TranslationWrapper:
             lambda x: x.code == self._to_lang,
             self._installed_languages))[0]
 
-        # TODO this will be none if no valid translation model for from_lang->to_lang
         translation = from_lang.get_translation(to_lang)
 
-        # print(translation)
+        if translation is None:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                f"No valid translation model from {self._from_lang} to {self._to_lang}, "
+                f"check if any packages are missing."
+            )
+
+        logger.info(f"Translating the {prop_to_translate} property")
+
         translated_text = translation.translate(input_text)
-        # print(translated_text)
+
+        logger.info("Translation complete.")
 
         ff_props['TRANSLATION_SOURCE_LANGUAGE'] = self._from_lang
         ff_props['TRANSLATION'] = translated_text

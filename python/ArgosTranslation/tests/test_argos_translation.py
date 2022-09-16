@@ -42,6 +42,18 @@ CHINESE_SHORT_SAMPLE = "谢谢。"
 SHORT_OUTPUT = "Where's the library?"
 SHORT_OUTPUT_CHINESE = "Thanks."
 
+LONG_OUTPUT = (
+    "We hold as evident these truths: that all men are created equal, "
+    "that they are endowed by their Creator with certain inalienable rights, "
+    "which among them are life, liberty and the pursuit of happiness. "
+    "That in order to nurture these rights, governments are instituted among men, "
+    "which derive their legitimate powers from the consent of the governed. "
+    "Whenever a form of government becomes destroyer of these principles, "
+    "the people have the right to reform or abolish it and to institute a new government "
+    "that is founded on these principles, and to organize their powers in the way that in "
+    "their opinion will offer the greatest chance of achieving their security and happiness."
+)
+
 
 class TestArgosTranslation(unittest.TestCase):
 
@@ -124,7 +136,6 @@ class TestArgosTranslation(unittest.TestCase):
         # Should skip English tracks
         self.assertEqual('TRUE', result[0].frame_locations[3].detection_properties['SKIPPED_TRANSLATION'])
 
-        # Should automatically select the correct language for other tracks
         self.assertEqual('ru', result[0].frame_locations[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
         self.assertEqual('es', result[0].frame_locations[1].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
         self.assertEqual('zh', result[0].frame_locations[2].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
@@ -132,8 +143,54 @@ class TestArgosTranslation(unittest.TestCase):
         self.assertEqual(SHORT_OUTPUT, result[0].frame_locations[1].detection_properties['TRANSLATION'])
         self.assertEqual(SHORT_OUTPUT_CHINESE, result[0].frame_locations[2].detection_properties['TRANSLATION'])
 
+    def test_large_text(self):
+        comp = ArgosTranslationComponent()
+        job = mpf.GenericJob(
+            job_name='Test Sentence Length',
+            data_uri=str(TEST_DATA / 'spanish_long.txt'),
+            job_properties=dict(DEFAULT_SOURCE_LANGUAGE='ES'),
+            media_properties={},
+            feed_forward_track=None
+        )
 
+        result = comp.get_detections_from_generic(job)
 
+        self.assertEqual(1, len(result))
+        self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual(LONG_OUTPUT, result[0].detection_properties['TRANSLATION'])
 
+    def test_no_feed_forward_location(self):
+        comp = ArgosTranslationComponent()
+        job = mpf.ImageJob('Test', 'test.jpg', {}, {})
 
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(comp.get_detections_from_image(job))
+        self.assertEqual(mpf.DetectionError.UNSUPPORTED_DATA_TYPE, cm.exception.error_code)
 
+    def test_no_feed_forward_track(self):
+        comp = ArgosTranslationComponent()
+        job = mpf.VideoJob('test', 'test.mp4', 0, 1, {}, {})
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(comp.get_detections_from_video(job))
+        self.assertEqual(mpf.DetectionError.UNSUPPORTED_DATA_TYPE, cm.exception.error_code)
+
+        job = mpf.AudioJob('Test Audio', 'test.wav', 0, 1, {}, {})
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(comp.get_detections_from_audio(job))
+        self.assertEqual(mpf.DetectionError.UNSUPPORTED_DATA_TYPE, cm.exception.error_code)
+
+    def test_unsupported_language(self):
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SPANISH_SHORT_SAMPLE, LANGUAGE='SPA'))
+        job = mpf.ImageJob('Test Image', 'test.jpg', dict(DEFAULT_SOURCE_LANGUAGE='es'), {}, ff_loc)
+        comp = ArgosTranslationComponent()
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(comp.get_detections_from_image(job))
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+
+        job = mpf.GenericJob('Test Plaintext', str(TEST_DATA / 'spanish_short.txt'),
+                             dict(DEFAULT_SOURCE_LANGUAGE='SPA'), {})
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(comp.get_detections_from_generic(job))
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)

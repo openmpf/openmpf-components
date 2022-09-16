@@ -37,16 +37,13 @@ def main():
 
     _, from_lang, text = sys.argv
 
-    detection_props = dict(TEXT="Bonjour")
-    job_props = dict(FROM_LANGUAGE=from_lang)
+    detection_props = dict(TEXT=text)
+    job_props = dict(DEFAULT_SOURCE_LANGUAGE=from_lang)
     TranslationWrapper(job_props).add_translations(detection_props)
 
-    """
-    print('TRANSLATION SOURCE LANGUAGE:', detection_props['TRANSLATION SOURCE LANGUAGE'])
-    print('TRANSLATION SOURCE LANGUAGE CONFIDENCE:', detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE'])
+    print('TRANSLATION SOURCE LANGUAGE:', detection_props['TRANSLATION_SOURCE_LANGUAGE'])
     print('TRANSLATION:')
     print(detection_props['TRANSLATION'])
-    """
 
 
 if __name__ == '__main__':
