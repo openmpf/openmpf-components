@@ -94,11 +94,11 @@ public class TestTikaTextDetectionComponent {
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
         assertEquals(30, tracks.size());
 
-        assertSection(tracks.get(0), "1", "1", "English", "OpenMPF", "", "eng");
-        assertSection(tracks.get(0), "1", "1", "English", "Bridging the Gap in Media Analytics",  "", "eng");
-        assertSection(tracks.get(2), "1", "3", "Unknown", "Data Filtering", "", "UNKNOWN");
-        assertSection(tracks.get(23), "1", "24", "English", "The MITRE Corporation", "", "eng");
-        assertSection(tracks.get(29), "3", "1", "Unknown", "page 3", "", "UNKNOWN"); // cannot determine language
+        assertSection(tracks.get(0), "1", "1", "English", "OpenMPF", null, "eng");
+        assertSection(tracks.get(0), "1", "1", "English", "Bridging the Gap in Media Analytics",  null, "eng");
+        assertSection(tracks.get(2), "1", "3", "Unknown", "Data Filtering", null, "UNKNOWN");
+        assertSection(tracks.get(23), "1", "24", "English", "The MITRE Corporation", null, "eng");
+        assertSection(tracks.get(29), "3", "1", "Unknown", "page 3", null, "UNKNOWN"); // cannot determine language
     }
 
     @Test
@@ -156,7 +156,6 @@ public class TestTikaTextDetectionComponent {
         jobProperties.put("MIN_LANGUAGES", "0");
 
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
-        boolean debug = false;
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
         assertEquals(23 ,tracks.size());

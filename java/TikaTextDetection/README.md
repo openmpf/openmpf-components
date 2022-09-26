@@ -67,6 +67,8 @@ Secondary languages and their confidence scores are listed as comma separated st
     Set to an empty string if no language is identified.
 - `SECONDARY_TEXT_LANGUAGE_CONFIDENCES` : A confidence list corresponding to the secondary detected languages in order (also separated by commas). 
 
+  For secondary language predictions, ensure that `MIN_LANGUAGES` property is set to 2 or greater. Secondary language results are typically ignored by the component as Tika has a high confidence threshold for reasonable predictions.
+
 # Supported Language Detectors:
 
 This component supports the following language detectors. Users can select their preferred detector using
@@ -79,25 +81,18 @@ the `LANG_DETECTOR` option:
     - [Leipzig corpus](https://wortschatz.uni-leipzig.de/en/download)                                                                                                     
     - [cc-100](https://data.statmt.org/cc-100/)                                                                                                                           
                                                                                                                                                                           
-  Supports almost every language in Optimaize and Tika Language Detectors except Aragonese.    
+  Supports almost every language in Optimaize and Tika Language Detectors except Aragonese.  
 
+  **PLEASE NOTE**, if `opennlp` is selected, ensure that the `MIN_LANGUAGES` property is set to 1 or greater.
 
 - `LANG_DETECTOR = optimaize`: [Optimaize Language Detector](https://github.com/optimaize/language-detector)
 
   Third party language detection project that supports 71 languages.
   Predicts target language using N-gram frequency matching between input and language profiles.
   Supports almost every language present in Tika's Language Detector except Esperanto.
- Please note that Optimaize supports Punjabi/Panjabi while OpenNLP supports Western Punjabi/Panjabi.      
+ Please note that Optimaize supports Punjabi/Panjabi while OpenNLP supports Western Punjabi/Panjabi.
+ 
    
-                                                                                                                                                          
-- (Depreciated) `LANG_DETECTOR = tika`: [Apache Tika Language Detector](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/tika/TikaLanguageDetector.html)     
-                                                                                                                                                           
-  Apache Tika's original in-house language detection capability.                                                                                           
-  Predicts target language using vector distance of trigrams between input string and language models.                                                     
-  Supports 28 languages (listed in following section).                                                                                                                                                                                                                                          
-  **NOTE: Developers have warned that this legacy detector is depreciated and won't work well on short snippets of text.**                                 
-
-       
 # Supported Language List:
 
 - Tika Language Detector:
