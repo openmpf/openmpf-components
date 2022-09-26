@@ -56,7 +56,7 @@ Please note that the behavior of `MIN_LANGUAGES` is different depending on the l
 
 Language results are stored as follows:
 - `TEXT_LANGUAGE` : The primary detected language for a given text. Set to "Unknown" if no language is identified.
-- `TEXT_LANGUAGE_CONFIDENCE` : Raw confidence score for the primary language. See [note here.](https://tika.apache.org/2.4.1/api/index.html?org/apache/tika/language/detect/LanguageResult.html)
+- `TEXT_LANGUAGE_CONFIDENCE` : Raw confidence score for the primary language. Ranges from 0 to 1 for OpenNLP and Optimaize language detectors, and set to -1 if no results are found. See [note here.](https://tika.apache.org/2.4.1/api/index.html?org/apache/tika/language/detect/LanguageResult.html)
 - `ISO_LANGUAGE` : The primary detected language for a given text in ISO 639-3 format. Set to "UNKNOWN" if no language id identified (as "UNK" is an ISO code).
 
 Secondary languages and their confidence scores are listed as comma separated strings:
@@ -87,7 +87,7 @@ the `LANG_DETECTOR` option:
   Third party language detection project that supports 71 languages.
   Predicts target language using N-gram frequency matching between input and language profiles.
   Supports almost every language present in Tika's Language Detector except Esperanto.
- Please note that Optimaize supports Punjabi/Panjabi while OpenNLP supports Western Punjabi/Panjabi.
+  Please note that Optimaize supports Punjabi/Panjabi while OpenNLP supports Western Punjabi/Panjabi.
  
    
 # Supported Language List:
