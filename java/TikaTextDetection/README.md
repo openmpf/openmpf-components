@@ -44,12 +44,9 @@ The following format-specific behaviors were observed using Tika 1.28.1 on Ubunt
 
 Tika supports the following language detection properties:
 
-- `MAX_REASONABLE_LANGUAGES`: Specifies maximum number of top detected languages. 
-When set to 0 or below, allow any number of language results that are marked as reasonably certain by Tika.
-
 - `MIN_LANGUAGES`: When set to a positive integer, attempt to return specified number of top languages, even if some are not marked as reasonably certain. Non-positive values disable this property to only accept reasonable predictions.
 
-For instance, if `MAX_REASONABLE_LANGUAGES` is set to 5 and `MIN_LANGUAGES` is set to 2, the component will always attempt to return the top 2 predicted languages, followed by the next 3 if they are marked as reasonably certain.
+For instance, if `MIN_LANGUAGES` is set to 2, the component will always attempt to return the top 2 predicted languages, followed by the next languages if they are also marked as reasonably certain.
 
 If `MAX_REASONABLE_LANGUAGES` is set to -1 and `MIN_LANGUAGES` is set to 2 (default), the component will always attempt to return the top predicted language and a secondary language, even if they are not set to reasonably confident by Tika.
 
@@ -59,12 +56,12 @@ Please note that the behavior of `MIN_LANGUAGES` is different depending on the l
 
 Language results are stored as follows:
 - `TEXT_LANGUAGE` : The primary detected language for a given text. Set to "Unknown" if no language is identified.
-- `TEXT_LANGUAGE_CONFIDENCE` : A confidence setting for the primary language ranging from `NONE` to `HIGH` confidence. See [note here.](https://tika.apache.org/1.21/api/org/apache/tika/language/detect/LanguageConfidence.html)
+- `TEXT_LANGUAGE_CONFIDENCE` : Raw confidence score for the primary language. See [note here.](https://tika.apache.org/2.4.1/api/index.html?org/apache/tika/language/detect/LanguageResult.html)
 - `ISO_LANGUAGE` : The primary detected language for a given text in ISO 639-3 format. Set to "UNKNOWN" if no language id identified (as "UNK" is an ISO code).
 
 Secondary languages and their confidence scores are listed as comma separated strings:
 - `SECONDARY_TEXT_LANGUAGES` : A list of secondary languages (from greatest to least confidence) separated by ", " delimiters.
-    Set to an empty string if no language is identified.
+    Note,`SECONDARY_TEXT` properties are not included if no secondary languages are identified.
 - `SECONDARY_TEXT_LANGUAGE_CONFIDENCES` : A confidence list corresponding to the secondary detected languages in order (also separated by commas). 
 
   For secondary language predictions, ensure that `MIN_LANGUAGES` property is set to 2 or greater. Secondary language results are typically ignored by the component as Tika has a high confidence threshold for reasonable predictions.

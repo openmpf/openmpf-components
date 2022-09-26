@@ -38,12 +38,6 @@
           "defaultValue": "opennlp"
         },
         {
-          "name": "MAX_REASONABLE_LANGUAGES",
-          "description": "Specifies maximum number of top detected languages. When set to 0 or below, allow any number of language results that are marked as reasonably certain by TIKA.",
-          "type": "INT",
-          "defaultValue": "-1"
-        },
-        {
           "name": "MIN_LANGUAGES",
           "description": "When set to a positive integer, attempt to always return specified number of top languages, even if some are not marked as reasonably certain. Non-positive values disable this property to only accept reasonable predictions.",
           "type": "INT",

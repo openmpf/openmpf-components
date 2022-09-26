@@ -99,7 +99,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
         // Set language filtering limit.
         int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);
-        int maxLang = MapUtils.getIntValue(properties, "MAX_REASONABLE_LANGUAGES", -1);
         int minLang = MapUtils.getIntValue(properties, "MIN_LANGUAGES", 2);
 
         // Store metadata as a unique track.
@@ -197,13 +196,13 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                     List<String> isoList = new ArrayList<String>();
                     List<String> confidenceList = new ArrayList<String>();
 
-                    int maxTrackLang = (maxLang > langResultList.size() || maxLang < 1) ? langResultList.size(): maxLang;
                     int minTrackLang = (minLang > langResultList.size()) ? langResultList.size() : minLang;
 
                     minTrackLang = (minTrackLang <= 0) ? 0 : minTrackLang;
-                    maxTrackLang = (maxTrackLang < minTrackLang) ? minTrackLang: maxTrackLang;
 
-                    for (int i=0; i < maxTrackLang; i++) {
+                    // Iterate through detected languages, starting with the most confident prediction.
+                    // Terminate early if low confidence results are encountered and not requested by user.
+                    for (int i=0; i < langResultList.size(); i++) {
                         LanguageResult langResult = langResultList.get(i);
 
                         String language = langResult.getLanguage();
