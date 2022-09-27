@@ -35,9 +35,11 @@ from test_acs_speech import (
     transcription_url, blobs_url, outputs_url, models_url
 )
 import mpf_component_util as util
+import mpf_component_api as mpf
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from acs_speech_component import AcsSpeechComponent
+from acs_speech_component.job_parsing import AzureJobConfig
 
 
 def guess_type(filename):
@@ -106,10 +108,6 @@ if __name__ == '__main__':
                 " processing video files. Use start_frame and stop_frame."
             )
 
-    comp = AcsSpeechComponent()
-    parsed_properties = comp._parse_job_props(properties)
-    comp.processor.acs.update_acs(parsed_properties['server_info'])
-
     job_name = args.job_name
     gen_job_name = (job_name is None)
 
@@ -122,6 +120,7 @@ if __name__ == '__main__':
 
     start_time = 0
     stop_time = -1
+    job = None
     if filetype == 'audio':
         start_time = args.start_time
         stop_time = args.stop_time
@@ -136,6 +135,16 @@ if __name__ == '__main__':
             start_time = 0
         if stop_time is None:
             stop_time = -1
+
+        job = mpf.AudioJob(
+            job_name=job_name,
+            data_uri=args.filepath,
+            start_time=start_time,
+            stop_time=stop_time,
+            job_properties=properties,
+            media_properties=media_properties,
+            feed_forward_track=None
+        )
     elif filetype == 'video':
         start_frame = args.start_frame
         stop_frame = args.stop_frame
@@ -150,6 +159,24 @@ if __name__ == '__main__':
         fpms = float(media_properties['FPS']) / 1000.0
         start_time = 0 if start_frame is None else start_frame / fpms
         stop_time = -1 if stop_frame is None else stop_frame / fpms
+
+        job = mpf.VideoJob(
+            job_name=job_name,
+            data_uri=args.filepath,
+            start_frame=start_frame,
+            stop_frame=stop_frame,
+            job_properties=properties,
+            media_properties=media_properties,
+            feed_forward_track=None
+        )
+    else:
+        parser.error(
+            f"Filetype must be video or audio (recieved {filetype})."
+        )
+
+    comp = AcsSpeechComponent()
+    job_config = AzureJobConfig(job)
+    comp.processor.acs.update_acs(job_config.server_info)
 
     job_url = f"{transcription_url}/{job_name}"
     base_local_path = os.path.join(
@@ -181,8 +208,8 @@ if __name__ == '__main__':
         output_loc = comp.processor.acs.submit_batch_transcription(
             recording_url=recording_url,
             job_name=job_name,
-            diarize=parsed_properties['diarize'],
-            language=parsed_properties['language'],
+            diarize=job_config.diarize,
+            language=job_config.language,
             expiry=args.transcription_expiration
         )
     except Exception:
