@@ -54,13 +54,15 @@ if __name__ == '__main__':
             'Sample Azure Speech component on audio or video files.'
         )
     )
-    parser.add_argument('--start-time', type=int)
-    parser.add_argument('--stop-time', type=int)
-    parser.add_argument('--start-frame', type=int)
-    parser.add_argument('--stop-frame', type=int)
+
     parser.add_argument('--frame-count', type=int)
     parser.add_argument('--fps', type=float)
     parser.add_argument('--duration', type=float)
+
+    parser.add_argument('--start-time', type=int, default=0)
+    parser.add_argument('--stop-time', type=int, default=-1)
+    parser.add_argument('--start-frame', type=int, default=0)
+    parser.add_argument('--stop-frame', type=int, default=-1)
 
     parser.add_argument('--diarize', action='store_true')
     parser.add_argument('--language', type=str, default="en-US")
@@ -81,102 +83,56 @@ if __name__ == '__main__':
     media_properties = dict()
     if args.duration is not None:
         media_properties['DURATION'] = str(args.duration)
-    if args.fps is not None:
-        media_properties['FPS'] = str(args.fps)
-    if args.frame_count is not None:
-        media_properties['FRAME_COUNT'] = str(args.frame_count)
 
     filetype = guess_type(args.filepath)[0].split('/')[0]
     if filetype == 'audio':
         if args.fps is not None:
-            parser.error(
-                "FPS not used when processing audio files."
-            )
-        if args.start_frame is not None or args.stop_frame is not None:
-            parser.error(
-                "start_frame and stop_frame not used when processing audio"
-                " files. Use start_time and stop_time."
-            )
+            parser.error("FPS not used when processing audio files.")
     elif filetype == 'video':
         if args.fps is None:
-            parser.error(
-                "FPS must be provided when passing video files."
-            )
-        if args.start_time is not None or args.stop_time is not None:
-            parser.error(
-                "start_time and stop_time not used when"
-                " processing video files. Use start_frame and stop_frame."
-            )
+            parser.error("FPS must be provided when passing video files.")
+        media_properties['FPS'] = str(args.fps)
+        if args.frame_count is not None:
+            media_properties['FRAME_COUNT'] = str(args.frame_count)
+    else:
+        parser.error(f"Filetype must be video or audio (got {filetype})")
 
     job_name = args.job_name
     gen_job_name = (job_name is None)
 
     recording_id = args.filepath.split("/")[-1]
     if gen_job_name:
-        job_name = os.path.splitext(recording_id)[0]
-        if args.diarize:
-            job_name += "_diar"
-        job_name += "_" + args.language
+        filename = os.path.splitext(recording_id)[0]
+        job_name = f"{filename}_{'diar_' * args.diarize}{args.language}"
 
-    start_time = 0
-    stop_time = -1
     job = None
     if filetype == 'audio':
-        start_time = args.start_time
-        stop_time = args.stop_time
-        if gen_job_name and not (start_time is None and stop_time is None):
-            job_name += (
-                "_" +
-                ("0" if start_time is None else str(start_time)) +
-                "-" +
-                ("EOF" if stop_time < 0 else str(stop_time))
-            )
-        if start_time is None:
-            start_time = 0
-        if stop_time is None:
-            stop_time = -1
-
         job = mpf.AudioJob(
             job_name=job_name,
             data_uri=args.filepath,
-            start_time=start_time,
-            stop_time=stop_time,
+            start_time=args.start_time,
+            stop_time=args.stop_time,
             job_properties=properties,
             media_properties=media_properties,
             feed_forward_track=None
         )
     elif filetype == 'video':
-        start_frame = args.start_frame
-        stop_frame = args.stop_frame
-        if gen_job_name and not (start_frame is None and stop_frame is None):
-            job_name += (
-                "_" +
-                ("0" if start_frame is None else str(start_frame)) +
-                "-" +
-                ("EOF" if stop_frame is None else str(stop_frame))
-            )
-        # Convert frame locations to timestamps
-        fpms = float(media_properties['FPS']) / 1000.0
-        start_time = 0 if start_frame is None else start_frame / fpms
-        stop_time = -1 if stop_frame is None else stop_frame / fpms
-
         job = mpf.VideoJob(
             job_name=job_name,
             data_uri=args.filepath,
-            start_frame=start_frame,
-            stop_frame=stop_frame,
+            start_frame=args.start_frame,
+            stop_frame=args.stop_frame,
             job_properties=properties,
             media_properties=media_properties,
             feed_forward_track=None
-        )
-    else:
-        parser.error(
-            f"Filetype must be video or audio (recieved {filetype})."
         )
 
     comp = AcsSpeechComponent()
     job_config = AzureJobConfig(job)
     comp.processor.acs.update_acs(job_config.server_info)
+
+    if gen_job_name:
+        job_name += f"_{job_config.speaker_id_prefix}"
 
     job_url = f"{transcription_url}/{job_name}"
     base_local_path = os.path.join(
@@ -199,8 +155,8 @@ if __name__ == '__main__':
     recording_url = comp.processor.acs.upload_file_to_blob(
         audio_bytes=util.transcode_to_wav(
             args.filepath,
-            start_time=start_time,
-            stop_time=stop_time),
+            start_time=job_config.start_time,
+            stop_time=job_config.stop_time),
         recording_id=recording_id,
         blob_access_time=args.blob_access_time,
     )
