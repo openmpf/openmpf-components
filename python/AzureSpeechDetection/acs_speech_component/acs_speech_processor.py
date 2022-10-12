@@ -200,6 +200,16 @@ class AcsSpeechDetectionProcessor(object):
 
         diarize = job_config.diarize
         output_loc = None
+        language = job_config.language
+        if job_config.speaker is not None:
+            if job_config.speaker.language in self.acs.supported_locales:
+                language = job_config.speaker.language
+            else:
+                logger.warning(
+                    f"Language supplied in feed-forward track "
+                    f"({job_config.speaker.language}) not supported. "
+                    f"Transcribing with component default ({language}) instead."
+                )
         while output_loc is None:
             try:
                 logger.info('Submitting speech-to-text job to ACS')
@@ -207,7 +217,7 @@ class AcsSpeechDetectionProcessor(object):
                     recording_url=recording_url,
                     job_name=job_config.job_name,
                     diarize=diarize,
-                    language=job_config.language,
+                    language=language,
                     expiry=job_config.expiry
                 )
             except Exception as e:
