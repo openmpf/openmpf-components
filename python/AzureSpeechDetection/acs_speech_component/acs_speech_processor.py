@@ -205,11 +205,25 @@ class AcsSpeechDetectionProcessor(object):
             if job_config.speaker.language in self.acs.supported_locales:
                 language = job_config.speaker.language
             else:
-                logger.warning(
-                    f"Language supplied in feed-forward track "
-                    f"({job_config.speaker.language}) not supported. "
-                    f"Transcribing with component default ({language}) instead."
-                )
+                ldict = job_config.speaker.language_scores
+                for lang in sorted(ldict.keys, key=ldict.get, reverse=True):
+                    locale = ISO6393_TO_BCP47[lang]
+                    if locale in self.acs.supported_locales:
+                        language = locale
+                        logger.warning(
+                            f"Language supplied in feed-forward track "
+                            f"({job_config.speaker.language}) not supported. "
+                            f"Transcribing with highest-scoring language ({locale}) instead."
+                        )
+                        break
+                else:
+                    logger.warning(
+                        f"Neither the language supplied in feed-forward track "
+                        f"({job_config.speaker.language}), nor any other "
+                        f"detected language are supported. Transcribing with "
+                        f"component default ({language}) instead."
+                    )
+
         while output_loc is None:
             try:
                 logger.info('Submitting speech-to-text job to ACS')
