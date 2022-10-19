@@ -307,7 +307,8 @@ class AcsSpeechDetectionProcessor(object):
                     GENDER=job_config.speaker.gender,
                     GENDER_CONFIDENCE=job_config.speaker.gender_score,
                     SPEAKER_LANGUAGES=language_labels,
-                    SPEAKER_LANGUAGE_CONFIDENCES=language_confs
+                    SPEAKER_LANGUAGE_CONFIDENCES=language_confs,
+                    SPEECH_DETECTOR="AZURESPEECH"
                 )
 
             track = mpf.AudioTrack(
