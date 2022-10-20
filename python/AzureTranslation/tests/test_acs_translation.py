@@ -874,6 +874,40 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(' asdfasdf', actual[1])
 
 
+    def test_no_translate_no_detect_when_language_ff_prop_matches(self):
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT='Hello', DECODED_LANGUAGE='eng'))
+        job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {}, ff_loc)
+        results = list(AcsTranslationComponent().get_detections_from_image(job))
+        self.assertEqual(1, len(results))
+
+        result_props = results[0].detection_properties
+        self.assertNotIn('TRANSLATION', result_props)
+        self.assertEqual('EN', result_props['TRANSLATION TO LANGUAGE'])
+        self.assertEqual('en', result_props['TRANSLATION SOURCE LANGUAGE'])
+        self.assertEqual('TRUE', result_props['SKIPPED TRANSLATION'])
+
+
+    def test_language_ff_prop_different(self):
+        self.set_results_file('results-spanish.json')
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1,
+                                   dict(TEXT=SPANISH_SAMPLE_TEXT, DECODED_LANGUAGE='spa'))
+        job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {}, ff_loc)
+        results = list(AcsTranslationComponent().get_detections_from_image(job))
+        self.assertEqual(1, len(results))
+
+        result = results[0]
+        print(result.detection_properties)
+
+        self.assertEqual(SPANISH_SAMPLE_TEXT, result.detection_properties['TEXT'])
+        self.assertEqual(SPANISH_SAMPLE_TEXT_ENG_TRANSLATE,
+                         result.detection_properties['TRANSLATION'])
+        self.assertEqual('es', result.detection_properties['TRANSLATION SOURCE LANGUAGE'])
+
+        request_body = self.get_request_body()
+        self.assertEqual(1, len(request_body))
+        self.assertEqual(SPANISH_SAMPLE_TEXT, request_body[0]['Text'])
+
+
     def test_does_not_translate_when_to_and_from_are_same(self):
         self.set_results_file('eng-detect-result.json')
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT='Hello'))

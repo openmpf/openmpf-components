@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import annotations
+
 import bisect
 import json
 import logging
@@ -36,6 +38,8 @@ import urllib.request
 import uuid
 from typing import Callable, Dict, Iterator, List, Literal, Mapping, Match, NamedTuple, \
     Optional, Sequence, TypedDict, TypeVar, Union
+
+import langcodes
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -54,7 +58,7 @@ class AcsTranslationComponent:
             ff_track = job.feed_forward_track
             if ff_track is None:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                    f'Component can only process feed forward jobs, '
+                    'Component can only process feed forward jobs, '
                     'but no feed forward track provided. ')
 
             tc = TranslationClient(job.job_properties)
@@ -160,6 +164,10 @@ class TranslationClient:
 
         self._newline_behavior = NewLineBehavior.get(job_properties)
 
+        language_ff_prop_str = job_properties.get(
+                'LANGUAGE_FEED_FORWARD_PROP', 'ISO_LANGUAGE,DECODED_LANGUAGE,LANGUAGE')
+        self._language_ff_prop = [lang.strip() for lang in language_ff_prop_str.split(',')]
+
         self._detect_before_translate = mpf_util.get_property(job_properties,
                                                               'DETECT_BEFORE_TRANSLATE', True)
         acs_url = get_required_property('ACS_URL', job_properties)
@@ -190,7 +198,7 @@ class TranslationClient:
                 continue
 
             log.info(f'Attempting to translate the "{prop_name}" property...')
-            translation_result = self._translate_text(text_to_translate)
+            translation_result = self._translate_text(text_to_translate, detection_properties)
             detection_properties['TRANSLATION TO LANGUAGE'] = self._to_language
 
             if detect_result := translation_result.detect_result:
@@ -217,7 +225,7 @@ class TranslationClient:
             return  # Only process first matched property.
 
 
-    def _translate_text(self, text: str) -> TranslationResult:
+    def _translate_text(self, text: str, detection_properties: Dict[str, str]) -> TranslationResult:
         """
         Translates the given text. If the text is longer than ACS allows, we will break up the
         text and translate each part separately. If, during the current job, we have seen the
@@ -228,6 +236,9 @@ class TranslationClient:
 
         if self._provided_from_language:
             detect_result = DetectResult(self._provided_from_language, 1)
+            from_lang, from_lang_confidence, *_ = detect_result
+        elif upstream_lang := self._get_upstream_language(detection_properties):
+            detect_result = DetectResult(upstream_lang, 1)
             from_lang, from_lang_confidence, *_ = detect_result
         elif self._detect_before_translate:
             detect_result = self._detect_language(text)
@@ -316,6 +327,16 @@ class TranslationClient:
             return DetectResult(primary_language, primary_language_score)
         else:
             return self._handle_untranslatable_primary_language(primary_language, response)
+
+
+    def _get_upstream_language(self, detection_properties: Dict[str, str]) -> Optional[str]:
+        upstream_langs = (detection_properties.get(p) for p in self._language_ff_prop)
+        upstream_lang = next((lang for lang in upstream_langs if lang), None)
+        if upstream_lang:
+            # Convert the language code from ISO-639 to BCP-47 and drop the locale.
+            return langcodes.get(upstream_lang).language
+        else:
+            return None
 
 
     @staticmethod
@@ -425,8 +446,8 @@ class BreakSentenceClient:
 
         if azure_char_count > self.BREAK_SENTENCE_MAX_CHARS:
             log.warning('Guessing sentence breaks because the break sentence endpoint allows a '
-                        f'maximum of {self.BREAK_SENTENCE_MAX_CHARS} Azure characters, but the text '
-                        f'contained {azure_char_count} Azure characters.')
+                        f'maximum of {self.BREAK_SENTENCE_MAX_CHARS} Azure characters, but the'
+                        f'text contained {azure_char_count} Azure characters.')
             chunks = list(SentenceBreakGuesser.guess_breaks(text))
             log.warning(f'Broke text up in to {len(chunks)} chunks. Each chunk will be sent to '
                         'the break sentence endpoint.')
@@ -477,7 +498,7 @@ class BreakSentenceClient:
 
     @classmethod
     def _process_break_sentence_response(
-            cls, text: str, response_body: 'AcsResponses.BreakSentence') -> Iterator[str]:
+            cls, text: str, response_body: AcsResponses.BreakSentence) -> Iterator[str]:
         current_chunk_length = 0
         current_chunk_begin = 0
         current_chunk_azure_char_count = 0
@@ -485,8 +506,8 @@ class BreakSentenceClient:
             sentence_begin = current_chunk_begin + current_chunk_length
             sentence = text[sentence_begin: sentence_begin + length]
             sentence_azure_char_count = get_azure_char_count(sentence)
-            # The /breaksentence endpoint will return sentences <= 1000 characters, so the following condition will be
-            # true at least once.
+            # The /breaksentence endpoint will return sentences <= 1000 characters, so the
+            # following condition will be true at least once.
             if sentence_azure_char_count + current_chunk_azure_char_count <= cls.TRANSLATION_MAX_CHARS:
                 current_chunk_length += len(sentence)
                 current_chunk_azure_char_count += sentence_azure_char_count
@@ -787,15 +808,15 @@ class AcsResponses:
         score: float
 
     class _TranslateTextInfo(TypedDict):
-        translations: List['AcsResponses._TranslationResult']
-        detectedLanguage: Optional['AcsResponses._DetectedLangInfo']
+        translations: List[AcsResponses._TranslationResult]
+        detectedLanguage: Optional[AcsResponses._DetectedLangInfo]
 
     Translate = List[_TranslateTextInfo]
 
 
     class _SentenceLengthInfo(TypedDict):
         sentLen: List[int]
-        detectedLanguage: Optional['AcsResponses._DetectedLangInfo']
+        detectedLanguage: Optional[AcsResponses._DetectedLangInfo]
 
     BreakSentence = List[_SentenceLengthInfo]
 
@@ -811,7 +832,7 @@ class AcsResponses:
         score: float
         isTranslationSupported: bool
         isTransliterationSupported: bool
-        alternatives: Optional[List['AcsResponses._AlternativeDetectedLang']]
+        alternatives: Optional[List[AcsResponses._AlternativeDetectedLang]]
 
     Detect = List[_DetectedLangWithAlts]
 
