@@ -206,7 +206,7 @@ class AcsSpeechDetectionProcessor(object):
                 language = job_config.speaker.language
             else:
                 ldict = job_config.speaker.language_scores
-                for lang in sorted(ldict.keys, key=ldict.get, reverse=True):
+                for lang in sorted(ldict.keys(), key=ldict.get, reverse=True):
                     locale = ISO6393_TO_BCP47[lang]
                     if locale in self.acs.supported_locales:
                         language = locale
