@@ -285,9 +285,9 @@ class AcsSpeechDetectionProcessor(object):
                 SPEAKER_ID=utt.speaker_id,
                 TRANSCRIPT=utt.display,
                 WORD_CONFIDENCES=word_confidences,
-                ISO_LANGUAGE=BCP47_TO_ISO6393.get(job_config.language, 'UNKNOWN'),
-                BCP_LANGUAGE=job_config.language,
-                DECODED_LANGUAGE=job_config.language,
+                ISO_LANGUAGE=BCP47_TO_ISO6393.get(language, 'UNKNOWN'),
+                BCP_LANGUAGE=language,
+                DECODED_LANGUAGE=language,
                 WORD_SEGMENTS=word_segments
             )
 
@@ -307,8 +307,7 @@ class AcsSpeechDetectionProcessor(object):
                     GENDER=job_config.speaker.gender,
                     GENDER_CONFIDENCE=job_config.speaker.gender_score,
                     SPEAKER_LANGUAGES=language_labels,
-                    SPEAKER_LANGUAGE_CONFIDENCES=language_confs,
-                    SPEECH_DETECTOR="AZURESPEECH"
+                    SPEAKER_LANGUAGE_CONFIDENCES=language_confs
                 )
 
             track = mpf.AudioTrack(

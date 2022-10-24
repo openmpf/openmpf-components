@@ -24,6 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import logging
 import os
 from typing import Union, Mapping
 
@@ -32,6 +33,9 @@ import mpf_component_util as mpf_util
 
 from .azure_connect import AcsServerInfo
 from .azure_utils import ISO6393_TO_BCP47
+
+
+logger = logging.getLogger('AcsSpeechComponent')
 
 
 class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
@@ -65,12 +69,12 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
         language_iso = self.speaker.language.upper()
         languages = ISO6393_TO_BCP47.get(language_iso, None)
         if languages is None:
-            raise mpf.DetectionException(
+            logger.warning(
                 f"ISO 639-3 code '{language_iso}' provided in feed-forward track"
                 f" does not correspond to a BCP-47 language code supported by "
                 f" Azure Speech-to-Text.",
-                mpf.DetectionError.INVALID_PROPERTY
             )
+            languages = ['UNKNOWN']
 
         self.speaker = mpf_util.SpeakerInfo(
             speaker_id=self.speaker.speaker_id,
