@@ -39,11 +39,10 @@ import uuid
 from typing import Callable, Dict, Iterator, List, Literal, Mapping, Match, NamedTuple, \
     Optional, Sequence, TypedDict, TypeVar, Union
 
-import langcodes
-
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
+import convert_language_code
 
 log = logging.getLogger('AcsTranslationComponent')
 
@@ -132,6 +131,7 @@ class TranslationResult(NamedTuple):
     translated_text: str
     detect_result: DetectResult
     skipped: bool = False
+    language_not_supported: bool = False
 
 
 class SplitTextResult(NamedTuple):
@@ -139,6 +139,8 @@ class SplitTextResult(NamedTuple):
     detected_language: Optional[str] = None
     detected_language_confidence: Optional[float] = None
 
+class UnsupportedSourceLanguage(Exception):
+    pass
 
 NO_SPACE_LANGS = ('JA',  # Japanese
                   'YUE',  # Cantonese (Traditional)
@@ -215,8 +217,12 @@ class TranslationClient:
 
             if translation_result.skipped:
                 detection_properties['SKIPPED TRANSLATION'] = 'TRUE'
-                log.info(f'Skipped translation of the "{prop_name}" property because it was '
-                         f'already in the target language.')
+                if translation_result.language_not_supported:
+                    detection_properties['MISSING_LANGUAGE_MODELS'] \
+                            = translation_result.detect_result.primary_language
+                else:
+                    log.info(f'Skipped translation of the "{prop_name}" property because it was '
+                             'already in the target language.')
             else:
                 detection_properties['TRANSLATION'] = translation_result.translated_text
                 log.info(f'Successfully translated the "{prop_name}" property.')
@@ -253,6 +259,7 @@ class TranslationClient:
 
 
         if from_lang and from_lang.casefold() == self._to_language.casefold():
+            assert from_lang_confidence is not None
             translation_info = TranslationResult(
                 text, DetectResult(from_lang, from_lang_confidence), skipped=True)
         else:
@@ -260,6 +267,7 @@ class TranslationClient:
             grouped_sentences = self._break_sentence_client.split_input_text(
                 text_replaced_newlines, from_lang, from_lang_confidence)
             if not detect_result and grouped_sentences.detected_language:
+                assert grouped_sentences.detected_language_confidence is not None
                 detect_result = DetectResult(grouped_sentences.detected_language,
                                              grouped_sentences.detected_language_confidence)
             translation_info = self._translate_chunks(grouped_sentences, detect_result)
@@ -275,7 +283,11 @@ class TranslationClient:
         detected_lang_confidence = chunks.detected_language_confidence
 
         for chunk in chunks.chunks:
-            response_body = self._send_translation_request(chunk, detected_lang)
+            try:
+                response_body = self._send_translation_request(chunk, detected_lang)
+            except UnsupportedSourceLanguage:
+                assert detect_result is not None
+                return TranslationResult('', detect_result, True, True)
             translated_text = response_body[0]['translations'][0]['text']
             translated_text_chunks.append(translated_text)
             if not detected_lang:
@@ -293,7 +305,7 @@ class TranslationClient:
 
 
     def _send_translation_request(self, text: str,
-                                  from_language: Optional[str]) -> 'AcsResponses.Translate':
+                                  from_language: Optional[str]) -> AcsResponses.Translate:
         if from_language:
             url = set_query_params(self._translate_url, {'from': from_language})
         else:
@@ -306,12 +318,23 @@ class TranslationClient:
                                          get_acs_headers(self._subscription_key))
         log.info(f'Sending POST to {url}')
         log_json(request_body)
-        with self._http_retry.urlopen(request) as response:
+        with self._http_retry.urlopen(
+                    request,
+                    should_retry=self._prevent_retry_when_unsupported_language) as response:
             response_body: AcsResponses.Translate = json.load(response)
             log.info(f'Received response from {url}.')
             log_json(response_body)
             return response_body
 
+    @staticmethod
+    def _prevent_retry_when_unsupported_language(url: str, exception: urllib.error.URLError,
+                                                 body: Optional[str]) -> Literal[True]:
+        try:
+            if body and json.loads(body)['error']['code'] == 400035:
+                raise UnsupportedSourceLanguage()
+        except (json.JSONDecodeError, KeyError):
+            pass
+        return True
 
     def _detect_language(self, text: str) -> DetectResult:
         response = self._send_detect_request(text)
@@ -333,8 +356,7 @@ class TranslationClient:
         upstream_langs = (detection_properties.get(p) for p in self._language_ff_prop)
         upstream_lang = next((lang for lang in upstream_langs if lang), None)
         if upstream_lang:
-            # Convert the language code from ISO-639 to BCP-47 and drop the locale.
-            return langcodes.get(upstream_lang).language
+            return convert_language_code.iso_to_bcp(upstream_lang)
         else:
             return None
 
