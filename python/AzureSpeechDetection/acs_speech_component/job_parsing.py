@@ -74,7 +74,7 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
                 f" does not correspond to a BCP-47 language code supported by "
                 f" Azure Speech-to-Text.",
             )
-            languages = ['UNKNOWN']
+            languages = [language_iso]
 
         self.speaker = mpf_util.SpeakerInfo(
             speaker_id=self.speaker.speaker_id,
