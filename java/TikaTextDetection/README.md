@@ -48,8 +48,6 @@ Tika supports the following language detection properties:
 
 For instance, if `MIN_LANGUAGES` is set to 2, the component will always attempt to return the top 2 predicted languages, followed by the next languages if they are also marked as reasonably certain.
 
-If `MAX_REASONABLE_LANGUAGES` is set to -1 and `MIN_LANGUAGES` is set to 2 (default), the component will always attempt to return the top predicted language and a secondary language, even if they are not set to reasonably confident by Tika.
-
 Please note that the behavior of `MIN_LANGUAGES` is different depending on the language detector:
 - The Optimaize language detector will often produce the exact number of `MIN_LANGUAGES` requested by a user.
 - The OpenNLP language detector tends to only produce 1 language unless `MIN_LANGUAGES` is set to 2 or greater. However, low confidence results are still sometimes thrown out even if the user requested additional language predictions. (This indicates that OpenNLP uses a different filtering mechanism which could be investigated further).
@@ -69,9 +67,9 @@ Secondary languages and their confidence scores are listed as comma separated st
 # Supported Language Detectors:
 
 This component supports the following language detectors. Users can select their preferred detector using
-the `LANG_DETECTOR` option:
+the `LANGUAGE_DETECTOR` option:
                                                                                                                                                                           
-- `LANG_DETECTOR = opennlp`: [Apache Tika OpenNLP Language Detector](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/opennlp/OpenNLPDetector.html)           
+- `LANGUAGE_DETECTOR = opennlp`: [Apache Tika OpenNLP Language Detector](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/opennlp/OpenNLPDetector.html)           
                                                                                                                                                                           
   Apache Tika's latest in-house language detection capability based on OpenNLP's language detector.                                                                       
   Uses Machine Learning (ML) models trained on the following datasets and supports 148 languages in total                                                                   
@@ -82,7 +80,7 @@ the `LANG_DETECTOR` option:
 
   **PLEASE NOTE**, if `opennlp` is selected, ensure that the `MIN_LANGUAGES` property is set to 1 or greater.
 
-- `LANG_DETECTOR = optimaize`: [Optimaize Language Detector](https://github.com/optimaize/language-detector)
+- `LANGUAGE_DETECTOR = optimaize`: [Optimaize Language Detector](https://github.com/optimaize/language-detector)
 
   Third party language detection project that supports 71 languages.
   Predicts target language using N-gram frequency matching between input and language profiles.
