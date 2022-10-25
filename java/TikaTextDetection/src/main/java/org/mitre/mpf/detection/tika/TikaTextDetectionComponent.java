@@ -49,20 +49,44 @@ import java.util.*;
 public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
     private static final Logger log = LoggerFactory.getLogger(TikaTextDetectionComponent.class);
-
-    private static final Map<String, String> langMap;
     private static final ObjectMapper objectMapper = new ObjectMapper();
-
+    public static OptimaizeLangDetector identifier = new OptimaizeLangDetector();
     static {
-         langMap = Collections.unmodifiableMap(initLangMap());
+        // Load language models.
+        identifier.loadModels();
     }
 
     // Handles the case where the media is a generic type.
     public List<MPFGenericTrack> getDetections(MPFGenericJob mpfGenericJob) throws MPFComponentDetectionError {
-        log.info("[{}] Starting job.", mpfGenericJob.getJobName());
-        log.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
-            mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
-            mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
+        logJobInfo(mpfGenericJob);
+        float confidence = -1.0f;
+
+        List<MPFGenericTrack> tracks = new LinkedList<MPFGenericTrack>();
+        Map<String,String> properties = mpfGenericJob.getJobProperties();
+
+        // Set language filtering limit.
+        int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);
+        boolean processFF = MapUtils.getBooleanValue(properties, "LANGUAGE_ID_ONLY", false);
+        String ffProps = MapUtils.getString(properties, "FEED_FORWARD_PROP_TO_PROCESS", "TEXT,TRANSCRIPT");
+
+        MPFGenericTrack feedForwardTrack = mpfGenericJob.getFeedForwardTrack();
+
+        if (feedForwardTrack == null) {
+            if (processFF) {
+                throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
+                        "No feed forward tracks were provided. Please set `LANGUAGE_ID_ONLY` to `false` to process both" +
+                                "feed forward and generic media.");
+            }
+        } else {
+            Map<String, String> detectionProperties =  feedForwardTrack.getDetectionProperties();
+            getLanguageDetection(ffProps, detectionProperties, charLimit);
+            tracks.add(feedForwardTrack);
+
+            // If the generic media was already processed by another component and we wish to skip text extraction.
+            if (processFF) {
+                return tracks;
+            }
+        }
 
         // Specify filename for tika parsers here.
         File file = new File(mpfGenericJob.getDataUri());
@@ -85,18 +109,10 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             throw new MPFComponentDetectionError(MPFDetectionError.MPF_COULD_NOT_READ_MEDIA, errorMsg, e);
         }
 
-        float confidence = -1.0f;
-        List<MPFGenericTrack> tracks = new LinkedList<>();
-
         String contentType = metadata.get("Content-Type");
         boolean supportsPageNumbers =
                 contentType.equals("application/pdf") ||
                 contentType.startsWith("application/vnd.openxmlformats-officedocument.presentationml");
-
-        Map<String,String> properties = mpfGenericJob.getJobProperties();
-
-        // Set language filtering limit.
-        int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);
 
         // Store metadata as a unique track.
         // Disabled by default for format consistency.
@@ -124,10 +140,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
         boolean listAllPages = MapUtils.getBooleanValue(properties, "LIST_ALL_PAGES", false);
 
-        // Load language identifier.
-        OptimaizeLangDetector identifier = new OptimaizeLangDetector();
-        identifier.loadModels();
-
         // Separate all output into separate pages. Tag each page by detected language.
         for (int p = 0; p < pageToSections.size(); p++) {
             var sections = pageToSections.get(p);
@@ -138,6 +150,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                     Map<String, String> genericDetectionProperties = new HashMap<>();
                     genericDetectionProperties.put("TEXT", "");
                     genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                    genericDetectionProperties.put("ISO_LANGUAGE", "UNKNOWN");
                     if (supportsPageNumbers) {
                         genericDetectionProperties.put("PAGE_NUM", String.format("%d", p + 1));
                     } else {
@@ -160,27 +173,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                 Map<String, String> genericDetectionProperties = new HashMap<>();
                 genericDetectionProperties.put("TEXT", text);
-
-                // Process text languages.
-                if (text.length() >= charLimit) {
-                    LanguageResult langResult = identifier.detect(text);
-                    String language = langResult.getLanguage();
-
-                    if (langMap.containsKey(language)) {
-                        language = langMap.get(language);
-                    }
-                    if (!langResult.isReasonablyCertain()) {
-                        language = null;
-                    }
-                    if (language != null && language.length() > 0) {
-                        genericDetectionProperties.put("TEXT_LANGUAGE", language);
-                    } else {
-                        genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                    }
-                } else {
-                    genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
-                }
-
+                getLanguageDetection("TEXT", genericDetectionProperties, charLimit);
                 if (supportsPageNumbers) {
                     genericDetectionProperties.put("PAGE_NUM", String.format("%d", p + 1));
                 } else {
@@ -202,84 +195,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         return tracks;
     }
 
-    // Map for translating from ISO 639-2 code to english description.
-    private static Map<String,String> initLangMap() {
-        Map<String,String> map = new HashMap<>();
-        map.put("af", "Afrikaans");
-        map.put("an", "Aragonese");
-        map.put("ar", "Arabic");
-        map.put("ast", "Asturian");
-        map.put("be", "Belarusian");
-        map.put("br", "Breton");
-        map.put("bg", "Bulgarian");
-        map.put("bn", "Bengali");
-        map.put("ca", "Catalan");
-        map.put("cs", "Czech");
-        map.put("cy", "Welsh");
-        map.put("da", "Danish");
-        map.put("de", "German");
-        map.put("el", "Greek");
-        map.put("en", "English");
-        map.put("eo", "Esperanto");
-        map.put("es", "Spanish");
-        map.put("et", "Estonian");
-        map.put("eu", "Basque");
-        map.put("fa", "Persian");
-        map.put("fi", "Finnish");
-        map.put("fr", "French");
-        map.put("ga", "Irish");
-        map.put("gl", "Galician");
-        map.put("gu", "Gujarati");
-        map.put("he", "Hebrew");
-        map.put("hi", "Hindi");
-        map.put("hr", "Croatian");
-        map.put("ht", "Haitian");
-        map.put("hu", "Hungarian");
-        map.put("id", "Indonesian");
-        map.put("is", "Icelandic");
-        map.put("it", "Italian");
-        map.put("ja", "Japanese");
-        map.put("km", "Khmer");
-        map.put("kn", "Kannada");
-        map.put("ko", "Korean");
-        map.put("lt", "Lithuanian");
-        map.put("lv", "Latvian");
-        map.put("mk", "Macedonian");
-        map.put("ml", "Malayalam");
-        map.put("mr", "Marathi");
-        map.put("ms", "Malay");
-        map.put("mt", "Maltese");
-        map.put("ne", "Nepali");
-        map.put("nl", "Dutch");
-        map.put("no", "Norwegian");
-        map.put("oc", "Occitan");
-        map.put("pa", "Punjabi");
-        map.put("pl", "Polish");
-        map.put("pt", "Portuguese");
-        map.put("ro", "Romanian");
-        map.put("ru", "Russian");
-        map.put("sk", "Slovak");
-        map.put("sl", "Slovenian");
-        map.put("so", "Somali");
-        map.put("sq", "Albanian");
-        map.put("sr", "Serbian");
-        map.put("sv", "Swedish");
-        map.put("sw", "Swahili");
-        map.put("ta", "Tamil");
-        map.put("te", "Telugu");
-        map.put("th", "Thai");
-        map.put("tl", "Tagalog");
-        map.put("tr", "Turkish");
-        map.put("uk", "Ukrainian");
-        map.put("ur", "Urdu");
-        map.put("vi", "Vietnamese");
-        map.put("wa", "Walloon");
-        map.put("yi", "Yiddish");
-        map.put("zh-cn", "Simplified Chinese");
-        map.put("zh-tw", "Traditional Chinese");
-        return map;
-    }
-
     // The TikeDetection component supports generic file types (pdfs, documents, txt, etc.).
     public boolean supports(MPFDataType mpfDataType) {
         return MPFDataType.UNKNOWN.equals(mpfDataType);
@@ -289,15 +204,85 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         return "TEXT";
     }
 
+    private void logJobInfo(MPFJob job) {
+        log.info("[{}] Starting job.", job.getJobName());
+        log.debug("jobName = {}, dataUri = {}, size of jobProperties = {}, size of mediaProperties = {}",
+                job.getJobName(), job.getDataUri(),
+                job.getJobProperties().size(), job.getMediaProperties().size());
+    }
+
+    private void getLanguageDetection(String checkPropertiesSetting, Map<String, String> detectionProperties, int charLimit) {
+        List<String> rawProperties = Arrays.asList(checkPropertiesSetting.split("\\s*,\\s*"));
+        for (String rawProp: rawProperties) {
+            String prop = rawProp.trim();
+            if (detectionProperties.containsKey(prop)) {
+                String text = detectionProperties.get(prop);
+                // Process text languages.
+                if (text.length() >= charLimit) {
+                    LanguageResult langResult = identifier.detect(text);
+                    String language = langResult.getLanguage();
+                    String isoCode = language;
+
+                    if (ISOLangMapper.langMap.containsKey(language)) {
+                        language = ISOLangMapper.langMap.get(language);
+                    }
+                    if (ISOLangMapper.isoMap.containsKey(isoCode)){
+                        isoCode = ISOLangMapper.isoMap.get(isoCode);
+                        isoCode = isoCode.toUpperCase();
+                    }
+                    if (!langResult.isReasonablyCertain()) {
+                        language = null;
+                        isoCode = null;
+                    }
+                    if (language != null && language.length() > 0) {
+                        detectionProperties.put("TEXT_LANGUAGE", language);
+                        detectionProperties.put("ISO_LANGUAGE", isoCode);
+                    } else {
+                        detectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                        detectionProperties.put("ISO_LANGUAGE", "UNKNOWN");
+                    }
+                } else {
+                    detectionProperties.put("TEXT_LANGUAGE", "Unknown");
+                    detectionProperties.put("ISO_LANGUAGE", "UNKNOWN");
+                }
+                break;
+            }
+        }
+    }
+
+    private <T> List<T> processFFJob(MPFJob job, T feedForwardTrack, Map<String, String> detectionProperties) throws MPFComponentDetectionError {
+        List<T> tracks = new LinkedList<T>();
+        Map<String,String> properties = job.getJobProperties();
+        int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);
+        String ffProps = properties.getOrDefault("FEED_FORWARD_PROP_TO_PROCESS", "TEXT,TRANSCRIPT");
+
+        if (feedForwardTrack == null) {
+            throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
+                    "This component can process feed-forward jobs for non-generic media, " +
+                            "but no feed forward tracks were provided.");
+        }
+
+        //Map<String, String> detectionProperties = feedForwardTrack.getDetectionProperties();
+        getLanguageDetection(ffProps, detectionProperties, charLimit);
+        tracks.add(feedForwardTrack);
+        return tracks;
+    }
+
     public List<MPFImageLocation> getDetections(MPFImageJob job) throws MPFComponentDetectionError {
-        throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Image detection not supported.");
+        logJobInfo(job);
+        MPFImageLocation feedForwardTrack = job.getFeedForwardLocation();
+        return processFFJob(job, feedForwardTrack, feedForwardTrack.getDetectionProperties());
     }
 
     public List<MPFVideoTrack> getDetections(MPFVideoJob job) throws MPFComponentDetectionError {
-        throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Video detection not supported.");
+        logJobInfo(job);
+        MPFVideoTrack feedForwardTrack = job.getFeedForwardTrack();
+        return processFFJob(job, feedForwardTrack, feedForwardTrack.getDetectionProperties());
     }
 
     public List<MPFAudioTrack> getDetections(MPFAudioJob job) throws MPFComponentDetectionError {
-        throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Audio detection not supported.");
+        logJobInfo(job);
+        MPFAudioTrack feedForwardTrack = job.getFeedForwardTrack();
+        return processFFJob(job, feedForwardTrack, feedForwardTrack.getDetectionProperties());
     }
 }

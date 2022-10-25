@@ -29,9 +29,7 @@ package org.mitre.mpf.detection.tika;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mitre.mpf.component.api.detection.MPFComponentDetectionError;
-import org.mitre.mpf.component.api.detection.MPFGenericJob;
-import org.mitre.mpf.component.api.detection.MPFGenericTrack;
+import org.mitre.mpf.component.api.detection.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -161,13 +159,13 @@ public class TestTikaTextDetectionComponent {
         assertTrue(tracks.size() == 22 || tracks.size() == 23);
 
         // Test language extraction
-        assertSection(tracks.get(0), "-1", "1", "English", "Testing Text Detection");
-        assertSection(tracks.get(3), "-1", "4", "Japanese", "ジアゼパム");
+        assertSection(tracks.get(0), "-1", "1", "English", "Testing Text Detection", "ENG");
+        assertSection(tracks.get(3), "-1", "4", "Japanese", "ジアゼパム", "JPN");
 
         // TODO: Look into why, unlike tracks generated from test-tika-detection.pptx, there is no track for
         //  blank slide 5.
 
-        assertSection(tracks.get(19), "-1", "20", "English", "All human beings are born free");
+        assertSection(tracks.get(19), "-1", "20", "English", "All human beings are born free", "ENG");
         assertSection(tracks.get(20), "-1", "21", "Unknown", "End"); // cannot determine language
         assertSection(tracks.get(21), "-1", "22", "Unknown", "End slide test text"); // cannot determine language
 
@@ -309,10 +307,84 @@ public class TestTikaTextDetectionComponent {
         assertThat(tracks.get(18).getDetectionProperties().get("TEXT"), containsString("12"));
     }
 
+    @Test
+    public void testFeedForwardGeneric() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.ods").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        Map<String, String> detectionProperties = new HashMap<>();
+
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("FEED_FORWARD_PROP_TO_PROCESS", "TEXT, TRANSCRIPT");
+        jobProperties.put("LANGUAGE_ID_ONLY", "true");
+
+        detectionProperties.put("TEXT", "This is the a test track containing English text.");
+        detectionProperties.put("TRANSCRIPT", "ジアゼパムジアゼパムジアゼパムジアゼパム");
+
+        // Test baseline feedforward behavior.
+        MPFGenericTrack track = new MPFGenericTrack(-1, detectionProperties);
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties, track);
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        assertEquals(1, tracks.size());
+        assertSection(tracks.get(0).getDetectionProperties(), "English", "TEXT", "This is the a test track containing English text.");
+
+
+        // Test confirm that priority is given to first listed property.
+        jobProperties.put("FEED_FORWARD_PROP_TO_PROCESS", "TRANSCRIPT, TEXT");
+        track = new MPFGenericTrack(-1, detectionProperties);
+        genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties, track);
+        tracks = tikaComponent.getDetections(genericJob);
+        assertEquals(1, tracks.size());
+        assertSection(tracks.get(0).getDetectionProperties(), "Japanese", "TRANSCRIPT", "ジアゼパム");
+
+        // Confirm that generic text extraction also works.
+        jobProperties.put("LANGUAGE_ID_ONLY", "false");
+        genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties, track);
+        tracks = tikaComponent.getDetections(genericJob);
+        assertEquals(20, tracks.size());
+    }
+
+    @Test
+    public void testFeedForwardImage() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.ods").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        Map<String, String> detectionProperties = new HashMap<>();
+
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("FEED_FORWARD_PROP_TO_PROCESS", "TEXT, TRANSCRIPT");
+        jobProperties.put("LANGUAGE_ID_ONLY", "true");
+
+        detectionProperties.put("TEXT", "This is the a test track containing English text.");
+        detectionProperties.put("TRANSCRIPT", "ジアゼパムジアゼパムジアゼパムジアゼパム");
+
+        // Test baseline feedforward behavior.
+        MPFImageLocation track = new MPFImageLocation(0,0,0,0,-1, detectionProperties);
+        MPFImageJob job = new MPFImageJob("TestGenericJob", mediaPath, jobProperties, mediaProperties, track);
+        List<MPFImageLocation> tracks = tikaComponent.getDetections(job);
+        assertEquals(1, tracks.size());
+        assertSection(tracks.get(0).getDetectionProperties(), "English", "TEXT", "This is the a test track containing English text.");
+    }
+
+    private void assertSection(Map<String,String> properties, String language, String textProp, String text) {
+        assertEquals(language, properties.get("TEXT_LANGUAGE"));
+        assertThat(properties.get(textProp), containsString(text));
+    }
+
     private void assertSection(MPFGenericTrack track, String page, String section, String language, String text) {
         assertEquals(page, track.getDetectionProperties().get("PAGE_NUM"));
         assertEquals(section, track.getDetectionProperties().get("SECTION_NUM"));
         assertEquals(language, track.getDetectionProperties().get("TEXT_LANGUAGE"));
         assertThat(track.getDetectionProperties().get("TEXT"), containsString(text));
+    }
+
+    private void assertSection(MPFGenericTrack track, String page, String section, String language, String text, String iso) {
+        assertEquals(page, track.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals(section, track.getDetectionProperties().get("SECTION_NUM"));
+        assertEquals(language, track.getDetectionProperties().get("TEXT_LANGUAGE"));
+        assertThat(track.getDetectionProperties().get("TEXT"), containsString(text));
+        assertEquals(iso, track.getDetectionProperties().get("ISO_LANGUAGE"));
     }
 }

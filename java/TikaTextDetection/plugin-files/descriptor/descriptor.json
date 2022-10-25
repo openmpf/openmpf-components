@@ -42,8 +42,19 @@
           "description": "Specifies minimum length of detected text before language filtering is applied.",
           "type": "INT",
           "defaultValue": "20"
+        },
+        {
+          "name": "FEED_FORWARD_PROP_TO_PROCESS",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to consider translating. If the first property listed is present, then that property will be translated. If it's not, then the next property in the list is considered. At most, one property will be translated.",
+          "type": "STRING",
+          "defaultValue": "TEXT,TRANSCRIPT"
+        },
+        {
+          "name": "LANGUAGE_ID_ONLY",
+          "description": "For generic media: If set to true, this component will only perform language identification on feed-forward track output and will ignore the associated media.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
         }
-
       ]
     }
   },
