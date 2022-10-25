@@ -42,7 +42,7 @@ from typing import Callable, Dict, Iterator, List, Literal, Mapping, Match, Name
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-import convert_language_code
+from . import convert_language_code
 
 log = logging.getLogger('AcsTranslationComponent')
 

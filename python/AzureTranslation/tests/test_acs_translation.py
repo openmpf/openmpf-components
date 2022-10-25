@@ -41,10 +41,10 @@ from unittest import mock
 
 import mpf_component_api as mpf
 
-sys.path.insert(0, str(pathlib.Path(__file__).parent / '../acs_translation_component'))
-from acs_translation_component import AcsTranslationComponent, get_azure_char_count, \
-    TranslationClient, NewLineBehavior, ChineseAndJapaneseCodePoints, AcsTranslateUrlBuilder, \
-    BreakSentenceClient, SentenceBreakGuesser, get_n_azure_chars
+sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+from acs_translation_component.acs_translation_component import (AcsTranslationComponent,
+    get_azure_char_count, TranslationClient, NewLineBehavior, ChineseAndJapaneseCodePoints,
+    AcsTranslateUrlBuilder, BreakSentenceClient, SentenceBreakGuesser, get_n_azure_chars)
 
 
 
