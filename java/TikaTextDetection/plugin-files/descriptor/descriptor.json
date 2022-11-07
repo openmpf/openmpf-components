@@ -33,9 +33,9 @@
         },
         {
           "name": "LANGUAGE_DETECTOR",
-          "description": "Specifies which Tika language detector to use. Current options are `opennlp` and `optimaize`. Please note, if `opennlp` is selected, ensure that the `MIN_LANGUAGES` property is set to 1 or greater.",
+          "description": "Specifies which Tika language detector to use. Current options are `opennlp` and `optimaize`. Please note, if `opennlp` is selected, ensure that the `FILTER_REASONABLE_LANGUAGES` property is set to false.",
           "type": "STRING",
-          "defaultValue": "opennlp"
+          "defaultValue": "optimaize"
         },
         {
           "name": "FILTER_REASONABLE_LANGUAGES",
