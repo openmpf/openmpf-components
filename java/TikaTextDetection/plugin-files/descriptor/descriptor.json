@@ -32,6 +32,18 @@
           "defaultValue": "false"
         },
         {
+          "name": "LANGUAGE_DETECTOR",
+          "description": "Specifies which Tika language detector to use. Current options are `opennlp` and `optimaize`. Please note, if `opennlp` is selected, ensure that the `MIN_LANGUAGES` property is set to 1 or greater.",
+          "type": "STRING",
+          "defaultValue": "opennlp"
+        },
+        {
+          "name": "FILTER_REASONABLE_LANGUAGES",
+          "description": "If enabled, ignore language detections that are not marked as reasonable. Disable to attempt language detection for short sentences, especially with the OpenNLP language detector. ",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
           "name": "LIST_ALL_PAGES",
           "description": "Specifies whether or not to store each page as a track, even if no text is extracted.",
           "type": "BOOLEAN",

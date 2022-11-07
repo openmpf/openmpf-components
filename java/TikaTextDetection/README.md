@@ -39,3 +39,166 @@ The following format-specific behaviors were observed using Tika 1.28.1 on Ubunt
 
 - OpenDocument Spreadsheet documents will generate one track per cell, as well as some additional tracks with
   date and time information, "Page /", and "???".
+
+# Language Detection Parameters
+
+Tika supports the following language detection properties:
+
+- `FILTER_REASONABLE_LANGUAGES`: When set to false, attempt to return a langauge detection even if the langauge detector is not fully confident. It is recommend to disable this filter when using the OpenNLP language detector, as it has a strict confidence threshold.
+
+Language results are stored as follows:
+- `TEXT_LANGUAGE` : The primary detected language for a given text. Set to "Unknown" if no language is identified.
+- `ISO_LANGUAGE` : The primary detected language for a given text in ISO 639-3 format. Set to "UNKNOWN" if no language id identified (as "UNK" is an ISO code).
+
+
+
+# Supported Language Detectors:
+
+This component supports the following language detectors. Users can select their preferred detector using
+the `LANGUAGE_DETECTOR` option:
+
+- `LANGUAGE_DETECTOR = opennlp`: [Apache Tika OpenNLP Language Detector](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/opennlp/OpenNLPDetector.html)
+
+  Apache Tika's latest in-house language detection capability based on OpenNLP's language detector.
+  Uses Machine Learning (ML) models trained on the following datasets and supports 148 languages in total
+    - [Leipzig corpus](https://wortschatz.uni-leipzig.de/en/download)
+    - [cc-100](https://data.statmt.org/cc-100/)
+
+  Supports almost every language in Optimaize except Aragonese.
+
+  **PLEASE NOTE**, if `opennlp` is selected, ensure that the `MIN_LANGUAGES` property is set to 1 or greater.
+
+- `LANGUAGE_DETECTOR = optimaize`: [Optimaize Language Detector](https://github.com/optimaize/language-detector)
+
+  Third party language detection project that supports 71 languages.
+  Predicts target language using N-gram frequency matching between input and language profiles.
+  Supports almost every language present in Tika's Language Detector except Esperanto.
+  Please note that Optimaize supports Punjabi/Panjabi while OpenNLP supports Western Punjabi/Panjabi.
+
+
+# Supported Language List:
+
+- Optimaize Language Detector:
+  - **Aragonese** (Unique to this detector)
+  - Afrikaans
+  - Albanian
+  - Arabic
+  - Asturian
+  - Basque
+  - Belarusian
+  - Bengali
+  - Breton
+  - Bulgarian
+  - Catalan
+  - Croatian
+  - Czech
+  - Danish
+  - Dutch
+  - English
+  - Estonian
+  - Finnish
+  - French
+  - Galician
+  - German
+  - Greek
+  - Gujarati
+  - Haitian
+  - Hebrew
+  - Hindi
+  - Hungarian
+  - Icelandic
+  - Indonesian
+  - Irish
+  - Italian
+  - Japanese
+  - Kannada
+  - Khmer
+  - Korean
+  - Latvian
+  - Lithuanian
+  - Macedonian
+  - Malay
+  - Malayalam
+  - Maltese
+  - Marathi
+  - Nepali
+  - Norwegian
+  - Occitan
+  - Persian
+  - Polish
+  - Portuguese
+  - Punjabi
+  - Romanian
+  - Russian
+  - Serbian
+  - Simplified Chinese
+  - Slovak
+  - Slovakian
+  - Slovene  - Esperanto
+  - Slovenian
+  - Somali
+  - Spanish
+  - Swahili
+  - Swedish
+  - Tagalog
+  - Tamil
+  - Telugu
+  - Thai
+  - Traditional Chinese
+  - Turkish
+  - Ukrainian
+  - Urdu
+  - Vietnamese
+  - Walloon
+  - Welsh
+  - Yiddish
+
+
+- OpenNLP Language Detector:
+  - Every language in Tika and Optimaize Language Detectors except Aragonese.
+  - Armenian
+  - Assamese
+  - Azerbaijani
+  - Balinese
+  - Bashkir
+  - Bihari languages
+  - Burmese
+  - Cebuano
+  - Dhivehi
+  - Eastern Mari
+  - Esperanto
+  - Faroese
+  - Fulah
+  - Goan Konkani
+  - Igbo
+  - Iranian Persian
+  - Javanese
+  - Konkani
+  - Kurdish
+  - Lingala
+  - Low German
+  - Malay
+  - Mandarin Chinese
+  - Maori
+  - Min Nan Chinese
+  - Minangkabau
+  - Mongolian
+  - Paraguayan Guaraní
+  - Pedi
+  - Pushto
+  - Scottish Gaelic
+  - Sindhi
+  - Slovenian
+  - Standard Estonian
+  - Standard Latvian
+  - Swati
+  - Swiss German
+  - Tajik
+  - Turkmen
+  - Uighur
+  - Uzbek
+  - Western Frisian
+  - Western Panjabi
+  - Xhosa
+  - Yoruba
+  - Zulu

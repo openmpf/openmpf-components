@@ -167,12 +167,21 @@ public class TestTikaTextDetectionComponent {
 
         assertSection(tracks.get(19), "-1", "20", "English", "All human beings are born free", "ENG");
         assertSection(tracks.get(20), "-1", "21", "Unknown", "End"); // cannot determine language
-        assertSection(tracks.get(21), "-1", "22", "Unknown", "End slide test text"); // cannot determine language
+        assertSection(tracks.get(21), "-1", "22", "Unknown", "End slide test text");
 
         if (tracks.size() == 23) {
             // TODO: Look into why last section matches first section although the text is not on the last slide.
             assertSection(tracks.get(22), "-1", "23", "English", "Testing Text Detection");
         }
+
+        // Test OpenNLP language detector
+        jobProperties.put("LANGUAGE_DETECTOR", "opennlp");
+        jobProperties.put("FILTER_REASONABLE_LANGUAGES", "false");
+        genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+        tracks = tikaComponent.getDetections(genericJob);
+        assertTrue(tracks.size() == 22 || tracks.size() == 23);
+        assertSection(tracks.get(21), "-1", "22", "English", "End slide test text");
+
     }
 
     @Test
