@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -24,17 +26,22 @@
 # limitations under the License.                                            #
 #############################################################################
 
-[metadata]
-name = WhisperDetection
-version = 0.1
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-[options]
-packages = whisper_detection_component
-install_requires =
-    mpf_component_api>=7.0
-    mpf_component_util>=7.0
-    whisper @ git+https://github.com/openai/whisper.git
 
-[options.entry_points]
-mpf.exported_component =
-    component = whisper_detection_component.whisper_detection_component:WhisperDetectionComponent
+RUN pip install --no-cache-dir git+https://github.com/openai/whisper.git
+
+ARG RUN_TESTS=false
+
+RUN --mount=target=.,readwrite \
+    install-component.sh; \
+    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_whisper_detection.py; fi
+
+LABEL org.label-schema.license="Apache 2.0" \
+      org.label-schema.name="OpenMPF Whisper Detection" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
+      org.label-schema.vendor="MITRE"

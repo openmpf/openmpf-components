@@ -1,0 +1,70 @@
+{
+  "componentName": "WhisperDetection",
+  "componentVersion": "7.0",
+  "middlewareVersion": "7.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "WhisperDetection",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "WHISPERDETECTION",
+    "description": "Uses OpenAI's Whisper model to perform language detection in speech.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_SPEECH",
+        "DETECTION_SPEECH_WHISPER"
+      ],
+      "properties": [
+        {
+          "name": "WHISPER_MODEL_LANG",
+          "description": "Whisper has English-only models and multilingual models. Set to english for English-only models and multi for multilingual models.",
+          "type": "STRING",
+          "defaultValue": "multi"
+        },
+        {
+          "name": "WHISPER_MODEL_SIZE",
+          "description": "Whisper models come in multiple sizes; tiny, base, small, medium, and large. Multilingual models are available in all 5 sizes, English-only is not available in large.",
+          "type": "STRING",
+          "defaultValue": "base"
+        },
+        {
+          "name": "WHISPER_MODEL",
+          "description": "Set to 0 for spoken language detection, 1 for speech-to-text transcription, and 2 for speech translation.",
+          "type": "INT",
+          "defaultValue": "0"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "WHISPER DETECTION ACTION",
+      "description": "Uses OpenAI's Whisper model to perform language detection in speech.",
+      "algorithm": "",
+      "properties": [
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "WHISPER DETECTION TASK",
+      "description": "Uses OpenAI's Whisper model to perform language detection in speech.",
+      "actions": [
+        "WHISPER DETECTION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "WHISPER DETECTION PIPELINE",
+      "description": "Uses OpenAI's Whisper model to perform language detection in speech.",
+      "tasks": [
+        "WHISPER DETECTION TASK"
+      ]
+    }
+  ]
+}
