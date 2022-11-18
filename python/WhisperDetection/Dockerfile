@@ -30,6 +30,7 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
+RUN apt install git-all
 
 RUN pip install --no-cache-dir git+https://github.com/openai/whisper.git
 

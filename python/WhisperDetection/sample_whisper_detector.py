@@ -37,7 +37,7 @@ def main():
 
     _, audio_file = sys.argv
 
-    audio_tracks = WhisperDetectionWrapper().process_audio(audio_file, 0, 0)
+    audio_tracks = WhisperDetectionWrapper().process_audio(audio_file, 0, 0, {})
     detection_props = audio_tracks[0].detection_properties
 
     print('DETECTED LANGUAGE:', detection_props['DETECTED_LANGUAGE'])

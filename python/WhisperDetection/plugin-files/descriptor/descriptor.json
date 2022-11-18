@@ -21,7 +21,7 @@
       "properties": [
         {
           "name": "WHISPER_MODEL_LANG",
-          "description": "Whisper has English-only models and multilingual models. Set to english for English-only models and multi for multilingual models.",
+          "description": "Whisper has English-only models and multilingual models. Set to en for English-only models and multi for multilingual models.",
           "type": "STRING",
           "defaultValue": "multi"
         },
@@ -32,10 +32,16 @@
           "defaultValue": "base"
         },
         {
-          "name": "WHISPER_MODEL",
+          "name": "WHISPER_MODE",
           "description": "Set to 0 for spoken language detection, 1 for speech-to-text transcription, and 2 for speech translation.",
           "type": "INT",
           "defaultValue": "0"
+        },
+        {
+          "name": "AUDIO_LANGUAGE",
+          "description": "Language audio to transcribe or translate is in. If none is provided then Whisper will automatically detect language from the first 30 seconds of audio.",
+          "type": "STRING",
+          "defaultValue": ""
         }
       ]
     }
