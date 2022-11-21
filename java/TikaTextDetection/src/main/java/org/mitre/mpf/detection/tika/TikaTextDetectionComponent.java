@@ -207,9 +207,13 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         return tracks;
     }
 
-    // The TikeDetection component supports generic file types (pdfs, documents, txt, etc.).
+    // The TikeDetection component supports generic file types (pdfs, documents, txt, etc.)
+    // and feed-forward TEXT results from all other file types.
     public boolean supports(MPFDataType mpfDataType) {
-        return MPFDataType.UNKNOWN.equals(mpfDataType);
+        return MPFDataType.UNKNOWN.equals(mpfDataType) ||
+               MPFDataType.IMAGE.equals(mpfDataType) ||
+               MPFDataType.VIDEO.equals(mpfDataType) ||
+               MPFDataType.AUDIO.equals(mpfDataType);
     }
 
     public String getDetectionType() {
