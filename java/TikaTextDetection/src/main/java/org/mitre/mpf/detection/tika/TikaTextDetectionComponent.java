@@ -310,12 +310,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         setUpLangDetector(properties);
         setUpJobProps(properties);
 
-        if (feedForwardTrack == null) {
-            throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
-                    "This component can process feed-forward jobs for non-generic media, " +
-                            "but no feed forward tracks were provided.");
-        }
-
         //Map<String, String> detectionProperties = feedForwardTrack.getDetectionProperties();
         getLanguageDetection(detectionProperties);
         tracks.add(feedForwardTrack);
@@ -325,18 +319,35 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
     public List<MPFImageLocation> getDetections(MPFImageJob job) throws MPFComponentDetectionError {
         logJobInfo(job);
         MPFImageLocation feedForwardTrack = job.getFeedForwardLocation();
+
+        if (feedForwardTrack == null) {
+            throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
+                    "This component can process feed-forward jobs for images, " +
+                            "but no feed forward tracks were provided.");
+        }
+
         return processFFJob(job, feedForwardTrack, feedForwardTrack.getDetectionProperties());
     }
 
     public List<MPFVideoTrack> getDetections(MPFVideoJob job) throws MPFComponentDetectionError {
         logJobInfo(job);
         MPFVideoTrack feedForwardTrack = job.getFeedForwardTrack();
+        if (feedForwardTrack == null) {
+            throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
+                    "This component can process feed-forward jobs for videos, " +
+                            "but no feed forward tracks were provided.");
+        }
         return processFFJob(job, feedForwardTrack, feedForwardTrack.getDetectionProperties());
     }
 
     public List<MPFAudioTrack> getDetections(MPFAudioJob job) throws MPFComponentDetectionError {
         logJobInfo(job);
         MPFAudioTrack feedForwardTrack = job.getFeedForwardTrack();
+        if (feedForwardTrack == null) {
+            throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
+                    "This component can process feed-forward jobs for audio, " +
+                            "but no feed forward tracks were provided.");
+        }
         return processFFJob(job, feedForwardTrack, feedForwardTrack.getDetectionProperties());
     }
 }

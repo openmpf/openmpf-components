@@ -78,13 +78,17 @@
       "properties": []
     },
     {
-      "name": "TIKA TEXT LANGUAGE ID ACTION",
+      "name": "TIKA TEXT LANGUAGE ID (WITH FF REGION) ACTION",
       "description": "Executes the Tika text detection algorithm using the default parameters for language detection on feed forward `TEXT,TRANSCRIPT` results.",
       "algorithm": "TIKATEXT",
       "properties": [
         {
           "name": "LANGUAGE_ID_ONLY",
           "value": "TRUE"
+        },
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
         }
       ]
     },
@@ -109,10 +113,10 @@
       ]
     },
     {
-      "name": "TIKA TEXT LANGUAGE ID TASK",
+      "name": "TIKA TEXT LANGUAGE ID (WITH FF REGION) TASK",
       "description": "Performs Tika text detection using the default parameters for language detection on feed forward `TEXT,TRANSCRIPT` results.",
       "actions": [
-        "TIKA TEXT LANGUAGE ID ACTION"
+        "TIKA TEXT LANGUAGE ID (WITH FF REGION) ACTION"
       ]
     },
     {
