@@ -42,7 +42,7 @@ if (${GTEST_FOUND})
     add_executable(OalprLicensePlateTextDetectionTest test_oalpr_text_detection.cpp)
     target_link_libraries(OalprLicensePlateTextDetectionTest
         mpfOALPRLicensePlateTextDetection mpfComponentTestUtils
-        GTest::GTest GTest::Main)
+        GTest::gtest_main)
 
     add_test(NAME OalprLicensePlateTextDetectionTest COMMAND OalprLicensePlateTextDetectionTest)
 
