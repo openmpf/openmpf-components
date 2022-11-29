@@ -65,6 +65,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         public int charLimit;
         public boolean filterReasonable;
         public boolean processFF;
+        public double minLangConfidence;
         public String ffProps;
     }
 
@@ -163,6 +164,9 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                     genericDetectionProperties.put("TEXT", "");
                     genericDetectionProperties.put("TEXT_LANGUAGE", "Unknown");
                     genericDetectionProperties.put("ISO_LANGUAGE", "UNKNOWN");
+                    // Moving forward, leave new properties blank if language detection fails.
+                    genericDetectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", "-1");
+
                     if (supportsPageNumbers) {
                         genericDetectionProperties.put("PAGE_NUM", String.format("%d", p + 1));
                     } else {
@@ -239,6 +243,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                     LanguageResult langResult = langDetector.detect(text);
                     String language = langResult.getLanguage();
                     String isoCode = language;
+                    Float langConfidence = langResult.getRawScore();
 
                     if (ISOLangMapper.langMap.containsKey(language)) {
                         language = ISOLangMapper.langMap.get(language);
@@ -249,20 +254,24 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                     isoCode = isoCode.toUpperCase();
 
-                    if (!langResult.isReasonablyCertain() && jobProps.filterReasonable) {
+                    if (!langResult.isReasonablyCertain() && jobProps.filterReasonable ||
+                        (jobProps.minLangConfidence > 0 && langConfidence < jobProps.minLangConfidence)) {
                         language = null;
                         isoCode = null;
                     }
                     if (language != null && language.length() > 0) {
                         detectionProperties.put("TEXT_LANGUAGE", language);
                         detectionProperties.put("ISO_LANGUAGE", isoCode);
+                        detectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", langConfidence.toString());
                     } else {
                         detectionProperties.put("TEXT_LANGUAGE", "Unknown");
                         detectionProperties.put("ISO_LANGUAGE", "UNKNOWN");
+                        detectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", "-1");
                     }
                 } else {
                     detectionProperties.put("TEXT_LANGUAGE", "Unknown");
                     detectionProperties.put("ISO_LANGUAGE", "UNKNOWN");
+                    detectionProperties.put("TEXT_LANGUAGE_CONFIDENCE", "-1");
                 }
                 break;
             }
@@ -302,6 +311,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         jobProps.filterReasonable = MapUtils.getBooleanValue(properties, "FILTER_REASONABLE_LANGUAGES", true);
         jobProps.processFF = MapUtils.getBooleanValue(properties, "LANGUAGE_ID_ONLY", false);
         jobProps.ffProps = MapUtils.getString(properties, "FEED_FORWARD_PROP_TO_PROCESS", "TEXT,TRANSCRIPT");
+        jobProps.minLangConfidence = MapUtils.getDoubleValue(properties, "MIN_LANGUAGE_CONFIDENCE", -1);
     }
 
     private <T> List<T> processFFJob(MPFJob job, T feedForwardTrack, Map<String, String> detectionProperties) throws MPFComponentDetectionError {

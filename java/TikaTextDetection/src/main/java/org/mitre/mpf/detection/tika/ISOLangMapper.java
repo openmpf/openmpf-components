@@ -336,11 +336,20 @@ public final class ISOLangMapper {
         map.put("yi", "YID");
 
         // ISO-693-3 does not differentiate between simplified and traditional Chinese script.
-        // Preserving the `-simp` and `-trad` tags.
-        map.put("zh-cn", "zho-simp");
-        map.put("zh-tw", "zho-trad");
-        map.put("zho-simp", "zho-simp");
-        map.put("zho-trad", "zho-trad");
+        // Remap to Mandarin ISO for now.
+        map.put("zh", "CMN");
+        map.put("zho", "CMN");
+        map.put("zh-cn", "CMN");
+        map.put("zh-tw", "CMN");
+        map.put("zho-simp", "CMN");
+        map.put("zho-trad", "CMN");
+
+        // Option for preserving the `-simp` and `-trad` tags below:
+        //map.put("zh-cn", "zho-simp");
+        //map.put("zh-tw", "zho-trad");
+        //map.put("zho-simp", "zho-simp");
+        //map.put("zho-trad", "zho-trad");
+
         return map;
     }
 }

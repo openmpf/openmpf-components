@@ -182,6 +182,13 @@ public class TestTikaTextDetectionComponent {
         assertTrue(tracks.size() == 22 || tracks.size() == 23);
         assertSection(tracks.get(21), "-1", "22", "English", "End slide test text");
 
+        // Test Language Thresholding
+        jobProperties.put("LANGUAGE_DETECTOR", "opennlp");
+        jobProperties.put("MIN_LANGUAGE_CONFIDENCE", "1.0");
+        genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+        tracks = tikaComponent.getDetections(genericJob);
+        assertTrue(tracks.size() == 22 || tracks.size() == 23);
+        assertSection(tracks.get(21), "-1", "22", "Unknown", "End slide test text");
     }
 
     @Test

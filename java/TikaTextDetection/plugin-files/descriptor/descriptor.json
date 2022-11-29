@@ -44,6 +44,12 @@
           "defaultValue": "true"
         },
         {
+          "name": "MIN_LANGUAGE_CONFIDENCE",
+          "description": "If set to a positive value, filter any `LANGUAGE` detections with a lower confidence score. ",
+          "type": "DOUBLE",
+          "defaultValue": "-1"
+        },
+        {
           "name": "LIST_ALL_PAGES",
           "description": "Specifies whether or not to store each page as a track, even if no text is extracted.",
           "type": "BOOLEAN",
