@@ -194,6 +194,13 @@
       ]
     },
     {
+      "name": "TIKA TEXT OPENNLP LANGUAGE ID PIPELINE",
+      "description": "Performs Tika text detection.",
+      "tasks": [
+        "TIKA TEXT OPENNLP LANGUAGE ID TASK"
+      ]
+    },
+    {
       "name": "TIKA TEXT DETECTION WITH KEYWORD TAGGING PIPELINE",
       "description": "Performs Tika text detection and keyword tagging.",
       "tasks": [

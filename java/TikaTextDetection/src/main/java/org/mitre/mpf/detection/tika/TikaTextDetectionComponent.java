@@ -241,7 +241,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                 // Process text languages.
                 if (text.length() >= jobProps.charLimit) {
                     LanguageResult langResult = langDetector.detect(text);
-                    String language = langResult.getLanguage();
+                    String language = langResult.getLanguage().toLowerCase();
                     String isoCode = language;
                     Float langConfidence = langResult.getRawScore();
 
