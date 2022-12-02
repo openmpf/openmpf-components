@@ -84,7 +84,7 @@
       "properties": []
     },
     {
-      "name": "TIKA TEXT OPENNLP LANGUAGE ID ACTION",
+      "name": "TIKA TEXT DETECTION (WITH OPENNLP LANG ID) ACTION",
       "description": "Executes the Tika text detection algorithm using OpenNLP language detection.",
       "algorithm": "TIKATEXT",
       "properties": [
@@ -157,10 +157,10 @@
       ]
     },
     {
-      "name": "TIKA TEXT OPENNLP LANGUAGE ID TASK",
+      "name": "TIKA TEXT DETECTION (WITH OPENNLP LANG ID) TASK",
       "description": "Performs Tika text detection using OpenNLP language detection.",
       "actions": [
-        "TIKA TEXT OPENNLP LANGUAGE ID ACTION"
+        "TIKA TEXT DETECTION (WITH OPENNLP LANG ID) ACTION"
       ]
     },
     {

@@ -254,7 +254,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
                     isoCode = isoCode.toUpperCase();
 
-                    if (!langResult.isReasonablyCertain() && jobProps.filterReasonable ||
+                    if ((!langResult.isReasonablyCertain() && jobProps.filterReasonable) ||
                         (jobProps.minLangConfidence > 0 && langConfidence < jobProps.minLangConfidence)) {
                         language = null;
                         isoCode = null;
