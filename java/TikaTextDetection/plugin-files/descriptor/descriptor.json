@@ -33,7 +33,7 @@
         },
         {
           "name": "LANGUAGE_DETECTOR",
-          "description": "Specifies which Tika language detector to use. Current options are `opennlp` and `optimaize`. Please note, if `opennlp` is selected, ensure that the `FILTER_REASONABLE_LANGUAGES` property is set to false.",
+          "description": "Specifies which Tika language detector to use. Current options are 'opennlp' and 'optimaize'. Please note, if 'opennlp' is selected, ensure that the 'FILTER_REASONABLE_LANGUAGES' property is set to false.",
           "type": "STRING",
           "defaultValue": "optimaize"
         },
@@ -45,7 +45,7 @@
         },
         {
           "name": "MIN_LANGUAGE_CONFIDENCE",
-          "description": "If set to a positive value, filter any `LANGUAGE` detections with a lower confidence score. ",
+          "description": "If set to a positive value, filter out any 'LANGUAGE' detections with a lower confidence score. ",
           "type": "DOUBLE",
           "defaultValue": "-1"
         },
@@ -63,7 +63,7 @@
         },
         {
           "name": "FEED_FORWARD_PROP_TO_PROCESS",
-          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to consider translating. If the first property listed is present, then that property will be translated. If it's not, then the next property in the list is considered. At most, one property will be translated.",
+          "description": "Comma-separated list of property names indicating which text properties in the feed-forward track or detection to use for language detection. If the first property listed is present, then that property will be translated. If it's not, then the next property in the list is considered. At most, one property will be translated.",
           "type": "STRING",
           "defaultValue": "TEXT,TRANSCRIPT"
         },
@@ -84,7 +84,7 @@
       "properties": []
     },
     {
-      "name": "TIKA TEXT DETECTION (WITH OPENNLP LANG ID) ACTION",
+      "name": "TIKA TEXT DETECTION (WITH OPENNLP LANGUAGE ID) ACTION",
       "description": "Executes the Tika text detection algorithm using OpenNLP language detection.",
       "algorithm": "TIKATEXT",
       "properties": [
@@ -100,7 +100,7 @@
     },
     {
       "name": "TIKA TEXT LANGUAGE ID (WITH FF REGION) ACTION",
-      "description": "Executes the Tika text detection algorithm using the default parameters for language detection on feed forward `TEXT,TRANSCRIPT` results.",
+      "description": "Executes the Tika text detection algorithm using the default parameters for language detection on feed forward tracks.",
       "algorithm": "TIKATEXT",
       "properties": [
         {
@@ -115,7 +115,7 @@
     },
     {
       "name": "TIKA TEXT OPENNLP LANGUAGE ID (WITH FF REGION) ACTION",
-      "description": "Executes the Tika text detection algorithm using OpenNLP language detection on feed forward `TEXT,TRANSCRIPT` results.",
+      "description": "Executes the Tika text detection algorithm using OpenNLP language detection on feed forward tracks.",
       "algorithm": "TIKATEXT",
       "properties": [
         {
@@ -157,22 +157,22 @@
       ]
     },
     {
-      "name": "TIKA TEXT DETECTION (WITH OPENNLP LANG ID) TASK",
+      "name": "TIKA TEXT DETECTION (WITH OPENNLP LANGUAGE ID) TASK",
       "description": "Performs Tika text detection using OpenNLP language detection.",
       "actions": [
-        "TIKA TEXT DETECTION (WITH OPENNLP LANG ID) ACTION"
+        "TIKA TEXT DETECTION (WITH OPENNLP LANGUAGE ID) ACTION"
       ]
     },
     {
       "name": "TIKA TEXT LANGUAGE ID (WITH FF REGION) TASK",
-      "description": "Performs Tika text detection using the default parameters for language detection on feed forward `TEXT,TRANSCRIPT` results.",
+      "description": "Performs Tika text detection using the default parameters for language detection on feed forward tracks.",
       "actions": [
         "TIKA TEXT LANGUAGE ID (WITH FF REGION) ACTION"
       ]
     },
     {
       "name": "TIKA TEXT OPENNLP LANGUAGE ID (WITH FF REGION) TASK",
-      "description": "Executes the Tika text detection algorithm using OpenNLP language detection on feed forward `TEXT,TRANSCRIPT` results.",
+      "description": "Executes the Tika text detection algorithm using OpenNLP language detection on feed forward tracks.",
       "actions": [
         "TIKA TEXT OPENNLP LANGUAGE ID (WITH FF REGION) ACTION"
       ]
@@ -191,13 +191,6 @@
       "description": "Performs Tika text detection.",
       "tasks": [
         "TIKA TEXT DETECTION TASK"
-      ]
-    },
-    {
-      "name": "TIKA TEXT OPENNLP LANGUAGE ID PIPELINE",
-      "description": "Performs Tika text detection.",
-      "tasks": [
-        "TIKA TEXT OPENNLP LANGUAGE ID TASK"
       ]
     },
     {

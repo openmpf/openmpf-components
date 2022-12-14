@@ -51,13 +51,21 @@ Language results are stored as follows:
 - `ISO_LANGUAGE` : The primary detected language for a given text in ISO 639-3 format. Set to "UNKNOWN" if no language id identified (as "UNK" is an ISO code).
 
 
+# Depreciated Language Detectors:
+
+- [Apache Tika's Language Detector](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/tika/TikaLanguageDetector.html) (Old):
+
+  This was Tika's original language detector, which "computes vector distance of trigrams between input string and language models".
+  It is "not suitable for short texts" and is currently depreciated.
 
 # Supported Language Detectors:
+
+
 
 This component supports the following language detectors. Users can select their preferred detector using
 the `LANGUAGE_DETECTOR` option:
 
-- `LANGUAGE_DETECTOR = opennlp`: [Apache Tika OpenNLP Language Detector](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/opennlp/OpenNLPDetector.html)
+- `LANGUAGE_DETECTOR = opennlp`: [Apache Tika OpenNLP Language Detector](https://opennlp.apache.org/)
 
   Apache Tika's latest in-house language detection capability based on OpenNLP's language detector.
   Uses Machine Learning (ML) models trained on the following datasets and supports 148 languages in total
@@ -66,7 +74,7 @@ the `LANGUAGE_DETECTOR` option:
 
   Supports almost every language in Optimaize except Aragonese.
 
-  **PLEASE NOTE**, if `opennlp` is selected, ensure that the `MIN_LANGUAGES` property is set to 1 or greater.
+  **PLEASE NOTE**, if `opennlp` is selected, please ensure that `FILTER_REASONABLE_LANGUAGES = FALSE`. OpenNLP has a stricter confidence threshold than Optimaize, although testing has found that it still selects the correct language for most cases.
 
 - `LANGUAGE_DETECTOR = optimaize`: [Optimaize Language Detector](https://github.com/optimaize/language-detector)
 
