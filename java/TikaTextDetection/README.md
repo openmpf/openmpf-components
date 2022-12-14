@@ -74,6 +74,8 @@ the `LANGUAGE_DETECTOR` option:
 
   Supports almost every language in Optimaize except Aragonese.
 
+  Documentation on current implementation [here](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/opennlp/OpenNLPDetector.html).
+
   **PLEASE NOTE**, if `opennlp` is selected, please ensure that `FILTER_REASONABLE_LANGUAGES = FALSE`. OpenNLP has a stricter confidence threshold than Optimaize, although testing has found that it still selects the correct language for most cases.
 
 - `LANGUAGE_DETECTOR = optimaize`: [Optimaize Language Detector](https://github.com/optimaize/language-detector)
@@ -82,6 +84,8 @@ the `LANGUAGE_DETECTOR` option:
   Predicts target language using N-gram frequency matching between input and language profiles.
   Supports almost every language present in Tika's Language Detector except Esperanto.
   Please note that Optimaize supports Punjabi/Panjabi while OpenNLP supports Western Punjabi/Panjabi.
+
+  Documentation on current implementation [here](https://tika.apache.org/2.4.1/api/org/apache/tika/langdetect/optimaize/OptimaizeLangDetector.html).
 
 
 # Supported Language List:
