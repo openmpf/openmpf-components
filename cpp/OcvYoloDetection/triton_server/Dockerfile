@@ -38,6 +38,7 @@ RUN wget -O- https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004
         | apt-key add -;
 
 RUN apt-get update; \
+    apt-get upgrade; \
     apt-get install -y cmake; \
     rm -rf /var/lib/apt/lists/*
 
