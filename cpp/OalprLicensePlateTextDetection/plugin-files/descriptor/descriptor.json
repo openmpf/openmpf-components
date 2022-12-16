@@ -1,7 +1,7 @@
 {
   "componentName": "OalprLicensePlateTextDetection",
-  "componentVersion": "7.0",
-  "middlewareVersion": "7.0",
+  "componentVersion": "7.1",
+  "middlewareVersion": "7.1",
   "sourceLanguage": "c++",
   "setupFile": "setup/componentSetup.yml",
   "batchLibrary": "${MPF_HOME}/plugins/OalprLicensePlateTextDetection/lib/libmpfOALPRLicensePlateTextDetection.so",
