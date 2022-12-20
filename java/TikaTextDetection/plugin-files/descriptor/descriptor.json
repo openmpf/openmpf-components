@@ -45,7 +45,7 @@
         },
         {
           "name": "MIN_LANGUAGE_CONFIDENCE",
-          "description": "If set to a positive value, filter out any 'LANGUAGE' detections with a lower confidence score. ",
+          "description": "If set to a positive value, filter out any 'TEXT_LANGUAGE' detections with a lower confidence score. ",
           "type": "DOUBLE",
           "defaultValue": "-1"
         },
