@@ -39,7 +39,7 @@ COPY --from=models /models/yolov4.wts /model-gen/yolo/yolov4.wts
 RUN wget -O- https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
         | apt-key add -;
 
-RUN apt-mark hold cuda-nvrtc-dev-11-1 cuda-nvrtc-11-1; \
+RUN apt-mark hold cuda-nvrtc-dev-11-1 cuda-nvrtc-11-1 datacenter-gpu-manager; \
     apt-get update; \
     apt-get upgrade -y; \
     apt-get install -y cmake; \
