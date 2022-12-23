@@ -50,7 +50,7 @@ class AcsTranslationComponent:
     @staticmethod
     def get_detections_from_video(job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         try:
-            log.info(f'[{job.job_name}] Received video job: {job}')
+            log.info(f'Received video job: {job}')
             ff_track = job.feed_forward_track
             if ff_track is None:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
@@ -62,13 +62,11 @@ class AcsTranslationComponent:
             for ff_location in ff_track.frame_locations.values():
                 tc.add_translations(ff_location.detection_properties)
 
-            log.info(f'[{job.job_name}] Processing complete. '
-                     f'Translated {tc.translation_count} properties.')
+            log.info(f'Processing complete. Translated {tc.translation_count} properties.')
             return (ff_track,)
 
         except Exception:
-            log.exception(
-                f'[{job.job_name}] Failed to complete job due to the following exception:')
+            log.exception('Failed to complete job due to the following exception:')
             raise
 
     @staticmethod
@@ -84,7 +82,7 @@ class AcsTranslationComponent:
         if job.feed_forward_track:
             return get_detections_from_non_composite(job, job.feed_forward_track)
         else:
-            log.info(f'[{job.job_name}] Job did not contain a feed forward track. Assuming media '
+            log.info('Job did not contain a feed forward track. Assuming media '
                      'file is a plain text file containing the text to be translated.')
             text = pathlib.Path(job.data_uri).read_text().strip()
             track = mpf.GenericTrack(detection_properties=dict(TEXT=text))
@@ -99,21 +97,19 @@ def get_detections_from_non_composite(
         job: Union[mpf.AudioJob, mpf.GenericJob, mpf.ImageJob],
         ff_track: Optional[T_FF_OBJ]) -> Sequence[T_FF_OBJ]:
     try:
-        log.info(f'[{job.job_name}] Received job: {job}')
+        log.info(f'Received job: {job}')
         if ff_track is None:
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                f'[{job.job_name}] Component can only process feed forward jobs, '
-                'but no feed forward track provided. ')
+                'Component can only process feed forward jobs, '
+                'but no feed forward track provided.')
 
         tc = TranslationClient(job.job_properties)
         tc.add_translations(ff_track.detection_properties)
-        log.info(f'[{job.job_name}] Processing complete. '
-                 f'Translated {tc.translation_count} properties.')
+        log.info(f'Processing complete. Translated {tc.translation_count} properties.')
         return (ff_track,)
 
     except Exception:
-        log.exception(
-            f'[{job.job_name}] Failed to complete job due to the following exception:')
+        log.exception('Failed to complete job due to the following exception:')
         raise
 
 
