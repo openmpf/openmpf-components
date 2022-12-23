@@ -114,7 +114,7 @@
       ]
     },
     {
-      "name": "TIKA TEXT OPENNLP LANGUAGE ID (WITH FF REGION) ACTION",
+      "name": "TIKA TEXT (WITH OPENNLP LANGUAGE ID, FF REGION) ACTION",
       "description": "Executes the Tika text detection algorithm using OpenNLP language detection on feed forward tracks.",
       "algorithm": "TIKATEXT",
       "properties": [
@@ -171,10 +171,10 @@
       ]
     },
     {
-      "name": "TIKA TEXT OPENNLP LANGUAGE ID (WITH FF REGION) TASK",
+      "name": "TIKA TEXT (WITH OPENNLP LANGUAGE ID, FF REGION) TASK",
       "description": "Executes the Tika text detection algorithm using OpenNLP language detection on feed forward tracks.",
       "actions": [
-        "TIKA TEXT OPENNLP LANGUAGE ID (WITH FF REGION) ACTION"
+        "TIKA TEXT (WITH OPENNLP LANGUAGE ID, FF REGION) ACTION"
       ]
     },
     {
