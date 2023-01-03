@@ -66,7 +66,7 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
     def _add_feed_forward_properties(self, job: Union[mpf.AudioJob, mpf.VideoJob]):
         super()._add_feed_forward_properties(job)
 
-        language_iso = self.speaker.language.upper()
+        language_iso = self.speaker.language
         languages = ISO6393_TO_BCP47.get(language_iso, None)
         if languages is None:
             logger.warning(
