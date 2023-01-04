@@ -198,6 +198,8 @@ class AcsSpeechDetectionProcessor(object):
                 mpf.DetectionError.DETECTION_FAILED
             )
 
+        missing_models = set()
+
         diarize = job_config.diarize
         output_loc = None
         language = job_config.language
@@ -205,19 +207,24 @@ class AcsSpeechDetectionProcessor(object):
             if job_config.speaker.language in self.acs.supported_locales:
                 language = job_config.speaker.language
             else:
+                missing_models.add(job_config.speaker.language)
                 ldict = job_config.speaker.language_scores
                 for lang in sorted(ldict.keys(), key=ldict.get, reverse=True):
-                    if lang not in ISO6393_TO_BCP47:
-                        continue
-                    locale = ISO6393_TO_BCP47[lang]
-                    if locale in self.acs.supported_locales:
-                        language = locale
-                        logger.warning(
-                            f"Language supplied in feed-forward track "
-                            f"({job_config.speaker.language}) not supported. "
-                            f"Transcribing with highest-scoring language ({locale}) instead."
-                        )
-                        break
+                    if lang in ISO6393_TO_BCP47:
+                        locale = ISO6393_TO_BCP47[lang]
+                        if locale in self.acs.supported_locales:
+                            language = locale
+                            logger.warning(
+                                f"Language supplied in feed-forward track "
+                                f"('{job_config.speaker.language}') is not "
+                                f"supported. Transcribing with highest-scoring "
+                                f"language ('{lang}', or '{locale}') instead."
+                            )
+                            break
+                    # Language is either not a valid ISO 639-3 code, does not
+                    #  have a corresponding BCP-47 code, or is not supported
+                    #  by Azure Speech. Add to MISSING_LANGUAGE_MODELS
+                    missing_models.add(lang)
                 else:
                     logger.warning(
                         f"Neither the language supplied in feed-forward track "
@@ -290,7 +297,8 @@ class AcsSpeechDetectionProcessor(object):
                 ISO_LANGUAGE=BCP47_TO_ISO6393.get(language, 'UNKNOWN'),
                 BCP_LANGUAGE=language,
                 DECODED_LANGUAGE=language,
-                WORD_SEGMENTS=word_segments
+                WORD_SEGMENTS=word_segments,
+                MISSING_LANGUAGE_MODELS=', '.join(missing_models)
             )
 
             if job_config.speaker is not None:
