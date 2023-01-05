@@ -199,13 +199,26 @@ class AcsSpeechDetectionProcessor(object):
             )
 
         missing_models = set()
+        default_locale = job_config.language
+        if (lang := job_config.override_default_language) is not None:
+            if lang in ISO6393_TO_BCP47 and ISO6393_TO_BCP47[lang] in self.acs.supported_locales:
+                logger.debug(
+                    f"Override default language ('{lang}') detected, using it "
+                    f"in place of component default locale ('{default_locale}')"
+                )
+                default_locale = ISO6393_TO_BCP47[lang]
+            else:
+                logger.warning(
+                    f"Override default language '{lang}' was provided, but does "
+                    f"not correspond to a supported BCP-47 language code. Using "
+                    f"component default ('{default_locale}') instead."
+                )
+                missing_models.add(lang)
 
-        diarize = job_config.diarize
-        output_loc = None
-        language = job_config.language
+        locale = default_locale
         if job_config.speaker is not None:
             if job_config.speaker.language in self.acs.supported_locales:
-                language = job_config.speaker.language
+                locale = job_config.speaker.language
             else:
                 missing_models.add(job_config.speaker.language)
                 ldict = job_config.speaker.language_scores
@@ -213,7 +226,6 @@ class AcsSpeechDetectionProcessor(object):
                     if lang in ISO6393_TO_BCP47:
                         locale = ISO6393_TO_BCP47[lang]
                         if locale in self.acs.supported_locales:
-                            language = locale
                             logger.warning(
                                 f"Language supplied in feed-forward track "
                                 f"('{job_config.speaker.language}') is not "
@@ -227,26 +239,37 @@ class AcsSpeechDetectionProcessor(object):
                     missing_models.add(lang)
                 else:
                     logger.warning(
-                        f"Neither the language supplied in feed-forward track "
-                        f"({job_config.speaker.language}), nor any other "
-                        f"detected language are supported. Transcribing with "
-                        f"component default ({language}) instead."
+                        f"Neither the language supplied in feed-forward "
+                        f"track ('{job_config.speaker.language}'), nor any "
+                        f"other detected language are supported. "
+                        f"Transcribing with default language "
+                        f"('{default_locale}') instead."
                     )
+                    locale = default_locale
 
+        if locale not in self.acs.supported_locales:
+            raise mpf.DetectionException(
+                f"Selected locale ('{locale}') is not supported by Azure "
+                f"Speech-to-Text.",
+                mpf.DetectionError.DETECTION_FAILED
+            )
+
+        diarize = job_config.diarize
+        output_loc = None
         while output_loc is None:
             try:
-                logger.info('Submitting speech-to-text job to ACS')
+                logger.info(f'Submitting {locale} speech-to-text job to ACS')
                 output_loc = self.acs.submit_batch_transcription(
                     recording_url=recording_url,
                     job_name=job_config.job_name,
                     diarize=diarize,
-                    language=language,
+                    language=locale,
                     expiry=job_config.expiry
                 )
             except Exception as e:
                 if 'This locale does not support diarization' in str(e):
                     logger.warning(
-                        f'Locale "{job_config.language}" does not support diarization. '
+                        f'Locale "{locale}" does not support diarization. '
                         'Completing job with diarization disabled.')
                     diarize = False
                 else:
@@ -294,9 +317,9 @@ class AcsSpeechDetectionProcessor(object):
                 SPEAKER_ID=utt.speaker_id,
                 TRANSCRIPT=utt.display,
                 WORD_CONFIDENCES=word_confidences,
-                ISO_LANGUAGE=BCP47_TO_ISO6393.get(language, 'UNKNOWN'),
-                BCP_LANGUAGE=language,
-                DECODED_LANGUAGE=language,
+                ISO_LANGUAGE=BCP47_TO_ISO6393.get(locale, 'UNKNOWN'),
+                BCP_LANGUAGE=locale,
+                DECODED_LANGUAGE=locale,
                 WORD_SEGMENTS=word_segments,
                 MISSING_LANGUAGE_MODELS=', '.join(missing_models)
             )

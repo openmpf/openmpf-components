@@ -70,9 +70,8 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
         languages = ISO6393_TO_BCP47.get(language_iso, None)
         if languages is None:
             logger.warning(
-                f"ISO 639-3 code '{language_iso}' provided in feed-forward track"
-                f" does not correspond to a BCP-47 language code supported by "
-                f" Azure Speech-to-Text.",
+                f"ISO 639-3 code '{language_iso}' provided in feed-forward "
+                f"track does not correspond to a BCP-47 language code.",
             )
             languages = [language_iso]
 
