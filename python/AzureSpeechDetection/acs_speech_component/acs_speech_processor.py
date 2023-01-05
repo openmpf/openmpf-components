@@ -230,9 +230,13 @@ class AcsSpeechDetectionProcessor(object):
 
         locale = default_locale
         if job_config.speaker is not None:
-            if job_config.speaker.language in self.acs.supported_locales:
-                locale = job_config.speaker.language
-            else:
+            speaker_language_valid = False
+            if (lang := job_config.speaker.language) in ISO6393_TO_BCP47:
+                for locale in ISO6393_TO_BCP47[lang]:
+                    if locale in self.acs.supported_locales:
+                        speaker_language_valid = True
+
+            if not speaker_language_valid:
                 missing_models.add(job_config.speaker.language)
                 ldict = job_config.speaker.language_scores
                 for lang in sorted(ldict.keys(), key=ldict.get, reverse=True):

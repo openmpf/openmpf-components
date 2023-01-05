@@ -63,27 +63,6 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
         if self.is_triggered_job:
             self.diarize = False
 
-    def _add_feed_forward_properties(self, job: Union[mpf.AudioJob, mpf.VideoJob]):
-        super()._add_feed_forward_properties(job)
-
-        language_iso = self.speaker.language
-        languages = ISO6393_TO_BCP47.get(language_iso, None)
-        if languages is None:
-            logger.warning(
-                f"ISO 639-3 code '{language_iso}' provided in feed-forward "
-                f"track does not correspond to a BCP-47 language code.",
-            )
-            languages = [language_iso]
-
-        self.speaker = mpf_util.SpeakerInfo(
-            speaker_id=self.speaker.speaker_id,
-            language=languages[0],
-            language_scores=self.speaker.language_scores,
-            gender=self.speaker.gender,
-            gender_score=self.speaker.gender_score,
-            speech_segs=self.speaker.speech_segs
-        )
-
     @staticmethod
     def _get_job_property_or_env_value(
                 property_name: str,
