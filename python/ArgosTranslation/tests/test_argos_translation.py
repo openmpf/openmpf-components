@@ -181,7 +181,7 @@ class TestArgosTranslation(unittest.TestCase):
         self.assertEqual(mpf.DetectionError.UNSUPPORTED_DATA_TYPE, cm.exception.error_code)
 
     def test_unsupported_language(self):
-        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SPANISH_SHORT_SAMPLE, LANGUAGE='SPA'))
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SPANISH_SHORT_SAMPLE, LANGUAGE='IS'))
         job = mpf.ImageJob('Test Image', 'test.jpg', dict(DEFAULT_SOURCE_LANGUAGE='es'), {}, ff_loc)
         comp = ArgosTranslationComponent()
 
@@ -194,3 +194,13 @@ class TestArgosTranslation(unittest.TestCase):
         with self.assertRaises(mpf.DetectionException) as cm:
             list(comp.get_detections_from_generic(job))
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+
+    def test_iso_map(self):
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SPANISH_SHORT_SAMPLE, LANGUAGE='SPA'))
+        job = mpf.ImageJob('Test Image', 'test.jpg', {}, {}, ff_loc)
+        comp = ArgosTranslationComponent()
+        result = comp.get_detections_from_image(job)
+
+        self.assertEqual(1, len(result))
+        self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual(SHORT_OUTPUT, result[0].detection_properties['TRANSLATION'])

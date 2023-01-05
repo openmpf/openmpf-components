@@ -29,7 +29,7 @@
           "name": "LANGUAGE_FEED_FORWARD_PROP",
           "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection determine the language from which to translate. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, fall back to FROM_LANGUAGE.",
           "type": "STRING",
-          "defaultValue": "DECODED_LANGUAGE,LANGUAGE"
+          "defaultValue": "DECODED_LANGUAGE,LANGUAGE,ISO_LANGUAGE"
         },
         {
           "name": "DEFAULT_SOURCE_LANGUAGE",

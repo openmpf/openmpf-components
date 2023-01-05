@@ -33,78 +33,30 @@ import logging
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-
 logger = logging.getLogger('ArgosTranslationComponent')
 
 
 class ArgosTranslationComponent:
     detection_type = 'TRANSLATION'
 
-    @staticmethod
-    def get_detections_from_video(job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
-        logger.info(f'Received video job')
+    def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
+        logger.info(f'Received video job.')
 
-        try:
-            if job.feed_forward_track is None:
-                raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                    f'Component can only process feed forward '
-                    ' jobs, but no feed forward track provided. ')
+        return self.get_feed_forward_detections(job, job.feed_forward_track, video_job=True)
 
-            tw = TranslationWrapper(job.job_properties)
-            tw.add_translations(job.feed_forward_track.detection_properties)
+    def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
+        logger.info(f'Received image job.')
 
-            for ff_location in job.feed_forward_track.frame_locations.values():
-                tw.add_translations(ff_location.detection_properties)
+        return self.get_feed_forward_detections(job, job.feed_forward_location)
 
-            return [job.feed_forward_track]
+    def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
+        logger.info(f'Received audio job.')
 
-        except Exception:
-            logger.exception(
-                f'Failed to complete job due to the following exception:')
-            raise
-
-    @staticmethod
-    def get_detections_from_image(job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
-        logger.info(f'Received image job')
-
-        try:
-            if job.feed_forward_location is None:
-                raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                    f'Component can only process feed forward '
-                    'jobs, but no feed forward track provided. ')
-
-            tw = TranslationWrapper(job.job_properties)
-            tw.add_translations(job.feed_forward_location.detection_properties)
-
-            return [job.feed_forward_location]
-
-        except Exception:
-            logger.exception(
-                f'Failed to complete job due to the following exception:')
-            raise
-
-    @staticmethod
-    def get_detections_from_audio(job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
-        logger.info(f'Received audio job')
-
-        try:
-            if job.feed_forward_track is None:
-                raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                    f'Component can only process feed forward '
-                    'jobs, but no feed forward track provided. ')
-
-            tw = TranslationWrapper(job.job_properties)
-            tw.add_translations(job.feed_forward_track.detection_properties)
-
-            return [job.feed_forward_track]
-
-        except Exception:
-            logger.exception(
-                f'Failed to complete job due to the following exception:')
-            raise
+        return self.get_feed_forward_detections(job, job.feed_forward_track)
 
     @staticmethod
     def get_detections_from_generic(job: mpf.GenericJob) -> Sequence[mpf.GenericTrack]:
+        logger.info(f'Received generic job.')
         if job.feed_forward_track:
             tw = TranslationWrapper(job.job_properties)
             tw.add_translations(job.feed_forward_track.detection_properties)
@@ -125,7 +77,29 @@ class ArgosTranslationComponent:
             tw = TranslationWrapper(new_job_props)
             tw.add_translations(new_ff_props)
 
-            return[ff_track]
+            return [ff_track]
+
+    @staticmethod
+    def get_feed_forward_detections(job, job_feed_forward, video_job=False):
+        try:
+            if job_feed_forward is None:
+                raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
+                    f'Component can only process feed forward '
+                    ' jobs, but no feed forward track provided. ')
+
+            tw = TranslationWrapper(job. job_properties)
+            tw.add_translations(job_feed_forward.detection_properties)
+
+            if video_job:
+                for ff_location in job.feed_forward_track.frame_locations.values():
+                    tw.add_translations(ff_location.detection_properties)
+
+            return [job_feed_forward]
+
+        except Exception:
+            logger.exception(
+                f'Failed to complete job due to the following exception:')
+            raise
 
 
 class TranslationWrapper:
@@ -164,6 +138,37 @@ class TranslationWrapper:
 
         self._to_lang = "en"
 
+        self.iso_map = {
+            "ara": "ar",
+            "aze": "az",
+            "cmn": "zh",
+            "ces": "cs",
+            "dan": "da",
+            "nld": "nl",
+            "epo": "eo",
+            "fin": "fi",
+            "fra": "fr",
+            "deu": "de",
+            "ell": "el",
+            "heb": "he",
+            "hin": "hi",
+            "hun": "hu",
+            "ind": "id",
+            "gle": "ga",
+            "ita": "it",
+            "jpn": "ja",
+            "kor": "ko",
+            "fas": "fa",
+            "pol": "pl",
+            "por": "pt",
+            "rus": "ru",
+            "slk": "sk",
+            "spa": "es",
+            "swe": "sv",
+            "tur": "tr",
+            "ukr": "uk"
+        }
+
     @staticmethod
     def get_supported_languages_codes():
         try:
@@ -186,7 +191,7 @@ class TranslationWrapper:
             if input_text:
                 break
         else:
-            logger.warning("No text to translate found in track")
+            logger.warning("No text to translate found in track.")
             return
 
         for lang_prop_name in self._lang_prop_names:
@@ -197,6 +202,8 @@ class TranslationWrapper:
                     break
                 elif lang == 'en':
                     self._from_lang = lang
+                elif lang in self.iso_map:
+                    self._from_lang = self.iso_map[lang]
                 else:
                     raise mpf.DetectionError.DETECTION_FAILED.exception(
                         f"Source language, {lang}, is not supported."
@@ -214,6 +221,8 @@ class TranslationWrapper:
 
         if self._from_lang not in self.installed_lang_codes:
             logger.info(f"Language {self._from_lang} is not installed. Installing package.")
+
+            # From Argos Translate for downloading language models.
             available_packages = package.get_available_packages()
             available_package = list(
                 filter(
@@ -224,7 +233,7 @@ class TranslationWrapper:
             download_path = available_package.download()
             package.install_from_path(download_path)
 
-            logger.info(f"Successfully installed {self._from_lang}")
+            logger.info(f"Successfully installed {self._from_lang}.")
 
             self.installed_lang_codes = [lang.code for lang in translate.get_installed_languages()]
             self._installed_languages = translate.get_installed_languages()
@@ -244,7 +253,7 @@ class TranslationWrapper:
                 f"check if any packages are missing."
             )
 
-        logger.info(f"Translating the {prop_to_translate} property")
+        logger.info(f"Translating the {prop_to_translate} property.")
 
         translated_text = translation.translate(input_text)
 
