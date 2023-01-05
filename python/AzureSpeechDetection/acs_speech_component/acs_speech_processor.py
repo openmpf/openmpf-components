@@ -235,6 +235,7 @@ class AcsSpeechDetectionProcessor(object):
                 for locale in ISO6393_TO_BCP47[lang]:
                     if locale in self.acs.supported_locales:
                         speaker_language_valid = True
+                        break
 
             if not speaker_language_valid:
                 missing_models.add(job_config.speaker.language)
