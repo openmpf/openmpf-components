@@ -201,17 +201,30 @@ class AcsSpeechDetectionProcessor(object):
         missing_models = set()
         default_locale = job_config.language
         if (lang := job_config.override_default_language) is not None:
-            if lang in ISO6393_TO_BCP47 and ISO6393_TO_BCP47[lang] in self.acs.supported_locales:
-                logger.debug(
-                    f"Override default language ('{lang}') detected, using it "
-                    f"in place of component default locale ('{default_locale}')"
-                )
-                default_locale = ISO6393_TO_BCP47[lang]
+            if lang in ISO6393_TO_BCP47:
+                for locale in ISO6393_TO_BCP47[lang]:
+                    if locale in self.acs.supported_locales:
+                        logger.debug(
+                            f"Override default language ('{lang}') detected, "
+                            f"using its corresponding BCP-47 locale "
+                            f"('{locale}') in place of component default "
+                            f"('{default_locale}')."
+                        )
+                        default_locale = locale
+                        break
+                else:
+                    logger.warning(
+                        f"Override default language '{lang}' was provided, but "
+                        f"no corresponding BCP-47 language codes are supported "
+                        f"by Azure Speech-to-Text. Using component default "
+                        f"('{default_locale}') instead."
+                    )
+                    missing_models.add(lang)
             else:
                 logger.warning(
                     f"Override default language '{lang}' was provided, but does "
-                    f"not correspond to a supported BCP-47 language code. Using "
-                    f"component default ('{default_locale}') instead."
+                    f"not correspond to a BCP-47 language code. Using component "
+                    f"default ('{default_locale}') instead."
                 )
                 missing_models.add(lang)
 
@@ -224,15 +237,22 @@ class AcsSpeechDetectionProcessor(object):
                 ldict = job_config.speaker.language_scores
                 for lang in sorted(ldict.keys(), key=ldict.get, reverse=True):
                     if lang in ISO6393_TO_BCP47:
-                        locale = ISO6393_TO_BCP47[lang]
-                        if locale in self.acs.supported_locales:
-                            logger.warning(
-                                f"Language supplied in feed-forward track "
-                                f"('{job_config.speaker.language}') is not "
-                                f"supported. Transcribing with highest-scoring "
-                                f"language ('{lang}', or '{locale}') instead."
-                            )
-                            break
+                        for locale in ISO6393_TO_BCP47[lang]:
+                            if locale in self.acs.supported_locales:
+                                logger.warning(
+                                    f"Language supplied in feed-forward track "
+                                    f"('{job_config.speaker.language}') is not "
+                                    f"supported. Transcribing with highest-scoring "
+                                    f"language ('{lang}', or '{locale}') instead."
+                                )
+                                break
+                        else:
+                            # If for loop completes with no break, lang had no
+                            #  supported corresponding locale
+                            continue
+                        # If we get here, a supported locale was found; break
+                        break
+
                     # Language is either not a valid ISO 639-3 code, does not
                     #  have a corresponding BCP-47 code, or is not supported
                     #  by Azure Speech. Add to MISSING_LANGUAGE_MODELS
