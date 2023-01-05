@@ -30,7 +30,6 @@ import logging
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
-from math import floor, ceil
 from typing import Sequence
 
 logger = logging.getLogger('WhisperDetectionComponent')
@@ -83,10 +82,6 @@ class WhisperDetectionComponent:
             # Convert audio tracks to video tracks with placeholder frame locs
             video_tracks = []
             for track in audio_tracks:
-                # Convert timestamps back to frames
-
-                # track_start_frame = int(floor(fpms * track.start_time))
-                # track_stop_frame = int(ceil(fpms * track.stop_time))
 
                 video_track = mpf.VideoTrack(
                     start_frame=0,

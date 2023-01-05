@@ -21,25 +21,25 @@
       "properties": [
         {
           "name": "WHISPER_MODEL_LANG",
-          "description": "Whisper has English-only models and multilingual models. Set to en for English-only models and multi for multilingual models.",
+          "description": "Whisper has English-only models and multilingual models. Set to 'en' for English-only models and 'multi' for multilingual models.",
           "type": "STRING",
           "defaultValue": "multi"
         },
         {
           "name": "WHISPER_MODEL_SIZE",
-          "description": "Whisper models come in multiple sizes; tiny, base, small, medium, and large. Multilingual models are available in all 5 sizes, English-only is not available in large.",
+          "description": "Whisper models come in multiple sizes; 'tiny', 'base', 'small', 'medium', and 'large'. Multilingual models are available in all 5 sizes. English-only models are not available in 'large' size, but are available in the other four sizes .",
           "type": "STRING",
           "defaultValue": "base"
         },
         {
           "name": "WHISPER_MODE",
-          "description": "Set to 0 for spoken language detection, 1 for speech-to-text transcription, and 2 for speech translation.",
+          "description": "Set to '0' for spoken language detection, '1' for speech-to-text transcription, and '2' for speech translation.",
           "type": "INT",
           "defaultValue": "0"
         },
         {
           "name": "AUDIO_LANGUAGE",
-          "description": "Language audio to transcribe or translate is in. If none is provided then Whisper will automatically detect language from the first 30 seconds of audio.",
+          "description": "Optional property that indicates the language to use for audio translation or transcription. If left as an empty string, Whisper will automatically detect a single language from the first 30 seconds of audio.",
           "type": "STRING",
           "defaultValue": ""
         }
