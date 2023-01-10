@@ -55,6 +55,15 @@ class Utterance(NamedTuple):
     word_confidences: List[float]
     speaker_id: str
 
+    def segments_str(self, start_offset: int):
+        return ', '.join(
+            f"{t0 + start_offset:d}-{t1 + start_offset:d}"
+            for t0, t1 in self.word_segments
+        )
+
+    def confidences_str(self):
+        return ', '.join(str(c) for c in self.word_confidences)
+
 
 class AcsSpeechDetectionProcessor(object):
 
@@ -334,18 +343,14 @@ class AcsSpeechDetectionProcessor(object):
             # Timing information, desegmented if feed-forward track exists
             utterance_start, utterance_stop = utt.segment
 
-            # Build word confidence and segment strings
-            word_confidences = ', '.join(f"{c:f}" for c in utt.word_confidences)
-            word_segments = ', '.join(f"{t0:d}-{t1:d}" for t0, t1 in utt.word_segments)
-
             properties = dict(
                 SPEAKER_ID=utt.speaker_id,
                 TRANSCRIPT=utt.display,
-                WORD_CONFIDENCES=word_confidences,
+                WORD_CONFIDENCES=utt.confidences_str(),
                 ISO_LANGUAGE=BCP47_TO_ISO6393.get(locale, 'UNKNOWN'),
                 BCP_LANGUAGE=locale,
                 DECODED_LANGUAGE=locale,
-                WORD_SEGMENTS=word_segments,
+                WORD_SEGMENTS=utt.segments_str(job_config.start_time),
                 MISSING_LANGUAGE_MODELS=', '.join(missing_models)
             )
 
@@ -369,8 +374,8 @@ class AcsSpeechDetectionProcessor(object):
                 )
 
             track = mpf.AudioTrack(
-                start_time=utterance_start,
-                stop_time=utterance_stop,
+                start_time=utterance_start + job_config.start_time,
+                stop_time=utterance_stop + job_config.start_time,
                 confidence=utt.confidence,
                 detection_properties=properties
             )
