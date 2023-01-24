@@ -257,7 +257,8 @@ class AcsSpeechDetectionProcessor(object):
                                     f"Language supplied in feed-forward track "
                                     f"('{job_config.speaker.language}') is not "
                                     f"supported. Transcribing with highest-scoring "
-                                    f"language ('{lang}', or '{locale}') instead."
+                                    f"language ('{lang}', using '{locale}' "
+                                    f"locale) instead."
                                 )
                                 break
                         else:

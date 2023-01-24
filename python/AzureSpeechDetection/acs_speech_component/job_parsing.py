@@ -24,7 +24,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import logging
 import os
 from typing import Union, Mapping
 
@@ -32,10 +31,6 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 from .azure_connect import AcsServerInfo
-from .azure_utils import ISO6393_TO_BCP47
-
-
-logger = logging.getLogger('AcsSpeechComponent')
 
 
 class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
