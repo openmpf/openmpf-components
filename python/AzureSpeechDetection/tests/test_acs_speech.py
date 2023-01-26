@@ -336,7 +336,9 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
             return
         tail = self.path[len(self.server.base_url_path):]
 
-        if tail.startswith('transcriptions'):
+        if tail == 'transcriptions/locales':
+            self.path += '.json'
+        elif tail.startswith('transcriptions'):
             jobname = tail[len('transcriptions/'):]
             if jobname.endswith('.json'):
                 jobname = jobname[:-len('.json')]

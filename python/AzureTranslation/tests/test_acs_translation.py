@@ -41,10 +41,10 @@ from unittest import mock
 
 import mpf_component_api as mpf
 
-sys.path.insert(0, str(pathlib.Path(__file__).parent / '../acs_translation_component'))
-from acs_translation_component import AcsTranslationComponent, get_azure_char_count, \
-    TranslationClient, NewLineBehavior, ChineseAndJapaneseCodePoints, AcsTranslateUrlBuilder, \
-    BreakSentenceClient, SentenceBreakGuesser, get_n_azure_chars
+sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+from acs_translation_component.acs_translation_component import (AcsTranslationComponent,
+    get_azure_char_count, TranslationClient, NewLineBehavior, ChineseAndJapaneseCodePoints,
+    AcsTranslateUrlBuilder, BreakSentenceClient, SentenceBreakGuesser, get_n_azure_chars)
 
 
 
@@ -874,6 +874,57 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(' asdfasdf', actual[1])
 
 
+    def test_no_translate_no_detect_when_language_ff_prop_matches(self):
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT='Hello', DECODED_LANGUAGE='eng'))
+        job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {}, ff_loc)
+        results = list(AcsTranslationComponent().get_detections_from_image(job))
+        self.assertEqual(1, len(results))
+
+        result_props = results[0].detection_properties
+        self.assertNotIn('TRANSLATION', result_props)
+        self.assertEqual('EN', result_props['TRANSLATION TO LANGUAGE'])
+        self.assertEqual('en', result_props['TRANSLATION SOURCE LANGUAGE'])
+        self.assertEqual('TRUE', result_props['SKIPPED TRANSLATION'])
+
+
+    def test_language_ff_prop_different(self):
+        self.set_results_file('results-spanish.json')
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1,
+                                   dict(TEXT=SPANISH_SAMPLE_TEXT, DECODED_LANGUAGE='spa'))
+        job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {}, ff_loc)
+        results = list(AcsTranslationComponent().get_detections_from_image(job))
+        self.assertEqual(1, len(results))
+
+        result = results[0]
+        print(result.detection_properties)
+
+        self.assertEqual(SPANISH_SAMPLE_TEXT, result.detection_properties['TEXT'])
+        self.assertEqual(SPANISH_SAMPLE_TEXT_ENG_TRANSLATE,
+                         result.detection_properties['TRANSLATION'])
+        self.assertEqual('es', result.detection_properties['TRANSLATION SOURCE LANGUAGE'])
+
+        request_body = self.get_request_body()
+        self.assertEqual(1, len(request_body))
+        self.assertEqual(SPANISH_SAMPLE_TEXT, request_body[0]['Text'])
+
+
+    def test_unsupported_ff_prop(self):
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1,
+                                   dict(TEXT='ංහල', DECODED_LANGUAGE='si'))
+        job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {}, ff_loc)
+        results = list(AcsTranslationComponent().get_detections_from_image(job))
+        self.assertEqual(1, len(results))
+
+        result_props = results[0].detection_properties
+        print(result_props)
+        self.assertNotIn('TRANSLATION', result_props)
+        self.assertEqual('EN', result_props['TRANSLATION TO LANGUAGE'])
+        self.assertEqual('si', result_props['TRANSLATION SOURCE LANGUAGE'])
+        self.assertAlmostEqual(1, float(result_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+        self.assertEqual('TRUE', result_props['SKIPPED TRANSLATION'])
+        self.assertEqual('si', result_props['MISSING_LANGUAGE_MODELS'])
+
+
     def test_does_not_translate_when_to_and_from_are_same(self):
         self.set_results_file('eng-detect-result.json')
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT='Hello'))
@@ -998,7 +1049,7 @@ class MockServer(http.server.HTTPServer):
     _request_queue: 'queue.Queue[Request]'
 
     def __init__(self):
-        super(MockServer, self).__init__(('', 10670), MockRequestHandler)
+        super().__init__(('', 10670), MockRequestHandler)
         self._results_path_queue = queue.Queue()
         self._request_queue = queue.Queue()
         threading.Thread(target=self.serve_forever).start()
@@ -1036,12 +1087,11 @@ class MockServer(http.server.HTTPServer):
 
 
 
-
 class MockRequestHandler(http.server.BaseHTTPRequestHandler):
     server: MockServer
 
     error_content_type = 'application/json; charset=UTF-8'
-    error_message_format = '{"error": { "code": %(code)s000, "message": "%(message)s" } }'
+    error_message_format = '%(message)s'
 
     def do_POST(self):
         url_parts = urllib.parse.urlparse(self.path)
@@ -1050,7 +1100,7 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
         is_translate = url_parts.path == '/translator/translate'
         is_break_sentence = url_parts.path == '/translator/breaksentence'
         if not is_detect and not is_translate and not is_break_sentence:
-            self.send_error(404)
+            self._send_error(404, 000, 'NOT FOUND')
             return
 
         self._validate_headers()
@@ -1071,35 +1121,34 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def _validate_headers(self) -> None:
         if self.headers['Ocp-Apim-Subscription-Key'] != 'test_key':
-            self.send_error(
-                401,
+            self._send_error(
+                401, 0,
                 'Expected the Ocp-Apim-Subscription-Key header to contain the subscription key.')
-            raise Exception()
 
         if self.headers['Content-Type'] != 'application/json; charset=UTF-8':
-            self.send_error(415, 'Expected content type to be: "application/json; charset=UTF-8"')
-            raise Exception()
+            self._send_error(415, 0,
+                             'Expected content type to be: "application/json; charset=UTF-8"')
 
         trace_id = self.headers['X-ClientTraceId']
         if not trace_id:
-            self.send_error(400, 'X-ClientTraceId is missing')
-            raise Exception()
+            self._send_error(400, 43, 'X-ClientTraceId is missing')
 
         global SEEN_TRACE_IDS
         if trace_id in SEEN_TRACE_IDS:
-            self.send_error(400, 'Duplicate X-ClientTraceId')
-            raise Exception()
+            self._send_error(400, 43, 'Duplicate X-ClientTraceId')
         SEEN_TRACE_IDS.add(trace_id)
 
 
     def _validate_query_string(self, query_string, is_translate) -> None:
         query_dict = urllib.parse.parse_qs(query_string)
         if query_dict['api-version'][0] != '3.0':
-            self.send_error(400, 'The API version parameter is missing or invalid.')
-            raise Exception()
-        elif is_translate and query_dict['to'][0] not in ('en', 'ru'):
-            self.send_error(400, 'The target language ("To" field) is missing or invalid.')
-            raise Exception()
+            self._send_error(400, 21, 'The API version parameter is missing or invalid.')
+        if is_translate:
+            if query_dict['to'][0] not in ('en', 'ru'):
+                self._send_error(400, 36, 'The target language ("To" field) is missing or invalid.')
+            if from_lang := query_dict.get('from'):
+                if from_lang[0] == 'si':
+                    self._send_error(400, 35, 'The source language is not valid.')
 
 
     def _validate_body(self, max_chars) -> None:
@@ -1109,18 +1158,27 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
         self.server.set_request_info(Request(full_url, body))
 
         if len(body) == 0:
-            self.send_error(430, 'Request body was empty array.')
-            raise Exception()
+            self._send_error(430, 0, 'Request body was empty array.')
 
         for translation_request in body:
             request_text = translation_request['Text']
             if len(request_text) == 0:
-                self.send_error(430, 'Translation request did not contain text.')
-                raise Exception()
+                self._send_error(430, 0, 'Translation request did not contain text.')
             elif len(request_text) > max_chars:
-                self.send_error(429, 'The server rejected the request because the client has '
-                                     'exceeded request limits.')
-                raise Exception()
+                self._send_error(429, 0, 'The server rejected the request because the client has '
+                                 'exceeded request limits.')
+
+
+    def _send_error(self, http_status, subcode, message):
+        error_body = {
+            'error': {
+                'code': http_status * 1000 + subcode,
+                'message': message
+            }
+        }
+        self.send_error(http_status, json.dumps(error_body))
+        # Stop further processing of the HTTP request.
+        raise Exception()
 
 
 if __name__ == '__main__':

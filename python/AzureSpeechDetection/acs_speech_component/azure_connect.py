@@ -30,7 +30,12 @@ import time
 from urllib import request
 from datetime import datetime, timedelta
 from dateutil import relativedelta
-from azure.storage.blob import ResourceTypes, AccountSasPermissions, generate_account_sas, ContainerClient
+from typing import NamedTuple
+
+from azure.storage.blob import (
+    ResourceTypes, AccountSasPermissions,
+    generate_account_sas, ContainerClient
+)
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -54,6 +59,15 @@ def minutes_to_iso8601(mins):
     return f"P{date}T{time}"
 
 
+class AcsServerInfo(NamedTuple):
+    url: str
+    subscription_key: str
+    blob_container_url: str
+    blob_service_key: str
+    http_retry: mpf_util.HttpRetry
+    http_max_attempts: int
+
+
 class AzureConnection(object):
     def __init__(self):
         self.url = None
@@ -65,32 +79,41 @@ class AzureConnection(object):
         self.http_retry = None
         self.http_max_attempts = None
 
-    def update_acs(self, url, subscription_key, blob_container_url,
-                   blob_service_key, http_retry, http_max_attempts):
-        self.url = url
-        self.subscription_key = subscription_key
+    def update_acs(self, server_info: AcsServerInfo):
+        self.url = server_info.url
+        self.subscription_key = server_info.subscription_key
         self.acs_headers = {
-            'Ocp-Apim-Subscription-Key': subscription_key,
+            'Ocp-Apim-Subscription-Key': server_info.subscription_key,
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         }
-        self.http_retry = http_retry
+        self.http_retry = server_info.http_retry
 
-        if (self.blob_container_url != blob_container_url
-                or self.blob_service_key != blob_service_key
-                or self.http_max_attempts != http_max_attempts):
+        logger.info('Retrieving valid transcription locales')
+        req = request.Request(
+            url=self.url + '/locales',
+            headers=self.acs_headers,
+            method='GET'
+        )
+        with self.http_retry.urlopen(req) as response:
+            self.supported_locales = json.load(response)
+
+        if (self.blob_container_url != server_info.blob_container_url
+                or self.blob_service_key != server_info.blob_service_key
+                or self.http_max_attempts != server_info.http_max_attempts):
             logger.debug('Updating ACS connection')
-            self.blob_container_url = blob_container_url
-            self.blob_service_key = blob_service_key
-            self.http_max_attempts = http_max_attempts
+            self.blob_container_url = server_info.blob_container_url
+            self.blob_service_key = server_info.blob_service_key
+            self.http_max_attempts = server_info.http_max_attempts
             self.container_client = ContainerClient.from_container_url(
-                blob_container_url,
-                blob_service_key,
-                retry_total=http_max_attempts,
-                retry_connect=http_max_attempts,
-                retry_read=http_max_attempts,
-                retry_status=http_max_attempts
+                server_info.blob_container_url,
+                server_info.blob_service_key,
+                retry_total=server_info.http_max_attempts,
+                retry_connect=server_info.http_max_attempts,
+                retry_read=server_info.http_max_attempts,
+                retry_status=server_info.http_max_attempts
             )
+
         else:
             logger.debug('ACS arguments unchanged')
 
@@ -108,13 +131,7 @@ class AzureConnection(object):
             expiry=(datetime.utcnow() + time_limit)
         )
 
-    def upload_file_to_blob(self, filepath, recording_id, blob_access_time,
-                            start_time=0, stop_time=None):
-        audio_bytes = mpf_util.transcode_to_wav(
-            filepath,
-            start_time,
-            stop_time
-        )
+    def upload_file_to_blob(self, audio_bytes, recording_id, blob_access_time):
         try:
             blob_client = self.get_blob_client(recording_id)
             blob_client.upload_blob(audio_bytes)
@@ -135,6 +152,11 @@ class AzureConnection(object):
 
     def submit_batch_transcription(self, recording_url, job_name,
                                    diarize, language, expiry):
+        if language not in self.supported_locales:
+            raise ValueError(f"Provided language ({language}) not supported."
+                             " Refer to component README for list of supported"
+                             " locales for Azure Speech.")
+
         logger.info('Submitting batch transcription...')
         data = dict(
             contentUrls=[recording_url],

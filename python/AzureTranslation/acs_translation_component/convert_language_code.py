@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.2
-
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -26,22 +24,70 @@
 # limitations under the License.                                            #
 #############################################################################
 
-ARG BUILD_REGISTRY
-ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
+from typing import Optional
 
-ARG RUN_TESTS=false
+import langcodes
 
-RUN pip install --no-cache-dir langcodes
+ISO6393_TO_BCP47 = dict(
+    AMH='am',
+    ARA='ar',
+    AZE='az',
+    BOD='bo',
+    BUL='bg',
+    CES='cs',
+    CMN='zh-hans',
+    ELL='el',
+    ENG='en',
+    FRA='fr',
+    HAT='ht',
+    HIN='hi',
+    HYE='hy',
+    IND='id',
+    JPN='ja',
+    KAT='ka',
+    KAZ='kk',
+    KIR='ky',
+    KOR='ko',
+    KUR='ku',
+    LAO='lo',
+    LIT='lt',
+    MKD='mk',
+    MYA='my',
+    NAN='zh-hant',
+    PAN='pa',
+    PES='fa',
+    POL='pl',
+    POR='pt',
+    PRS='prs',
+    PUS='ps',
+    RON='ro',
+    RUS='ru',
+    SLK='sk',
+    SOM='so',
+    SPA='es',
+    SQI='sq',
+    SWA='sw',
+    TAM='ta',
+    TAT='tt',
+    THA='th',
+    TIR='ti',
+    TUR='tr',
+    UKR='uk',
+    URD='ur',
+    UZB='uz',
+    VIE='vi',
+    YUE='yue',
+    ZUL='zu'
+)
 
-RUN --mount=target=.,readwrite \
-    install-component.sh; \
-    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs_translation.py; fi
+BCP_CODES = set(ISO6393_TO_BCP47.values())
 
-
-LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF Azure Translation" \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.url="https://openmpf.github.io" \
-      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
-      org.label-schema.vendor="MITRE"
+def iso_to_bcp(language_code: str) -> Optional[str]:
+    if bcp_code := ISO6393_TO_BCP47.get(language_code.upper()):
+        return bcp_code
+    elif language_code.lower() in BCP_CODES:
+        return language_code
+    elif lang_info := langcodes.get(language_code):
+        return lang_info.language
+    else:
+        return None
