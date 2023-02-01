@@ -319,7 +319,7 @@ class AcsSpeechDetectionProcessor(object):
 
             if result['status'] == 'Failed':
                 raise mpf.DetectionException(
-                    'Transcription failed: {}'.format(result['statusMessage']),
+                    'Transcription failed: {}'.format(result['properties']['error']['message']),
                     mpf.DetectionError.DETECTION_FAILED
                 )
 
