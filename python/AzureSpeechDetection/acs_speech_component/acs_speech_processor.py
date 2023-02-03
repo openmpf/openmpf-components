@@ -318,10 +318,11 @@ class AcsSpeechDetectionProcessor(object):
             result = self.acs.poll_for_result(output_loc)
 
             if result['status'] == 'Failed':
-                raise mpf.DetectionException(
-                    'Transcription failed: {}'.format(result['properties']['error']['message']),
-                    mpf.DetectionError.DETECTION_FAILED
-                )
+                error_info = result.get('properties', {}).get('error', {})
+                code = error_info.get('code')
+                msg = error_info.get('message')
+                raise mpf.DetectionError.DETECTION_FAILED.exception(
+                        f'Transcripton failed with code "{code}" and message "{msg}".')
 
             transcription = self.acs.get_transcription(result)
             logger.info('Speech-to-text processing complete')
