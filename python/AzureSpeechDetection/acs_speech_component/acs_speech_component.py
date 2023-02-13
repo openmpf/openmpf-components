@@ -70,15 +70,6 @@ class AcsSpeechComponent(object):
             logger.exception(f'Exception raised while processing audio: {e}')
             raise
 
-        for track in audio_tracks:
-            sid = track.detection_properties['SPEAKER_ID']
-            if job_config.is_triggered_job:
-                track.detection_properties['LONG_SPEAKER_ID'] = sid
-            else:
-                track.detection_properties['LONG_SPEAKER_ID'] = job_config.speaker_id_prefix + sid
-            if job_config.overwrite_ids:
-                track.detection_properties['SPEAKER_ID'] = '0'
-
         logger.info('Processing complete. Found %d tracks.' % len(audio_tracks))
         return audio_tracks
 

@@ -73,6 +73,7 @@ class AcsSpeechDetectionProcessor(object):
     @staticmethod
     def convert_word_timing(
                 recognized_phrases: Iterable[Mapping[str, Any]],
+                job_config: AzureJobConfig,
                 speaker: Optional[mpf_util.SpeakerInfo] = None
             ) -> Iterable[Utterance]:
         """ Convert ACS recognized_phrases structure to utterances with correct
@@ -96,7 +97,7 @@ class AcsSpeechDetectionProcessor(object):
             confidence = phrase['nBest'][0]['confidence']
             word_segments = list(map(get_seg, phrase['nBest'][0]['words']))
             word_confidences = [w['confidence'] for w in phrase['nBest'][0]['words']]
-            speaker_id = str(phrase.get('speaker', '0'))
+            speaker_id = job_config.speaker_id_prefix + str(phrase.get('speaker', '0'))
 
             # Ensure display text tokens are one-to-one with word segments
             #  If not, replace with bare words. This loses punctuation and
@@ -336,6 +337,7 @@ class AcsSpeechDetectionProcessor(object):
         recognized_phrases = transcription['recognizedPhrases']
         utterances = self.convert_word_timing(
             recognized_phrases=recognized_phrases,
+            job_config=job_config,
             speaker=job_config.speaker)
 
         logger.info('Completed process audio')
