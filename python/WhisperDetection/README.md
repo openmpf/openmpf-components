@@ -22,6 +22,11 @@ This component identifies the language spoken in audio and video clips.
 # Behavior
 Some quirks in Whisper's behavior when transcribing or translating audio with multiple languages has been observed. See [whisper_behavior_notes.md](whisper_behavior_notes.md) for more details.
 
+# Language Identifiers
+The following are the ISO 639-1 codes, the ISO 639-2 codes, and their corresponding languages which Whisper can translate to English.
+
+All translations are to English.
+
 | ISO-639-1 | ISO-639-2 | Language         |
 | --- |---|------------------|
 | `af` | `afr` | Afrikaans        |
