@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2022 The MITRE Corporation                                      #
+# Copyright 2023 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -204,3 +204,32 @@ class TestArgosTranslation(unittest.TestCase):
         self.assertEqual(1, len(result))
         self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
         self.assertEqual(SHORT_OUTPUT, result[0].detection_properties['TRANSLATION'])
+
+    def test_translation_cache(self):
+        ff_track = mpf.VideoTrack(
+            0, 1, -1,
+            {
+                0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SPANISH_SHORT_SAMPLE, LANGUAGE='ES')),
+                1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=SPANISH_SHORT_SAMPLE, LANGUAGE='ES'))
+            },
+            dict(TEXT=SPANISH_SHORT_SAMPLE, LANGUAGE='ES'))
+
+        job = mpf.VideoJob('test', 'test.jpg', 0, 1, {}, {}, ff_track)
+
+        comp = ArgosTranslationComponent()
+        results = comp.get_detections_from_video(job)
+
+        self.assertEqual(1, len(results))
+        result = results[0]
+
+        self.assertEqual(SPANISH_SHORT_SAMPLE, result.detection_properties['TEXT'])
+        self.assertEqual(SHORT_OUTPUT, result.detection_properties['TRANSLATION'])
+        self.assertEqual('es', result.detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+
+        detection1 = result.frame_locations[0]
+        self.assertEqual(SPANISH_SHORT_SAMPLE, detection1.detection_properties['TEXT'])
+        self.assertEqual(SHORT_OUTPUT, detection1.detection_properties['TRANSLATION'])
+
+        detection2 = result.frame_locations[1]
+        self.assertEqual(SPANISH_SHORT_SAMPLE, detection2.detection_properties['TRANSCRIPT'])
+        self.assertEqual(SHORT_OUTPUT, detection2.detection_properties['TRANSLATION'])

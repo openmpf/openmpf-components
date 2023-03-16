@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2022 The MITRE Corporation                                      #
+# Copyright 2023 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -169,6 +169,8 @@ class TranslationWrapper:
             "ukr": "uk"
         }
 
+        self._translation_cache: Dict[str, (str, str)] = {}
+
     @staticmethod
     def get_supported_languages_codes():
         try:
@@ -192,6 +194,11 @@ class TranslationWrapper:
                 break
         else:
             logger.warning("No text to translate found in track.")
+            return
+
+        if cached_translation := self._translation_cache.get(input_text):
+            ff_props['TRANSLATION'] = cached_translation[0]
+            ff_props['TRANSLATION_SOURCE_LANGUAGE'] = cached_translation[1]
             return
 
         for lang_prop_name in self._lang_prop_names:
@@ -256,6 +263,8 @@ class TranslationWrapper:
         logger.info(f"Translating the {prop_to_translate} property.")
 
         translated_text = translation.translate(input_text)
+
+        self._translation_cache[input_text] = (translated_text, self._from_lang)
 
         logger.info("Translation complete.")
 
