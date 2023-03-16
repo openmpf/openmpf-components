@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2022 The MITRE Corporation                                      #
+# Copyright 2023 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -100,7 +100,7 @@ class TestWhisperDetection(unittest.TestCase):
         expected_text = "There's three left on the left side, the one closest to us."
 
         self.assertEqual(1, len(result))
-        self.assertEqual('en', result[0].detection_properties['DETECTED_LANGUAGE'])
+        self.assertEqual('en', result[0].detection_properties['DECODED_LANGUAGE'])
         self.assertEqual(expected_text, result[0].detection_properties["TRANSCRIPT"])
 
     def test_transcribe_given_language(self):
@@ -122,7 +122,7 @@ class TestWhisperDetection(unittest.TestCase):
         result = comp.get_detections_from_audio(job)
 
         self.assertEqual(1, len(result))
-        self.assertEqual('es', result[0].detection_properties['DETECTED_LANGUAGE'])
+        self.assertEqual('es', result[0].detection_properties['DECODED_LANGUAGE'])
 
         # Results for the English portion of the audio are non-deterministic
         self.assertTrue(expected_text in result[0].detection_properties["TRANSCRIPT"])
@@ -156,7 +156,7 @@ class TestWhisperDetection(unittest.TestCase):
         result = comp.get_detections_from_audio(job)
 
         self.assertEqual(1, len(result))
-        self.assertEqual('es', result[0].detection_properties['DETECTED_LANGUAGE'])
+        self.assertEqual('es', result[0].detection_properties['DECODED_LANGUAGE'])
         self.assertTrue(expected_text in result[0].detection_properties["TRANSLATED_AUDIO"])
 
         job_props = dict(WHISPER_MODE=2, AUDIO_LANGUAGE='es')

@@ -7,11 +7,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2022 The MITRE Corporation                                      #
+# Copyright 2023 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -32,16 +32,30 @@ from whisper_detection_component import WhisperDetectionWrapper
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.exit(f'Usage {sys.argv[0]} <audio_file>')
+    if len(sys.argv) != 3:
+        sys.exit(f'Usage {sys.argv[0]} <audio_file> <whisper_mode>')
 
-    _, audio_file = sys.argv
+    _, audio_file, whisper_mode = sys.argv
 
-    audio_tracks = WhisperDetectionWrapper().process_audio(audio_file, 0, 0, {})
+
+    whisper_mode = int(whisper_mode)
+
+    job_props = {"WHISPER_MODE": whisper_mode}
+
+
+    audio_tracks = WhisperDetectionWrapper().process_audio(audio_file, 0, 0, job_props)
     detection_props = audio_tracks[0].detection_properties
 
-    print('DETECTED LANGUAGE:', detection_props['DETECTED_LANGUAGE'])
-    print('DETECTED LANGUAGE CONFIDENCE:', detection_props['DETECTED_LANGUAGE_CONFIDENCE'])
+    if whisper_mode == 0:
+        print('DETECTED LANGUAGE:', detection_props['DETECTED_LANGUAGE'])
+        print('DETECTED LANGUAGE CONFIDENCE:', audio_tracks[0].confidence)
+    elif whisper_mode == 1:
+        print('DECODED LANGUAGE:', detection_props['DECODED_LANGUAGE'])
+        print('TRANSCRIPT:', detection_props['TRANSCRIPT'])
+    elif whisper_mode == 2:
+        print('DECODED LANGUAGE:', detection_props['DECODED_LANGUAGE'])
+        print('TRANSCRIPT:', detection_props['TRANSCRIPT'])
+        print('TRANSLATED AUDIO', detection_props['TRANSLATED_AUDIO'])
 
 
 if __name__ == '__main__':

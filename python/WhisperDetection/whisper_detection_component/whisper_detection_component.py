@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2022 The MITRE Corporation                                      #
+# Copyright 2023 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -142,6 +142,66 @@ class WhisperDetectionWrapper:
         self.size = None
         self.lang = None
 
+        self.iso_map = {
+            'af': 'afr', 
+            'ar': 'ara', 
+            'hy': 'hye', 
+            'az': 'aze', 
+            'be': 'bel', 
+            'bs': 'bos', 
+            'bg': 'bul', 
+            'ca': 'cat', 
+            'zh': 'zho', 
+            'cs': 'ces', 
+            'da': 'dan', 
+            'nl': 'nld', 
+            'en': 'eng', 
+            'et': 'est', 
+            'fi': 'fin', 
+            'fr': 'fra', 
+            'de': 'deu', 
+            'el': 'ell', 
+            'he': 'heb', 
+            'hi': 'hin', 
+            'hr': 'hrv', 
+            'hu': 'hun', 
+            'id': 'ind', 
+            'gl': 'glg', 
+            'it': 'ita', 
+            'is': 'isl', 
+            'ja': 'jpn', 
+            'kn': 'kan', 
+            'kk': 'kaz', 
+            'ko': 'kor', 
+            'lv': 'lav', 
+            'lt': 'lit', 
+            'mr': 'mar', 
+            'mi': 'mri', 
+            'mk': 'mkd', 
+            'ms': 'msa', 
+            'ne': 'nep', 
+            'no': 'nor', 
+            'fa': 'fas', 
+            'pl': 'pol', 
+            'pt': 'por', 
+            'ro': 'ron', 
+            'ru': 'rus', 
+            'sr': 'srp', 
+            'sk': 'slk', 
+            'sl': 'slv', 
+            'es': 'spa', 
+            'sw': 'swa', 
+            'sv': 'swe', 
+            'ta': 'tam', 
+            'tl': 'tgl', 
+            'th': 'tha', 
+            'tr': 'tur', 
+            'uk': 'ukr', 
+            'ur': 'urd', 
+            'vi': 'vie', 
+            'cy': 'cym'
+        }
+
     def process_audio(self, target_file, start_time, stop_time, job_properties):
         model_size = mpf_util.get_property(job_properties, 'WHISPER_MODEL_SIZE', "base")
         model_lang = mpf_util.get_property(job_properties, 'WHISPER_MODEL_LANG', "multi")
@@ -175,8 +235,14 @@ class WhisperDetectionWrapper:
             detected_language = max(probs, key=probs.get)
             detected_lang_conf = probs[detected_language]
 
+            if detected_language in self.iso_map:
+                iso_2 = self.iso_map[detected_language]
+            else:
+                iso_2 = "NONE FOUND"
+
             properties = dict(
-                DETECTED_LANGUAGE=detected_language
+                DETECTED_LANGUAGE=detected_language,
+                ISO_LANGUAGE=iso_2
             )
 
             track = mpf.AudioTrack(
@@ -231,14 +297,29 @@ class WhisperDetectionWrapper:
 
         if language == "":
             result = self.model.transcribe(target_file)
+
+            if result['language'] in self.iso_map:
+                iso_2 = self.iso_map[result['language']]
+            else:
+                iso_2 = "NONE FOUND"
+
             properties = dict(
-                DETECTED_LANGUAGE=result['language'],
+                DECODED_LANGUAGE=result['language'],
+                ISO_LANGUAGE=iso_2,
                 TRANSCRIPT=result['text'].strip()
             )
 
         else:
+
+            if language in self.iso_map:
+                iso_2 = self.iso_map[language]
+            else:
+                iso_2 = "NONE FOUND"
+
             result = self.model.transcribe(target_file, language=language)
             properties = dict(
+                DECODED_LANGUAGE=language,
+                ISO_LANGUAGE=iso_2,
                 TRANSCRIPT=result['text'].strip()
             )
 
