@@ -52,6 +52,7 @@ class TestWhisperDetection(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('en', result[0].detection_properties['DETECTED_LANGUAGE'])
+        self.assertEqual('eng', result[0].detection_properties['ISO_LANGUAGE'])
 
     def test_video_job(self):
         media_properties = dict(FPS='24')
@@ -62,6 +63,7 @@ class TestWhisperDetection(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('en', result[0].detection_properties['DETECTED_LANGUAGE'])
+        self.assertEqual('eng', result[0].detection_properties['ISO_LANGUAGE'])
 
     def test_load_different_models_lang_detection(self):
         job = mpf.AudioJob('test', self._get_test_file('left.wav'), 0, -1, {}, {})
@@ -73,6 +75,7 @@ class TestWhisperDetection(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('en', result[0].detection_properties['DETECTED_LANGUAGE'])
+        self.assertEqual('eng', result[0].detection_properties['ISO_LANGUAGE'])
 
         self.assertEqual("multi", comp.wrapper.lang)
         self.assertEqual("base", comp.wrapper.size)
@@ -101,6 +104,7 @@ class TestWhisperDetection(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('en', result[0].detection_properties['DECODED_LANGUAGE'])
+        self.assertEqual('eng', result[0].detection_properties['ISO_LANGUAGE'])
         self.assertEqual(expected_text, result[0].detection_properties["TRANSCRIPT"])
 
     def test_transcribe_given_language(self):
@@ -123,6 +127,7 @@ class TestWhisperDetection(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('es', result[0].detection_properties['DECODED_LANGUAGE'])
+        self.assertEqual('est', result[0].detection_properties['ISO_LANGUAGE'])
 
         # Results for the English portion of the audio are non-deterministic
         self.assertTrue(expected_text in result[0].detection_properties["TRANSCRIPT"])
@@ -157,6 +162,7 @@ class TestWhisperDetection(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('es', result[0].detection_properties['DECODED_LANGUAGE'])
+        self.assertEqual('est', result[0].detection_properties['ISO_LANGUAGE'])
         self.assertTrue(expected_text in result[0].detection_properties["TRANSLATED_AUDIO"])
 
         job_props = dict(WHISPER_MODE=2, AUDIO_LANGUAGE='es')
