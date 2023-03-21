@@ -127,7 +127,7 @@ class TestWhisperDetection(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('es', result[0].detection_properties['DECODED_LANGUAGE'])
-        self.assertEqual('est', result[0].detection_properties['ISO_LANGUAGE'])
+        self.assertEqual('esp', result[0].detection_properties['ISO_LANGUAGE'])
 
         # Results for the English portion of the audio are non-deterministic
         self.assertTrue(expected_text in result[0].detection_properties["TRANSCRIPT"])
@@ -162,7 +162,7 @@ class TestWhisperDetection(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('es', result[0].detection_properties['DECODED_LANGUAGE'])
-        self.assertEqual('est', result[0].detection_properties['ISO_LANGUAGE'])
+        self.assertEqual('esp', result[0].detection_properties['ISO_LANGUAGE'])
         self.assertTrue(expected_text in result[0].detection_properties["TRANSLATED_AUDIO"])
 
         job_props = dict(WHISPER_MODE=2, AUDIO_LANGUAGE='es')
