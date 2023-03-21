@@ -151,11 +151,9 @@ class EastProcessor(object):
         rotation = rotation[selected]
         scores = scores[selected]
         if self._rotate_on:
-            rotated = (batch_idx % 2).astype(np.bool)
-
-        # If we rotated, the frames are interleaved, so batch location is halved
-        if self._rotate_on:
-            batch_idx = (batch_idx / 2).astype(int)
+            rotated = batch_idx % 2 == 1
+            # If we rotated, the frames are interleaved, so batch location is halved
+            batch_idx //= 2
 
         # Get sine and cosine of box rotation
         c = np.cos(rotation)[:,None]
