@@ -192,18 +192,6 @@ class TestAcsSpeech(unittest.TestCase):
         self.assertEqual(1, len_raw)
         self.assertEqual(2, len_dia)
 
-        # A nonzero start_time indicates to the component that this is a
-        #  subjob, so all SPEAKER_IDs should be equal to 0
-        ids_raw, ids_dia = [
-            set([
-                track.detection_properties['SPEAKER_ID']
-                for track in result
-            ])
-            for result in results
-        ]
-        self.assertEqual({'0'}, ids_raw)
-        self.assertEqual({'0'}, ids_dia)
-
     def test_language(self):
         job_en = mpf.AudioJob(
             job_name='test_bilingual_english',
@@ -336,7 +324,9 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
             return
         tail = self.path[len(self.server.base_url_path):]
 
-        if tail.startswith('transcriptions'):
+        if tail == 'transcriptions/locales':
+            self.path += '.json'
+        elif tail.startswith('transcriptions'):
             jobname = tail[len('transcriptions/'):]
             if jobname.endswith('.json'):
                 jobname = jobname[:-len('.json')]

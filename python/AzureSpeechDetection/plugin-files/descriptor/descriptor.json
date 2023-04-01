@@ -1,7 +1,7 @@
 {
   "componentName": "AzureSpeechDetection",
-  "componentVersion": "7.0",
-  "middlewareVersion": "7.0",
+  "componentVersion": "7.1",
+  "middlewareVersion": "7.1",
   "sourceLanguage": "python",
   "batchLibrary": "AzureSpeechDetection",
   "environmentVariables": [],
@@ -84,6 +84,12 @@
           "description": "Timespan after which to automatically delete transcriptions, in minutes.",
           "type": "INT",
           "defaultValue": "120"
+        },
+        {
+          "name": "TRIGGER",
+          "description": "Trigger condition for this component when used as a downstream action, of the form `TRACK_PROPERTY=VALUE`. Example: 'SPEECH_DETECTOR=AZURESPEECH' will result in this action only being run if the feed-forward track has the property SPEECH_DETECTOR with the value AZURESPEECH.",
+          "type": "STRING",
+          "defaultValue": ""
         }
       ]
     }
@@ -114,6 +120,21 @@
           "value": "FALSE"
         }
       ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION WITH UPSTREAM SPEAKER ACTION",
+      "description": "Runs speech-to-text with Azure Cognitive Services on audio or video using language provided in feed-forward track.",
+      "algorithm": "AZURESPEECH",
+      "properties": [
+        {
+          "name": "TRIGGER",
+          "value": "SPEECH_DETECTOR=AZURESPEECH"
+        },
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -129,6 +150,13 @@
       "description": "Uses Azure Cognitive Services to perform speech-to-text in Spanish.",
       "actions": [
         "AZURE SPEECH DETECTION TO SPANISH ACTION"
+      ]
+    },
+    {
+      "name": "AZURE SPEECH DETECTION WITH UPSTREAM SPEAKER TASK",
+      "description": "Runs speech-to-text with Azure Cognitive Services on audio or video using language provided in feed-forward track.",
+      "actions": [
+        "AZURE SPEECH DETECTION WITH UPSTREAM SPEAKER ACTION"
       ]
     }
   ],

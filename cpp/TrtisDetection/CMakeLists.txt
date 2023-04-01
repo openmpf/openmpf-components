@@ -28,7 +28,7 @@
 cmake_minimum_required(VERSION 3.6)
 project(trtis-detection)
 
-ADD_DEFINITIONS("-std=c++11")
+set(CMAKE_CXX_STANDARD 17)
 add_definitions(-Wfatal-errors)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols

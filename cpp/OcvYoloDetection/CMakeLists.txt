@@ -28,7 +28,6 @@ cmake_minimum_required(VERSION 3.6)
 project(ocv-yolo-detection)
 
 set(CMAKE_CXX_STANDARD 17)
-#ADD_DEFINITIONS("-std=c++11")
 add_definitions(-Wfatal-errors)
 
 #set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols

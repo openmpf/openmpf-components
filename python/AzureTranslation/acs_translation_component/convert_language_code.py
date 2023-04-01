@@ -24,18 +24,70 @@
 # limitations under the License.                                            #
 #############################################################################
 
-[metadata]
-name = AzureOcrTextDetection
-version = 7.1
+from typing import Optional
 
-[options]
-packages = acs_ocr_component
-install_requires =
-    mpf_component_api>=7.1
-    mpf_component_util>=7.1
-    opencv-python>=4.4.0
-    numpy>=1.11
+import langcodes
 
-[options.entry_points]
-mpf.exported_component =
-    component = acs_ocr_component.acs_ocr_component:AcsOcrComponent
+ISO6393_TO_BCP47 = dict(
+    AMH='am',
+    ARA='ar',
+    AZE='az',
+    BOD='bo',
+    BUL='bg',
+    CES='cs',
+    CMN='zh-hans',
+    ELL='el',
+    ENG='en',
+    FRA='fr',
+    HAT='ht',
+    HIN='hi',
+    HYE='hy',
+    IND='id',
+    JPN='ja',
+    KAT='ka',
+    KAZ='kk',
+    KIR='ky',
+    KOR='ko',
+    KUR='ku',
+    LAO='lo',
+    LIT='lt',
+    MKD='mk',
+    MYA='my',
+    NAN='zh-hant',
+    PAN='pa',
+    PES='fa',
+    POL='pl',
+    POR='pt',
+    PRS='prs',
+    PUS='ps',
+    RON='ro',
+    RUS='ru',
+    SLK='sk',
+    SOM='so',
+    SPA='es',
+    SQI='sq',
+    SWA='sw',
+    TAM='ta',
+    TAT='tt',
+    THA='th',
+    TIR='ti',
+    TUR='tr',
+    UKR='uk',
+    URD='ur',
+    UZB='uz',
+    VIE='vi',
+    YUE='yue',
+    ZUL='zu'
+)
+
+BCP_CODES = set(ISO6393_TO_BCP47.values())
+
+def iso_to_bcp(language_code: str) -> Optional[str]:
+    if bcp_code := ISO6393_TO_BCP47.get(language_code.upper()):
+        return bcp_code
+    elif language_code.lower() in BCP_CODES:
+        return language_code
+    elif lang_info := langcodes.get(language_code):
+        return lang_info.language
+    else:
+        return None
