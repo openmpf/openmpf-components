@@ -111,11 +111,12 @@ class TestWhisperDetection(unittest.TestCase):
         expected_text = (
             "Me comunico con diversas personas en inglés y en español o mezclando ambas lenguas. "
             "Hay tantas razones. Yo lo hago por obviamente solidaridad, porque me reciben en esa comunidad. "
-            "Como crecién el lado mexicano no acostumbraba en ese pasado. Luego, al cruzar la frontera metafórica "
-            "porque no existe derecho, me di cuenta, hablan diferente, salpican verdad su conversación con "
-            "palabras en inglés y porque no. Entonces no es fácil hacerlo porque he tratado de hacerlo y lo "
-            "aprecio y lo entiendo mucho más por la experiencia que he tenido todos estos años. Y lo hago para "
-            "tratar de pertenecer, para no ser diferente que me consideren, como parte de esa comunidad."
+            "Como crecién el lado mexicano no acostumbraba en ese pasado. "
+            "Luego, al cruzar la frontera metafórica porque no existe derecho, me di cuenta, hablan "
+            "diferente, salpican verdad su conversación con palabras en inglés y porque no. "
+            "Entonces no es fácil hacerlo porque he tratado de hacerlo y lo aprecio y lo entiendo "
+            "mucho más por la experiencia que tenido todos estos. Y lo hago para tratar de pertenecer, "
+            "para no ser diferente que me consideren, como parte de esa comunidad."
         )
 
         job_props = dict(WHISPER_MODE=1)
@@ -127,7 +128,7 @@ class TestWhisperDetection(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('es', result[0].detection_properties['DECODED_LANGUAGE'])
-        self.assertEqual('esp', result[0].detection_properties['ISO_LANGUAGE'])
+        self.assertEqual('spa', result[0].detection_properties['ISO_LANGUAGE'])
 
         # Results for the English portion of the audio are non-deterministic
         self.assertTrue(expected_text in result[0].detection_properties["TRANSCRIPT"])
@@ -145,12 +146,15 @@ class TestWhisperDetection(unittest.TestCase):
     def test_translation(self):
         expected_text = (
             'I communicate with different people in English and Spanish or mixing both languages. '
-            'There are so many reasons. I do it because obviously solidarity, because they receive me in that '
-            'community. As the Mexican people believe, it is not used in that past. Then, when crossing the border, '
-            'metaphorically, because there is no right, I realize, talking different, they get out of the truth, '
-            'their conversation, with words in English. Why not? It is not easy to do it because I try to do it. '
-            'I appreciate it and I understand it much more because of the experience I had all these years. '
-            'I do it to try to keep it from being, not to be different, and I consider it to be a community.'
+            'There are so many reasons. I do it because obviously solidarity, because they receive '
+            'me in that community. As the Mexican people believe, it is not used in that past. Then, '
+            'when crossing the border, metaphorically, because there is no right, I realize, talking '
+            'different, they get out of the truth, their conversation, with words in English. And why '
+            'not? So it is not easy to do it, because I tried to do it. And I appreciate it, and I '
+            'understand it much more, because of the experience I had all these years. And I do it to '
+            'try to be, to not be different than I consider myself to be. As part of that community. '
+            'I will mix, if I am working with people that are friends of mine, that are bilingual. '
+            'Say the word in the language that comes easiest.'
         )
 
         job_props = dict(WHISPER_MODE=2)
@@ -162,7 +166,7 @@ class TestWhisperDetection(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('es', result[0].detection_properties['DECODED_LANGUAGE'])
-        self.assertEqual('esp', result[0].detection_properties['ISO_LANGUAGE'])
+        self.assertEqual('spa', result[0].detection_properties['ISO_LANGUAGE'])
         self.assertTrue(expected_text in result[0].detection_properties["TRANSLATED_AUDIO"])
 
         job_props = dict(WHISPER_MODE=2, AUDIO_LANGUAGE='es')
