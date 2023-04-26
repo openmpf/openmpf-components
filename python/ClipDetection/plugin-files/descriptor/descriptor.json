@@ -1,7 +1,7 @@
 {
     "componentName": "ClipDetection",
-    "componentVersion": "6.3",
-    "middlewareVersion": "6.3",
+    "componentVersion": "7.1",
+    "middlewareVersion": "7.1",
     "sourceLanguage": "python",
     "batchLibrary": "ClipDetection",
     "environmentVariables": [],
@@ -34,19 +34,19 @@
                 }, 
                 {
                     "name": "CLASSIFICATION_LIST",
-                    "description": "Specifies the classification list that will be tokenized for the text encoder (supports ImageNet and COCO). By default, the ImageNet classifications will be used.",
+                    "description": "Specifies the classification list that will be tokenized for the text encoder (supports 'imagenet' and 'coco'). By default, the COCO classifications will be used.",
                     "type": "STRING",
                     "defaultValue": "coco"
                 },
                 {
-                    "name": "CLASSFICATION_PATH",
-                    "description": "Specifies a path to a csv file containing two names for each classification: one is the full name to display and the other to enter into the CLIP text encoding.",
+                    "name": "CLASSIFICATION_PATH",
+                    "description": "Optionally specifies a path to a csv file containing two names for each classification: one is the full name to display and the other to enter into the CLIP text encoding.",
                     "type": "STRING",
                     "defaultValue": ""
                 },
                 {
                     "name": "TEMPLATE_PATH",
-                    "description": "Specifies a path to a text file containing custom templates for use in the CLIP model. Include a single {} where each classification is to be inserted.",
+                    "description": "Optionally specifies a path to a text file containing custom templates for use in the CLIP model. Include a single {} where each classification is to be inserted.",
                     "type": "STRING",
                     "defaultValue": ""
                 },
@@ -73,14 +73,14 @@
     },
     "actions": [
         {
-            "name": "CLIP CLASSIFICATION ACTION",
-            "description": "Runs CLIP classification on the COCO dataset classes, or with a specified set of classifications and templates.",
+            "name": "CLIP COCO CLASSIFICATION ACTION",
+            "description": "Runs CLIP classification on the COCO dataset classes.",
             "algorithm": "CLIP",
             "properties": []
         },
         {
-            "name": "CLIP TRITON CLASSIFICATION ACTION",
-            "description": "Runs CLIP classification on the COCO dataset classes, or with a specified set of classifications and templates, using a Triton Inferencing Server.",
+            "name": "CLIP TRITON COCO CLASSIFICATION ACTION",
+            "description": "Runs CLIP classification on the COCO dataset classes using a Triton Inferencing Server.",
             "algorithm": "CLIP",
             "properties": [
                 {
@@ -118,15 +118,15 @@
     ],
     "tasks": [
         {
-            "name": "CLIP CLASSIFICATION TASK",
-            "description": "Runs CLIP classification on the COCO dataset classes, or with a specified set of classifications and templates.",
+            "name": "CLIP COCO CLASSIFICATION TASK",
+            "description": "Runs CLIP classification on the COCO dataset classes.",
             "actions": [
                 "CLIP CLASSIFICATION ACTION"
             ]
         },
         {
-            "name": "CLIP TRITON CLASSIFICATION TASK",
-            "description": "Runs CLIP classification on the COCO dataset classes, or with a specified set of classifications and templates, using a Triton Inferencing Server.",
+            "name": "CLIP TRITON COCO CLASSIFICATION TASK",
+            "description": "Runs CLIP classification on the COCO dataset classes using a Triton Inferencing Server.",
             "actions": [
                 "CLIP TRITON CLASSIFICATION ACTION"
             ]
@@ -148,15 +148,15 @@
     ],
     "pipelines": [
         {
-            "name": "CLIP CLASSIFICATION PIPELINE",
-            "description": "Runs CLIP classification on the COCO dataset classes, or with a specified set of classifications and templates.",
+            "name": "CLIP COCO CLASSIFICATION PIPELINE",
+            "description": "Runs CLIP classification on the COCO dataset classes.",
             "tasks": [
                 "CLIP CLASSIFICATION TASK"
             ]
         },
         {
-            "name": "CLIP TRITON CLASSIFICATION PIPELINE",
-            "description": "Runs CLIP classification on the COCO dataset classes, or with a specified set of classifications and templates, using a Triton Inferencing Server.",
+            "name": "CLIP TRITON COCO CLASSIFICATION PIPELINE",
+            "description": "Runs CLIP classification on the COCO dataset classes using a Triton Inferencing Server.",
             "tasks": [
                 "CLIP TRITON CLASSIFICATION TASK"
             ]

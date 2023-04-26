@@ -44,7 +44,7 @@ class TestClip(unittest.TestCase):
             job_name='test-image',
             data_uri=self._get_test_file('sturgeon.jpg'),
             job_properties=dict(
-                NUMBER_OF_CLASSIFICATIONS = 1,
+                NUMBER_OF_CLASSIFICATIONS = 3,
                 NUMBER_OF_TEMPLATES = 80,
                 CLASSIFICATION_LIST = 'imagenet',
                 ENABLE_CROPPING='False'
@@ -53,14 +53,26 @@ class TestClip(unittest.TestCase):
             feed_forward_location=None
         )
         result = list(ClipComponent().get_detections_from_image(job))[0]
-        print(result.detection_properties["CLASSIFICATION"])
-        print(result.detection_properties["CLASSIFICATION LIST"])
-        print(result.detection_properties["CLASSIFICATION CONFIDENCE LIST"])
-        # self.assertEqual(job.job_properties["NUMBER_OF_CLASSIFICATIONS"], len(self._output_to_list(result.detection_properties["CLASSIFICATION LIST"])))
-        # self.assertTrue("sturgeon" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
-        # self.assertEqual("sturgeon", result.detection_properties["CLASSIFICATION"])
+        self.assertEqual(job.job_properties["NUMBER_OF_CLASSIFICATIONS"], len(self._output_to_list(result.detection_properties["CLASSIFICATION LIST"])))
+        self.assertTrue("sturgeon" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
+        self.assertEqual("sturgeon", result.detection_properties["CLASSIFICATION"])
         
-
+    def test_image_file_custom(self):
+        job = mpf.ImageJob(
+            job_name='test-image',
+            data_uri=self._get_test_file('riot.jpg'),
+            job_properties=dict(
+                NUMBER_OF_CLASSIFICATIONS = 4,
+                CLASSIFICATION_PATH = self._get_test_file("violence_classes.csv"),
+                TEMPLATE_PATH = self._get_test_file("violence_templates.txt")
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        result = list(ClipComponent().get_detections_from_image(job))[0]
+        self.assertEqual(job.job_properties["NUMBER_OF_CLASSIFICATIONS"], len(self._output_to_list(result.detection_properties["CLASSIFICATION LIST"])))
+        self.assertTrue("violent" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
+        self.assertEqual("violent", result.detection_properties["CLASSIFICATION"])
 
     @staticmethod
     def _get_test_file(filename):

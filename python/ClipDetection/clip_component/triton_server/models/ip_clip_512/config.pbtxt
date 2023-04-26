@@ -1,13 +1,6 @@
 name:"ip_clip_512",
 backend:"pytorch",
-max_batch_size:2048,
-instance_group[
-    {
-        count:1
-        kind: KIND_GPU
-        gpus: [0]
-    }
-]
+max_batch_size:2048
 input [
     {
         name: "image_input"

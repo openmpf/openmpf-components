@@ -42,7 +42,7 @@ RUN apt-get update; \
     rm -rf /var/lib/apt/lists/*
 
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF CLIP Detection" \
+      org.label-schema.name="OpenMPF CLIP Detection Triton Server" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
