@@ -40,13 +40,13 @@
                 },
                 {
                     "name": "CLASSIFICATION_PATH",
-                    "description": "Optionally specifies a path to a csv file containing two names for each classification: one is the full name to display and the other to enter into the CLIP text encoding.",
+                    "description": "Optionally specifies a path to a custom csv file containing two names for each classification: one is the full name to display and the other to enter into the CLIP text encoding.",
                     "type": "STRING",
                     "defaultValue": ""
                 },
                 {
                     "name": "TEMPLATE_PATH",
-                    "description": "Optionally specifies a path to a text file containing custom templates for use in the CLIP model. Include a single {} where each classification is to be inserted.",
+                    "description": "Optionally specifies a path to a custom text file containing templates for use in the CLIP model. Include a single {} where each classification is to be inserted.",
                     "type": "STRING",
                     "defaultValue": ""
                 },
