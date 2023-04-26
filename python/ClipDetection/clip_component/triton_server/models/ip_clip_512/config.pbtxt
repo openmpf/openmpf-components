@@ -1,0 +1,35 @@
+name:"ip_clip_512",
+backend:"pytorch",
+max_batch_size:2048,
+instance_group[
+    {
+        count:1
+        kind: KIND_GPU
+        gpus: [0]
+    }
+]
+input [
+    {
+        name: "image_input"
+        data_type: TYPE_FP32
+        dims: [3, 224, 224]
+    }
+]
+output [
+    {
+        name: "feature_vector__0"
+        data_type: TYPE_FP32
+        dims: [512]    
+    }
+
+]
+parameters: [
+{
+    key: "INFERENCE_MODE"
+    value: {string_value: "true"}
+},
+{   key: "ENABLE_NVFUSER"
+    value: {string_value: "true"}
+}
+
+]
