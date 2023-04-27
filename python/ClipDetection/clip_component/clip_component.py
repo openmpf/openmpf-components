@@ -26,21 +26,19 @@
 
 import logging
 import os
-import traceback
+import csv
+from pkg_resources import resource_filename
 
+from PIL import Image
+import cv2
+import numpy as np
 import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 import clip
 
-import sys
-import numpy as np
-from PIL import Image
-import cv2
-import csv
 import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException, triton_to_np_dtype
-import tritonclient.utils
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -48,7 +46,6 @@ import mpf_component_util as mpf_util
 logger = logging.getLogger('ClipComponent')
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-from pkg_resources import resource_filename
 class ClipComponent(mpf_util.ImageReaderMixin):
     detection_type = 'CLASS'
 
@@ -57,7 +54,9 @@ class ClipComponent(mpf_util.ImageReaderMixin):
             logger.info("received image job: %s", image_job)
 
             image = image_reader.get_image()
-            return JobRunner().get_classifications(image, image_job.job_properties)
+            detections = JobRunner().get_classifications(image, image_job.job_properties)
+            logger.info(f"Job complete. Found {len(detections)} detections")
+            return detections
         
         except Exception:
             logger.exception(f"Failed to complete job {image_job.job_name} due to the following exception:")
@@ -68,23 +67,23 @@ class JobRunner(object):
         logger.info("Loading model...")
         model, _ = clip.load('ViT-B/32', device=device)
         logger.info("Model loaded.")
-        self.model = model
+        self._model = model
 
-        self.classification_path = ''
-        self.template_path = ''
-        self.classification_list = ''
+        self._classification_path = ''
+        self._template_path = ''
+        self._classification_list = ''
 
-        self.templates = None
-        self.mapping = None
-        self.text_features = None
+        self._templates = None
+        self._class_mapping = None
+        self._text_features = None
     
     def get_classifications(self, image, job_properties):
         image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-        kwargs = self.parse_properties(job_properties)
+        kwargs = self._parse_properties(job_properties)
         image_width, image_height = image.size
 
-        self.check_template_list(kwargs['template_path'], kwargs['num_templates'])
-        self.check_class_list(kwargs['classification_path'], kwargs['classification_list'])
+        self._check_template_list(kwargs['template_path'], kwargs['num_templates'])
+        self._check_class_list(kwargs['classification_path'], kwargs['classification_list'])
 
         image = ImagePreprocessor(kwargs['enable_cropping'], kwargs['enable_triton']).preprocess(image).to(device)
 
@@ -99,17 +98,17 @@ class JobRunner(object):
             image_features = torch.mean(image_tensors, 0)
         else:
             with torch.no_grad():
-                image_features = self.model.encode_image(image).float()
+                image_features = self._model.encode_image(image).float()
             image_features = torch.mean(image_features, 0).unsqueeze(0)
         
         with torch.no_grad():
             image_features /= image_features.norm(dim=-1, keepdim=True)
 
-        similarity = (100.0 * image_features @ self.text_features).softmax(dim=-1).to(device)
+        similarity = (100.0 * image_features @ self._text_features).softmax(dim=-1).to(device)
         similarity = torch.mean(similarity, 0)
         values, indices = similarity.topk(kwargs['num_classifications'])
 
-        classification_list = '; '.join([self.mapping[list(self.mapping.keys())[int(index)]] for index in indices])
+        classification_list = '; '.join([self._class_mapping[list(self._class_mapping.keys())[int(index)]] for index in indices])
         classification_confidence_list = '; '.join([str(value.item()) for value in values])
         
         return [
@@ -118,7 +117,7 @@ class JobRunner(object):
                 y_left_upper = 0,
                 width = image_width,
                 height = image_height,
-                confidence = classification_confidence_list.split('; ')[0],
+                confidence = float(classification_confidence_list.split('; ')[0]),
                 detection_properties = {
                     "CLASSIFICATION": classification_list.split('; ')[0],
                     "CLASSIFICATION CONFIDENCE LIST": classification_confidence_list,
@@ -127,7 +126,7 @@ class JobRunner(object):
             )
         ]
 
-    def parse_properties(self, job_properties):
+    def _parse_properties(self, job_properties):
         num_classifications = self._get_prop(job_properties, "NUMBER_OF_CLASSIFICATIONS", 1)
         num_templates = self._get_prop(job_properties, "NUMBER_OF_TEMPLATES", 80, [1, 7, 80])
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
@@ -158,19 +157,19 @@ class JobRunner(object):
             )
         return prop
 
-    def check_template_list(self, template_path, number_of_templates):
+    def _check_template_list(self, template_path, number_of_templates):
         if template_path != '':
             if (not os.path.exists(template_path)):
                 raise mpf.DetectionException(
                     f"The path {template_path} is not valid",
                     mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
                 )
-            elif self.template_path != template_path:
-                self.template_path = template_path
+            elif self._template_path != template_path:
+                self._template_path = template_path
             
             try:
                 logger.info("Updating templates...")
-                self.templates = self._get_templates_from_file(template_path)
+                self._templates = self._get_templates_from_file(template_path)
                 logger.info("Templates updated.")
             except:
                 raise mpf.DetectionException(
@@ -178,7 +177,7 @@ class JobRunner(object):
                     mpf.DetectionError.COULD_NOT_READ_DATAFILE
                 )
 
-        elif self.templates == None or number_of_templates != len(self.templates):
+        elif self._templates == None or number_of_templates != len(self._templates):
             if number_of_templates == 80:
                 template_filename = 'eighty_templates.txt'
             elif number_of_templates == 7:
@@ -188,26 +187,26 @@ class JobRunner(object):
             
             template_path = os.path.realpath(resource_filename(__name__, 'data/' + template_filename))
             logger.info("Updating templates...")
-            self.templates = self._get_templates_from_file(template_path)
+            self._templates = self._get_templates_from_file(template_path)
             logger.info("Templates updated.")
 
-    def check_class_list(self, classification_path, classification_list):
+    def _check_class_list(self, classification_path, classification_list):
         if classification_path != "":
             if (not os.path.exists(classification_path)):
                 raise mpf.DetectionException(
                     f"The path {classification_path} is not valid",
                     mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
                 )
-        elif self.classification_list != classification_list.lower():
-            self.classification_list = classification_list.lower()
-            classification_path = os.path.realpath(resource_filename(__name__, f'data/{self.classification_list}_classification_list.csv'))
+        elif self._classification_list != classification_list.lower():
+            self._classification_list = classification_list.lower()
+            classification_path = os.path.realpath(resource_filename(__name__, f'data/{self._classification_list}_classification_list.csv'))
         
-        if self.classification_path != classification_path:
-            self.classification_path = classification_path
+        if self._classification_path != classification_path:
+            self._classification_path = classification_path
 
             try:
                 logger.info("Updating classifications...")
-                self.mapping = self._get_mapping_from_classifications(classification_path)
+                self._class_mapping = self._get_mapping_from_classifications(classification_path)
                 logger.info("Classifications updated.")
             except Exception:
                 raise mpf.DetectionException(
@@ -218,15 +217,15 @@ class JobRunner(object):
             with torch.no_grad():
                 logger.info("Creating text embeddings...")
                 text_features = []
-                for label in self.mapping.keys():
-                    text_phrases = [template.format(label) for template in self.templates]
+                for label in self._class_mapping.keys():
+                    text_phrases = [template.format(label) for template in self._templates]
                     text_tokens = clip.tokenize(text_phrases).to(device)
-                    text_embeddings = self.model.encode_text(text_tokens)
+                    text_embeddings = self._model.encode_text(text_tokens)
                     text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
                     text_embedding = text_embeddings.mean(dim=0)
                     text_embedding /= text_embedding.norm()
                     text_features.append(text_embedding)
-                self.text_features = torch.stack(text_features, dim=1).float().to(device)
+                self._text_features = torch.stack(text_features, dim=1).float().to(device)
                 logger.info("Text embeddings created.")
     
     @staticmethod
@@ -250,28 +249,28 @@ class CLIPInferencingServer(object):
     '''
     def __init__(self, triton_server, images):
 
-        self.images = np.array(images.cpu())
-        self.model_name = 'ip_clip_512'
+        self._images = np.array(images.cpu())
+        self._model_name = 'ip_clip_512'
 
-        self.max_batch_size = 2048
-        self.input_name = "image_input"
-        self.output_name = "feature_vector__0"
-        self.input_format = None
-        self.dtype = "FP32"
+        self._max_batch_size = 2048
+        self._input_name = "image_input"
+        self._output_name = "feature_vector__0"
+        self._input_format = None
+        self._dtype = "FP32"
 
-        self.images = self.images.astype(triton_to_np_dtype(self.dtype))
+        self._images = self._images.astype(triton_to_np_dtype(self._dtype))
 
         try:
-            self.triton_client = grpcclient.InferenceServerClient(url=triton_server, verbose=False)
+            self._triton_client = grpcclient.InferenceServerClient(url=triton_server, verbose=False)
         except InferenceServerException as e:
             logger.exception("Client creation failed.")
             raise
 
-    def get_inputs_outputs(self):
-        inputs = [grpcclient.InferInput(self.input_name, self.images.shape, self.dtype)]
-        inputs[0].set_data_from_numpy(self.images)
+    def _get_inputs_outputs(self):
+        inputs = [grpcclient.InferInput(self._input_name, self._images.shape, self._dtype)]
+        inputs[0].set_data_from_numpy(self._images)
 
-        outputs = [grpcclient.InferRequestedOutput(self.output_name, class_count=0)]
+        outputs = [grpcclient.InferRequestedOutput(self._output_name, class_count=0)]
 
         yield inputs, outputs
 
@@ -280,31 +279,33 @@ class CLIPInferencingServer(object):
         results = []
 
         try:
-            for inputs, outputs in self.get_inputs_outputs():
-                responses.append(self.triton_client.infer(model_name=self.model_name, inputs=inputs, outputs=outputs))
-        except InferenceServerException as e:
-            print("Inference failed: " + str(e))
-            traceback.print_exc()
+            for inputs, outputs in self._get_inputs_outputs():
+                responses.append(self._triton_client.infer(model_name=self._model_name, inputs=inputs, outputs=outputs))
+        except Exception:
+            raise mpf.DetectionException(
+                f"Inference failed.",
+                mpf.DetectionError.NETWORK_ERROR
+            )
         
         for response in responses:
-            result = response.as_numpy(self.output_name)       
+            result = response.as_numpy(self._output_name)       
             results.append(result)
         return results   
     
     def check_triton_server(self):
-        if not self.triton_client.is_server_live():
+        if not self._triton_client.is_server_live():
             raise mpf.DetectionException(
                     "Server is not live.",
                     mpf.DetectionError.NETWORK_ERROR
                 )
-        elif not self.triton_client.is_server_ready():
+        elif not self._triton_client.is_server_ready():
             raise mpf.DetectionException(
                     "Server is not ready.",
                     mpf.DetectionError.NETWORK_ERROR
                 )
-        elif not self.triton_client.is_model_ready(self.model_name):
+        elif not self._triton_client.is_model_ready(self._model_name):
             raise mpf.DetectionException(
-                    f"Model {self.model_name} is not ready.",
+                    f"Model {self._model_name} is not ready.",
                     mpf.DetectionError.NETWORK_ERROR
                 )
 

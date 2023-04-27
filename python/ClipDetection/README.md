@@ -2,6 +2,12 @@
 
 This repository contains source code for the OpenMPF CLIP detection component. CLIP (Contrastive Language-Image Pre-Training) was developed by OpenAI and published in 2021. https://arxiv.org/abs/2103.00020
 
+When building on a host without a GPU, the following warning is expected:
+```
+UserWarning: CUDA initialization: Found no NVIDIA driver on your system. Please check that you have an NVIDIA GPU and installed a driver from http://www.nvidia.com/Download/index.aspx (Triggered internally at  /pytorch/c10/cuda/CUDAFunctions.cpp:100.)
+  return torch._C._cuda_getDeviceCount() > 0
+```
+
 # Job Properties
 
 The following are the properties that can be specified for the component. Each property has a default value and so none of them necessarily need to be specified for processing jobs.
@@ -20,7 +26,7 @@ The following are the properties that can be specified for the component. Each p
 
 - `ENABLE_TRITON`: A boolean toggle to specify whether the component should use a Triton inference server to process the image job. By default this is set to false.
 
-- `TRITON_SERVER`: Specifies the Triton server <host>:<port> to use for inferencing. By default, this is set to 'clip-detection-server:8001'.
+- `TRITON_SERVER`: Specifies the Triton server `<host>:<port>` to use for inferencing. By default, this is set to 'clip-detection-server:8001'.
 
 ## Detection Properties
 
@@ -42,7 +48,7 @@ A {} in an open field.
 
 # Custom Classifications
 
-The need for custom classifications arose when training on the ImageNet classifications, where any different class can have many equivalent names. For example, one of the classes is "great white shark, white shark, man-eater, man-eating shark, Carcharodon carcharias". We found the model to be most performant when given a single representative class title. For this case, 'great white shark' makes the most sense but the 'imagenet_classification_list.csv' file gives representative titles for each class, adapted from .ipynb files on the CLIP GitHub page. 
+The need for custom classifications arose when training on the ImageNet classifications, where any different class can have many equivalent names. For example, one of the classes is "great white shark, white shark, man-eater, man-eating shark, Carcharodon carcharias". We found the model to be most performant when given a single representative class title. For this case, 'great white shark' makes the most sense. The `imagenet_classification_list.csv` file gives representative titles for each class, adapted from .ipynb files on the CLIP GitHub page.
 
 As for the format of the CSV file, it has two columns. The first being the representative name, and the second being the full name of the class. The representative name is what goes inside the brackets, {}, of the templates, and the full name is what will be used when displaying results. Below are a couple of examples of rows from the ImageNet classifications. Note that in the first example, quotes are put around the full classification name so they're easier to read and so that those commas aren't confused for the separator.
 
