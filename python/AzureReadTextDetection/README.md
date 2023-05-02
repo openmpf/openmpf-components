@@ -44,7 +44,7 @@ Optional job properties include:
 # Supported Languages and Associated BCP-47 Codes (Read OCR v3.2)
 For tracking purposes, the currently listed 164 supported languages and associated codes for Read OCR v3.2 include:
 
-   | Language                    | BCP-47 Codes    | Language                   | BCP-47 Codes    |
+   | Language                    | BCP-47          | Language                   | BCP-47          |
    | --------------------------- | --------------- | -------------------------- | --------------- |
    | Afrikaans                   | af              | Khasi                      | kha             |
    | Albanian                    | sq              | K'iche'                    | quc             |
@@ -131,7 +131,7 @@ For tracking purposes, the currently listed 164 supported languages and associat
 
    ## Handwritten Languages Supported:
 
-   | Language           | BCP-47 Codes             |
+   | Language           | BCP-47                   |
    | ------------------ | ------------------------ |
    | English            | en                       |
    | Chinese Simplified | zh-Hans                  |
