@@ -24,7 +24,7 @@ the job property will be used.
 
    - `https://{endpoint}/vision/v3.0/read/analyze`            - v3.0 Read OCR analysis.
    - `https://{endpoint}/vision/v3.1/read/analyze`            - v3.1 Read OCR analysis.
-   - **`https://{endpoint}/vision/v3.2/read/analyze`            - v3.2 GA Read OCR analysis. (Final version for version 3 Read OCR)**
+   - **`https://{endpoint}/vision/v3.2/read/analyze`          - v3.2 Read OCR analysis. (Final version for v3 Read OCR series)**
 
    Note that version 3.2 supports a greater number of auto-detected OCR languages, including handwritten text (see [v3.2 supported languages](https://learn.microsoft.com/en-us/azure/cognitive-services/computer-vision/language-support#optical-character-recognition-ocr)).
 
@@ -39,9 +39,10 @@ Optional job properties include:
    a single `MERGED_LINES` output. The default is to merge lines as an excessive number of detections may be reported
    otherwise.
 - `LANGUAGE`:  When provided, disables automatic language detection and processes document based on provided language.
-   The language code must be in case-sensitive BCP-47.  Currently, 164 languages are supported, with 9 languages also having handwritten text support [see here]](https://aka.ms/ocr-languages).
+   The language code must be in case-sensitive BCP-47.  Currently, 164 languages are supported, with 9 languages also having handwritten text support: [see language docs here](https://aka.ms/ocr-languages).
 
-   For tracking purposes, the currently listed 164 supported languages and associated BCP-47 codes include:
+# Supported Languages and Associated Codes (Read OCR v3.2)
+For tracking purposes, the currently listed 164 supported languages and associated codes for Read OCR v3.2 include:
 
    | Language                    | Code (optional) | Language                   | Code (optional) |
    | --------------------------- | --------------- | -------------------------- | --------------- |
@@ -128,7 +129,7 @@ Optional job properties include:
    | Kazakh (Latin)              | kk-latn         | Zhuang                     | za              |
    | Khaling                     | klr             | Zulu                       | zu              |
 
-   Handwritten languages include:
+   ## Handwritten Languages Supported:
 
    | Language           | Language code (optional) |
    | ------------------ | ------------------------ |
