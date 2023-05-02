@@ -6,7 +6,7 @@ endpoint](https://westus.dev.cognitive.microsoft.com/docs/services/computer-visi
 to extract formatted text from documents (PDFs), images, and videos.
 
 **Moving forward, future Read OCR enhancements will fall under the following two services:**
-- [Computer Vision Version 4.0 Read OCR](https://learn.microsoft.com/en-us/azure/cognitive-services/computer-vision/concept-ocr) (in preview).
+- [Computer Vision Version 4.0 Read OCR Overview](https://learn.microsoft.com/en-us/azure/cognitive-services/computer-vision/concept-ocr) (in preview). [API documentation here](https://centraluseuap.dev.cognitive.microsoft.com/docs/services/unified-vision-apis-public-preview-2023-02-01-preview/operations/61d65934cd35050c20f73ab6).
    - For processing general, non-document images containing text (text in the wild).
 - [Form Recognizer Read Model v3.0](https://learn.microsoft.com/en-us/azure/applied-ai-services/form-recognizer/concept-read?view=form-recog-3.0.0) (in preview).
    - For processing scans of documents and clean text.
