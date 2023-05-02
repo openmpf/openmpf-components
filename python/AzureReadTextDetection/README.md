@@ -39,12 +39,12 @@ Optional job properties include:
    a single `MERGED_LINES` output. The default is to merge lines as an excessive number of detections may be reported
    otherwise.
 - `LANGUAGE`:  When provided, disables automatic language detection and processes document based on provided language.
-   The language code must be in case-sensitive BCP-47.  Currently, 164 languages are supported, with 9 languages also having handwritten text support: [see language docs here](https://aka.ms/ocr-languages).
+   The language code must be in case-sensitive BCP-47. Currently, 164 languages are supported, with 9 languages also having handwritten text support (see [language docs](https://aka.ms/ocr-languages)).
 
-# Supported Languages and Associated Codes (Read OCR v3.2)
+# Supported Languages and Associated BCP-47 Codes (Read OCR v3.2)
 For tracking purposes, the currently listed 164 supported languages and associated codes for Read OCR v3.2 include:
 
-   | Language                    | Code (optional) | Language                   | Code (optional) |
+   | Language                    | BCP-47 Codes    | Language                   | BCP-47 Codes    |
    | --------------------------- | --------------- | -------------------------- | --------------- |
    | Afrikaans                   | af              | Khasi                      | kha             |
    | Albanian                    | sq              | K'iche'                    | quc             |
@@ -131,7 +131,7 @@ For tracking purposes, the currently listed 164 supported languages and associat
 
    ## Handwritten Languages Supported:
 
-   | Language           | Language code (optional) |
+   | Language           | BCP-47 Codes             |
    | ------------------ | ------------------------ |
    | English            | en                       |
    | Chinese Simplified | zh-Hans                  |
