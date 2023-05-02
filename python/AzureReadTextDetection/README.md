@@ -39,9 +39,108 @@ Optional job properties include:
    a single `MERGED_LINES` output. The default is to merge lines as an excessive number of detections may be reported
    otherwise.
 - `LANGUAGE`:  When provided, disables automatic language detection and processes document based on provided language.
-   The language code must be in case-sensitive BCP-47.  Currently, only English (`en`), Dutch (`nl`),
-   French (`fr`), German (`de`), Italian (`it`), Portuguese (`pt`), simplified Chinese (`zh-Hans`) and Spanish (`es`)
-   are supported. English is the only language that supports handwritten characters in addition to printed characters.
+   The language code must be in case-sensitive BCP-47.  Currently, 164 languages are supported, with 9 languages also having handwritten text support [see here]](https://aka.ms/ocr-languages).
+
+   For tracking purposes, the currently listed 164 supported languages and associated BCP-47 codes include:
+
+   | Language                    | Code (optional) | Language                   | Code (optional) |
+   | --------------------------- | --------------- | -------------------------- | --------------- |
+   | Afrikaans                   | af              | Khasi                      | kha             |
+   | Albanian                    | sq              | K'iche'                    | quc             |
+   | Angika (Devanagiri)         | anp             | Korean                     | ko              |
+   | Arabic                      | ar              | Korku                      | kfq             |
+   | Asturian                    | ast             | Koryak                     | kpy             |
+   | Awadhi-Hindi (Devanagiri)   | awa             | Kosraean                   | kos             |
+   | Azerbaijani (Latin)         | az              | Kumyk (Cyrillic)           | kum             |
+   | Bagheli                     | bfy             | Kurdish (Arabic)           | ku-arab         |
+   | Basque                      | eu              | Kurdish (Latin)            | ku-latn         |
+   | Belarusian (Cyrillic)       | be, be-cyrl     | Kurukh (Devanagiri)        | kru             |
+   | Belarusian (Latin)          | be, be-latn     | Kyrgyz (Cyrillic)          | ky              |
+   | Bhojpuri-Hindi (Devanagiri) | bho             | Lakota                     | lkt             |
+   | Bislama                     | bi              | Latin                      | la              |
+   | Bodo (Devanagiri)           | brx             | Lithuanian                 | lt              |
+   | Bosnian (Latin)             | bs              | Lower Sorbian              | dsb             |
+   | Brajbha                     | bra             | Lule Sami                  | smj             |
+   | Breton                      | br              | Luxembourgish              | lb              |
+   | Bulgarian                   | bg              | Mahasu Pahari (Devanagiri) | bfz             |
+   | Bundeli                     | bns             | Malay (Latin)              | ms              |
+   | Buryat (Cyrillic)           | bua             | Maltese                    | mt              |
+   | Catalan                     | ca              | Malto (Devanagiri)         | kmj             |
+   | Cebuano                     | ceb             | Manx                       | gv              |
+   | Chamling                    | rab             | Maori                      | mi              |
+   | Chamorro                    | ch              | Marathi                    | mr              |
+   | Chhattisgarhi (Devanagiri)  | hne             | Mongolian (Cyrillic)       | mn              |
+   | Chinese Simplified          | zh-Hans         | Montenegrin (Cyrillic)     | cnr-cyrl        |
+   | Chinese Traditional         | zh-Hant         | Montenegrin (Latin)        | cnr-latn        |
+   | Cornish                     | kw              | Neapolitan                 | nap             |
+   | Corsican                    | co              | Nepali                     | ne              |
+   | Crimean Tatar (Latin)       | crh             | Niuean                     | niu             |
+   | Croatian                    | hr              | Nogay                      | nog             |
+   | Czech                       | cs              | Northern Sami (Latin)      | sme             |
+   | Danish                      | da              | Norwegian                  | no              |
+   | Dari                        | prs             | Occitan                    | oc              |
+   | Dhimal (Devanagiri)         | dhi             | Ossetic                    | os              |
+   | Dogri (Devanagiri)          | doi             | Pashto                     | ps              |
+   | Dutch                       | nl              | Persian                    | fa              |
+   | English                     | en              | Polish                     | pl              |
+   | Erzya (Cyrillic)            | myv             | Portuguese                 | pt              |
+   | Estonian                    | et              | Punjabi (Arabic)           | pa              |
+   | Faroese                     | fo              | Ripuarian                  | ksh             |
+   | Fijian                      | fj              | Romanian                   | ro              |
+   | Filipino                    | fil             | Romansh                    | rm              |
+   | Finnish                     | fi              | Russian                    | ru              |
+   | French                      | fr              | Sadri (Devanagiri)         | sck             |
+   | Friulian                    | fur             | Samoan (Latin)             | sm              |
+   | Gagauz (Latin)              | gag             | Sanskrit (Devanagari)      | sa              |
+   | Galician                    | gl              | Santali(Devanagiri)        | sat             |
+   | German                      | de              | Scots                      | sco             |
+   | Gilbertese                  | gil             | Scottish Gaelic            | gd              |
+   | Gondi (Devanagiri)          | gon             | Serbian (Latin)            | sr, sr-latn     |
+   | Greenlandic                 | kl              | Sherpa (Devanagiri)        | xsr             |
+   | Gurung (Devanagiri)         | gvr             | Sirmauri (Devanagiri)      | srx             |
+   | Haitian Creole              | ht              | Skolt Sami                 | sms             |
+   | Halbi (Devanagiri)          | hlb             | Slovak                     | sk              |
+   | Hani                        | hni             | Slovenian                  | sl              |
+   | Haryanvi                    | bgc             | Somali (Arabic)            | so              |
+   | Hawaiian                    | haw             | Southern Sami              | sma             |
+   | Hindi                       | hi              | Spanish                    | es              |
+   | Hmong Daw (Latin)           | mww             | Swahili (Latin)            | sw              |
+   | Ho(Devanagiri)              | hoc             | Swedish                    | sv              |
+   | Hungarian                   | hu              | Tajik (Cyrillic)           | tg              |
+   | Icelandic                   | is              | Tatar (Latin)              | tt              |
+   | Inari Sami                  | smn             | Tetum                      | tet             |
+   | Indonesian                  | id              | Thangmi                    | thf             |
+   | Interlingua                 | ia              | Tongan                     | to              |
+   | Inuktitut (Latin)           | iu              | Turkish                    | tr              |
+   | Irish                       | ga              | Turkmen (Latin)            | tk              |
+   | Italian                     | it              | Tuvan                      | tyv             |
+   | Japanese                    | ja              | Upper Sorbian              | hsb             |
+   | Jaunsari (Devanagiri)       | Jns             | Urdu                       | ur              |
+   | Javanese                    | jv              | Uyghur (Arabic)            | ug              |
+   | Kabuverdianu                | kea             | Uzbek (Arabic)             | uz-arab         |
+   | Kachin (Latin)              | kac             | Uzbek (Cyrillic)           | uz-cyrl         |
+   | Kangri (Devanagiri)         | xnr             | Uzbek (Latin)              | uz              |
+   | Karachay-Balkar             | krc             | Volapük                    | vo              |
+   | Kara-Kalpak (Cyrillic)      | kaa-cyrl        | Walser                     | wae             |
+   | Kara-Kalpak (Latin)         | kaa             | Welsh                      | cy              |
+   | Kashubian                   | csb             | Western Frisian            | fy              |
+   | Kazakh (Cyrillic)           | kk-cyrl         | Yucatec Maya               | yua             |
+   | Kazakh (Latin)              | kk-latn         | Zhuang                     | za              |
+   | Khaling                     | klr             | Zulu                       | zu              |
+
+   Handwritten languages include:
+
+   | Language           | Language code (optional) |
+   | ------------------ | ------------------------ |
+   | English            | en                       |
+   | Chinese Simplified | zh-Hans                  |
+   | French             | fr                       |
+   | German             | de                       |
+   | Italian            | it                       |
+   | Japanese           | ja                       |
+   | Korean             | ko                       |
+   | Portuguese         | pt                       |
+   | Spanish            | es                       |
 
 # Job Outputs
 Currently the component provides text outputs in separate detection tracks.
