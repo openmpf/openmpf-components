@@ -9,6 +9,7 @@
     "name": "EAST",
     "description": "EAST scene text detection.",
     "actionType": "DETECTION",
+    "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
     },

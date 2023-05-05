@@ -9,6 +9,7 @@
     "name": "AZURETRANSLATION",
     "description": "Uses Azure Cognitive Services to perform translation.",
     "actionType": "DETECTION",
+    "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
     },

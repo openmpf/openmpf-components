@@ -14,6 +14,7 @@
     "name": "OCVYOLO",
     "description": "Detects objects in images and videos using the Open Computer Vision (OCV) library using Yolo.",
     "actionType": "DETECTION",
+    "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
     },

@@ -9,6 +9,7 @@
     "name": "NLPTEXTCORRECTION",
     "description": "Uses the Hunspell library to correct text output.",
     "actionType": "DETECTION",
+    "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
     },

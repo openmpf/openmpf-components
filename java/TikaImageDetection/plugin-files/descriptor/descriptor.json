@@ -9,6 +9,7 @@
     "name": "TIKAIMAGE",
     "description": "The Apache Tika image detection component.",
     "actionType": "DETECTION",
+    "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
     },

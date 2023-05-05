@@ -15,6 +15,7 @@
     "name": "TESSERACTOCR",
     "description": "Performs Tesseract optical character recognition.",
     "actionType": "DETECTION",
+    "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
     },

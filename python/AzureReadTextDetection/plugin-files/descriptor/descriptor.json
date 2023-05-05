@@ -9,6 +9,7 @@
     "name": "AZUREREAD",
     "description": "Uses Azure Cognitive Services to perform optical character recognition using the Azure Read API.",
     "actionType": "DETECTION",
+    "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
     },
