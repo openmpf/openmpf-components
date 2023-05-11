@@ -71,8 +71,8 @@ class TestClip(unittest.TestCase):
         )
         result = list(ClipComponent().get_detections_from_image(job))[0]
         self.assertEqual(job.job_properties["NUMBER_OF_CLASSIFICATIONS"], len(self._output_to_list(result.detection_properties["CLASSIFICATION LIST"])))
-        self.assertTrue("violent" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
-        self.assertEqual("violent", result.detection_properties["CLASSIFICATION"])
+        self.assertTrue("violent scene" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
+        self.assertEqual("violent scene", result.detection_properties["CLASSIFICATION"])
 
     @staticmethod
     def _get_test_file(filename):

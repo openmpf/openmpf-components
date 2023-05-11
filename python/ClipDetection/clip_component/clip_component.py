@@ -49,12 +49,20 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 class ClipComponent(mpf_util.ImageReaderMixin):
     detection_type = 'CLASS'
 
+    def __init__(self):
+        self.initialized = False
+        self.wrapper = False
+
     def get_detections_from_image_reader(self, image_job, image_reader):
         try:
             logger.info("received image job: %s", image_job)
 
             image = image_reader.get_image()
-            detections = JobRunner().get_classifications(image, image_job.job_properties)
+
+            if not self.initialized:
+                self.wrapper = ClipWrapper()
+
+            detections = self.wrapper.get_classifications(image, image_job.job_properties)
             logger.info(f"Job complete. Found {len(detections)} detections")
             return detections
         
@@ -62,10 +70,10 @@ class ClipComponent(mpf_util.ImageReaderMixin):
             logger.exception(f"Failed to complete job {image_job.job_name} due to the following exception:")
             raise
 
-class JobRunner(object):
+class ClipWrapper(object):
     def __init__(self):
         logger.info("Loading model...")
-        model, _ = clip.load('ViT-B/32', device=device)
+        model, _ = clip.load('ViT-B/32', device=device, download_root='~/models')
         logger.info("Model loaded.")
         self._model = model
 
@@ -76,6 +84,9 @@ class JobRunner(object):
         self._templates = None
         self._class_mapping = None
         self._text_features = None
+
+        self._inferencing_server = None
+        self._triton_server_url = None
     
     def get_classifications(self, image, job_properties):
         image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
@@ -88,12 +99,14 @@ class JobRunner(object):
         image = ImagePreprocessor(kwargs['enable_cropping'], kwargs['enable_triton']).preprocess(image).to(device)
 
         if kwargs['enable_triton']:
-            clip_inference = CLIPInferencingServer(kwargs['triton_server'], image)
-
+            if self._inferencing_server is None or kwargs['triton_server'] != self._triton_server_url:
+                self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'], image)
+                self._triton_server_url = kwargs['triton_server']
+            
             # Check if server and model are ready
-            clip_inference.check_triton_server()
+            self._inferencing_server.check_triton_server()
 
-            results = clip_inference.get_responses()
+            results = self._inferencing_server.get_responses()
             image_tensors= torch.Tensor(np.copy(results)).to(device=device)
             image_features = torch.mean(image_tensors, 0)
         else:
@@ -234,7 +247,7 @@ class JobRunner(object):
             mapping = {}
             csvreader = csv.reader(csvfile)
             for row in csvreader:
-                mapping[row[0]] = row[1]
+                mapping[row[0].strip()] = row[1].strip()
                 
         return mapping
 

@@ -26,9 +26,13 @@
 # limitations under the License.                                            #
 #############################################################################
 
+ARG MODELS_REGISTRY=openmpf/
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
+FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:${BUILD_TAG} as models
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
+
+COPY --from=models /models/ViT-B-32.pt /models/ViT-B-32.pt
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
@@ -46,8 +50,6 @@ RUN --mount=type=tmpfs,target=/tmp \
             | tar --extract --gzip --directory /tmp/CLIP; \
         cd /tmp/CLIP/*; \
         pip3 install . 'torchvision==0.8.2'
-
-RUN python3 -c 'import clip; clip.load("ViT-B/32")'
 
 ARG RUN_TESTS=false
 

@@ -2,12 +2,6 @@
 
 This repository contains source code for the OpenMPF CLIP detection component. CLIP (Contrastive Language-Image Pre-Training) was developed by OpenAI and published in 2021. https://arxiv.org/abs/2103.00020
 
-When building on a host without a GPU, the following warning is expected:
-```
-UserWarning: CUDA initialization: Found no NVIDIA driver on your system. Please check that you have an NVIDIA GPU and installed a driver from http://www.nvidia.com/Download/index.aspx (Triggered internally at  /pytorch/c10/cuda/CUDAFunctions.cpp:100.)
-  return torch._C._cuda_getDeviceCount() > 0
-```
-
 # Job Properties
 
 The following are the properties that can be specified for the component. Each property has a default value and so none of them necessarily need to be specified for processing jobs.
@@ -56,4 +50,12 @@ As for the format of the CSV file, it has two columns. The first being the repre
 tench,"tench, Tinca tinca"
 kite (bird of prey),kite
 magpie,magpie
+```
+
+# Known Issues
+
+When building on a host without a GPU, the following warning is expected:
+```
+UserWarning: CUDA initialization: Found no NVIDIA driver on your system. Please check that you have an NVIDIA GPU and installed a driver from http://www.nvidia.com/Download/index.aspx (Triggered internally at  /pytorch/c10/cuda/CUDAFunctions.cpp:100.)
+  return torch._C._cuda_getDeviceCount() > 0
 ```

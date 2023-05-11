@@ -1,7 +1,7 @@
 {
     "componentName": "ClipDetection",
-    "componentVersion": "7.1",
-    "middlewareVersion": "7.1",
+    "componentVersion": "7.2",
+    "middlewareVersion": "7.2",
     "sourceLanguage": "python",
     "batchLibrary": "ClipDetection",
     "environmentVariables": [],
@@ -10,6 +10,7 @@
         "description": "CLIP classification.",
         "detectionType": "CLASS",
         "actionType": "DETECTION",
+        "outputChangedCounter": 1,
         "requiresCollection": {
             "states": []
         },
@@ -59,6 +60,12 @@
                 {
                     "name": "ENABLE_TRITON",
                     "description": "If true, inferencing will be performed via a configured Triton inference server.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
+                    "name": "INCLUDE_FEATURES",
+                    "description": "If true, the detection will have a detection property, FEATURE, which contains the base64-encoded version of the feature vector.",
                     "type": "BOOLEAN",
                     "defaultValue": "false"
                 },
