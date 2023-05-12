@@ -56,7 +56,7 @@ class WhisperDetectionComponent:
         fpms = float(job.media_properties['FPS']) / 1000.0
         start_time = int(start_frame / fpms)
 
-        if stop_frame is not None and stop_frame < media_frame_count - 1:
+        if stop_frame > 0 and stop_frame < media_frame_count - 1:
             stop_time = int(stop_frame / fpms)
         elif media_duration > 0:
             stop_time = int(media_duration)
@@ -205,7 +205,7 @@ class WhisperDetectionWrapper:
     def process_audio(self, target_file, start_time, stop_time, job_properties):
         model_size = mpf_util.get_property(job_properties, 'WHISPER_MODEL_SIZE', "base")
         model_lang = mpf_util.get_property(job_properties, 'WHISPER_MODEL_LANG', "multi")
-        mode = mpf_util.get_property(job_properties, "WHISPER_MODE", 0)
+        mode = mpf_util.get_property(job_properties, "WHISPER_MODE", "LANGUAGE_DETECTION")
 
         if model_lang == "en" and model_size == "large":
             raise mpf.DetectionError.INVALID_PROPERTY.exception("Whisper does not have a large English model available.")
@@ -219,7 +219,7 @@ class WhisperDetectionWrapper:
 
         audio_tracks = []
 
-        if mode == 0:
+        if mode == "LANGUAGE_DETECTION":
             if model_lang != "multi":
                 raise mpf.DetectionError.INVALID_PROPERTY.exception("Whisper does not support language detection "
                                                                     "using English models. Please use the multilingual "
@@ -235,14 +235,11 @@ class WhisperDetectionWrapper:
             detected_language = max(probs, key=probs.get)
             detected_lang_conf = probs[detected_language]
 
-            if detected_language in self.iso_map:
-                iso_2 = self.iso_map[detected_language]
-            else:
-                iso_2 = "NONE FOUND"
+            iso_639_3 = self.iso_map.get(detected_language, 'UNKNOWN')
 
             properties = dict(
                 DETECTED_LANGUAGE=detected_language,
-                ISO_LANGUAGE=iso_2
+                ISO_LANGUAGE=iso_639_3
             )
 
             track = mpf.AudioTrack(
@@ -255,7 +252,7 @@ class WhisperDetectionWrapper:
 
             logger.debug('Completed process audio')
 
-        elif mode == 1:
+        elif mode == "TRANSCRIPTION":
             properties = self._transcribe_text(target_file, job_properties)
 
             track = mpf.AudioTrack(
@@ -265,7 +262,7 @@ class WhisperDetectionWrapper:
             )
 
             audio_tracks.append(track)
-        elif mode == 2:
+        elif mode == "SPEECH_TRANSLATION":
             properties = self._transcribe_text(target_file, job_properties)
             result = self.model.transcribe(target_file, task="translate")
 
@@ -298,30 +295,23 @@ class WhisperDetectionWrapper:
         if language == "":
             result = self.model.transcribe(target_file)
 
-            if result['language'] in self.iso_map:
-                iso_2 = self.iso_map[result['language']]
-            else:
-                iso_2 = "NONE FOUND"
+            iso_639_3 = self.iso_map.get(result['language'], 'UNKNOWN')
 
             properties = dict(
                 DECODED_LANGUAGE=result['language'],
-                ISO_LANGUAGE=iso_2,
+                ISO_LANGUAGE=iso_639_3,
                 TRANSCRIPT=result['text'].strip()
             )
 
         else:
 
-            if language in self.iso_map:
-                iso_2 = self.iso_map[language]
-            else:
-                iso_2 = "NONE FOUND"
+            iso_639_3 = self.iso_map.get(language, 'UNKNOWN')
 
             result = self.model.transcribe(target_file, language=language)
             properties = dict(
                 DECODED_LANGUAGE=language,
-                ISO_LANGUAGE=iso_2,
+                ISO_LANGUAGE=iso_639_3,
                 TRANSCRIPT=result['text'].strip()
             )
 
         return properties
-

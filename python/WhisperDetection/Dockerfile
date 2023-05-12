@@ -34,6 +34,9 @@ ARG RUN_TESTS=false
 
 RUN pip install --no-cache-dir openai-whisper==20230314 'numpy<1.24,>=1.18'
 
+RUN python -c 'import whisper; whisper.load_model("base")'
+RUN python -c 'import whisper; whisper.load_model("base.en")'
+
 RUN --mount=target=.,readwrite \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_whisper_detection.py; fi

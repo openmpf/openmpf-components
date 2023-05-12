@@ -10,7 +10,7 @@ This component identifies the language spoken in audio and video clips.
 # Input Properties
 - `WHISPER_MODEL_SIZE`: Size of the Whisper model. Whisper has `tiny`, `base`, `small`, `medium`, and `large` models available for multilingual models. English-only models are available in `tiny`, `base`, `small`, and `medium`. 
 - `WHISPER_MODEL_LANG`: Whisper has English-only models and multilingual models. Set to `en` for English-only models and `multi` for multilingual models.
-- `WHISPER_MODE`: Determines whether Whisper will perform language detection, speech-to-text transcription, or speech translation. English-only models can only transcribe English audio. Set to `0` for spoken language detection, `1` for speech-to-text transcription, and `2` for speech translation.
+- `WHISPER_MODE`: Determines whether Whisper will perform language detection, speech-to-text transcription, or speech translation. English-only models can only transcribe English audio. Set to `LANGUAGE_DETECTION` for spoken language detection, `TRANSCRIPTION` for speech-to-text transcription, and `SPEECH_TRANSLATION` for speech translation.
 - `AUDIO_LANGUAGE`: Optional property that indicates the language to use for audio translation or transcription. If left as an empty string, Whisper will automatically detect a single language from the first 30 seconds of audio.
 
 # Output Properties
@@ -20,14 +20,36 @@ This component identifies the language spoken in audio and video clips.
 - `TRANSLATED_AUDIO`: Returns the translated text for translated audio runs.
 
 # Behavior
-Some quirks in Whisper's behavior when transcribing or translating audio with multiple languages has been observed. See [whisper_behavior_notes.md](whisper_behavior_notes.md) for more details.
+Some quirks in Whisper's behavior when transcribing or translating audio with multiple languages has been observed.
+
+### Transcribe ###
+
+Size  | Provided Language | Result for Spanish Part | Result for English Part
+------|-------------------|-------------------------|-------------------------
+base  | Auto-detected     | Correctly transcribed   | Gibberish
+large | Auto-detected     | Correctly transcribed   | Translated to Spanish
+base  | English           | Translated to English   | Correctly transcribed 
+large | English           | Translated to English   | Correctly transcribed 
+
+
+### Translate ###
+
+Size  | Provided Language | Result for Spanish Part | Result for English Part
+------|-------------------|-------------------------|------------------------
+base  | Auto-detected     | Correctly translated    | Not included in output
+base  | English           | Correctly translated    | Transcribed
+large | Auto-detected     | Correctly translated    | Mostly skipped
+large | English           | Correctly translated    | Mostly skipped
+
+
+See [whisper_behavior_notes.md](whisper_behavior_notes.md) for more details.
 
 # Language Identifiers
-The following are the ISO 639-1 codes, the ISO 639-2 codes, and their corresponding languages which Whisper can translate to English.
+The following are the ISO 639-1 codes, the ISO 639-3 codes, and their corresponding languages which Whisper can translate to English.
 
 All translations are to English.
 
-| ISO-639-1 | ISO-639-2 | Language         |
+| ISO-639-1 | ISO-639-3 | Language         |
 | --- |---|------------------|
 | `af` | `afr` | Afrikaans        |
 | `ar` | `ara` | Arabic           |

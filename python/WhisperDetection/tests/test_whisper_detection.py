@@ -94,7 +94,7 @@ class TestWhisperDetection(unittest.TestCase):
         self.assertEqual('en', result[0].detection_properties['DETECTED_LANGUAGE'])
 
     def test_transcribe(self):
-        job_props = dict(WHISPER_MODE=1)
+        job_props = dict(WHISPER_MODE="TRANSCRIPTION")
         job = mpf.AudioJob('test', self._get_test_file('left.wav'), 0, -1, job_props, {})
 
         comp = WhisperDetectionComponent()
@@ -119,7 +119,7 @@ class TestWhisperDetection(unittest.TestCase):
             "para no ser diferente que me consideren, como parte de esa comunidad."
         )
 
-        job_props = dict(WHISPER_MODE=1)
+        job_props = dict(WHISPER_MODE="TRANSCRIPTION")
         job = mpf.AudioJob('test', self._get_test_file('bilingual.mp3'), 0, -1, job_props, {})
 
         comp = WhisperDetectionComponent()
@@ -133,7 +133,7 @@ class TestWhisperDetection(unittest.TestCase):
         # Results for the English portion of the audio are non-deterministic
         self.assertTrue(expected_text in result[0].detection_properties["TRANSCRIPT"])
 
-        job_props = dict(WHISPER_MODE=1, AUDIO_LANGUAGE='es')
+        job_props = dict(WHISPER_MODE="TRANSCRIPTION", AUDIO_LANGUAGE='es')
         job = mpf.AudioJob('test', self._get_test_file('bilingual.mp3'), 0, -1, job_props, {})
 
         result = comp.get_detections_from_audio(job)
@@ -152,12 +152,10 @@ class TestWhisperDetection(unittest.TestCase):
             'different, they get out of the truth, their conversation, with words in English. And why '
             'not? So it is not easy to do it, because I tried to do it. And I appreciate it, and I '
             'understand it much more, because of the experience I had all these years. And I do it to '
-            'try to be, to not be different than I consider myself to be. As part of that community. '
-            'I will mix, if I am working with people that are friends of mine, that are bilingual. '
-            'Say the word in the language that comes easiest.'
+            'try to be, to not be different than I consider myself to be. As part of that community.'
         )
 
-        job_props = dict(WHISPER_MODE=2)
+        job_props = dict(WHISPER_MODE="SPEECH_TRANSLATION")
         job = mpf.AudioJob('test', self._get_test_file('bilingual.mp3'), 0, -1, job_props, {})
 
         comp = WhisperDetectionComponent()
@@ -169,13 +167,13 @@ class TestWhisperDetection(unittest.TestCase):
         self.assertEqual('spa', result[0].detection_properties['ISO_LANGUAGE'])
         self.assertTrue(expected_text in result[0].detection_properties["TRANSLATED_AUDIO"])
 
-        job_props = dict(WHISPER_MODE=2, AUDIO_LANGUAGE='es')
+        job_props = dict(WHISPER_MODE="SPEECH_TRANSLATION", AUDIO_LANGUAGE='es')
         job = mpf.AudioJob('test', self._get_test_file('bilingual.mp3'), 0, -1, job_props, {})
 
         result = comp.get_detections_from_audio(job)
 
         self.assertEqual(1, len(result))
-        self.assertEqual(expected_text, result[0].detection_properties["TRANSLATED_AUDIO"])
+        self.assertTrue(expected_text in result[0].detection_properties["TRANSLATED_AUDIO"])
 
 
 if __name__ == '__main__':

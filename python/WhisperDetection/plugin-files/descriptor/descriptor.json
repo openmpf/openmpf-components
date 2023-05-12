@@ -33,9 +33,9 @@
         },
         {
           "name": "WHISPER_MODE",
-          "description": "Set to '0' for spoken language detection, '1' for speech-to-text transcription, and '2' for speech translation.",
-          "type": "INT",
-          "defaultValue": "0"
+          "description": "Set to 'LANGUAGE_DETECTION' for spoken language detection, 'TRANSCRIPTION' for speech-to-text transcription, and 'SPEECH_TRANSLATION' for speech translation.",
+          "type": "STRING",
+          "defaultValue": "LANGUAGE_DETECTION"
         },
         {
           "name": "AUDIO_LANGUAGE",
