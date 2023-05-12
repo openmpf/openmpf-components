@@ -1,7 +1,7 @@
 {
   "componentName": "AzureSpeechDetection",
-  "componentVersion": "7.1",
-  "middlewareVersion": "7.1",
+  "componentVersion": "7.2",
+  "middlewareVersion": "7.2",
   "sourceLanguage": "python",
   "batchLibrary": "AzureSpeechDetection",
   "environmentVariables": [],
@@ -9,6 +9,7 @@
     "name": "AZURESPEECH",
     "description": "Uses Azure Cognitive Services to perform speech-to-text.",
     "actionType": "DETECTION",
+    "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
     },
