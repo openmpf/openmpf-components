@@ -75,7 +75,7 @@ class ClipComponent(mpf_util.ImageReaderMixin):
 class ClipWrapper(object):
     def __init__(self):
         logger.info("Loading model...")
-        model, _ = clip.load('ViT-B/32', device=device, download_root='/ckb-nfs/home/zcafego/model_experiment/model/')
+        model, _ = clip.load('ViT-B/32', device=device, download_root='/models')
         logger.info("Model loaded.")
         self._model = model
 
