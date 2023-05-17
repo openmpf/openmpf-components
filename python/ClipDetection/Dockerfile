@@ -28,8 +28,9 @@
 
 ARG MODELS_REGISTRY=openmpf/
 ARG BUILD_REGISTRY
+ARG MODELS_TAG=latest
 ARG BUILD_TAG=latest
-FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:${BUILD_TAG} as models
+FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:${MODELS_TAG} as models
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 COPY --from=models /models/ViT-B-32.pt /models/ViT-B-32.pt

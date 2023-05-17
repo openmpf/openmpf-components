@@ -20,6 +20,8 @@ The following are the properties that can be specified for the component. Each p
 
 - `ENABLE_TRITON`: A boolean toggle to specify whether the component should use a Triton inference server to process the image job. By default this is set to false.
 
+- `INCLUDE_FEATURES`: A boolean toggle to specify whether the `FEATURE` detection property is included with each detection. By default, this is set to false.
+
 - `TRITON_SERVER`: Specifies the Triton server `<host>:<port>` to use for inferencing. By default, this is set to 'clip-detection-server:8001'.
 
 ## Detection Properties
@@ -31,6 +33,7 @@ Returned `ImageLocation` objects have the following members in their `detection_
 | `CLASSIFICATION`                 | The classification returned from the CLIP model with the highest similarity.
 | `CLASSIFICATION CONFIDENCE LIST` | A list of the highest confidences returned by the model. The number of confidences is specified by `NUMBER_OF_CLASSIFICATIONS`.
 | `CLASSIFICATION LIST`            | A list of the classes with highest confidence returned by the model. The number of classes is specified by `NUMBER_OF_CLASSIFICATIONS`.
+| `FEATURE`                        | When `INCLUDE_FEATURES` is true, this detection property is set to the value of the base64-encoded version of the image feature vector.
 
 # Custom Templates
 

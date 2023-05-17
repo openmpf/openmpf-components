@@ -31,6 +31,7 @@ from pkg_resources import resource_filename
 
 from PIL import Image
 import cv2
+import base64
 import numpy as np
 import torch
 import torchvision.transforms as T
@@ -51,7 +52,7 @@ class ClipComponent(mpf_util.ImageReaderMixin):
 
     def __init__(self):
         self.initialized = False
-        self.wrapper = False
+        self.wrapper = None
 
     def get_detections_from_image_reader(self, image_job, image_reader):
         try:
@@ -61,9 +62,10 @@ class ClipComponent(mpf_util.ImageReaderMixin):
 
             if not self.initialized:
                 self.wrapper = ClipWrapper()
+                self.initialized = True
 
             detections = self.wrapper.get_classifications(image, image_job.job_properties)
-            logger.info(f"Job complete. Found {len(detections)} detections")
+            logger.info(f"Job complete. Found {len(detections)} detections.")
             return detections
         
         except Exception:
@@ -73,7 +75,7 @@ class ClipComponent(mpf_util.ImageReaderMixin):
 class ClipWrapper(object):
     def __init__(self):
         logger.info("Loading model...")
-        model, _ = clip.load('ViT-B/32', device=device, download_root='~/models')
+        model, _ = clip.load('ViT-B/32', device=device, download_root='/ckb-nfs/home/zcafego/model_experiment/model/')
         logger.info("Model loaded.")
         self._model = model
 
@@ -124,6 +126,15 @@ class ClipWrapper(object):
         classification_list = '; '.join([self._class_mapping[list(self._class_mapping.keys())[int(index)]] for index in indices])
         classification_confidence_list = '; '.join([str(value.item()) for value in values])
         
+        detection_properties = {
+            "CLASSIFICATION": classification_list.split('; ')[0],
+            "CLASSIFICATION CONFIDENCE LIST": classification_confidence_list,
+            "CLASSIFICATION LIST": classification_list
+        }
+        
+        if kwargs['include_features']:
+            detection_properties['FEATURE'] = base64.b64encode(image_features.cpu().numpy()).decode()
+
         return [
             mpf.ImageLocation(
                 x_left_upper = 0,
@@ -131,32 +142,30 @@ class ClipWrapper(object):
                 width = image_width,
                 height = image_height,
                 confidence = float(classification_confidence_list.split('; ')[0]),
-                detection_properties = {
-                    "CLASSIFICATION": classification_list.split('; ')[0],
-                    "CLASSIFICATION CONFIDENCE LIST": classification_confidence_list,
-                    "CLASSIFICATION LIST": classification_list
-                }
+                detection_properties = detection_properties
             )
         ]
 
     def _parse_properties(self, job_properties):
-        num_classifications = self._get_prop(job_properties, "NUMBER_OF_CLASSIFICATIONS", 1)
-        num_templates = self._get_prop(job_properties, "NUMBER_OF_TEMPLATES", 80, [1, 7, 80])
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
         classification_path = self._get_prop(job_properties, "CLASSIFICATION_PATH", '')
-        template_path = self._get_prop(job_properties, "TEMPLATE_PATH", '')
         enable_cropping = self._get_prop(job_properties, "ENABLE_CROPPING", True)
         enable_triton = self._get_prop(job_properties, "ENABLE_TRITON", False)
+        include_features = self._get_prop(job_properties, "INCLUDE_FEATURES", False)
+        num_classifications = self._get_prop(job_properties, "NUMBER_OF_CLASSIFICATIONS", 1)
+        num_templates = self._get_prop(job_properties, "NUMBER_OF_TEMPLATES", 80, [1, 7, 80])
+        template_path = self._get_prop(job_properties, "TEMPLATE_PATH", '')
         triton_server = self._get_prop(job_properties, "TRITON_SERVER", 'clip-detection-server:8001')
 
-        return dict(
-            num_classifications = num_classifications,
-            num_templates = num_templates,
+        return dict(    
             classification_list = classification_list,
             classification_path = classification_path,
-            template_path = template_path,
             enable_cropping = enable_cropping,
             enable_triton = enable_triton,
+            include_features = include_features,
+            num_classifications = num_classifications,
+            num_templates = num_templates,
+            template_path = template_path,
             triton_server = triton_server
         )
     
@@ -210,8 +219,9 @@ class ClipWrapper(object):
                     f"The path {classification_path} is not valid",
                     mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
                 )
-        elif self._classification_list != classification_list.lower():
-            self._classification_list = classification_list.lower()
+        else:
+            if self._classification_list != classification_list.lower():
+                self._classification_list = classification_list.lower()
             classification_path = os.path.realpath(resource_filename(__name__, f'data/{self._classification_list}_classification_list.csv'))
         
         if self._classification_path != classification_path:
@@ -277,6 +287,19 @@ class CLIPInferencingServer(object):
             self._triton_client = grpcclient.InferenceServerClient(url=triton_server, verbose=False)
         except InferenceServerException as e:
             logger.exception("Client creation failed.")
+            raise
+
+        try:
+            self._model_metadata = self._triton_client.get_model_metadata(model_name=self._model_name)
+        except InferenceServerException as e:
+            logger.exception("Failed to retrieve the metadata.")
+            raise
+
+        try:
+            _model_config = self._triton_client.get_model_config(model_name=self._model_name)
+            self._model_config = _model_config.config
+        except InferenceServerException as e:
+            logger.exception("Failed to retrieve the config.")
             raise
 
     def _get_inputs_outputs(self):
