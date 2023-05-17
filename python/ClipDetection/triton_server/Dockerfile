@@ -27,9 +27,8 @@
 #############################################################################
 
 ARG MODELS_REGISTRY=openmpf/
-ARG BUILD_TAG=latest
 
-FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:${BUILD_TAG} as models
+FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:7.2 as models
 
 FROM nvcr.io/nvidia/tritonserver:22.04-py3 as openmpf_triton_server
 
