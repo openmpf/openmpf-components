@@ -1,7 +1,7 @@
 {
   "componentName": "TrtisDetection",
-  "componentVersion": "7.1",
-  "middlewareVersion": "7.1",
+  "componentVersion": "7.2",
+  "middlewareVersion": "7.2",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/TrtisDetection/lib/libmpfTrtisDetection.so",
   "environmentVariables": [
@@ -14,6 +14,7 @@
     "name": "TRTIS",
     "description": "Returns a model-specific inference result from an input image.",
     "actionType": "DETECTION",
+    "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
     },
