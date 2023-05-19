@@ -1,6 +1,6 @@
 # Overview
 
-This repository contains source code and model data for the OpenMPF Whisper Detection component.
+This repository contains source code and model data for the OpenMPF Whisper Speech Detection component.
 This component uses the OpenAI Whisper model.
 
 # Introduction

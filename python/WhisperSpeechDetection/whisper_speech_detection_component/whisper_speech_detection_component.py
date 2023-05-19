@@ -35,13 +35,13 @@ from typing import Sequence
 logger = logging.getLogger('WhisperDetectionComponent')
 
 
-class WhisperDetectionComponent:
+class WhisperSpeechDetectionComponent:
     detection_type = 'SPEECH'
 
     def __init__(self):
-        logger.info('Creating instance of WhisperDetectionComponent')
-        self.wrapper = WhisperDetectionWrapper()
-        logger.info('WhisperDetectionComponent created')
+        logger.info('Creating instance of WhisperSpeechDetectionComponent')
+        self.wrapper = WhisperSpeechDetectionWrapper()
+        logger.info('WhisperSpeechDetectionComponent created')
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         logger.info('Received video job')
@@ -135,7 +135,7 @@ class WhisperDetectionComponent:
         return audio_tracks
 
 
-class WhisperDetectionWrapper:
+class WhisperSpeechDetectionWrapper:
     def __init__(self):
         self.model = None
         self.initialized = False

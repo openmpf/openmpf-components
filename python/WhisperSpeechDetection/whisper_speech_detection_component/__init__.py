@@ -24,4 +24,4 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from .whisper_detection_component import WhisperDetectionComponent, WhisperDetectionWrapper
+from .whisper_speech_detection_component import WhisperSpeechDetectionComponent, WhisperSpeechDetectionWrapper

@@ -28,7 +28,7 @@
 
 import sys
 
-from whisper_detection_component import WhisperDetectionWrapper
+from whisper_speech_detection_component import WhisperSpeechDetectionWrapper
 
 
 def main():
@@ -38,12 +38,11 @@ def main():
     _, audio_file, whisper_mode = sys.argv
 
 
-    whisper_mode = int(whisper_mode)
-
     job_props = {"WHISPER_MODE": whisper_mode}
 
 
-    audio_tracks = WhisperDetectionWrapper().process_audio(audio_file, 0, 0, job_props)
+    audio_tracks = WhisperSpeechDetectionWrapper().process_audio(audio_file, 0, 0, job_props)
+    print(audio_tracks)
     detection_props = audio_tracks[0].detection_properties
 
     if whisper_mode == 0:

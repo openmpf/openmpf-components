@@ -29,10 +29,10 @@ import os
 
 import mpf_component_api as mpf
 import warnings
-from whisper_detection_component import WhisperDetectionComponent
+from whisper_speech_detection_component import WhisperSpeechDetectionComponent
 
 
-class TestWhisperDetection(unittest.TestCase):
+class TestWhisperSpeechDetection(unittest.TestCase):
     def setUp(self):
         warnings.simplefilter('ignore', category=ResourceWarning)
         warnings.simplefilter('ignore', category=DeprecationWarning)
@@ -47,7 +47,7 @@ class TestWhisperDetection(unittest.TestCase):
 
     def test_audio_job(self):
         job = mpf.AudioJob('test', self._get_test_file('left.wav'), 0, -1, {}, {})
-        comp = WhisperDetectionComponent()
+        comp = WhisperSpeechDetectionComponent()
         result = comp.get_detections_from_audio(job)
 
         self.assertEqual(1, len(result))
@@ -58,7 +58,7 @@ class TestWhisperDetection(unittest.TestCase):
         media_properties = dict(FPS='24')
 
         job = mpf.VideoJob('test', self._get_test_file('left.avi'), 0, -1, {}, media_properties)
-        comp = WhisperDetectionComponent()
+        comp = WhisperSpeechDetectionComponent()
         result = comp.get_detections_from_video(job)
 
         self.assertEqual(1, len(result))
@@ -67,7 +67,7 @@ class TestWhisperDetection(unittest.TestCase):
 
     def test_load_different_models_lang_detection(self):
         job = mpf.AudioJob('test', self._get_test_file('left.wav'), 0, -1, {}, {})
-        comp = WhisperDetectionComponent()
+        comp = WhisperSpeechDetectionComponent()
 
         self.assertFalse(comp.wrapper.initialized)
 
@@ -97,7 +97,7 @@ class TestWhisperDetection(unittest.TestCase):
         job_props = dict(WHISPER_MODE="TRANSCRIPTION")
         job = mpf.AudioJob('test', self._get_test_file('left.wav'), 0, -1, job_props, {})
 
-        comp = WhisperDetectionComponent()
+        comp = WhisperSpeechDetectionComponent()
         result = comp.get_detections_from_audio(job)
 
         expected_text = "There's three left on the left side, the one closest to us."
@@ -122,7 +122,7 @@ class TestWhisperDetection(unittest.TestCase):
         job_props = dict(WHISPER_MODE="TRANSCRIPTION")
         job = mpf.AudioJob('test', self._get_test_file('bilingual.mp3'), 0, -1, job_props, {})
 
-        comp = WhisperDetectionComponent()
+        comp = WhisperSpeechDetectionComponent()
 
         result = comp.get_detections_from_audio(job)
 
@@ -158,7 +158,7 @@ class TestWhisperDetection(unittest.TestCase):
         job_props = dict(WHISPER_MODE="SPEECH_TRANSLATION")
         job = mpf.AudioJob('test', self._get_test_file('bilingual.mp3'), 0, -1, job_props, {})
 
-        comp = WhisperDetectionComponent()
+        comp = WhisperSpeechDetectionComponent()
 
         result = comp.get_detections_from_audio(job)
 

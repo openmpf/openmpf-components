@@ -42,7 +42,7 @@ RUN --mount=target=.,readwrite \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_whisper_detection.py; fi
 
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF Whisper Detection" \
+      org.label-schema.name="OpenMPF Whisper Speech Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \

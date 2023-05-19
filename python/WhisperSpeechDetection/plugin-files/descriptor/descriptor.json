@@ -1,12 +1,12 @@
 {
-  "componentName": "WhisperDetection",
-  "componentVersion": "7.1",
-  "middlewareVersion": "7.1",
+  "componentName": "WhisperSpeechDetection",
+  "componentVersion": "7.2",
+  "middlewareVersion": "7.2",
   "sourceLanguage": "python",
-  "batchLibrary": "WhisperDetection",
+  "batchLibrary": "WhisperSpeechDetection",
   "environmentVariables": [],
   "algorithm": {
-    "name": "WHISPERDETECTION",
+    "name": "WHISPERSPEECH",
     "description": "Uses OpenAI's Whisper model to perform language detection in speech.",
     "actionType": "DETECTION",
     "requiresCollection": {
