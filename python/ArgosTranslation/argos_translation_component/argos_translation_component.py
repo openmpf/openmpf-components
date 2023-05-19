@@ -107,6 +107,7 @@ class TranslationWrapper:
         self.supported_languages = self.get_supported_languages_codes()
 
         self._installed_languages = translate.get_installed_languages()
+
         self.installed_lang_codes = [lang.code for lang in self._installed_languages]
 
         self._props_to_translate = [
@@ -124,7 +125,7 @@ class TranslationWrapper:
             mpf_util.get_property(
                 properties=job_props,
                 key='LANGUAGE_FEED_FORWARD_PROP',
-                default_value='DECODED_LANGUAGE,LANGUAGE',
+                default_value='ISO_LANGUAGE,DECODED_LANGUAGE,LANGUAGE',
                 prop_type=str
             ).split(',')
         ]
@@ -132,7 +133,7 @@ class TranslationWrapper:
         self._from_lang = mpf_util.get_property(
             properties=job_props,
             key='DEFAULT_SOURCE_LANGUAGE',
-            default_value='es',
+            default_value='',
             prop_type=str
         ).lower().strip()
 
@@ -169,7 +170,7 @@ class TranslationWrapper:
             "ukr": "uk"
         }
 
-        self._translation_cache: Dict[str, (str, str)] = {}
+        self._translation_cache: Dict[str, Tuple[str, str]] = {}
 
     @staticmethod
     def get_supported_languages_codes():
@@ -221,7 +222,11 @@ class TranslationWrapper:
                 logger.info(f'Skipped translation of the "{prop_to_translate}" '
                             f'property because it was already in the target language.')
                 return
-            if self._from_lang not in self.supported_languages:
+
+            if self._from_lang == "":
+                raise mpf.DetectionError.MISSING_PROPERTY.exception("LANGUAGE_FEED_FORWARD_PROP mismatch and no DEFAULT_SOURCE_LANGUAGE provided.")
+
+            if self._from_lang != "" and self._from_lang not in self.supported_languages:
                 raise mpf.DetectionError.DETECTION_FAILED.exception(
                     f"Default source language, {self._from_lang}, is not supported."
                 )

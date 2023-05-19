@@ -40,7 +40,7 @@ SPANISH_SHORT_SAMPLE = '¿Dónde está la biblioteca?'
 RUSSIAN_SHORT_SAMPLE = "Где библиотека?"
 CHINESE_SHORT_SAMPLE = "谢谢。"
 SHORT_OUTPUT = "Where's the library?"
-SHORT_OUTPUT_CHINESE = "Thanks."
+SHORT_OUTPUT_CHINESE = "Thank you."
 
 LONG_OUTPUT = (
     "We hold as evident these truths: that all men are created equal, "
@@ -56,7 +56,7 @@ LONG_OUTPUT = (
 
 
 class TestArgosTranslation(unittest.TestCase):
-
+    
     def test_generic_job(self):
         ff_track = mpf.GenericTrack(-1, dict(TEXT=SPANISH_SHORT_SAMPLE, LANGUAGE='ES'))
         job = mpf.GenericJob('Test Generic', 'test.pdf', dict(DEFAULT_SOURCE_LANGUAGE='ZH'), {}, ff_track)
@@ -189,11 +189,23 @@ class TestArgosTranslation(unittest.TestCase):
             list(comp.get_detections_from_image(job))
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
 
+
         job = mpf.GenericJob('Test Plaintext', str(TEST_DATA / 'spanish_short.txt'),
                              dict(DEFAULT_SOURCE_LANGUAGE='SPA'), {})
         with self.assertRaises(mpf.DetectionException) as cm:
             list(comp.get_detections_from_generic(job))
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+
+
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SPANISH_SHORT_SAMPLE, LANG='ES'))
+        job = mpf.ImageJob('Test Image', 'test.jpg', dict(DEFAULT_SOURCE_LANGUAGE='SPA'), {}, ff_loc)
+        comp = ArgosTranslationComponent()
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(comp.get_detections_from_image(job))
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+
+
 
     def test_iso_map(self):
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SPANISH_SHORT_SAMPLE, LANGUAGE='SPA'))
@@ -210,7 +222,7 @@ class TestArgosTranslation(unittest.TestCase):
             0, 1, -1,
             {
                 0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SPANISH_SHORT_SAMPLE, LANGUAGE='ES')),
-                1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=SPANISH_SHORT_SAMPLE, LANGUAGE='ES'))
+                1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=SPANISH_SHORT_SAMPLE, LANGUAGE='SPA'))
             },
             dict(TEXT=SPANISH_SHORT_SAMPLE, LANGUAGE='ES'))
 
@@ -233,3 +245,18 @@ class TestArgosTranslation(unittest.TestCase):
         detection2 = result.frame_locations[1]
         self.assertEqual(SPANISH_SHORT_SAMPLE, detection2.detection_properties['TRANSCRIPT'])
         self.assertEqual(SHORT_OUTPUT, detection2.detection_properties['TRANSLATION'])
+    
+    def test_no_feed_forward_prop_no_default_lang(self):
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SPANISH_SHORT_SAMPLE, LANG='ES'))
+        job = mpf.ImageJob('Test Image', 'test.jpg', {}, {}, ff_loc)
+        comp = ArgosTranslationComponent()
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            comp.get_detections_from_image(job)
+        self.assertEqual(mpf.DetectionError.MISSING_PROPERTY, cm.exception.error_code)
+
+        
+
+
+if __name__ == '__main__':
+    unittest.main()

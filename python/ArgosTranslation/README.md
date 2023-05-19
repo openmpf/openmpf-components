@@ -20,7 +20,7 @@ The following are the ISO 639-1 codes, the ISO 639-2 codes, and their correspond
 
 All translations are either to English or from English. When trying to translate from one non-English language to another, Argos will automatically pivot between languages using the currently installed packages. For example, for Spanish->French Argos would pivot from Spanish->English to English->French. This is associated with a drop in accuracy and increase in runtime. 
 
-Lanuage packages are downloaded dynamically as needed. In addition, when building a Docker image the Dockerfile pre-installs German, French, Russian, and Spanish.
+Language packages are downloaded dynamically as needed. In addition, when building a Docker image the Dockerfile pre-installs German, French, Russian, and Spanish.
 
 Note: Argos underperforms when translating to and from Chinese
 

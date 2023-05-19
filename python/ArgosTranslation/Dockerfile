@@ -40,7 +40,8 @@ RUN argospm install translate-de_en && \
     argospm install translate-fr_en && \
     argospm install translate-ru_en && \
     argospm install translate-zh_en && \
-    argospm install translate-es_en
+    argospm install translate-es_en && \
+    argospm install translate-ar_en
 
 ARG RUN_TESTS=false
 
