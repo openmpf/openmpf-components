@@ -14,9 +14,8 @@ output [
         data_type: TYPE_FP32
         dims: [512]    
     }
-
 ]
-parameters: [
+parameters [
     {
         key: "INFERENCE_MODE"
         value: {string_value: "true"}
