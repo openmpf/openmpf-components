@@ -1,6 +1,6 @@
 name: "ip_clip_512"
 backend: "pytorch"
-max_batch_size:2048
+max_batch_size: 2048
 input [
     {
         name: "image_input"
