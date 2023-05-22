@@ -51,20 +51,13 @@ class ClipComponent(mpf_util.ImageReaderMixin):
     detection_type = 'CLASS'
 
     def __init__(self):
-        self.initialized = False
-        self.wrapper = None
+        self._wrapper = ClipWrapper()
 
     def get_detections_from_image_reader(self, image_job, image_reader):
         try:
             logger.info("received image job: %s", image_job)
-
             image = image_reader.get_image()
-
-            if not self.initialized:
-                self.wrapper = ClipWrapper()
-                self.initialized = True
-
-            detections = self.wrapper.get_classifications(image, image_job.job_properties)
+            detections = self._wrapper.get_classifications(image, image_job.job_properties)
             logger.info(f"Job complete. Found {len(detections)} detections.")
             return detections
         
