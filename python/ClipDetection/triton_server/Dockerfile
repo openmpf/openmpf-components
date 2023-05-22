@@ -33,7 +33,7 @@ FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:7.2.0 as models
 FROM nvcr.io/nvidia/tritonserver:22.04-py3 as openmpf_triton_server
 
 COPY --from=models /models/model.pt /models/ip_clip_512/1/model.pt
-# COPY models/ip_clip_512.config.pbtxt /models/ip_clip_512/1/config.pbtxt # DEBUG
+COPY models/ip_clip_512.config.pbtxt /models/ip_clip_512/config.pbtxt
 
 RUN apt-get update; \
     apt-get -y upgrade; \
