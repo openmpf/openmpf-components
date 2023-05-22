@@ -49,7 +49,7 @@ class TestClip(unittest.TestCase):
                 CLASSIFICATION_LIST = 'imagenet',
                 ENABLE_CROPPING='True', 
                 ENABLE_TRITON='True',
-                TRITON_SERVER='localhost:8001'
+                TRITON_SERVER='clip-detection-server:8001'
             ),
             media_properties={},
             feed_forward_location=None

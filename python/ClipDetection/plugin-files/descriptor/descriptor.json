@@ -128,14 +128,14 @@
             "name": "CLIP COCO CLASSIFICATION TASK",
             "description": "Runs CLIP classification on the COCO dataset classes.",
             "actions": [
-                "CLIP CLASSIFICATION ACTION"
+                "CLIP COCO CLASSIFICATION ACTION"
             ]
         },
         {
             "name": "CLIP TRITON COCO CLASSIFICATION TASK",
             "description": "Runs CLIP classification on the COCO dataset classes using a Triton Inferencing Server.",
             "actions": [
-                "CLIP TRITON CLASSIFICATION ACTION"
+                "CLIP TRITON COCO CLASSIFICATION ACTION"
             ]
         },
         {
@@ -158,14 +158,14 @@
             "name": "CLIP COCO CLASSIFICATION PIPELINE",
             "description": "Runs CLIP classification on the COCO dataset classes.",
             "tasks": [
-                "CLIP CLASSIFICATION TASK"
+                "CLIP COCO CLASSIFICATION TASK"
             ]
         },
         {
             "name": "CLIP TRITON COCO CLASSIFICATION PIPELINE",
             "description": "Runs CLIP classification on the COCO dataset classes using a Triton Inferencing Server.",
             "tasks": [
-                "CLIP TRITON CLASSIFICATION TASK"
+                "CLIP TRITON COCO CLASSIFICATION TASK"
             ]
         },
         {
