@@ -1,5 +1,5 @@
-name:"ip_clip_512",
-backend:"pytorch",
+name: "ip_clip_512"
+backend: "pytorch"
 max_batch_size:2048
 input [
     {
@@ -17,12 +17,12 @@ output [
 
 ]
 parameters: [
-{
-    key: "INFERENCE_MODE"
-    value: {string_value: "true"}
-},
-{   key: "ENABLE_NVFUSER"
-    value: {string_value: "true"}
-}
-
+    {
+        key: "INFERENCE_MODE"
+        value: {string_value: "true"}
+    },
+    {
+        key: "ENABLE_NVFUSER"
+        value: {string_value: "true"}
+    }
 ]
