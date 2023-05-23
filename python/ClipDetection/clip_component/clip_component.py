@@ -95,13 +95,13 @@ class ClipWrapper(object):
 
         if kwargs['enable_triton']:
             if self._inferencing_server is None or kwargs['triton_server'] != self._triton_server_url:
-                self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'], image)
+                self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'])
                 self._triton_server_url = kwargs['triton_server']
             
             # Check if server and model are ready
             self._inferencing_server.check_triton_server()
 
-            results = self._inferencing_server.get_responses()
+            results = self._inferencing_server.get_responses(image)
             image_tensors= torch.Tensor(np.copy(results)).to(device=device)
             image_features = torch.mean(image_tensors, 0)
         else:
@@ -263,18 +263,11 @@ class CLIPInferencingServer(object):
     '''
     Class that handles Triton inferencing if enabled.
     '''
-    def __init__(self, triton_server, images):
-
-        self._images = np.array(images.cpu())
+    def __init__(self, triton_server):
         self._model_name = 'ip_clip_512'
-
-        self._max_batch_size = 2048
         self._input_name = "image_input"
         self._output_name = "feature_vector__0"
-        self._input_format = None
         self._dtype = "FP32"
-
-        self._images = self._images.astype(triton_to_np_dtype(self._dtype))
 
         try:
             self._triton_client = grpcclient.InferenceServerClient(url=triton_server, verbose=False)
@@ -282,33 +275,21 @@ class CLIPInferencingServer(object):
             logger.exception("Client creation failed.")
             raise
 
-        try:
-            self._model_metadata = self._triton_client.get_model_metadata(model_name=self._model_name)
-        except InferenceServerException as e:
-            logger.exception("Failed to retrieve the metadata.")
-            raise
-
-        try:
-            _model_config = self._triton_client.get_model_config(model_name=self._model_name)
-            self._model_config = _model_config.config
-        except InferenceServerException as e:
-            logger.exception("Failed to retrieve the config.")
-            raise
-
-    def _get_inputs_outputs(self):
-        inputs = [grpcclient.InferInput(self._input_name, self._images.shape, self._dtype)]
-        inputs[0].set_data_from_numpy(self._images)
+    def _get_inputs_outputs(self, images):
+        inputs = [grpcclient.InferInput(self._input_name, images.shape, self._dtype)]
+        inputs[0].set_data_from_numpy(images)
 
         outputs = [grpcclient.InferRequestedOutput(self._output_name, class_count=0)]
 
         yield inputs, outputs
 
-    def get_responses(self):
+    def get_responses(self, images):
+        images = np.array(images.cpu())
+        images = images.astype(triton_to_np_dtype(self._dtype))
+    
         responses = []
-        results = []
-
         try:
-            for inputs, outputs in self._get_inputs_outputs():
+            for inputs, outputs in self._get_inputs_outputs(images):
                 responses.append(self._triton_client.infer(model_name=self._model_name, inputs=inputs, outputs=outputs))
         except Exception:
             raise mpf.DetectionException(
@@ -316,6 +297,7 @@ class CLIPInferencingServer(object):
                 mpf.DetectionError.NETWORK_ERROR
             )
         
+        results = []
         for response in responses:
             result = response.as_numpy(self._output_name)       
             results.append(result)
@@ -324,19 +306,21 @@ class CLIPInferencingServer(object):
     def check_triton_server(self):
         if not self._triton_client.is_server_live():
             raise mpf.DetectionException(
-                    "Server is not live.",
-                    mpf.DetectionError.NETWORK_ERROR
-                )
-        elif not self._triton_client.is_server_ready():
+                "Server is not live.",
+                mpf.DetectionError.NETWORK_ERROR
+            )
+
+        if not self._triton_client.is_server_ready():
             raise mpf.DetectionException(
-                    "Server is not ready.",
-                    mpf.DetectionError.NETWORK_ERROR
-                )
-        elif not self._triton_client.is_model_ready(self._model_name):
+                "Server is not ready.",
+                mpf.DetectionError.NETWORK_ERROR
+            )
+
+        if not self._triton_client.is_model_ready(self._model_name):
             raise mpf.DetectionException(
-                    f"Model {self._model_name} is not ready.",
-                    mpf.DetectionError.NETWORK_ERROR
-                )
+                f"Model {self._model_name} is not ready.",
+                mpf.DetectionError.NETWORK_ERROR
+            )
 
 class ImagePreprocessor(object):
     '''
