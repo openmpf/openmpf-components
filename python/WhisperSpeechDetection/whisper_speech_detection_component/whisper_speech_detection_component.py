@@ -27,6 +27,7 @@
 import whisper
 
 import logging
+import warnings
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -34,6 +35,8 @@ from typing import Sequence
 
 logger = logging.getLogger('WhisperDetectionComponent')
 
+warnings.filterwarnings('ignore', 'FP16 is not supported on CPU; using FP32 instead', UserWarning)
+warnings.filterwarnings('ignore', category=ResourceWarning, module='multilingual.tiktoken')
 
 class WhisperSpeechDetectionComponent:
     detection_type = 'SPEECH'
@@ -143,62 +146,62 @@ class WhisperSpeechDetectionWrapper:
         self.lang = None
 
         self.iso_map = {
-            'af': 'afr', 
-            'ar': 'ara', 
-            'hy': 'hye', 
-            'az': 'aze', 
-            'be': 'bel', 
-            'bs': 'bos', 
-            'bg': 'bul', 
-            'ca': 'cat', 
-            'zh': 'zho', 
-            'cs': 'ces', 
-            'da': 'dan', 
-            'nl': 'nld', 
-            'en': 'eng', 
-            'et': 'est', 
-            'fi': 'fin', 
-            'fr': 'fra', 
-            'de': 'deu', 
-            'el': 'ell', 
-            'he': 'heb', 
-            'hi': 'hin', 
-            'hr': 'hrv', 
-            'hu': 'hun', 
-            'id': 'ind', 
-            'gl': 'glg', 
-            'it': 'ita', 
-            'is': 'isl', 
-            'ja': 'jpn', 
-            'kn': 'kan', 
-            'kk': 'kaz', 
-            'ko': 'kor', 
-            'lv': 'lav', 
-            'lt': 'lit', 
-            'mr': 'mar', 
-            'mi': 'mri', 
-            'mk': 'mkd', 
-            'ms': 'msa', 
-            'ne': 'nep', 
-            'no': 'nor', 
-            'fa': 'fas', 
-            'pl': 'pol', 
-            'pt': 'por', 
-            'ro': 'ron', 
-            'ru': 'rus', 
-            'sr': 'srp', 
-            'sk': 'slk', 
-            'sl': 'slv', 
-            'es': 'spa', 
-            'sw': 'swa', 
-            'sv': 'swe', 
-            'ta': 'tam', 
-            'tl': 'tgl', 
-            'th': 'tha', 
-            'tr': 'tur', 
-            'uk': 'ukr', 
-            'ur': 'urd', 
-            'vi': 'vie', 
+            'af': 'afr',
+            'ar': 'ara',
+            'hy': 'hye',
+            'az': 'aze',
+            'be': 'bel',
+            'bs': 'bos',
+            'bg': 'bul',
+            'ca': 'cat',
+            'zh': 'zho',
+            'cs': 'ces',
+            'da': 'dan',
+            'nl': 'nld',
+            'en': 'eng',
+            'et': 'est',
+            'fi': 'fin',
+            'fr': 'fra',
+            'de': 'deu',
+            'el': 'ell',
+            'he': 'heb',
+            'hi': 'hin',
+            'hr': 'hrv',
+            'hu': 'hun',
+            'id': 'ind',
+            'gl': 'glg',
+            'it': 'ita',
+            'is': 'isl',
+            'ja': 'jpn',
+            'kn': 'kan',
+            'kk': 'kaz',
+            'ko': 'kor',
+            'lv': 'lav',
+            'lt': 'lit',
+            'mr': 'mar',
+            'mi': 'mri',
+            'mk': 'mkd',
+            'ms': 'msa',
+            'ne': 'nep',
+            'no': 'nor',
+            'fa': 'fas',
+            'pl': 'pol',
+            'pt': 'por',
+            'ro': 'ron',
+            'ru': 'rus',
+            'sr': 'srp',
+            'sk': 'slk',
+            'sl': 'slv',
+            'es': 'spa',
+            'sw': 'swa',
+            'sv': 'swe',
+            'ta': 'tam',
+            'tl': 'tgl',
+            'th': 'tha',
+            'tr': 'tur',
+            'uk': 'ukr',
+            'ur': 'urd',
+            'vi': 'vie',
             'cy': 'cym'
         }
 
@@ -287,6 +290,7 @@ class WhisperSpeechDetectionWrapper:
         else:
             model_string = self.size
 
+        logger.info(f'Loading the "{model_string}" model...')
         self.model = whisper.load_model(model_string)
 
     def _transcribe_text(self, target_file, job_properties):

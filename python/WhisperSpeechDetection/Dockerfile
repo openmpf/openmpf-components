@@ -36,6 +36,8 @@ RUN pip install --no-cache-dir openai-whisper==20230314 'numpy<1.24,>=1.18'
 
 RUN python -c 'import whisper; whisper.load_model("base")'
 RUN python -c 'import whisper; whisper.load_model("base.en")'
+RUN python -c 'import whisper; whisper.load_model("tiny")'
+RUN python -c 'from tiktoken_ext.openai_public import gpt2; gpt2()'
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
