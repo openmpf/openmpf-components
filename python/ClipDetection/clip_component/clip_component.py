@@ -91,7 +91,7 @@ class ClipWrapper(object):
         self._check_template_list(kwargs['template_path'], kwargs['num_templates'])
         self._check_class_list(kwargs['classification_path'], kwargs['classification_list'])
 
-        image = ImagePreprocessor(kwargs['enable_cropping'], kwargs['enable_triton']).preprocess(image).to(device)
+        image = ImagePreprocessor(kwargs['enable_cropping']).preprocess(image).to(device)
 
         if kwargs['enable_triton']:
             if self._inferencing_server is None or kwargs['triton_server'] != self._triton_server_url:
@@ -265,15 +265,34 @@ class CLIPInferencingServer(object):
     '''
     def __init__(self, triton_server):
         self._model_name = 'ip_clip_512'
-        self._input_name = "image_input"
-        self._output_name = "feature_vector__0"
-        self._dtype = "FP32"
+        self._input_name = None
+        self._output_name = None
+        self._dtype = None
 
         try:
             self._triton_client = grpcclient.InferenceServerClient(url=triton_server, verbose=False)
         except InferenceServerException as e:
             logger.exception("Client creation failed.")
             raise
+
+        try:
+            model_metadata = self._triton_client.get_model_metadata(model_name=self._model_name)
+        except InferenceServerException as e:
+            logger.exception("Failed to retrieve model metadata.")
+            raise
+
+        self._parse_model(model_metadata)
+
+    def _parse_model(self, model_metadata):
+        input_metadata = model_metadata.inputs[0]
+        output_metadata = model_metadata.outputs[0]
+        
+        if self._input_name != input_metadata.name:
+            self._input_name = input_metadata.name
+        if self._output_name != output_metadata.name:
+            self._output_name = output_metadata.name
+        if self._dtype != input_metadata.datatype:
+            self._dtype = input_metadata.datatype
 
     def _get_inputs_outputs(self, images):
         inputs = [grpcclient.InferInput(self._input_name, images.shape, self._dtype)]
@@ -327,11 +346,9 @@ class ImagePreprocessor(object):
     Class that handles the preprocessing of images before being sent through the CLIP model.
     Values from T.Normalize() taken from OpenAI's code for CLIP, https://github.com/openai/CLIP/blob/main/clip/clip.py#L85
     '''
-    def __init__(self, enable_cropping, enable_triton):
+    def __init__(self, enable_cropping):
         if enable_cropping:
             self.preprocess = self.crop
-        elif enable_triton:
-            self.preprocess = lambda image: TF.to_tensor(image).unsqueeze(0)
         else:
             self.preprocess = self.resize_pad
     

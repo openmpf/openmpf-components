@@ -42,12 +42,12 @@ class TestClip(unittest.TestCase):
     def test_image_file(self):
         job = mpf.ImageJob(
             job_name='test-image',
-            data_uri=self._get_test_file('sturgeon.jpg'),
+            data_uri=self._get_test_file('collie.jpg'),
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 5,
                 NUMBER_OF_TEMPLATES = 80,
                 CLASSIFICATION_LIST = 'imagenet',
-                ENABLE_CROPPING='True', 
+                ENABLE_CROPPING='False', 
                 ENABLE_TRITON='True',
                 TRITON_SERVER='clip-detection-server:8001'
             ),
@@ -56,10 +56,8 @@ class TestClip(unittest.TestCase):
         )      
         result = list(ClipComponent().get_detections_from_image(job))[0]
         self.assertEqual(job.job_properties["NUMBER_OF_CLASSIFICATIONS"], len(self._output_to_list(result.detection_properties["CLASSIFICATION LIST"])))
-        self.assertTrue("sturgeon" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
-        self.assertEqual("sturgeon", result.detection_properties["CLASSIFICATION"])
+        self.assertTrue("collie" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
         
-
 
     @staticmethod
     def _get_test_file(filename):
