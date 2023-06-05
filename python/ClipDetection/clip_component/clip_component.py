@@ -97,9 +97,6 @@ class ClipWrapper(object):
             if self._inferencing_server is None or kwargs['triton_server'] != self._triton_server_url:
                 self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'])
                 self._triton_server_url = kwargs['triton_server']
-            
-            # Check if server and model are ready
-            self._inferencing_server.check_triton_server()
 
             results = self._inferencing_server.get_responses(image)
             image_tensors= torch.Tensor(np.copy(results)).to(device=device)
@@ -274,6 +271,9 @@ class CLIPInferencingServer(object):
         except InferenceServerException as e:
             logger.exception("Client creation failed.")
             raise
+        
+        # Check if triton server is alive and ready
+        self._check_triton_server()
 
         try:
             model_metadata = self._triton_client.get_model_metadata(model_name=self._model_name)
@@ -287,12 +287,9 @@ class CLIPInferencingServer(object):
         input_metadata = model_metadata.inputs[0]
         output_metadata = model_metadata.outputs[0]
         
-        if self._input_name != input_metadata.name:
-            self._input_name = input_metadata.name
-        if self._output_name != output_metadata.name:
-            self._output_name = output_metadata.name
-        if self._dtype != input_metadata.datatype:
-            self._dtype = input_metadata.datatype
+        self._input_name = input_metadata.name
+        self._output_name = output_metadata.name
+        self._dtype = input_metadata.datatype
 
     def _get_inputs_outputs(self, images):
         inputs = [grpcclient.InferInput(self._input_name, images.shape, self._dtype)]
@@ -322,7 +319,7 @@ class CLIPInferencingServer(object):
             results.append(result)
         return results   
     
-    def check_triton_server(self):
+    def _check_triton_server(self):
         if not self._triton_client.is_server_live():
             raise mpf.DetectionException(
                 "Server is not live.",
