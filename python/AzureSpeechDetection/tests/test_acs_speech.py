@@ -29,7 +29,7 @@ import logging
 import os
 import json
 import unittest
-from threading import Thread
+import threading
 from typing import ClassVar
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from unittest.mock import patch
@@ -53,6 +53,7 @@ blobs_url = url_prefix + 'recordings'
 outputs_url = url_prefix + 'outputs'
 models_url = url_prefix + 'models'
 container_url = 'https://account_name.blob.core.endpoint.suffix/container_name'
+account_sas = '[sas_url]'
 
 
 def get_test_properties(**extra_properties):
@@ -83,6 +84,7 @@ class TestAcsSpeech(unittest.TestCase):
 
     def tearDown(self):
         self.mock_server.jobs = set()
+        self.mock_server.sas_enabled = False
 
     @staticmethod
     def run_patched_jobs(comp, mode, *jobs):
@@ -98,10 +100,11 @@ class TestAcsSpeech(unittest.TestCase):
                 patch.object(
                     comp.processor.acs,
                     'generate_account_sas',
-                    return_value="[sas_url]"):
+                    return_value=account_sas):
             return list(map(detection_func, jobs))
 
     def test_audio_file(self):
+        self.mock_server.sas_enabled = True
         job = mpf.AudioJob(
             job_name='test_audio',
             data_uri=self._get_test_file('left.wav'),
@@ -109,7 +112,8 @@ class TestAcsSpeech(unittest.TestCase):
             stop_time=-1,
             job_properties=get_test_properties(
                 DIARIZE='FALSE',
-                LANGUAGE='en-US'
+                LANGUAGE='en-US',
+                USE_SAS_AUTH='TRUE'
             ),
             media_properties={},
             feed_forward_track=None
@@ -274,7 +278,19 @@ class MockServer(HTTPServer):
         self.base_local_path = base_local_path
         self.base_url_path = base_url_path
         self.jobs = set()
-        Thread(target=self.serve_forever).start()
+        self._sas_enabled = False
+        self.sas_lock = threading.Lock()
+        threading.Thread(target=self.serve_forever).start()
+
+    @property
+    def sas_enabled(self):
+        with self.sas_lock:
+            return self._sas_enabled
+
+    @sas_enabled.setter
+    def sas_enabled(self, value):
+        with self.sas_lock:
+            self._sas_enabled = value
 
 
 class MockRequestHandler(SimpleHTTPRequestHandler):
@@ -382,7 +398,7 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
                 'The resource you are looking for has been removed, had its '
                 'name changed, or is temporarily unavailable.'.encode()
             )
-            return
+
 
     def do_POST(self):
         self._validate_headers()
@@ -423,6 +439,13 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
                 ):
             raise Exception('Expected wordLevelTimestampsEnabled')
 
+        recording_url = data.get('contentUrls')[0]
+        if self.server.sas_enabled:
+            if not recording_url.endswith('?' + account_sas):
+                raise Exception('SAS enabled, but sas not found in recording URL.')
+        elif '?' in recording_url:
+            raise Exception('SAS disabled, but sas found in recording URL.')
+
         self.send_response(202)
 
         location = os.path.join(
@@ -433,7 +456,6 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
         self.server.jobs.add(data.get('displayName'))
         self.send_header('Location', origin + location)
         self.end_headers()
-        return
 
 
 if __name__ == '__main__':
