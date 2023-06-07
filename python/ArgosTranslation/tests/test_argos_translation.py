@@ -38,9 +38,9 @@ TEST_DATA = LOCAL_PATH / 'data'
 
 SPANISH_SHORT_SAMPLE = '¿Dónde está la biblioteca?'
 RUSSIAN_SHORT_SAMPLE = "Где библиотека?"
-CHINESE_SHORT_SAMPLE = "谢谢。"
+CHINESE_SHORT_SAMPLE = "你好，你叫什么名字？"
 SHORT_OUTPUT = "Where's the library?"
-SHORT_OUTPUT_CHINESE = "Thank you."
+SHORT_OUTPUT_CHINESE = "You have good names?"
 
 LONG_OUTPUT = (
     "We hold as evident these truths: that all men are created equal, "
