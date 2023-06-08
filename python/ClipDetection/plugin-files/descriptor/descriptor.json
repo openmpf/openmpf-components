@@ -1,0 +1,186 @@
+{
+    "componentName": "ClipDetection",
+    "componentVersion": "7.2",
+    "middlewareVersion": "7.2",
+    "sourceLanguage": "python",
+    "batchLibrary": "ClipDetection",
+    "environmentVariables": [],
+    "algorithm": {
+        "name": "CLIP",
+        "description": "CLIP classification.",
+        "detectionType": "CLASS",
+        "actionType": "DETECTION",
+        "outputChangedCounter": 1,
+        "requiresCollection": {
+            "states": []
+        },
+        "providesCollection": {
+            "states": [
+                "DETECTION",
+                "DETECTION_CLASS",
+                "DETECTION_CLASS_CLIP"
+            ],
+            "properties": [
+                {
+                    "name": "NUMBER_OF_CLASSIFICATIONS",
+                    "description": "The number of classifications, N, to be returned. The N highest confidence classifications found by the network will be returned with their associated confidence values. The value must be greater than 0, and less than the size of the model output layer.",
+                    "type": "INT",
+                    "defaultValue": "1"
+                }, 
+                {
+                    "name": "NUMBER_OF_TEMPLATES",
+                    "description": "The number of templates to be used in the text encoder. The current acceptable values are 7 and 80.",
+                    "type": "INT",
+                    "defaultValue": "80"
+                }, 
+                {
+                    "name": "CLASSIFICATION_LIST",
+                    "description": "Specifies the classification list that will be tokenized for the text encoder (supports 'imagenet' and 'coco'). By default, the COCO classifications will be used.",
+                    "type": "STRING",
+                    "defaultValue": "coco"
+                },
+                {
+                    "name": "CLASSIFICATION_PATH",
+                    "description": "Optionally specifies a path to a custom csv file containing two names for each classification: one is the full name to display and the other to enter into the CLIP text encoding.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "TEMPLATE_PATH",
+                    "description": "Optionally specifies a path to a custom text file containing templates for use in the CLIP model. Include a single {} where each classification is to be inserted.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "ENABLE_CROPPING",
+                    "description": "If true, the image will be cropped into 144 images of size 224x224. The results from each of these images is averaged to get the results. Not available for use on CPU.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "true"
+                },
+                {
+                    "name": "ENABLE_TRITON",
+                    "description": "If true, inferencing will be performed via a configured Triton inference server.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
+                    "name": "INCLUDE_FEATURES",
+                    "description": "If true, the detection will have a detection property, FEATURE, which contains the base64-encoded version of the feature vector.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
+                    "name": "TRITON_SERVER",
+                    "description": "Triton server <host>:<port> to use for inferencing.",
+                    "type": "STRING",
+                    "defaultValue": "clip-detection-server:8001"
+                }
+            ] 
+        }
+    },
+    "actions": [
+        {
+            "name": "CLIP COCO CLASSIFICATION ACTION",
+            "description": "Runs CLIP classification on the COCO dataset classes.",
+            "algorithm": "CLIP",
+            "properties": []
+        },
+        {
+            "name": "CLIP TRITON COCO CLASSIFICATION ACTION",
+            "description": "Runs CLIP classification on the COCO dataset classes using a Triton Inferencing Server.",
+            "algorithm": "CLIP",
+            "properties": [
+                {
+                    "name": "ENABLE_TRITON",
+                    "value": "true"
+                }
+            ]
+        },
+        {
+            "name": "CLIP IMAGENET CLASSIFICATION ACTION",
+            "description": "Runs CLIP classification on the ImageNet dataset classes.",
+            "algorithm": "CLIP",
+            "properties": [
+                {
+                    "name": "CLASSIFICATION_LIST",
+                    "value": "imagenet"
+                }
+            ]
+        },
+        {
+            "name": "CLIP TRITON IMAGENET CLASSIFICATION ACTION",
+            "description": "Runs CLIP classification on the ImageNet dataset classes using a Triton Inferencing Server.",
+            "algorithm": "CLIP",
+            "properties": [
+                {
+                    "name": "ENABLE_TRITON",
+                    "value": "true"
+                },
+                {
+                    "name": "CLASSIFICATION_LIST",
+                    "value": "imagenet"
+                }
+            ]
+        }
+    ],
+    "tasks": [
+        {
+            "name": "CLIP COCO CLASSIFICATION TASK",
+            "description": "Runs CLIP classification on the COCO dataset classes.",
+            "actions": [
+                "CLIP COCO CLASSIFICATION ACTION"
+            ]
+        },
+        {
+            "name": "CLIP TRITON COCO CLASSIFICATION TASK",
+            "description": "Runs CLIP classification on the COCO dataset classes using a Triton Inferencing Server.",
+            "actions": [
+                "CLIP TRITON COCO CLASSIFICATION ACTION"
+            ]
+        },
+        {
+            "name": "CLIP IMAGENET CLASSIFICATION TASK",
+            "description": "Runs CLIP classification on the ImageNet dataset classes.",
+            "actions": [
+                "CLIP IMAGENET CLASSIFICATION ACTION"
+            ]
+        },
+        {
+            "name": "CLIP TRITON IMAGENET CLASSIFICATION TASK",
+            "description": "Runs CLIP classification on the ImageNet dataset classes using a Triton Inferencing Server.",
+            "actions": [
+                "CLIP TRITON IMAGENET CLASSIFICATION ACTION"
+            ]
+        }
+    ],
+    "pipelines": [
+        {
+            "name": "CLIP COCO CLASSIFICATION PIPELINE",
+            "description": "Runs CLIP classification on the COCO dataset classes.",
+            "tasks": [
+                "CLIP COCO CLASSIFICATION TASK"
+            ]
+        },
+        {
+            "name": "CLIP TRITON COCO CLASSIFICATION PIPELINE",
+            "description": "Runs CLIP classification on the COCO dataset classes using a Triton Inferencing Server.",
+            "tasks": [
+                "CLIP TRITON COCO CLASSIFICATION TASK"
+            ]
+        },
+        {
+            "name": "CLIP IMAGENET CLASSIFICATION PIPELINE",
+            "description": "Runs CLIP classification on the ImageNet dataset classes.",
+            "tasks": [
+                "CLIP IMAGENET CLASSIFICATION TASK"
+            ]
+        },
+        {
+            "name": "CLIP TRITON IMAGENET CLASSIFICATION PIPELINE",
+            "description": "Runs CLIP classification on the ImageNet dataset classes using a Triton Inferencing Server.",
+            "tasks": [
+                "CLIP TRITON IMAGENET CLASSIFICATION TASK"
+            ]
+        }
+    ]
+}

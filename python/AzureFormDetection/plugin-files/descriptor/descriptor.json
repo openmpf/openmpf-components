@@ -1,7 +1,7 @@
 {
   "componentName": "AzureFormDetection",
-  "componentVersion": "7.1",
-  "middlewareVersion": "7.1",
+  "componentVersion": "7.2",
+  "middlewareVersion": "7.2",
   "sourceLanguage": "python",
   "batchLibrary": "AzureFormDetection",
   "environmentVariables": [],
@@ -9,6 +9,7 @@
     "name": "AZUREFORM",
     "description": "Uses Azure Cognitive Services to perform form recognition in documents and images.",
     "actionType": "DETECTION",
+    "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
     },

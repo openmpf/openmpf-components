@@ -1,14 +1,15 @@
 {
   "componentName" : "TikaImageDetection",
-  "componentVersion" : "7.1",
-  "middlewareVersion" : "7.1",
+  "componentVersion" : "7.2",
+  "middlewareVersion" : "7.2",
   "sourceLanguage" : "java",
-  "batchLibrary" : "mpf-tika-image-detection-component-7.1.jar",
+  "batchLibrary" : "mpf-tika-image-detection-component-7.2.jar",
   "environmentVariables" : [],
   "algorithm" : {
     "name": "TIKAIMAGE",
     "description": "The Apache Tika image detection component.",
     "actionType": "DETECTION",
+    "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
     },

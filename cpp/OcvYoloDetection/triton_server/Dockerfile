@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2022 The MITRE Corporation                                      #
+# Copyright 2023 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -60,7 +60,7 @@ RUN --mount=type=tmpfs,target=/tmp \
     mv main /model-gen/yolo/gen-engine-608; \
     mv libyolo608layerplugin.so /plugins/libyolo608layerplugin.so
 
-COPY models/yolo-608.config.pbtxt /models/yolo-608/1/config.pbtxt
+COPY models/yolo-608.config.pbtxt /models/yolo-608/config.pbtxt
 
 COPY docker-entrypoint.sh /opt/tritonserver
 
