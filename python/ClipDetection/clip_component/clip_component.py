@@ -47,7 +47,7 @@ import mpf_component_util as mpf_util
 logger = logging.getLogger('ClipComponent')
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-class ClipComponent(mpf_util.ImageReaderMixin):
+class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     detection_type = 'CLASS'
 
     def __init__(self):
@@ -61,8 +61,19 @@ class ClipComponent(mpf_util.ImageReaderMixin):
             logger.info(f"Job complete. Found {len(detections)} detections.")
             return detections
         
-        except Exception:
+        except Exception as e:
             logger.exception(f"Failed to complete job {image_job.job_name} due to the following exception:")
+            raise
+        
+    def get_detections_from_video_capture(self, video_job, video_capture):
+        try:
+            logger.info("Received video job: %s", video_job)
+            detections = self._wrapper.get_classifications(video_capture, video_job.job_properties)
+            tracks = create_tracks(detections)
+            logger.info(f"Job complete. Found {len(tracks)} detections.")
+            return tracks
+        except Exception as e:
+            logger.exception(f"Failed to complete job {video_job.job_name} due to the following exception: {e}")
             raise
 
 class ClipWrapper(object):
@@ -400,5 +411,10 @@ class ImagePreprocessor(object):
             crops += five_crops + (resized, TF.hflip(resized)) + tuple([TF.hflip(fcrop) for fcrop in five_crops])
         return crops
     
-    
+def create_tracks(detections):
+    """
+    Given the detections, return the tracks.
+    """
+    return []
+
 EXPORT_MPF_COMPONENT = ClipComponent
