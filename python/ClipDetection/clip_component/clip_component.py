@@ -28,6 +28,7 @@ import logging
 import os
 import csv
 from pkg_resources import resource_filename
+from typing import Iterable, Mapping, TypedDict
 
 from PIL import Image
 import cv2
@@ -53,7 +54,9 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     def __init__(self):
         self._wrapper = ClipWrapper()
 
-    def get_detections_from_image_reader(self, image_job, image_reader):
+    def get_detections_from_image_reader(self,
+                                         image_job: mpf.ImageJob,
+                                         image_reader: mpf_util.ImageReader) -> Iterable[mpf.ImageLocation]:
         try:
             logger.info("received image job: %s", image_job)
             image = image_reader.get_image()
@@ -65,7 +68,9 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             logger.exception(f"Failed to complete job {image_job.job_name} due to the following exception:")
             raise
         
-    def get_detections_from_video_capture(self, video_job, video_capture):
+    def get_detections_from_video_capture(self,
+                                          video_job: mpf.VideoJob,
+                                          video_capture: mpf_util.VideoCapture) -> Iterable[mpf.VideoTrack]:
         try:
             logger.info("Received video job: %s", video_job)
             detections = self._wrapper.get_classifications(video_capture, video_job.job_properties)
@@ -75,6 +80,17 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         except Exception as e:
             logger.exception(f"Failed to complete job {video_job.job_name} due to the following exception: {e}")
             raise
+
+class JobProperties(TypedDict):
+    classification_list: str
+    classification_path: str
+    enable_cropping: bool
+    enable_triton: bool
+    include_features: bool
+    num_classifications: int
+    num_templates: int
+    template_path: str
+    triton_server: str
 
 class ClipWrapper(object):
     def __init__(self):
@@ -94,7 +110,9 @@ class ClipWrapper(object):
         self._inferencing_server = None
         self._triton_server_url = None
     
-    def get_classifications(self, image, job_properties):
+    def get_classifications(self,
+                            image,
+                            job_properties: Mapping[str, str]) -> mpf.ImageLocation:
         image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         kwargs = self._parse_properties(job_properties)
         image_width, image_height = image.size
@@ -147,7 +165,7 @@ class ClipWrapper(object):
             )
         ]
 
-    def _parse_properties(self, job_properties):
+    def _parse_properties(self, job_properties: Mapping[str, str]) -> JobProperties:
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
         classification_path = self._get_prop(job_properties, "CLASSIFICATION_PATH", '')
         enable_cropping = self._get_prop(job_properties, "ENABLE_CROPPING", True)
@@ -180,7 +198,7 @@ class ClipWrapper(object):
             )
         return prop
 
-    def _check_template_list(self, template_path, number_of_templates):
+    def _check_template_list(self, template_path: str, number_of_templates: int) -> None:
         if template_path != '':
             if (not os.path.exists(template_path)):
                 raise mpf.DetectionException(
@@ -213,7 +231,7 @@ class ClipWrapper(object):
             self._templates = self._get_templates_from_file(template_path)
             logger.info("Templates updated.")
 
-    def _check_class_list(self, classification_path, classification_list):
+    def _check_class_list(self, classification_path: str, classification_list: str) -> None:
         if classification_path != "":
             if (not os.path.exists(classification_path)):
                 raise mpf.DetectionException(
@@ -253,7 +271,7 @@ class ClipWrapper(object):
                 logger.info("Text embeddings created.")
     
     @staticmethod
-    def _get_mapping_from_classifications(classification_path):
+    def _get_mapping_from_classifications(classification_path: str) -> Mapping[str, str]:
         with open(classification_path) as csvfile:
             mapping = {}
             csvreader = csv.reader(csvfile)
@@ -263,7 +281,7 @@ class ClipWrapper(object):
         return mapping
 
     @staticmethod
-    def _get_templates_from_file(template_path):
+    def _get_templates_from_file(template_path: str) -> Iterable[str]:
         with open(template_path) as f:
             return [line.strip() for line in f.readlines()]
 
@@ -271,7 +289,7 @@ class CLIPInferencingServer(object):
     '''
     Class that handles Triton inferencing if enabled.
     '''
-    def __init__(self, triton_server):
+    def __init__(self, triton_server: int):
         self._model_name = 'ip_clip_512'
         self._input_name = None
         self._output_name = None
@@ -294,7 +312,7 @@ class CLIPInferencingServer(object):
 
         self._parse_model(model_metadata)
 
-    def _parse_model(self, model_metadata):
+    def _parse_model(self, model_metadata) -> None:
         input_metadata = model_metadata.inputs[0]
         output_metadata = model_metadata.outputs[0]
         
@@ -330,7 +348,7 @@ class CLIPInferencingServer(object):
             results.append(result)
         return results   
     
-    def _check_triton_server(self):
+    def _check_triton_server(self) -> None:
         if not self._triton_client.is_server_live():
             raise mpf.DetectionException(
                 "Server is not live.",
@@ -354,7 +372,7 @@ class ImagePreprocessor(object):
     Class that handles the preprocessing of images before being sent through the CLIP model.
     Values from T.Normalize() taken from OpenAI's code for CLIP, https://github.com/openai/CLIP/blob/main/clip/clip.py#L85
     '''
-    def __init__(self, enable_cropping):
+    def __init__(self, enable_cropping: bool):
         if enable_cropping:
             self.preprocess = self.crop
         else:
@@ -410,11 +428,30 @@ class ImagePreprocessor(object):
             resized = TF.resize(img, 224)
             crops += five_crops + (resized, TF.hflip(resized)) + tuple([TF.hflip(fcrop) for fcrop in five_crops])
         return crops
-    
-def create_tracks(detections):
+
+def create_tracks(detections: Iterable[mpf.ImageLocation]) -> Iterable[mpf.VideoTrack]:
     """
     Given the detections, return the tracks.
     """
-    return []
+    tracks = []
+    for idx, detection in enumerate(detections):
+        if len(tracks) == 0 or tracks[-1].detection_properties["CLASSIFICATION"] != detection.detection_properties["CLASSIFICATION"]:
+            detection_properties = { "CLASSIFICATION":detection.detection_properties["CLASSIFICATION"] }
+            frame_locations = { idx:detection }
+            track = mpf.VideoTrack(
+                start_frame=idx,
+                stop_frame=idx,
+                confidence=detection.confidence,
+                frame_locations=frame_locations,
+                detection_properties=detection_properties
+            )
+            tracks.append(track)
+        else:
+            tracks[-1].stop_frame = idx
+            tracks[-1].frame_locations[idx] = detection
+            if tracks[-1].confidence < detection.confidence:
+                tracks[-1].confidence = detection.confidence
+
+    return tracks
 
 EXPORT_MPF_COMPONENT = ClipComponent
