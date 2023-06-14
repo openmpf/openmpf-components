@@ -77,6 +77,25 @@ class TestClip(unittest.TestCase):
         self.assertEqual(job.job_properties["NUMBER_OF_CLASSIFICATIONS"], len(self._output_to_list(result.detection_properties["CLASSIFICATION LIST"])))
         self.assertTrue("violent scene" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
         self.assertEqual("violent scene", result.detection_properties["CLASSIFICATION"])
+    
+    def test_video_file(self):
+        job = mpf.VideoJob(
+            job_name='test-video',
+            data_uri=self._get_test_file('test_video.mp4'),
+            start_frame=0,
+            stop_frame=14,
+            job_properties=dict(
+                NUMBER_OF_TEMPLATES=1,
+                CLASSIFICATION_LIST = 'imagenet',
+                ENABLE_CROPPING='False'
+            ),
+            media_properties={},
+            feed_forward_track=None
+        )
+        results = list(ClipComponent().get_detections_from_video(job))
+        self.assertEqual(results[0].detection_properties['CLASSIFICATION'], "Border collie")
+        self.assertEqual(results[1].detection_properties['CLASSIFICATION'], "anemone fish")
+        self.assertEqual(results[2].detection_properties['CLASSIFICATION'], "Border collie")
 
     @staticmethod
     def _get_test_file(filename):
