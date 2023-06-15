@@ -52,7 +52,10 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     detection_type = 'CLASS'
 
     def __init__(self):
-        self._wrapper = ClipWrapper()
+        self._is_instantiated = False
+        if not self._is_instantiated:
+            self._wrapper = ClipWrapper()
+            self._is_instantiated = True
 
     def get_detections_from_image_reader(self,
                                          image_job: mpf.ImageJob,
@@ -65,7 +68,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             for detection in detections:
                 yield detection
                 num_detections += 1
-            logger.info(f"Job complete. Found {num_detections} detections.")
+            logger.info(f"Job complete. Found {num_detections} detection{'s' if num_detections > 1 else ''}.")
         
         except Exception as e:
             logger.exception(f"Failed to complete job {image_job.job_name} due to the following exception:")
@@ -78,7 +81,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             logger.info("Received video job: %s", video_job)
             detections = self._wrapper.get_classifications(video_capture, video_job.job_properties)
             tracks = create_tracks(detections)
-            logger.info(f"Job complete. Found {len(tracks)} detections.")
+            logger.info(f"Job complete. Found {len(tracks)} detection{'s' if len(tracks) > 1 else ''}.")
             return tracks
         except Exception as e:
             logger.exception(f"Failed to complete job {video_job.job_name} due to the following exception: {e}")
@@ -142,10 +145,22 @@ class ClipWrapper(object):
 
             similarity = (100.0 * image_features @ self._text_features).softmax(dim=-1).to(device)
             similarity = torch.mean(similarity, 0)
-            values, indices = similarity.topk(kwargs['num_classifications'])
+            values, indices = similarity.topk(len(self._class_mapping))
 
-            classification_list = '; '.join([self._class_mapping[list(self._class_mapping.keys())[int(index)]] for index in indices])
-            classification_confidence_list = '; '.join([str(value.item()) for value in values])
+            classification_list = []
+            classification_confidence_list = []
+            count = 0
+            for value, index in zip(values, indices):
+                if count >= kwargs['num_classifications']:
+                    break
+                class_name = self._class_mapping[list(self._class_mapping.keys())[int(index)]]
+                if class_name not in classification_list:
+                    classification_list.append(class_name)
+                    classification_confidence_list.append(str(value.item()))
+                    count += 1
+
+            classification_list = '; '.join(classification_list)
+            classification_confidence_list = '; '.join(classification_confidence_list)
             
             detection_properties = {
                 "CLASSIFICATION": classification_list.split('; ')[0],
@@ -208,15 +223,15 @@ class ClipWrapper(object):
             elif self._template_path != template_path:
                 self._template_path = template_path
             
-            try:
-                logger.info("Updating templates...")
-                self._templates = self._get_templates_from_file(template_path)
-                logger.info("Templates updated.")
-            except:
-                raise mpf.DetectionException(
-                    f"Could not read templates from {template_path}",
-                    mpf.DetectionError.COULD_NOT_READ_DATAFILE
-                )
+                try:
+                    logger.info("Updating templates...")
+                    self._templates = self._get_templates_from_file(template_path)
+                    logger.info("Templates updated.")
+                except:
+                    raise mpf.DetectionException(
+                        f"Could not read templates from {template_path}",
+                        mpf.DetectionError.COULD_NOT_READ_DATAFILE
+                    )
 
         elif self._templates == None or number_of_templates != len(self._templates):
             if number_of_templates == 80:

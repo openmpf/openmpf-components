@@ -73,7 +73,9 @@ class TestClip(unittest.TestCase):
             media_properties={},
             feed_forward_location=None
         )
-        result = list(ClipComponent().get_detections_from_image(job))[0]
+        component = ClipComponent()
+        result = list(component.get_detections_from_image(job))[0]
+
         self.assertEqual(job.job_properties["NUMBER_OF_CLASSIFICATIONS"], len(self._output_to_list(result.detection_properties["CLASSIFICATION LIST"])))
         self.assertTrue("violent scene" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
         self.assertEqual("violent scene", result.detection_properties["CLASSIFICATION"])
@@ -92,7 +94,9 @@ class TestClip(unittest.TestCase):
             media_properties={},
             feed_forward_track=None
         )
-        results = list(ClipComponent().get_detections_from_video(job))
+        component = ClipComponent()
+        results = list(component.get_detections_from_video(job))
+
         self.assertEqual(results[0].detection_properties['CLASSIFICATION'], "Border collie")
         self.assertEqual(results[1].detection_properties['CLASSIFICATION'], "anemone fish")
         self.assertEqual(results[2].detection_properties['CLASSIFICATION'], "Border collie")
