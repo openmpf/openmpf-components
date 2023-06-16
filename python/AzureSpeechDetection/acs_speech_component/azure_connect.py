@@ -66,6 +66,7 @@ class AcsServerInfo(NamedTuple):
     blob_service_key: str
     http_retry: mpf_util.HttpRetry
     http_max_attempts: int
+    use_sas_auth: bool
 
 
 class AzureConnection(object):
@@ -78,6 +79,7 @@ class AzureConnection(object):
         self.container_client = None
         self.http_retry = None
         self.http_max_attempts = None
+        self.use_sas_auth = False
 
     def update_acs(self, server_info: AcsServerInfo):
         self.url = server_info.url
@@ -88,6 +90,7 @@ class AzureConnection(object):
             'Content-Type': 'application/json',
         }
         self.http_retry = server_info.http_retry
+        self.use_sas_auth = server_info.use_sas_auth
 
         logger.info('Retrieving valid transcription locales')
         req = request.Request(
@@ -144,11 +147,10 @@ class AzureConnection(object):
                     'Uploading file to blob failed due to: ' + str(e)) from e
 
         time_limit = timedelta(minutes=blob_access_time)
-        return '{url:s}/{recording_id:s}?{sas_url:s}'.format(
-            url=self.container_client.url,
-            recording_id=recording_id,
-            sas_url=self.generate_account_sas(time_limit)
-        )
+        blob_url = f'{self.container_client.url}/{recording_id}'
+        if self.use_sas_auth:
+            blob_url += '?' + self.generate_account_sas(time_limit)
+        return blob_url
 
     def submit_batch_transcription(self, recording_url, job_name,
                                    diarize, language, expiry):
