@@ -121,11 +121,13 @@ class ClipWrapper(object):
         self._check_template_list(kwargs['template_path'], kwargs['num_templates'])
         self._check_class_list(kwargs['classification_path'], kwargs['classification_list'])
 
+        self._preprocessor = ImagePreprocessor(kwargs['enable_cropping'])
+
         for image in images:
             image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
             image_width, image_height = image.size
             
-            image = ImagePreprocessor(kwargs['enable_cropping']).preprocess(image).to(device)
+            image = self._preprocessor.preprocess(image).to(device)
 
             if kwargs['enable_triton']:
                 if self._inferencing_server is None or kwargs['triton_server'] != self._triton_server_url:
@@ -445,9 +447,6 @@ class ImagePreprocessor(object):
         return crops
 
 def create_tracks(detections: Iterable[mpf.ImageLocation]) -> Iterable[mpf.VideoTrack]:
-    """
-    Given the detections, return the tracks.
-    """
     tracks = []
     for idx, detection in enumerate(detections):
         if len(tracks) == 0 or tracks[-1].detection_properties["CLASSIFICATION"] != detection.detection_properties["CLASSIFICATION"]:

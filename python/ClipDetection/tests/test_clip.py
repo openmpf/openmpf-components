@@ -46,8 +46,7 @@ class TestClip(unittest.TestCase):
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 3,
                 NUMBER_OF_TEMPLATES = 1,
-                CLASSIFICATION_LIST = 'coco',
-                ENABLE_CROPPING='False',
+                ENABLE_CROPPING ='False',
                 INCLUDE_FEATURES = 'True'
             ),
             media_properties={},
@@ -61,9 +60,26 @@ class TestClip(unittest.TestCase):
         self.assertEqual("dog", result.detection_properties["CLASSIFICATION"])
         self.assertTrue(result.detection_properties["FEATURE"] is not None)
     
+    def test_image_file_rollup(self):
+        job = mpf.ImageJob(
+            job_name='test-image-rollup',
+            data_uri=self._get_test_file('dog.jpg'),
+            job_properties=dict(
+                NUMBER_OF_CLASSIFICATIONS = 5,
+                ENABLE_CROPPING = 'False',
+                NUMBER_OF_TEMPLATES = 1,
+                CLASSIFICATION_PATH = self._get_test_file('imagenet_rollups.csv')
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        component = ClipComponent()
+        result = list(component.get_detections_from_image(job))[0]
+        self.assertEqual(result.detection_properties['CLASSIFICATION'], 'misc, animal')
+    
     def test_image_file_custom(self):
         job = mpf.ImageJob(
-            job_name='test-image',
+            job_name='test-image-custom',
             data_uri=self._get_test_file('riot.jpg'),
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 4,
@@ -87,9 +103,9 @@ class TestClip(unittest.TestCase):
             start_frame=0,
             stop_frame=14,
             job_properties=dict(
-                NUMBER_OF_TEMPLATES=1,
+                NUMBER_OF_TEMPLATES = 1,
                 CLASSIFICATION_LIST = 'imagenet',
-                ENABLE_CROPPING='False'
+                ENABLE_CROPPING = 'False'
             ),
             media_properties={},
             feed_forward_track=None
@@ -98,8 +114,16 @@ class TestClip(unittest.TestCase):
         results = list(component.get_detections_from_video(job))
 
         self.assertEqual(results[0].detection_properties['CLASSIFICATION'], "Border collie")
+        self.assertEqual(results[0].start_frame, 0)
+        self.assertEqual(results[0].stop_frame, 4)
+
         self.assertEqual(results[1].detection_properties['CLASSIFICATION'], "anemone fish")
+        self.assertEqual(results[1].start_frame, 5)
+        self.assertEqual(results[1].stop_frame, 9)
+
         self.assertEqual(results[2].detection_properties['CLASSIFICATION'], "Border collie")
+        self.assertEqual(results[2].start_frame, 10)
+        self.assertEqual(results[2].stop_frame, 14)
 
     @staticmethod
     def _get_test_file(filename):
