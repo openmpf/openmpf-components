@@ -244,21 +244,27 @@ void TritonInferencer::infer(
         // create blob directly, in client input shm region if appropriate,
         //   with code similar to opencv's blobFromImages
         cv::Mat blob;
-        if (client.usingShmInput()) {
-            LOG_TRACE("Creating shm blob of shape: " << shape << " at address:" << std::hex
-                      << (void *) client.inputs_shm());
-            blob = cv::Mat(4, shape, CV_32F, (void *) client.inputs_shm());
-        } else {
-            blob = cv::Mat(4, shape, CV_32F);
-        }
-        cv::Mat ch[shape[1]];
-        int i = 0;
-        for (auto fit = begin; fit != end; ++fit, ++i) {
-            cv::Mat resizedImage = fit->getDataAsResizedFloat(cv::Size2i(shape[2], shape[3]));
-            for (int j = 0; j < shape[1]; j++) {
-                ch[j] = cv::Mat(resizedImage.rows, resizedImage.cols, CV_32F, blob.ptr(i, j));
+        try {
+            if (client.usingShmInput()) {
+                LOG_TRACE("Creating shm blob of shape: " << shape << " at address:" << std::hex
+                          << (void *) client.inputs_shm());
+                blob = cv::Mat(4, shape, CV_32F, (void *) client.inputs_shm());
+            } else {
+                blob = cv::Mat(4, shape, CV_32F);
             }
-            cv::split(resizedImage, ch);
+            cv::Mat ch[shape[1]];
+            int i = 0;
+            for (auto fit = begin; fit != end; ++fit, ++i) {
+                cv::Mat resizedImage = fit->getDataAsResizedFloat(cv::Size2i(shape[2], shape[3]));
+                for (int j = 0; j < shape[1]; j++) {
+                    ch[j] = cv::Mat(resizedImage.rows, resizedImage.cols, CV_32F, blob.ptr(i, j));
+                }
+                cv::split(resizedImage, ch);
+            }
+        } 
+        catch (const std::exception &ex) {
+            releaseClientId(clientId, NULL);
+            std::rethrow_exception(std::current_exception());
         }
 
         LOG_TRACE("Inferencing frames[" << begin->idx << ".." << (end - 1)->idx << "]"
