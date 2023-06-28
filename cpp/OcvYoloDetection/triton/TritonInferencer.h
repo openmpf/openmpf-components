@@ -81,7 +81,9 @@ class TritonInferencer {
 
     int acquireClientId();
 
-    void releaseClientId(int clientId, const std::exception_ptr& eptr);
+    void setClientException(const std::exception_ptr& eptr);
+
+    void releaseClientId(int clientId);
 
     void waitTillAllClientsReleased() noexcept;
 

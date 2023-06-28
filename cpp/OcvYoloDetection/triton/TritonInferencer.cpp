@@ -238,8 +238,12 @@ void TritonInferencer::infer(
         shape[0] = size;
 
         // get a client from pool
-        int clientId = acquireClientId();
-        TritonClient &client = *clients_[clientId];
+        auto releaser = [this](int* ptr) {
+            releaseClientId(*ptr);
+            delete ptr;
+        };
+        std::shared_ptr<int> clientId(new int(acquireClientId()), releaser);
+        TritonClient &client = *clients_[*clientId];
 
         // create blob directly, in client input shm region if appropriate,
         //   with code similar to opencv's blobFromImages
@@ -274,14 +278,13 @@ void TritonInferencer::infer(
                               try {
                                   std::vector<cv::Mat> outBlobs;
                                   for (auto & i : outputsMeta) {
-                                      outBlobs.push_back(clients_[clientId]->getOutput(i));
+                                      outBlobs.push_back(clients_[*clientId]->getOutput(i));
                                   }
                                   extractDetectionsCallback(outBlobs, begin, end);
                               }
                               catch (const std::exception &ex) {
-                                  eptr = std::current_exception();
+                                  setClientException(std::current_exception());
                               }
-                              releaseClientId(clientId, eptr);
                           });
     }
 }
@@ -304,12 +307,19 @@ int TritonInferencer::acquireClientId() {
 }
 
 
-void TritonInferencer::releaseClientId(int clientId, const std::exception_ptr& newClientEptr) {
+void TritonInferencer::setClientException(const std::exception_ptr& newClientEptr) {
     {
         std::lock_guard<std::mutex> lk(freeClientIdsMtx_);
         if (newClientEptr && !clientEptr_) {
             clientEptr_ = newClientEptr;
         }
+    }
+}
+
+
+void TritonInferencer::releaseClientId(int clientId) {
+    {
+        std::lock_guard<std::mutex> lk(freeClientIdsMtx_);
         freeClientIds_.insert(clientId);
         LOG_TRACE("Freeing client[" << clientId << "]");
     }
