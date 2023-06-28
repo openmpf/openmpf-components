@@ -238,33 +238,31 @@ void TritonInferencer::infer(
         shape[0] = size;
 
         // get a client from pool
-        int clientId = acquireClientId();
-        TritonClient &client = *clients_[clientId];
+        auto releaser = [this](int* ptr) {
+            releaseClientId(*ptr);
+            delete ptr;
+        };
+        std::shared_ptr<int> clientId(new int(acquireClientId()), releaser);
+        TritonClient &client = *clients_[*clientId];
 
         // create blob directly, in client input shm region if appropriate,
         //   with code similar to opencv's blobFromImages
         cv::Mat blob;
-        try {
-            if (client.usingShmInput()) {
-                LOG_TRACE("Creating shm blob of shape: " << shape << " at address:" << std::hex
-                          << (void *) client.inputs_shm());
-                blob = cv::Mat(4, shape, CV_32F, (void *) client.inputs_shm());
-            } else {
-                blob = cv::Mat(4, shape, CV_32F);
+        if (client.usingShmInput()) {
+            LOG_TRACE("Creating shm blob of shape: " << shape << " at address:" << std::hex
+                      << (void *) client.inputs_shm());
+            blob = cv::Mat(4, shape, CV_32F, (void *) client.inputs_shm());
+        } else {
+            blob = cv::Mat(4, shape, CV_32F);
+        }
+        cv::Mat ch[shape[1]];
+        int i = 0;
+        for (auto fit = begin; fit != end; ++fit, ++i) {
+            cv::Mat resizedImage = fit->getDataAsResizedFloat(cv::Size2i(shape[2], shape[3]));
+            for (int j = 0; j < shape[1]; j++) {
+                ch[j] = cv::Mat(resizedImage.rows, resizedImage.cols, CV_32F, blob.ptr(i, j));
             }
-            cv::Mat ch[shape[1]];
-            int i = 0;
-            for (auto fit = begin; fit != end; ++fit, ++i) {
-                cv::Mat resizedImage = fit->getDataAsResizedFloat(cv::Size2i(shape[2], shape[3]));
-                for (int j = 0; j < shape[1]; j++) {
-                    ch[j] = cv::Mat(resizedImage.rows, resizedImage.cols, CV_32F, blob.ptr(i, j));
-                }
-                cv::split(resizedImage, ch);
-            }
-        } 
-        catch (const std::exception &ex) {
-            releaseClientId(clientId, NULL);
-            std::rethrow_exception(std::current_exception());
+            cv::split(resizedImage, ch);
         }
 
         LOG_TRACE("Inferencing frames[" << begin->idx << ".." << (end - 1)->idx << "]"
@@ -280,14 +278,13 @@ void TritonInferencer::infer(
                               try {
                                   std::vector<cv::Mat> outBlobs;
                                   for (auto & i : outputsMeta) {
-                                      outBlobs.push_back(clients_[clientId]->getOutput(i));
+                                      outBlobs.push_back(clients_[*clientId]->getOutput(i));
                                   }
                                   extractDetectionsCallback(outBlobs, begin, end);
                               }
                               catch (const std::exception &ex) {
-                                  eptr = std::current_exception();
+                                  setClientException(std::current_exception());
                               }
-                              releaseClientId(clientId, eptr);
                           });
     }
 }
@@ -310,12 +307,19 @@ int TritonInferencer::acquireClientId() {
 }
 
 
-void TritonInferencer::releaseClientId(int clientId, const std::exception_ptr& newClientEptr) {
+void TritonInferencer::setClientException(const std::exception_ptr& newClientEptr) {
     {
         std::lock_guard<std::mutex> lk(freeClientIdsMtx_);
         if (newClientEptr && !clientEptr_) {
             clientEptr_ = newClientEptr;
         }
+    }
+}
+
+
+void TritonInferencer::releaseClientId(int clientId) {
+    {
+        std::lock_guard<std::mutex> lk(freeClientIdsMtx_);
         freeClientIds_.insert(clientId);
         LOG_TRACE("Freeing client[" << clientId << "]");
     }
