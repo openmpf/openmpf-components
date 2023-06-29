@@ -52,10 +52,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     detection_type = 'CLASS'
 
     def __init__(self):
-        self._is_instantiated = False
-        if not self._is_instantiated:
-            self._wrapper = ClipWrapper()
-            self._is_instantiated = True
+        self._wrapper = ClipWrapper()
 
     def get_detections_from_image_reader(self,
                                          image_job: mpf.ImageJob,
