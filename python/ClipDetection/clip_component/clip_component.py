@@ -28,6 +28,7 @@ import logging
 import os
 import csv
 from pkg_resources import resource_filename
+from typing import Iterable, Mapping, TypedDict
 
 from PIL import Image
 import cv2
@@ -54,14 +55,17 @@ class ClipComponent(mpf_util.ImageReaderMixin):
         self._wrapper = ClipWrapper()
 
     def get_detections_from_image_reader(self, image_job, image_reader):
+        num_detections = 0
         try:
             logger.info("received image job: %s", image_job)
             image = image_reader.get_image()
-            detections = self._wrapper.get_classifications(image, image_job.job_properties)
-            logger.info(f"Job complete. Found {len(detections)} detections.")
-            return detections
+            detections = self._wrapper.get_classifications((image,), image_job.job_properties)
+            for detection in detections:
+                yield detection
+                num_detections += 1
+            logger.info(f"Job complete. Found {num_detections} detection{'s' if num_detections > 1 else ''}.")
         
-        except Exception:
+        except Exception as e:
             logger.exception(f"Failed to complete job {image_job.job_name} due to the following exception:")
             raise
 
@@ -83,50 +87,64 @@ class ClipWrapper(object):
         self._inferencing_server = None
         self._triton_server_url = None
     
-    def get_classifications(self, image, job_properties):
-        image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    def get_classifications(self, images, job_properties: Mapping[str, str]) -> mpf.ImageLocation:
         kwargs = self._parse_properties(job_properties)
-        image_width, image_height = image.size
-
         self._check_template_list(kwargs['template_path'], kwargs['num_templates'])
         self._check_class_list(kwargs['classification_path'], kwargs['classification_list'])
 
-        image = ImagePreprocessor(kwargs['enable_cropping']).preprocess(image).to(device)
+        self._preprocessor = ImagePreprocessor(kwargs['enable_cropping'])
 
-        if kwargs['enable_triton']:
-            if self._inferencing_server is None or kwargs['triton_server'] != self._triton_server_url:
-                self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'])
-                self._triton_server_url = kwargs['triton_server']
+        for image in images:
+            image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+            image_width, image_height = image.size
+            
+            image = self._preprocessor.preprocess(image).to(device)
 
-            results = self._inferencing_server.get_responses(image)
-            image_tensors= torch.Tensor(np.copy(results)).to(device=device)
-            image_features = torch.mean(image_tensors, 0)
-        else:
+            if kwargs['enable_triton']:
+                if self._inferencing_server is None or kwargs['triton_server'] != self._triton_server_url:
+                    self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'])
+                    self._triton_server_url = kwargs['triton_server']
+
+                results = self._inferencing_server.get_responses(image)
+                image_tensors= torch.Tensor(np.copy(results)).to(device=device)
+                image_features = torch.mean(image_tensors, 0)
+            else:
+                with torch.no_grad():
+                    image_features = self._model.encode_image(image).float()
+                image_features = torch.mean(image_features, 0).unsqueeze(0)
+            
             with torch.no_grad():
-                image_features = self._model.encode_image(image).float()
-            image_features = torch.mean(image_features, 0).unsqueeze(0)
-        
-        with torch.no_grad():
-            image_features /= image_features.norm(dim=-1, keepdim=True)
+                image_features /= image_features.norm(dim=-1, keepdim=True)
 
-        similarity = (100.0 * image_features @ self._text_features).softmax(dim=-1).to(device)
-        similarity = torch.mean(similarity, 0)
-        values, indices = similarity.topk(kwargs['num_classifications'])
+            similarity = (100.0 * image_features @ self._text_features).softmax(dim=-1).to(device)
+            similarity = torch.mean(similarity, 0)
+            values, indices = similarity.topk(len(self._class_mapping))
 
-        classification_list = '; '.join([self._class_mapping[list(self._class_mapping.keys())[int(index)]] for index in indices])
-        classification_confidence_list = '; '.join([str(value.item()) for value in values])
-        
-        detection_properties = {
-            "CLASSIFICATION": classification_list.split('; ')[0],
-            "CLASSIFICATION CONFIDENCE LIST": classification_confidence_list,
-            "CLASSIFICATION LIST": classification_list
-        }
-        
-        if kwargs['include_features']:
-            detection_properties['FEATURE'] = base64.b64encode(image_features.cpu().numpy()).decode()
+            classification_list = []
+            classification_confidence_list = []
+            count = 0
+            for value, index in zip(values, indices):
+                if count >= kwargs['num_classifications']:
+                    break
+                class_name = self._class_mapping[list(self._class_mapping.keys())[int(index)]]
+                if class_name not in classification_list:
+                    classification_list.append(class_name)
+                    classification_confidence_list.append(str(value.item()))
+                    count += 1
 
-        return [
-            mpf.ImageLocation(
+            classification_list = '; '.join(classification_list)
+            classification_confidence_list = '; '.join(classification_confidence_list)
+            
+            detection_properties = {
+                "CLASSIFICATION": classification_list.split('; ')[0],
+                "CLASSIFICATION CONFIDENCE LIST": classification_confidence_list,
+                "CLASSIFICATION LIST": classification_list
+            }
+            
+            if kwargs['include_features']:
+                detection_properties['FEATURE'] = base64.b64encode(image_features.cpu().numpy()).decode()
+
+            yield mpf.ImageLocation(
                 x_left_upper = 0,
                 y_left_upper = 0,
                 width = image_width,
@@ -134,7 +152,6 @@ class ClipWrapper(object):
                 confidence = float(classification_confidence_list.split('; ')[0]),
                 detection_properties = detection_properties
             )
-        ]
 
     def _parse_properties(self, job_properties):
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])

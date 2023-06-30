@@ -63,7 +63,7 @@ class TestClip(unittest.TestCase):
     
     def test_image_file_custom(self):
         job = mpf.ImageJob(
-            job_name='test-image',
+            job_name='test-image-custom',
             data_uri=self._get_test_file('riot.jpg'),
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 4,
@@ -77,6 +77,20 @@ class TestClip(unittest.TestCase):
         self.assertEqual(job.job_properties["NUMBER_OF_CLASSIFICATIONS"], len(self._output_to_list(result.detection_properties["CLASSIFICATION LIST"])))
         self.assertTrue("violent scene" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
         self.assertEqual("violent scene", result.detection_properties["CLASSIFICATION"])
+    
+    def test_image_file_rollup(self):
+        job = mpf.ImageJob(
+            job_name='test-image-rollup',
+            data_uri=self._get_test_file('dog.jpg'),
+            job_properties=dict(
+                NUMBER_OF_CLASSIFICATIONS = 4,
+                CLASSIFICATION_PATH = self._get_test_file("rollup.csv")
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        result = list(ClipComponent().get_detections_from_image(job))[0]
+        self.assertEqual("indoor animal", result.detection_properties["CLASSIFICATION"])
 
     @staticmethod
     def _get_test_file(filename):
