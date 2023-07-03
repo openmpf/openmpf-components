@@ -55,7 +55,7 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
         self.cleanup: bool
         super().__init__(job)
 
-        if self.is_triggered_job:
+        if self.is_downstream_job:
             self.diarize = False
 
     @staticmethod
