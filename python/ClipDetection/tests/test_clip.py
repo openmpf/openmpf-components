@@ -84,7 +84,9 @@ class TestClip(unittest.TestCase):
             data_uri=self._get_test_file('dog.jpg'),
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 4,
-                CLASSIFICATION_PATH = self._get_test_file("rollup.csv")
+                NUMBER_OF_TEMPLATES = 1,
+                CLASSIFICATION_PATH = self._get_test_file("rollup.csv"),
+                ENABLE_CROPPING='False'
             ),
             media_properties={},
             feed_forward_location=None
