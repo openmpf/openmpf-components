@@ -28,7 +28,7 @@ import logging
 import os
 import csv
 from pkg_resources import resource_filename
-from typing import Iterable, Mapping, TypedDict
+from typing import Mapping, Iterable
 
 from PIL import Image
 import cv2
@@ -66,7 +66,7 @@ class ClipComponent(mpf_util.ImageReaderMixin):
             logger.info(f"Job complete. Found {num_detections} detection{'s' if num_detections > 1 else ''}.")
         
         except Exception as e:
-            logger.exception(f"Failed to complete job {image_job.job_name} due to the following exception:")
+            logger.exception(f'Job failed due to: {e}')
             raise
 
 class ClipWrapper(object):
@@ -75,6 +75,7 @@ class ClipWrapper(object):
         model, _ = clip.load('ViT-B/32', device=device, download_root='/models')
         logger.info("Model loaded.")
         self._model = model
+        self._preprocessor = None
 
         self._classification_path = ''
         self._template_path = ''
@@ -87,7 +88,7 @@ class ClipWrapper(object):
         self._inferencing_server = None
         self._triton_server_url = None
     
-    def get_classifications(self, images, job_properties: Mapping[str, str]) -> mpf.ImageLocation:
+    def get_classifications(self, images, job_properties: Mapping[str, str]) -> Iterable[mpf.ImageLocation]:
         kwargs = self._parse_properties(job_properties)
         self._check_template_list(kwargs['template_path'], kwargs['num_templates'])
         self._check_class_list(kwargs['classification_path'], kwargs['classification_list'])
