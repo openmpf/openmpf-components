@@ -26,6 +26,8 @@
 
 #include "Frame.h"
 
+#include <MPFDetectionException.h>
+
 using namespace MPF::COMPONENT;
 
 cv::Mat Frame::getDataAsResizedFloat(
@@ -43,9 +45,23 @@ cv::Mat Frame::getDataAsResizedFloat(
         // limited by target x
         scaleFactor = targetSize.width / static_cast<double>(data.cols);
     }
+    
+    if (scaleFactor * static_cast<double>(data.rows) <= 0.5) {
+        throw MPFDetectionException(MPF_BAD_FRAME_SIZE, "Unable to resize. Image height (" +
+                std::to_string(data.rows) + ") too short vs. width (" + std::to_string(data.cols) + ").");
+    }
+    if (scaleFactor * static_cast<double>(data.cols) <= 0.5) {
+        throw MPFDetectionException(MPF_BAD_FRAME_SIZE, "Unable to resize. Image width (" +
+                std::to_string(data.cols) + ") too narrow vs. height (" + std::to_string(data.rows) + ").");
+    }
 
     cv::Mat resizedData;
-    cv::resize(data, resizedData, cv::Size(), scaleFactor, scaleFactor);
+    try {
+        cv::resize(data, resizedData, cv::Size(), scaleFactor, scaleFactor);
+    }
+    catch(const std::exception &ex) {
+        throw MPFDetectionException(MPF_BAD_FRAME_SIZE, ex.what());
+    }
 
     int leftPadding = (targetSize.width - resizedData.cols) / 2;
     int topPadding = (targetSize.height - resizedData.rows) / 2;

@@ -67,7 +67,7 @@ KeywordTagging::parse_json(const MPFJob &job, const string &jsonfile_path) {
 
     x = boost::locale::conv::utf_to_utf<wchar_t>(j);
 
-    JSONValue *value = JSON::Parse(x.c_str());
+    auto value = std::unique_ptr<JSONValue>(JSON::Parse(x.c_str()));
 
     if (value == NULL) {
         throw MPFDetectionException(MPF_COULD_NOT_READ_DATAFILE,
