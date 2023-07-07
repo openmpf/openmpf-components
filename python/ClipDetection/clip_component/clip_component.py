@@ -155,13 +155,13 @@ class ClipWrapper(object):
 
     def _parse_properties(self, job_properties):
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
-        classification_path = self._get_prop(job_properties, "CLASSIFICATION_PATH", '')
+        classification_path = os.path.expandvars(self._get_prop(job_properties, "CLASSIFICATION_PATH", ''))
         enable_cropping = self._get_prop(job_properties, "ENABLE_CROPPING", True)
         enable_triton = self._get_prop(job_properties, "ENABLE_TRITON", False)
         include_features = self._get_prop(job_properties, "INCLUDE_FEATURES", False)
         num_classifications = self._get_prop(job_properties, "NUMBER_OF_CLASSIFICATIONS", 1)
         num_templates = self._get_prop(job_properties, "NUMBER_OF_TEMPLATES", 80, [1, 7, 80])
-        template_path = self._get_prop(job_properties, "TEMPLATE_PATH", '')
+        template_path = os.path.expandvars(self._get_prop(job_properties, "TEMPLATE_PATH", ''))
         triton_server = self._get_prop(job_properties, "TRITON_SERVER", 'clip-detection-server:8001')
 
         return dict(    
