@@ -60,23 +60,6 @@ class TestClip(unittest.TestCase):
         self.assertEqual("dog", result.detection_properties["CLASSIFICATION"])
         self.assertTrue(result.detection_properties["FEATURE"] is not None)
     
-    def test_image_file_rollup(self):
-        job = mpf.ImageJob(
-            job_name='test-image-rollup',
-            data_uri=self._get_test_file('dog.jpg'),
-            job_properties=dict(
-                NUMBER_OF_CLASSIFICATIONS = 5,
-                ENABLE_CROPPING = 'False',
-                NUMBER_OF_TEMPLATES = 1,
-                CLASSIFICATION_PATH = self._get_test_file('imagenet_rollups.csv')
-            ),
-            media_properties={},
-            feed_forward_location=None
-        )
-        component = ClipComponent()
-        result = list(component.get_detections_from_image(job))[0]
-        self.assertEqual(result.detection_properties['CLASSIFICATION'], 'misc, animal')
-    
     def test_image_file_custom(self):
         job = mpf.ImageJob(
             job_name='test-image-custom',

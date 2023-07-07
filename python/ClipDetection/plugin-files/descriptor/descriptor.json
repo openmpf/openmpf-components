@@ -74,6 +74,12 @@
                     "description": "Triton server <host>:<port> to use for inferencing.",
                     "type": "STRING",
                     "defaultValue": "clip-detection-server:8001"
+                },
+                {
+                    "name": "DETECTION_FRAME_BATCH_SIZE",
+                    "description": "",
+                    "type": "INT",
+                    "defaultValue": "1"
                 }
             ] 
         }

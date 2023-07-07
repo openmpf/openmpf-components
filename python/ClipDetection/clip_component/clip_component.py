@@ -85,6 +85,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             raise
 
 class JobProperties(TypedDict):
+    batch_size: int
     classification_list: str
     classification_path: str
     enable_cropping: bool
@@ -180,6 +181,7 @@ class ClipWrapper(object):
             )
 
     def _parse_properties(self, job_properties: Mapping[str, str]) -> JobProperties:
+        batch_size = self._get_prop(job_properties, "DETECTION_FRAME_BATCH_SIZE", 1)
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
         classification_path = self._get_prop(job_properties, "CLASSIFICATION_PATH", '')
         enable_cropping = self._get_prop(job_properties, "ENABLE_CROPPING", True)
@@ -191,6 +193,7 @@ class ClipWrapper(object):
         triton_server = self._get_prop(job_properties, "TRITON_SERVER", 'clip-detection-server:8001')
 
         return dict(    
+            batch_size = batch_size,
             classification_list = classification_list,
             classification_path = classification_path,
             enable_cropping = enable_cropping,
