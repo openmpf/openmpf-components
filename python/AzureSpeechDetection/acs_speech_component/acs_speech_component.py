@@ -67,11 +67,6 @@ class AcsSpeechComponent(object):
             logger.exception(f'Exception raised while processing audio: {e}')
             raise
 
-        # Remove this block to drop LONG_SPEAKER_ID
-        for track in audio_tracks:
-            track.detection_properties['LONG_SPEAKER_ID'] = track.detection_properties['SPEAKER_ID']
-            track.detection_properties['SPEAKER_ID'] = '0'
-
         logger.info('Processing complete. Found %d tracks.' % len(audio_tracks))
         return audio_tracks
 
