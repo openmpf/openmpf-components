@@ -28,6 +28,9 @@ import logging
 import os
 import csv
 from pkg_resources import resource_filename
+from itertools import islice
+from typing import Iterable, Mapping
+import time
 
 from PIL import Image
 import cv2
@@ -53,7 +56,45 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     def __init__(self):
         self._wrapper = ClipWrapper()
 
+    @staticmethod
+    def _get_prop(job_properties, key, default_value, accep_values=[]):
+        prop = mpf_util.get_property(job_properties, key, default_value)
+        if (accep_values != []) and (prop not in accep_values):
+            raise mpf.DetectionException(
+                f"Property {key} not in list of acceptible values: {accep_values}",
+                mpf.DetectionError.INVALID_PROPERTY
+            )
+        return prop
+
+    def _parse_properties(self, job_properties):
+        classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
+        classification_path = os.path.expandvars(self._get_prop(job_properties, "CLASSIFICATION_PATH", ''))
+        enable_cropping = self._get_prop(job_properties, "ENABLE_CROPPING", True)
+        enable_triton = self._get_prop(job_properties, "ENABLE_TRITON", False)
+        include_features = self._get_prop(job_properties, "INCLUDE_FEATURES", False)
+        num_classifications = self._get_prop(job_properties, "NUMBER_OF_CLASSIFICATIONS", 1)
+        num_templates = self._get_prop(job_properties, "NUMBER_OF_TEMPLATES", 80, [1, 7, 80])
+        template_path = os.path.expandvars(self._get_prop(job_properties, "TEMPLATE_PATH", ''))
+        triton_server = self._get_prop(job_properties, "TRITON_SERVER", 'clip-detection-server:8001')
+
+        return dict(    
+            classification_list = classification_list,
+            classification_path = classification_path,
+            enable_cropping = enable_cropping,
+            enable_triton = enable_triton,
+            include_features = include_features,
+            num_classifications = num_classifications,
+            num_templates = num_templates,
+            template_path = template_path,
+            triton_server = triton_server
+        )
+
     def get_detections_from_image_reader(self, image_job, image_reader):
+        logger.info("Received image job: %s", image_job)
+
+        kwargs = self._parse_properties(image_job.job_properties)
+        image = image_reader.get_image()
+
         try:
             detections = self._wrapper.get_classifications((image,), **kwargs)
             for detection in detections:
