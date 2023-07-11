@@ -28,7 +28,9 @@ import logging
 import os
 import csv
 from pkg_resources import resource_filename
-from typing import Iterable, Mapping, TypedDict
+from itertools import islice
+import time
+from typing import Iterable, Mapping
 
 from PIL import Image
 import cv2
@@ -54,14 +56,52 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     def __init__(self):
         self._wrapper = ClipWrapper()
 
+    @staticmethod
+    def _get_prop(job_properties, key, default_value, accep_values=[]):
+        prop = mpf_util.get_property(job_properties, key, default_value)
+        if (accep_values != []) and (prop not in accep_values):
+            raise mpf.DetectionException(
+                f"Property {key} not in list of acceptible values: {accep_values}",
+                mpf.DetectionError.INVALID_PROPERTY
+            )
+        return prop
+
+    def _parse_properties(self, job_properties: Mapping[str, str]):
+        batch_size = self._get_prop(job_properties, "DETECTION_FRAME_BATCH_SIZE", 1)
+        classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
+        classification_path = self._get_prop(job_properties, "CLASSIFICATION_PATH", '')
+        enable_cropping = self._get_prop(job_properties, "ENABLE_CROPPING", True)
+        enable_triton = self._get_prop(job_properties, "ENABLE_TRITON", False)
+        include_features = self._get_prop(job_properties, "INCLUDE_FEATURES", False)
+        num_classifications = self._get_prop(job_properties, "NUMBER_OF_CLASSIFICATIONS", 1)
+        num_templates = self._get_prop(job_properties, "NUMBER_OF_TEMPLATES", 80, [1, 7, 80])
+        template_path = self._get_prop(job_properties, "TEMPLATE_PATH", '')
+        triton_server = self._get_prop(job_properties, "TRITON_SERVER", 'clip-detection-server:8001')
+
+        return dict(    
+            batch_size = batch_size,
+            classification_list = classification_list,
+            classification_path = classification_path,
+            enable_cropping = enable_cropping,
+            enable_triton = enable_triton,
+            include_features = include_features,
+            num_classifications = num_classifications,
+            num_templates = num_templates,
+            template_path = template_path,
+            triton_server = triton_server
+        )
+
     def get_detections_from_image_reader(self,
                                          image_job: mpf.ImageJob,
                                          image_reader: mpf_util.ImageReader) -> Iterable[mpf.ImageLocation]:
+        logger.info("received image job: %s", image_job)
+
+        kwargs = self._parse_properties(image_job.job_properties)
+        image = image_reader.get_image()
         num_detections = 0
+
         try:
-            logger.info("received image job: %s", image_job)
-            image = image_reader.get_image()
-            detections = self._wrapper.get_classifications((image,), image_job.job_properties)
+            detections = self._wrapper.get_classifications((image,), **kwargs)
             for detection in detections:
                 yield detection
                 num_detections += 1
@@ -70,36 +110,51 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         except Exception as e:
             logger.exception(f"Failed to complete job {image_job.job_name} due to the following exception:")
             raise
+
+    @staticmethod
+    def _batches_from_video_capture(video_capture, batch_size):
+        frames = []
+        for frame in video_capture:
+            frames.append(frame)
+            if len(frames) >= batch_size:
+                yield len(frames), np.stack(frames)
+                frames = []
         
+        if len(frames):
+            padded = np.pad(
+                array=np.stack(frames),
+                pad_width=((0, batch_size - len(frames)), (0, 0), (0, 0), (0, 0)),
+                mode='constant',
+                constant_values=0
+            )
+            yield len(frames), padded
+
     def get_detections_from_video_capture(self,
                                           video_job: mpf.VideoJob,
                                           video_capture: mpf_util.VideoCapture) -> Iterable[mpf.VideoTrack]:
-        try:
-            logger.info("Received video job: %s", video_job)
-            detections = self._wrapper.get_classifications(video_capture, video_job.job_properties)
-            tracks = create_tracks(detections)
-            logger.info(f"Job complete. Found {len(tracks)} detection{'s' if len(tracks) > 1 else ''}.")
-            return tracks
-        except Exception as e:
-            logger.exception(f"Failed to complete job {video_job.job_name} due to the following exception: {e}")
-            raise
+        logger.info("Received video job: %s", video_job)
 
-class JobProperties(TypedDict):
-    batch_size: int
-    classification_list: str
-    classification_path: str
-    enable_cropping: bool
-    enable_triton: bool
-    include_features: bool
-    num_classifications: int
-    num_templates: int
-    template_path: str
-    triton_server: str
+        kwargs = self._parse_properties(video_job.job_properties)
+        
+        batch_gen = self._batches_from_video_capture(video_capture, kwargs['batch_size'])
+        detections = []
+
+        for n, batch in batch_gen:
+            try:
+                detections += islice(self._wrapper.get_classifications(batch, **kwargs), n)
+            except Exception as e:
+                logger.exception(f"Failed to complete job {video_job.job_name} due to the following exception: {e}")
+                raise
+        
+        tracks = create_tracks(detections)
+        logger.info(f"Job complete. Found {len(tracks)} detection{'s' if len(tracks) > 1 else ''}.")
+        return tracks
 
 class ClipWrapper(object):
     def __init__(self):
         logger.info("Loading model...")
-        model, _ = clip.load('ViT-B/32', device=device, download_root='/models')
+        # model, _ = clip.load('ViT-B/32', device=device, download_root='/models')
+        model, _ = clip.load('ViT-B/32', device=device, download_root='/ckb-nfs/home/zcafego/model_experiment/model')
         logger.info("Model loaded.")
         self._model = model
 
@@ -114,8 +169,7 @@ class ClipWrapper(object):
         self._inferencing_server = None
         self._triton_server_url = None
     
-    def get_classifications(self, images, job_properties: Mapping[str, str]) -> mpf.ImageLocation:
-        kwargs = self._parse_properties(job_properties)
+    def get_classifications(self, images, **kwargs) -> Iterable[mpf.ImageLocation]:
         self._check_template_list(kwargs['template_path'], kwargs['num_templates'])
         self._check_class_list(kwargs['classification_path'], kwargs['classification_list'])
 
@@ -179,41 +233,6 @@ class ClipWrapper(object):
                 confidence = float(classification_confidence_list.split('; ')[0]),
                 detection_properties = detection_properties
             )
-
-    def _parse_properties(self, job_properties: Mapping[str, str]) -> JobProperties:
-        batch_size = self._get_prop(job_properties, "DETECTION_FRAME_BATCH_SIZE", 1)
-        classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
-        classification_path = self._get_prop(job_properties, "CLASSIFICATION_PATH", '')
-        enable_cropping = self._get_prop(job_properties, "ENABLE_CROPPING", True)
-        enable_triton = self._get_prop(job_properties, "ENABLE_TRITON", False)
-        include_features = self._get_prop(job_properties, "INCLUDE_FEATURES", False)
-        num_classifications = self._get_prop(job_properties, "NUMBER_OF_CLASSIFICATIONS", 1)
-        num_templates = self._get_prop(job_properties, "NUMBER_OF_TEMPLATES", 80, [1, 7, 80])
-        template_path = self._get_prop(job_properties, "TEMPLATE_PATH", '')
-        triton_server = self._get_prop(job_properties, "TRITON_SERVER", 'clip-detection-server:8001')
-
-        return dict(    
-            batch_size = batch_size,
-            classification_list = classification_list,
-            classification_path = classification_path,
-            enable_cropping = enable_cropping,
-            enable_triton = enable_triton,
-            include_features = include_features,
-            num_classifications = num_classifications,
-            num_templates = num_templates,
-            template_path = template_path,
-            triton_server = triton_server
-        )
-    
-    @staticmethod
-    def _get_prop(job_properties, key, default_value, accep_values=[]):
-        prop = mpf_util.get_property(job_properties, key, default_value)
-        if (accep_values != []) and (prop not in accep_values):
-            raise mpf.DetectionException(
-                f"Property {key} not in list of acceptible values: {accep_values}",
-                mpf.DetectionError.INVALID_PROPERTY
-            )
-        return prop
 
     def _check_template_list(self, template_path: str, number_of_templates: int) -> None:
         if template_path != '':
@@ -351,8 +370,11 @@ class CLIPInferencingServer(object):
     
         responses = []
         try:
+            t1 = time.clock()
             for inputs, outputs in self._get_inputs_outputs(images):
                 responses.append(self._triton_client.infer(model_name=self._model_name, inputs=inputs, outputs=outputs))
+            t2 = time.clock()
+            logger.info(f"Inferencing took {t2-t1} seconds.")
         except Exception:
             raise mpf.DetectionException(
                 f"Inference failed.",
