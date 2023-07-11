@@ -82,6 +82,7 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
         acs_blob_container_url = self._get_job_property_or_env_value('ACS_BLOB_CONTAINER_URL', job_properties)
         acs_blob_service_key = self._get_job_property_or_env_value('ACS_BLOB_SERVICE_KEY', job_properties)
         http_retry = mpf_util.HttpRetry.from_properties(job_properties)
+        use_sas_auth = mpf_util.get_property(job_properties, 'USE_SAS_AUTH', False)
 
         http_max_attempts = mpf_util.get_property(
             properties=job_properties,
@@ -96,7 +97,8 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
             blob_container_url=acs_blob_container_url,
             blob_service_key=acs_blob_service_key,
             http_retry=http_retry,
-            http_max_attempts=http_max_attempts
+            http_max_attempts=http_max_attempts,
+            use_sas_auth=use_sas_auth
         )
 
         self.blob_access_time = mpf_util.get_property(
