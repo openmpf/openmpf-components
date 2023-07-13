@@ -62,7 +62,7 @@ class TestClip(unittest.TestCase):
     
     def test_image_file_custom(self):
         job = mpf.ImageJob(
-            job_name='test-image-custom-custom',
+            job_name='test-image-custom',
             data_uri=self._get_test_file('riot.jpg'),
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 4,
@@ -104,7 +104,8 @@ class TestClip(unittest.TestCase):
             job_properties=dict(
                 NUMBER_OF_TEMPLATES = 1,
                 CLASSIFICATION_LIST = 'imagenet',
-                ENABLE_CROPPING = 'False'
+                ENABLE_CROPPING = 'False',
+                DETECTION_FRAME_BATCH_SIZE = 2
             ),
             media_properties={},
             feed_forward_track=None

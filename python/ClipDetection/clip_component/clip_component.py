@@ -67,6 +67,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         return prop
 
     def _parse_properties(self, job_properties):
+        batch_size = self._get_prop(job_properties, "DETECTION_FRAME_BATCH_SIZE", 16)
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
         classification_path = os.path.expandvars(self._get_prop(job_properties, "CLASSIFICATION_PATH", ''))
         enable_cropping = self._get_prop(job_properties, "ENABLE_CROPPING", True)
@@ -77,7 +78,8 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         template_path = os.path.expandvars(self._get_prop(job_properties, "TEMPLATE_PATH", ''))
         triton_server = self._get_prop(job_properties, "TRITON_SERVER", 'clip-detection-server:8001')
 
-        return dict(    
+        return dict(
+            batch_size = batch_size,
             classification_list = classification_list,
             classification_path = classification_path,
             enable_cropping = enable_cropping,
@@ -95,12 +97,13 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         kwargs = self._parse_properties(image_job.job_properties)
         image = image_reader.get_image()
 
+        num_detections = 0
         try:
             detections = self._wrapper.get_classifications((image,), **kwargs)
             for detection in detections:
                 yield detection
                 num_detections += 1
-            logger.info(f"Job complete. Found {num_detections} detection{'s' if num_detections > 1 else ''}.")
+            logger.info(f"Job complete. Found {num_detections} detection{'' if num_detections == 1 else 's'}.")
         
         except Exception as e:
             logger.exception(f'Job failed due to: {e}')
@@ -138,18 +141,17 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             try:
                 detections += islice(self._wrapper.get_classifications(batch, **kwargs), n)
             except Exception as e:
-                logger.exception(f"Failed to complete job {video_job.job_name} due to the following exception: {e}")
+                logger.exception(f"Job failed due to: {e}")
                 raise
         
         tracks = create_tracks(detections)
-        logger.info(f"Job complete. Found {len(tracks)} detection{'s' if len(tracks) > 1 else ''}.")
+        logger.info(f"Job complete. Found {len(tracks)} detection{'' if len(tracks) == 1 else 's'}.")
         return tracks
 
 class ClipWrapper(object):
     def __init__(self):
         logger.info("Loading model...")
-        # model, _ = clip.load('ViT-B/32', device=device, download_root='/models')
-        model, _ = clip.load('ViT-B/32', device=device, download_root='/ckb-nfs/home/zcafego/model_experiment/model')
+        model, _ = clip.load('ViT-B/32', device=device, download_root='/models')
         logger.info("Model loaded.")
         self._model = model
         self._preprocessor = None
@@ -170,37 +172,39 @@ class ClipWrapper(object):
         self._check_class_list(kwargs['classification_path'], kwargs['classification_list'])
 
         self._preprocessor = ImagePreprocessor(kwargs['enable_cropping'])
+        images = [Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)) for image in images]
+        image_sizes = [image.size for image in images]
+        torch_imgs = torch.stack([self._preprocessor.preprocess(image).squeeze(0) for image in images]).to(device)
 
-        for image in images:
-            image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-            image_width, image_height = image.size
-            
-            image = self._preprocessor.preprocess(image).to(device)
+        if kwargs['enable_triton']:
+            if self._inferencing_server is None or kwargs['triton_server'] != self._triton_server_url:
+                self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'])
+                self._triton_server_url = kwargs['triton_server']
 
-            if kwargs['enable_triton']:
-                if self._inferencing_server is None or kwargs['triton_server'] != self._triton_server_url:
-                    self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'])
-                    self._triton_server_url = kwargs['triton_server']
-
-                results = self._inferencing_server.get_responses(image)
-                image_tensors= torch.Tensor(np.copy(results)).to(device=device)
-                image_features = torch.mean(image_tensors, 0)
-            else:
-                with torch.no_grad():
-                    image_features = self._model.encode_image(image).float()
-                image_features = torch.mean(image_features, 0).unsqueeze(0)
-            
+            results = self._inferencing_server.get_responses(torch_imgs)
+            image_features = torch.Tensor(np.copy(results)).to(device=device)
+        else:
             with torch.no_grad():
-                image_features /= image_features.norm(dim=-1, keepdim=True)
+                if kwargs['enable_cropping']:
+                    image_features = self._model.encode_image(torch_imgs.squeeze(0)).float()
+                else:
+                    image_features = self._model.encode_image(torch_imgs).float()
 
-            similarity = (100.0 * image_features @ self._text_features).softmax(dim=-1).to(device)
-            similarity = torch.mean(similarity, 0)
-            values, indices = similarity.topk(len(self._class_mapping))
+        with torch.no_grad():
+            image_features /= image_features.norm(dim=-1, keepdim=True)
 
+        similarity = (100.0 * image_features @ self._text_features).softmax(dim=-1).to(device)
+
+        if kwargs['enable_cropping']:
+            similarity = torch.mean(similarity, 0).unsqueeze(0)
+        
+        values, indices = similarity.topk(len(self._class_mapping))
+
+        for detection_values, detection_indices, image_size in zip(values, indices, image_sizes):
             classification_list = []
             classification_confidence_list = []
             count = 0
-            for value, index in zip(values, indices):
+            for value, index in zip(detection_values, detection_indices):
                 if count >= kwargs['num_classifications']:
                     break
                 class_name = self._class_mapping[list(self._class_mapping.keys())[int(index)]]
@@ -208,7 +212,7 @@ class ClipWrapper(object):
                     classification_list.append(class_name)
                     classification_confidence_list.append(str(value.item()))
                     count += 1
-
+            
             classification_list = '; '.join(classification_list)
             classification_confidence_list = '; '.join(classification_confidence_list)
             
@@ -221,11 +225,12 @@ class ClipWrapper(object):
             if kwargs['include_features']:
                 detection_properties['FEATURE'] = base64.b64encode(image_features.cpu().numpy()).decode()
 
+            image_width, image_height = 1, 1
             yield mpf.ImageLocation(
                 x_left_upper = 0,
                 y_left_upper = 0,
-                width = image_width,
-                height = image_height,
+                width = image_size[0],
+                height = image_size[1],
                 confidence = float(classification_confidence_list.split('; ')[0]),
                 detection_properties = detection_properties
             )
