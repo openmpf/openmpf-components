@@ -131,7 +131,6 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
                                           video_job: mpf.VideoJob,
                                           video_capture: mpf_util.VideoCapture) -> Iterable[mpf.VideoTrack]:
         logger.info("Received video job: %s", video_job)
-
         kwargs = self._parse_properties(video_job.job_properties)
         
         batch_gen = self._batches_from_video_capture(video_capture, kwargs['batch_size'])
@@ -139,7 +138,8 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
 
         for n, batch in batch_gen:
             try:
-                detections += islice(self._wrapper.get_classifications(batch, **kwargs), n)
+                detection = list(islice(self._wrapper.get_classifications(batch, **kwargs), n))
+                detections += detection
             except Exception as e:
                 logger.exception(f"Job failed due to: {e}")
                 raise
@@ -182,7 +182,7 @@ class ClipWrapper(object):
                 self._triton_server_url = kwargs['triton_server']
 
             results = self._inferencing_server.get_responses(torch_imgs)
-            image_features = torch.Tensor(np.copy(results)).to(device=device)
+            image_features = torch.Tensor(np.copy(results)).squeeze(0).to(device=device)
         else:
             with torch.no_grad():
                 if kwargs['enable_cropping']:
@@ -225,7 +225,6 @@ class ClipWrapper(object):
             if kwargs['include_features']:
                 detection_properties['FEATURE'] = base64.b64encode(image_features.cpu().numpy()).decode()
 
-            image_width, image_height = 1, 1
             yield mpf.ImageLocation(
                 x_left_upper = 0,
                 y_left_upper = 0,
@@ -371,11 +370,8 @@ class CLIPInferencingServer(object):
     
         responses = []
         try:
-            t1 = time.clock()
             for inputs, outputs in self._get_inputs_outputs(images):
                 responses.append(self._triton_client.infer(model_name=self._model_name, inputs=inputs, outputs=outputs))
-            t2 = time.clock()
-            logger.info(f"Inferencing took {t2-t1} seconds.")
         except Exception:
             raise mpf.DetectionException(
                 f"Inference failed.",

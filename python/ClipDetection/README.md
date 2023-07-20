@@ -24,6 +24,8 @@ The following are the properties that can be specified for the component. Each p
 
 - `TRITON_SERVER`: Specifies the Triton server `<host>:<port>` to use for inferencing. By default, this is set to 'clip-detection-server:8001'.
 
+- `DETECTION_FRAME_BATCH_SIZE`: Specifies the batch size when processing video files. By default, this is set to 32.
+
 ## Detection Properties
 
 Returned `ImageLocation` objects have the following members in their `detection_properties`:
@@ -54,6 +56,21 @@ tench,"tench, Tinca tinca"
 kite (bird of prey),kite
 magpie,magpie
 ```
+
+# Triton Performance
+The table below shows the performance of this component with Triton on a Nvidia Tesla V100 32GB GPU, for varying batch sizes:
+| Batch Size | VRAM Usage (MiB) | Total Time (seconds) | Average Time per Batch (seconds) | Average Images per Second |
+|------------|------------------|----------------------|----------------------------------|---------------------------|
+|         16 |             1249 |              23.9591 |                          0.02678 |                  597.4765 |
+|         32 |             1675 |              20.1931 |                          0.04514 |                  708.9055 |
+|         64 |             1715 |             33.08468 |                           0.1479 |                  432.6776 |
+|        128 |             1753 |              35.3511 |                           0.3161 |                  404.9379 |
+|        256 |             1827 |              33.7730 |                           0.6040 |                  423.8593 |
+
+# Future Research
+* Investigate using the CLIP interrogator for determining text prompts for classification.
+* Investigate methods to automate the generation of text prompts.
+  * [Context Optimization (CoOp)](http://arxiv.org/abs/2109.01134) and [Conditional Context Optimization (CoCoOp)](http://arxiv.org/abs/2203.05557) models a prompt's context as a set of learnable vectors that can be optimized for the classes you're looking for, with CoCoOp improving on CoOp's ability in classifying to classes unseen by CoOp in training. 
 
 # Known Issues
 

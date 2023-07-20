@@ -87,7 +87,7 @@ class TestClip(unittest.TestCase):
                 NUMBER_OF_CLASSIFICATIONS = 4,
                 NUMBER_OF_TEMPLATES = 1,
                 CLASSIFICATION_PATH = self._get_test_file("rollup.csv"),
-                ENABLE_CROPPING='False'
+                ENABLE_CROPPING = 'False'
             ),
             media_properties={},
             feed_forward_location=None
@@ -105,7 +105,7 @@ class TestClip(unittest.TestCase):
                 NUMBER_OF_TEMPLATES = 1,
                 CLASSIFICATION_LIST = 'imagenet',
                 ENABLE_CROPPING = 'False',
-                DETECTION_FRAME_BATCH_SIZE = 2
+                DETECTION_FRAME_BATCH_SIZE = 4
             ),
             media_properties={},
             feed_forward_track=None

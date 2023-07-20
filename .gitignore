@@ -62,5 +62,5 @@ cmake-build-release/
 *.egg-info
 *.pyc
 
-Dockerfile.private
+*.private
 venv

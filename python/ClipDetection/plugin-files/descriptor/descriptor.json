@@ -79,7 +79,7 @@
                     "name": "DETECTION_FRAME_BATCH_SIZE",
                     "description": "Number of frames to batch inference when processing video. GPU VRAM dependant.",
                     "type": "INT",
-                    "defaultValue": "16"
+                    "defaultValue": "32"
                 }
             ] 
         }
