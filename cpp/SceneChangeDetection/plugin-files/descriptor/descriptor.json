@@ -12,6 +12,7 @@
     "name" : "SCENECHANGE",
     "description" : "Segments a video into scenes based on 4 detectors.",
     "actionType" : "DETECTION",
+    "trackType": "SCENE",
     "outputChangedCounter" : 1,
     "requiresCollection" : {
       "states" : []

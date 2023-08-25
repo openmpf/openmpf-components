@@ -9,6 +9,7 @@
     "name": "AZUREFORM",
     "description": "Uses Azure Cognitive Services to perform form recognition in documents and images.",
     "actionType": "DETECTION",
+    "trackType": "TEXT",
     "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []

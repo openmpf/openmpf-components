@@ -49,8 +49,6 @@ public:
 
     bool Close() override;
 
-    std::string GetDetectionType() override;
-
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(
             const MPF::COMPONENT::MPFVideoJob &job) override;
 

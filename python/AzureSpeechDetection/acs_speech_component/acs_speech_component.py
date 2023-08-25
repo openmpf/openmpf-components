@@ -40,7 +40,6 @@ logging.getLogger('azure').setLevel('WARN')
 
 
 class AcsSpeechComponent(object):
-    detection_type = 'SPEECH'
 
     def __init__(self):
         logger.info('Creating instance of AcsSpeechDetectionProcessor')
