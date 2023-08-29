@@ -1,0 +1,3 @@
+a {} scene.
+photo of a {} scene.
+people in a {} environment.

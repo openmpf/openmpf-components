@@ -323,7 +323,7 @@ class AcsSpeechDetectionProcessor(object):
                 code = error_info.get('code')
                 msg = error_info.get('message')
                 raise mpf.DetectionError.DETECTION_FAILED.exception(
-                        f'Transcripton failed with code "{code}" and message "{msg}".')
+                        f'Transcription failed with code "{code}" and message "{msg}".')
 
             transcription = self.acs.get_transcription(result)
             logger.info('Speech-to-text processing complete')

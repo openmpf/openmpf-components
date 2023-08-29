@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:experimental
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -25,51 +27,38 @@
 #############################################################################
 
 ARG MODELS_REGISTRY=openmpf/
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
+FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:7.2.0 as models
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-FROM ${MODELS_REGISTRY}openmpf_ocv_yolo_detection_triton_models:6.5 as models
+COPY --from=models /models/ViT-B-32.pt /models/ViT-B-32.pt
 
-
-FROM nvcr.io/nvidia/tritonserver:21.06-py3 as openmpf_triton_server
-
-SHELL ["/bin/bash", "-o", "errexit", "-o", "pipefail", "-c"]
-
-# Weights will later be used to generate TensorRT engine files in the entrypoint.
-COPY --from=models /models/yolov4.wts /model-gen/yolo/yolov4.wts
-
-RUN wget -O- https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
-        | apt-key add -;
-
-RUN apt-mark hold cuda-nvrtc-dev-11-1 cuda-nvrtc-11-1 datacenter-gpu-manager libcudnn8-dev; \
+RUN --mount=type=tmpfs,target=/var/cache/apt \
+    --mount=type=tmpfs,target=/var/lib/apt/lists  \
+    --mount=type=tmpfs,target=/tmp \
     apt-get update; \
-    apt-get upgrade -y; \
-    apt-get install -y cmake; \
-    rm -rf /var/lib/apt/lists/*
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y wget
 
-# Generate binaries that will later be used to generate TensorRT engine files in the entrypoint.
-# Also, generate TensorRT plugin libraries.
+RUN pip3 install --upgrade pip
+
+RUN pip3 install ftfy regex tqdm
+
 RUN --mount=type=tmpfs,target=/tmp \
-    cd /tmp; \
-    curl --location 'https://github.com/openmpf/yolov4-triton-tensorrt/archive/refs/heads/openmpf/dim-608.tar.gz' \
-        | tar --extract --gzip; \
-    cd yolov4-triton-tensorrt-openmpf-dim-608; \
-    mkdir -p /plugins; \
-    mkdir build.608; \
-    cd build.608; \
-    cmake ..; \
-    make; \
-    mv main /model-gen/yolo/gen-engine-608; \
-    mv libyolo608layerplugin.so /plugins/libyolo608layerplugin.so
+        mkdir /tmp/CLIP; \
+        wget -O- 'https://github.com/openai/CLIP/tarball/master' \
+            | tar --extract --gzip --directory /tmp/CLIP; \
+        cd /tmp/CLIP/*; \
+        pip3 install . 'torchvision==0.8.2'
 
-COPY models/yolo-608.config.pbtxt /models/yolo-608/config.pbtxt
+ARG RUN_TESTS=false
 
-COPY docker-entrypoint.sh /opt/tritonserver
-
-ENV LD_PRELOAD /plugins/libyolo608layerplugin.so
-
-ENTRYPOINT ["/opt/tritonserver/docker-entrypoint.sh"]
+RUN --mount=target=.,readwrite \
+    install-component.sh; \
+    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_clip.py; fi
 
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF Triton Server." \
+      org.label-schema.name="OpenMPF CLIP Detection" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \

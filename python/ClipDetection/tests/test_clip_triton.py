@@ -24,53 +24,48 @@
 # limitations under the License.                                            #
 #############################################################################
 
-ARG MODELS_REGISTRY=openmpf/
+import sys
+import os
+import logging
 
-FROM ${MODELS_REGISTRY}openmpf_ocv_yolo_detection_triton_models:6.5 as models
+# Add clip_component to path.
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from clip_component.clip_component import ClipComponent
+
+import unittest
+import mpf_component_api as mpf
+
+logging.basicConfig(level=logging.DEBUG)
+
+class TestClip(unittest.TestCase):
+
+    def test_image_file(self):
+        job = mpf.ImageJob(
+            job_name='test-image',
+            data_uri=self._get_test_file('collie.jpg'),
+            job_properties=dict(
+                NUMBER_OF_CLASSIFICATIONS = 10,
+                NUMBER_OF_TEMPLATES = 80,
+                CLASSIFICATION_LIST = 'imagenet',
+                ENABLE_CROPPING='False', 
+                ENABLE_TRITON='True',
+                TRITON_SERVER='clip-detection-server:8001'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )      
+        result = list(ClipComponent().get_detections_from_image(job))[0]
+        self.assertTrue("collie" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]) or "Border collie" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
+        
+
+    @staticmethod
+    def _get_test_file(filename):
+        return os.path.join(os.path.dirname(__file__), 'data', filename)
+    
+    @staticmethod
+    def _output_to_list(output):
+        return [elt.strip() for elt in output.split('; ')]
 
 
-FROM nvcr.io/nvidia/tritonserver:21.06-py3 as openmpf_triton_server
-
-SHELL ["/bin/bash", "-o", "errexit", "-o", "pipefail", "-c"]
-
-# Weights will later be used to generate TensorRT engine files in the entrypoint.
-COPY --from=models /models/yolov4.wts /model-gen/yolo/yolov4.wts
-
-RUN wget -O- https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
-        | apt-key add -;
-
-RUN apt-mark hold cuda-nvrtc-dev-11-1 cuda-nvrtc-11-1 datacenter-gpu-manager libcudnn8-dev; \
-    apt-get update; \
-    apt-get upgrade -y; \
-    apt-get install -y cmake; \
-    rm -rf /var/lib/apt/lists/*
-
-# Generate binaries that will later be used to generate TensorRT engine files in the entrypoint.
-# Also, generate TensorRT plugin libraries.
-RUN --mount=type=tmpfs,target=/tmp \
-    cd /tmp; \
-    curl --location 'https://github.com/openmpf/yolov4-triton-tensorrt/archive/refs/heads/openmpf/dim-608.tar.gz' \
-        | tar --extract --gzip; \
-    cd yolov4-triton-tensorrt-openmpf-dim-608; \
-    mkdir -p /plugins; \
-    mkdir build.608; \
-    cd build.608; \
-    cmake ..; \
-    make; \
-    mv main /model-gen/yolo/gen-engine-608; \
-    mv libyolo608layerplugin.so /plugins/libyolo608layerplugin.so
-
-COPY models/yolo-608.config.pbtxt /models/yolo-608/config.pbtxt
-
-COPY docker-entrypoint.sh /opt/tritonserver
-
-ENV LD_PRELOAD /plugins/libyolo608layerplugin.so
-
-ENTRYPOINT ["/opt/tritonserver/docker-entrypoint.sh"]
-
-LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF Triton Server." \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.url="https://openmpf.github.io" \
-      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
-      org.label-schema.vendor="MITRE"
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
