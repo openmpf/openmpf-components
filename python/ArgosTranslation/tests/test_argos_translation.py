@@ -50,7 +50,7 @@ LONG_OUTPUT = (
     "which derive their legitimate powers from the consent of the governed. "
     "Whenever a form of government becomes destroyer of these principles, "
     "the people have the right to reform or abolish it and to institute a new government "
-    "that is founded on these principles, and to organize their powers in the way that in "
+    "that is founded on those principles, and to organize their powers in the way that in "
     "their opinion will offer the greatest chance of achieving their security and happiness."
 )
 

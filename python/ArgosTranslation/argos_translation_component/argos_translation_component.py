@@ -224,7 +224,10 @@ class TranslationWrapper:
                 return
 
             if self._from_lang == "":
-                raise mpf.DetectionError.MISSING_PROPERTY.exception("LANGUAGE_FEED_FORWARD_PROP mismatch and no DEFAULT_SOURCE_LANGUAGE provided.")
+                raise mpf.DetectionError.MISSING_PROPERTY.exception(
+                    'None of the properties from "LANGUAGE_FEED_FORWARD_PROP" '
+                    f'({self._lang_prop_names}) were found in the feed forward track and no '
+                    '"DEFAULT_SOURCE_LANGUAGE" was provided.')
 
             if self._from_lang != "" and self._from_lang not in self.supported_languages:
                 raise mpf.DetectionError.DETECTION_FAILED.exception(
