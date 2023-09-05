@@ -37,7 +37,6 @@ logger = logging.getLogger('ArgosTranslationComponent')
 
 
 class ArgosTranslationComponent:
-    detection_type = 'TRANSLATION'
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         logger.info(f'Received video job.')
