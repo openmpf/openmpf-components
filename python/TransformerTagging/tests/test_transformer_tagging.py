@@ -25,16 +25,18 @@
 #############################################################################
 
 from pathlib import Path
-import sys
+import logging
 import unittest
 
 import mpf_component_api as mpf
 
 from transformer_tagging_component import TransformerTaggingComponent
 
-LOCAL_PATH = Path(__file__).parent
-sys.path.insert(0, str(LOCAL_PATH.parent))
-TEST_DATA = LOCAL_PATH / 'data'
+
+TEST_DATA = Path(__file__).parent / 'data'
+TEST_CONFIG = Path(__file__).parent / 'config'
+
+logging.basicConfig(level=logging.DEBUG)
 
 SHORT_SAMPLE = (
     'I drove to the beach today and will be staying overnight at a hotel. '
@@ -46,10 +48,10 @@ SHORT_SAMPLE = (
 SHORT_SAMPLE_TAGS = "TRAVEL"
 SHORT_SAMPLE_TRIGGER_SENTENCES = "I drove to the beach today and will be staying overnight at a hotel."
 SHORT_SAMPLE_OFFSET = "0-67"
-SHORT_SAMPLE_SCORE = "0.4680028557777405"
+SHORT_SAMPLE_SCORE = 0.4680028557777405
 
 
-class TestArgosTranslation(unittest.TestCase):
+class TestTransformerTagging(unittest.TestCase):
 
     def test_generic_job(self):
         ff_track = mpf.GenericTrack(-1, dict(TEXT=SHORT_SAMPLE))
@@ -64,7 +66,7 @@ class TestArgosTranslation(unittest.TestCase):
         self.assertEqual(SHORT_SAMPLE_TAGS, props["TAGS"])
         self.assertEqual(SHORT_SAMPLE_TRIGGER_SENTENCES, props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_SAMPLE_OFFSET, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
-        self.assertEqual(SHORT_SAMPLE_SCORE, props["TEXT TRAVEL TRIGGER SENTENCES SCORE"])
+        self.assertAlmostEqual(SHORT_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
 
     def test_plaintext_job(self):
         job = mpf.GenericJob('Test Plaintext', str(TEST_DATA / 'simple_input.txt'), {}, {})
@@ -78,7 +80,7 @@ class TestArgosTranslation(unittest.TestCase):
         self.assertEqual(SHORT_SAMPLE_TAGS, props["TAGS"])
         self.assertEqual(SHORT_SAMPLE_TRIGGER_SENTENCES, props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_SAMPLE_OFFSET, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
-        self.assertEqual(SHORT_SAMPLE_SCORE, props["TEXT TRAVEL TRIGGER SENTENCES SCORE"])
+        self.assertAlmostEqual(SHORT_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
 
     def test_audio_job(self):
         ff_track = mpf.AudioTrack(0, 1, -1, dict(TEXT=SHORT_SAMPLE))
@@ -93,7 +95,7 @@ class TestArgosTranslation(unittest.TestCase):
         self.assertEqual(SHORT_SAMPLE_TAGS, props["TAGS"])
         self.assertEqual(SHORT_SAMPLE_TRIGGER_SENTENCES, props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_SAMPLE_OFFSET, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
-        self.assertEqual(SHORT_SAMPLE_SCORE, props["TEXT TRAVEL TRIGGER SENTENCES SCORE"])
+        self.assertAlmostEqual(SHORT_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
 
     def test_image_job(self):
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SHORT_SAMPLE))
@@ -108,7 +110,7 @@ class TestArgosTranslation(unittest.TestCase):
         self.assertEqual(SHORT_SAMPLE_TAGS, props["TAGS"])
         self.assertEqual(SHORT_SAMPLE_TRIGGER_SENTENCES, props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_SAMPLE_OFFSET, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
-        self.assertEqual(SHORT_SAMPLE_SCORE, props["TEXT TRAVEL TRIGGER SENTENCES SCORE"])
+        self.assertAlmostEqual(SHORT_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
 
     def test_video_job(self):
         ff_track = mpf.VideoTrack(
@@ -128,19 +130,19 @@ class TestArgosTranslation(unittest.TestCase):
         self.assertEqual(SHORT_SAMPLE_TAGS, props["TAGS"])
         self.assertEqual(SHORT_SAMPLE_TRIGGER_SENTENCES, props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_SAMPLE_OFFSET, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
-        self.assertEqual(SHORT_SAMPLE_SCORE, props["TEXT TRAVEL TRIGGER SENTENCES SCORE"])
+        self.assertAlmostEqual(SHORT_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
 
         frame_1_props = result[0].frame_locations[0].detection_properties
         self.assertEqual(SHORT_SAMPLE_TAGS, frame_1_props["TAGS"])
         self.assertEqual(SHORT_SAMPLE_TRIGGER_SENTENCES, frame_1_props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_SAMPLE_OFFSET, frame_1_props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
-        self.assertEqual(SHORT_SAMPLE_SCORE, frame_1_props["TEXT TRAVEL TRIGGER SENTENCES SCORE"])
+        self.assertAlmostEqual(SHORT_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
 
         frame_2_props = result[0].frame_locations[1].detection_properties
         self.assertEqual(SHORT_SAMPLE_TAGS, frame_2_props["TAGS"])
         self.assertEqual(SHORT_SAMPLE_TRIGGER_SENTENCES, frame_2_props["TRANSCRIPT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_SAMPLE_OFFSET, frame_2_props["TRANSCRIPT TRAVEL TRIGGER SENTENCES OFFSET"])
-        self.assertEqual(SHORT_SAMPLE_SCORE, frame_2_props["TRANSCRIPT TRAVEL TRIGGER SENTENCES SCORE"])
+        self.assertAlmostEqual(SHORT_SAMPLE_SCORE, float(frame_2_props["TRANSCRIPT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
 
     def test_no_feed_forward_location(self):
         comp = TransformerTaggingComponent()
@@ -177,20 +179,20 @@ class TestArgosTranslation(unittest.TestCase):
         self.assertEqual("TRAVEL; FINANCIAL", props["TAGS"])
         self.assertEqual(SHORT_SAMPLE_TRIGGER_SENTENCES, props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_SAMPLE_OFFSET, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
-        self.assertEqual(SHORT_SAMPLE_SCORE, props["TEXT TRAVEL TRIGGER SENTENCES SCORE"])
+        self.assertAlmostEqual(SHORT_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
 
         custom_threshold_sentence = "She will drop by to check on them after stopping by the bank."
         custom_threshold_sentence_offset = "135-195"
-        custom_threshold_sentence_score = "0.2906474769115448"
+        custom_threshold_sentence_score = 0.2906474769115448
 
         self.assertEqual(custom_threshold_sentence, props["TEXT FINANCIAL TRIGGER SENTENCES"])
         self.assertEqual(custom_threshold_sentence_offset, props["TEXT FINANCIAL TRIGGER SENTENCES OFFSET"])
-        self.assertEqual(custom_threshold_sentence_score, props["TEXT FINANCIAL TRIGGER SENTENCES SCORE"])
+        self.assertAlmostEqual(custom_threshold_sentence_score, float(props["TEXT FINANCIAL TRIGGER SENTENCES SCORE"]), places=3)
 
     def test_custom_tagging_file(self):
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SHORT_SAMPLE))
         job = mpf.ImageJob('Test Image', 'test.jpg',
-                           dict(TRANSFORMER_TAGGING_CORPUS="config/custom_corpus.json"), {}, ff_loc)
+                           dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "custom_corpus.json")), {}, ff_loc)
 
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_image(job)
