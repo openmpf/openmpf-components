@@ -116,7 +116,7 @@ class TransformerWrapper:
             mpf_util.get_property(
                 properties=job_props,
                 key='FEED_FORWARD_PROP_TO_PROCESS',
-                default_value='TEXT,TRANSCRIPT',
+                default_value='TEXT,TRANSCRIPT,TRANSLATION',
                 prop_type=str
             ).split(',')
         ]
@@ -133,6 +133,7 @@ class TransformerWrapper:
 
         if os.path.exists(self._corpus_path):
             self.corpus = pd.read_json(self._corpus_path)
+            logger.info("Successfully read corpus json.")
         else:
             print(self._corpus_path)
             logger.exception('Failed to complete job due incorrect file path for the transformer tagging corpus: '
@@ -143,6 +144,8 @@ class TransformerWrapper:
                 mpf.DetectionError.COULD_NOT_READ_DATAFILE)
 
         self.threshold = mpf_util.get_property(job_props, 'SCORE_THRESHOLD', .3)
+
+        # if debug is true will return which corpus sentences triggered the match
         self.debug = mpf_util.get_property(job_props, 'ENABLE_DEBUG', False)
 
     def add_tags(self, ff_props: Dict[str, str]):
@@ -162,13 +165,16 @@ class TransformerWrapper:
 
         all_tag_results = []
 
+        # for each sentence in input
         for probe_sent in input_sentences:
+            # get similarity scores for the input sentence with each corpus sentence
             probe_sent_embed = self.model.encode([probe_sent] * len(self.corpus), convert_to_tensor=True)
             corpus_embed = self.model.encode(self.corpus["text"], convert_to_tensor=True)
 
             cosine_scores = util.cos_sim(probe_sent_embed, corpus_embed)
             scores = []
 
+            # get offset of the input sentence in the input text
             offset_beginning = input_text.find(probe_sent)
             offset_end = offset_beginning + len(probe_sent) - 1
             offset_string = str(offset_beginning) + "-" + str(offset_end)
@@ -184,17 +190,23 @@ class TransformerWrapper:
                 "offset": offset_string
             })
 
+            # sort by score then group by tag so each group will be sorted highest to lowest score,
+            # then take top row for each group
             probe_df = probe_df.sort_values(by=['score'], ascending=False)
             top_per_tag = probe_df.groupby(['tag'], sort=False).head(1)
 
+            # filter out results that are below threshold
             top_per_tag_threshold = top_per_tag[top_per_tag["score"] >= self.threshold]
             all_tag_results.append(top_per_tag_threshold)
 
+        # if no tags found in text return
         if not all_tag_results:
             return
 
         all_tag_results = pd.concat(all_tag_results)
 
+        # create detection properties for each tag found in the text
+        # detection properties formatted as <input property> <tag> TRIGGER SENTENCES...
         for tag in all_tag_results["tag"].unique():
             tag_df = all_tag_results[all_tag_results["tag"] == tag]
 
@@ -212,5 +224,6 @@ class TransformerWrapper:
             ff_props[prop_name_score] = "; ".join(tag_df["score"].astype(str))
 
             if self.debug:
+                logger.info("Debug set to true, including corpus sentences that triggered the match.")
                 prop_name_matches = prop_name_sent + " MATCHES"
                 ff_props[prop_name_matches] = "; ".join(tag_df["corpus text"])

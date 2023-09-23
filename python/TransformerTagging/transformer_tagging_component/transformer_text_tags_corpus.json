@@ -52,7 +52,11 @@
     "tag": "vehicle"
   },
   {
-    "text": "This sentence is financ.",
+    "text": "This sentence is finance.",
+    "tag": "financial"
+  },
+  {
+    "text": "This sentence is financial.",
     "tag": "financial"
   },
   {

@@ -199,6 +199,21 @@ class TestTransformerTagging(unittest.TestCase):
 
         self.assertEqual(1, len(result))
 
+        props = result[0].detection_properties
+
+        beach_sentences = 'I drove to the beach today and will be staying overnight at a hotel.; ' \
+                          'I plan to spend all day at the beach tomorrow.'
+
+        beach_score_1 = 0.4417020082473755
+        beach_score_2 = 0.4624265432357788
+        beach_score_result_1, beach_score_result_2 = props["TEXT BEACH TRIGGER SENTENCES SCORE"].split(";")
+
+        self.assertEqual("BEACH", props["TAGS"])
+        self.assertEqual(beach_sentences, props["TEXT BEACH TRIGGER SENTENCES"])
+        self.assertEqual('0-67; 197-242', props["TEXT BEACH TRIGGER SENTENCES OFFSET"])
+        self.assertAlmostEqual(beach_score_1, float(beach_score_result_1), places=3)
+        self.assertAlmostEqual(beach_score_2, float(beach_score_result_2), places=3)
+
     def test_debugging_show_matches(self):
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SHORT_SAMPLE))
         job = mpf.ImageJob('Test Image', 'test.jpg', {}, {}, ff_loc)
