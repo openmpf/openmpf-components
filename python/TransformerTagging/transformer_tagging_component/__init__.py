@@ -24,4 +24,4 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from .transformer_tagging_component import TransformerTaggingComponent, TransformerWrapper
+from .transformer_tagging_component import TransformerTaggingComponent

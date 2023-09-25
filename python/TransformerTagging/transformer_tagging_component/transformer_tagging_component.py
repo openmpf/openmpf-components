@@ -31,7 +31,7 @@ import mpf_component_util as mpf_util
 
 from sentence_transformers import SentenceTransformer, util
 
-from typing import Sequence, Dict
+from typing import Sequence, Dict, Mapping
 import pathlib
 import os
 import time
@@ -42,11 +42,14 @@ import pandas as pd
 
 logger = logging.getLogger('TransformerTaggingComponent')
 
-corpus_wrappers = {}
-
 
 class TransformerTaggingComponent:
     detection_type = 'TEXT'
+
+    def __init__(self):
+        self._cached_model = SentenceTransformer('all-mpnet-base-v2')
+        self._cached_corpuses: Dict[str, Corpus] = {}
+
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         logger.info(f'Received video job.')
@@ -85,8 +88,9 @@ class TransformerTaggingComponent:
                 'FEED_FORWARD_PROP_TO_PROCESS': 'TEXT'
             }
 
-            tw = self._get_wrapper(new_job_props)
-            tw.add_tags(new_ff_props)
+            config = JobConfig(new_job_props)
+            corpus = self._get_corpus(config.corpus_path)
+            self._add_tags(config, corpus, new_ff_props)
 
             return [ff_track]
 
@@ -98,12 +102,14 @@ class TransformerTaggingComponent:
                     f'Component can only process feed forward '
                     ' jobs, but no feed forward track provided. ')
 
-            tw = self._get_wrapper(job.job_properties)
-            tw.add_tags(job_feed_forward.detection_properties)
+            config = JobConfig(job.job_properties)
+            corpus = self._get_corpus(config.corpus_path)
+
+            self._add_tags(config, corpus, job_feed_forward.detection_properties)
 
             if video_job:
                 for ff_location in job.feed_forward_track.frame_locations.values():
-                    tw.add_tags(ff_location.detection_properties)
+                    self._add_tags(config, corpus, ff_location.detection_properties)
 
             return [job_feed_forward]
 
@@ -113,63 +119,15 @@ class TransformerTaggingComponent:
             raise
 
 
-    @staticmethod
-    def _get_wrapper(job_props):
-        corpus_file = \
-            mpf_util.get_property(job_props, 'TRANSFORMER_TAGGING_CORPUS', "transformer_text_tags_corpus.json")
-        
-        corpus_path = ""
-        if "$" not in corpus_file and "/" not in corpus_file:
-            corpus_path = os.path.realpath(resource_filename(__name__, corpus_file))
-        else:
-            corpus_path = os.path.expandvars(corpus_file)
+    def _get_corpus(self, corpus_path):
+        if not corpus_path in self._cached_corpuses:
+            self._cached_corpuses[corpus_path] = Corpus(corpus_path, self._cached_model)
 
-        if not os.path.exists(corpus_path):
-            logger.exception('Failed to complete job due incorrect file path for the transformer tagging corpus: '
-                             f'"{corpus_file}"')
-            raise mpf.DetectionException(
-                'Invalid path provided for transformer tagging corpus: '
-                f'"{corpus_file}"',
-                mpf.DetectionError.COULD_NOT_READ_DATAFILE)
-        
-        if not corpus_path in corpus_wrappers:
-            corpus_wrappers[corpus_path] = TransformerWrapper(job_props, corpus_path)
-
-        return corpus_wrappers[corpus_path]
+        return self._cached_corpuses[corpus_path]
         
 
-class TransformerWrapper:
-
-    def __init__(self, job_props, corpus_path):
-        self._model = SentenceTransformer('all-mpnet-base-v2')
-
-        self._corpus_path = corpus_path
-
-        self._props_to_process = [
-            prop.strip() for prop in
-            mpf_util.get_property(
-                properties=job_props,
-                key='FEED_FORWARD_PROP_TO_PROCESS',
-                default_value='TEXT,TRANSCRIPT,TRANSLATION',
-                prop_type=str
-            ).split(',')
-        ]
-
-        self._threshold = mpf_util.get_property(job_props, 'SCORE_THRESHOLD', .3)
-
-        # if debug is true will return which corpus sentences triggered the match
-        self._debug = mpf_util.get_property(job_props, 'ENABLE_DEBUG', False)
-
-        self._corpus = pd.read_json(self._corpus_path)
-
-        start = time.time()
-        self._corpus_embed = self._model.encode(self._corpus["text"], convert_to_tensor=True, show_progress_bar=False)
-        elapsed = time.time() - start
-        logger.info(f"Successfully encoded corpus in {elapsed} seconds.")
-      
-
-    def add_tags(self, ff_props: Dict[str, str]):
-        for prop_to_tag in self._props_to_process:
+    def _add_tags(self, config, corpus, ff_props: Dict[str, str]):
+        for prop_to_tag in config.props_to_process:
             input_text = ff_props.get(prop_to_tag, None)
             if input_text:
                 break
@@ -178,7 +136,7 @@ class TransformerWrapper:
                 break
         else:
             logger.warning("Feed forward element missing one of the following properties: "
-                           + ", ".join(self._props_to_process))
+                           + ", ".join(config.props_to_process))
             return
 
         input_sentences = sent_tokenize(input_text)
@@ -188,8 +146,8 @@ class TransformerWrapper:
         # for each sentence in input
         for probe_sent in input_sentences:
             # get similarity scores for the input sentence with each corpus sentence
-            probe_sent_embed = self._model.encode(probe_sent, convert_to_tensor=True, show_progress_bar=False)
-            scores = [float(util.cos_sim(probe_sent_embed, corpus_sent_embed)) for corpus_sent_embed in self._corpus_embed]
+            probe_sent_embed = self._cached_model.encode(probe_sent, convert_to_tensor=True, show_progress_bar=False)
+            scores = [float(util.cos_sim(probe_sent_embed, corpus_sent_embed)) for corpus_sent_embed in corpus.embed]
 
             # get offset of the input sentence in the input text
             offset_beginning = input_text.find(probe_sent)
@@ -198,8 +156,8 @@ class TransformerWrapper:
 
             probe_df = pd.DataFrame({
                 "input text": probe_sent,
-                "corpus text": self._corpus["text"],
-                "tag": self._corpus["tag"],
+                "corpus text": corpus.json["text"],
+                "tag": corpus.json["tag"],
                 "score": scores,
                 "offset": offset_string
             })
@@ -210,7 +168,7 @@ class TransformerWrapper:
             top_per_tag = probe_df.groupby(['tag'], sort=False).head(1)
 
             # filter out results that are below threshold
-            top_per_tag_threshold = top_per_tag[top_per_tag["score"] >= self._threshold]
+            top_per_tag_threshold = top_per_tag[top_per_tag["score"] >= config.threshold]
             all_tag_results.append(top_per_tag_threshold)
 
         # if no tags found in text return
@@ -237,7 +195,53 @@ class TransformerWrapper:
             ff_props[prop_name_offset] = "; ".join(tag_df["offset"])
             ff_props[prop_name_score] = "; ".join(tag_df["score"].astype(str))
 
-            if self._debug:
+            if config.debug:
                 logger.info("Debug set to true, including corpus sentences that triggered the match.")
                 prop_name_matches = prop_name_sent + " MATCHES"
                 ff_props[prop_name_matches] = "; ".join(tag_df["corpus text"])
+
+
+class Corpus:
+    def __init__(self, corpus_path, model):
+        self.json = pd.read_json(corpus_path)
+
+        start = time.time()
+        self.embed= model.encode(self.json["text"], convert_to_tensor=True, show_progress_bar=False)
+        elapsed = time.time() - start
+        logger.info(f"Successfully encoded corpus in {elapsed} seconds.")
+
+
+class JobConfig:
+    def __init__(self, props: Mapping[str, str]):
+
+        self.props_to_process = [
+            prop.strip() for prop in
+            mpf_util.get_property(
+                properties=props,
+                key='FEED_FORWARD_PROP_TO_PROCESS',
+                default_value='TEXT,TRANSCRIPT,TRANSLATION',
+                prop_type=str
+            ).split(',')
+        ]
+
+        self.threshold = mpf_util.get_property(props, 'SCORE_THRESHOLD', .3)
+
+        # if debug is true will return which corpus sentences triggered the match
+        self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
+
+        self.corpus_file = \
+            mpf_util.get_property(props, 'TRANSFORMER_TAGGING_CORPUS', "transformer_text_tags_corpus.json")
+        
+        self.corpus_path = ""
+        if "$" not in self.corpus_file and "/" not in self.corpus_file:
+            self.corpus_path = os.path.realpath(resource_filename(__name__, self.corpus_file))
+        else:
+            self.corpus_path = os.path.expandvars(self.corpus_file)
+
+        if not os.path.exists(self.corpus_path):
+            logger.exception('Failed to complete job due incorrect file path for the transformer tagging corpus: '
+                             f'"{self.corpus_file}"')
+            raise mpf.DetectionException(
+                'Invalid path provided for transformer tagging corpus: '
+                f'"{self.corpus_file}"',
+                mpf.DetectionError.COULD_NOT_READ_DATAFILE)
