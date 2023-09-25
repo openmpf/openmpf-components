@@ -33,13 +33,13 @@
         },
         {
           "name": "TRANSFORMER_TAGGING_CORPUS",
-          "description": "",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used for matching sentences. Will default to the plugin's config folder unless an alternate path to corpus file is specified (i.e. `$MPF_HOME/.../transformer_text_tags_corpus.json`).",
           "type": "STRING",
           "defaultValue": "transformer_text_tags_corpus.json"
         },
         {
           "name": "ENABLE_DEBUG",
-          "description": "",
+          "description": "If true, each detection will include a `TEXT [TAG] TRIGGER SENTENCES MATCHES` property for each entry in `TAGS`. The value will be the sentence in the corpus which generated the highest match score for that tag.",
           "type": "BOOLEAN",
           "defaultValue": "FALSE"
         }
