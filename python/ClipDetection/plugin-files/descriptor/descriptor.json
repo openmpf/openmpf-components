@@ -22,6 +22,12 @@
             ],
             "properties": [
                 {
+                    "name": "MODEL_NAME",
+                    "description": "Specifies which CLIP model to load for inferencing. The only available models are 'ViT-L/14' and 'ViT-B/32'.",
+                    "type": "STRING",
+                    "defaultValue": "ViT-L/14"
+                },
+                {
                     "name": "NUMBER_OF_CLASSIFICATIONS",
                     "description": "The number of classifications, N, to be returned. The N highest confidence classifications found by the network will be returned with their associated confidence values. The value must be greater than 0, and less than the size of the model output layer.",
                     "type": "INT",
@@ -78,6 +84,12 @@
                 {
                     "name": "DETECTION_FRAME_BATCH_SIZE",
                     "description": "Number of frames to batch inference when processing video. GPU VRAM dependant.",
+                    "type": "INT",
+                    "defaultValue": "64"
+                },
+                {
+                    "name": "DETECTION_FRAME_BATCH_SIZE_TRITON",
+                    "description": "Number of frames to batch inference when processing video with Triton. GPU VRAM dependant.",
                     "type": "INT",
                     "defaultValue": "32"
                 }

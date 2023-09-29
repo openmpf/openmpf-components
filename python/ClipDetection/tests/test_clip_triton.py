@@ -56,7 +56,7 @@ class TestClipTriton(unittest.TestCase):
         )      
         result = list(ClipComponent().get_detections_from_image(job))[0]
         self.assertTrue("collie" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]) or "Border collie" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
-        
+    
     @staticmethod
     def _get_test_file(filename):
         return os.path.join(os.path.dirname(__file__), 'data', filename)

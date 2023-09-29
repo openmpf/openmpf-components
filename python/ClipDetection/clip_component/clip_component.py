@@ -30,7 +30,6 @@ import csv
 from pkg_resources import resource_filename
 from itertools import islice
 from typing import Iterable, Mapping
-import time
 
 from PIL import Image
 import cv2
@@ -54,7 +53,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     detection_type = 'CLASS'
 
     def __init__(self):
-        self._wrapper = ClipWrapper()
+        self._model_wrappers = {}
 
     @staticmethod
     def _get_prop(job_properties, key, default_value, accep_values=[]):
@@ -67,7 +66,9 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         return prop
 
     def _parse_properties(self, job_properties):
-        batch_size = self._get_prop(job_properties, "DETECTION_FRAME_BATCH_SIZE", 16)
+        model_name = self._get_prop(job_properties, "MODEL_NAME", "ViT-L/14", ["ViT-L/14", "ViT-B/32"])
+        batch_size = self._get_prop(job_properties, "DETECTION_FRAME_BATCH_SIZE", 64)
+        batch_size_triton = self._get_prop(job_properties, "DETECTION_FRAME_BATCH_SIZE_TRITON", 32)
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
         classification_path = os.path.expandvars(self._get_prop(job_properties, "CLASSIFICATION_PATH", ''))
         enable_cropping = self._get_prop(job_properties, "ENABLE_CROPPING", True)
@@ -79,7 +80,9 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         triton_server = self._get_prop(job_properties, "TRITON_SERVER", 'clip-detection-server:8001')
 
         return dict(
+            model_name = model_name,
             batch_size = batch_size,
+            batch_size_triton = batch_size_triton,
             classification_list = classification_list,
             classification_path = classification_path,
             enable_cropping = enable_cropping,
@@ -99,7 +102,8 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
 
         num_detections = 0
         try:
-            detections = self._wrapper.get_classifications((image,), **kwargs)
+            wrapper = self._get_model_wrapper(kwargs['model_name'])
+            detections = wrapper.get_classifications((image,), **kwargs)
             for detection in detections:
                 yield detection
                 num_detections += 1
@@ -132,13 +136,18 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
                                           video_capture: mpf_util.VideoCapture) -> Iterable[mpf.VideoTrack]:
         logger.info("Received video job: %s", video_job)
         kwargs = self._parse_properties(video_job.job_properties)
+        if kwargs['enable_triton']:
+            batch_size = kwargs['batch_size_triton']
+        else:
+            batch_size = kwargs['batch_size']
         
-        batch_gen = self._batches_from_video_capture(video_capture, kwargs['batch_size'])
+        batch_gen = self._batches_from_video_capture(video_capture, batch_size)
         detections = []
+        wrapper = self._get_model_wrapper(kwargs['model_name'])
 
         for n, batch in batch_gen:
             try:
-                detection = list(islice(self._wrapper.get_classifications(batch, **kwargs), n))
+                detection = list(islice(wrapper.get_classifications(batch, **kwargs), n))
                 detections += detection
             except Exception as e:
                 logger.exception(f"Job failed due to: {e}")
@@ -148,13 +157,21 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         logger.info(f"Job complete. Found {len(tracks)} detection{'' if len(tracks) == 1 else 's'}.")
         return tracks
 
+    def _get_model_wrapper(self, model_name):
+        if model_name not in self._model_wrappers:
+            self._model_wrappers[model_name] = ClipWrapper(model_name)
+
+        return self._model_wrappers[model_name]
+
 class ClipWrapper(object):
-    def __init__(self):
+    def __init__(self, model_name='ViT-L/14'):
         logger.info("Loading model...")
-        model, _ = clip.load('ViT-B/32', device=device, download_root='/models')
+        model, _ = clip.load(model_name, device=device, download_root='/models')
         logger.info("Model loaded.")
+
         self._model = model
         self._preprocessor = None
+        self._input_resolution = self._model.visual.input_resolution
 
         self._classification_path = ''
         self._template_path = ''
@@ -168,13 +185,15 @@ class ClipWrapper(object):
         self._triton_server_url = None
     
     def get_classifications(self, images, **kwargs) -> Iterable[mpf.ImageLocation]:
-        self._check_template_list(kwargs['template_path'], kwargs['num_templates'])
-        self._check_class_list(kwargs['classification_path'], kwargs['classification_list'])
+        templates_changed = self._check_template_list(kwargs['template_path'], kwargs['num_templates'])
+        self._check_class_list(kwargs['classification_path'], kwargs['classification_list'], templates_changed)
 
-        self._preprocessor = ImagePreprocessor(kwargs['enable_cropping'])
+        self._preprocessor = ImagePreprocessor(kwargs['enable_cropping'], self._input_resolution)
         images = [Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)) for image in images]
         image_sizes = [image.size for image in images]
         torch_imgs = torch.stack([self._preprocessor.preprocess(image).squeeze(0) for image in images]).to(device)
+        if kwargs['enable_cropping']:
+            torch_imgs = torch_imgs.squeeze(0)
 
         if kwargs['enable_triton']:
             if self._inferencing_server is None or kwargs['triton_server'] != self._triton_server_url:
@@ -185,10 +204,7 @@ class ClipWrapper(object):
             image_features = torch.Tensor(np.copy(results)).squeeze(0).to(device=device)
         else:
             with torch.no_grad():
-                if kwargs['enable_cropping']:
-                    image_features = self._model.encode_image(torch_imgs.squeeze(0)).float()
-                else:
-                    image_features = self._model.encode_image(torch_imgs).float()
+                image_features = self._model.encode_image(torch_imgs).float()
 
         with torch.no_grad():
             image_features /= image_features.norm(dim=-1, keepdim=True)
@@ -234,7 +250,7 @@ class ClipWrapper(object):
                 detection_properties = detection_properties
             )
 
-    def _check_template_list(self, template_path: str, number_of_templates: int) -> None:
+    def _check_template_list(self, template_path: str, number_of_templates: int) -> bool:
         if template_path != '':
             if (not os.path.exists(template_path)):
                 raise mpf.DetectionException(
@@ -248,6 +264,7 @@ class ClipWrapper(object):
                     logger.info("Updating templates...")
                     self._templates = self._get_templates_from_file(template_path)
                     logger.info("Templates updated.")
+                    return True
                 except:
                     raise mpf.DetectionException(
                         f"Could not read templates from {template_path}",
@@ -266,8 +283,10 @@ class ClipWrapper(object):
             logger.info("Updating templates...")
             self._templates = self._get_templates_from_file(template_path)
             logger.info("Templates updated.")
+            return True
+        return False
 
-    def _check_class_list(self, classification_path: str, classification_list: str) -> None:
+    def _check_class_list(self, classification_path: str, classification_list: str, templates_changed: bool) -> None:
         if classification_path != "":
             if (not os.path.exists(classification_path)):
                 raise mpf.DetectionException(
@@ -279,7 +298,7 @@ class ClipWrapper(object):
                 self._classification_list = classification_list.lower()
             classification_path = os.path.realpath(resource_filename(__name__, f'data/{self._classification_list}_classification_list.csv'))
         
-        if self._classification_path != classification_path:
+        if self._classification_path != classification_path or templates_changed:
             self._classification_path = classification_path
 
             try:
@@ -408,7 +427,8 @@ class ImagePreprocessor(object):
     Class that handles the preprocessing of images before being sent through the CLIP model.
     Values from T.Normalize() taken from OpenAI's code for CLIP, https://github.com/openai/CLIP/blob/main/clip/clip.py#L85
     '''
-    def __init__(self, enable_cropping: bool):
+    def __init__(self, enable_cropping: bool, image_size: int):
+        self.image_size = image_size
         if enable_cropping:
             self.preprocess = self.crop
         else:
@@ -424,16 +444,24 @@ class ImagePreprocessor(object):
 
     def resize_pad(self, image):
         width, height = image.width, image.height
-        resize_ratio = 224 / max(width, height)
-        new_w, new_h = (int(width * resize_ratio), int(height * resize_ratio))
+        resize_ratio = self.image_size / max(width, height)
+        new_w, new_h = (round(width * resize_ratio), round(height * resize_ratio))
 
+        # if width < self.image_size and height < self.image_size:
+        #     padding = ((self.image_size - width) // 2, (self.image_size - height) // 2, (self.image_size + 1 - width) // 2, (self.image_size + 1 - height) // 2)
+        #     new_img = T.Compose([
+        #         T.Pad(padding=padding),
+        #         T.ToTensor(),
+        #         T.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+        #     ])(image)
+        # else:
         if new_w < new_h:
-            left = (224 - new_w) // 2
-            right = (225 - new_w) // 2
+            left = (self.image_size - new_w) // 2
+            right = (self.image_size + 1 - new_w) // 2
             padding = (left, 0, right, 0)
         else:
-            top = (224 - new_h) // 2
-            bottom = (225 - new_h) // 2
+            top = (self.image_size - new_h) // 2
+            bottom = (self.image_size + 1 - new_h) // 2
             padding = (0, top, 0, bottom)
         
         new_img = T.Compose([
