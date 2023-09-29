@@ -6,6 +6,8 @@ This repository contains source code for the OpenMPF CLIP detection component. C
 
 The following are the properties that can be specified for the component. Each property has a default value and so none of them necessarily need to be specified for processing jobs.
 
+- `MODEL_NAME`: Something
+
 - `NUMBER_OF_CLASSIFICATIONS`: Specifies how many of the top classifications you want to return. The default value is set to 1, and so you'll only see the classification with the greatest confidence.
 
 - `CLASSIFICATION_PATH`: If specified, this allows the user to give the component a file path to their own list of classifications in a CSV file, if the COCO or ImageNet class lists aren't of interest. See below for the formatting that's required for that file.
@@ -24,7 +26,9 @@ The following are the properties that can be specified for the component. Each p
 
 - `TRITON_SERVER`: Specifies the Triton server `<host>:<port>` to use for inferencing. By default, this is set to 'clip-detection-server:8001'.
 
-- `DETECTION_FRAME_BATCH_SIZE`: Specifies the batch size when processing video files. By default, this is set to 32.
+- `DETECTION_FRAME_BATCH_SIZE`: Specifies the batch size when processing video files. By default, this is set to 64.
+
+- `DETECTION_FRAME_BATCH_SIZE_TRITON`: Something
 
 ## Detection Properties
 
@@ -56,6 +60,22 @@ tench,"tench, Tinca tinca"
 kite (bird of prey),kite
 magpie,magpie
 ```
+# Non-Triton Performance
+The table below shows the performance of this component on a Nvidia Tesla V100 32GB GPU, for varying batch sizes with both models:
+| Model Name | Batch Size | Total Time (seconds) | Average Time per Batch (seconds) | Average Images per Second |
+|------------|------------|----------------------|----------------------------------|---------------------------|
+|   ViT-B/32 |         16 |              38.5732 |                          0.04311 |                  371.1126 |
+|   ViT-B/32 |         32 |              37.3478 |                          0.08349 |                   383.289 |
+|   ViT-B/32 |         64 |              34.6141 |                           0.1548 |                  413.5598 |
+|   ViT-B/32 |        128 |               35.897 |                            0.321 |                  398.7798 |
+|   ViT-B/32 |        256 |              33.5689 |                           0.6003 |                  426.4364 |
+|   ViT-B/32 |        512 |              36.3621 |                           1.3006 |                  393.6791 |
+|   ViT-L/14 |         16 |             108.6101 |                           0.1214 |                  131.8017 |
+|   ViT-L/14 |         32 |             103.8613 |                           0.2322 |                   137.828 |
+|   ViT-L/14 |         64 |             101.1478 |                           0.4522 |                  141.5256 |
+|   ViT-L/14 |        128 |             102.0473 |                           0.9125 |                  140.2781 |
+|   ViT-L/14 |        256 |              99.6637 |                           1.7823 |                   143.633 |
+|   ViT-L/14 |        512 |             105.8889 |                           3.7873 |                  135.1889 |
 
 # Triton Performance
 The table below shows the performance of this component with Triton on a Nvidia Tesla V100 32GB GPU, for varying batch sizes:
