@@ -35,7 +35,7 @@
 #include "../Config.h"
 #include "../Frame.h"
 #include "YoloNetwork.h"
-#include "../WhitelistFilter.h"
+#include "../AllowListFilter.h"
 
 #include "BaseYoloNetworkImpl.h"
 
@@ -215,11 +215,11 @@ namespace {
 
 
     std::function<bool(const std::string &)> GetClassFilter(
-            const std::string &whiteListPath, const std::vector<std::string> &names) {
-        if (whiteListPath.empty()) {
+            const std::string &allowListPath, const std::vector<std::string> &names) {
+        if (allowListPath.empty()) {
             return [](const std::string &) { return true; };
         } else {
-            return WhitelistFilter(whiteListPath, names);
+            return AllowListFilter(allowListPath, names);
         }
     }
 
@@ -278,8 +278,8 @@ BaseYoloNetworkImpl::BaseYoloNetworkImpl(ModelSettings model_settings, const Con
           net_(config.tritonEnabled ? cv::dnn::Net() : LoadNetwork(modelSettings_, cudaDeviceId_, log_)),
           names_(LoadNames(net_, modelSettings_, config)),
           confusionMatrix_(LoadConfusionMatrix(modelSettings_.confusionMatrixFile, names_.size())),
-          classWhiteListPath_(config.classWhiteListPath),
-          classFilter_(GetClassFilter(classWhiteListPath_, names_)) {}
+          classAllowListPath_(config.classAllowListPath),
+          classFilter_(GetClassFilter(classAllowListPath_, names_)) {}
 
 BaseYoloNetworkImpl::~BaseYoloNetworkImpl() = default;
 
@@ -297,7 +297,7 @@ bool BaseYoloNetworkImpl::IsCompatible(const ModelSettings &modelSettings, const
            && modelSettings_.namesFile == modelSettings.namesFile
            && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
            && config.cudaDeviceId == cudaDeviceId_
-           && config.classWhiteListPath == classWhiteListPath_;
+           && config.classAllowListPath == classAllowListPath_;
 }
 
 void BaseYoloNetworkImpl::Finish() {}

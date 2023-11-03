@@ -24,7 +24,7 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#include "WhitelistFilter.h"
+#include "AllowListFilter.h"
 
 #include <fstream>
 
@@ -37,65 +37,65 @@ using namespace MPF::COMPONENT;
 
 namespace {
 
-    std::unordered_set<std::string> LoadWhitelist(
-            const std::string &whiteListPath, const std::vector<std::string> &names) {
+    std::unordered_set<std::string> LoadAllowlist(
+            const std::string &allowListPath, const std::vector<std::string> &names) {
         std::string expandedFilePath;
-        std::string error = Utils::expandFileName(whiteListPath, expandedFilePath);
+        std::string error = Utils::expandFileName(allowListPath, expandedFilePath);
         if (!error.empty()) {
             throw MPFInvalidPropertyException(
-                    "CLASS_WHITELIST_FILE",
-                    "The value, \"" + whiteListPath + "\", could not be expanded due to: "
+                    "CLASS_ALLOW_LIST_FILE",
+                    "The value, \"" + allowListPath + "\", could not be expanded due to: "
                     + error);
         }
 
-        std::ifstream whitelistFile(expandedFilePath);
-        if (!whitelistFile.good()) {
+        std::ifstream allowListFile(expandedFilePath);
+        if (!allowListFile.good()) {
             throw MPFDetectionException(
                     MPF_COULD_NOT_OPEN_DATAFILE,
-                    "Failed to load class whitelist that was supposed to be located at \""
+                    "Failed to load class allow list that was supposed to be located at \""
                     + expandedFilePath + "\".");
         }
 
-        std::unordered_set<std::string> tempWhitelist;
+        std::unordered_set<std::string> tempAllowList;
         std::string line;
-        while (std::getline(whitelistFile, line)) {
+        while (std::getline(allowListFile, line)) {
             Utils::trim(line);
             if (!line.empty()) {
-                tempWhitelist.insert(std::move(line));
+                tempAllowList.insert(std::move(line));
                 line = "";
             }
         }
 
-        if (tempWhitelist.empty()) {
+        if (tempAllowList.empty()) {
             throw MPFDetectionException(
                     MPF_COULD_NOT_READ_DATAFILE,
-                    "The class whitelist file located at \"" + expandedFilePath + "\" was empty.");
+                    "The class allow list file located at \"" + expandedFilePath + "\" was empty.");
         }
 
-        std::unordered_set<std::string> whitelist;
+        std::unordered_set<std::string> allowList;
         for (const std::string &name: names) {
-            if (tempWhitelist.count(name) > 0) {
-                whitelist.insert(name);
+            if (tempAllowList.count(name) > 0) {
+                allowList.insert(name);
             }
         }
 
-        if (whitelist.empty()) {
+        if (allowList.empty()) {
             throw MPFDetectionException(
                     MPF_COULD_NOT_READ_DATAFILE,
-                    "None of the class names specified in the whitelist file located at \""
+                    "None of the class names specified in the allow list file located at \""
                     + expandedFilePath + "\" were found in the names file.");
         }
-        return whitelist;
+        return allowList;
     }
 }
 
 
-WhitelistFilter::WhitelistFilter(const std::string &whiteListPath,
+AllowListFilter::AllowListFilter(const std::string &allowListPath,
                                  const std::vector<std::string> &names)
-        : whitelist_(LoadWhitelist(whiteListPath, names)) {
+        : allowList_(LoadAllowlist(allowListPath, names)) {
 }
 
 
-bool WhitelistFilter::operator()(const std::string &className) {
-    return whitelist_.count(className) > 0;
+bool AllowListFilter::operator()(const std::string &className) const {
+    return allowList_.count(className) > 0;
 }
