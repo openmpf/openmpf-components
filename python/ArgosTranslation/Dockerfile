@@ -30,7 +30,7 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-RUN pip3 install --no-cache-dir 'argostranslate==1.8.1'
+RUN pip3 install --no-cache-dir 'argostranslate==1.9.1'
 
 RUN argospm update
 
@@ -40,6 +40,7 @@ RUN argospm install translate-de_en && \
     argospm install translate-fr_en && \
     argospm install translate-ru_en && \
     argospm install translate-zh_en && \
+    argospm install translate-zt_en && \
     argospm install translate-es_en && \
     argospm install translate-ar_en
 

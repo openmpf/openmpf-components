@@ -24,14 +24,17 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from argostranslate import package, translate
-from typing import Sequence, Dict
+
+from typing import Sequence, Dict, Tuple
+
 import pathlib
-
 import logging
-
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
+from argostranslate import package, translate
+
+from .argos_language_mapper import ArgosLanguageMapper
 
 logger = logging.getLogger('ArgosTranslationComponent')
 
@@ -130,6 +133,16 @@ class TranslationWrapper:
             ).split(',')
         ]
 
+        self._script_prop_names = [
+            prop.strip() for prop in
+            mpf_util.get_property(
+                properties=job_props,
+                key='SCRIPT_FEED_FORWARD_PROP',
+                default_value='ISO_SCRIPT',
+                prop_type=str
+            ).split(',')
+        ]
+
         self._from_lang = mpf_util.get_property(
             properties=job_props,
             key='DEFAULT_SOURCE_LANGUAGE',
@@ -137,38 +150,18 @@ class TranslationWrapper:
             prop_type=str
         ).lower().strip()
 
-        self._to_lang = "en"
+        self._from_script = mpf_util.get_property(
+            properties=job_props,
+            key='DEFAULT_SOURCE_SCRIPT',
+            default_value='',
+            prop_type=str
+        ).lower().strip()
 
-        self.iso_map = {
-            "ara": "ar",
-            "aze": "az",
-            "cmn": "zh",
-            "ces": "cs",
-            "dan": "da",
-            "nld": "nl",
-            "epo": "eo",
-            "fin": "fi",
-            "fra": "fr",
-            "deu": "de",
-            "ell": "el",
-            "heb": "he",
-            "hin": "hi",
-            "hun": "hu",
-            "ind": "id",
-            "gle": "ga",
-            "ita": "it",
-            "jpn": "ja",
-            "kor": "ko",
-            "fas": "fa",
-            "pol": "pl",
-            "por": "pt",
-            "rus": "ru",
-            "slk": "sk",
-            "spa": "es",
-            "swe": "sv",
-            "tur": "tr",
-            "ukr": "uk"
-        }
+        if self._from_lang in ArgosLanguageMapper.iso_map:
+            self._from_lang = ArgosLanguageMapper.get_code(self._from_lang, self._from_script)
+
+        # TODO: Add support for non-English translations in the future.
+        self._to_lang = "en"
 
         self._translation_cache: Dict[str, Tuple[str, str]] = {}
 
@@ -202,6 +195,11 @@ class TranslationWrapper:
             ff_props['TRANSLATION_SOURCE_LANGUAGE'] = cached_translation[1]
             return
 
+        for script_prop_name in self._script_prop_names:
+            if script_prop_name in ff_props:
+                self._from_script = ff_props.get(script_prop_name).lower().strip()
+                break
+
         for lang_prop_name in self._lang_prop_names:
             if lang_prop_name in ff_props:
                 lang = ff_props.get(lang_prop_name).lower().strip()
@@ -210,8 +208,9 @@ class TranslationWrapper:
                     break
                 elif lang == 'en':
                     self._from_lang = lang
-                elif lang in self.iso_map:
-                    self._from_lang = self.iso_map[lang]
+                elif lang in ArgosLanguageMapper.iso_map:
+                    self._from_lang = ArgosLanguageMapper.get_code(lang, self._from_script)
+                    break
                 else:
                     raise mpf.DetectionError.DETECTION_FAILED.exception(
                         f"Source language, {lang}, is not supported."
