@@ -52,6 +52,8 @@ RUN argospm update
 # Another option for downloading language models is to add lines below for languages of interest:
 # RUN argospm install translate_<INPUT_ISO_LANG>_en
 
+RUN argospm install translate_es_en
+
 # Please note that argospm may download models that require a newer version of argostranslate.
 
 RUN python3 /model_setup/argos_model_installer.py /models && rm -rf /models /model_setup
