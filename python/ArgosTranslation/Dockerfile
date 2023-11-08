@@ -31,19 +31,19 @@ ARG BUILD_TAG=latest
 
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
+COPY ./setup_models/argos_model_installer.py /model_setup/argos_model_installer.py
 # To download a language model use `COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*<ISO_LANG>_en* /models`
 # Refer to README for list of supported languages
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*de_en* /models
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*fr_en* /models
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ru_en* /models
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*zh_en* /models
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*zt_en* /models
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*es_en* /models
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ar_en* /models
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ko_en* /models
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*fa_en* /models
-
-COPY ./setup_models/argos_model_installer.py /model_setup/argos_model_installer.py
+RUN mkdir /models
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*de_en* /models/
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*fr_en* /models/
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ru_en* /models/
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*zh_en* /models/
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*zt_en* /models/
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*es_en* /models/
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ar_en* /models/
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ko_en* /models/
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*fa_en* /models/
 
 RUN pip3 install --no-cache-dir 'argostranslate==1.9.1'
 
