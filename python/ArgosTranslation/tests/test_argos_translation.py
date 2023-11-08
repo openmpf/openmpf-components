@@ -164,8 +164,7 @@ class TestArgosTranslation(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
-        print()
-        print(result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+
         trans_result = result[0].detection_properties['TRANSLATION'].replace("nullify","nurture")
         trans_result = trans_result.replace("founded on these principles","founded on those principles")
 
