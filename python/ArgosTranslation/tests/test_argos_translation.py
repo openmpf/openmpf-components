@@ -159,6 +159,8 @@ class TestArgosTranslation(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        print("Translation")
+        print(result[0].detection_properties['TRANSLATION'])
         self.assertEqual(LONG_OUTPUT, result[0].detection_properties['TRANSLATION'])
 
     def test_no_feed_forward_location(self):
