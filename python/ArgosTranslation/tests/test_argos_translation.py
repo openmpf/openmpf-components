@@ -167,7 +167,7 @@ class TestArgosTranslation(unittest.TestCase):
 
         # TODO: Identify why the 1.0 spanish model occasionally switches words.
         # In this case,  words for nuture and nullify are sometimes switched depending on build environment.
-        self.assertEqual(LONG_OUTPUT.replace("nullify","nurture"), result[0].detection_properties['TRANSLATION'])
+        self.assertEqual(LONG_OUTPUT, result[0].detection_properties['TRANSLATION'].replace("nullify","nurture"))
 
     def test_medium_text(self):
         comp = ArgosTranslationComponent()
@@ -183,8 +183,6 @@ class TestArgosTranslation(unittest.TestCase):
 
         self.assertEqual(1, len(result))
         self.assertEqual('ru', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
-        print("Translation")
-        print(result[0].detection_properties['TRANSLATION'])
         self.assertEqual(MED_OUTPUT, result[0].detection_properties['TRANSLATION'])
 
     def test_no_feed_forward_location(self):
