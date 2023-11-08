@@ -28,21 +28,37 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
+
+FROM openmpf/openmpf_argos_translation_models:1.9.1-to-eng as download_dependencies
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
+
+
+RUN mkdir /models
+
+# To download a language model use `COPY --from=download_dependencies /models/*_<ISO_LANG>_* /models`
+# Refer to README for list of supported languages
+COPY --from=download_dependencies /models/*_de_* /models
+COPY --from=download_dependencies /models/*_fr_* /models
+COPY --from=download_dependencies /models/*_ru_* /models
+COPY --from=download_dependencies /models/*_zh_* /models
+COPY --from=download_dependencies /models/*_zt_* /models
+COPY --from=download_dependencies /models/*_es_* /models
+COPY --from=download_dependencies /models/*_ar_* /models
+COPY --from=download_dependencies /models/*_ko_* /models
+COPY --from=download_dependencies /models/*_fa_* /models
+
+COPY ./setup_models/argos_model_installer.py /model_setup/argos_model_installer.py
 
 RUN pip3 install --no-cache-dir 'argostranslate==1.9.1'
 
 RUN argospm update
 
-# To download a language model use argospm install translate_<INPUT_ISO_LANG>_en
-# Refer to README for list of supported languages
-RUN argospm install translate-de_en && \
-    argospm install translate-fr_en && \
-    argospm install translate-ru_en && \
-    argospm install translate-zh_en && \
-    argospm install translate-zt_en && \
-    argospm install translate-es_en && \
-    argospm install translate-ar_en
+# Another option for downloading language models is to add lines below for languages of interest:
+# RUN argospm install translate_<INPUT_ISO_LANG>_en
+
+# Please note that argospm may download models that require a newer version of argostranslate.
+
+RUN python3 /model_setup/argos_model_installer.py /models && rm -rf /models /model_setup
 
 ARG RUN_TESTS=false
 
