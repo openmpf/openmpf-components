@@ -29,23 +29,19 @@
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 
-FROM openmpf/openmpf_argos_translation_models:1.9.1-to-eng as download_dependencies
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-
-RUN mkdir /models
-
-# To download a language model use `COPY --from=download_dependencies /models/*_<ISO_LANG>_* /models`
+# To download a language model use `COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*<ISO_LANG>_en* /models`
 # Refer to README for list of supported languages
-COPY --from=download_dependencies /models/*_de_* /models
-COPY --from=download_dependencies /models/*_fr_* /models
-COPY --from=download_dependencies /models/*_ru_* /models
-COPY --from=download_dependencies /models/*_zh_* /models
-COPY --from=download_dependencies /models/*_zt_* /models
-COPY --from=download_dependencies /models/*_es_* /models
-COPY --from=download_dependencies /models/*_ar_* /models
-COPY --from=download_dependencies /models/*_ko_* /models
-COPY --from=download_dependencies /models/*_fa_* /models
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*de_en* /models
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*fr_en* /models
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ru_en* /models
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*zh_en* /models
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*zt_en* /models
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*es_en* /models
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ar_en* /models
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ko_en* /models
+COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*fa_en* /models
 
 COPY ./setup_models/argos_model_installer.py /model_setup/argos_model_installer.py
 
