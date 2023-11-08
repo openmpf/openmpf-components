@@ -40,7 +40,7 @@ COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*fr_en
 COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ru_en* /models/
 COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*zh_en* /models/
 COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*zt_en* /models/
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*es_en* /models/
+#COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*es_en* /models/
 COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ar_en* /models/
 COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ko_en* /models/
 COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*fa_en* /models/
@@ -50,9 +50,9 @@ RUN pip3 install --no-cache-dir 'argostranslate==1.9.1'
 RUN argospm update
 
 # Another option for downloading language models is to add lines below for languages of interest:
-# RUN argospm install translate_<INPUT_ISO_LANG>_en
+# RUN argospm install translate-<INPUT_ISO_LANG>_en
 
-RUN argospm install translate_es_en
+RUN argospm install translate-es_en
 
 # Please note that argospm may download models that require a newer version of argostranslate.
 
