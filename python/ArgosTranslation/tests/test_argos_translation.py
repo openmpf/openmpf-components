@@ -41,7 +41,7 @@ RUSSIAN_SHORT_SAMPLE = "Где библиотека?"
 CHINESE_SHORT_SAMPLE = "你好，你叫什么名字？"
 SHORT_OUTPUT = "Where's the library?"
 
-# Observation, improvement in Argos-Chinese translation.
+# Note: Argos-Chinese translations have improved over time.
 SHORT_OUTPUT_CHINESE = "Hello. What's your name?"
 
 LONG_OUTPUT = (

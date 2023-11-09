@@ -25,11 +25,12 @@
 #############################################################################
 
 class ArgosLanguageMapper:
-    # Supported languages for Argos Translate
+    # Supported languages for Argos Translate v1.9.1
     # Source link: https://www.argosopentech.com/argospm/index/
 
     # Note Malaysian, Slovak, and Romanian have two variants of ISO-639-2
     # https://www.loc.gov/standards/iso639-2/php/code_list.php
+
     iso_map = {
         "alb": "sq",
         "ara": "ar",
@@ -41,6 +42,7 @@ class ArgosLanguageMapper:
         "ces": "cs",
         "dan": "da",
         "nld": "nl",
+        "eng": "en",
         "epo": "eo",
         "est": "et",
         "fin": "fi",

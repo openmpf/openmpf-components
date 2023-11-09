@@ -157,8 +157,6 @@ class TranslationWrapper:
             prop_type=str
         ).lower().strip()
 
-        if self._from_lang in ArgosLanguageMapper.iso_map:
-            self._from_lang = ArgosLanguageMapper.get_code(self._from_lang, self._from_script)
 
         # TODO: Add support for non-English translations in the future.
         self._to_lang = "en"
@@ -174,6 +172,7 @@ class TranslationWrapper:
             package.update_package_index()
             available_packages = package.get_available_packages()
 
+        # TODO: Update if we want to support translations to non-English languages.
         available_packages = [y.from_code for y in list(
             filter(
                 lambda x: x.to_code == "en", available_packages
@@ -206,9 +205,14 @@ class TranslationWrapper:
                 if lang in self.supported_languages:
                     self._from_lang = lang
                     break
-                elif lang == 'en':
-                    self._from_lang = lang
+                # TODO: Change if supporting non-English translations.
+                elif lang in ('en','eng'):
+                    ff_props['SKIPPED_TRANSLATION'] = 'TRUE'
+                    logger.info(f'Skipped translation of the "{prop_to_translate}" '
+                        f'property because it was already in the target language.')
+                    return
                 elif lang in ArgosLanguageMapper.iso_map:
+                    # Convert supported languages to ISO-639-1
                     self._from_lang = ArgosLanguageMapper.get_code(lang, self._from_script)
                     break
                 else:
@@ -216,6 +220,10 @@ class TranslationWrapper:
                         f"Source language, {lang}, is not supported."
                     )
         else:
+            # Before converting to IS0-639-1, keep name of original default setting.
+            source_lang_name = self._from_lang
+            if self._from_lang in ArgosLanguageMapper.iso_map:
+                self._from_lang = ArgosLanguageMapper.get_code(self._from_lang, self._from_script)
             if self._from_lang == 'en':
                 ff_props['SKIPPED_TRANSLATION'] = 'TRUE'
                 logger.info(f'Skipped translation of the "{prop_to_translate}" '
@@ -230,7 +238,7 @@ class TranslationWrapper:
 
             if self._from_lang != "" and self._from_lang not in self.supported_languages:
                 raise mpf.DetectionError.DETECTION_FAILED.exception(
-                    f"Default source language, {self._from_lang}, is not supported."
+                    f"Default source language, {source_lang_name}, is not supported."
                 )
 
         if self._from_lang not in self.installed_lang_codes:
