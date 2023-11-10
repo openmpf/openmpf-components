@@ -29,23 +29,23 @@
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 
+FROM openmpf/openmpf_argos_translation_models:1.9.1-to-eng AS argos_models
+
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 COPY ./setup_models/argos_model_installer.py /model_setup/argos_model_installer.py
-# To download a language model use `COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*<ISO_LANG>_en* /models`
-# Refer to README for list of supported languages
-RUN mkdir /models
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*de_en* /models/
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*fr_en* /models/
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ru_en* /models/
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*zh_en* /models/
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*zt_en* /models/
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*es_en* /models/
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ar_en* /models/
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*ko_en* /models/
-COPY --from=openmpf/openmpf_argos_translation_models:1.9.1-to-eng /models/*fa_en* /models/
 
 RUN pip3 install --no-cache-dir 'argostranslate==1.9.1'
+
+# To include a language model add *<ISO_LANG>_en* to the cp command.
+# Refer to README for list of supported languages
+RUN --mount=from=argos_models,source=/models,target=/all-models \
+    cd /all-models; \
+    mkdir /models; \
+    cp -- *de_en* *fr_en* *ru_en* *zh_en* *zt_en* *es_en* *ar_en* *ko_en* *fa_en* /models; \
+    python3 /model_setup/argos_model_installer.py /models; \
+    rm -r /model_setup /models;
+
 
 RUN argospm update
 
@@ -54,8 +54,6 @@ RUN argospm update
 # RUN argospm install translate-es_en
 
 # Please note that argospm may download models that require a newer version of argostranslate.
-
-RUN python3 /model_setup/argos_model_installer.py /models && rm -rf /models /model_setup
 
 ARG RUN_TESTS=false
 
@@ -69,5 +67,3 @@ LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
-
-

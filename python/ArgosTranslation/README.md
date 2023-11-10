@@ -22,7 +22,9 @@ All translations are either to English or from English. When trying to translate
 
 Language packages are downloaded dynamically as needed. In addition, when building a Docker image the Dockerfile pre-installs German, French, Russian, and Spanish.
 
-Note: Argos has two different models for Chinese Simplified and Traditional. Please ensure that the proper language code is provided ('zho', 'zho-hans', 'zh' for Simplified Chinese; 'zho-hant', 'zt' for Traditional Chinese). Otherwise, incorrect translations will occur.
+Note: Argos has two different models for Chinese Simplified and Traditional. Using the wrong one
+will result in incorrect translations. If the text is in Simplified Chinese use `zho-hans` for the
+language code. If it is in Traditional Chinese, use `zho-hant`.
 
 | ISO-639-2 | ISO-639-1 | Language             |
 | --------- | --------- | -------------------- |
