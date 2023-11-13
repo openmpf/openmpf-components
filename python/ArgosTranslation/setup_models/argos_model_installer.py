@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.2
+#!/usr/bin/env python3
 
 #############################################################################
 # NOTICE                                                                    #
@@ -26,44 +26,28 @@
 # limitations under the License.                                            #
 #############################################################################
 
-ARG BUILD_REGISTRY
-ARG BUILD_TAG=latest
 
-FROM openmpf/openmpf_argos_translation_models:1.9.1-to-eng AS argos_models
+# This script installs ArgosTranslation models in a specified model directory.
+import sys
+import os
 
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
-
-COPY ./setup_models/argos_model_installer.py /model_setup/argos_model_installer.py
-
-RUN pip3 install --no-cache-dir 'argostranslate==1.9.1'
-
-# To include a language model add *<ISO_LANG>_en* to the cp command.
-# Refer to README for list of supported languages
-RUN --mount=from=argos_models,source=/models,target=/all-models \
-    cd /all-models; \
-    mkdir /models; \
-    cp -- *de_en* *fr_en* *ru_en* *zh_en* *zt_en* *es_en* *ar_en* *ko_en* *fa_en* /models; \
-    python3 /model_setup/argos_model_installer.py /models; \
-    rm -r /model_setup /models;
+import argostranslate.package
 
 
-RUN argospm update
+def main():
+    if len(sys.argv) != 2:
+        sys.exit(f'Usage {sys.argv[0]} <path_to_models_dir>')
 
-# Another option for downloading language models is to add lines below for languages of interest:
-# RUN argospm install translate-<INPUT_ISO_LANG>_en
-# RUN argospm install translate-es_en
+    _, model_dir = sys.argv
 
-# Please note that argospm may download models that require a newer version of argostranslate.
+    model_files = [os.path.join(model_dir,f) for f in os.listdir(model_dir) if os.path.isfile(os.path.join(model_dir, f))]
 
-ARG RUN_TESTS=false
+    for model in model_files:
+        argostranslate.package.install_from_path(model)
 
-RUN --mount=target=.,readwrite \
-    install-component.sh; \
-    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_argos_translation.py; fi
+        print('INSTALLING TRANSLATION MODEL:', model)
 
-LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF Argos Translation" \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.url="https://openmpf.github.io" \
-      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
-      org.label-schema.vendor="MITRE"
+    print('MODEL INSTALLATION COMPLETE')
+
+if __name__ == '__main__':
+    main()
