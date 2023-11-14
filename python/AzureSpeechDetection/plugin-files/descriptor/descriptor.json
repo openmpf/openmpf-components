@@ -9,7 +9,8 @@
     "name": "AZURESPEECH",
     "description": "Uses Azure Cognitive Services to perform speech-to-text.",
     "actionType": "DETECTION",
-    "outputChangedCounter" : 1,
+    "trackType": "SPEECH",
+    "outputChangedCounter" : 2,
     "requiresCollection": {
       "states": []
     },

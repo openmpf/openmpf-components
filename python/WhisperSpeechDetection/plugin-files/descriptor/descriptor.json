@@ -9,6 +9,7 @@
     "name": "WHISPERSPEECH",
     "description": "Uses OpenAI's Whisper model to perform language detection in speech.",
     "actionType": "DETECTION",
+    "trackType": "SPEECH",
     "requiresCollection": {
       "states": []
     },

@@ -122,7 +122,6 @@ namespace MPF{
       bool Close() override;
       vector<MPFVideoTrack> GetDetections(const MPFVideoJob &job) override;
       vector<MPFImageLocation> GetDetections(const MPFImageJob &job) override;
-      string GetDetectionType() override;
 
     private:
 

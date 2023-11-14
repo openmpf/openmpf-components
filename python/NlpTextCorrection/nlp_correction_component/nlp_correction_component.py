@@ -41,7 +41,6 @@ log = logging.getLogger('NlpCorrectionComponent')
 
 
 class NlpCorrectionComponent(object):
-    detection_type = 'TEXT'
 
     def __init__(self):
         self.initialized = False

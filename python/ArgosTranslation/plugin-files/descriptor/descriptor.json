@@ -9,6 +9,7 @@
     "name": "ARGOSTRANSLATION",
     "description": "Uses Argos Translate to perform translation.",
     "actionType": "DETECTION",
+    "trackType": "TRANSLATION",
     "requiresCollection": {
       "states": []
     },

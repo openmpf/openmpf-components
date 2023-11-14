@@ -39,7 +39,6 @@ warnings.filterwarnings('ignore', 'FP16 is not supported on CPU; using FP32 inst
 warnings.filterwarnings('ignore', category=ResourceWarning, module='multilingual.tiktoken')
 
 class WhisperSpeechDetectionComponent:
-    detection_type = 'SPEECH'
 
     def __init__(self):
         logger.info('Creating instance of WhisperSpeechDetectionComponent')
