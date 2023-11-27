@@ -47,10 +47,6 @@
 
 using namespace MPF::COMPONENT;
 
-//-----------------------------------------------------------------------------
-std::string OcvDnnDetection::GetDetectionType() {
-    return "CLASS";
-}
 
 //-----------------------------------------------------------------------------
 bool OcvDnnDetection::Init() {

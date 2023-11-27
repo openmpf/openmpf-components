@@ -220,11 +220,6 @@ public class TikaImageDetectionComponent extends MPFDetectionComponentBase {
     }
 
     @Override
-    public String getDetectionType() {
-        return "MEDIA";
-    }
-
-    @Override
     public List<MPFImageLocation> getDetections(MPFImageJob job) throws MPFComponentDetectionError {
         throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE,
                 "Image detection not supported.");

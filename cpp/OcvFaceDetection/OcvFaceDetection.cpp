@@ -65,11 +65,6 @@ using namespace MPF;
 using namespace COMPONENT;
 
 
-
-string OcvFaceDetection::GetDetectionType() {
-    return "FACE";
-}
-
 void OcvFaceDetection::SetModes(bool display_window, bool print_debug_info) {
     imshow_on = display_window;
 

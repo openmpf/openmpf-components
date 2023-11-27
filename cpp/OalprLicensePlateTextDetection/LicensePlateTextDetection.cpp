@@ -45,11 +45,6 @@ using log4cxx::Logger;
 
 
 //-----------------------------------------------------------------------------
-/* virtual */ std::string LicensePlateTextDetection::GetDetectionType() {
-    return "TEXT";
-}
-
-//-----------------------------------------------------------------------------
 /* virtual */ bool LicensePlateTextDetection::Init() {
     //Set locale
     std::setlocale(LC_ALL, "C");

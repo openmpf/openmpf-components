@@ -245,11 +245,6 @@ bool OcvYoloDetection::Close() {
 }
 
 
-std::string OcvYoloDetection::GetDetectionType() {
-    return "CLASS";
-}
-
-
 void OcvYoloDetection::InitYoloNetwork(const Properties &jobProperties, const Config &config) {
     auto modelName = GetProperty(jobProperties, "MODEL_NAME", "tiny yolo");
     auto modelsDirPath = GetProperty(jobProperties, "MODELS_DIR_PATH", ".");

@@ -47,7 +47,6 @@ logger = logging.getLogger('AcsFormDetectionComponent')
 
 
 class AcsFormDetectionComponent(mpf_util.ImageReaderMixin, object):
-    detection_type = 'TEXT'
 
     def get_detections_from_generic(self, generic_job):
         try:

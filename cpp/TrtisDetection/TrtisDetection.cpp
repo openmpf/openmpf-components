@@ -202,10 +202,6 @@ TrtisIpIrv2CocoJobConfig::TrtisIpIrv2CocoJobConfig(const MPFJob &job,
     maxSpaceGapPxSq = maxSpaceGap * maxSpaceGap * frameDiagSq;
 }
 
-/******************************************************************************/
-string TrtisDetection::GetDetectionType() {
-    return "FEATURE";
-}
 
 /******************************************************************************/
 bool TrtisDetection::Close() {

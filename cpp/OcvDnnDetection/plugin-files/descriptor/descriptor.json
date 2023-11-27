@@ -14,6 +14,7 @@
     "name": "DNNCV",
     "description": "Performs object classification using the OpenCV Deep Neural Networks module.",
     "actionType": "DETECTION",
+    "trackType": "CLASS",
     "requiresCollection": {
       "states": []
     },

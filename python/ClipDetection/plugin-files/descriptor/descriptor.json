@@ -8,8 +8,8 @@
     "algorithm": {
         "name": "CLIP",
         "description": "CLIP classification.",
-        "detectionType": "CLASS",
         "actionType": "DETECTION",
+        "trackType": "CLASS",
         "outputChangedCounter": 1,
         "requiresCollection": {
             "states": []

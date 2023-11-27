@@ -9,6 +9,7 @@
     "name": "AZUREOCR",
     "description": "Uses Azure Cognitive Services to perform optical character recognition.",
     "actionType": "DETECTION",
+    "trackType": "TEXT",
     "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []

@@ -40,7 +40,6 @@ logging.getLogger('azure').setLevel('WARN')
 
 
 class AcsSpeechComponent(object):
-    detection_type = 'SPEECH'
 
     def __init__(self):
         logger.info('Creating instance of AcsSpeechDetectionProcessor')
@@ -53,9 +52,6 @@ class AcsSpeechComponent(object):
             ) -> List[mpf.AudioTrack]:
         try:
             job_config = AzureJobConfig(job)
-        except mpf_util.TriggerMismatch as e:
-            logger.info(f"Feed-forward track does not meet trigger condition: {e}")
-            raise
         except mpf_util.NoInBoundsSpeechSegments as e:
             logger.warning(f"Feed-forward track does not contain in-bounds segments: {e}")
             raise
@@ -70,21 +66,13 @@ class AcsSpeechComponent(object):
             logger.exception(f'Exception raised while processing audio: {e}')
             raise
 
-        # Remove this block to drop LONG_SPEAKER_ID
-        for track in audio_tracks:
-            track.detection_properties['LONG_SPEAKER_ID'] = track.detection_properties['SPEAKER_ID']
-            track.detection_properties['SPEAKER_ID'] = '0'
-
         logger.info('Processing complete. Found %d tracks.' % len(audio_tracks))
         return audio_tracks
 
     def get_detections_from_audio(self, job: mpf.AudioJob) -> List[mpf.AudioTrack]:
         logger.info('Received audio job')
+        return self.get_detections_from_job(job)
 
-        try:
-            return self.get_detections_from_job(job)
-        except mpf_util.TriggerMismatch:
-            return [job.feed_forward_track]
 
     def get_detections_from_video(
                 self,
@@ -101,10 +89,7 @@ class AcsSpeechComponent(object):
             )
         fpms = float(job.media_properties['FPS']) / 1000.0
 
-        try:
-            audio_tracks = self.get_detections_from_job(job)
-        except mpf_util.TriggerMismatch:
-            return [job.feed_forward_track]
+        audio_tracks = self.get_detections_from_job(job)
 
         try:
             # Convert audio tracks to video tracks with placeholder frame locs

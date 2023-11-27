@@ -285,10 +285,6 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         return MPFDataType.UNKNOWN.equals(mpfDataType);
     }
 
-    public String getDetectionType() {
-        return "TEXT";
-    }
-
     public List<MPFImageLocation> getDetections(MPFImageJob job) throws MPFComponentDetectionError {
         throw new MPFComponentDetectionError(MPFDetectionError.MPF_UNSUPPORTED_DATA_TYPE, "Image detection not supported.");
     }
