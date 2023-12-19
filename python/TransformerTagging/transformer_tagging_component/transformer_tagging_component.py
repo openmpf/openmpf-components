@@ -42,7 +42,6 @@ import pandas as pd
 
 logger = logging.getLogger('TransformerTaggingComponent')
 
-
 class TransformerTaggingComponent:
     detection_type = 'TEXT'
 

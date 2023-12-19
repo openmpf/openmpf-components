@@ -59,7 +59,7 @@ private:
 
     std::set<std::wstring> search_regex(const MPFJob &job, const std::wstring &full_text,
                                         const std::map<std::wstring, std::vector<std::pair<std::wstring, bool>>> &json_kvs_regex,
-                                        std::map<std::wstring, std::vector<std::string>> &trigger_words_offset,
+                                        std::map<std::wstring, std::map<std::wstring, std::vector<std::string>>> &trigger_tags_words_offset,
                                         bool full_regex);
 
     void process_regex_match(const boost::wsmatch &match, const std::wstring &full_text,

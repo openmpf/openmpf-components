@@ -257,6 +257,21 @@ class TestTransformerTagging(unittest.TestCase):
 
         self.assertEqual(1, len(result))
 
+    def test_maintain_tags_from_earlier_feedforward_task(self):
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=SHORT_SAMPLE))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', {}, {}, ff_track)
+        # add tags
+        firstTag = "FIRST_TAG"
+        job.feed_forward_track.detection_properties["TAGS"] = firstTag
+        comp = TransformerTaggingComponent()
+        result = comp.get_detections_from_generic(job)
+
+        self.assertEqual(1, len(result))
+
+        props = result[0].detection_properties
+        expectedTags = firstTag + "; " + SHORT_SAMPLE_TAGS
+
+        self.assertEqual(expectedTags, props["TAGS"])
 
 if __name__ == '__main__':
     unittest.main()

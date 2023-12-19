@@ -125,24 +125,25 @@ instead.
 # Outputs
 
 Each input property listed in `FEED_FORWARD_PROP_TO_PROCESS` that's
-present, and not just whitespace, will result in a `TRIGGER WORDS` and
-`TRIGGER WORDS OFFSET` output property. For example, if 
-`FEED_FORWARD_PROP_TO_PROCESS=TEXT,TRANSLATION`, and the `TEXT` and `TRANSLATION`
-properties are both present, then the following output properties will be produced:
+present, and not just whitespace, will result in a `[TAG] TRIGGER WORDS` and
+`[TAG] TRIGGER WORDS OFFSET` output property. The '[TAG]' will be the tag property 
+that matched in the input text. `FEED_FORWARD_PROP_TO_PROCESS=TEXT,TRANSLATION`, 
+and the `TEXT` and `TRANSLATION` properties are both present, then the following
+output properties will be produced:
 
-- `TEXT TRIGGER WORDS`
-- `TEXT TRIGGER WORDS OFFSET`
+- `TEXT [TAG] TRIGGER WORDS`
+- `TEXT [TAG] TRIGGER WORDS OFFSET`
 - `TRANSLATION TRIGGER WORDS`
 - `TRANSLATION TRIGGER WORDS OFFSET`
 
 Let's assume that we need process the `TEXT` property. The substring(s) that
-triggered each tag will be stored in `TEXT TRIGGER WORDS` in alphabetical order.
+triggered each tag will be stored in `TEXT [TAG] TRIGGER WORDS` in alphabetical order.
 For each trigger word the substring index range relative to the `TEXT` output
-will be stored in `TEXT TRIGGER WORDS OFFSET`. Because the same trigger word
+will be stored in `TEXT [TAG] TRIGGER WORDS OFFSET`. Because the same trigger word
 can be encountered multiple times in the `TEXT` output, the results are organized
 as follows:
 
-* `TEXT TRIGGER WORDS`: Each distinct trigger word is separated by a semicolon
+* `TEXT [TAGS] TRIGGER WORDS`: Each distinct trigger word is separated by a semicolon
 followed by a space. For example: `TEXT TRIGGER WORDS=trigger1; trigger2`
     * Because semicolons can be part of the trigger word itself, those
     semicolons will be encapsulated in brackets. For example,

@@ -33,6 +33,29 @@ FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_componen
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 
+#mitre cert...
+RUN mkdir -p /usr/local/share/ca-certificates
+COPY mitre.crt /usr/local/share/ca-certificates/mitre.crt
+RUN update-ca-certificates ||:
+
+#install openssl...
+#ADD https://www.openssl.org/source/openssl-3.2.0.tar.gz /tmp
+#RUN tar -zxvf /tmp/openssl-3.2.0.tar.gz -C /tmp
+#RUN cd /tmp/openssl-3.2.0; ./config --prefix=/usr/local/ssl --openssldir=/usr/local/ssl shared zlib; make; make test; make install;  break!;
+
+#install curl...
+#ADD https://curl.se/download/curl-8.4.0.tar.gz /tmp
+#RUN tar -zxvf /tmp/curl-8.4.0.tar.gz -C /tmp
+#RUN /tmp/curl-8.4.0/configure --with-openssl
+#RUN cd /tmp/curl-8.4.0; openssl version -d; ./configure --without-ssl; make; make install;ls -al; curl -V;
+
+#ADD https://gitlab.mitre.org/mitre-scripts/mitre-pki/raw/master/os_scripts/install_certs.sh /tmp/install_certs.sh
+#RUN chmod a+x /tmp/install_certs.sh
+#RUN /tmp/install_certs.sh
+#RUN rm /tmp/install_certs.sh
+#RUN apt install curl
+#RUN curl -ksSL https://gitlab.mitre.org/mitre-scripts/mitre-pki/raw/master/tool_scripts/install_certs.sh | JAVA_HOME=/path/to/java MODE=java sh
+
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
     --mount=type=tmpfs,target=/tmp \
