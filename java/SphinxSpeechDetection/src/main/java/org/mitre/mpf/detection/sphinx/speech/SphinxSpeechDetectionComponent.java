@@ -55,10 +55,6 @@ public class SphinxSpeechDetectionComponent extends MPFAudioAndVideoDetectionCom
         speechProcessor = new SphinxSpeechDetectionProcessor();
     }
 
-    @Override
-    public String getDetectionType() {
-        return "SPEECH";
-    }
 
     @Override
     public List<MPFAudioTrack> getDetections(MPFAudioJob job) throws MPFComponentDetectionError {

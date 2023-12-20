@@ -72,8 +72,6 @@ namespace MPF {
 
             std::vector<MPFAudioTrack> GetDetections(const MPFAudioJob &job) override;
 
-            std::string GetDetectionType() override;
-
             bool Supports(MPFDetectionDataType data_type) override;
 
         private:

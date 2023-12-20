@@ -44,7 +44,6 @@ logger = logging.getLogger('AcsOcrComponent')
 
 
 class AcsOcrComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
-    detection_type = 'TEXT'
 
     def get_detections_from_image_reader(self, image_job, image_reader):
         try:

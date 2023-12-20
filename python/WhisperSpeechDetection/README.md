@@ -8,9 +8,13 @@ This component uses the OpenAI Whisper model.
 This component identifies the language spoken in audio and video clips.
 
 # Input Properties
-- `WHISPER_MODEL_SIZE`: Size of the Whisper model. Whisper has `tiny`, `base`, `small`, `medium`, and `large` models available for multilingual models. English-only models are available in `tiny`, `base`, `small`, and `medium`. 
+- `WHISPER_MODEL_SIZE`: Size of the Whisper model. Whisper has `tiny`, `base`, `small`, `medium`, and `large` models available for multilingual models. English-only models are available in `tiny`, `base`, `small`, and `medium`.
 - `WHISPER_MODEL_LANG`: Whisper has English-only models and multilingual models. Set to `en` for English-only models and `multi` for multilingual models.
-- `WHISPER_MODE`: Determines whether Whisper will perform language detection, speech-to-text transcription, or speech translation. English-only models can only transcribe English audio. Set to `LANGUAGE_DETECTION` for spoken language detection, `TRANSCRIPTION` for speech-to-text transcription, and `SPEECH_TRANSLATION` for speech translation.
+- `WHISPER_MODE`: Determines whether Whisper will perform language detection, speech-to-text
+  transcription, or speech translation. If multiple languages are spoken in a single piece of media,
+  language detection will detect only one of them. English-only models can only transcribe English
+  audio. Set to `LANGUAGE_DETECTION` for spoken language detection, `TRANSCRIPTION` for
+  speech-to-text transcription, and `SPEECH_TRANSLATION` for speech translation.
 - `AUDIO_LANGUAGE`: Optional property that indicates the language to use for audio translation or transcription. If left as an empty string, Whisper will automatically detect a single language from the first 30 seconds of audio.
 
 # Output Properties
@@ -28,8 +32,8 @@ Size  | Provided Language | Result for Spanish Part | Result for English Part
 ------|-------------------|-------------------------|-------------------------
 base  | Auto-detected     | Correctly transcribed   | Gibberish
 large | Auto-detected     | Correctly transcribed   | Translated to Spanish
-base  | English           | Translated to English   | Correctly transcribed 
-large | English           | Translated to English   | Correctly transcribed 
+base  | English           | Translated to English   | Correctly transcribed
+large | English           | Translated to English   | Correctly transcribed
 
 
 ### Translate ###

@@ -24,20 +24,22 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from argostranslate import package, translate
-from typing import Sequence, Dict
+
+from typing import Sequence, Dict, Tuple
+
 import pathlib
-
 import logging
-
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
+from argostranslate import package, translate
+
+from .argos_language_mapper import ArgosLanguageMapper
 
 logger = logging.getLogger('ArgosTranslationComponent')
 
 
 class ArgosTranslationComponent:
-    detection_type = 'TRANSLATION'
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         logger.info(f'Received video job.')
@@ -130,6 +132,16 @@ class TranslationWrapper:
             ).split(',')
         ]
 
+        self._script_prop_names = [
+            prop.strip() for prop in
+            mpf_util.get_property(
+                properties=job_props,
+                key='SCRIPT_FEED_FORWARD_PROP',
+                default_value='ISO_SCRIPT',
+                prop_type=str
+            ).split(',')
+        ]
+
         self._from_lang = mpf_util.get_property(
             properties=job_props,
             key='DEFAULT_SOURCE_LANGUAGE',
@@ -137,38 +149,16 @@ class TranslationWrapper:
             prop_type=str
         ).lower().strip()
 
-        self._to_lang = "en"
+        self._from_script = mpf_util.get_property(
+            properties=job_props,
+            key='DEFAULT_SOURCE_SCRIPT',
+            default_value='',
+            prop_type=str
+        ).lower().strip()
 
-        self.iso_map = {
-            "ara": "ar",
-            "aze": "az",
-            "cmn": "zh",
-            "ces": "cs",
-            "dan": "da",
-            "nld": "nl",
-            "epo": "eo",
-            "fin": "fi",
-            "fra": "fr",
-            "deu": "de",
-            "ell": "el",
-            "heb": "he",
-            "hin": "hi",
-            "hun": "hu",
-            "ind": "id",
-            "gle": "ga",
-            "ita": "it",
-            "jpn": "ja",
-            "kor": "ko",
-            "fas": "fa",
-            "pol": "pl",
-            "por": "pt",
-            "rus": "ru",
-            "slk": "sk",
-            "spa": "es",
-            "swe": "sv",
-            "tur": "tr",
-            "ukr": "uk"
-        }
+
+        # TODO: Add support for non-English translations in the future.
+        self._to_lang = "en"
 
         self._translation_cache: Dict[str, Tuple[str, str]] = {}
 
@@ -181,6 +171,7 @@ class TranslationWrapper:
             package.update_package_index()
             available_packages = package.get_available_packages()
 
+        # TODO: Update if we want to support translations to non-English languages.
         available_packages = [y.from_code for y in list(
             filter(
                 lambda x: x.to_code == "en", available_packages
@@ -202,21 +193,36 @@ class TranslationWrapper:
             ff_props['TRANSLATION_SOURCE_LANGUAGE'] = cached_translation[1]
             return
 
+        for script_prop_name in self._script_prop_names:
+            if script_prop_name in ff_props:
+                self._from_script = ff_props.get(script_prop_name).lower().strip()
+                break
+
         for lang_prop_name in self._lang_prop_names:
             if lang_prop_name in ff_props:
                 lang = ff_props.get(lang_prop_name).lower().strip()
                 if lang in self.supported_languages:
                     self._from_lang = lang
                     break
-                elif lang == 'en':
-                    self._from_lang = lang
-                elif lang in self.iso_map:
-                    self._from_lang = self.iso_map[lang]
+                # TODO: Change if supporting non-English translations.
+                elif lang in ('en','eng'):
+                    ff_props['SKIPPED_TRANSLATION'] = 'TRUE'
+                    logger.info(f'Skipped translation of the "{prop_to_translate}" '
+                        f'property because it was already in the target language.')
+                    return
+                elif lang in ArgosLanguageMapper.iso_map:
+                    # Convert supported languages to ISO-639-1
+                    self._from_lang = ArgosLanguageMapper.get_code(lang, self._from_script)
+                    break
                 else:
                     raise mpf.DetectionError.DETECTION_FAILED.exception(
                         f"Source language, {lang}, is not supported."
                     )
         else:
+            # Before converting to IS0-639-1, keep name of original default setting.
+            source_lang_name = self._from_lang
+            if self._from_lang in ArgosLanguageMapper.iso_map:
+                self._from_lang = ArgosLanguageMapper.get_code(self._from_lang, self._from_script)
             if self._from_lang == 'en':
                 ff_props['SKIPPED_TRANSLATION'] = 'TRUE'
                 logger.info(f'Skipped translation of the "{prop_to_translate}" '
@@ -231,7 +237,7 @@ class TranslationWrapper:
 
             if self._from_lang != "" and self._from_lang not in self.supported_languages:
                 raise mpf.DetectionError.DETECTION_FAILED.exception(
-                    f"Default source language, {self._from_lang}, is not supported."
+                    f"Default source language, {source_lang_name}, is not supported."
                 )
 
         if self._from_lang not in self.installed_lang_codes:

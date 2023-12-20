@@ -48,7 +48,6 @@ log = logging.getLogger('AcsTranslationComponent')
 
 
 class AcsTranslationComponent:
-    detection_type = 'TRANSLATION'
 
     @staticmethod
     def get_detections_from_video(job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:

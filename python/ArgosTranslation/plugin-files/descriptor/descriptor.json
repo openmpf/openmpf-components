@@ -9,6 +9,7 @@
     "name": "ARGOSTRANSLATION",
     "description": "Uses Argos Translate to perform translation.",
     "actionType": "DETECTION",
+    "trackType": "TRANSLATION",
     "requiresCollection": {
       "states": []
     },
@@ -27,13 +28,25 @@
         },
         {
           "name": "LANGUAGE_FEED_FORWARD_PROP",
-          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection determine the language from which to translate. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, fall back to FROM_LANGUAGE.",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection determine the language from which to translate. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, fall back to 'DEFAULT_SOURCE_LANGUAGE'.",
           "type": "STRING",
           "defaultValue": "ISO_LANGUAGE,DECODED_LANGUAGE,LANGUAGE"
         },
         {
+          "name": "SCRIPT_FEED_FORWARD_PROP",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection determine the script (character set) associated with the input language. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, fall back to 'DEFAULT_SOURCE_SCRIPT'.",
+          "type": "STRING",
+          "defaultValue": "ISO_SCRIPT"
+        },
+        {
           "name": "DEFAULT_SOURCE_LANGUAGE",
-          "description": "Optional property that indicates the source language of the text.",
+          "description": "Optional property that indicates the source language of the text in ISO-639-2 or ISO-639-1 format.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "DEFAULT_SOURCE_SCRIPT",
+          "description": "Optional property that indicates the source script of the text in ISO-15924 format. Used to resolve languages with multiple valid scripts (i.e. Chinese).",
           "type": "STRING",
           "defaultValue": ""
         }
