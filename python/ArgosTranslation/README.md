@@ -1,6 +1,6 @@
 # Overview
 
-This repository contains source code for the OpenMPF Argos Translation Component.
+This repository contains source code for the OpenMPF Argos Translation Component. This component is based on [Argos Translate](https://github.com/argosopentech/argos-translate).
 
 This component translates the input text from a given source language to English. The source language can be provided as a job property, or be indicated in the detection properties from a feed-forward track.
 
