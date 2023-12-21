@@ -238,7 +238,7 @@ TEST(OCVDNN, FeedForwardImageTest) {
     Properties props = getVehicleColorProperties();
     props["CLASSIFICATION_TYPE"] = classification_type;
     props["FEED_FORWARD_TYPE"] = "FRAME";
-    props["FEED_FORWARD_WHITELIST_FILE"] = "vehicle-whitelist.txt";
+    props["FEED_FORWARD_ALLOW_LIST_FILE"] = "vehicle-allow-list.txt";
 
     // Test feed-forward person pass-through
 
@@ -311,7 +311,7 @@ TEST(OCVDNN, FeedForwardVideoTest) {
     Properties props = getVehicleColorProperties();
     props["CLASSIFICATION_TYPE"] = classification_type;
     props["FEED_FORWARD_TYPE"] = "FRAME";
-    props["FEED_FORWARD_WHITELIST_FILE"] = "vehicle-whitelist.txt";
+    props["FEED_FORWARD_ALLOW_LIST_FILE"] = "vehicle-allow-list.txt";
 
     // Test feed-forward vehicle processing
 

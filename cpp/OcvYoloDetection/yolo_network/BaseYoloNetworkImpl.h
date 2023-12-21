@@ -72,7 +72,7 @@ protected:
 
     std::vector<std::string> names_;
     cv::Mat1f confusionMatrix_;
-    std::string classWhiteListPath_;
+    std::string classAllowListPath_;
     std::function<bool(const std::string &)> classFilter_;
 
     std::vector<std::vector<DetectionLocation>> GetDetectionsCvdnn(
