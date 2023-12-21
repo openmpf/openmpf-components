@@ -77,7 +77,7 @@ set(COMMON_OCV_YOLO_DETECTION_SOURCE_FILES
         KFTracker.cpp KFTracker.h
         OcvYoloDetection.cpp OcvYoloDetection.h
         ocv_phasecorr.cpp ocv_phasecorr.h
-        WhitelistFilter.cpp WhitelistFilter.h
+        AllowListFilter.cpp AllowListFilter.h
         yolo_network/BaseYoloNetworkImpl.cpp yolo_network/BaseYoloNetworkImpl.h)
 
 set(LOCAL_OCV_YOLO_DETECTION_SOURCE_FILES

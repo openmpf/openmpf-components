@@ -76,7 +76,7 @@ Config::Config(const Properties &jobProps)
                 GetProperty(jobProps, "KF_QN", "[ 1000.0, 1000.0, 1000.0, 1000.0 ]")))
         , fallback2CpuWhenGpuProblem(GetProperty(jobProps, "FALLBACK_TO_CPU_WHEN_GPU_PROBLEM", false))
         , cudaDeviceId(GetProperty(jobProps, "CUDA_DEVICE_ID", -1))
-        , classWhiteListPath(GetProperty(jobProps, "CLASS_WHITELIST_FILE", ""))
+        , classAllowListPath(GetProperty(jobProps, "CLASS_ALLOW_LIST_FILE", ""))
         , enableDebug(GetProperty(jobProps, "ENABLE_DEBUG", false))
         , tritonEnabled(GetProperty(jobProps, "ENABLE_TRITON", false))
         , tritonServer(GetProperty(jobProps, "TRITON_SERVER", "ocv-yolo-detection-server:8001"))
@@ -116,7 +116,7 @@ std::ostream &operator<<(std::ostream &out, const Config &cfg) {
         << "\"mosseTrackerDisabled\":" << (cfg.mosseTrackerDisabled ? "1" : "0") << ","
         << "\"fallback2CpuWhenGpuProblem\":" << (cfg.fallback2CpuWhenGpuProblem ? "1" : "0") << ","
         << "\"cudaDeviceId\":" << cfg.cudaDeviceId << ","
-        << "\"classWhiteListPath\":" << cfg.classWhiteListPath << ","
+        << "\"classAllowListPath\":" << cfg.classAllowListPath << ","
         << "\"enabledDebug\":" << cfg.enableDebug << ","
         << "\"tritonServer\":" << cfg.tritonModelVersion << ","
         << "\"tritonModelName\":" << cfg.tritonModelName << ","
