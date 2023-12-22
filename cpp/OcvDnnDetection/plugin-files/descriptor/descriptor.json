@@ -122,14 +122,14 @@
           "defaultValue": "CLASSIFICATION"
         },
         {
-          "name": "FEED_FORWARD_WHITELIST_FILE",
+          "name": "FEED_FORWARD_ALLOW_LIST_FILE",
           "description": "When FEED_FORWARD_TYPE is provided and not set to NONE, only feed-forward detections with class names contained in the specified file will be processed. If no file is specified, all of the detections will be processed.",
           "type": "STRING",
           "defaultValue": ""
         },
         {
           "name": "FEED_FORWARD_EXCLUDE_BEHAVIOR",
-          "description": "When FEED_FORWARD_TYPE is provided and not set to NONE, and FEED_FORWARD_WHITELIST_FILE is provided, this value determines what to do with feed-forward detections with class names not contained in the FEED_FORWARD_WHITELIST_FILE. Acceptable values are PASS_THROUGH and DROP.",
+          "description": "When FEED_FORWARD_TYPE is provided and not set to NONE, and FEED_FORWARD_ALLOW_LIST_FILE is provided, this value determines what to do with feed-forward detections with class names not contained in the FEED_FORWARD_ALLOW_LIST_FILE. Acceptable values are PASS_THROUGH and DROP.",
           "type": "STRING",
           "defaultValue": "PASS_THROUGH"
         },

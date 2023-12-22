@@ -153,7 +153,7 @@
           "defaultValue": "5"
         },
         {
-          "name": "CLASS_WHITELIST_FILE",
+          "name": "CLASS_ALLOW_LIST_FILE",
           "description": "When provided, only class names contained in the specified file will be reported.",
           "type": "STRING",
           "defaultValue": ""
@@ -269,8 +269,8 @@
           "value": "416"
         },
         {
-          "name": "CLASS_WHITELIST_FILE",
-          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-whitelist.txt"
+          "name": "CLASS_ALLOW_LIST_FILE",
+          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-allow-list.txt"
         }
       ]
     },
@@ -303,8 +303,8 @@
           "value": "608"
         },
         {
-          "name": "CLASS_WHITELIST_FILE",
-          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-whitelist.txt"
+          "name": "CLASS_ALLOW_LIST_FILE",
+          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-allow-list.txt"
         }
       ]
     },
@@ -341,8 +341,8 @@
           "value": "608"
         },
         {
-          "name": "CLASS_WHITELIST_FILE",
-          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-whitelist.txt"
+          "name": "CLASS_ALLOW_LIST_FILE",
+          "value": "$MPF_HOME/plugins/OcvYoloDetection/models/vehicle-allow-list.txt"
         },
         {
           "name": "ENABLE_TRITON",

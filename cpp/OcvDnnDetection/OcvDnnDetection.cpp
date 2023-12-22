@@ -126,29 +126,29 @@ std::string getFeedForwardExcludeBehavior(const MPFJob &job, const Properties &f
     if (feed_forward_props_iter != feed_forward_props.end()) {
         const std::string &class_name = feed_forward_props_iter->second;
 
-        std::string feed_forward_whitelist_file =
-                DetectionComponentUtils::GetProperty(job.job_properties, "FEED_FORWARD_WHITELIST_FILE", "");
+        std::string feed_forward_allow_list_file =
+                DetectionComponentUtils::GetProperty(job.job_properties, "FEED_FORWARD_ALLOW_LIST_FILE", "");
 
-        if (!feed_forward_whitelist_file.empty()) {
+        if (!feed_forward_allow_list_file.empty()) {
             std::string expanded_file_path;
-            std::string error = Utils::expandFileName(feed_forward_whitelist_file, expanded_file_path);
+            std::string error = Utils::expandFileName(feed_forward_allow_list_file, expanded_file_path);
 
             if (!error.empty()) {
                 throw MPFInvalidPropertyException(
-                        "FEED_FORWARD_WHITELIST_FILE",
-                        "The value, \"" + feed_forward_whitelist_file + "\", could not be expanded due to: " + error);
+                        "FEED_FORWARD_ALLOW_LIST_FILE",
+                        "The value, \"" + feed_forward_allow_list_file + "\", could not be expanded due to: " + error);
             }
 
-            std::ifstream whitelist_file(expanded_file_path);
-            if (!whitelist_file.good()) {
+            std::ifstream allow_list_file(expanded_file_path);
+            if (!allow_list_file.good()) {
                 throw MPFDetectionException(
                         MPF_COULD_NOT_OPEN_DATAFILE,
-                        "Failed to load feed-forward class whitelist that was supposed to be located at \""
+                        "Failed to load feed-forward class allow list that was supposed to be located at \""
                         + expanded_file_path + "\".");
             }
 
             std::string line;
-            while (std::getline(whitelist_file, line)) {
+            while (std::getline(allow_list_file, line)) {
                 Utils::trim(line);
                 if (boost::iequals(line, class_name)) {
                     return "";

@@ -24,23 +24,23 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
-#ifndef OPENMPF_COMPONENTS_WHITELISTFILTER_H
-#define OPENMPF_COMPONENTS_WHITELISTFILTER_H
+#ifndef OPENMPF_COMPONENTS_ALLOWLISTFILTER_H
+#define OPENMPF_COMPONENTS_ALLOWLISTFILTER_H
 
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 
-class WhitelistFilter {
+class AllowListFilter {
 public:
-    WhitelistFilter(const std::string &whiteListPath, const std::vector<std::string> &names);
+    AllowListFilter(const std::string &allowListPath, const std::vector<std::string> &names);
 
-    bool operator()(const std::string &className);
+    bool operator()(const std::string &className) const;
 
 private:
-    std::unordered_set<std::string> whitelist_;
+    std::unordered_set<std::string> allowList_;
 };
 
 
-#endif //OPENMPF_COMPONENTS_WHITELISTFILTER_H
+#endif //OPENMPF_COMPONENTS_ALLOWLISTFILTER_H

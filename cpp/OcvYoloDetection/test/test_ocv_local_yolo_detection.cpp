@@ -258,12 +258,12 @@ TEST_F(OcvLocalYoloDetectionTestFixture, TestInvalidModel) {
 }
 
 
-TEST_F(OcvLocalYoloDetectionTestFixture, TestWhitelist) {
+TEST_F(OcvLocalYoloDetectionTestFixture, TestAllowList) {
     Properties jobProps = getTinyYoloConfig();
     auto component = initComponent();
 
     {
-        jobProps["CLASS_WHITELIST_FILE"] = "data/test-whitelist.txt";
+        jobProps["CLASS_ALLOW_LIST_FILE"] = "data/test-allow-list.txt";
         MPFImageJob job("Test", "data/dog.jpg", jobProps, {});
 
         std::vector<MPFImageLocation> results = component.GetDetections(job);
@@ -274,8 +274,8 @@ TEST_F(OcvLocalYoloDetectionTestFixture, TestWhitelist) {
     {
         int end_frame = 2;
         setenv("TEST_ENV_VAR", "data", true);
-        setenv("TEST_ENV_VAR2", "whitelist", true);
-        jobProps["CLASS_WHITELIST_FILE"] = "$TEST_ENV_VAR/test-${TEST_ENV_VAR2}.txt";
+        setenv("TEST_ENV_VAR2", "allow-list", true);
+        jobProps["CLASS_ALLOW_LIST_FILE"] = "$TEST_ENV_VAR/test-${TEST_ENV_VAR2}.txt";
 
         MPFVideoJob job("Test", "data/lp-ferrari-texas-shortened.mp4", 0, end_frame, jobProps, {});
 
