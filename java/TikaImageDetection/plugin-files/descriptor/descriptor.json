@@ -1,9 +1,9 @@
 {
   "componentName" : "TikaImageDetection",
-  "componentVersion" : "7.2",
-  "middlewareVersion" : "7.2",
+  "componentVersion" : "8.0",
+  "middlewareVersion" : "8.0",
   "sourceLanguage" : "java",
-  "batchLibrary" : "mpf-tika-image-detection-component-7.2.jar",
+  "batchLibrary" : "mpf-tika-image-detection-component-8.0.jar",
   "environmentVariables" : [],
   "algorithm" : {
     "name": "TIKAIMAGE",

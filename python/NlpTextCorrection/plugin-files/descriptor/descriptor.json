@@ -1,7 +1,7 @@
 {
   "componentName": "NlpTextCorrection",
-  "componentVersion": "7.2",
-  "middlewareVersion": "7.2",
+  "componentVersion": "8.0",
+  "middlewareVersion": "8.0",
   "sourceLanguage": "python",
   "batchLibrary": "NlpTextCorrection",
   "environmentVariables": [],
