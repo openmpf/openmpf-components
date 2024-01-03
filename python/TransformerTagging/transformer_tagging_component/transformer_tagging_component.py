@@ -181,10 +181,12 @@ class TransformerTaggingComponent:
         for tag in all_tag_results["tag"].unique():
             tag_df = all_tag_results[all_tag_results["tag"] == tag]
 
-            if "TAGS" in ff_props and tag.upper() not in ff_props:
-                ff_props["TAGS"] = ff_props["TAGS"] + "; " + tag.upper()
+            if "TAGS" in ff_props:
+                # only add tag if it is not already in ff_props["TAGS"], else do nothing
+                if tag.casefold() not in ff_props["TAGS"].casefold():
+                    ff_props["TAGS"] = ff_props["TAGS"] + "; " + tag.lower()
             else:
-                ff_props["TAGS"] = tag.upper()
+                ff_props["TAGS"] = tag
 
             prop_name_sent = prop_to_tag + " " + tag.upper() + " TRIGGER SENTENCES"
             prop_name_offset = prop_name_sent + " OFFSET"
