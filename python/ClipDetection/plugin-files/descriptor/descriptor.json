@@ -23,7 +23,7 @@
             "properties": [
                 {
                     "name": "MODEL_NAME",
-                    "description": "Specifies which CLIP model to load for inferencing. The only available models are 'ViT-L/14' and 'ViT-B/32'.",
+                    "description": "Specifies which CLIP model to load for inferencing. The available models are 'ViT-L/14' and 'ViT-B/32'.",
                     "type": "STRING",
                     "defaultValue": "ViT-L/14"
                 },
@@ -34,10 +34,10 @@
                     "defaultValue": "1"
                 }, 
                 {
-                    "name": "NUMBER_OF_TEMPLATES",
-                    "description": "The number of templates to be used in the text encoder. The current acceptable values are 7 and 80.",
-                    "type": "INT",
-                    "defaultValue": "80"
+                    "name": "TEMPLATE_TYPE",
+                    "description": "The number of templates to be used in the text encoder. The current acceptable values are 'openai_1', 'openai_7', and 'openai_80'.",
+                    "type": "STRING",
+                    "defaultValue": "openai_80"
                 }, 
                 {
                     "name": "CLASSIFICATION_LIST",
@@ -59,7 +59,7 @@
                 },
                 {
                     "name": "ENABLE_CROPPING",
-                    "description": "If true, the image will be cropped into 144 images of size 224x224. The results from each of these images is averaged to get the results. Not available for use on CPU.",
+                    "description": "If true, the image will be cropped into 144 images of size 224x224. The results from each of these images is averaged to get the results. Not recommended for use on CPU.",
                     "type": "BOOLEAN",
                     "defaultValue": "true"
                 },
@@ -83,15 +83,9 @@
                 },
                 {
                     "name": "DETECTION_FRAME_BATCH_SIZE",
-                    "description": "Number of frames to batch inference when processing video. GPU VRAM dependant.",
+                    "description": "Number of frames to batch inference when processing video. GPU VRAM dependant. If ENABLE_CROPPING is set to true, then the value will be ignored and set to 1.",
                     "type": "INT",
                     "defaultValue": "64"
-                },
-                {
-                    "name": "DETECTION_FRAME_BATCH_SIZE_TRITON",
-                    "description": "Number of frames to batch inference when processing video with Triton. GPU VRAM dependant.",
-                    "type": "INT",
-                    "defaultValue": "32"
                 }
             ] 
         }
@@ -111,6 +105,10 @@
                 {
                     "name": "ENABLE_TRITON",
                     "value": "true"
+                },
+                {
+                    "name": "DETECTION_FRAME_BATCH_SIZE",
+                    "value": "32"
                 }
             ]
         },
@@ -137,6 +135,10 @@
                 {
                     "name": "CLASSIFICATION_LIST",
                     "value": "imagenet"
+                },
+                {
+                    "name": "DETECTION_FRAME_BATCH_SIZE",
+                    "value": "32"
                 }
             ]
         }

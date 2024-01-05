@@ -1,0 +1,27 @@
+name: "vit_b_32"
+backend: "pytorch"
+max_batch_size: 2048
+input [
+    {
+        name: "image_input"
+        data_type: TYPE_FP32
+        dims: [3, 224, 224]
+    }
+]
+output [
+    {
+        name: "feature_vector__0"
+        data_type: TYPE_FP32
+        dims: [512]    
+    }
+]
+parameters [
+    {
+        key: "INFERENCE_MODE"
+        value: {string_value: "true"}
+    },
+    {
+        key: "ENABLE_NVFUSER"
+        value: {string_value: "true"}
+    }
+]

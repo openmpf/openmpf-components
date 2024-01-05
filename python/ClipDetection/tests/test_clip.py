@@ -45,9 +45,10 @@ class TestClip(unittest.TestCase):
             data_uri=self._get_test_file('dog.jpg'),
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 3,
-                NUMBER_OF_TEMPLATES = 1,
+                NUMBER_OF_TEMPLATES = 80,
                 ENABLE_CROPPING ='False',
-                INCLUDE_FEATURES = 'True'
+                INCLUDE_FEATURES = 'True',
+                CLASSIFICATION_LIST = 'imagenet'
             ),
             media_properties={},
             feed_forward_location=None
