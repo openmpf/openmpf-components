@@ -33,6 +33,24 @@
           "defaultValue": "false"
         },
         {
+          "name": "LANGUAGE_DETECTOR",
+          "description": "Specifies which Tika language detector to use. Current options are 'opennlp' and 'optimaize'. Please note, if 'opennlp' is selected, ensure that the 'FILTER_REASONABLE_LANGUAGES' property is set to false.",
+          "type": "STRING",
+          "defaultValue": "optimaize"
+        },
+        {
+          "name": "FILTER_REASONABLE_LANGUAGES",
+          "description": "If enabled, ignore language detections that are not marked as reasonable. Disable to attempt language detection for short sentences, especially with the OpenNLP language detector. ",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
+        },
+        {
+          "name": "MIN_LANGUAGE_CONFIDENCE",
+          "description": "If set to a positive value, filter out any 'TEXT_LANGUAGE' detections with a lower confidence score. ",
+          "type": "DOUBLE",
+          "defaultValue": "-1"
+        },
+        {
           "name": "LIST_ALL_PAGES",
           "description": "Specifies whether or not to store each page as a track, even if no text is extracted.",
           "type": "BOOLEAN",
@@ -43,8 +61,19 @@
           "description": "Specifies minimum length of detected text before language filtering is applied.",
           "type": "INT",
           "defaultValue": "20"
+        },
+        {
+          "name": "FEED_FORWARD_PROP_TO_PROCESS",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection will be used to determine the input text for language detection. If the first property listed is present, then the associated text value of that property will be used for language detection. If it's not, then the next property in the list is considered. At most, one property will be used for language detection.",
+          "type": "STRING",
+          "defaultValue": "TEXT,TRANSCRIPT"
+        },
+        {
+          "name": "LANGUAGE_ID_ONLY",
+          "description": "For generic media: If set to true, this component will only perform language identification on feed-forward track output and will ignore the associated media.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
         }
-
       ]
     }
   },
@@ -54,6 +83,59 @@
       "description": "Executes the Tika text detection algorithm using the default parameters.",
       "algorithm": "TIKATEXT",
       "properties": []
+    },
+    {
+      "name": "TIKA TEXT DETECTION (WITH OPENNLP LANGUAGE ID) ACTION",
+      "description": "Executes the Tika text detection algorithm using OpenNLP language detection.",
+      "algorithm": "TIKATEXT",
+      "properties": [
+        {
+          "name": "LANGUAGE_DETECTOR",
+          "value": "opennlp"
+        },
+        {
+          "name": "FILTER_REASONABLE_LANGUAGES",
+          "value": "FALSE"
+        }
+      ]
+    },
+    {
+      "name": "TIKA TEXT LANGUAGE ID (WITH FF REGION) ACTION",
+      "description": "Executes the Tika text detection algorithm using the default parameters for language detection on feed forward tracks.",
+      "algorithm": "TIKATEXT",
+      "properties": [
+        {
+          "name": "LANGUAGE_ID_ONLY",
+          "value": "TRUE"
+        },
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        }
+      ]
+    },
+    {
+      "name": "TIKA TEXT (WITH OPENNLP LANGUAGE ID, FF REGION) ACTION",
+      "description": "Executes the Tika text detection algorithm using OpenNLP language detection on feed forward tracks.",
+      "algorithm": "TIKATEXT",
+      "properties": [
+        {
+          "name": "LANGUAGE_ID_ONLY",
+          "value": "TRUE"
+        },
+        {
+          "name": "LANGUAGE_DETECTOR",
+          "value": "opennlp"
+        },
+        {
+          "name": "FILTER_REASONABLE_LANGUAGES",
+          "value": "FALSE"
+        },
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        }
+      ]
     },
     {
       "name": "TIKA TEXT DETECTION SOURCE MEDIA ONLY ACTION",
@@ -73,6 +155,27 @@
       "description": "Performs Tika text detection.",
       "actions": [
         "TIKA TEXT DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "TIKA TEXT DETECTION (WITH OPENNLP LANGUAGE ID) TASK",
+      "description": "Performs Tika text detection using OpenNLP language detection.",
+      "actions": [
+        "TIKA TEXT DETECTION (WITH OPENNLP LANGUAGE ID) ACTION"
+      ]
+    },
+    {
+      "name": "TIKA TEXT LANGUAGE ID (WITH FF REGION) TASK",
+      "description": "Performs Tika text detection using the default parameters for language detection on feed forward tracks.",
+      "actions": [
+        "TIKA TEXT LANGUAGE ID (WITH FF REGION) ACTION"
+      ]
+    },
+    {
+      "name": "TIKA TEXT (WITH OPENNLP LANGUAGE ID, FF REGION) TASK",
+      "description": "Executes the Tika text detection algorithm using OpenNLP language detection on feed forward tracks.",
+      "actions": [
+        "TIKA TEXT (WITH OPENNLP LANGUAGE ID, FF REGION) ACTION"
       ]
     },
     {
