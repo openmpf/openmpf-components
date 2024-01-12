@@ -9,6 +9,7 @@
     "name": "TRANSFORMERTAGGING",
     "description": "Uses SentenceTransformers to tag sentences.",
     "actionType": "DETECTION",
+    "trackType": "TEXT",
     "requiresCollection": {
       "states": []
     },

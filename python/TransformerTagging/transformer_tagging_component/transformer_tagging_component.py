@@ -43,7 +43,6 @@ import pandas as pd
 logger = logging.getLogger('TransformerTaggingComponent')
 
 class TransformerTaggingComponent:
-    detection_type = 'TEXT'
 
     def __init__(self):
         self._cached_model = SentenceTransformer('all-mpnet-base-v2')
