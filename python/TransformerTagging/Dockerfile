@@ -48,7 +48,6 @@ RUN python -c \
 # download sentence transformer model
 RUN python -c \
     "import os; \
-    os.environ['REQUESTS_CA_BUNDLE']='/etc/ssl/certs/ca-certificates.crt'; \
     from sentence_transformers import SentenceTransformer, util; \
     SentenceTransformer('all-mpnet-base-v2')"
 
