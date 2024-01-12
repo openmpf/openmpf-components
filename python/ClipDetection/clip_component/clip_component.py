@@ -49,7 +49,6 @@ logger = logging.getLogger('ClipComponent')
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 class ClipComponent(mpf_util.ImageReaderMixin):
-    detection_type = 'CLASS'
 
     def __init__(self):
         self._wrapper = ClipWrapper()

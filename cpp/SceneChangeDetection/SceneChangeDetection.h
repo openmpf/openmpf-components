@@ -49,8 +49,6 @@ public:
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(
             const MPF::COMPONENT::MPFVideoJob &job) override;
 
-    std::string GetDetectionType() override;
-
 private:
     log4cxx::LoggerPtr logger_;
     cv::Mat dilateKernel;

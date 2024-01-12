@@ -1,7 +1,7 @@
 {
   "componentName": "EastTextDetection",
-  "componentVersion": "7.2",
-  "middlewareVersion": "7.2",
+  "componentVersion": "8.0",
+  "middlewareVersion": "8.0",
   "sourceLanguage": "python",
   "batchLibrary": "EastTextDetection",
   "environmentVariables": [],
@@ -9,6 +9,7 @@
     "name": "EAST",
     "description": "EAST scene text detection.",
     "actionType": "DETECTION",
+    "trackType": "TEXT REGION",
     "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []

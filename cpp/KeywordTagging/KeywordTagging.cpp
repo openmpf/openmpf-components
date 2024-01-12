@@ -382,10 +382,6 @@ bool KeywordTagging::Close() {
     return true;
 }
 
-string KeywordTagging::GetDetectionType() {
-    return "TEXT";
-}
-
 vector<MPFGenericTrack> KeywordTagging::GetDetections(const MPFGenericJob &job) {
     LOG4CXX_DEBUG(hw_logger_, "Processing \"" + job.data_uri + "\".");
 

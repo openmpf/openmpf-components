@@ -45,5 +45,5 @@ if (${GTEST_FOUND})
     # Install test images, videos, and other files
     file(GLOB OCVDNN_TEST_FILES data/*)
     file(COPY ${OCVDNN_TEST_FILES} DESTINATION data)
-    file(COPY vehicle-whitelist.txt DESTINATION .)
+    file(COPY vehicle-allow-list.txt DESTINATION .)
 endif()

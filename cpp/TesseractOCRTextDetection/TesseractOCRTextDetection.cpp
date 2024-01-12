@@ -127,10 +127,6 @@ bool TesseractOCRTextDetection::Close() {
 }
 
 
-string TesseractOCRTextDetection::GetDetectionType() {
-    return "TEXT";
-}
-
 bool TesseractOCRTextDetection::Supports(MPFDetectionDataType data_type) {
     return data_type == MPFDetectionDataType::IMAGE
         || data_type == MPFDetectionDataType::VIDEO

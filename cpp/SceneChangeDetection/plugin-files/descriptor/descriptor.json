@@ -1,7 +1,7 @@
 {
   "componentName" : "SceneChangeDetection",
-  "componentVersion" : "7.2",
-  "middlewareVersion" : "7.2",
+  "componentVersion" : "8.0",
+  "middlewareVersion" : "8.0",
   "sourceLanguage" : "c++",
   "batchLibrary": "${MPF_HOME}/plugins/SceneChangeDetection/lib/libmpfSceneChange.so",
   "environmentVariables" : [ {
@@ -12,6 +12,7 @@
     "name" : "SCENECHANGE",
     "description" : "Segments a video into scenes based on 4 detectors.",
     "actionType" : "DETECTION",
+    "trackType": "SCENE",
     "outputChangedCounter" : 1,
     "requiresCollection" : {
       "states" : []

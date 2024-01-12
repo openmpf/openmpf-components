@@ -37,7 +37,6 @@ logger = logging.getLogger('EastComponent')
 
 
 class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
-    detection_type = 'TEXT REGION'
 
     def __init__(self):
         logger.info('Creating instance of EastComponent')

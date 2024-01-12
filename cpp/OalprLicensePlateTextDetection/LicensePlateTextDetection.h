@@ -73,8 +73,6 @@ public:
      */
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetections(const MPF::COMPONENT::MPFVideoJob &job) override;
 
-    std::string GetDetectionType() override;
-
 private:
     std::vector<MPF::COMPONENT::MPFVideoTrack> GetDetectionsFromVideoCapture(
             const MPF::COMPONENT::MPFVideoJob &job,

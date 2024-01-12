@@ -80,7 +80,7 @@ public:
                    // common settings with local yolo network
                    && modelSettings_.namesFile == modelSettings.namesFile
                    && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
-                   && config.classWhiteListPath == classWhiteListPath_;
+                   && config.classAllowListPath == classAllowListPath_;
         } else {
             return !tritonInferencer_
                    && modelSettings_.ocvDnnNetworkConfigFile == modelSettings.ocvDnnNetworkConfigFile
@@ -88,7 +88,7 @@ public:
                    && modelSettings_.namesFile == modelSettings.namesFile
                    && modelSettings_.confusionMatrixFile == modelSettings.confusionMatrixFile
                    && config.cudaDeviceId == cudaDeviceId_
-                   && config.classWhiteListPath == classWhiteListPath_;
+                   && config.classAllowListPath == classAllowListPath_;
         }
     }
 

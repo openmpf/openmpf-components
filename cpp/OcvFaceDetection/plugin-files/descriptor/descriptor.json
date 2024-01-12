@@ -1,7 +1,7 @@
 {
   "componentName": "OcvFaceDetection",
-  "componentVersion": "7.2",
-  "middlewareVersion": "7.2",
+  "componentVersion": "8.0",
+  "middlewareVersion": "8.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/OcvFaceDetection/lib/libmpfOcvFaceDetection.so",
   "environmentVariables": [
@@ -14,6 +14,7 @@
     "name": "FACECV",
     "description": "Detects faces in images and videos using the Open Computer Vision (OCV) library.",
     "actionType": "DETECTION",
+    "trackType": "FACE",
     "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []

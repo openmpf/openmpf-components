@@ -1,6 +1,6 @@
 # Overview
 
-This repository contains source code for the OpenMPF Argos Translation Component. 
+This repository contains source code for the OpenMPF Argos Translation Component. This component is based on [Argos Translate](https://github.com/argosopentech/argos-translate).
 
 This component translates the input text from a given source language to English. The source language can be provided as a job property, or be indicated in the detection properties from a feed-forward track.
 
@@ -18,41 +18,65 @@ The below properties can be optionally provided to alter the behavior of the com
 # Language Identifiers
 The following are the ISO 639-1 codes, the ISO 639-2 codes, and their corresponding languages which Argos Translate version 1.7.0 can translate to English.
 
-All translations are either to English or from English. When trying to translate from one non-English language to another, Argos will automatically pivot between languages using the currently installed packages. For example, for Spanish->French Argos would pivot from Spanish->English to English->French. This is associated with a drop in accuracy and increase in runtime. 
+All translations are either to English or from English. When trying to translate from one non-English language to another, Argos will automatically pivot between languages using the currently installed packages. For example, for Spanish->French Argos would pivot from Spanish->English to English->French. This is associated with a drop in accuracy and increase in runtime.
 
 Language packages are downloaded dynamically as needed. In addition, when building a Docker image the Dockerfile pre-installs German, French, Russian, and Spanish.
 
-Note: Argos underperforms when translating to and from Chinese
+Note: Argos has two different models for Chinese Simplified and Traditional. Using the wrong one
+will result in incorrect translations. If the text is in Simplified Chinese use `zho-hans` for the
+language code. If it is in Traditional Chinese, use `zho-hant`.
 
-| ISO-639-1 | ISO-639-2 | Language         |
-| --- |---|------------------|
-| `ar` | `ara` | Arabic           |
-| `az` | `aze` | Azerbaijani      |
-| `zh` | `cmn` | Chinese          |
-| `cs` | `ces` | Czech            |
-| `da` | `dan` | Danish           |
-| `nl` | `nld` | Dutch            |
-| `eo` | `epo` | Esperanto        |
-| `fi` | `fin` | Finnish          |
-| `fr` | `fra` | French           |
-| `de` | `deu` | German           |
-| `el` | `ell` | Greek            |
-| `he` | `heb` | Hebrew           |
-| `hi` | `hin` | Hindi            |
-| `hu` | `hun` | Hungarian        |
-| `id` | `ind` | Indonesian       |
-| `ga` | `gle` | Irish            |
-| `it` | `ita` | Italian          |
-| `ja` | `jpn` | Japanese         |
-| `ko` | `kor` | Korean           |
-| `fa` | `fas` | Persian          |
-| `pl` | `pol` | Polish           |
-| `pt` | `por` | Portuguese       |
-| `ru` | `rus` | Russian          |
-| `sk` | `slk` | Slovak           |
-| `es` | `spa` | Spanish          |
-| `sv` | `swe` | Swedish          |
-| `tr` | `tur` | Turkish          |
-| `uk` | `ukr` | Ukrainian        |
+| ISO-639-2 | ISO-639-1 | Language             |
+| --------- | --------- | -------------------- |
+| alb       |  sq       | Albanian             |
+| ara       |  ar       | Arabic               |
+| aze       |  az       | Azerbaijani          |
+| ben       |  bn       | Bengali              |
+| bul       |  bg       | Bulgarian            |
+| cat       |  ca       | Catalan              |
+| cmn       |  zh       | Chinese Simplified\* |
+| zho       |  zh       | Chinese Simplified\* |
+| zho-hans  |  zh       | Chinese Simplified\* |
+| zho-hant  |  zt       | Chinese Traditional\*|
+| ces       |  cs       | Czech                |
+| dan       |  da       | Danish               |
+| nld       |  nl       | Dutch                |
+| epo       |  eo       | Esperanto            |
+| est       |  et       | Estonian             |
+| fin       |  fi       | Finnish              |
+| fra       |  fr       | French               |
+| deu       |  de       | German               |
+| ell       |  el       | Greek                |
+| heb       |  he       | Hebrew               |
+| hin       |  hi       | Hindi                |
+| hun       |  hu       | Hungarian            |
+| ind       |  id       | Indonesian           |
+| gle       |  ga       | Irish                |
+| ita       |  it       | Italian              |
+| jpn       |  ja       | Japanese             |
+| kor       |  ko       | Korean               |
+| lav       |  lv       | Latvian              |
+| lit       |  lt       | Lithuanian           |
+| may       |  ms       | Malay \*\*           |
+| msa       |  ms       | Malay \*\*           |
+| nor       |  no       | Norwegian            |
+| fas       |  fa       | Persian              |
+| pol       |  pl       | Polish               |
+| por       |  pt       | Portuguese           |
+| rum       |  ro       | Romanian \*\*        |
+| ron       |  ro       | Romanian \*\*        |
+| rus       |  ru       | Russian              |
+| srp       |  sr       | Serbian              |
+| slk       |  sk       | Slovak \*\*          |
+| slo       |  sk       | Slovak \*\*          |
+| slv       |  sl       | Slovenian            |
+| spa       |  es       | Spanish              |
+| swe       |  sv       | Swedish              |
+| tgl       |  tl       | Tagalog              |
+| tha       |  th       | Thai                 |
+| tur       |  tr       | Turkish              |
+| ukr       |  uk       | Ukrainian            |
 
+\* Technically two major scripts exist for modern Chinese (Traditional and Simplified). To differentiate between the scripts, ISO 15924 is provided as an addendum to the ISO 639-2 code.
 
+\*\* Several languages like Malay, Romanian, and Slovak have two sets of ISO 639-2 codes.
