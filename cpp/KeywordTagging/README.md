@@ -14,20 +14,14 @@ component.
 
 # Inputs
 
-When performing keyword tagging on a text file, the contents of the file will be
-stored in a `TEXT` output property. When performing keyword tagging on
-feed-forward detections generated from some other component in a multi-stage
-pipeline, the output properties from that component will be preserved. This
-means that if those detections have a `TEXT` output property, then this
-component will generate detections with the same `TEXT` output. Similarly, if
-those detections have a `TRANSCRIPT` output property, then this component will
-generate detections with the same `TRANSCRIPT` output.
-
-Keyword tagging will be performed on all of the input properties listed in
-`FEED_FORWARD_PROP_TO_PROCESS`, if present. If none of the input properties are
-present then keyword tagging is not performed and the feed-forward detection
-is returned unmodified. For the sake of discussion, let's assume we need to
-perform keyword tagging on the `TEXT` property.
+When acting as a downstream stage of a feed forward pipeline, this component will
+accept feed forward tracks as input. The `FEED_FORWARD_PROP_TO_PROCESS` job
+property will be used to determine which properties in the feed forward track
+should be processed. For example, if `FEED_FORWARD_PROP_TO_PROCESS` is set to 
+`TEXT,TRANSCRIPT,TRANSLATION` this component will look for tags in the `TEXT`,
+`TRANSCRIPT`, and `TRANSLATION` property in the feed forward track. The trigger
+words for each of these properties will be represented as seperate outputs. Refer
+to the Outputs section below.
 
 # JSON Tagging File
 
@@ -122,7 +116,17 @@ pattern becomes `(\\b)end(\\W+)of(\\W+)a(\\W+)sentence\\.`. Note that the `.`
 symbol is typically used in regex to match any character, which is why we use `\\.`
 instead.
 
+
 # Outputs
+
+When performing keyword tagging on a text file, the contents of the file will be
+stored in a `TEXT` output property. When performing keyword tagging on
+feed-forward detections generated from some other component in a multi-stage
+pipeline, the output properties from that component will be preserved.This
+means that if those detections have a `TEXT` output property, then this
+component will generate detections with the same `TEXT` output. Similarly, if
+those detections have a `TRANSLATION` output property, then this component will
+generate detections with the same `TRANSLATION` output.
 
 Each input property listed in `FEED_FORWARD_PROP_TO_PROCESS` that's
 present, and not just whitespace, will result in a `[TAG] TRIGGER WORDS` and
@@ -133,8 +137,8 @@ output properties will be produced:
 
 - `TEXT [TAG] TRIGGER WORDS`
 - `TEXT [TAG] TRIGGER WORDS OFFSET`
-- `TRANSLATION TRIGGER WORDS`
-- `TRANSLATION TRIGGER WORDS OFFSET`
+- `TRANSLATION [TAG] TRIGGER WORDS`
+- `TRANSLATION [TAG] TRIGGER WORDS OFFSET`
 
 Let's assume that we need process the `TEXT` property. The substring(s) that
 triggered each tag will be stored in `TEXT [TAG] TRIGGER WORDS` in alphabetical order.
@@ -143,7 +147,7 @@ will be stored in `TEXT [TAG] TRIGGER WORDS OFFSET`. Because the same trigger wo
 can be encountered multiple times in the `TEXT` output, the results are organized
 as follows:
 
-* `TEXT [TAGS] TRIGGER WORDS`: Each distinct trigger word is separated by a semicolon
+* `TEXT [TAG] TRIGGER WORDS`: Each distinct trigger word is separated by a semicolon
 followed by a space. For example: `TEXT TRIGGER WORDS=trigger1; trigger2`
     * Because semicolons can be part of the trigger word itself, those
     semicolons will be encapsulated in brackets. For example,

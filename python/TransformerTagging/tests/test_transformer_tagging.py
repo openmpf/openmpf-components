@@ -273,5 +273,20 @@ class TestTransformerTagging(unittest.TestCase):
 
         self.assertEqual(expectedTags, props["TAGS"])
 
+    def test_matches_with_semicolons(self):
+        SEMICOLON_SAMPLE = (
+            'I drove to the beach today; it was a long drive. '
+        )
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=SEMICOLON_SAMPLE))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', {}, {}, ff_track)
+        comp = TransformerTaggingComponent()
+        result = comp.get_detections_from_generic(job)
+
+        self.assertEqual(1, len(result))
+        props = result[0].detection_properties
+
+        expected_output = "I drove to the beach today[;] it was a long drive."
+        self.assertEqual(expected_output, props["TEXT TRAVEL TRIGGER SENTENCES"])
+
 if __name__ == '__main__':
     unittest.main()

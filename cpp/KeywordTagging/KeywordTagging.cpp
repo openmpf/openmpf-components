@@ -26,6 +26,7 @@
 
 #include "KeywordTagging.h"
 #include <string>
+#include <codecvt>
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -288,7 +289,7 @@ set<wstring> KeywordTagging::search_regex(const MPFJob &job, const wstring &full
     }
 
     for (const auto &kv : json_kvs_regex) {
-        auto key = kv.first;
+        auto key = boost::locale::to_lower(kv.first);
         auto values = kv.second;
         map<wstring, vector<string>>  trigger_words_offset;
         for (const pair<wstring, bool> &value : values) {
@@ -579,25 +580,20 @@ void KeywordTagging::process_text_tagging(Properties &detection_properties, cons
     }
 
     if (has_text) {
-        set<string> all_tags;
         // store off earlier tags
         boost::regex delimiter{"( *; *)"};
         boost::sregex_token_iterator iter(detection_properties["TAGS"].begin(), 
             detection_properties["TAGS"].end(), delimiter, -1);
         boost::sregex_token_iterator end;
+
         while(iter != end)
         {
-            all_tags.insert(*iter++);
+            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> convert_s_to_ws;
+            all_found_tags.insert(boost::to_lower_copy(convert_s_to_ws.from_bytes(*iter++)));
         }
 
-        // add in new tags
-        set<wstring>::iterator new_tags_it;
-        for(new_tags_it = all_found_tags.begin(); new_tags_it != all_found_tags.end(); new_tags_it++)
-        {
-            all_tags.insert(boost::locale::conv::utf_to_utf<char>(*new_tags_it));
-        }
-        string tag_string = boost::algorithm::join(all_tags, L"; ");
-        detection_properties["TAGS"] = tag_string;
+        wstring tag_string = boost::algorithm::join(all_found_tags, L"; ");
+        detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
     }
 }
 

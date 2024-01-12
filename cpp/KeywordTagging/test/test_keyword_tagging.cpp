@@ -582,6 +582,6 @@ TEST(KEYWORDTAGGING, FeedForwardTags) {
         ASSERT_EQ(track.confidence, results.at(0).confidence);
 
         Properties props = results.at(0).detection_properties;
-        //ASSERT_EQ(7, props.size());
-        ASSERT_EQ("FeedForwardTag; financial", props["TAGS"]);
+        ASSERT_EQ(4, props.size());
+        ASSERT_EQ("feedforwardtag; financial", props["TAGS"]);
 }

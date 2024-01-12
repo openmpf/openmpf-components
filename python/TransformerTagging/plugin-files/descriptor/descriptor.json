@@ -39,7 +39,7 @@
         },
         {
           "name": "ENABLE_DEBUG",
-          "description": "If true, each detection will include a `TEXT [TAG] TRIGGER SENTENCES MATCHES` property for each entry in `TAGS`. The value will be the sentence in the corpus which generated the highest match score for that tag.",
+          "description": "If true, each detection will include a `TRIGGER SENTENCES MATCHES` property for each entry in `TAGS`. The value will be the sentences in the corpus which met the score threshold for that tag.",
           "type": "BOOLEAN",
           "defaultValue": "FALSE"
         }

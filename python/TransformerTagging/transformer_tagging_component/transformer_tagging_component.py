@@ -123,7 +123,7 @@ class TransformerTaggingComponent:
             self._cached_corpuses[corpus_path] = Corpus(corpus_path, self._cached_model)
 
         return self._cached_corpuses[corpus_path]
-        
+
 
     def _add_tags(self, config, corpus, ff_props: Dict[str, str]):
         for prop_to_tag in config.props_to_process:
@@ -156,7 +156,7 @@ class TransformerTaggingComponent:
             probe_df = pd.DataFrame({
                 "input text": probe_sent,
                 "corpus text": corpus.json["text"],
-                "tag": corpus.json["tag"],
+                "tag": corpus.json["tag"].str.lower(),
                 "score": scores,
                 "offset": offset_string
             })
@@ -192,14 +192,14 @@ class TransformerTaggingComponent:
             prop_name_offset = prop_name_sent + " OFFSET"
             prop_name_score = prop_name_sent + " SCORE"
 
-            ff_props[prop_name_sent] = "; ".join(tag_df["input text"])
+            ff_props[prop_name_sent] = "; ".join(tag_df["input text"].str.replace(';', '[;]'))
             ff_props[prop_name_offset] = "; ".join(tag_df["offset"])
             ff_props[prop_name_score] = "; ".join(tag_df["score"].astype(str))
 
             if config.debug:
                 logger.info("Debug set to true, including corpus sentences that triggered the match.")
                 prop_name_matches = prop_name_sent + " MATCHES"
-                ff_props[prop_name_matches] = "; ".join(tag_df["corpus text"])
+                ff_props[prop_name_matches] = "; ".join(tag_df["corpus text"].str.replace(';', '[;]'))
 
 
 class Corpus:
