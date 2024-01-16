@@ -18,7 +18,7 @@ When acting as a downstream stage of a feed forward pipeline, this component wil
 accept feed forward tracks as input. The `FEED_FORWARD_PROP_TO_PROCESS` job
 property will be used to determine which properties in the feed forward track
 should be processed. For example, if `FEED_FORWARD_PROP_TO_PROCESS` is set to 
-`TEXT,TRANSCRIPT,TRANSLATION` this component will look for tags in the `TEXT`,
+`TEXT,TRANSLATION` this component will look for tags in the `TEXT`,
 `TRANSCRIPT`, and `TRANSLATION` property in the feed forward track. The trigger
 words for each of these properties will be represented as seperate outputs. Refer
 to the Outputs section below.

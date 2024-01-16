@@ -183,7 +183,7 @@ class TransformerTaggingComponent:
             if "TAGS" in ff_props:
                 # only add tag if it is not already in ff_props["TAGS"], else do nothing
                 if tag.casefold() not in ff_props["TAGS"].casefold():
-                    ff_props["TAGS"] = ff_props["TAGS"] + "; " + tag.lower()
+                    ff_props["TAGS"] = ff_props["TAGS"] + "; " + tag
             else:
                 ff_props["TAGS"] = tag
 

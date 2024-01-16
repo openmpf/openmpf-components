@@ -113,11 +113,15 @@ When `ENABLE_DEBUG` is set to true, the output properties will include a
 - `TRANSLATION [TAG] TRIGGER SENTENCES OFFSET`
 - `TRANSLATION [TAG] TRIGGER SENTENCES SCORE`
 
-Let's assume that we need process the `TEXT` property. The sentence(s) that
+Let's assume that we need to process the `TEXT` property. The sentence(s) that
 triggered each tag will be stored in `TEXT [TAG] TRIGGER SENTENCES`. While the
 sentence that was matched against in the corpus will be stored in the
-`TEXT [TAG] TRIGGER SENTENCES MATCHES` property. For each trigger sentence the 
-substring index range relative to the `TEXT` output will be stored in 
-`TEXT [TAG] TRIGGER SENTENCES OFFSET`.
+`TEXT [TAG] TRIGGER SENTENCES MATCHES` property. Note, that because semicolons
+can be part of the trigger sentence itself, those semicolons will be encapsulated 
+in brackets. For example, `This sentence has has a semicolon;` in the input `TEXT` 
+is reported as:
+`TEXT [TAG] TRIGGER WORDS=This sentence has has a semicolon[;]; other triggers`.
+For each trigger sentence the  substring index range relative to the `TEXT`
+output will be stored in `TEXT [TAG] TRIGGER SENTENCES OFFSET`.
 
 
