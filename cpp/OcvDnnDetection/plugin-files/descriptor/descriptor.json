@@ -169,7 +169,7 @@
       ]
     },
     {
-      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) ACTION",
+      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3-CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) ACTION",
       "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
       "algorithm": "DNNCV",
       "properties": [
@@ -342,10 +342,10 @@
       ]
     },
     {
-      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) TASK",
+      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3-CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) TASK",
       "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
       "actions": [
-        "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) ACTION"
+        "CAFFE GOOGLENET DETECTION (WITH LOSS3-CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) ACTION"
       ]
     },
     {
@@ -379,10 +379,10 @@
       ]
     },
     {
-      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) PIPELINE",
+      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3-CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) PIPELINE",
       "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
       "tasks": [
-        "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) TASK"
+        "CAFFE GOOGLENET DETECTION (WITH LOSS3-CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) TASK"
       ]
     },
     {
