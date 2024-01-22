@@ -49,7 +49,7 @@ RUN --mount=type=tmpfs,target=/tmp \
         wget -O- 'https://github.com/openai/CLIP/tarball/master' \
             | tar --extract --gzip --directory /tmp/CLIP; \
         cd /tmp/CLIP/*; \
-        pip3 install . 'torchvision==0.8.2'
+        pip3 install . 'torchvision==0.14.1'
 
 ARG RUN_TESTS=false
 
