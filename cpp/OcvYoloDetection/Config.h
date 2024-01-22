@@ -116,7 +116,7 @@ public:
     /// gpu device id to use for cuda
     int cudaDeviceId;
 
-    std::string classWhiteListPath;
+    std::string classAllowListPath;
 
     bool enableDebug;
 

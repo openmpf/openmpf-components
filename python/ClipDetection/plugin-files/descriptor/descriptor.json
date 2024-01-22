@@ -1,15 +1,15 @@
 {
     "componentName": "ClipDetection",
-    "componentVersion": "7.2",
-    "middlewareVersion": "7.2",
+    "componentVersion": "8.0",
+    "middlewareVersion": "8.0",
     "sourceLanguage": "python",
     "batchLibrary": "ClipDetection",
     "environmentVariables": [],
     "algorithm": {
         "name": "CLIP",
         "description": "CLIP classification.",
-        "detectionType": "CLASS",
         "actionType": "DETECTION",
+        "trackType": "CLASS",
         "outputChangedCounter": 1,
         "requiresCollection": {
             "states": []

@@ -41,10 +41,6 @@ using namespace MPF::COMPONENT;
 using namespace cv;
 
 
-std::string SceneChangeDetection::GetDetectionType() {
-    return "SCENE";
-}
-
 bool SceneChangeDetection::Init() {
 
     // Determine where the executable is running.

@@ -1,7 +1,7 @@
 {
   "componentName": "OcvDnnDetection",
-  "componentVersion": "7.2",
-  "middlewareVersion": "7.2",
+  "componentVersion": "8.0",
+  "middlewareVersion": "8.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/OcvDnnDetection/lib/libmpfOcvDnnDetection.so",
   "environmentVariables": [
@@ -14,6 +14,7 @@
     "name": "DNNCV",
     "description": "Performs object classification using the OpenCV Deep Neural Networks module.",
     "actionType": "DETECTION",
+    "trackType": "CLASS",
     "requiresCollection": {
       "states": []
     },
@@ -121,14 +122,14 @@
           "defaultValue": "CLASSIFICATION"
         },
         {
-          "name": "FEED_FORWARD_WHITELIST_FILE",
+          "name": "FEED_FORWARD_ALLOW_LIST_FILE",
           "description": "When FEED_FORWARD_TYPE is provided and not set to NONE, only feed-forward detections with class names contained in the specified file will be processed. If no file is specified, all of the detections will be processed.",
           "type": "STRING",
           "defaultValue": ""
         },
         {
           "name": "FEED_FORWARD_EXCLUDE_BEHAVIOR",
-          "description": "When FEED_FORWARD_TYPE is provided and not set to NONE, and FEED_FORWARD_WHITELIST_FILE is provided, this value determines what to do with feed-forward detections with class names not contained in the FEED_FORWARD_WHITELIST_FILE. Acceptable values are PASS_THROUGH and DROP.",
+          "description": "When FEED_FORWARD_TYPE is provided and not set to NONE, and FEED_FORWARD_ALLOW_LIST_FILE is provided, this value determines what to do with feed-forward detections with class names not contained in the FEED_FORWARD_ALLOW_LIST_FILE. Acceptable values are PASS_THROUGH and DROP.",
           "type": "STRING",
           "defaultValue": "PASS_THROUGH"
         },
@@ -168,7 +169,7 @@
       ]
     },
     {
-      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) ACTION",
+      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3-CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) ACTION",
       "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
       "algorithm": "DNNCV",
       "properties": [
@@ -341,10 +342,10 @@
       ]
     },
     {
-      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) TASK",
+      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3-CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) TASK",
       "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
       "actions": [
-        "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) ACTION"
+        "CAFFE GOOGLENET DETECTION (WITH LOSS3-CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) ACTION"
       ]
     },
     {
@@ -378,10 +379,10 @@
       ]
     },
     {
-      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) PIPELINE",
+      "name": "CAFFE GOOGLENET DETECTION (WITH LOSS3-CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) PIPELINE",
       "description": "Performs caffe detection using the 'googlenet' model, and returns the activation values and the spectral hash for the loss3/classifier layer.",
       "tasks": [
-        "CAFFE GOOGLENET DETECTION (WITH LOSS3/CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) TASK"
+        "CAFFE GOOGLENET DETECTION (WITH LOSS3-CLASSIFIER LAYER ACTIVATION VALUES AND SPECTRAL HASH) TASK"
       ]
     },
     {

@@ -188,7 +188,7 @@ class TestAcsSpeech(unittest.TestCase):
         # There should be two speakers with diarization, one without
         len_raw, len_dia = [
             len(set([
-                track.detection_properties['LONG_SPEAKER_ID']
+                track.detection_properties['SPEAKER_ID']
                 for track in result
             ]))
             for result in results

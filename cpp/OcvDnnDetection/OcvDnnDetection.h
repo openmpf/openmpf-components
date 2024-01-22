@@ -65,9 +65,6 @@ public:
 
     std::vector<MPF::COMPONENT::MPFImageLocation> GetDetections(const MPF::COMPONENT::MPFImageJob &job) override;
 
-    std::string GetDetectionType() override;
-
-
 private:
 
     log4cxx::LoggerPtr logger_;

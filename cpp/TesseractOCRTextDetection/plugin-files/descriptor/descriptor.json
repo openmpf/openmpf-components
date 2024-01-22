@@ -1,7 +1,7 @@
 {
   "componentName": "TesseractOCRTextDetection",
-  "componentVersion": "7.2",
-  "middlewareVersion": "7.2",
+  "componentVersion": "8.0",
+  "middlewareVersion": "8.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/TesseractOCRTextDetection/lib/libmpfTesseractOCRTextDetection.so",
   "environmentVariables": [
@@ -15,6 +15,7 @@
     "name": "TESSERACTOCR",
     "description": "Performs Tesseract optical character recognition.",
     "actionType": "DETECTION",
+    "trackType": "TEXT",
     "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []

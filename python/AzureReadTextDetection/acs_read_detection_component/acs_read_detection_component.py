@@ -44,7 +44,6 @@ logger = logging.getLogger('AcsReadComponent')
 
 
 class AcsReadDetectionComponent(mpf_util.VideoCaptureMixin, mpf_util.ImageReaderMixin, object):
-    detection_type = 'TEXT'
 
     @staticmethod
     def get_detections_from_generic(generic_job):

@@ -1,0 +1,131 @@
+{
+  "componentName": "WhisperSpeechDetection",
+  "componentVersion": "8.0",
+  "middlewareVersion": "8.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "WhisperSpeechDetection",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "WHISPERSPEECH",
+    "description": "Uses OpenAI's Whisper model to perform language detection in speech.",
+    "actionType": "DETECTION",
+    "trackType": "SPEECH",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_SPEECH",
+        "DETECTION_SPEECH_WHISPER"
+      ],
+      "properties": [
+        {
+          "name": "WHISPER_MODEL_LANG",
+          "description": "Whisper has English-only models and multilingual models. Set to 'en' for English-only models and 'multi' for multilingual models.",
+          "type": "STRING",
+          "defaultValue": "multi"
+        },
+        {
+          "name": "WHISPER_MODEL_SIZE",
+          "description": "Whisper models come in multiple sizes; 'tiny', 'base', 'small', 'medium', and 'large'. Multilingual models are available in all 5 sizes. English-only models are not available in 'large' size, but are available in the other four sizes .",
+          "type": "STRING",
+          "defaultValue": "base"
+        },
+        {
+          "name": "WHISPER_MODE",
+          "description": "Set to 'LANGUAGE_DETECTION' for spoken language detection, 'TRANSCRIPTION' for speech-to-text transcription, and 'SPEECH_TRANSLATION' for speech translation.",
+          "type": "STRING",
+          "defaultValue": "LANGUAGE_DETECTION"
+        },
+        {
+          "name": "AUDIO_LANGUAGE",
+          "description": "Optional property that indicates the language to use for audio translation or transcription. If left as an empty string, Whisper will automatically detect a single language from the first 30 seconds of audio.",
+          "type": "STRING",
+          "defaultValue": ""
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "WHISPER SPEECH LANGUAGE DETECTION ACTION",
+      "description": "Uses OpenAI's Whisper model to perform language detection in speech.",
+      "algorithm": "WHISPERSPEECH",
+      "properties": [
+        {
+          "name": "WHISPER_MODE",
+          "value": "LANGUAGE_DETECTION"
+        }
+      ]
+    },
+    {
+      "name": "WHISPER SPEECH DETECTION ACTION",
+      "description": "Uses OpenAI's Whisper model to convert speech to text.",
+      "algorithm": "WHISPERSPEECH",
+      "properties": [
+        {
+          "name": "WHISPER_MODE",
+          "value": "TRANSCRIPTION"
+        }
+      ]
+    },
+    {
+      "name": "WHISPER SPEECH DETECTION WITH TRANSLATION ACTION",
+      "description": "Uses OpenAI's Whisper model to convert speech to text and translate it to English.",
+      "algorithm": "WHISPERSPEECH",
+      "properties": [
+        {
+          "name": "WHISPER_MODE",
+          "value": "SPEECH_TRANSLATION"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "WHISPER SPEECH LANGUAGE DETECTION TASK",
+      "description": "Uses OpenAI's Whisper model to perform language detection in speech.",
+      "actions": [
+        "WHISPER SPEECH LANGUAGE DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "WHISPER SPEECH DETECTION TASK",
+      "description": "Uses OpenAI's Whisper model to convert speech to text.",
+      "actions": [
+        "WHISPER SPEECH DETECTION ACTION"
+      ]
+    },
+    {
+      "name": "WHISPER SPEECH DETECTION WITH TRANSLATION TASK",
+      "description": "Uses OpenAI's Whisper model to convert speech to text and translate it to English.",
+      "actions": [
+        "WHISPER SPEECH DETECTION WITH TRANSLATION ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "WHISPER SPEECH LANGUAGE DETECTION PIPELINE",
+      "description": "Uses OpenAI's Whisper model to perform language detection in speech.",
+      "tasks": [
+        "WHISPER SPEECH LANGUAGE DETECTION TASK"
+      ]
+    },
+    {
+      "name": "WHISPER SPEECH DETECTION PIPELINE",
+      "description": "Uses OpenAI's Whisper model to convert speech to text.",
+      "tasks": [
+        "WHISPER SPEECH DETECTION TASK"
+      ]
+    },
+    {
+      "name": "WHISPER SPEECH DETECTION WITH TRANSLATION PIPELINE",
+      "description": "Uses OpenAI's Whisper model to convert speech to text and translate it to English.",
+      "tasks": [
+        "WHISPER SPEECH DETECTION WITH TRANSLATION TASK"
+      ]
+    }
+  ]
+}

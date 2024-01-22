@@ -45,6 +45,8 @@ RUN apt-mark hold cuda-nvrtc-dev-11-1 cuda-nvrtc-11-1 datacenter-gpu-manager lib
     apt-get install -y cmake; \
     rm -rf /var/lib/apt/lists/*
 
+RUN pip3 install --no-cache-dir --upgrade setuptools wheel
+
 # Generate binaries that will later be used to generate TensorRT engine files in the entrypoint.
 # Also, generate TensorRT plugin libraries.
 RUN --mount=type=tmpfs,target=/tmp \

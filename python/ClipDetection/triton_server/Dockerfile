@@ -42,6 +42,8 @@ RUN apt-get update; \
     apt-get -y upgrade; \
     rm -rf /var/lib/apt/lists/*
 
+RUN pip3 install --no-cache-dir --upgrade setuptools wheel
+
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF CLIP Detection Triton Server" \
       org.label-schema.schema-version="1.0" \
