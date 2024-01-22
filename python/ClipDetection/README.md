@@ -28,8 +28,6 @@ The following are the properties that can be specified for the component. Each p
 
 - `DETECTION_FRAME_BATCH_SIZE`: Specifies the batch size when processing video files. By default, this is set to 64.
 
-- `DETECTION_FRAME_BATCH_SIZE_TRITON`: Specifies the batch size when processing video files using a Triton inference server. By default, this is set to 32.
-
 ## Detection Properties
 
 Returned `ImageLocation` objects have the following members in their `detection_properties`:
