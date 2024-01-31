@@ -37,7 +37,7 @@ import os
 import time
 
 from pkg_resources import resource_filename
-from nltk.tokenize import sent_tokenize
+from nltk.tokenize.punkt import PunktSentenceTokenizer
 import pandas as pd
 
 logger = logging.getLogger('TransformerTaggingComponent')
@@ -45,7 +45,7 @@ logger = logging.getLogger('TransformerTaggingComponent')
 class TransformerTaggingComponent:
 
     def __init__(self):
-        self._cached_model = SentenceTransformer('all-mpnet-base-v2')
+        self._cached_model = SentenceTransformer('/models/all-mpnet-base-v2')
         self._cached_corpuses: Dict[str, Corpus] = {}
 
 
@@ -137,27 +137,24 @@ class TransformerTaggingComponent:
                            + ", ".join(config.props_to_process))
             return
 
-        input_sentences = sent_tokenize(input_text)
-
         all_tag_results = []
 
         # for each sentence in input
-        for probe_sent in input_sentences:
+        for start, end in PunktSentenceTokenizer().span_tokenize(input_text):
+            probe_sent = input_text[start:end]
+            logger.info(f"INPUT_TEXT: {input_text}")  ## DEBUG
+            logger.info(f"PROBE: {str(start)}-{str(end)}: {probe_sent}")  ## DEBUG
+
             # get similarity scores for the input sentence with each corpus sentence
             probe_sent_embed = self._cached_model.encode(probe_sent, convert_to_tensor=True, show_progress_bar=False)
             scores = [float(util.cos_sim(probe_sent_embed, corpus_sent_embed)) for corpus_sent_embed in corpus.embed]
-
-            # get offset of the input sentence in the input text
-            offset_beginning = input_text.find(probe_sent)
-            offset_end = offset_beginning + len(probe_sent) - 1
-            offset_string = str(offset_beginning) + "-" + str(offset_end)
 
             probe_df = pd.DataFrame({
                 "input text": probe_sent,
                 "corpus text": corpus.json["text"],
                 "tag": corpus.json["tag"].str.lower(),
                 "score": scores,
-                "offset": offset_string
+                "offset": str(start) + "-" + str(end)
             })
 
             # sort by score then group by tag so each group will be sorted highest to lowest score,
@@ -231,7 +228,7 @@ class JobConfig:
 
         self.corpus_file = \
             mpf_util.get_property(props, 'TRANSFORMER_TAGGING_CORPUS', "transformer_text_tags_corpus.json")
-        
+
         self.corpus_path = ""
         if "$" not in self.corpus_file and "/" not in self.corpus_file:
             self.corpus_path = os.path.realpath(resource_filename(__name__, self.corpus_file))
