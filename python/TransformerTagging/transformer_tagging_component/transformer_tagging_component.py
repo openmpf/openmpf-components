@@ -149,7 +149,7 @@ class TransformerTaggingComponent:
 
             # get offset of the input sentence in the input text
             offset_beginning = input_text.find(probe_sent)
-            offset_end = offset_beginning + len(probe_sent) - 1
+            offset_end = offset_beginning + len(probe_sent)
             offset_string = str(offset_beginning) + "-" + str(offset_end)
 
             probe_df = pd.DataFrame({

@@ -14,12 +14,12 @@ component.
 
 # Inputs
 
-When acting as a downstream stage of a feed forward pipeline, this component will
-accept feed forward tracks as input. The `FEED_FORWARD_PROP_TO_PROCESS` job
-property will be used to determine which properties in the feed forward track
+When acting as a downstream stage of a feed-forward pipeline, this component will
+accept feed-forward tracks as input. The `FEED_FORWARD_PROP_TO_PROCESS` job
+property will be used to determine which properties in the feed-forward track
 should be processed. For example, if `FEED_FORWARD_PROP_TO_PROCESS` is set to
 `TEXT,TRANSLATION` then this component will look for tags in both the `TEXT` and
-`TRANSLATION` properties in the feed forward track. The trigger words for each of
+`TRANSLATION` properties in the feed-forward track. The trigger words for each of
 these properties will be represented as seperate outputs. Refer to the Outputs
 section below.
 
@@ -159,9 +159,9 @@ semicolon followed by a space. For example:
 trigger word reported in sequence, is separated by a semicolon followed by a
 space. Indexes within a single group are separated by commas.
     * Example `TEXT [TAG] TRIGGER WORDS=trigger1; trigger2`,
-    `TEXT [TAG] TRIGGER WORDS OFFSET=0-5, 6-10; 12-15`, means that `trigger1`
-    occurs twice in the text at the index ranges 0-5 and 6-10, and `trigger2`
-    occurs at index range 12-15.
+    `TEXT [TAG] TRIGGER WORDS OFFSET=0-7, 20-27; 55-62`, means that `trigger1`
+    occurs twice in the text at the index ranges 0-7 and 20-17, and `trigger2`
+    occurs once at index range 55-62.
 
 Note that all `TEXT [TAG] TRIGGER WORDS` results are trimmed of leading and
 trailing whitespace, regardless of the regex pattern used. The respective
@@ -169,8 +169,8 @@ trailing whitespace, regardless of the regex pattern used. The respective
 
 The tags associated with the trigger words will be stored in a `TAGS` output
 property in alphabetical order, separated by semicolons. Note that there is only
-one `TAGS` output property. This is unlike `TRIGGER WORDS` and `TRIGGER WORDS
-OFFSET`, which are prefixed by the input property that produced those trigger
-words. Each tag will only appear once in `TAGS` no matter how many trigger words
-activate that tag. It doesn't matter if the trigger words are found in only one or
-multiple input properties defined in `FEED_FORWARD_PROP_TO_PROCESS`.
+one `TAGS` output property. This is unlike `TRIGGER WORDS` and
+`TRIGGER WORDS OFFSET`, which are prefixed by the input property that produced those
+trigger words. Each tag will only appear once in `TAGS` no matter how many trigger
+words activate that tag. It doesn't matter if the trigger words are found in only
+one or multiple input properties defined in `FEED_FORWARD_PROP_TO_PROCESS`.

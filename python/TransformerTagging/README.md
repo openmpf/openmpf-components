@@ -2,15 +2,15 @@
 
 This repository contains source code for the OpenMPF Transformer Tagging component.
 
-This component uses a user-specified corpus-json file to match known phrases against 
+This component uses a user-specified corpus JSON file to match known phrases against 
 each sentence in the input text data. This is done by generating an embedding for each 
 phrase in the corpus and comparing that against the embedding for each sentence of the 
 input text. The comparison generates a score based on how similar the content is. 
 This is based on how the underlying
 [all-mpnet-base-v2](https://huggingface.co/sentence-transformers/all-mpnet-base-v2) 
-was trained on a variety of text data in order to understand the common phrasing, 
-subject, and context. The sentences that generate scores above the threshold are 
-called "trigger sentences". These sentences are grouped by "tag" based on which entry 
+model was trained on a variety of text data in order to understand the commonalities
+in phrasing, subject, and context. The sentences that generate scores above the threshold
+are called "trigger sentences". These sentences are grouped by "tag" based on which entry 
 in the corpus they matched against.
 
 This component can be used independently to perform transformer tagging on text
@@ -31,57 +31,65 @@ input properties are present then the transformer tagging is not performed then 
 feed-forward detection is returned unmodified.
 
 The reported detections that are returned by the transformer tagger are based on the 
-corpus used, and the minimum score defined in the`SCORE_THRESHOLD` property. These 
-values are discussed below. 
+corpus used, and the minimum score defined in the `SCORE_THRESHOLD` property, as
+discussed below. 
 
 # Corpus File
 
-Transformer patterns are specified in a JSON corpus file. By default this is the 
-`transformer_text_tags_corpus.json` file. Alternativley, the path to a corpus file can 
+Transformer patterns are specified in a JSON corpus file. By default this is 
+`transformer_text_tags_corpus.json`. Alternativley, the path to the corpus file can 
 be changed by setting the `TRANSFORMER_TAGGING_CORPUS` property.
 
 In the corpus file, users can specify sentence patterns to compare against using the 
 following syntax:
 
-```
-    [
-    {
-        "text": "This sentence is dog.",
-        "tag": "dog"
-    }
-    ]
+```json
+[
+  {
+    "text": "This sentence is dog.",
+    "tag": "dog"
+  }
+]
 ```
 
-Where the `text` field specifies a sentence to compare against, and the `tag` field 
-is used to report in the output results if the input sentence scores meet the 
-`SCORE_THRESHOLD`.
+Where the `text` field specifies a sentence to compare each input sentence against. If
+the match score meets the `SCORE_THRESHOLD` property, then the value of the `tag` field
+will be added to the list in the `TAGS` output property.
 
-Multiple patterns can be specified with a comma separated list:
+Multiple patterns can be specified with a comma-separated list:
 
-```
-    [
-    {
-        "text": "This sentence is dog.",
-        "tag": "dog"
-    },
-    {
-        "text": "My favorite animal is a corgi.",
-        "tag": "dog"
-    },
-    {
-        "text": "This sentence is cat.",
-        "tag": "cat"
-    },
-    ...
-    ]
+```json
+[
+  {
+    "text": "This sentence is dog.",
+    "tag": "dog"
+  },
+  {
+    "text": "My favorite animal is a corgi.",
+    "tag": "dog"
+  },
+  {
+    "text": "This sentence is cat.",
+    "tag": "cat"
+  },
+  ...
+]
 ```
 
 # Outputs
 
 When performing transformer tagging on a text file, the contents of the file will be
-stored in a `TEXT` output property. Text input that is not just whitespace, which has 
-sentences that scored high enough against entries in the corpus file, will result in 
-the following output properties: 
+stored in a `TEXT` output property. When performing transformer tagging on
+feed-forward detections generated from some other component in a multi-stage
+pipeline, the output properties from that component will be preserved.This
+means that if those detections have a `TEXT` output property, then this
+component will generate detections with the same `TEXT` output. Similarly, if
+those detections have a `TRANSLATION` output property, then this component will
+generate detections with the same `TRANSLATION` output.
+
+Each input property listed in `FEED_FORWARD_PROP_TO_PROCESS` that's present, and
+not just whitespace, which has sentences that scored high enough against entries in
+the corpus file, will result in the following output properties:
 
 - `TEXT [TAG] TRIGGER SENTENCES`
 - `TEXT [TAG] TRIGGER SENTENCES OFFSET`
@@ -89,20 +97,40 @@ the following output properties:
 - `TRANSLATION [TAG] TRIGGER SENTENCES`
 - `TRANSLATION [TAG] TRIGGER SENTENCES OFFSET`
 - `TRANSLATION [TAG] TRIGGER SENTENCES SCORE`
-Note: The '[TAG]' value in each of the output properties above will be the tag 
-property from the corpus file that the trigger sentence scored against.
 
-The tags associated with the trigger words will be stored in a `TAGS` output 
+The `[TAG]` value in each of the output properties above will be the `tag` 
+value from the corpus file that the trigger sentence scored against.
+
+The tags associated with the trigger sentences will be stored in a `TAGS` output 
 property, separated by semicolons. Note that there is only one `TAGS` output 
-property. This is unlike `TEXT [TAG] TRIGGER SENTENCES` and `TEXT [TAG] TRIGGER 
-SENTENCES OFFSET`, which are prefixed by the input property that produced those 
-trigger words. Each tag will only appear once in `TAGS` no matter how many trigger 
-words activate that tag. It doesn't matter if the trigger words are found in only one
-or multiple input properties defined in `FEED_FORWARD_PROP_TO_PROCESS`.
+property. This is unlike `TRIGGER SENTENCES` and `TRIGGER SENTENCES OFFSET`, which are
+prefixed by the input property that produced those trigger sentences. Each tag will only
+appear once in `TAGS` no matter how many trigger sentences activate that tag. It doesn't
+matter if the trigger sentences are found in only one or multiple input properties defined
+in `FEED_FORWARD_PROP_TO_PROCESS`.
 
-When `ENABLE_DEBUG` is set to true, the output properties will include a 
-`TRIGGER SENTENCES MATCHES` property containing a semicolon separated list of the 
-`text` sentences in the corpus that were triggered for that tag.
+When the `TEXT` property is processed, the input sentence(s) that triggered each tag will
+be stored in `TEXT [TAG] TRIGGER SENTENCES`. Note that because semicolons can be part of
+the trigger sentence itself, those semicolons will be encapsulated in brackets. For
+example, `This sentence has has a semicolon;` in the input `TEXT` is reported as:
+`TEXT [TAG] TRIGGER SENTENCES=This sentence has has a semicolon[;]; other trigger sentence`.
+
+For each trigger sentence in `TEXT`, the substring index range will be stored in 
+`TEXT [TAG] TRIGGER SENTENCES OFFSET`. Each group of indexes, referring to the same
+trigger sentence reported in sequence, is separated by a semicolon followed by a space.
+Indexes within a single group are separated by commas. For example:
+
+```
+TEXT [TAG] TRIGGER SENTENCES=trigger sentence 1; trigger sentence 2
+TEXT [TAG] TRIGGER SENTENCES OFFSET=0-17, 40-57; 112-129
+```
+ 
+This means that `trigger sentence 1` occurs twice in the text at the index ranges
+0-17 and 40-57, and `trigger sentence 2` occurs once at index range 112-129.
+
+When `ENABLE_DEBUG` is set to true, the output properties will also include a 
+`TRIGGER SENTENCES MATCHES` property containing a semicolon-separated list of the 
+`text` sentences in the corpus that were triggered for that tag:
 
 - `TEXT [TAG] TRIGGER SENTENCES`
 - `TEXT [TAG] TRIGGER SENTENCES MATCHES`
@@ -113,15 +141,9 @@ When `ENABLE_DEBUG` is set to true, the output properties will include a
 - `TRANSLATION [TAG] TRIGGER SENTENCES OFFSET`
 - `TRANSLATION [TAG] TRIGGER SENTENCES SCORE`
 
-Let's assume that we need to process the `TEXT` property. The sentence(s) that
-triggered each tag will be stored in `TEXT [TAG] TRIGGER SENTENCES`. While the
-sentence that was matched against in the corpus will be stored in the
-`TEXT [TAG] TRIGGER SENTENCES MATCHES` property. Note, that because semicolons
-can be part of the trigger sentence itself, those semicolons will be encapsulated 
-in brackets. For example, `This sentence has has a semicolon;` in the input `TEXT` 
-is reported as:
-`TEXT [TAG] TRIGGER WORDS=This sentence has has a semicolon[;]; other triggers`.
-For each trigger sentence the  substring index range relative to the `TEXT`
-output will be stored in `TEXT [TAG] TRIGGER SENTENCES OFFSET`.
+For example:
 
-
+```
+TEXT [TAG] TRIGGER SENTENCES=trigger sentence 1; trigger sentence 2
+TEXT [TAG] TRIGGER SENTENCES MATCHES=Corpus sentence matching trigger sentence 1; Corpus sentence matching trigger sentence 2
+```
