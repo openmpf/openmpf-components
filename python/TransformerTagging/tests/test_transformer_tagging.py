@@ -47,7 +47,7 @@ SHORT_SAMPLE = (
 
 SHORT_SAMPLE_TAGS = "travel"
 SHORT_SAMPLE_TRIGGER_SENTENCES = "I drove to the beach today and will be staying overnight at a hotel."
-SHORT_SAMPLE_OFFSET = "0-67"
+SHORT_SAMPLE_OFFSET = "0-68"
 SHORT_SAMPLE_SCORE = 0.4680028557777405
 
 
@@ -182,7 +182,7 @@ class TestTransformerTagging(unittest.TestCase):
         self.assertAlmostEqual(SHORT_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
 
         custom_threshold_sentence = "She will drop by to check on them after stopping by the bank."
-        custom_threshold_sentence_offset = "135-195"
+        custom_threshold_sentence_offset = "135-196"
         custom_threshold_sentence_score = 0.2906474769115448
 
         self.assertEqual(custom_threshold_sentence, props["TEXT FINANCIAL TRIGGER SENTENCES"])
@@ -210,7 +210,7 @@ class TestTransformerTagging(unittest.TestCase):
 
         self.assertEqual("beach", props["TAGS"])
         self.assertEqual(beach_sentences, props["TEXT BEACH TRIGGER SENTENCES"])
-        self.assertEqual('0-67; 197-242', props["TEXT BEACH TRIGGER SENTENCES OFFSET"])
+        self.assertEqual('0-68; 197-243', props["TEXT BEACH TRIGGER SENTENCES OFFSET"])
         self.assertAlmostEqual(beach_score_1, float(beach_score_result_1), places=3)
         self.assertAlmostEqual(beach_score_2, float(beach_score_result_2), places=3)
 
@@ -287,6 +287,56 @@ class TestTransformerTagging(unittest.TestCase):
 
         expected_output = "I drove to the beach today[;] it was a long drive."
         self.assertEqual(expected_output, props["TEXT TRAVEL TRIGGER SENTENCES"])
+
+    def test_repeat_trigger_job(self):
+        sample = (
+            'I drove to the beach today and will be staying overnight at a hotel. '
+            'I drove to the beach today and will be staying overnight at a hotel. '
+            'I texted my friend before I left so she could look after my cats. '
+            'I am going to the airport tomorrow. '
+            'I plan to spend all day at the beach tomorrow. '
+            'This airline serves peanuts. '
+            'I am going to the airport tomorrow. '
+        )
+
+        trigger_sentences = (
+            'I drove to the beach today and will be staying overnight at a hotel.; '
+            'I am going to the airport tomorrow.; '
+            'This airline serves peanuts.'
+        )
+
+        offsets = "0-68, 69-137; 204-239, 316-351; 287-315"
+
+        score_1 = 0.4680027663707733
+        score_2 = 0.5079247951507568
+        score_3 = 0.5265363454818726
+
+        matches = (
+            'This sentence is hotel.; '
+            'This sentence is airport.; '
+            'This sentence is airline.'
+        )
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=sample))
+        job = mpf.GenericJob('Test Repeat', 'test.pdf', \
+            dict(ENABLE_DEBUG='true', SCORE_THRESHOLD='0.4'), {}, ff_track)
+        comp = TransformerTaggingComponent()
+        result = comp.get_detections_from_generic(job)
+
+        self.assertEqual(1, len(result))
+
+        props = result[0].detection_properties
+
+        self.assertEqual("travel", props["TAGS"])
+        self.assertEqual(trigger_sentences, props["TEXT TRAVEL TRIGGER SENTENCES"])
+        self.assertEqual(offsets, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
+
+        score_result_1, score_result_2, score_result_3 = props["TEXT TRAVEL TRIGGER SENTENCES SCORE"].split(";")
+        self.assertAlmostEqual(score_1, float(score_result_1), places=3)
+        self.assertAlmostEqual(score_2, float(score_result_2), places=3)
+        self.assertAlmostEqual(score_3, float(score_result_3), places=3)
+
+        self.assertAlmostEqual(matches, props["TEXT TRAVEL TRIGGER SENTENCES MATCHES"])
 
 if __name__ == '__main__':
     unittest.main()

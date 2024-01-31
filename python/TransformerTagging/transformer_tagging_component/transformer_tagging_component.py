@@ -142,8 +142,6 @@ class TransformerTaggingComponent:
         # for each sentence in input
         for start, end in PunktSentenceTokenizer().span_tokenize(input_text):
             probe_sent = input_text[start:end]
-            logger.info(f"INPUT_TEXT: {input_text}")  ## DEBUG
-            logger.info(f"PROBE: {str(start)}-{str(end)}: {probe_sent}")  ## DEBUG
 
             # get similarity scores for the input sentence with each corpus sentence
             probe_sent_embed = self._cached_model.encode(probe_sent, convert_to_tensor=True, show_progress_bar=False)
@@ -184,18 +182,33 @@ class TransformerTaggingComponent:
             else:
                 ff_props["TAGS"] = tag
 
+            sents = []
+            offsets = []
+            scores = []
+            matches = []
+
+            for input_text in tag_df["input text"].unique():
+                input_text_df = tag_df[tag_df["input text"] == input_text]
+
+                sents.append(input_text.replace(';', '[;]'))
+                offsets.append(", ".join(input_text_df["offset"]))
+                scores.append(input_text_df["score"].values[0].astype(str))  ## should all have the same score
+
+                if config.debug:
+                    matches.append(input_text_df["corpus text"].values[0].replace(';', '[;]'))  ## should all have the same match
+
             prop_name_sent = prop_to_tag + " " + tag.upper() + " TRIGGER SENTENCES"
             prop_name_offset = prop_name_sent + " OFFSET"
             prop_name_score = prop_name_sent + " SCORE"
 
-            ff_props[prop_name_sent] = "; ".join(tag_df["input text"].str.replace(';', '[;]'))
-            ff_props[prop_name_offset] = "; ".join(tag_df["offset"])
-            ff_props[prop_name_score] = "; ".join(tag_df["score"].astype(str))
+            ff_props[prop_name_sent] = "; ".join(sents)
+            ff_props[prop_name_offset] = "; ".join(offsets)
+            ff_props[prop_name_score] = "; ".join(scores)
 
             if config.debug:
                 logger.info("Debug set to true, including corpus sentences that triggered the match.")
                 prop_name_matches = prop_name_sent + " MATCHES"
-                ff_props[prop_name_matches] = "; ".join(tag_df["corpus text"].str.replace(';', '[;]'))
+                ff_props[prop_name_matches] = "; ".join(matches)
 
 
 class Corpus:
