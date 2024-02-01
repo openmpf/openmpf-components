@@ -51,9 +51,9 @@ RUN --mount=type=tmpfs,target=/tmp/models \
     python -c \
     "import os; \
     os.environ['REQUESTS_CA_BUNDLE']='/etc/ssl/certs/ca-certificates.crt'; \
-    from sentence_transformers import SentenceTransformer, util; \
-    model = SentenceTransformer('all-mpnet-base-v2'); \
-    model.save('/models/all-mpnet-base-v2')"
+    from sentence_transformers import SentenceTransformer; \
+    model = SentenceTransformer('all-mpnet-base-v2', cache_folder='/tmp/models'); \
+    model.save('/models/all-mpnet-base-v2')" 
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
