@@ -45,7 +45,7 @@ public class TestTikaTextDetectionComponent {
     private TikaTextDetectionComponent tikaComponent;
 
     @Before
-    public void setUp() {
+    public void setUp() throws MPFComponentDetectionError {
         tikaComponent = new TikaTextDetectionComponent();
         tikaComponent.init();
         tikaComponent.setRunDirectory("..");
@@ -76,7 +76,7 @@ public class TestTikaTextDetectionComponent {
                         "\"X-TIKA:Parsed-By-Full-Set\":\"org.apache.tika.parser.DefaultParser\"," +
                         "\"Content-Encoding\":\"ISO-8859-1\",\"Content-Type\":\"text/plain; charset=ISO-8859-1\"}"));
 
-        assertSection(tracks.get(1), "-1", "1", "English", "Testing, this is the first section");
+        assertSection(tracks.get(1), "-1", "1", "English", "Testing, this is the first section", "Dutch", "eng");
     }
 
     @Test
@@ -87,17 +87,18 @@ public class TestTikaTextDetectionComponent {
         Map<String, String> mediaProperties = new HashMap<>();
         jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
         jobProperties.put("LIST_ALL_PAGES", "false");
+        jobProperties.put("MIN_LANGUAGES", "1");
 
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
 
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
         assertEquals(30, tracks.size());
 
-        assertSection(tracks.get(0), "1", "1", "English", "OpenMPF");
-        assertSection(tracks.get(0), "1", "1", "English", "Bridging the Gap in Media Analytics");
-        assertSection(tracks.get(2), "1", "3", "Unknown", "Data Filtering");
-        assertSection(tracks.get(23), "1", "24", "English", "The MITRE Corporation");
-        assertSection(tracks.get(29), "3", "1", "Unknown", "page 3"); // cannot determine language
+        assertSection(tracks.get(0), "1", "1", "English", "OpenMPF", null, "eng");
+        assertSection(tracks.get(0), "1", "1", "English", "Bridging the Gap in Media Analytics",  null, "eng");
+        assertSection(tracks.get(2), "1", "3", "Unknown", "Data Filtering", null, "UNKNOWN");
+        assertSection(tracks.get(23), "1", "24", "English", "The MITRE Corporation", null, "eng");
+        assertSection(tracks.get(29), "3", "1", "Unknown", "page 3", null, "UNKNOWN"); // cannot determine language
     }
 
     @Test
@@ -108,6 +109,7 @@ public class TestTikaTextDetectionComponent {
         Map<String, String> mediaProperties = new HashMap<>();
         jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
         jobProperties.put("LIST_ALL_PAGES", "true");
+        jobProperties.put("MIN_LANGUAGES", "3");
 
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
         boolean debug = false;
@@ -132,14 +134,41 @@ public class TestTikaTextDetectionComponent {
 
         // Test language extraction
         assertSection(tracks.get(0), "1", "1", "English", "Testing Text Detection");
-        assertSection(tracks.get(3), "2", "2", "Japanese", "ジアゼパム");
+        assertSection(tracks.get(3), "2", "2", "Japanese", "ジアゼパム", "Traditional Chinese, Maori", "jpn");
 
         // Test no detections
         assertTrue(tracks.get(9).getDetectionProperties().get("TEXT").isEmpty());
         assertEquals("Unknown", tracks.get(9).getDetectionProperties().get("TEXT_LANGUAGE"));
 
         assertSection(tracks.get(20), "10", "4", "English", "All human beings are born free");
-        assertSection(tracks.get(22), "11", "2", "Unknown", "End slide test text"); // cannot determine language
+        assertSection(tracks.get(22), "11", "2", "English", "End slide test text");
+    }
+
+    @Test
+    public void testGetDetectionsOptimaize() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.pptx").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "true");
+        jobProperties.put("LANGUAGE_DETECTOR", "optimaize");
+        jobProperties.put("MIN_LANGUAGES", "0");
+
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        assertEquals(23 ,tracks.size());
+
+        // Test language extraction
+        assertSection(tracks.get(0), "1", "1", "English", "Testing Text Detection");
+        assertSection(tracks.get(3), "2", "2", "Japanese", "ジアゼパム");
+
+        // Test no detections
+        assertTrue(tracks.get(9).getDetectionProperties().get("TEXT").isEmpty());
+        assertEquals("Unknown", tracks.get(9).getDetectionProperties().get("TEXT_LANGUAGE"));
+        assertSection(tracks.get(20), "10", "4", "English", "All human beings are born free");
+        assertSection(tracks.get(22), "11", "2", "Unknown", "End slide test text");
     }
 
     @Test
@@ -169,7 +198,7 @@ public class TestTikaTextDetectionComponent {
 
         assertSection(tracks.get(19), "-1", "20", "English", "All human beings are born free");
         assertSection(tracks.get(20), "-1", "21", "Unknown", "End"); // cannot determine language
-        assertSection(tracks.get(21), "-1", "22", "Unknown", "End slide test text"); // cannot determine language
+        assertSection(tracks.get(21), "-1", "22", "English", "End slide test text");
 
         if (tracks.size() == 23) {
             // TODO: Look into why last section matches first section although the text is not on the last slide.
@@ -254,7 +283,7 @@ public class TestTikaTextDetectionComponent {
         String testTrackText = testTrack.getDetectionProperties().get("TEXT");
 
         // sheet 1
-        assertSection(testTrack, "-1", "1", "Unknown", "Test"); // cannot determine language
+        assertSection(testTrack, "-1", "1", "English", "Test");
         assertThat(testTrackText, containsString("1"));
         assertThat(testTrackText, containsString("2"));
         assertThat(testTrackText, containsString("3"));
@@ -314,5 +343,14 @@ public class TestTikaTextDetectionComponent {
         assertEquals(section, track.getDetectionProperties().get("SECTION_NUM"));
         assertEquals(language, track.getDetectionProperties().get("TEXT_LANGUAGE"));
         assertThat(track.getDetectionProperties().get("TEXT"), containsString(text));
+    }
+
+    private void assertSection(MPFGenericTrack track, String page, String section, String language, String text, String secondaryLanguage, String iso) {
+        assertEquals(page, track.getDetectionProperties().get("PAGE_NUM"));
+        assertEquals(section, track.getDetectionProperties().get("SECTION_NUM"));
+        assertEquals(language, track.getDetectionProperties().get("TEXT_LANGUAGE"));
+        assertThat(track.getDetectionProperties().get("TEXT"), containsString(text));
+        assertEquals(secondaryLanguage, track.getDetectionProperties().get("SECONDARY_TEXT_LANGUAGES"));
+        assertEquals(iso, track.getDetectionProperties().get("ISO_LANGUAGE"));
     }
 }
