@@ -46,11 +46,14 @@ RUN python -c \
     "import nltk; nltk.download('punkt')"
 
 # download sentence transformer model
-RUN python -c \
+RUN --mount=type=tmpfs,target=/tmp/models \
+    mkdir -p "/models/all-mpnet-base-v2"; \
+    python -c \
     "import os; \
     os.environ['REQUESTS_CA_BUNDLE']='/etc/ssl/certs/ca-certificates.crt'; \
     from sentence_transformers import SentenceTransformer, util; \
-    SentenceTransformer('all-mpnet-base-v2')"
+    model = SentenceTransformer('all-mpnet-base-v2'); \
+    model.save('/models/all-mpnet-base-v2')"
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
