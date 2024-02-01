@@ -32,7 +32,6 @@ import mpf_component_util as mpf_util
 from sentence_transformers import SentenceTransformer, util
 
 from typing import Sequence, Dict, Mapping
-import pathlib
 import os
 import time
 
@@ -77,7 +76,10 @@ class TransformerTaggingComponent:
                         'media file is a plain text file containing the text to '
                         'be tagged.')
 
-            text = pathlib.Path(job.data_uri).read_text().strip()
+            # preserve line endings in the original text, such as '\r\n'
+            with open(job.data_uri, 'r', newline='') as f:
+                text = f.read()
+
             new_ff_props = dict(TEXT=text)
             ff_track = mpf.GenericTrack(detection_properties=new_ff_props)
 
@@ -192,10 +194,12 @@ class TransformerTaggingComponent:
 
                 sents.append(input_text.replace(';', '[;]'))
                 offsets.append(", ".join(input_text_df["offset"]))
-                scores.append(input_text_df["score"].values[0].astype(str))  ## should all have the same score
+                # all entries should have the same score, so just use the first
+                scores.append(input_text_df["score"].values[0].astype(str))
 
                 if config.debug:
-                    matches.append(input_text_df["corpus text"].values[0].replace(';', '[;]'))  ## should all have the same match
+                    # all entries should have the same match, so just use the first
+                    matches.append(input_text_df["corpus text"].values[0].replace(';', '[;]'))
 
             prop_name_sent = prop_to_tag + " " + tag.upper() + " TRIGGER SENTENCES"
             prop_name_offset = prop_name_sent + " OFFSET"
