@@ -206,7 +206,6 @@ class TransformerTaggingComponent:
             ff_props[prop_name_score] = "; ".join(scores)
 
             if config.debug:
-                logger.info("Debug set to true, including corpus sentences that triggered the match.")
                 prop_name_matches = prop_name_sent + " MATCHES"
                 ff_props[prop_name_matches] = "; ".join(matches)
 
