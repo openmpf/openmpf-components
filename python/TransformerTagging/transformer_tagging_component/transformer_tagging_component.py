@@ -154,7 +154,7 @@ class TransformerTaggingComponent:
                 "corpus text": corpus.json["text"],
                 "tag": corpus.json["tag"].str.lower(),
                 "score": scores,
-                "offset": str(start) + "-" + str(end)
+                "offset": str(start) + "-" + str(end - 1)
             })
 
             # sort by score then group by tag so each group will be sorted highest to lowest score,

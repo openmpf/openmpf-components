@@ -47,7 +47,7 @@ SHORT_SAMPLE = (
 
 SHORT_SAMPLE_TAGS = "travel"
 SHORT_SAMPLE_TRIGGER_SENTENCES = "I drove to the beach today and will be staying overnight at a hotel."
-SHORT_SAMPLE_OFFSET = "0-68"
+SHORT_SAMPLE_OFFSET = "0-67"
 SHORT_SAMPLE_SCORE = 0.4680028557777405
 
 
@@ -182,7 +182,7 @@ class TestTransformerTagging(unittest.TestCase):
         self.assertAlmostEqual(SHORT_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
 
         custom_threshold_sentence = "She will drop by to check on them after stopping by the bank."
-        custom_threshold_sentence_offset = "135-196"
+        custom_threshold_sentence_offset = "135-195"
         custom_threshold_sentence_score = 0.2906474769115448
 
         self.assertEqual(custom_threshold_sentence, props["TEXT FINANCIAL TRIGGER SENTENCES"])
@@ -210,7 +210,7 @@ class TestTransformerTagging(unittest.TestCase):
 
         self.assertEqual("beach", props["TAGS"])
         self.assertEqual(beach_sentences, props["TEXT BEACH TRIGGER SENTENCES"])
-        self.assertEqual('0-68; 197-243', props["TEXT BEACH TRIGGER SENTENCES OFFSET"])
+        self.assertEqual('0-67; 197-242', props["TEXT BEACH TRIGGER SENTENCES OFFSET"])
         self.assertAlmostEqual(beach_score_1, float(beach_score_result_1), places=3)
         self.assertAlmostEqual(beach_score_2, float(beach_score_result_2), places=3)
 
@@ -305,7 +305,7 @@ class TestTransformerTagging(unittest.TestCase):
             'This airline serves peanuts.'
         )
 
-        offsets = "0-68, 69-137; 204-239, 316-351; 287-315"
+        offsets = "0-67, 69-136; 204-238, 316-350; 287-314"
 
         score_1 = 0.4680027663707733
         score_2 = 0.5079247951507568
