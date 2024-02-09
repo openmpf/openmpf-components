@@ -47,8 +47,7 @@ class TestClip(unittest.TestCase):
                 NUMBER_OF_CLASSIFICATIONS = 3,
                 NUMBER_OF_TEMPLATES = 80,
                 ENABLE_CROPPING ='False',
-                INCLUDE_FEATURES = 'True',
-                CLASSIFICATION_LIST = 'imagenet'
+                INCLUDE_FEATURES = 'True'
             ),
             media_properties={},
             feed_forward_location=None

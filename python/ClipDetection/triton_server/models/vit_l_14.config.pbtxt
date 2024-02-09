@@ -1,4 +1,5 @@
 name: "vit_l_14"
+default_model_filename: "vit_l_14.pt"
 backend: "pytorch"
 max_batch_size: 2048
 input [

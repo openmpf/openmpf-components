@@ -160,7 +160,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
 class ClipWrapper(object):
     def __init__(self, model_name='ViT-L/14'):
         logger.info("Loading model...")
-        model, _ = clip.load(model_name, device=device, download_root='/ckb-nfs/home/zcafego/models' )# '/models')
+        model, _ = clip.load(model_name, device=device, download_root='/models')
         logger.info("Model loaded.")
 
         self._model = model
