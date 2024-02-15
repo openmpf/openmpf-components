@@ -52,7 +52,7 @@ namespace {
 }
 
 Config::Config(const Properties &jobProps)
-        : confidenceThreshold(std::max(GetProperty(jobProps, "CONFIDENCE_THRESHOLD", 0.5), 0.0))
+        : confidenceThreshold(std::max(GetProperty(jobProps, "QUALITY_SELECTION_THRESHOLD", 0.5), 0.0))
         , nmsThresh(GetProperty(jobProps, "DETECTION_NMS_THRESHOLD", 0.3))
         , numClassPerRegion(GetProperty(jobProps, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5))
         , netInputImageSize(GetProperty(jobProps, "NET_INPUT_IMAGE_SIZE", 416))

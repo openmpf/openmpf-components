@@ -70,7 +70,7 @@ Properties getTinyYoloConfig(float confidenceThreshold) {
     return {
             {"MODEL_NAME",           "tiny yolo"},
             {"NET_INPUT_IMAGE_SIZE", "416"},
-            {"CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold)},
+            {"QUALITY_SELECTION_THRESHOLD", std::to_string(confidenceThreshold)},
             {"FRAME_QUEUE_CAPACITY", "16"}
     };
 }
@@ -80,7 +80,7 @@ Properties getYoloConfig(float confidenceThreshold) {
     return {
             {"MODEL_NAME",           "yolo"},
             {"NET_INPUT_IMAGE_SIZE", "416"},
-            {"CONFIDENCE_THRESHOLD", std::to_string(confidenceThreshold)},
+            {"QUALITY_SELECTION_THRESHOLD", std::to_string(confidenceThreshold)},
             {"FRAME_QUEUE_CAPACITY", "16"}
     };
 }
@@ -90,7 +90,7 @@ Properties getTritonYoloConfig(const std::string &tritonServer, float confidence
     return {
             {"MODEL_NAME",                   "yolo"},
             {"NET_INPUT_IMAGE_SIZE",         "608"},
-            {"CONFIDENCE_THRESHOLD",         std::to_string(confidenceThreshold)},
+            {"QUALITY_SELECTION_THRESHOLD",         std::to_string(confidenceThreshold)},
             {"CUDA_DEVICE_ID",               "-1"},
             {"TRACKING_MAX_FRAME_GAP",       "10"},
             {"ENABLE_TRITON",                "true"},

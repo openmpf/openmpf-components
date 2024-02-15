@@ -38,7 +38,7 @@ find_package(OpenCV 4.5.5 EXACT REQUIRED PATHS /opt/opencv-4.5.5
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
-find_package( Leptonica 1.75.0 REQUIRED )
+find_package( Leptonica REQUIRED )
 find_package( Tesseract 4.1.1 REQUIRED )
 find_package(ImageMagick REQUIRED COMPONENTS Magick++)
 

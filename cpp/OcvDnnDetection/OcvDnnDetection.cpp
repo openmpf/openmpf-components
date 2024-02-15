@@ -669,7 +669,7 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
     }
 
     number_of_classifications = GetProperty(props, "NUMBER_OF_CLASSIFICATIONS", 1);
-    confidence_threshold = GetProperty(props, "CONFIDENCE_THRESHOLD", 0.0);
+    confidence_threshold = GetProperty(props, "QUALITY_SELECTION_THRESHOLD", 0.0);
     classification_type = GetProperty(props, "CLASSIFICATION_TYPE", "CLASSIFICATION");
 }
 

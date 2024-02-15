@@ -55,7 +55,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         batch_size = int(props.get('BATCH_SIZE','1'))
 
         # Get the threshold values for filtering bounding boxes
-        min_confidence = float(props.get('CONFIDENCE_THRESHOLD','0.8'))
+        min_confidence = float(props.get('QUALITY_SELECTION_THRESHOLD','0.8'))
         overlap_threshold = float(props.get('MERGE_OVERLAP_THRESHOLD','0.0'))
         min_nms_overlap = float(props.get('NMS_MIN_OVERLAP','0.1'))
         max_height_delta = float(props.get('MERGE_MAX_TEXT_HEIGHT_DIFFERENCE','0.3'))
