@@ -14,20 +14,14 @@ component.
 
 # Inputs
 
-When performing keyword tagging on a text file, the contents of the file will be
-stored in a `TEXT` output property. When performing keyword tagging on
-feed-forward detections generated from some other component in a multi-stage
-pipeline, the output properties from that component will be preserved. This
-means that if those detections have a `TEXT` output property, then this
-component will generate detections with the same `TEXT` output. Similarly, if
-those detections have a `TRANSCRIPT` output property, then this component will
-generate detections with the same `TRANSCRIPT` output.
-
-Keyword tagging will be performed on all of the input properties listed in
-`FEED_FORWARD_PROP_TO_PROCESS`, if present. If none of the input properties are
-present then keyword tagging is not performed and the feed-forward detection
-is returned unmodified. For the sake of discussion, let's assume we need to
-perform keyword tagging on the `TEXT` property.
+When acting as a downstream stage of a feed-forward pipeline, this component will
+accept feed-forward tracks as input. The `FEED_FORWARD_PROP_TO_PROCESS` job
+property will be used to determine which properties in the feed-forward track
+should be processed. For example, if `FEED_FORWARD_PROP_TO_PROCESS` is set to
+`TEXT,TRANSLATION` then this component will look for tags in both the `TEXT` and
+`TRANSLATION` properties in the feed-forward track. The trigger words for each of
+these properties will be represented as seperate outputs. Refer to the Outputs
+section below.
 
 # JSON Tagging File
 
@@ -122,48 +116,61 @@ pattern becomes `(\\b)end(\\W+)of(\\W+)a(\\W+)sentence\\.`. Note that the `.`
 symbol is typically used in regex to match any character, which is why we use `\\.`
 instead.
 
+
 # Outputs
 
-Each input property listed in `FEED_FORWARD_PROP_TO_PROCESS` that's
-present, and not just whitespace, will result in a `TRIGGER WORDS` and
-`TRIGGER WORDS OFFSET` output property. For example, if 
-`FEED_FORWARD_PROP_TO_PROCESS=TEXT,TRANSLATION`, and the `TEXT` and `TRANSLATION`
-properties are both present, then the following output properties will be produced:
+When performing keyword tagging on a text file, the contents of the file will be
+stored in a `TEXT` output property. When performing keyword tagging on
+feed-forward detections generated from some other component in a multi-stage
+pipeline, the output properties from that component will be preserved.This
+means that if those detections have a `TEXT` output property, then this
+component will generate detections with the same `TEXT` output. Similarly, if
+those detections have a `TRANSLATION` output property, then this component will
+generate detections with the same `TRANSLATION` output.
 
-- `TEXT TRIGGER WORDS`
-- `TEXT TRIGGER WORDS OFFSET`
-- `TRANSLATION TRIGGER WORDS`
-- `TRANSLATION TRIGGER WORDS OFFSET`
+Each input property listed in `FEED_FORWARD_PROP_TO_PROCESS` that's present, and
+not just whitespace, will result in a `[TAG] TRIGGER WORDS` and 
+`[TAG] TRIGGER WORDS OFFSET` output property. The `[TAG]` will be the tag property
+that matched in the input text. For example, in
+`FEED_FORWARD_PROP_TO_PROCESS=TEXT,TRANSLATION`, the `TEXT` and `TRANSLATION`
+properties are both present, so the following output properties will be produced
+if trigger words are found:
+
+- `TEXT [TAG] TRIGGER WORDS`
+- `TEXT [TAG] TRIGGER WORDS OFFSET`
+- `TRANSLATION [TAG] TRIGGER WORDS`
+- `TRANSLATION [TAG] TRIGGER WORDS OFFSET`
 
 Let's assume that we need process the `TEXT` property. The substring(s) that
-triggered each tag will be stored in `TEXT TRIGGER WORDS` in alphabetical order.
-For each trigger word the substring index range relative to the `TEXT` output
-will be stored in `TEXT TRIGGER WORDS OFFSET`. Because the same trigger word
-can be encountered multiple times in the `TEXT` output, the results are organized
-as follows:
+triggered each tag will be stored in `TEXT [TAG] TRIGGER WORDS` in alphabetical
+order. For each trigger word the substring index range relative to the `TEXT`
+output will be stored in `TEXT [TAG] TRIGGER WORDS OFFSET`. Because the same
+trigger word can be encountered multiple times in the `TEXT` output, the results
+are organized as follows:
 
-* `TEXT TRIGGER WORDS`: Each distinct trigger word is separated by a semicolon
-followed by a space. For example: `TEXT TRIGGER WORDS=trigger1; trigger2`
-    * Because semicolons can be part of the trigger word itself, those
-    semicolons will be encapsulated in brackets. For example,
-    `detected trigger with a ;` in the input `TEXT` is reported as
-    `TEXT TRIGGER WORDS=detected trigger with a [;]; some other trigger`.
-* `TEXT TRIGGER WORDS OFFSET`: Each group of indexes, referring to the same trigger
-word reported in sequence, is separated by a semicolon followed by a space.
-Indexes within a single group are separated by commas.
-    * Example `TEXT TRIGGER WORDS=trigger1; trigger2`,
-    `TEXT TRIGGER WORDS OFFSET=0-5, 6-10; 12-15`, means that `trigger1` occurs twice
-    in the text at the index ranges 0-5 and 6-10, and `trigger2` occurs at index
-    range 12-15.
+* `TEXT [TAG] TRIGGER WORDS`: Each distinct trigger word is separated by a
+semicolon followed by a space. For example: 
+`TEXT [TAG] TRIGGER WORDS=trigger1; trigger2`
+    * Because semicolons can be part of the trigger word itself, those semicolons
+    will be encapsulated in brackets. For example, `detected trigger with a ;` in
+    the input `TEXT` is reported as
+    `TEXT [TAG] TRIGGER WORDS=detected trigger with a [;]; some other trigger`.
+* `TEXT [TAG] TRIGGER WORDS OFFSET`: Each group of indexes, referring to the same
+trigger word reported in sequence, is separated by a semicolon followed by a
+space. Indexes within a single group are separated by commas.
+    * Example `TEXT [TAG] TRIGGER WORDS=trigger1; trigger2`,
+    `TEXT [TAG] TRIGGER WORDS OFFSET=0-7, 20-27; 55-62`, means that `trigger1`
+    occurs twice in the text at the index ranges 0-7 and 20-17, and `trigger2`
+    occurs once at index range 55-62.
 
-Note that all `TEXT TRIGGER WORDS` results are trimmed of leading and trailing
-whitespace, regardless of the regex pattern used. The respective
-`TEXT TRIGGER WORDS OFFSET` indexes refer to the trimmed substrings.
+Note that all `TEXT [TAG] TRIGGER WORDS` results are trimmed of leading and
+trailing whitespace, regardless of the regex pattern used. The respective
+`TEXT [TAG] TRIGGER WORDS OFFSET` indexes refer to the trimmed substrings.
 
 The tags associated with the trigger words will be stored in a `TAGS` output
 property in alphabetical order, separated by semicolons. Note that there is only
-one `TAGS` output property. This is unlike `TRIGGER WORDS` and `TRIGGER WORDS OFFSET`,
-which are prefixed by the input property that produced those trigger words.
-Each tag will only appear once in `TAGS` no matter how many trigger words
-activate that tag. It doesn't matter if the trigger words are found in only one
-or multiple input properties defined in `FEED_FORWARD_PROP_TO_PROCESS`.
+one `TAGS` output property. This is unlike `TRIGGER WORDS` and
+`TRIGGER WORDS OFFSET`, which are prefixed by the input property that produced those
+trigger words. Each tag will only appear once in `TAGS` no matter how many trigger
+words activate that tag. It doesn't matter if the trigger words are found in only
+one or multiple input properties defined in `FEED_FORWARD_PROP_TO_PROCESS`.
