@@ -44,6 +44,12 @@
           "description": "Specifies minimum length of detected text before language filtering is applied.",
           "type": "INT",
           "defaultValue": "20"
+        },
+        {
+          "name": "MERGE_TEXT",
+          "description": "Specifies whether or not to merge text output into a single track. If set to true, all boundary detections in documents are ignored during processing.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
         }
 
       ]
