@@ -142,15 +142,38 @@ public class TestTikaTextDetectionComponent {
         assertSection(tracks.get(22), "11", "2", "Unknown", "End slide test text"); // cannot determine language
     }
 
+
+
     @Test
-    public void testMergeTextPptx() throws MPFComponentDetectionError {
+    public void testMergeSectionTextPptx() throws MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-tika-detection.pptx").getPath();
 
         Map<String, String> jobProperties = new HashMap<>();
         Map<String, String> mediaProperties = new HashMap<>();
         jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
         jobProperties.put("LIST_ALL_PAGES", "true");
-        jobProperties.put("MERGE_TEXT", "true");
+        jobProperties.put("MERGE_LINES", "true");
+
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+        assertEquals(11 ,tracks.size());
+
+        assertSection(tracks.get(0), "1", "1", "English", "Testing Text Detection");
+        assertSection(tracks.get(1), "2", "1", "Japanese", "ジアゼパム");
+        assertSection(tracks.get(3), "4", "1", "English", "An automobile with a bike races down the street");
+        assertSection(tracks.get(9), "10", "1", "English", "All human beings are born free");
+        assertSection(tracks.get(10), "11", "1", "Unknown", "End slide test text");
+    }
+
+    @Test
+    public void testMergeAllTextPptx() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.pptx").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "true");
+        jobProperties.put("MERGE_PAGES", "true");
 
         MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);

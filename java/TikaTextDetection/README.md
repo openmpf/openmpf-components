@@ -15,8 +15,13 @@ page numbers start at 1, not 0, unless otherwise noted.
 Every page can generate zero or more tracks, depending on the number of text sections in that page. A text section can
 be a line or paragrah of text surrounded by newlines and/or page breaks, a single bullet point, a single table cell,
 etc. In addition to `PAGE_NUM`, each track will also have a `SECTION_NUM` property. `SECTION_NUM` starts over at 1 on
-each page / slide. Setting `MERGE_TEXT = true` will disable this text splitting behavior and return a single track
-with all text extracted from the document.
+each page / slide.
+
+Setting `MERGE_LINES = true` will disable text splitting by section, and return back a single text detection per page.
+This option is useful whenever a document contains an excessive number of sections.
+
+Setting `MERGE_PAGES = true` will disable all text splitting behaviors and return a single track with text extracted from the document. When enabled, `MERGE_PAGES` will override `MERGE_LINES` and is useful whenever a document contains an
+excessive number of page breaks.
 
 Users can also enable metadata reporting. If enabled by setting the job property `STORE_METADATA = true`, document
 metadata will be labeled and stored as the first track. Metadata track will not contain the `PAGE_NUM`, `SECTION_NUM`,

@@ -71,12 +71,13 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
 
         Map<Integer, List<StringBuilder>> pageToSections;
         Metadata metadata = new Metadata();
-        boolean mergeText = MapUtils.getBooleanValue(properties, "MERGE_TEXT", false);
+        boolean mergeLines = MapUtils.getBooleanValue(properties, "MERGE_LINES", false);
+        boolean mergePages = MapUtils.getBooleanValue(properties, "MERGE_PAGES", false);
         try (FileInputStream inputstream = new FileInputStream(file)) {
             // Init parser with custom content handler for parsing text per page (PDF/PPTX).
             Parser parser = new AutoDetectParser();
             TextExtractionContentHandler handler = new TextExtractionContentHandler();
-            handler.setMergeTextBehavior(mergeText);
+            handler.setMergeTextBehavior(mergeLines, mergePages);
             ParseContext context = new ParseContext();
             // Parse file.
             // If the format is .pdf or .pptx, output will be divided by page/slide.
