@@ -46,8 +46,14 @@
           "defaultValue": "20"
         },
         {
-          "name": "MERGE_TEXT",
-          "description": "Specifies whether or not to merge text output into a single track. If set to true, all boundary detections in documents are ignored during processing.",
+          "name": "MERGE_LINES",
+          "description": "Specifies whether or not to combine detected sections of text into a single detection. When true, all lines within a given page will be combined into one detection output. Enabling this property can avoid an excessive number of detections.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "name": "MERGE_PAGES",
+          "description": "Specifies whether or not to combine all text detections into a single track output. If set to true, all boundary detections in documents are ignored during processing. Enabling this option will override `MERGE_LINES`.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         }
