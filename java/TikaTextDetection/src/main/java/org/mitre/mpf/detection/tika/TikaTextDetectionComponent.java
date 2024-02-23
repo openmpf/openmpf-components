@@ -64,15 +64,19 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
             mpfGenericJob.getJobName(), mpfGenericJob.getDataUri(),
             mpfGenericJob.getJobProperties().size(), mpfGenericJob.getMediaProperties().size());
 
+        Map<String,String> properties = mpfGenericJob.getJobProperties();
+
         // Specify filename for tika parsers here.
         File file = new File(mpfGenericJob.getDataUri());
 
         Map<Integer, List<StringBuilder>> pageToSections;
         Metadata metadata = new Metadata();
+        boolean mergeText = MapUtils.getBooleanValue(properties, "MERGE_TEXT", false);
         try (FileInputStream inputstream = new FileInputStream(file)) {
             // Init parser with custom content handler for parsing text per page (PDF/PPTX).
             Parser parser = new AutoDetectParser();
             TextExtractionContentHandler handler = new TextExtractionContentHandler();
+            handler.setMergeTextBehavior(mergeText);
             ParseContext context = new ParseContext();
             // Parse file.
             // If the format is .pdf or .pptx, output will be divided by page/slide.
@@ -93,7 +97,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
                 contentType.equals("application/pdf") ||
                 contentType.startsWith("application/vnd.openxmlformats-officedocument.presentationml");
 
-        Map<String,String> properties = mpfGenericJob.getJobProperties();
+
 
         // Set language filtering limit.
         int charLimit = MapUtils.getIntValue(properties, "MIN_CHARS_FOR_LANGUAGE_DETECTION", 0);

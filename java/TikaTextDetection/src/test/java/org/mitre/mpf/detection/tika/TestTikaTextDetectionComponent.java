@@ -143,6 +143,27 @@ public class TestTikaTextDetectionComponent {
     }
 
     @Test
+    public void testMergeTextPptx() throws MPFComponentDetectionError {
+        String mediaPath = this.getClass().getResource("/data/test-tika-detection.pptx").getPath();
+
+        Map<String, String> jobProperties = new HashMap<>();
+        Map<String, String> mediaProperties = new HashMap<>();
+        jobProperties.put("MIN_CHARS_FOR_LANGUAGE_DETECTION", "20");
+        jobProperties.put("LIST_ALL_PAGES", "true");
+        jobProperties.put("MERGE_TEXT", "true");
+
+        MPFGenericJob genericJob = new MPFGenericJob("TestGenericJob", mediaPath, jobProperties, mediaProperties);
+        List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
+
+        assertEquals(1 ,tracks.size());
+
+        assertSection(tracks.get(0), "1", "1", "English", "Testing Text Detection");
+        assertSection(tracks.get(0), "1", "1", "English", "ジアゼパム");
+        assertSection(tracks.get(0), "1", "1", "English", "All human beings are born free");
+        assertSection(tracks.get(0), "1", "1", "English", "End slide test text");
+    }
+
+    @Test
     public void testGetDetectionsOdp() throws MPFComponentDetectionError {
         String mediaPath = this.getClass().getResource("/data/test-tika-detection.odp").getPath();
 
