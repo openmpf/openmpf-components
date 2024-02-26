@@ -158,11 +158,13 @@ public class TestTikaTextDetectionComponent {
         List<MPFGenericTrack> tracks = tikaComponent.getDetections(genericJob);
         assertEquals(11 ,tracks.size());
 
-        assertSection(tracks.get(0), "1", "1", "English", "Testing Text Detection");
-        assertSection(tracks.get(1), "2", "1", "Japanese", "ジアゼパム");
+        assertSection(tracks.get(0), "1", "1", "English", "Testing Text Detection\nSlide 1");
+        assertSection(tracks.get(1), "2", "1", "Japanese", "Testing:\n\nジアゼパム");
         assertSection(tracks.get(3), "4", "1", "English", "An automobile with a bike races down the street");
-        assertSection(tracks.get(9), "10", "1", "English", "All human beings are born free");
-        assertSection(tracks.get(10), "11", "1", "Unknown", "End slide test text");
+        assertSection(tracks.get(9), "10", "1", "English",
+                "Phrase Test\nFrom the Universal Declaration of Human Rights (1948):\n\n" + 
+                "Article 1.\n \nAll human beings are born free");
+        assertSection(tracks.get(10), "11", "1", "Unknown", "End\nEnd slide test text");
     }
 
     @Test
