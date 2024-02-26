@@ -51,17 +51,13 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     // Enable to avoid storing metadata/title text from pdf and ppt documents
     private boolean _skipTitle = true;
 
-    public TextExtractionContentHandler(){
+    public TextExtractionContentHandler(boolean mergeLines, boolean mergePages) {
         super();
         _allText = new StringBuilder();
         _pageNumber = 0;
-        _mergePages = false;
-        createPage();
-    }
-
-    public void setMergeTextBehavior(boolean mergeLines, boolean mergePages) {
-        _mergePages = mergePages;
         _mergeLines = mergeLines;
+        _mergePages = mergePages;
+        createPage();
     }
 
     @Override

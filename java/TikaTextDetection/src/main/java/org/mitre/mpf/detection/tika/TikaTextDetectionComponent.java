@@ -76,8 +76,7 @@ public class TikaTextDetectionComponent extends MPFDetectionComponentBase {
         try (FileInputStream inputstream = new FileInputStream(file)) {
             // Init parser with custom content handler for parsing text per page (PDF/PPTX).
             Parser parser = new AutoDetectParser();
-            TextExtractionContentHandler handler = new TextExtractionContentHandler();
-            handler.setMergeTextBehavior(mergeLines, mergePages);
+            TextExtractionContentHandler handler = new TextExtractionContentHandler(mergeLines, mergePages);
             ParseContext context = new ParseContext();
             // Parse file.
             // If the format is .pdf or .pptx, output will be divided by page/slide.
