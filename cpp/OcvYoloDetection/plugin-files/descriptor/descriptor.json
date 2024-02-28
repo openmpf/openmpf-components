@@ -28,14 +28,14 @@
       "properties": [
         {
           "name": "QUALITY_SELECTION_PROPERTY",
-          "description": "The detection property to be used to determine its quality.",
+          "description": "The detection property to be used to determine its quality. Only CONFIDENCE is spupported. Any other value will result in an error.",
           "type": "STRING",
           "defaultValue": "CONFIDENCE"
         },
         {
           "name": "QUALITY_SELECTION_THRESHOLD",
           "description": "Minimum value of the QUALITY_SELECTION_PROPERTY needed to keep detection and start a track.",
-          "type": "STRING",
+          "type": "DOUBLE",
           "defaultValue": "0.5"
         },
         {

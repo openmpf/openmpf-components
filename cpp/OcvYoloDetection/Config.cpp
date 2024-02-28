@@ -91,6 +91,10 @@ Config::Config(const Properties &jobProps)
         , tritonVerboseClient(GetProperty(jobProps, "TRITON_VERBOSE_CLIENT", false))
         , tritonUseSSL(GetProperty(jobProps, "TRITON_USE_SSL", false))
         , tritonUseShm(GetProperty(jobProps, "TRITON_USE_SHM", false)) {
+            std::string quality_property = GetProperty(jobProps, "QUALITY_SELECTION_PROPERTY");
+            if (quality_property != "CONFIDENCE") {
+                throw std::runtime_error("Unsupported quality selection property \"" + quality_property + "\". Only CONFIDENCE is supported for quality selection.");
+            }
 }
 
 

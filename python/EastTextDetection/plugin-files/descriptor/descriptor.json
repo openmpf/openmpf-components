@@ -23,14 +23,14 @@
       "properties": [
         {
           "name": "QUALITY_SELECTION_PROPERTY",
-          "description": "The detection property to be used to filter out low quality detections.",
+          "description": "The detection property to be used to filter out low quality detections. Only CONFIDENCE is supported. Other values will result in an error.",
           "type": "STRING",
           "defaultValue": "CONFIDENCE"
         },
         {
           "name": "QUALITY_SELECTION_THRESHOLD",
           "description": "Threshold value for filtering detections by quality selection property. Detections with scores lower than this value are dropped prior to non-maximum suppression.",
-          "type": "STRING",
+          "type": "DOUBLE",
           "defaultValue": "0.8"
         },
         {

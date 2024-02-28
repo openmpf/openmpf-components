@@ -128,6 +128,19 @@
           "defaultValue": ""
         },
         {
+          "name": "QUALITY_SELECTION_PROPERTY",
+          "description": "The detection property to be used to determine its quality. Currently supports only a value of CONFIDENCE. Other values will result in an error.",
+          "type": "STRING",
+          "defaultValue": "CONFIDENCE"
+        },
+        {
+          "name": "QUALITY_SELECTION_THRESHOLD",
+          "description": "Minimum value of the QUALITY_SELECTION_PROPERTY needed to keep detection and start a track.",
+          "type": "DOUBLE",
+          "defaultValue": "detection.quality.selection.threshold"
+        },
+
+        {
           "name": "FEED_FORWARD_EXCLUDE_BEHAVIOR",
           "description": "When FEED_FORWARD_TYPE is provided and not set to NONE, and FEED_FORWARD_ALLOW_LIST_FILE is provided, this value determines what to do with feed-forward detections with class names not contained in the FEED_FORWARD_ALLOW_LIST_FILE. Acceptable values are PASS_THROUGH and DROP.",
           "type": "STRING",
