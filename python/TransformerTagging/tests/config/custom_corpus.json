@@ -1,0 +1,10 @@
+[
+  {
+    "text": "This sentence is beach.",
+    "tag": "beach"
+  },
+  {
+    "text": "This sentence is forest.",
+    "tag": "forest"
+  }
+]

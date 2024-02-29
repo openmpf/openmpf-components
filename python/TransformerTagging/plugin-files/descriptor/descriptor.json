@@ -1,0 +1,98 @@
+{
+  "componentName": "TransformerTagging",
+  "componentVersion": "8.0",
+  "middlewareVersion": "8.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "TransformerTagging",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "TRANSFORMERTAGGING",
+    "description": "Uses SentenceTransformers to tag sentences.",
+    "actionType": "DETECTION",
+    "trackType": "TEXT",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TAGGING",
+        "DETECTION_TAGGING_TRANSFORMER"
+      ],
+      "properties": [
+        {
+          "name": "FEED_FORWARD_PROP_TO_PROCESS",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to consider translating. If the first property listed is present, then that property will be translated. If it's not, then the next property in the list is considered. At most, one property will be translated.",
+          "type": "STRING",
+          "defaultValue": "TEXT,TRANSCRIPT,TRANSLATION"
+        },
+        {
+          "name": "SCORE_THRESHOLD",
+          "description": "The minimum score score which must be met or exceeded. Tags below this threshold are silently discarded.",
+          "type": "DOUBLE",
+          "defaultValue": "0.3"
+        },
+        {
+          "name": "TRANSFORMER_TAGGING_CORPUS",
+          "description": "Name of a JSON file that describes a tag hierarchy to be used for matching sentences. Will default to the plugin's config folder unless an alternate path to corpus file is specified (i.e. `$MPF_HOME/.../transformer_text_tags_corpus.json`).",
+          "type": "STRING",
+          "defaultValue": "transformer_text_tags_corpus.json"
+        },
+        {
+          "name": "ENABLE_DEBUG",
+          "description": "If true, each detection will include a `TRIGGER SENTENCES MATCHES` property for each entry in `TAGS`. The value will be the sentences in the corpus which met the score threshold for that tag.",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "TRANSFORMER TAGGING TEXT FILE ACTION",
+      "description": "Performs transformer tagging on a plain text file.",
+      "algorithm": "TRANSFORMERTAGGING",
+      "properties": []
+    },
+    {
+      "name": "TRANSFORMER TAGGING (WITH FF REGION) ACTION",
+      "description": "Performs transformer tagging on feed-forward tracks and detections.",
+      "algorithm": "TRANSFORMERTAGGING",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "value": "TRUE"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "TRANSFORMER TAGGING TEXT FILE TASK",
+      "description": "Performs transformer tagging on a plain text file.",
+      "actions": [
+        "TRANSFORMER TAGGING TEXT FILE ACTION"
+      ]
+    },
+    {
+      "name": "TRANSFORMER TAGGING (WITH FF REGION) TASK",
+      "description": "Performs transformer tagging on feed-forward tracks and detections.",
+      "actions": [
+        "TRANSFORMER TAGGING (WITH FF REGION) ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "TRANSFORMER TAGGING TEXT FILE PIPELINE",
+      "description": "Performs transformer tagging on a plain text file.",
+      "tasks": [
+        "TRANSFORMER TAGGING TEXT FILE TASK"
+      ]
+    }
+  ]
+}
