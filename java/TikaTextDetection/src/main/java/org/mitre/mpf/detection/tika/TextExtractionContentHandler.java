@@ -38,7 +38,9 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     private static final String SECTION_TAG = "p";
     private static final String PAGE_LABEL = "page";
     private static final String SLIDE_LABEL = "slide-content";
-    
+
+    private boolean _mergePages;
+    private boolean _mergeLines;
     private int _pageNumber;
 
     private StringBuilder _allText;
@@ -49,16 +51,18 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
     // Enable to avoid storing metadata/title text from pdf and ppt documents
     private boolean _skipTitle = true;
 
-    public TextExtractionContentHandler(){
+    public TextExtractionContentHandler(boolean mergeLines, boolean mergePages) {
         super();
         _allText = new StringBuilder();
         _pageNumber = 0;
+        _mergeLines = mergeLines;
+        _mergePages = mergePages;
         createPage();
     }
 
     @Override
     public void startElement(String uri, String localName, String qName, Attributes atts) {
-        if (SECTION_TAG.equals(qName)) {
+        if (SECTION_TAG.equals(qName) && !_mergeLines && !_mergePages) {
             newSection();
             return;
         }
@@ -75,8 +79,10 @@ public class TextExtractionContentHandler extends ToTextContentHandler {
                 // If pdf: Discard blank page.
                 reset();
             } else {
-                _pageNumber++;
-                createPage();
+                if (!_mergePages) {
+                    _pageNumber++;
+                    createPage();
+                }
             }
         }
     }
