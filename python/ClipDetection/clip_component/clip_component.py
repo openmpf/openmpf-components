@@ -134,6 +134,8 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
                                           video_capture: mpf_util.VideoCapture) -> Iterable[mpf.VideoTrack]:
         logger.info("Received video job: %s", video_job)
         kwargs = self._parse_properties(video_job.job_properties)
+        
+        # INSERT COMMENT HERE ABOUT WHY
         batch_size = 1 if kwargs['enable_cropping'] else kwargs['batch_size']
         
         batch_gen = self._batches_from_video_capture(video_capture, batch_size)
@@ -172,6 +174,7 @@ class ClipWrapper(object):
         self._classification_list = ''
 
         self._templates = None
+        self._template_type = None
         self._class_mapping = None
         self._text_features = None
 
@@ -245,7 +248,7 @@ class ClipWrapper(object):
             )
 
     def _check_template_list(self, template_path: str, template_type: str) -> bool:
-        number_of_templates = {'openai_80': 80, 'openai_7': 7, 'openai_1': 1}
+        # number_of_templates = {'openai_80': 80, 'openai_7': 7, 'openai_1': 1}
         if template_path != '':
             if (not os.path.exists(template_path)):
                 raise mpf.DetectionException(
@@ -265,17 +268,18 @@ class ClipWrapper(object):
                         f"Could not read templates from {template_path}",
                         mpf.DetectionError.COULD_NOT_READ_DATAFILE
                     )
-        elif (self._templates == None) or (number_of_templates[template_type] != len(self._templates)):
-            if number_of_templates[template_type] == 80:
+        elif (self._templates == None) or (template_type != self._template_type):
+            if template_type == 'openai_80':
                 template_filename = 'eighty_templates.txt'
-            elif number_of_templates[template_type] == 7:
+            elif template_type == 'openai_7':
                 template_filename = 'seven_templates.txt'
-            elif number_of_templates[template_type] == 1:
+            elif template_type == 'openai_1':
                 template_filename = 'one_template.txt'
             
             template_path = os.path.realpath(resource_filename(__name__, 'data/' + template_filename))
             logger.info("Updating templates...")
             self._templates = self._get_templates_from_file(template_path)
+            self._template_type = template_type
             logger.info("Templates updated.")
             return True
         return False
@@ -311,12 +315,16 @@ class ClipWrapper(object):
                 for label in self._class_mapping.keys():
                     text_phrases = [template.format(label) for template in self._templates]
                     text_tokens = clip.tokenize(text_phrases).to(device)
+                    logger.info(f"Text tokens size: {text_tokens.size()}")
                     text_embeddings = self._model.encode_text(text_tokens)
+                    logger.info(f"Text embeddings size: {text_embeddings.size()}")
                     text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
                     text_embedding = text_embeddings.mean(dim=0)
+                    logger.info(f"Text embedding size: {text_embedding.size()}")
                     text_embedding /= text_embedding.norm()
                     text_features.append(text_embedding)
                 self._text_features = torch.stack(text_features, dim=1).float().to(device)
+                logger.info(f"Text features size: {self._text_features.size()}")
                 logger.info("Text embeddings created.")
     
     @staticmethod

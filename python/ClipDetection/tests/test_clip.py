@@ -45,9 +45,10 @@ class TestClip(unittest.TestCase):
             data_uri=self._get_test_file('dog.jpg'),
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 3,
-                NUMBER_OF_TEMPLATES = 80,
+                TEMPLATE_TYPE = 'openai_1',
                 ENABLE_CROPPING ='False',
-                INCLUDE_FEATURES = 'True'
+                INCLUDE_FEATURES = 'True',
+                MODEL_NAME="ViT-B/32"
             ),
             media_properties={},
             feed_forward_location=None
@@ -85,7 +86,7 @@ class TestClip(unittest.TestCase):
             data_uri=self._get_test_file('dog.jpg'),
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 4,
-                NUMBER_OF_TEMPLATES = 1,
+                TEMPLATE_TYPE = 'openai_1',
                 CLASSIFICATION_PATH = self._get_test_file("rollup.csv"),
                 ENABLE_CROPPING = 'False'
             ),
@@ -102,8 +103,7 @@ class TestClip(unittest.TestCase):
             start_frame=0,
             stop_frame=14,
             job_properties=dict(
-                NUMBER_OF_TEMPLATES = 1,
-                CLASSIFICATION_LIST = 'imagenet',
+                TEMPLATE_TYPE = 'openai_1',
                 ENABLE_CROPPING = 'False',
                 DETECTION_FRAME_BATCH_SIZE = 4
             ),
@@ -113,15 +113,15 @@ class TestClip(unittest.TestCase):
         component = ClipComponent()
         results = list(component.get_detections_from_video(job))
 
-        self.assertEqual(results[0].detection_properties['CLASSIFICATION'], "Border collie")
+        self.assertEqual(results[0].detection_properties['CLASSIFICATION'], "dog")
         self.assertEqual(results[0].start_frame, 0)
         self.assertEqual(results[0].stop_frame, 4)
 
-        self.assertEqual(results[1].detection_properties['CLASSIFICATION'], "anemone fish")
+        self.assertEqual(results[1].detection_properties['CLASSIFICATION'], "fish")
         self.assertEqual(results[1].start_frame, 5)
         self.assertEqual(results[1].stop_frame, 9)
 
-        self.assertEqual(results[2].detection_properties['CLASSIFICATION'], "Border collie")
+        self.assertEqual(results[2].detection_properties['CLASSIFICATION'], "dog")
         self.assertEqual(results[2].start_frame, 10)
         self.assertEqual(results[2].stop_frame, 14)
 

@@ -33,7 +33,7 @@ FROM ${MODELS_REGISTRY}openmpf_clip_detection_triton_models:8.0.0 as models
 FROM nvcr.io/nvidia/tritonserver:22.04-py3 as openmpf_triton_server
 
 COPY --from=models /models/vit_b_32.pt /models/vit_b_32/1/vit_b_32.pt
-COPY models/vit_b_32.config.pbtxt /models/ip_clip_512/config.pbtxt
+COPY models/vit_b_32.config.pbtxt /models/vit_b_32/config.pbtxt
 
 COPY --from=models /models/vit_l_14.pt /models/vit_l_14/1/vit_l_14.pt
 COPY models/vit_l_14.config.pbtxt /models/vit_l_14/config.pbtxt
