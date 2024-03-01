@@ -669,7 +669,7 @@ OcvDnnDetection::OcvDnnJobConfig::OcvDnnJobConfig(const Properties &props,
     }
 
     number_of_classifications = GetProperty(props, "NUMBER_OF_CLASSIFICATIONS", 1);
-    std::string quality_property = GetProperty(props, "QUALITY_SELECTION_PROPERTY");
+    std::string quality_property = GetProperty(props, "QUALITY_SELECTION_PROPERTY", "CONFIDENCE");
     if (quality_property != "CONFIDENCE") {
         throw std::runtime_error("Unrecognized quality selection property \"" + quality_property + "\". Only CONFIDENCE is supported for quality selection.");
     }
