@@ -55,7 +55,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         batch_size = int(props.get('BATCH_SIZE','1'))
 
         # Get the threshold values for filtering bounding boxes
-        quality_property = props.get('QUALITY_SELECTION_PROPERTY')
+        quality_property = props.get('QUALITY_SELECTION_PROPERTY', 'CONFIDENCE')
         if quality_property != "CONFIDENCE":
             raise ValueError('Unsupported quality selection property \"' + quality_property + '\". Only CONFIDENCE is supported.')
         min_confidence = float(props.get('QUALITY_SELECTION_THRESHOLD','0.8'))
