@@ -135,7 +135,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         logger.info("Received video job: %s", video_job)
         kwargs = self._parse_properties(video_job.job_properties)
         
-        # INSERT COMMENT HERE ABOUT WHY
+        # If processing a video where each frame is cropped into 144 images, the batch size is set to one so that the crops aren't split between batches
         batch_size = 1 if kwargs['enable_cropping'] else kwargs['batch_size']
         
         batch_gen = self._batches_from_video_capture(video_capture, batch_size)
