@@ -315,16 +315,12 @@ class ClipWrapper(object):
                 for label in self._class_mapping.keys():
                     text_phrases = [template.format(label) for template in self._templates]
                     text_tokens = clip.tokenize(text_phrases).to(device)
-                    logger.info(f"Text tokens size: {text_tokens.size()}")
                     text_embeddings = self._model.encode_text(text_tokens)
-                    logger.info(f"Text embeddings size: {text_embeddings.size()}")
                     text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
                     text_embedding = text_embeddings.mean(dim=0)
-                    logger.info(f"Text embedding size: {text_embedding.size()}")
                     text_embedding /= text_embedding.norm()
                     text_features.append(text_embedding)
                 self._text_features = torch.stack(text_features, dim=1).float().to(device)
-                logger.info(f"Text features size: {self._text_features.size()}")
                 logger.info("Text embeddings created.")
     
     @staticmethod

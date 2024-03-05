@@ -117,7 +117,7 @@ class TestClip(unittest.TestCase):
         self.assertEqual(results[0].start_frame, 0)
         self.assertEqual(results[0].stop_frame, 4)
 
-        self.assertEqual(results[1].detection_properties['CLASSIFICATION'], "fish")
+        self.assertEqual(results[1].detection_properties['CLASSIFICATION'], "orange")
         self.assertEqual(results[1].start_frame, 5)
         self.assertEqual(results[1].stop_frame, 9)
 
