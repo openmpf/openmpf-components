@@ -93,7 +93,7 @@ Config::Config(const Properties &jobProps)
         , tritonUseShm(GetProperty(jobProps, "TRITON_USE_SHM", false)) {
             std::string quality_property = GetProperty(jobProps, "QUALITY_SELECTION_PROPERTY", "CONFIDENCE");
             if (quality_property != "CONFIDENCE") {
-                throw std::runtime_error("Unsupported quality selection property \"" + quality_property + "\". Only CONFIDENCE is supported for quality selection.");
+                throw MPFInvalidPropertyException("Unsupported quality selection property \"" + quality_property + "\". Only CONFIDENCE is supported for quality selection.");
             }
 }
 

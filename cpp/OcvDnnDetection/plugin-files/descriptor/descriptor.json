@@ -137,7 +137,7 @@
           "name": "QUALITY_SELECTION_THRESHOLD",
           "description": "Minimum value of the QUALITY_SELECTION_PROPERTY needed to keep detection and start a track.",
           "type": "DOUBLE",
-          "defaultValue": "detection.quality.selection.threshold"
+          "propertiesKey": "detection.quality.selection.threshold"
         },
 
         {

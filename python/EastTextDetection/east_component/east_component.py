@@ -57,7 +57,7 @@ class EastComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, objec
         # Get the threshold values for filtering bounding boxes
         quality_property = props.get('QUALITY_SELECTION_PROPERTY', 'CONFIDENCE')
         if quality_property != "CONFIDENCE":
-            raise ValueError('Unsupported quality selection property \"' + quality_property + '\". Only CONFIDENCE is supported.')
+            raise mpf.DetectionError.INVALID_PROPERTY.exception('Unsupported quality selection property \"' + quality_property + '\". Only CONFIDENCE is supported.')
         min_confidence = float(props.get('QUALITY_SELECTION_THRESHOLD','0.8'))
         overlap_threshold = float(props.get('MERGE_OVERLAP_THRESHOLD','0.0'))
         min_nms_overlap = float(props.get('NMS_MIN_OVERLAP','0.1'))
