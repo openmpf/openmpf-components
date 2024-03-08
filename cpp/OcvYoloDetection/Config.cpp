@@ -27,6 +27,7 @@
 #include "Config.h"
 
 #include <detectionComponentUtils.h>
+#include <MPFInvalidPropertyException.h>
 
 #include "util.h"
 
