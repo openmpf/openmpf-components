@@ -22,12 +22,6 @@
       ],
       "properties": [
         {
-          "name": "CONFIDENCE_THRESHOLD",
-          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
-          "type": "DOUBLE",
-          "defaultValue": "-2"
-        },
-        {
           "name": "SAVE_PATH",
           "description": "Specifies main directory for storing extracted images.",
           "type": "STRING",
