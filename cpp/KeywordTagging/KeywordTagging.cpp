@@ -247,9 +247,9 @@ bool KeywordTagging::comp_regex(const MPFJob &job, const wstring &full_text,
         boost::wregex reg_matcher;
 
         if (case_sensitive) {
-            reg_matcher = boost::wregex(regstr, boost::regex_constants::extended);
+            reg_matcher = boost::wregex(regstr, boost::regex_constants::perl);
         } else {
-            reg_matcher = boost::wregex(regstr, boost::regex_constants::extended | boost::regex::icase);
+            reg_matcher = boost::wregex(regstr, boost::regex_constants::perl | boost::regex::icase);
         }
 
         boost::wsmatch m;
