@@ -433,7 +433,7 @@ class BreakSentenceClient:
 
     # ACS limits the number of characters that can be translated in a single /translate call.
     # Taken from https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-translate
-    TRANSLATION_MAX_CHARS = 10_000
+    TRANSLATION_MAX_CHARS = 50_000
 
     # ACS limits the number of characters that can be processed in a single /breaksentence call.
     # Taken from https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-break-sentence
