@@ -38,6 +38,7 @@ import time
 from pkg_resources import resource_filename
 from nltk.tokenize.punkt import PunktSentenceTokenizer
 import pandas as pd
+import re
 
 logger = logging.getLogger('TransformerTaggingComponent')
 
@@ -143,28 +144,37 @@ class TransformerTaggingComponent:
 
         # for each sentence in input
         for start, end in PunktSentenceTokenizer().span_tokenize(input_text):
-            probe_sent = input_text[start:end]
+            probe_str = input_text[start:end]
+            probe_list: list = []
 
-            # get similarity scores for the input sentence with each corpus sentence
-            probe_sent_embed = self._cached_model.encode(probe_sent, convert_to_tensor=True, show_progress_bar=False)
-            scores = [float(util.cos_sim(probe_sent_embed, corpus_sent_embed)) for corpus_sent_embed in corpus.embed]
+            # split input sentence further on newline or carriage return if flag is set
+            if (config.split_on_newline):
+                for new_sentence in probe_str.splitlines():
+                    probe_list.append(new_sentence.lstrip())
+            else:
+                probe_list.append(probe_str)
 
-            probe_df = pd.DataFrame({
-                "input text": probe_sent,
-                "corpus text": corpus.json["text"],
-                "tag": corpus.json["tag"].str.lower(),
-                "score": scores,
-                "offset": str(start) + "-" + str(end - 1)
-            })
+            for probe_sent in probe_list:
+                # get similarity scores for the input sentence with each corpus sentence
+                probe_sent_embed = self._cached_model.encode(probe_sent, convert_to_tensor=True, show_progress_bar=False)
+                scores = [float(util.cos_sim(probe_sent_embed, corpus_sent_embed)) for corpus_sent_embed in corpus.embed]
 
-            # sort by score then group by tag so each group will be sorted highest to lowest score,
-            # then take top row for each group
-            probe_df = probe_df.sort_values(by=['score'], ascending=False)
-            top_per_tag = probe_df.groupby(['tag'], sort=False).head(1)
+                probe_df = pd.DataFrame({
+                    "input text": probe_sent,
+                    "corpus text": corpus.json["text"],
+                    "tag": corpus.json["tag"].str.lower(),
+                    "score": scores,
+                    "offset": str(start) + "-" + str(end - 1)
+                })
 
-            # filter out results that are below threshold
-            top_per_tag_threshold = top_per_tag[top_per_tag["score"] >= config.threshold]
-            all_tag_results.append(top_per_tag_threshold)
+                # sort by score then group by tag so each group will be sorted highest to lowest score,
+                # then take top row for each group
+                probe_df = probe_df.sort_values(by=['score'], ascending=False)
+                top_per_tag = probe_df.groupby(['tag'], sort=False).head(1)
+
+                # filter out results that are below threshold
+                top_per_tag_threshold = top_per_tag[top_per_tag["score"] >= config.threshold]
+                all_tag_results.append(top_per_tag_threshold)
 
         # if no tags found in text return
         if not all_tag_results:
@@ -241,6 +251,9 @@ class JobConfig:
 
         # if debug is true will return which corpus sentences triggered the match
         self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
+
+        # if split on newline is true will split input on newline and carriage returns
+        self.split_on_newline = mpf_util.get_property(props, 'ENABLE_NEWLINE_SPLIT', False)
 
         self.corpus_file = \
             mpf_util.get_property(props, 'TRANSFORMER_TAGGING_CORPUS', "transformer_text_tags_corpus.json")
