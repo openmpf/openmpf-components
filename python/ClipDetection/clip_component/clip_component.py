@@ -193,7 +193,9 @@ class ClipWrapper(object):
             torch_imgs = torch_imgs.squeeze(0)
 
         if kwargs['enable_triton']:
-            if self._inferencing_server is None or kwargs['triton_server'] != self._triton_server_url:
+            if self._inferencing_server is None or \
+                    kwargs['triton_server'] != self._triton_server_url or \
+                    kwargs['model_name'] != self._model:
                 self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'])
                 self._triton_server_url = kwargs['triton_server']
 
