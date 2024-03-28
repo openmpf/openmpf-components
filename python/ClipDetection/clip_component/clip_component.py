@@ -150,7 +150,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
                 raise
         
         tracks = create_tracks(detections)
-        logger.info(f"Job complete. Found {len(tracks)} detections.")
+        logger.info(f"Job complete. Found {len(tracks)} tracks.")
         return tracks
 
     def _get_model_wrapper(self, model_name):
