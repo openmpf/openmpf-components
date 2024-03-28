@@ -37,27 +37,25 @@ import mpf_component_api as mpf
 
 logging.basicConfig(level=logging.DEBUG)
 
-class TestClip(unittest.TestCase):
+class TestClipTriton(unittest.TestCase):
 
     def test_image_file(self):
         job = mpf.ImageJob(
-            job_name='test-image',
+            job_name='test-image-triton',
             data_uri=self._get_test_file('collie.jpg'),
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 10,
-                NUMBER_OF_TEMPLATES = 80,
-                CLASSIFICATION_LIST = 'imagenet',
-                ENABLE_CROPPING='False', 
-                ENABLE_TRITON='True',
-                TRITON_SERVER='clip-detection-server:8001'
+                TEMPLATE_TYPE = 'openai_80',
+                ENABLE_CROPPING = 'False', 
+                ENABLE_TRITON = 'True',
+                TRITON_SERVER = 'clip-detection-server:8001'
             ),
             media_properties={},
             feed_forward_location=None
         )      
         result = list(ClipComponent().get_detections_from_image(job))[0]
-        self.assertTrue("collie" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]) or "Border collie" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
-        
-
+        self.assertTrue("dog" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
+    
     @staticmethod
     def _get_test_file(filename):
         return os.path.join(os.path.dirname(__file__), 'data', filename)
