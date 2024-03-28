@@ -34,12 +34,7 @@
       "name": "OALPR LICENSE PLATE TEXT DETECTION ACTION",
       "description": "Executes the OALPR license plate text detection algorithm using the default parameters.",
       "algorithm": "OALPR",
-      "properties": [
-        {
-          "name": "CONFIDENCE_THRESHOLD",
-          "value": "80"
-        }
-      ]
+      "properties": []
     }
   ],
   "tasks": [

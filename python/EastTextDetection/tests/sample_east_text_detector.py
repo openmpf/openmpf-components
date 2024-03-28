@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
     properties = dict(
         MAX_SIDE_LENGTH=str(args.max_side_length),
-        CONFIDENCE_THRESHOLD=str(args.confidence_threshold),
+        QUALITY_SELECTION_THRESHOLD=str(args.confidence_threshold),
         MERGE_OVERLAP_THRESHOLD=str(args.merge_overlap_threshold),
         NMS_MIN_OVERLAP=str(args.nms_min_overlap),
         MERGE_MAX_TEXT_HEIGHT_DIFFERENCE=str(args.merge_max_text_height_difference),

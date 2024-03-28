@@ -27,6 +27,7 @@
 #include "Config.h"
 
 #include <detectionComponentUtils.h>
+#include <MPFInvalidPropertyException.h>
 
 #include "util.h"
 
@@ -52,7 +53,7 @@ namespace {
 }
 
 Config::Config(const Properties &jobProps)
-        : confidenceThreshold(std::max(GetProperty(jobProps, "CONFIDENCE_THRESHOLD", 0.5), 0.0))
+        : confidenceThreshold(std::max(GetProperty(jobProps, "QUALITY_SELECTION_THRESHOLD", 0.5), 0.0))
         , nmsThresh(GetProperty(jobProps, "DETECTION_NMS_THRESHOLD", 0.3))
         , numClassPerRegion(GetProperty(jobProps, "NUMBER_OF_CLASSIFICATIONS_PER_REGION", 5))
         , netInputImageSize(GetProperty(jobProps, "NET_INPUT_IMAGE_SIZE", 416))
@@ -91,6 +92,10 @@ Config::Config(const Properties &jobProps)
         , tritonVerboseClient(GetProperty(jobProps, "TRITON_VERBOSE_CLIENT", false))
         , tritonUseSSL(GetProperty(jobProps, "TRITON_USE_SSL", false))
         , tritonUseShm(GetProperty(jobProps, "TRITON_USE_SHM", false)) {
+            std::string quality_property = GetProperty(jobProps, "QUALITY_SELECTION_PROPERTY", "CONFIDENCE");
+            if (quality_property != "CONFIDENCE") {
+                throw MPFInvalidPropertyException("QUALITY_SELECTION_PROPERTY", "Unsupported quality selection property \"" + quality_property + "\". Only CONFIDENCE is supported for quality selection.");
+            }
 }
 
 

@@ -27,9 +27,15 @@
       ],
       "properties": [
         {
-          "name": "CONFIDENCE_THRESHOLD",
-          "description": "Minimum detection confidence value [0...1] needed to keep detection and start a track.",
-          "type": "FLOAT",
+          "name": "QUALITY_SELECTION_PROPERTY",
+          "description": "The detection property to be used to determine its quality. Only CONFIDENCE is spupported. Any other value will result in an error.",
+          "type": "STRING",
+          "defaultValue": "CONFIDENCE"
+        },
+        {
+          "name": "QUALITY_SELECTION_THRESHOLD",
+          "description": "Minimum value of the QUALITY_SELECTION_PROPERTY needed to keep detection and start a track.",
+          "type": "DOUBLE",
           "defaultValue": "0.5"
         },
         {

@@ -22,12 +22,6 @@
       ],
       "properties": [
         {
-          "name": "CONFIDENCE_THRESHOLD",
-          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
-          "type": "DOUBLE",
-          "defaultValue": "-2"
-        },
-        {
           "name": "STORE_METADATA",
           "description": "Specifies whether or not to store metadata as a separate track detection.",
           "type": "BOOLEAN",
