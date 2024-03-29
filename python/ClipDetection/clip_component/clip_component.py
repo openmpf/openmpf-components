@@ -179,8 +179,7 @@ class ClipWrapper(object):
         self._text_features = None
 
         self._inferencing_server = None
-        self._triton_server_url = None
-    
+
     def get_detections(self, images, **kwargs) -> Iterable[mpf.ImageLocation]:
         templates_changed = self._check_template_list(kwargs['template_path'], kwargs['template_type'])
         self._check_class_list(kwargs['classification_path'], kwargs['classification_list'], templates_changed)
@@ -194,10 +193,9 @@ class ClipWrapper(object):
 
         if kwargs['enable_triton']:
             if self._inferencing_server is None or \
-                    kwargs['triton_server'] != self._triton_server_url or \
-                    kwargs['model_name'] != self._model:
-                self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'])
-                self._triton_server_url = kwargs['triton_server']
+                    kwargs['triton_server'] != self._inferencing_server.get_url() or \
+                    kwargs['model_name'] != self._inferencing_server.get_model_name():
+                self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'], kwargs['model_name'])
 
             results = self._inferencing_server.get_responses(torch_imgs)
             image_features = torch.Tensor(np.copy(results)).squeeze(0).to(device=device)
@@ -250,7 +248,6 @@ class ClipWrapper(object):
             )
 
     def _check_template_list(self, template_path: str, template_type: str) -> bool:
-        # number_of_templates = {'openai_80': 80, 'openai_7': 7, 'openai_1': 1}
         if template_path != '':
             if (not os.path.exists(template_path)):
                 raise mpf.DetectionException(
@@ -344,9 +341,13 @@ class CLIPInferencingServer(object):
     '''
     Class that handles Triton inferencing if enabled.
     '''
-    def __init__(self, triton_server: int, model_name: str = 'ViT-L/14'):
-        model_names = {'ViT-L/14': 'vit_l_14', 'ViT-B/32': 'vit_b_32'}
-        self._model_name = model_names[model_name]
+
+    MODEL_NAME_ON_SERVER_MAPPING = {'ViT-L/14': 'vit_l_14', 'ViT-B/32': 'vit_b_32'}
+
+    def __init__(self, triton_server: str, model_name: str = 'ViT-L/14'):
+        self._url = triton_server
+        self._model_name = model_name
+        self._model_name_on_server = self.MODEL_NAME_ON_SERVER_MAPPING[model_name]
         self._input_name = None
         self._output_name = None
         self._dtype = None
@@ -361,12 +362,20 @@ class CLIPInferencingServer(object):
         self._check_triton_server()
 
         try:
-            model_metadata = self._triton_client.get_model_metadata(model_name=self._model_name)
+            model_metadata = self._triton_client.get_model_metadata(model_name=self._model_name_on_server)
         except InferenceServerException as e:
-            logger.exception("Failed to retrieve model metadata.")
-            raise
+            raise mpf.DetectionException(
+                f"Failed to retrieve model metadata for {self._model_name_on_server}: {e}",
+                mpf.DetectionError.NETWORK_ERROR
+            )
 
         self._parse_model(model_metadata)
+
+    def get_url(self) -> str:
+        return self._url
+
+    def get_model_name(self) -> str:
+        return self._model_name
 
     def _parse_model(self, model_metadata) -> None:
         input_metadata = model_metadata.inputs[0]
@@ -391,7 +400,7 @@ class CLIPInferencingServer(object):
         responses = []
         try:
             for inputs, outputs in self._get_inputs_outputs(images):
-                responses.append(self._triton_client.infer(model_name=self._model_name, inputs=inputs, outputs=outputs))
+                responses.append(self._triton_client.infer(model_name=self._model_name_on_server, inputs=inputs, outputs=outputs))
         except Exception as e:
             raise mpf.DetectionException(
                 f"Inference failed: {e}",
@@ -405,9 +414,15 @@ class CLIPInferencingServer(object):
         return results   
     
     def _check_triton_server(self) -> None:
-        if not self._triton_client.is_server_live():
+        try:
+            if not self._triton_client.is_server_live():
+                raise mpf.DetectionException(
+                    "Server is not live.",
+                    mpf.DetectionError.NETWORK_ERROR
+            )
+        except InferenceServerException as e:
             raise mpf.DetectionException(
-                "Server is not live.",
+                f"Failed to check if server is live: {e}",
                 mpf.DetectionError.NETWORK_ERROR
             )
 
@@ -417,9 +432,9 @@ class CLIPInferencingServer(object):
                 mpf.DetectionError.NETWORK_ERROR
             )
 
-        if not self._triton_client.is_model_ready(self._model_name):
+        if not self._triton_client.is_model_ready(self._model_name_on_server):
             raise mpf.DetectionException(
-                f"Model {self._model_name} is not ready.",
+                f"Model {self._model_name_on_server} is not ready.",
                 mpf.DetectionError.NETWORK_ERROR
             )
 
