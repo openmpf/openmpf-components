@@ -14,6 +14,7 @@ hs_err_pid*
 *.devcontainer*
 
 target/
+venv/
 
 # CMake Files
 CMakeCache.txt
@@ -60,3 +61,6 @@ cmake-build-release/
 # Python
 *.egg-info
 *.pyc
+
+*.private
+venv
