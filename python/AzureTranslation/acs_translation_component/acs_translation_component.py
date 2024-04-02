@@ -36,21 +36,26 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from typing import Callable, Dict, Iterator, List, Literal, Mapping, Match, NamedTuple, \
+from typing import Callable, Dict, List, Literal, Mapping, Match, NamedTuple, \
     Optional, Sequence, TypedDict, TypeVar, Union
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
+from nlp_text_splitter.text_splitter import TextSplitter, TextSplitterModel
 
 from . import convert_language_code
 
 log = logging.getLogger('AcsTranslationComponent')
 
 
+
 class AcsTranslationComponent:
 
-    @staticmethod
-    def get_detections_from_video(job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
+    def __init__(self) -> None:
+        self._cached_sent_model = TextSplitterModel("wtp-bert-mini", "cpu")
+
+    def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         try:
             log.info(f'Received video job: {job}')
             ff_track = job.feed_forward_track
@@ -59,7 +64,7 @@ class AcsTranslationComponent:
                     'Component can only process feed forward jobs, '
                     'but no feed forward track provided. ')
 
-            tc = TranslationClient(job.job_properties)
+            tc = TranslationClient(job.job_properties, self._cached_sent_model)
             tc.add_translations(ff_track.detection_properties)
             for ff_location in ff_track.frame_locations.values():
                 tc.add_translations(ff_location.detection_properties)
@@ -71,18 +76,24 @@ class AcsTranslationComponent:
             log.exception('Failed to complete job due to the following exception:')
             raise
 
-    @staticmethod
-    def get_detections_from_image(job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
-        return get_detections_from_non_composite(job, job.feed_forward_location)
 
-    @staticmethod
-    def get_detections_from_audio(job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
-        return get_detections_from_non_composite(job, job.feed_forward_track)
+    def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
+        return get_detections_from_non_composite(job,
+                                                 self._cached_sent_model,
+                                                 job.feed_forward_location)
 
-    @staticmethod
-    def get_detections_from_generic(job: mpf.GenericJob) -> Sequence[mpf.GenericTrack]:
+
+    def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
+        return get_detections_from_non_composite(job,
+                                                 self._cached_sent_model,
+                                                 job.feed_forward_track)
+
+
+    def get_detections_from_generic(self, job: mpf.GenericJob) -> Sequence[mpf.GenericTrack]:
         if job.feed_forward_track:
-            return get_detections_from_non_composite(job, job.feed_forward_track)
+            return get_detections_from_non_composite(job,
+                                                     self._cached_sent_model,
+                                                     job.feed_forward_track)
         else:
             log.info('Job did not contain a feed forward track. Assuming media '
                      'file is a plain text file containing the text to be translated.')
@@ -90,13 +101,16 @@ class AcsTranslationComponent:
             track = mpf.GenericTrack(detection_properties=dict(TEXT=text))
             modified_job_props = {**job.job_properties, 'FEED_FORWARD_PROP_TO_PROCESS': 'TEXT'}
             modified_job = job._replace(job_properties=modified_job_props)
-            return get_detections_from_non_composite(modified_job, track)
+            return get_detections_from_non_composite(modified_job,
+                                                     self._cached_sent_model,
+                                                     track)
 
 
 T_FF_OBJ = TypeVar('T_FF_OBJ', mpf.AudioTrack, mpf.GenericTrack, mpf.ImageLocation)
 
 def get_detections_from_non_composite(
         job: Union[mpf.AudioJob, mpf.GenericJob, mpf.ImageJob],
+        sentence_model: TextSplitterModel,
         ff_track: Optional[T_FF_OBJ]) -> Sequence[T_FF_OBJ]:
     try:
         log.info(f'Received job: {job}')
@@ -105,7 +119,7 @@ def get_detections_from_non_composite(
                 'Component can only process feed forward jobs, '
                 'but no feed forward track provided.')
 
-        tc = TranslationClient(job.job_properties)
+        tc = TranslationClient(job.job_properties, sentence_model)
         tc.add_translations(ff_track.detection_properties)
         log.info(f'Processing complete. Translated {tc.translation_count} properties.')
         return (ff_track,)
@@ -146,7 +160,7 @@ NO_SPACE_LANGS = ('JA',  # Japanese
 class TranslationClient:
     DETECT_MAX_CHARS = 50_000
 
-    def __init__(self, job_properties: Mapping[str, str]):
+    def __init__(self, job_properties: Mapping[str, str], sentence_model: TextSplitterModel):
         self._subscription_key = get_required_property('ACS_SUBSCRIPTION_KEY', job_properties)
         self._http_retry = mpf_util.HttpRetry.from_properties(job_properties, log.warning)
 
@@ -170,8 +184,7 @@ class TranslationClient:
         acs_url = get_required_property('ACS_URL', job_properties)
         self._detect_url = create_url(acs_url, 'detect', {})
 
-        self._break_sentence_client = BreakSentenceClient(job_properties, self._subscription_key,
-                                                          self._http_retry)
+        self._break_sentence_client = BreakSentenceClient(job_properties, sentence_model)
 
         prop_names = job_properties.get('FEED_FORWARD_PROP_TO_PROCESS', 'TEXT,TRANSCRIPT')
         self._props_to_translate = [p.strip() for p in prop_names.split(',')]
@@ -427,25 +440,28 @@ class TranslationClient:
 
 class BreakSentenceClient:
     """
-    Class to interact with Azure's "/breaksentence" endpoint. It is only used when the text to
-    translate exceeds the translation endpoint's character limit.
+    Class to break up large sections of text using WtP and spaCy.
+    It is only used when the text to translate exceeds
+    the translation endpoint's character limit.
     """
 
     # ACS limits the number of characters that can be translated in a single /translate call.
-    # Taken from https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-translate
-    TRANSLATION_MAX_CHARS = 10_000
+    # Taken from
+    # https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-translate
+    TRANSLATION_MAX_CHARS = 50_000
 
-    # ACS limits the number of characters that can be processed in a single /breaksentence call.
-    # Taken from https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-break-sentence
-    BREAK_SENTENCE_MAX_CHARS = 50_000
-
-
-    def __init__(self, job_properties: Mapping[str, str], subscription_key: str,
-                 http_retry: mpf_util.HttpRetry):
-        self._acs_url = get_required_property('ACS_URL', job_properties)
-        self._subscription_key = subscription_key
-        self._http_retry = http_retry
-
+    def __init__(self, job_properties: Mapping[str, str],
+                 sentence_model:TextSplitterModel):
+        self._sentence_model = sentence_model
+        self._num_boundary_chars =  mpf_util.get_property(job_properties,
+                                                          "SENTENCE_SPLITTER_CHAR_COUNT",
+                                                          500)
+        nlp_model_name = mpf_util.get_property(job_properties, "SENTENCE_MODEL", "wtp-bert-mini")
+        self._incl_input_lang = mpf_util.get_property(job_properties,
+                                                      "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG",
+                                                      True)
+        nlp_model_setting = "cpu"
+        self._sentence_model.update_model(nlp_model_name, nlp_model_setting)
 
     def split_input_text(self, text: str, from_lang: Optional[str],
                          from_lang_confidence: Optional[float]) -> SplitTextResult:
@@ -461,81 +477,28 @@ class BreakSentenceClient:
                  f'{self.TRANSLATION_MAX_CHARS} Azure characters, but the text contained '
                  f'{azure_char_count} Azure characters.')
 
-        if azure_char_count > self.BREAK_SENTENCE_MAX_CHARS:
-            log.warning('Guessing sentence breaks because the break sentence endpoint allows a '
-                        f'maximum of {self.BREAK_SENTENCE_MAX_CHARS} Azure characters, but the'
-                        f'text contained {azure_char_count} Azure characters.')
-            chunks = list(SentenceBreakGuesser.guess_breaks(text))
-            log.warning(f'Broke text up in to {len(chunks)} chunks. Each chunk will be sent to '
-                        'the break sentence endpoint.')
+        if self._incl_input_lang:
+            divided_text_list = TextSplitter.split(
+                text,
+                BreakSentenceClient.TRANSLATION_MAX_CHARS,
+                self._num_boundary_chars,
+                get_azure_char_count,
+                self._sentence_model,
+                from_lang)
         else:
-            chunks = (text,)
+            divided_text_list = TextSplitter.split(
+                text,
+                BreakSentenceClient.TRANSLATION_MAX_CHARS,
+                self._num_boundary_chars,
+                get_azure_char_count,
+                self._sentence_model)
 
-        if from_lang:
-            break_sentence_url = create_url(self._acs_url, 'breaksentence',
-                                            dict(language=from_lang))
-        else:
-            break_sentence_url = create_url(self._acs_url, 'breaksentence', {})
+        chunks = list(divided_text_list)
+        log.warning(f'Broke text up in to {len(chunks)} chunks. Each chunk will be sent to '
+                    'the translation endpoint.')
 
-        chunk_iter = iter(chunks)
-        chunk = next(chunk_iter)
-        response_body = self._send_break_sentence_request(break_sentence_url, chunk)
-        if not from_lang:
-            detected_lang_info = response_body[0].get('detectedLanguage')
-            if detected_lang_info:
-                from_lang = detected_lang_info['language']
-                from_lang_confidence = detected_lang_info['score']
-        grouped_sentences = list(self._process_break_sentence_response(chunk, response_body))
-
-        for chunk in chunk_iter:
-            response_body = self._send_break_sentence_request(break_sentence_url, chunk)
-            grouped_sentences.extend(self._process_break_sentence_response(chunk, response_body))
-
-        log.info('Grouped sentences into %s chunks.', len(grouped_sentences))
-        return SplitTextResult(grouped_sentences, from_lang, from_lang_confidence)
-
-
-    def _send_break_sentence_request(
-            self, break_sentence_url: str, text: str) -> 'AcsResponses.BreakSentence':
-        request_body = [
-            {'Text': text}
-        ]
-        encoded_body = json.dumps(request_body).encode('utf-8')
-        request = urllib.request.Request(break_sentence_url, encoded_body,
-                                         get_acs_headers(self._subscription_key))
-        log.info(f'Sending POST {break_sentence_url}')
-        log_json(request_body)
-        with self._http_retry.urlopen(request) as response:
-            response_body: AcsResponses.BreakSentence = json.load(response)
-            log.info('Received break sentence response with %s sentences.',
-                     len(response_body[0]['sentLen']))
-            log_json(response_body)
-            return response_body
-
-
-    @classmethod
-    def _process_break_sentence_response(
-            cls, text: str, response_body: AcsResponses.BreakSentence) -> Iterator[str]:
-        current_chunk_length = 0
-        current_chunk_begin = 0
-        current_chunk_azure_char_count = 0
-        for length in response_body[0]['sentLen']:
-            sentence_begin = current_chunk_begin + current_chunk_length
-            sentence = text[sentence_begin: sentence_begin + length]
-            sentence_azure_char_count = get_azure_char_count(sentence)
-            # The /breaksentence endpoint will return sentences <= 1000 characters, so the
-            # following condition will be true at least once.
-            if sentence_azure_char_count + current_chunk_azure_char_count <= cls.TRANSLATION_MAX_CHARS:
-                current_chunk_length += len(sentence)
-                current_chunk_azure_char_count += sentence_azure_char_count
-            else:
-                current_chunk_end = current_chunk_begin + current_chunk_length
-                yield text[current_chunk_begin:current_chunk_end]
-                current_chunk_begin = current_chunk_end
-                current_chunk_length = len(sentence)
-                current_chunk_azure_char_count = sentence_azure_char_count
-        yield text[current_chunk_begin:]
-
+        log.info('Grouped sentences into %s chunks.', len(chunks))
+        return SplitTextResult(chunks, from_lang, from_lang_confidence)
 
 def get_n_azure_chars(input_str: str, begin: int, count: int) -> str:
     substr = input_str[begin: begin + count]
@@ -583,79 +546,7 @@ def set_query_params(url: str, query_params: Mapping[str, str]) -> str:
     return urllib.parse.urlunparse(replaced_parts)
 
 
-class SentenceBreakGuesser:
-    @classmethod
-    def guess_breaks(cls, text: str) -> Iterator[str]:
-        """
-        Splits text up in to substrings that are all at most
-        BreakSentenceClient.BREAK_SENTENCE_MAX_CHARS in length. It is preferable to use the
-        /breaksentence endpoint because splitting a sentence in the middle will cause incorrect
-        translations. When the input text is too long for /breaksentence, our only option is to
-        use some heuristics to guess a good location to split the input text.
-        We attempt to do the minimal number of splits with this method. The substrings produced
-        by this method will be further split up using the much more accurate /breaksentence
-        endpoint.
 
-        :param text: Text to split up
-        :return: Generator producing substrings of input text
-        """
-        current_pos = 0
-        max_chars = BreakSentenceClient.BREAK_SENTENCE_MAX_CHARS
-        while True:
-            chunk = get_n_azure_chars(text, current_pos, max_chars)
-            is_last_chunk = len(text) <= current_pos + len(chunk)
-            if is_last_chunk:
-                yield chunk
-                return
-            else:
-                break_pos = cls._get_break_pos(chunk)
-                yield chunk[:break_pos]
-                current_pos += break_pos
-
-    # Characters we know indicate the end of a sentence. The list is not exhaustive and may need to
-    # be updated if we come across others.
-    SENTENCE_END_PUNCTUATION = {
-        '.', '!', '?',  # Latin scripts
-        '。', '！', '？'}  # Chinese (full width) versions
-
-
-    @classmethod
-    def _get_break_pos(cls, text: str) -> int:
-        # Two newlines in a row result in a blank line. Blank lines are commonly used to delimit
-        # paragraphs.
-        double_newline_pos = text.rfind('\n\n')
-        if double_newline_pos > 0:
-            return double_newline_pos + 2
-
-        # Look for the last sentence breaking punctuation character in the text.
-        last_punctuation_pos = next(
-            (i for i in reversed(range(len(text))) if text[i] in cls.SENTENCE_END_PUNCTUATION),
-            -1)
-        if last_punctuation_pos > 0:
-            return last_punctuation_pos + 1
-
-        single_newline_pos = text.rfind('\n')
-        if single_newline_pos > 0:
-            return single_newline_pos + 1
-
-        # Look for last punctuation character in the text.
-        # This will catch non-sentence breaking punctuation, but we already made our best effort
-        # to use sentence breaking punctuation above.
-        last_punctuation_pos = next(
-            (i for i in reversed(range(len(text))) if cls._is_punctuation(text[i])),
-            -1)
-        if last_punctuation_pos > 0:
-            return last_punctuation_pos + 1
-
-        if (last_space_pos := text.rfind(' ')) > 0:
-            return last_space_pos + 1
-
-        # No suitable break found. Use entire input.
-        return len(text)
-
-    @staticmethod
-    def _is_punctuation(char):
-        return unicodedata.category(char) == 'Po'
 
 
 def get_acs_headers(subscription_key: str) -> Dict[str, str]:

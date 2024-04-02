@@ -34,6 +34,22 @@ ARG RUN_TESTS=false
 
 RUN pip install --no-cache-dir langcodes
 
+RUN apt-get update && \
+    apt-get install -y git git-lfs && \
+    git lfs install && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install WtP and spaCy
+RUN pip install --upgrade pip && \
+    pip install spacy>=3.7.4 && \
+    pip install wtpsplit>=1.3.0 && \
+    pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# Modify to add downloads for other models of interest.
+RUN mkdir /wtp_models && cd /wtp_models && \
+    git clone https://huggingface.co/benjamin/wtp-bert-mini && \
+    python3 -m spacy download xx_sent_ud_sm
+
 RUN --mount=target=.,readwrite \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs_translation.py; fi

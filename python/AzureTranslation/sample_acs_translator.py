@@ -29,6 +29,7 @@
 import sys
 
 from acs_translation_component import TranslationClient
+from nlp_text_splitter import TextSplitterModel
 
 
 def main():
@@ -40,10 +41,13 @@ def main():
     detection_props = dict(TEXT=text)
     job_props = dict(TO_LANGUAGE=to_lang, ACS_URL=acs_url,
                      ACS_SUBSCRIPTION_KEY=acs_subscription_key)
-    TranslationClient(job_props).add_translations(detection_props)
+
+    wtp_model = TextSplitterModel("wtp-bert-mini", "cpu")
+    TranslationClient(job_props, wtp_model).add_translations(detection_props)
 
     print('TRANSLATION SOURCE LANGUAGE:', detection_props['TRANSLATION SOURCE LANGUAGE'])
-    print('TRANSLATION SOURCE LANGUAGE CONFIDENCE:', detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE'])
+    print('TRANSLATION SOURCE LANGUAGE CONFIDENCE:',
+          detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE'])
     print('TRANSLATION:')
     print(detection_props['TRANSLATION'])
 
