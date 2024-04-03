@@ -10,7 +10,7 @@
     "description": "Uses Azure Cognitive Services to perform translation.",
     "actionType": "DETECTION",
     "trackType": "TRANSLATION",
-    "outputChangedCounter" : 1,
+    "outputChangedCounter": 1,
     "requiresCollection": {
       "states": []
     },
@@ -80,6 +80,24 @@
           "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection determine the language from which to translate. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, fall back to FROM_LANGUAGE.",
           "type": "STRING",
           "defaultValue": "ISO_LANGUAGE,DECODED_LANGUAGE,LANGUAGE"
+        },
+        {
+          "name": "SENTENCE_SPLITTER_CHAR_COUNT",
+          "description": "Integer value specifying maximum number of characters to process through sentence splitter. Defaults to 500 characters.",
+          "type": "INT",
+          "defaultValue": "500"
+        },
+        {
+          "name": "SENTENCE_MODEL",
+          "description": "Name of sentence segmentation model. Supported options are spaCy's multilingual `xx_sent_ud_sm` model and the Where's the Point (WtP) `wtp-bert-mini` model.",
+          "type": "STRING",
+          "defaultValue": "wtp-bert-mini"
+        },
+        {
+          "name": "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG",
+          "description": "Specifies whether to pass input language to sentence splitter algorithm. Currently, only WtP supports model adjustments by input language.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
         }
       ]
     }
@@ -104,8 +122,7 @@
       "name": "AZURE TRANSLATION TEXT FILE ACTION",
       "description": "Uses Azure Cognitive Services to perform translation on a plain text file.",
       "algorithm": "AZURETRANSLATION",
-      "properties": [
-      ]
+      "properties": []
     }
   ],
   "tasks": [
