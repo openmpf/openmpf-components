@@ -98,8 +98,9 @@ class TextSplitterModel:
             if iso_lang:
                 return self.wtp_model.split(text, lang_code=iso_lang)
             else:
-                log.warning(f"Warning: Language {lang} was used to train WtP model."
-                            "Please consider using spaCy's sentence detection model by"
+                log.warning(f"Warning: Language {lang} was not used to train WtP model."
+                            "If text splitting is not working well with WtP, "
+                            "consider trying spaCy's sentence detection model by"
                             "setting `SENTENCE_MODEL='xx_sent_ud_sm'`.")
         return self.wtp_model.split(text)
 
