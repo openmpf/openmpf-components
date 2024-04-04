@@ -147,7 +147,8 @@ class TextSplitter:
         if self._soft_limit <= 1:
             # Caused by an unusually large overhead relative to text.
             # This is unlikely to occur except during testing of small text limits.
-            # Recalculate overhead bytes with chars_per_size weighting.
+            # Recalculate soft limit by subtracting overhead from limit
+            # before applying chars_per_size weighting.
             self._soft_limit = max(1,
                                    int((self._limit - self._overhead_size) * chars_per_size))
 
