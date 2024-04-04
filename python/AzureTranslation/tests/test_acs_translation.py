@@ -853,23 +853,26 @@ class TestAcsTranslation(unittest.TestCase):
 
 
     def test_guess_split_edge_cases(self):
-        input_text = ("This is a sentence (Dr.Test). Is this a sentence as well? "
-                      "Maybe...maybe not?")
+        input_text = ("This is a sentence (Dr.Test). Is this,"
+                      " a sentence as well? Maybe...maybe not?"
+                      " \n All done, I think!")
 
         # Split using WtP model.
         actual = list(TextSplitter.split(input_text,
-            35,
-            35,
+            30,
+            30,
             get_azure_char_count,
             self.wtp_model))
 
         self.assertEqual(input_text, ''.join(actual))
-        self.assertEqual(3, len(actual))
+        self.assertEqual(4, len(actual))
 
         # WtP should detect and split out each sentence
         self.assertEqual("This is a sentence (Dr.Test). ", actual[0])
-        self.assertEqual("Is this a sentence as well? ", actual[1])
-        self.assertEqual("Maybe...maybe not?", actual[2])
+        self.assertEqual("Is this, a sentence as well? ", actual[1])
+        self.assertEqual("Maybe...maybe not? \n ", actual[2])
+        self.assertEqual("All done, I think!", actual[3])
+
 
         actual = list(TextSplitter.split(input_text,
             35,
@@ -877,12 +880,14 @@ class TestAcsTranslation(unittest.TestCase):
             get_azure_char_count,
             self.spacy_model))
         self.assertEqual(input_text, ''.join(actual))
-        self.assertEqual(3, len(actual))
+        self.assertEqual(4, len(actual))
 
         # Split using spaCy model.
         self.assertEqual("This is a sentence (Dr.Test). ", actual[0])
-        self.assertEqual("Is this a sentence as well? ", actual[1])
-        self.assertEqual("Maybe...maybe not?", actual[2])
+        self.assertEqual("Is this, a sentence as well? ", actual[1])
+        self.assertEqual("Maybe...maybe not? \n ", actual[2])
+        self.assertEqual("All done, I think!", actual[3])
+
 
 
     def test_guess_split_simple_sentence(self):
