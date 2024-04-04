@@ -158,6 +158,9 @@ NO_SPACE_LANGS = ('JA',  # Japanese
 
 
 class TranslationClient:
+    # ACS limits the number of characters that can be translated in a single /translate call.
+    # Taken from
+    # https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-translate
     DETECT_MAX_CHARS = 50_000
 
     def __init__(self, job_properties: Mapping[str, str], sentence_model: TextSplitterModel):
@@ -184,7 +187,7 @@ class TranslationClient:
         acs_url = get_required_property('ACS_URL', job_properties)
         self._detect_url = create_url(acs_url, 'detect', {})
 
-        self._break_sentence_client = BreakSentenceClient(job_properties, sentence_model)
+        self._sentence_splitter = SentenceSplitter(job_properties, sentence_model)
 
         prop_names = job_properties.get('FEED_FORWARD_PROP_TO_PROCESS', 'TEXT,TRANSCRIPT')
         self._props_to_translate = [p.strip() for p in prop_names.split(',')]
@@ -241,7 +244,7 @@ class TranslationClient:
 
     def _translate_text(self, text: str, detection_properties: Dict[str, str]) -> TranslationResult:
         """
-        Translates the given text. If the text is longer than ACS allows, we will break up the
+        Translates the given text. If the text is longer than ACS allows, we will split up the
         text and translate each part separately. If, during the current job, we have seen the
         exact text before, we return a cached result instead of making a REST call.
         """
@@ -272,7 +275,7 @@ class TranslationClient:
                 text, DetectResult(from_lang, from_lang_confidence), skipped=True)
         else:
             text_replaced_newlines = self._newline_behavior(text, from_lang)
-            grouped_sentences = self._break_sentence_client.split_input_text(
+            grouped_sentences = self._sentence_splitter.split_input_text(
                 text_replaced_newlines, from_lang, from_lang_confidence)
             if not detect_result and grouped_sentences.detected_language:
                 assert grouped_sentences.detected_language_confidence is not None
@@ -438,17 +441,12 @@ class TranslationClient:
             return response_body
 
 
-class BreakSentenceClient:
+class SentenceSplitter:
     """
-    Class to break up large sections of text using WtP and spaCy.
+    Class to divide large sections of text at sentence breaks using WtP and spaCy.
     It is only used when the text to translate exceeds
     the translation endpoint's character limit.
     """
-
-    # ACS limits the number of characters that can be translated in a single /translate call.
-    # Taken from
-    # https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-translate
-    TRANSLATION_MAX_CHARS = 50_000
 
     def __init__(self, job_properties: Mapping[str, str],
                  sentence_model:TextSplitterModel):
@@ -466,21 +464,22 @@ class BreakSentenceClient:
     def split_input_text(self, text: str, from_lang: Optional[str],
                          from_lang_confidence: Optional[float]) -> SplitTextResult:
         """
-        Breaks up the given text in to chunks that are under TRANSLATION_MAX_CHARS. Each chunk
-        will contain one or more complete sentences as reported by the break sentence endpoint.
+        Splits up the given text in to chunks that are under TranslationClient.DETECT_MAX_CHARS.
+        Each chunk will contain one or more complete sentences as reported
+        by the (WtP or spaCy) sentence splitter.
         """
         azure_char_count = get_azure_char_count(text)
-        if azure_char_count <= self.TRANSLATION_MAX_CHARS:
+        if azure_char_count <= TranslationClient.DETECT_MAX_CHARS:
             return SplitTextResult([text], from_lang, from_lang_confidence)
 
         log.info('Splitting input text because the translation endpoint allows a maximum of '
-                 f'{self.TRANSLATION_MAX_CHARS} Azure characters, but the text contained '
+                 f'{TranslationClient.DETECT_MAX_CHARS} Azure characters, but the text contained '
                  f'{azure_char_count} Azure characters.')
 
         if self._incl_input_lang:
             divided_text_list = TextSplitter.split(
                 text,
-                BreakSentenceClient.TRANSLATION_MAX_CHARS,
+                TranslationClient.DETECT_MAX_CHARS,
                 self._num_boundary_chars,
                 get_azure_char_count,
                 self._sentence_model,
@@ -488,16 +487,14 @@ class BreakSentenceClient:
         else:
             divided_text_list = TextSplitter.split(
                 text,
-                BreakSentenceClient.TRANSLATION_MAX_CHARS,
+                TranslationClient.DETECT_MAX_CHARS,
                 self._num_boundary_chars,
                 get_azure_char_count,
                 self._sentence_model)
 
         chunks = list(divided_text_list)
-        log.warning(f'Broke text up in to {len(chunks)} chunks. Each chunk will be sent to '
-                    'the translation endpoint.')
 
-        log.info('Grouped sentences into %s chunks.', len(chunks))
+        log.info('Grouped sentences into %s chunks for translation.', len(chunks))
         return SplitTextResult(chunks, from_lang, from_lang_confidence)
 
 def get_n_azure_chars(input_str: str, begin: int, count: int) -> str:
@@ -603,7 +600,7 @@ def get_required_property(property_name: str, job_properties: Mapping[str, str])
 
 class NewLineBehavior:
     """
-    The Azure translation service treats newlines a separator between sentences. This results in
+    The Azure translation service treats newlines as a separator between sentences. This results in
     incorrect translations. We can't simply replace newlines with spaces because not all languages
     put spaces between words. When testing with Chinese, spaces resulted in completely different
     translations.
@@ -720,13 +717,6 @@ class AcsResponses:
         detectedLanguage: Optional[AcsResponses._DetectedLangInfo]
 
     Translate = List[_TranslateTextInfo]
-
-
-    class _SentenceLengthInfo(TypedDict):
-        sentLen: List[int]
-        detectedLanguage: Optional[AcsResponses._DetectedLangInfo]
-
-    BreakSentence = List[_SentenceLengthInfo]
 
 
     class _AlternativeDetectedLang(TypedDict):

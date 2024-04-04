@@ -35,8 +35,7 @@ must be provided. Neither has a default value.
    `https://<custom-translate-host>/translator/text/v3.0`. The URL should
    not end with `/translate` because two separate endpoints are
    used. `ACS_URL + '/translate'` is used for translation.
-   `ACS_URL + '/breaksentence'` is used to break up text when it is too long
-   for a single translation request. This property can also be configured
+   This property can also be configured
    using an environment variable named `MPF_PROP_ACS_URL`.
 
 - `ACS_SUBSCRIPTION_KEY`: A string containing your Azure Cognitive Services
@@ -77,10 +76,10 @@ curl -H "Ocp-Apim-Subscription-Key: ${ACS_SUBSCRIPTION_KEY}" "https://${ACS_URL}
   and spaCy's multilingual sentence detection model for identifying sentence breaks
   in a large section of text.
 
-  WtP models are trained to break up multilingual text without the need
+  WtP models are trained to split up multilingual text by sentence without the need
   of an input language tag. The disadvantage is that the most accurate
   WtP models will need ~3.5 GB of GPU memory. On the other hand, spaCy has a single
-  multilingual sentence detection that appears to work better for breaking up English
+  multilingual sentence detection that appears to work better for splitting up English
   text in certain cases, unfortunately this model lacks support handling for Chinese punctuation.
 
   - `SENTENCE_MODEL` - Specifies the desired WtP or spaCy sentence detection model.

@@ -57,11 +57,11 @@ class TextSplitterModel:
             if "wtp" in model_name:
                 self._update_wtp_model(model_name, model_setting)
                 self.split = self._split_wtp
-                log.info(f"Setup up WtP model: {model_name}")
+                log.info(f"Setup WtP model: {model_name}")
             else:
                 self._update_spacy_model(model_name)
                 self.split = self._split_spacy
-                log.info(f"Setup up spaCy model: {model_name}")
+                log.info(f"Setup spaCy model: {model_name}")
 
     def _update_wtp_model(self, wtp_model_name: str,
                          model_setting: str = "cpu") -> None:
@@ -96,8 +96,12 @@ class TextSplitterModel:
         if lang:
             iso_lang = WtpLanguageSettings.convert_to_iso(lang)
             if iso_lang:
-                return self.wtp_model.split(text, lang_code=iso_lang) # type: ignore
-        return self.wtp_model.split(text) # type: ignore
+                return self.wtp_model.split(text, lang_code=iso_lang)
+            else:
+                log.warning(f"Warning: Language {lang} was used to train WtP model."
+                            "Please consider using spaCy's sentence detection model by"
+                            "setting `SENTENCE_MODEL='xx_sent_ud_sm'`.")
+        return self.wtp_model.split(text)
 
     def _update_spacy_model(self, spacy_model_name: str):
         self.spacy_model = spacy.load(spacy_model_name, exclude=["parser"])
@@ -124,7 +128,7 @@ class TextSplitter:
         self._get_text_size = get_text_size
         self._text = ""
         self._text_full_size = 0
-        self._num_overhead_bytes = 0
+        self._overhead_size = 0
         self._soft_limit = self._limit
         self._in_lang = in_lang
 
@@ -135,16 +139,16 @@ class TextSplitter:
         self._text = text
         self._text_full_size = self._get_text_size(text)
         chars_per_size = len(text) / self._text_full_size
-        self._num_overhead_bytes = self._get_text_size('')
+        self._overhead_size = self._get_text_size('')
 
-        self._soft_limit = int(self._limit * chars_per_size) - self._num_overhead_bytes
+        self._soft_limit = int(self._limit * chars_per_size) - self._overhead_size
 
         if self._soft_limit <= 1:
             # Caused by an unusually large overhead relative to text.
             # This is unlikely to occur except during testing of small text limits.
             # Recalculate overhead bytes with chars_per_size weighting.
             self._soft_limit = max(1,
-                                   int((self._limit - self._num_overhead_bytes) * chars_per_size))
+                                   int((self._limit - self._overhead_size) * chars_per_size))
 
     def _isolate_largest_section(self, text:str) -> str:
         # Using cached word splitting model, isolate largest section of text
@@ -204,10 +208,11 @@ class TextSplitter:
             char_per_size = len(left) / left_size
 
 
-            limit = int(self._limit * char_per_size) - self._num_overhead_bytes
+            limit = int(self._limit * char_per_size) - self._overhead_size
 
             if limit < 1:
             # Caused by an unusually large overhead relative to text.
             # This is unlikely to occur except during testing of small text limits.
-            # Recalculate overhead bytes with chars_per_size weighting.
-                limit = max(1, int((self._limit - self._num_overhead_bytes) * char_per_size))
+            # Recalculate soft limit by subtracting overhead from limit before
+            # applying chars_per_size weighting.
+                limit = max(1, int((self._limit - self._overhead_size) * char_per_size))

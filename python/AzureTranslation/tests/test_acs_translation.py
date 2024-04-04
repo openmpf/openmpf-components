@@ -45,7 +45,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 from nlp_text_splitter import TextSplitterModel, TextSplitter
 from acs_translation_component.acs_translation_component import (AcsTranslationComponent,
     get_azure_char_count, TranslationClient, NewLineBehavior, ChineseAndJapaneseCodePoints,
-    AcsTranslateUrlBuilder, BreakSentenceClient, get_n_azure_chars)
+    AcsTranslateUrlBuilder, SentenceSplitter, get_n_azure_chars)
 
 
 SEEN_TRACE_IDS = set()
@@ -513,22 +513,23 @@ class TestAcsTranslation(unittest.TestCase):
                 dict(ACS_URL='http://example.com/test?suggestedFrom=ru&category=whatever'),
                 'en', None, {'suggestedFrom': 'ru', 'category': 'whatever'})
 
-    @mock.patch.object(BreakSentenceClient, 'TRANSLATION_MAX_CHARS', new_callable=lambda: 150)
-    def test_split_text(self, _):
-        self.set_results_file('traditional-chinese-detect-result.json')
-        self.set_results_file('break-sentence/art-of-war-translation-1.json')
-        self.set_results_file('break-sentence/art-of-war-translation-2.json')
-        self.set_results_file('break-sentence/art-of-war-translation-3.json')
-        self.set_results_file('break-sentence/art-of-war-translation-4.json')
 
-        text = (TEST_DATA / 'break-sentence/art-of-war.txt').read_text()
+    @mock.patch.object(TranslationClient, 'DETECT_MAX_CHARS', new_callable=lambda: 150)
+    def test_split_wtp_known_language(self, _):
+        self.set_results_file('traditional-chinese-detect-result.json')
+        self.set_results_file('split-sentence/art-of-war-translation-1.json')
+        self.set_results_file('split-sentence/art-of-war-translation-2.json')
+        self.set_results_file('split-sentence/art-of-war-translation-3.json')
+        self.set_results_file('split-sentence/art-of-war-translation-4.json')
+
+        text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
         detection_props = dict(TEXT=text)
         TranslationClient(get_test_properties(), self.wtp_model).add_translations(detection_props)
 
         self.assertEqual(5, len(detection_props))
         self.assertEqual(text, detection_props['TEXT'])
 
-        expected_translation = (TEST_DATA / 'break-sentence/art-war-translation.txt') \
+        expected_translation = (TEST_DATA / 'split-sentence/art-war-translation.txt') \
             .read_text().strip()
         self.assertEqual(expected_translation, detection_props['TRANSLATION'])
         self.assertEqual('EN', detection_props['TRANSLATION TO LANGUAGE'])
@@ -538,20 +539,14 @@ class TestAcsTranslation(unittest.TestCase):
             float(detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
 
         detect_request_text = self.get_request_body()[0]['Text']
-        self.assertEqual(text, detect_request_text)
-        behavior = NewLineBehavior.get({})
-        actual = list(TextSplitter.split(behavior(text, 'zh-Hant'),
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
-            get_azure_char_count,
-            self.wtp_model,
-            'zh-Hant'))
+        self.assertEqual(text[0:TranslationClient.DETECT_MAX_CHARS], detect_request_text)
 
-        self.assertEqual(4, len(actual))
-
+        expected_chunk_lengths = [86, 116, 104, 114]
+        self.assertEqual(sum(expected_chunk_lengths), len(text.replace('\n','')))
         translation_request1 = self.get_request_body()[0]['Text']
         self.assertTrue(translation_request1.startswith('兵者，'))
         self.assertTrue(translation_request1.endswith('而不危也；'))
+        self.assertEqual(expected_chunk_lengths[0], len(translation_request1))
         self.assertNotIn('\n', translation_request1,
                             'Newlines were not properly removed')
         self.assertNotIn(' ', translation_request1,
@@ -559,6 +554,7 @@ class TestAcsTranslation(unittest.TestCase):
 
 
         translation_request2 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[1], len(translation_request2))
         self.assertTrue(translation_request2.startswith('天者，陰陽'))
         self.assertTrue(translation_request2.endswith('兵眾孰強？'))
         self.assertNotIn('\n', translation_request1,
@@ -568,6 +564,7 @@ class TestAcsTranslation(unittest.TestCase):
 
 
         translation_request3 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[2], len(translation_request3))
         self.assertTrue(translation_request3.startswith('士卒孰練？'))
         self.assertTrue(translation_request3.endswith('遠而示之近。'))
         self.assertNotIn('\n', translation_request3,
@@ -577,6 +574,7 @@ class TestAcsTranslation(unittest.TestCase):
 
 
         translation_request4 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[3], len(translation_request4))
         self.assertTrue(translation_request4.startswith('利而誘之，'))
         self.assertTrue(translation_request4.endswith('勝負見矣。'))
         self.assertNotIn('\n', translation_request4,
@@ -585,25 +583,24 @@ class TestAcsTranslation(unittest.TestCase):
                             'Spaces should not be added to Chinese text.')
 
 
-
-    @mock.patch.object(BreakSentenceClient, 'TRANSLATION_MAX_CHARS', new_callable=lambda: 150)
-    def test_split_text_check_wtp_unusual_lang(self, _):
+    @mock.patch.object(TranslationClient, 'DETECT_MAX_CHARS', new_callable=lambda: 150)
+    def test_split_wtp_unknown_lang(self, _):
         # Check that the text splitter does not have an issue
         # processing an unknown detected language.
         self.set_results_file('invalid-lang-detect-result.json')
-        self.set_results_file('break-sentence/art-of-war-translation-1.json')
-        self.set_results_file('break-sentence/art-of-war-translation-2.json')
-        self.set_results_file('break-sentence/art-of-war-translation-3.json')
-        self.set_results_file('break-sentence/art-of-war-translation-4.json')
+        self.set_results_file('split-sentence/art-of-war-translation-1.json')
+        self.set_results_file('split-sentence/art-of-war-translation-2.json')
+        self.set_results_file('split-sentence/art-of-war-translation-3.json')
+        self.set_results_file('split-sentence/art-of-war-translation-4.json')
 
-        text = (TEST_DATA / 'break-sentence/art-of-war.txt').read_text()
+        text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
         detection_props = dict(TEXT=text)
         TranslationClient(get_test_properties(), self.wtp_model).add_translations(detection_props)
 
         self.assertEqual(5, len(detection_props))
         self.assertEqual(text, detection_props['TEXT'])
 
-        expected_translation = (TEST_DATA / 'break-sentence/art-war-translation.txt') \
+        expected_translation = (TEST_DATA / 'split-sentence/art-war-translation.txt') \
             .read_text().strip()
         self.assertEqual(expected_translation, detection_props['TRANSLATION'])
         self.assertEqual('EN', detection_props['TRANSLATION TO LANGUAGE'])
@@ -613,23 +610,30 @@ class TestAcsTranslation(unittest.TestCase):
             float(detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
 
         detect_request_text = self.get_request_body()[0]['Text']
-        self.assertEqual(text, detect_request_text)
+        self.assertEqual(text[0:TranslationClient.DETECT_MAX_CHARS], detect_request_text)
+
+        expected_chunk_lengths = [88, 118, 116, 106]
+        self.assertEqual(sum(expected_chunk_lengths), len(text))
 
         # WtP will split by newlines, so some of the chunks
         # here are different from the previous test.
         translation_request1 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[0], len(translation_request1))
         self.assertTrue(translation_request1.startswith('兵者，'))
         self.assertTrue(translation_request1.endswith('而不危也；'))
 
         translation_request2 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[1], len(translation_request2))
         self.assertTrue(translation_request2.startswith('天者，陰陽'))
         self.assertTrue(translation_request2.endswith('兵眾孰強？'))
 
         translation_request3 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[2], len(translation_request3))
         self.assertTrue(translation_request3.startswith('士卒孰練？'))
         self.assertTrue(translation_request3.endswith('亂而取之， '))
 
         translation_request4 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[3], len(translation_request4))
         self.assertTrue(translation_request4.startswith('實而備之，'))
         self.assertTrue(translation_request4.endswith('勝負見矣。 '))
 
@@ -750,7 +754,7 @@ class TestAcsTranslation(unittest.TestCase):
 
 
     def test_chinese_japanese_char_detection(self):
-        art_of_war_text = (TEST_DATA / 'break-sentence/art-of-war.txt').read_text()
+        art_of_war_text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
         self.assertTrue(all(ChineseAndJapaneseCodePoints.check_char(ch)
                             for ch in art_of_war_text if not ch.isspace()))
 
@@ -848,60 +852,44 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(['en'], query_dict['to'])
 
 
-    @mock.patch.object(BreakSentenceClient, 'TRANSLATION_MAX_CHARS', new_callable=lambda: 5)
-    def test_guess_breaks_all_types(self, _):
-        input_text = 'a.bc,d.efg,hij kl\n\nmnopqrs.tu'
+    def test_guess_split_edge_cases(self):
+        input_text = ("This is a sentence (Dr.Test). Is this a sentence as well? "
+                      "Maybe...maybe not?")
 
+        # Split using WtP model.
         actual = list(TextSplitter.split(input_text,
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
+            35,
+            35,
             get_azure_char_count,
             self.wtp_model))
 
         self.assertEqual(input_text, ''.join(actual))
-        self.assertEqual(6, len(actual))
+        self.assertEqual(3, len(actual))
 
-        # a.bc,
-        self.assertEqual('a.bc,', actual[0])
-        # bc,d.
-        self.assertEqual('d.efg', actual[1])
-        # efg,h
-        self.assertEqual(',hij ', actual[2])
-        # hij k
-        self.assertEqual('kl\n\n', actual[3])
-        # kl\n\nm
-        self.assertEqual('mnopq', actual[4])
-        # mnopq
-        self.assertEqual('rs.tu', actual[5])
+        # WtP should detect and split out each sentence
+        self.assertEqual("This is a sentence (Dr.Test). ", actual[0])
+        self.assertEqual("Is this a sentence as well? ", actual[1])
+        self.assertEqual("Maybe...maybe not?", actual[2])
 
         actual = list(TextSplitter.split(input_text,
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
+            35,
+            35,
             get_azure_char_count,
             self.spacy_model))
         self.assertEqual(input_text, ''.join(actual))
-        self.assertEqual(6, len(actual))
+        self.assertEqual(3, len(actual))
 
-        # a.bc,
-        self.assertEqual('a.bc', actual[0])
-        # bc,d.
-        self.assertEqual(',d.ef', actual[1])
-        # efg,h
-        self.assertEqual('g,hij', actual[2])
-        # hij k
-        self.assertEqual(' kl\n\n', actual[3])
-        # kl\n\nm
-        self.assertEqual('mnopq', actual[4])
-        # mnopq
-        self.assertEqual('rs.tu', actual[5])
+        # Split using spaCy model.
+        self.assertEqual("This is a sentence (Dr.Test). ", actual[0])
+        self.assertEqual("Is this a sentence as well? ", actual[1])
+        self.assertEqual("Maybe...maybe not?", actual[2])
 
 
-    @mock.patch.object(BreakSentenceClient, 'TRANSLATION_MAX_CHARS', new_callable=lambda: 28)
-    def test_guess_breaks_actual_sentence(self, _):
+    def test_guess_split_simple_sentence(self):
         input_text = 'Hello, what is your name? My name is John.'
         actual = list(TextSplitter.split(input_text,
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
+            28,
+            28,
             get_azure_char_count,
             self.wtp_model))
         self.assertEqual(input_text, ''.join(actual))
@@ -914,8 +902,8 @@ class TestAcsTranslation(unittest.TestCase):
 
         input_text = 'Hello, what is your name? My name is John.'
         actual = list(TextSplitter.split(input_text,
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
+            28,
+            28,
             get_azure_char_count,
             self.spacy_model))
         self.assertEqual(input_text, ''.join(actual))
@@ -928,11 +916,10 @@ class TestAcsTranslation(unittest.TestCase):
 
 
 
-    @mock.patch.object(BreakSentenceClient, 'TRANSLATION_MAX_CHARS', new_callable=lambda: 20)
-    def test_sentence_end_punctuation(self, _):
+    def test_split_sentence_end_punctuation(self):
         input_text = 'Hello. How are you? asdfasdf'
         actual = list(TextSplitter.split(input_text,
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
+            20,
             10,
             get_azure_char_count,
             self.wtp_model))
@@ -944,7 +931,7 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual('asdfasdf', actual[1])
 
         actual = list(TextSplitter.split(input_text,
-            BreakSentenceClient.TRANSLATION_MAX_CHARS,
+            20,
             10,
             get_azure_char_count,
             self.spacy_model))
