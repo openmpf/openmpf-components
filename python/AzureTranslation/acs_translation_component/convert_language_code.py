@@ -31,6 +31,9 @@ import langcodes
 
 logger = logging.getLogger('AcsTranslationComponent')
 
+# A full list of supported languages can be found here:
+# https://learn.microsoft.com/en-us/azure/ai-services/translator/language-support
+
 # These cover conflicting 639-2 codes and less common variants
 # A warning will be issued if these are used.
 ISO639_VAR_TO_BCP47 = dict(

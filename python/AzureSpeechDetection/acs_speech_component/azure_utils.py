@@ -27,6 +27,9 @@
 # Dict of conversions from ISO639-3 language codes to BCP-47 codes. The first
 #  BCP-47 code in each value list will be used (the rest are primarily for
 #  reference in case of later changes or customization)
+
+# Supported languages can be found here:
+# https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=stt
 ISO6393_TO_BCP47 = dict(
     afr=["af-ZA"],
     amh=["am-ET"],
@@ -34,19 +37,26 @@ ISO6393_TO_BCP47 = dict(
          "ar-BH", "ar-JO", "ar-KW", "ar-LB", "ar-MA", "ar-OM", "ar-PS", "ar-QA",
          "ar-TN", "ar-YE"],
     aze=["az-AZ"],
+    azj=["az-AZ"], # North Azerbaijani
+    azb=["az-AZ"], # South Azerbaijani
     # bel=["be-BY"], # Depreciated
-    # ben=["bn-BD", "bn-IN"], # Bengali-Bangladesh has been depreciated
-    ben=["bn-IN"],
+    ben=["bn-IN"], # "bn-BD" Bengali-Bangladesh has been depreciated
     # bod=["bo"], # Deprecated
     bul=["bg-BG"],
     bos=["bs-BA"],
     cat=["ca-ES"],
     # ceb=["ceb"],
     ces=["cs-CZ"],
+    cze=["cs-CZ"],# ISO-639-2 Variant
     cym=["cy-GB"],
-    cze=["cs-CZ"],
-    dan=["da-DK"],
+    wel=["cy-GB"],# ISO-639-2 Variant
+    dan=["da-DK"], # Note: There is a related dialect JUT - Jutlandic
+    jut=["da-DK"], # Upon further research, Jutlantic is present in Denmark
+                   # but declining over time.
     deu=["de-DE", "de-AT", "de-CH"],
+    # Many other forms of German exist
+    gsw=["de-CH"], # Swiss German
+    bar=["de-AT"], # Bavarian / Upper German variant common in most of Austria
     ell=["el-GR"],
     eng=["en-US", "en-CA", "en-GB", "en-AU", "en-GH", "en-HK", "en-IN", "en-IE",
          "en-KE", "en-NZ", "en-NG", "en-PH", "en-SG", "en-ZA", "en-TZ"],
@@ -117,8 +127,7 @@ ISO6393_TO_BCP47 = dict(
     sin=["si-LK"],
     #prs=["prs-AF"], # Deprecated
     #pus=["pa-AF"], # Deprecated
-    #ron=["ro-RO", "ro-MD"], # ro-MD depreciated
-    ron=["ro-RO"],
+    ron=["ro-RO"],  # ro-MD depreciated
     # run=[],
     rus=["ru-RU"],
     slk=["sk-SK"],
@@ -138,7 +147,7 @@ ISO6393_TO_BCP47 = dict(
     # wbq = ["te-IN"], Waddar/Vadari is related to Telugu.
     # tat=[],
     #tgk=["tg-TJ"], # Depreciated
-    #tgl=["fil-PH", "tl-PH"], # "tl-PH" Depreciated
+    tgl=["fil-PH"], # "tl-PH" Depreciated
     tha=["th-TH"],
     # tir=[],
     #tpi=["tpi-PG"], # Depreciated
@@ -151,8 +160,8 @@ ISO6393_TO_BCP47 = dict(
     zho=["zh-CN", "zh-CN-shandong", "zh-CN-sichuan", "zh-HK", "zh-TW"],
     yue=["yue-CN", "zh-HK"], # Cantonese
     wuu=["wuu-CN"],
-    # nan=["zh-TW", "nan-TW"], # nan-TW depreciated
-    nan=["zh-TW"], # Note, Taiwanese has one standard + one major dialect,
+    nan=["zh-TW"], # nan-TW depreciated
+    # Note, Taiwanese has one standard + one major dialect,
     # not sure which is covered better by Azure.
     zul=["zu-ZA"]
 )
