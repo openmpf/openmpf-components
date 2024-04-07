@@ -71,6 +71,19 @@ class AcsSpeechDetectionProcessor(object):
         self.acs = AzureConnection()
 
     @staticmethod
+    def _convert_case_bcp(bcp:str)->str:
+        if not bcp:
+            return bcp
+        sep = '-'
+        if '_' in bcp:
+            sep = '_'
+        elif '-' not in bcp:
+            return bcp
+
+        lang, script = bcp.split(sep)
+        return f'{lang.lower()}{sep}{script.upper()}'
+
+    @staticmethod
     def convert_word_timing(
                 recognized_phrases: Iterable[Mapping[str, Any]],
                 job_config: AzureJobConfig,
@@ -209,10 +222,10 @@ class AcsSpeechDetectionProcessor(object):
             )
 
         missing_models = set()
-        default_locale = job_config.language
+        default_locale = self._convert_case_bcp(job_config.language)
         if (lang := job_config.override_default_language) is not None:
-            if lang in ISO6393_TO_BCP47:
-                for locale in ISO6393_TO_BCP47[lang]:
+            if lang.lower() in ISO6393_TO_BCP47:
+                for locale in ISO6393_TO_BCP47[lang.lower()]:
                     if locale in self.acs.supported_locales:
                         logger.debug(
                             f"Override default language ('{lang}') detected, "
@@ -241,18 +254,19 @@ class AcsSpeechDetectionProcessor(object):
         locale = default_locale
         if job_config.speaker is not None:
             speaker_language_valid = False
-            if (lang := job_config.speaker.language) in ISO6393_TO_BCP47:
-                for locale in ISO6393_TO_BCP47[lang]:
-                    if locale in self.acs.supported_locales:
-                        speaker_language_valid = True
-                        break
+            if (lang := job_config.speaker.language):
+                if lang.lower() in ISO6393_TO_BCP47:
+                    for locale in ISO6393_TO_BCP47[lang.lower()]:
+                        if locale in self.acs.supported_locales:
+                            speaker_language_valid = True
+                            break
 
             if not speaker_language_valid:
                 missing_models.add(job_config.speaker.language)
                 ldict = job_config.speaker.language_scores
                 for lang in sorted(ldict.keys(), key=ldict.get, reverse=True):
-                    if lang in ISO6393_TO_BCP47:
-                        for locale in ISO6393_TO_BCP47[lang]:
+                    if lang.lower() in ISO6393_TO_BCP47:
+                        for locale in ISO6393_TO_BCP47[lang.lower()]:
                             if locale in self.acs.supported_locales:
                                 logger.warning(
                                     f"Language supplied in feed-forward track "
@@ -283,6 +297,7 @@ class AcsSpeechDetectionProcessor(object):
                     )
                     locale = default_locale
 
+        locale = self._convert_case_bcp(locale)
         if locale not in self.acs.supported_locales:
             raise mpf.DetectionException(
                 f"Selected locale ('{locale}') is not supported by Azure "

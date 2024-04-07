@@ -34,116 +34,6 @@ logger = logging.getLogger('AcsTranslationComponent')
 # A full list of supported languages can be found here:
 # https://learn.microsoft.com/en-us/azure/ai-services/translator/language-support
 
-# These cover conflicting 639-2 codes and less common variants
-# A warning will be issued if these are used.
-ISO639_VAR_TO_BCP47 = dict(
-    # ISO Code Variant = Same language but two ISO-639 codes match to it.
-    # Variant = May be different from primary ISO code.
-    # Note: We're avoiding adding in archaic/extinct variants, attaching a note to
-    # languages with those present.
-
-    ALB = 'sq', # 639-2 Code Variant
-    ARM = 'hy', # 639-2 Code Variant
-    AZJ = 'az', # North Azerbaijani Variant
-    AZB = 'az', # South Azerbaijani Variant
-    BAQ = 'eu', # 639-2 Code Variant
-    CZE = 'cs', # 639-2 Code Variant Czech
-
-    TWL = 'sn', # 639-3 Variants of Shona
-    MXC = 'sn', # 639-3 Variants of Shona
-    TWX = 'sn', # 639-3 Variants of Shona
-
-    JUT = 'da', # 639-3: Jutish - Danish Dialect
-
-    DGO = 'doi', # Dogri proper
-    XNR = 'doi', # Kangri
-
-    DUT = 'nl', # 639-2 Code Variant of Dutch
-
-    EKK = 'et', # Standard Estonian
-    VRO = 'et', # Võro - Estonian Dialect (Debated)
-
-    FRE = 'fr', # 639-2 Code Variant of French
-
-    GEO = 'ka', # 639-2 Code Variant of Georgian
-
-    GER = 'de', # 639-2 Code Variant of German
-    # Warning: There's many other variants of old and regional forms.
-    # https://en.wikipedia.org/wiki/German_language
-
-    GRE = 'el', # 639-2 Code Variant of Greek
-    # Note: There's several other variants
-    # https://en.wikipedia.org/wiki/Greek_language
-
-    ICE = 'is', # 639-2 Code Variant of Icelandic
-
-    IKE = 'iu', # Eastern Canadian Inuktitut
-
-    KXM = 'km', # Northern Khmer
-
-    KOK = 'gom', # Kokani
-    KNN = 'gom', # Maharashtrian Konkani
-
-    TTS = 'lo', # Isan (Thailand Lao)
-
-    LVS = 'lv', # Standard Latvian language
-    #LTG = 'lv' # Latgalian language (Historical Form)
-
-    MAC = 'mk', # 639-2 Code Variant of Macedonian
-
-    MAY = 'ms', # 639-2 Code Variant of Malay
-    ZLM = 'ms', # Malay (individual language)
-    ZSM = 'ms', # Malaysian Malay
-
-    MAO = 'mi', # 639-2 Code Variant of Maori
-
-    BUR = 'my', # 639-2 Code Variant of Burmese (Myanmar)
-    # Several other closely related Burmese variants exist below:
-    INT = 'my', # Intha
-    TCO = 'my', # Taungyo
-    RKI = 'my', # Rakhine
-    RMZ = 'my', # Marma
-    TAY = 'my', # Tavoyan dialects
-
-    # Variants of Odia
-    SPV = 'or', # Sambalpuri
-    ORT = 'or', # Adivasi Odia (Kotia)
-    DSO = 'or', # Desiya
-
-
-    # Variants of Pashto
-    PST = 'ps', # Central Pashto
-    PBU = 'ps', # Northern Pashto
-    PBT = 'ps', # Southern Pashto
-    # WNE - Archaic
-
-    # Persian has many variants
-    # Only including top three
-    #PES = 'fa' # Iranian Persian - Default below
-    #PRS = 'fa' # Dari - Default Below
-    TGK = 'fa', # Tajik
-
-    PNB = 'pa', # Western Punjabi/Panjabi
-
-    RUM = 'ro', # 639-2 Code Variant of Romanian
-
-    SLO = 'sk', # 639-2 Code Variant of Slovak
-
-    # Swahili Variants
-    SWC='sw', # Congo Swahili
-    SWH='sw', # Coastal Swahili
-    #YMK='sw', # Makwe (?)
-    #WMW='sw', # Mwani (?)
-
-    TIB='bo', # 639-2 Code Variant of Tibetan
-
-    UZN='uz', # Northern Uzbek
-    UZS='uz', # Southern Uzbek
-
-    WEL='cy',  # 639-2 Code Variant of Welsh
- )
-
-
 # For some cases, we'll need to distinguish incoming script info
 # As general practice these script codes are attached
 # to the ISO-639.
@@ -296,6 +186,116 @@ ISO6393_TO_BCP47 = dict(
     YUA='yua',
     ZUL='zu',
 )
+
+# These cover conflicting 639-2 codes and less common variants
+# A warning will be issued if these are used.
+ISO639_VAR_TO_BCP47 = dict(
+    # ISO Code Variant = Same language but two ISO-639 codes match to it.
+    # Variant = May be different from primary ISO code.
+    # Note: We're avoiding adding in archaic/extinct variants, attaching a note to
+    # languages with those present.
+
+    ALB = 'sq', # 639-2 Code Variant
+    ARM = 'hy', # 639-2 Code Variant
+    AZJ = 'az', # North Azerbaijani Variant
+    AZB = 'az', # South Azerbaijani Variant
+    BAQ = 'eu', # 639-2 Code Variant
+    CZE = 'cs', # 639-2 Code Variant Czech
+
+    TWL = 'sn', # 639-3 Variants of Shona
+    MXC = 'sn', # 639-3 Variants of Shona
+    TWX = 'sn', # 639-3 Variants of Shona
+
+    JUT = 'da', # 639-3: Jutish - Danish Dialect
+
+    DGO = 'doi', # Dogri proper
+    XNR = 'doi', # Kangri
+
+    DUT = 'nl', # 639-2 Code Variant of Dutch
+
+    EKK = 'et', # Standard Estonian
+    VRO = 'et', # Võro - Estonian Dialect (Debated)
+
+    FRE = 'fr', # 639-2 Code Variant of French
+
+    GEO = 'ka', # 639-2 Code Variant of Georgian
+
+    GER = 'de', # 639-2 Code Variant of German
+    # Warning: There's many other variants of old and regional forms.
+    # https://en.wikipedia.org/wiki/German_language
+
+    GRE = 'el', # 639-2 Code Variant of Greek
+    # Note: There's several other variants
+    # https://en.wikipedia.org/wiki/Greek_language
+
+    ICE = 'is', # 639-2 Code Variant of Icelandic
+
+    IKE = 'iu', # Eastern Canadian Inuktitut
+
+    KXM = 'km', # Northern Khmer
+
+    KOK = 'gom', # Kokani
+    KNN = 'gom', # Maharashtrian Konkani
+
+    TTS = 'lo', # Isan (Thailand Lao)
+
+    LVS = 'lv', # Standard Latvian language
+    #LTG = 'lv' # Latgalian language (Historical Form)
+
+    MAC = 'mk', # 639-2 Code Variant of Macedonian
+
+    MAY = 'ms', # 639-2 Code Variant of Malay
+    ZLM = 'ms', # Malay (individual language)
+    ZSM = 'ms', # Malaysian Malay
+
+    MAO = 'mi', # 639-2 Code Variant of Maori
+
+    BUR = 'my', # 639-2 Code Variant of Burmese (Myanmar)
+    # Several other closely related Burmese variants exist below:
+    INT = 'my', # Intha
+    TCO = 'my', # Taungyo
+    RKI = 'my', # Rakhine
+    RMZ = 'my', # Marma
+    TAY = 'my', # Tavoyan dialects
+
+    # Variants of Odia
+    SPV = 'or', # Sambalpuri
+    ORT = 'or', # Adivasi Odia (Kotia)
+    DSO = 'or', # Desiya
+
+
+    # Variants of Pashto
+    PST = 'ps', # Central Pashto
+    PBU = 'ps', # Northern Pashto
+    PBT = 'ps', # Southern Pashto
+    # WNE - Archaic
+
+    # Persian has many variants
+    # Only including top three
+    #PES = 'fa' # Iranian Persian - Default below
+    #PRS = 'fa' # Dari - Default Below
+    TGK = 'fa', # Tajik
+
+    PNB = 'pa', # Western Punjabi/Panjabi
+
+    RUM = 'ro', # 639-2 Code Variant of Romanian
+
+    SLO = 'sk', # 639-2 Code Variant of Slovak
+
+    # Swahili Variants
+    SWC='sw', # Congo Swahili
+    SWH='sw', # Coastal Swahili
+    #YMK='sw', # Makwe (?)
+    #WMW='sw', # Mwani (?)
+
+    TIB='bo', # 639-2 Code Variant of Tibetan
+
+    UZN='uz', # Northern Uzbek
+    UZS='uz', # Southern Uzbek
+
+    WEL='cy',  # 639-2 Code Variant of Welsh
+ )
+
 BCP_CODES_ONLY = {
     'iu-latn', # Inuktitut (Latin)
     'fr-ca', # French Canadian
@@ -307,18 +307,21 @@ BCP_CODES_ONLY = {
     'sr-latn', # Serbian (Latin)
 }
 
+
+
 BCP_CODES = BCP_CODES_ONLY | \
             set(ISO6393_TO_BCP47.values()) | \
             set(ISO639_WITH_SCRIPT_TO_BCP47.values())
 
 def iso_to_bcp(language_code: str) -> Optional[str]:
     # First check if we have matching scripts/regional variants
+    language_code = language_code.strip()
     if bcp_code := ISO639_WITH_SCRIPT_TO_BCP47.get(language_code.upper()):
         return bcp_code
     elif language_code.lower() in BCP_CODES:
         return language_code.lower()
 
-    lang_code = language_code.upper().strip()
+    lang_code = language_code.upper()
 
     # Remove attached script/variant info,
     # Check language portion of ISO code next.
@@ -334,9 +337,9 @@ def iso_to_bcp(language_code: str) -> Optional[str]:
         return lang_info.language
     elif bcp_code_var := ISO639_VAR_TO_BCP47.get(lang_code):
         logger.warning(
-            f"Unable to find direct a BCP code match for {language_code}\n"
-            f"Found a potential BCP match or variant: {bcp_code_var}\n"
-            f"Using `{bcp_code_var}` as input language ")
+            f"Unable to find direct a BCP code match for {language_code}. "
+            f"Found a potential BCP match or variant: {bcp_code_var}. "
+            f"Using `{bcp_code_var}` as input language.")
         return bcp_code_var
     else:
         return None

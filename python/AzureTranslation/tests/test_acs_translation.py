@@ -92,11 +92,14 @@ class TestAcsTranslation(unittest.TestCase):
 
     def test_iso_code_checker(self):
         self.assertEqual('zh-hans', iso_to_bcp("ZH"))
+        self.assertEqual('zh-hans', iso_to_bcp("Zh"))
+        self.assertEqual('zh-hans', iso_to_bcp("zh"))
         self.assertEqual('zh-hans', iso_to_bcp("ZHO"))
 
         self.assertEqual('zh-hant', iso_to_bcp("ZHO-HANT"))
-        self.assertEqual('zh-hant', iso_to_bcp("ZH-HANT"))
-        self.assertEqual('zh-hans', iso_to_bcp("ZH-HANS"))
+        self.assertEqual('zh-hant', iso_to_bcp("Zho-haNT"))
+        self.assertEqual('zh-hant', iso_to_bcp("ZH-Hant"))
+        self.assertEqual('zh-hans', iso_to_bcp("zh-HANS"))
         self.assertEqual('fr-ca', iso_to_bcp("fr-ca"))
 
     def test_simple_jobs(self):
