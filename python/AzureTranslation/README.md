@@ -3,8 +3,8 @@
 This repository contains source code for the OpenMPF Azure Cognitive Services
 Translation Component. This component utilizes the [Azure Cognitive Services
 Translator REST endpoint](https://docs.microsoft.com/en-us/azure/cognitive-services/translator/reference/v3-0-translate)
-to translate the content of detection properties. It has only been tested
-against v3.0 of the API.
+to translate the content of detection properties. It has been tested against v3.0 of the
+API.
 
 This component translates the content of existing detection properties,
 so it only makes sense to use it with
@@ -31,13 +31,13 @@ In order for the component to process any jobs, the job properties listed below
 must be provided. Neither has a default value.
 
 - `ACS_URL`: Base URL for the Azure Cognitive Services Translator Endpoint.
-   e.g. `https://api.cognitive.microsofttranslator.com` or
-   `https://<custom-translate-host>/translator/text/v3.0`. The URL should
-   not end with `/translate` because two separate endpoints are
-   used. `ACS_URL + '/translate'` is used for translation.
-   `ACS_URL + '/breaksentence'` is used to break up text when it is too long
-   for a single translation request. This property can also be configured
-   using an environment variable named `MPF_PROP_ACS_URL`.
+  e.g. `https://api.cognitive.microsofttranslator.com` or
+  `https://<custom-translate-host>/translator/text/v3.0`. The URL should
+  not end with `/translate` because two separate endpoints are
+  used. `ACS_URL + '/translate'` is used for translation.
+  `ACS_URL + '/breaksentence'` is used to break up text when it is too long
+  for a single translation request. This property can also be configured
+  using an environment variable named `MPF_PROP_ACS_URL`.
 
 - `ACS_SUBSCRIPTION_KEY`: A string containing your Azure Cognitive Services
   subscription key. To get one you will need to create an
@@ -47,7 +47,8 @@ must be provided. Neither has a default value.
 
 # Important Job Properties:
 - `TO_LANGUAGE`: The BCP-47 language code for language that the properties
-   should be translated to.
+  should be translated to.
+  
 - `FEED_FORWARD_PROP_TO_PROCESS`: Comma-separated list of property names indicating
   which properties in the feed-forward track or detection to consider
   translating. For example, `TEXT,TRANSCRIPT`. If the first property listed is
@@ -68,7 +69,8 @@ must be provided. Neither has a default value.
 
 - `SUGGESTED_FROM_LANGUAGE`: Optional property that indicates the fallback source
   BCP-47 language code to use when automatic language detection fails.
-  The value from this property is only used when automatic language detection fails. `SUGGESTED_FROM_LANGUAGE` is the preferred setting to adjust when users know
+  The value from this property is only used when automatic language detection fails.
+  `SUGGESTED_FROM_LANGUAGE` is the preferred setting to adjust when users know
   they are processing a large amount of text in a particular language, but other
   source languages may be present in individual pieces of text.
   For instance, setting `SUGGESTED_FROM_LANGUAGE=es` would allow the component to

@@ -240,7 +240,7 @@ ISO639_VAR_TO_BCP47 = dict(
     TTS = 'lo', # Isan (Thailand Lao)
 
     LVS = 'lv', # Standard Latvian language
-    #LTG = 'lv' # Latgalian language (Historical Form)
+    # LTG = 'lv' # Latgalian language (Historical Form)
 
     MAC = 'mk', # 639-2 Code Variant of Macedonian
 
@@ -272,8 +272,8 @@ ISO639_VAR_TO_BCP47 = dict(
 
     # Persian has many variants
     # Only including top three
-    #PES = 'fa' # Iranian Persian - Default below
-    #PRS = 'fa' # Dari - Default Below
+    # PES = 'fa' # Iranian Persian - Default below
+    # PRS = 'fa' # Dari - Default Below
     TGK = 'fa', # Tajik
 
     PNB = 'pa', # Western Punjabi/Panjabi
@@ -285,8 +285,8 @@ ISO639_VAR_TO_BCP47 = dict(
     # Swahili Variants
     SWC='sw', # Congo Swahili
     SWH='sw', # Coastal Swahili
-    #YMK='sw', # Makwe (?)
-    #WMW='sw', # Mwani (?)
+    # YMK='sw', # Makwe (?)
+    # WMW='sw', # Mwani (?)
 
     TIB='bo', # 639-2 Code Variant of Tibetan
 
