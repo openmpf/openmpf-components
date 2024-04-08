@@ -103,17 +103,15 @@ void runKeywordTagging(const std::string &uri_path, KeywordTagging &tagger,
 
 void assertTextAndTagFound(KeywordTagging &tagger, const std::string &text, const std::string &expected_trigger_words, std::string expected_tag) {
         MPFImageLocation location(1, 2, 3, 4, 5,
-                                  {{"TRANSLATION", ""},
-                                   {"TEXT", text}});
+                                  {{"TEXT", text}});
         MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
 
 
         std::vector<MPFImageLocation> results = tagger.GetDetections(job);
         ASSERT_EQ(1, results.size());
 
-        // default FEED_FORWARD_PROP_TO_PROCESS is used (TEXT, TRANSCRIPT) so tagging should run only on TEXT
         Properties props = results.at(0).detection_properties;
-        ASSERT_EQ(5, props.size());
+        ASSERT_EQ(4, props.size());  // properties should contain: TEXT, TAGS, TEXT <TAG> TRIGGER WORDS, and LOCATION
         ASSERT_EQ(text, props["TEXT"]);
         ASSERT_EQ(expected_tag, props["TAGS"]);
         std::transform(expected_tag.begin(), expected_tag.end(), expected_tag.begin(), ::toupper);
@@ -127,17 +125,15 @@ void assertTextAndTagFound(KeywordTagging &tagger, const std::string &text, std:
 
 void assertTextNotFound(KeywordTagging &tagger, const std::string &text) {
         MPFImageLocation location(1, 2, 3, 4, 5,
-                                  {{"TRANSLATION", ""},
-                                   {"TEXT", text}});
+                                  {{"TEXT", text}});
         MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
 
 
         std::vector<MPFImageLocation> results = tagger.GetDetections(job);
         ASSERT_EQ(1, results.size());
 
-        // default FEED_FORWARD_PROP_TO_PROCESS is used (TEXT, TRANSCRIPT) so tagging should run only on TEXT
         Properties props = results.at(0).detection_properties;
-        ASSERT_NE(5, props.size());
+        ASSERT_EQ(2, props.size()); // properties should contain: TEXT, and TAGS
         ASSERT_EQ(text, props["TEXT"]);
         ASSERT_EQ(0, props["TAGS"].size());
 }
@@ -691,7 +687,10 @@ TEST(KEYWORDTAGGING, EmailTest) {
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc@example.co.jp", "personal"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "firstname-lastname@example.com", "personal"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "af@a.n", "personal"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc@example.web", "personal"));    
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "ABC@WEBSITE.NET", "personal"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc@example.web", "personal"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "a/b/c@website.com", "personal"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "\"\\\t\"@gmail.com", "personal"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "very.unusual.”@”.unusual.com@example.com", "unusual.com@example.com", "personal"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "very.”(),:;<>[]”.VERY.”very@\\ \"very”.unusual@strange.example.com",
                                                   "unusual@strange.example.com", "personal"));
@@ -752,6 +751,9 @@ TEST(KEYWORDTAGGING, TimeTest) {
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "00:00:00", "time"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "05:29:36.3247632", "time"));
 
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc123 05:29:36.3247632 def456", "05:29:36.3247632", "time"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc00:00:00def", "00:00:00", "time"));
+
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "24:00:00"));
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "123:00:00"));
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "00:60:00"));
@@ -793,6 +795,7 @@ TEST(KEYWORDTAGGING, DateTest) {
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "00-9-1", "date"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "05-05-5", "date"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "01-5-01", "date"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "21 01 98", "date"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "JAN 5 2023", "date"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "FEB 09 1998", "date"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "MAR 14 24", "date"));
@@ -814,11 +817,32 @@ TEST(KEYWORDTAGGING, DateTest) {
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "gfkjkjn30-11-2011avs-122343", "30-11-2011", "date"));
 
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "12-09-2022-30-10-2015"));
-    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "21 01 98"));
+    // ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "21 01 98"));
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "32-12-2024"));
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "31-13-2024"));
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "31-12-333"));
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "31-12-55555"));
+}
+
+// Currency symbols obtained from https://en.wikipedia.org/wiki/Currency_symbol
+TEST(KEYWORDTAGGING, FinancialTest) {
+    KeywordTagging tagger;
+    tagger.SetRunDirectory("../plugin");
+    ASSERT_TRUE(tagger.Init());
+
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "$", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ".د.ج", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ".د.م", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "₲", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "Kč", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "ރ", "financial"));
+
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "$120.85", "$", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "¤ 42", "¤", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "ABC ден 123", "ден", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123฿123", "฿", "financial"));
+
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "12 bucks"));
 }
 
 TEST(KEYWORDTAGGING, POBoxTest) {
