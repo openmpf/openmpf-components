@@ -112,7 +112,7 @@ class TestAcsSpeech(unittest.TestCase):
             stop_time=-1,
             job_properties=get_test_properties(
                 DIARIZE='FALSE',
-                LANGUAGE='en-US',
+                LANGUAGE='EN-us',
                 USE_SAS_AUTH='TRUE'
             ),
             media_properties={},
@@ -137,7 +137,7 @@ class TestAcsSpeech(unittest.TestCase):
             stop_frame=-1,
             job_properties=get_test_properties(
                 DIARIZE='FALSE',
-                LANGUAGE='en-US'
+                LANGUAGE='En-Us'
             ),
             media_properties=dict(
                 FPS='24'
@@ -204,7 +204,7 @@ class TestAcsSpeech(unittest.TestCase):
             stop_time=-1,
             job_properties=get_test_properties(
                 DIARIZE='TRUE',
-                LANGUAGE='en-US'
+                LANGUAGE='en-us'
             ),
             media_properties={},
             feed_forward_track=None
