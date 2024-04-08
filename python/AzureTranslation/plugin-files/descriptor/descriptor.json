@@ -47,7 +47,7 @@
         },
         {
           "name": "FROM_LANGUAGE",
-          "description": "Optional property that indicates the source BCP-47 language code of the text (i.e. 'es' for input Spanish text). When provided, it disables automatic language detection. If the text isn't actually the specified FROM_LANGUAGE, the translation endpoint returns the text unmodified.  Please consult README to query Azure's supported list of BCP-47 codes for translation.",
+          "description": "Optional property that indicates the source BCP-47 language code of the text (i.e. 'es' to translate from text confirmed to be in Spanish). When provided, it disables automatic language detection. If the text isn't actually the specified FROM_LANGUAGE, the translation endpoint returns the text unmodified.  Please consult README to query Azure's supported list of BCP-47 codes for translation.",
           "type": "STRING",
           "defaultValue": ""
         },
