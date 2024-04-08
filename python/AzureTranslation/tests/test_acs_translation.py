@@ -46,6 +46,8 @@ from acs_translation_component.acs_translation_component import (AcsTranslationC
     get_azure_char_count, TranslationClient, NewLineBehavior, ChineseAndJapaneseCodePoints,
     AcsTranslateUrlBuilder, BreakSentenceClient, SentenceBreakGuesser, get_n_azure_chars)
 
+from acs_translation_component.convert_language_code import iso_to_bcp
+
 
 
 SEEN_TRACE_IDS = set()
@@ -88,6 +90,17 @@ class TestAcsTranslation(unittest.TestCase):
     def tearDown(self):
         self.mock_server.drain_queues()
 
+    def test_iso_code_checker(self):
+        self.assertEqual('zh-hans', iso_to_bcp("ZH"))
+        self.assertEqual('zh-hans', iso_to_bcp("Zh"))
+        self.assertEqual('zh-hans', iso_to_bcp("zh"))
+        self.assertEqual('zh-hans', iso_to_bcp("ZHO"))
+
+        self.assertEqual('zh-hant', iso_to_bcp("ZHO-HANT"))
+        self.assertEqual('zh-hant', iso_to_bcp("Zho-haNT"))
+        self.assertEqual('zh-hant', iso_to_bcp("ZH-Hant"))
+        self.assertEqual('zh-hans', iso_to_bcp("zh-HANS"))
+        self.assertEqual('fr-ca', iso_to_bcp("fr-ca"))
 
     def test_simple_jobs(self):
         def validate_results(results):
