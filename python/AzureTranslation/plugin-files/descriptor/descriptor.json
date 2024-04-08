@@ -53,7 +53,7 @@
         },
         {
           "name": "SUGGESTED_FROM_LANGUAGE",
-          "description": "Optional property that indicates the fallback source BCP-47 language code to use when automatic language detection fails (i.e. 'es' to translate text from suspected Spanish text). The value from this property is only used when automatic language detection fails.  Please consult README to query Azure's supported list of BCP-47 codes for translation.",
+          "description": "Optional property that indicates the fallback source BCP-47 language code to use when automatic language detection fails (i.e. 'es' to translate text that is suspected to be in Spanish). The value from this property is only used when automatic language detection fails.  Please consult README to query Azure's supported list of BCP-47 codes for translation.",
           "type": "STRING",
           "defaultValue": ""
         },
