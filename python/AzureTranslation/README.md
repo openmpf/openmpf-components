@@ -49,13 +49,11 @@ must be provided. Neither has a default value.
 - `TO_LANGUAGE`: The BCP-47 language code for language that the properties
   should be translated to.
 
-
 - `FEED_FORWARD_PROP_TO_PROCESS`: Comma-separated list of property names indicating
   which properties in the feed-forward track or detection to consider
   translating. For example, `TEXT,TRANSCRIPT`. If the first property listed is
   present, then that property  will be translated. If it's not, then the next
   property in the list is considered. At most, one property will be translated.
-
 - `FROM_LANGUAGE`: In most cases, this property should not be used. It should
   only be used when automatic language detection is detecting the wrong
   language: Users can provide a BCP-47 code to force the translation service
@@ -131,7 +129,6 @@ this model lacks support handling for Chinese punctuation.
 # Listing Supported Languages
 To list the supported languages replace `${ACS_URL}` and
 `${ACS_SUBSCRIPTION_KEY}` in the following command and run it:
-
 ```shell script
 curl -H "Ocp-Apim-Subscription-Key: ${ACS_SUBSCRIPTION_KEY}" "https://${ACS_URL}/languages?api-version=3.0&scope=translation"
 ```
