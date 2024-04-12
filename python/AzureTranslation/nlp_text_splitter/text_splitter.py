@@ -44,18 +44,27 @@ WTP_MODELS_PATH = pkg_resources.resource_filename(
 
 log = logging.getLogger(__name__)
 
+# These models must have an specified language during sentence splitting.
+WTP_MANDATORY_ADAPTOR = ['wtp-canine-s-1l',
+                         'wtp-canine-s-3l',
+                         'wtp-canine-s-6l',
+                         'wtp-canine-s-9l',
+                         'wtp-canine-s-12l']
+
 class TextSplitterModel:
     # To hold spaCy, WtP, and other potential sentence detection models in cache
 
-    def __init__(self, model_name: str, model_setting: str) -> None:
+    def __init__(self, model_name: str, model_setting: str, default_lang: str = "en") -> None:
         self._model_name = ""
+        self._default_lang = default_lang
+        self._mandatory_wtp_language = False
         self.split = lambda t, **param: [t]
         self.update_model(model_name, model_setting)
 
-    def update_model(self, model_name: str, model_setting: str = ""):
+    def update_model(self, model_name: str, model_setting: str = "", default_lang: str="en"):
         if model_name:
             if "wtp" in model_name:
-                self._update_wtp_model(model_name, model_setting)
+                self._update_wtp_model(model_name, model_setting, default_lang)
                 self.split = self._split_wtp
                 log.info(f"Setup WtP model: {model_name}")
             else:
@@ -64,7 +73,12 @@ class TextSplitterModel:
                 log.info(f"Setup spaCy model: {model_name}")
 
     def _update_wtp_model(self, wtp_model_name: str,
-                         model_setting: str = "cpu") -> None:
+                          model_setting: str = "cpu",
+                          default_lang: str="en") -> None:
+
+        if wtp_model_name in WTP_MANDATORY_ADAPTOR:
+            self._mandatory_wtp_language = True
+            self._default_lang = default_lang
 
         if self._model_name != wtp_model_name:
             self._model_name = wtp_model_name
@@ -98,10 +112,15 @@ class TextSplitterModel:
             if iso_lang:
                 return self.wtp_model.split(text, lang_code=iso_lang)
             else:
-                log.warning(f"Warning: Language {lang} was not used to train WtP model."
+                log.warning(f"Language {lang} was not used to train WtP model. "
                             "If text splitting is not working well with WtP, "
-                            "consider trying spaCy's sentence detection model by"
-                            "setting `SENTENCE_MODEL='xx_sent_ud_sm'`.")
+                            "consider trying spaCy's sentence detection model."
+                            )
+        if self._mandatory_wtp_language:
+            log.warning("WtP model requires a language."
+                        f"Using default language : {self._default_lang}.")
+            iso_lang = WtpLanguageSettings.convert_to_iso(self._default_lang)
+            return self.wtp_model.split(text, lang_code=iso_lang)
         return self.wtp_model.split(text)
 
     def _update_spacy_model(self, spacy_model_name: str):

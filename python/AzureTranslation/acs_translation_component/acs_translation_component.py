@@ -53,7 +53,7 @@ log = logging.getLogger('AcsTranslationComponent')
 class AcsTranslationComponent:
 
     def __init__(self) -> None:
-        self._cached_sent_model = TextSplitterModel("wtp-bert-mini", "cpu")
+        self._cached_sent_model = TextSplitterModel("wtp-bert-mini", "cpu", "en")
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         try:
@@ -458,8 +458,18 @@ class SentenceSplitter:
         self._incl_input_lang = mpf_util.get_property(job_properties,
                                                       "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG",
                                                       True)
-        nlp_model_setting = "cpu"
-        self._sentence_model.update_model(nlp_model_name, nlp_model_setting)
+
+        wtp_default_language = mpf_util.get_property(job_properties,
+                                                     "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE",
+                                                     "en")
+        nlp_model_setting = mpf_util.get_property(job_properties, "SENTENCE_MODEL_CPU_ONLY", True)
+
+        if not nlp_model_setting:
+            nlp_model_setting = "gpu"
+        else:
+            nlp_model_setting = "cpu"
+
+        self._sentence_model.update_model(nlp_model_name, nlp_model_setting, wtp_default_language)
 
     def split_input_text(self, text: str, from_lang: Optional[str],
                          from_lang_confidence: Optional[float]) -> SplitTextResult:

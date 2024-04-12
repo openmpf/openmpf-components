@@ -94,6 +94,18 @@
           "defaultValue": "wtp-bert-mini"
         },
         {
+          "name": "SENTENCE_MODEL_CPU_ONLY",
+          "description": "If set to true, only use CPU resources for the sentence detection model. If set to False, allow sentence model to also use GPU resources (larger WtP models will use up to ~3.5 GB of GPU memory).",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE",
+          "description": "More advanced WTP models will require a target language. This property sets the default language to use for sentence splitting, unless `FROM_LANGUAGE`, `SUGGESTED_FROM_LANGUAGE`, or Azure language detection return a different, WtP-supported language option.",
+          "type": "STRING",
+          "defaultValue": "en"
+        },
+        {
           "name": "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG",
           "description": "Specifies whether to pass input language to sentence splitter algorithm. Currently, only WtP supports model adjustments by input language.",
           "type": "BOOLEAN",

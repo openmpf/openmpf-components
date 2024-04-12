@@ -31,14 +31,6 @@ In order for the component to process any jobs, the job properties listed below
 must be provided. Neither has a default value.
 
 - `ACS_URL`: Base URL for the Azure Cognitive Services Translator Endpoint.
-<<<<<<< HEAD
-   e.g. `https://api.cognitive.microsofttranslator.com` or
-   `https://<custom-translate-host>/translator/text/v3.0`. The URL should
-   not end with `/translate` because two separate endpoints are
-   used. `ACS_URL + '/translate'` is used for translation.
-   This property can also be configured
-   using an environment variable named `MPF_PROP_ACS_URL`.
-=======
   e.g. `https://api.cognitive.microsofttranslator.com` or
   `https://<custom-translate-host>/translator/text/v3.0`. The URL should
   not end with `/translate` because two separate endpoints are
@@ -46,7 +38,6 @@ must be provided. Neither has a default value.
   `ACS_URL + '/breaksentence'` is used to break up text when it is too long
   for a single translation request. This property can also be configured
   using an environment variable named `MPF_PROP_ACS_URL`.
->>>>>>> origin
 
 - `ACS_SUBSCRIPTION_KEY`: A string containing your Azure Cognitive Services
   subscription key. To get one you will need to create an
@@ -94,8 +85,9 @@ The following settings control the behavior of dividing input text into acceptab
 for processing.
 
 Through preliminary investigation, we identified the [WtP library ("Where's the
-Point")](https://github.com/bminixhofer/wtpsplit) and spaCy's multilingual sentence
-detection model for identifying sentence breaks in a large section of text.
+Point")](https://github.com/bminixhofer/wtpsplit) and [spaCy's multilingual sentence
+detection model](https://spacy.io/models) for identifying sentence breaks
+in a large section of text.
 
 WtP models are trained to split up multilingual text by sentence without the need of an
 input language tag. The disadvantage is that the most accurate WtP models will need ~3.5
@@ -124,6 +116,17 @@ this model lacks support handling for Chinese punctuation.
   sentence splitter algorithm. Currently, only WtP supports model threshold adjustments by
   input language.
 
+- `SENTENCE_MODEL_CPU_ONLY`: If set to TRUE, only use CPU resources for the sentence
+  detection model. If set to FALSE, allow sentence model to also use GPU resources.
+  For most runs using spaCy `xx_sent_ud_sm` or `wtp-bert-mini` models, GPU resources
+  are not required. If using more advanced WtP models (i.e. `wtp-canine-s-12l`), it
+  is recommended to set `SENTENCE_MODEL_CPU_ONLY=FALSE` as such models can use up to
+  to ~3.5 GB of GPU memory.
+
+- `SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE`: More advanced WTP models will
+  require a target language. This property sets the default language to use for
+  sentence splitting, and is overwritten whenever `FROM_LANGUAGE`, `SUGGESTED_FROM_LANGUAGE`,
+  or Azure language detection return a different, WtP-supported language option.
 
 # Listing Supported Languages
 To list the supported languages replace `${ACS_URL}` and
