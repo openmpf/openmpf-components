@@ -27,74 +27,141 @@
 # Dict of conversions from ISO639-3 language codes to BCP-47 codes. The first
 #  BCP-47 code in each value list will be used (the rest are primarily for
 #  reference in case of later changes or customization)
+
+# Supported languages can be found here:
+# https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=stt
 ISO6393_TO_BCP47 = dict(
+    afr=["af-ZA"],
     amh=["am-ET"],
     ara=["ar-EG", "ar-SA", "ar-IQ", "ar-IL", "ar-AE", "ar-SY", "ar-LY", "ar-DZ",
          "ar-BH", "ar-JO", "ar-KW", "ar-LB", "ar-MA", "ar-OM", "ar-PS", "ar-QA",
          "ar-TN", "ar-YE"],
     aze=["az-AZ"],
-    bel=["be-BY"],
-    ben=["bn-BD", "bn-IN"],
+    azj=["az-AZ"], # North Azerbaijani
+    azb=["az-AZ"], # South Azerbaijani
+    # bel=["be-BY"], # Deprecated
+    ben=["bn-IN"], # "bn-BD" Bengali-Bangladesh has been deprecated
     # bod=["bo"], # Deprecated
     bul=["bg-BG"],
+    bos=["bs-BA"],
+    cat=["ca-ES"],
     # ceb=["ceb"],
     ces=["cs-CZ"],
-    cmn=["zh-CN"],
+    cze=["cs-CZ"],# ISO-639-2 Variant
+    cym=["cy-GB"],
+    wel=["cy-GB"],# ISO-639-2 Variant
+    dan=["da-DK"], # Note: There is a related dialect JUT - Jutlandic
+    jut=["da-DK"], # Upon further research, Jutlantic is present in Denmark
+                   # but declining over time.
+    deu=["de-DE", "de-AT", "de-CH"],
+    # Many other forms of German exist
+    gsw=["de-CH"], # Swiss German
+    bar=["de-AT"], # Bavarian / Upper German variant common in most of Austria
     ell=["el-GR"],
     eng=["en-US", "en-CA", "en-GB", "en-AU", "en-GH", "en-HK", "en-IN", "en-IE",
          "en-KE", "en-NZ", "en-NG", "en-PH", "en-SG", "en-ZA", "en-TZ"],
-    fra=["fr-FR", "fr-CA", "fr-CH"],
+    est=["et-EE"], # Estonian (Inclusive)
+    ekk=["et-EE"], # Standard Estonian
+    # vro=["et-EE"], Voro, doesn't seem to be direct match
+    eus=["eu-ES"],
+    fas=["fa-IR"],
+    fin=["fi-FI"],
+    fil=["fil-PH"],
+    fra=["fr-FR", "fr-BE", "fr-CA", "fr-CH"],
+    gle=["ga-IE"],
+    glg=["gl-ES"],
+    guj=["gu-IN"],
+    heb=["he-IL"],
+    hin=["hi-IN"],
+    hrv=["hr-HR"],
+    hun=["hu-HU"],
+    # ohu=["hu-HU"], # Note: Old-Hungarian, might not fully work with modern "hu-HU"
     # gug=["gn"], # Deprecated
     # hat=[],
     # hau=["ha"], # Deprecated
     # hbs=["sh"], # Deprecated
-    hin=["hi-IN"],
     # hye=["hy"],
+    ita=["it-IT", "it-CH"],
     ind=["id-ID"],
+    ice=["is-IS"],
+    isl=["is-IS"],
     jav=["jv-ID"],
     jpn=["ja-JP"],
     kat=["ka-GE"],
     kaz=["kk-KZ"],
-    kir=["ky-KG"],
+    khm=["km-KH"],
+    kxm=["km-KH"], # Northern Khmer, might not work as well.
+    kan=["kn-IN"],
+    # kir=["ky-KG"], # Deprecated
     kor=["ko-KR"],
     # kur=["ku"], # Deprecated
     lao=["lo-LA"],
     lit=["lt-LT"],
+    lav=["lv-LV"],
+    lvs=["lv-LV"], # Standard Latvian
     # luo=[],
     mkd=["mk-MK"],
     mya=["my-MM"],
-    nan=["zh-TW", "nan-TW"],
+    mal=["ml-IN"],
+    mon=["mn-MN"], # Mongolian (Inclusive)
+    khk=["mn-MN"], # Khalkha Mongolian (Predominant)
+    mvf=["mn-MN"], # Peripheral Mongolian (Part)
+    mar=["mr-IN"],
+    zsm=["ms-MY"],
+    mlt=["mt-MT"],
+    nob=["nb-NO"],
+    nep=["ne-NP"], # Nepali (Macrolanguage)
+    npi=["ne-NP"], # Nepali
+    nld=["nl-NL", "nl-BE"], # Netherlands and Belgium
+    # omr=["mr-IN"], # Old Maranthi, might not work
     # nde=["nd"],
     # orm=["om"],
     pan=["pa-IN"],
     pes=["fa-IR"],
     pol=["pl-PL"],
-    por=["pt-BR", "pt-PT"],
-    prs=["prs-AF"],
-    pus=["pa-AF"],
-    ron=["ro-RO", "ro-MD"],
+    por=["pt-BR", "pt-PT"], # pt-BR = Portuguese Brazil, pt-PT = Portuguese Portugal
+    pus=["ps-AF"], # Pashto, Pushto (Inclusive)
+    pbu=["ps-AF"], # Northern Pahsto
+    pst=["ps-AF"], # Central Pahsto
+    pbt=["ps-AF"], # Southern Pahsto
+    sin=["si-LK"],
+    # prs=["prs-AF"], # Deprecated
+    # pus=["pa-AF"], # Deprecated
+    ron=["ro-RO"],  # ro-MD deprecated
     # run=[],
     rus=["ru-RU"],
     slk=["sk-SK"],
+    slv=["sl-SI"],
     # sna=["sn"],
     som=["so-SO"],
     spa=["es-MX", "es-US", "es-AR", "es-BO", "es-CL", "es-CO", "es-CR", "es-CU",
          "es-DO", "es-EC", "es-SV", "es-GQ", "es-GT", "es-HN", "es-NI", "es-PA",
          "es-PY", "es-PE", "es-PR", "es-ES", "es-UY", "es-VE"],
+
     sqi=["sq-AL"],
     swa=["sw-KE", "sw-TZ"],
+    swe=["sv-SE"],
+    srp=["sr-RS"],
     tam=["ta-IN"],
+    tel=["te-IN"],
+    # wbq = ["te-IN"], Waddar/Vadari is related to Telugu.
     # tat=[],
-    tgk=["tg-TJ"],
-    tgl=["fil-PH", "tl-PH"],
+    # tgk=["tg-TJ"], # Deprecated
+    tgl=["fil-PH"], # "tl-PH" deprecated
     tha=["th-TH"],
     # tir=[],
-    tpi=["tpi-PG"],
+    # tpi=["tpi-PG"], # Deprecated
     tur=["tr-TR"],
     ukr=["uk-UA"],
     urd=["ur-IN"],
     uzb=["uz-UZ"],
     vie=["vi-VN"],
-    yue=["zh-HK", "yue-CN"],
+    cmn=["zh-CN", "zh-CN-shandong", "zh-CN-sichuan", "zh-HK", "zh-TW"],
+    zho=["zh-CN", "zh-CN-shandong", "zh-CN-sichuan", "zh-HK", "zh-TW"],
+    yue=["yue-CN", "zh-HK"], # Cantonese
+    wuu=["wuu-CN"],
+    nan=["zh-TW"], # nan-TW deprecated
+    # Note, Taiwanese has one standard + one major dialect,
+    # not sure which is covered better by Azure.
     zul=["zu-ZA"]
 )
