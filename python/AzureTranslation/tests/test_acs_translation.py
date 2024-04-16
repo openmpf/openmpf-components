@@ -610,6 +610,8 @@ class TestAcsTranslation(unittest.TestCase):
 
         actual = self.wtp_model._split_wtp(text_without_newlines)
         self.assertEqual(3, len(actual))
+        for line in actual:
+            self.assertTrue(line.endswith('。'))
 
         actual = self.spacy_model._split_spacy(text_without_newlines)
         self.assertEqual(1, len(actual))
