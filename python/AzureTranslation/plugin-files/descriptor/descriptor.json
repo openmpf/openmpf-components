@@ -95,7 +95,7 @@
         },
         {
           "name": "SENTENCE_MODEL_CPU_ONLY",
-          "description": "If set to true, only use CPU resources for the sentence detection model. If set to False, allow sentence model to also use GPU resources (consult README.md for details).",
+          "description": "If set to true, only use CPU resources for the sentence detection model. If set to False, allow sentence model to also use GPU resources (for Docker deployments, please consult README for more info).",
           "type": "BOOLEAN",
           "defaultValue": "TRUE"
         },

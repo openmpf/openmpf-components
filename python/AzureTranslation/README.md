@@ -121,8 +121,10 @@ this model lacks support handling for Chinese punctuation.
   it is recommended to set `SENTENCE_MODEL_CPU_ONLY=FALSE` to improve performance.
   That model can use up to ~3.5 GB of GPU memory.
 
-  Please note, to enable this option, you must also rebuild the Docker container
+  Please note, to fully enable this option, you must also rebuild the Docker container
   with the following change: Within the Dockerfile, set `ARG ADD_GPU_SUPPORT=true`.
+  Otherwise, the PyTorch version installed will not come with cuda support and
+  component will always default to CPU processing.
 
 - `SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE`: More advanced WTP models will
   require a target language. This property sets the default language to use for
