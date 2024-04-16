@@ -35,9 +35,8 @@ must be provided. Neither has a default value.
   `https://<custom-translate-host>/translator/text/v3.0`. The URL should
   not end with `/translate` because two separate endpoints are
   used. `ACS_URL + '/translate'` is used for translation.
-  `ACS_URL + '/breaksentence'` is used to break up text when it is too long
-  for a single translation request. This property can also be configured
-  using an environment variable named `MPF_PROP_ACS_URL`.
+  This property can also be configured using an environment variable
+  named `MPF_PROP_ACS_URL`.
 
 - `ACS_SUBSCRIPTION_KEY`: A string containing your Azure Cognitive Services
   subscription key. To get one you will need to create an
@@ -47,7 +46,7 @@ must be provided. Neither has a default value.
 
 # Primary Job Properties
 - `TO_LANGUAGE`: The BCP-47 language code for the language that the properties
--    should be translated to.
+  should be translated to.
 
 - `FEED_FORWARD_PROP_TO_PROCESS`: Comma-separated list of property names indicating
   which properties in the feed-forward track or detection to consider
@@ -118,9 +117,12 @@ this model lacks support handling for Chinese punctuation.
 - `SENTENCE_MODEL_CPU_ONLY`: If set to TRUE, only use CPU resources for the sentence
   detection model. If set to FALSE, allow sentence model to also use GPU resources.
   For most runs using spaCy `xx_sent_ud_sm` or `wtp-bert-mini` models, GPU resources
-  are not required. If using more advanced WtP models (i.e. `wtp-canine-s-12l`), it
-  is recommended to set `SENTENCE_MODEL_CPU_ONLY=FALSE` as such models can use up to
-  to ~3.5 GB of GPU memory.
+  are not required. If using more advanced WtP models like `wtp-canine-s-12l`,
+  it is recommended to set `SENTENCE_MODEL_CPU_ONLY=FALSE` to improve performance.
+  That model can use up to ~3.5 GB of GPU memory.
+
+  Please note, to enable this option, you must also rebuild the Docker container
+  with the following change: Within the Dockerfile, set `ARG ADD_GPU_SUPPORT=true`.
 
 - `SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE`: More advanced WTP models will
   require a target language. This property sets the default language to use for

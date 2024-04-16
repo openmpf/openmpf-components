@@ -31,6 +31,7 @@ ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 ARG RUN_TESTS=false
+ARG ADD_GPU_SUPPORT=false
 
 RUN pip install --no-cache-dir langcodes
 
@@ -40,10 +41,12 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install WtP and spaCy
+# if ADD_GPU_SUPPORT is enabled, install PyTorch with cuda support.
 RUN pip install --upgrade pip && \
-    pip install spacy>=3.7.4 && \
-    pip install wtpsplit>=1.3.0 && \
-    pip install torch --index-url https://download.pytorch.org/whl/cpu
+    pip install "spacy>=3.7.4" && \
+    pip install "wtpsplit>=1.3.0"; \
+    if [ "${ADD_GPU_SUPPORT,,}" == true ]; then pip install torch \
+    else pip install torch --index-url https://download.pytorch.org/whl/cpu; fi
 
 # Modify to add downloads for other models of interest.
 RUN mkdir /wtp_models && cd /wtp_models && \

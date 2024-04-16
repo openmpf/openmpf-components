@@ -465,7 +465,7 @@ class SentenceSplitter:
         nlp_model_setting = mpf_util.get_property(job_properties, "SENTENCE_MODEL_CPU_ONLY", True)
 
         if not nlp_model_setting:
-            nlp_model_setting = "gpu"
+            nlp_model_setting = "cuda"
         else:
             nlp_model_setting = "cpu"
 

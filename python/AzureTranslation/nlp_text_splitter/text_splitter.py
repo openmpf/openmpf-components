@@ -34,6 +34,8 @@ from typing import Callable, List, Optional, Tuple
 
 from .wtp_lang_settings import WtpLanguageSettings
 
+import torch
+
 
 DEFAULT_WTP_MODELS = "/wtp_models"
 
@@ -50,6 +52,11 @@ WTP_MANDATORY_ADAPTOR = ['wtp-canine-s-1l',
                          'wtp-canine-s-6l',
                          'wtp-canine-s-9l',
                          'wtp-canine-s-12l']
+
+GPU_AVAILABLE = False
+if torch.cuda.is_available():
+    GPU_AVAILABLE = True
+
 
 class TextSplitterModel:
     # To hold spaCy, WtP, and other potential sentence detection models in cache
@@ -75,6 +82,15 @@ class TextSplitterModel:
     def _update_wtp_model(self, wtp_model_name: str,
                           model_setting: str = "cpu",
                           default_lang: str="en") -> None:
+
+        if model_setting == "gpu" or model_setting == "cuda":
+            if GPU_AVAILABLE:
+                model_setting = "cuda"
+            else:
+                log.warning("Warning, no cuda support for this installation of PyTorch. "
+                            "Please reinstall PyTorch with GPU support by updating "
+                            "`ADD_GPU_SUPPORT=true` to the Dockerfile for this component.")
+                model_setting = "cpu"
 
         if wtp_model_name in WTP_MANDATORY_ADAPTOR:
             self._mandatory_wtp_language = True
@@ -117,7 +133,7 @@ class TextSplitterModel:
                             "consider trying spaCy's sentence detection model."
                             )
         if self._mandatory_wtp_language:
-            log.warning("WtP model requires a language."
+            log.warning("WtP model requires a language. "
                         f"Using default language : {self._default_lang}.")
             iso_lang = WtpLanguageSettings.convert_to_iso(self._default_lang)
             return self.wtp_model.split(text, lang_code=iso_lang)

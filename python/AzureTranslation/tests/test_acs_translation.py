@@ -75,7 +75,7 @@ class TestAcsTranslation(unittest.TestCase):
         cls.mock_server = MockServer()
         cls.wtp_model = TextSplitterModel("wtp-bert-mini", "cpu", "en")
         if LOCAL_TEST_WTP_MODEL:
-            cls.wtp_adv_model = TextSplitterModel("wtp-canine-s-1l", "cpu", "en")
+            cls.wtp_adv_model = TextSplitterModel("wtp-canine-s-1l", "cuda", "en")
         cls.spacy_model = TextSplitterModel("xx_sent_ud_sm", "cpu", "en")
 
 
@@ -600,9 +600,30 @@ class TestAcsTranslation(unittest.TestCase):
                             'Spaces should not be added to Chinese text.')
 
 
+    def test_split_engine_difference(self):
+        # Note: we can only use the WtP models for subsequent tests
+        # involving Chinese text because only WtP's multilingual models
+        # can detect some of '。' characters used for this language.
+        text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
+
+        text_without_newlines = text.replace('\n', '')
+
+        actual = self.wtp_model._split_wtp(text_without_newlines)
+        self.assertEqual(3, len(actual))
+
+        actual = self.spacy_model._split_spacy(text_without_newlines)
+        self.assertEqual(1, len(actual))
+
+        # However, WtP prefers newlines over the '。' character.
+        actual = self.wtp_model._split_wtp(text)
+        self.assertEqual(10, len(actual))
+
     @mock.patch.object(TranslationClient, 'DETECT_MAX_CHARS', new_callable=lambda: 150)
     def test_split_wtp_advanced_known_language(self, _):
-        # This test should only be run locally, as the WtP canine model is a bit large (~1 GB).
+        # This test should only be run manually outside of a Docker build.
+        # The WtP canine model is ~1 GB and not worth downloading and adding to the pre-built Docker image.
+
+
         if not LOCAL_TEST_WTP_MODEL:
             return
 
@@ -704,27 +725,45 @@ class TestAcsTranslation(unittest.TestCase):
         expected_chunk_lengths = [88, 118, 116, 106]
         self.assertEqual(sum(expected_chunk_lengths), len(text))
 
-        # WtP will split by newlines (over the '。' character),
-        # so some of the chunks here are different from the previous test.
+        # Due to an incorrect language detection, newlines are
+        # not properly replaced for Chinese text, and
+        # additional whitespace is present in the text.
+        # This alters the behavior of WtP sentence splitting.
         translation_request1 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[0], len(translation_request1))
         self.assertTrue(translation_request1.startswith('兵者，'))
         self.assertTrue(translation_request1.endswith('而不危也；'))
+        self.assertNotIn('\n', translation_request1,
+                         'Newlines were not properly removed')
+        self.assertIn(' ', translation_request1,
+                      'Spaces should be kept due to incorrect language detection.')
 
         translation_request2 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[1], len(translation_request2))
         self.assertTrue(translation_request2.startswith('天者，陰陽'))
         self.assertTrue(translation_request2.endswith('兵眾孰強？'))
+        self.assertNotIn('\n', translation_request2,
+                         'Newlines were not properly removed')
+        self.assertIn(' ', translation_request2,
+                      'Spaces should be kept due to incorrect language detection.')
 
         translation_request3 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[2], len(translation_request3))
         self.assertTrue(translation_request3.startswith('士卒孰練？'))
         self.assertTrue(translation_request3.endswith('亂而取之， '))
+        self.assertNotIn('\n', translation_request3,
+                         'Newlines were not properly removed')
+        self.assertIn(' ', translation_request3,
+                      'Spaces should be kept due to incorrect language detection.')
 
         translation_request4 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[3], len(translation_request4))
         self.assertTrue(translation_request4.startswith('實而備之，'))
         self.assertTrue(translation_request4.endswith('勝負見矣。 '))
+        self.assertNotIn('\n', translation_request4,
+                         'Newlines were not properly removed')
+        self.assertIn(' ', translation_request4,
+                      'Spaces should be kept due to incorrect language detection.')
 
 
     def test_newline_removal(self):

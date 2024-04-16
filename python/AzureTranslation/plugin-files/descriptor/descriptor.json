@@ -95,7 +95,7 @@
         },
         {
           "name": "SENTENCE_MODEL_CPU_ONLY",
-          "description": "If set to true, only use CPU resources for the sentence detection model. If set to False, allow sentence model to also use GPU resources (larger WtP models will use up to ~3.5 GB of GPU memory).",
+          "description": "If set to true, only use CPU resources for the sentence detection model. If set to False, allow sentence model to also use GPU resources (consult README.md for details).",
           "type": "BOOLEAN",
           "defaultValue": "TRUE"
         },
