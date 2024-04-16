@@ -122,8 +122,8 @@ this model lacks support handling for Chinese punctuation.
   That model can use up to ~3.5 GB of GPU memory.
 
   Please note, to fully enable this option, you must also rebuild the Docker container
-  with the following change: Within the Dockerfile, set `ARG ADD_GPU_SUPPORT=true`.
-  Otherwise, the PyTorch version installed will not come with cuda support and
+  with the following change: Within the Dockerfile, set `ARG BUILD_MODE=gpu`.
+  Otherwise, PyTorch will be installed without cuda support and
   component will always default to CPU processing.
 
 - `SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE`: More advanced WTP models will

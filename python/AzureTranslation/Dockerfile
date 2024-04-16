@@ -31,7 +31,10 @@ ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 ARG RUN_TESTS=false
-ARG ADD_GPU_SUPPORT=false
+
+# To enable GPU resources, update
+# below line to BUILD_MODE=gpu
+ARG BUILD_MODE=cpu
 
 RUN pip install --no-cache-dir langcodes
 
@@ -41,22 +44,34 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install WtP and spaCy
-# if ADD_GPU_SUPPORT is enabled, install PyTorch with cuda support.
 RUN pip install --upgrade pip && \
     pip install "spacy>=3.7.4" && \
-    pip install "wtpsplit>=1.3.0"; \
-    if [ "${ADD_GPU_SUPPORT,,}" == true ]; then pip install torch \
-    else pip install torch --index-url https://download.pytorch.org/whl/cpu; fi
+    pip install "wtpsplit>=1.3.0"\
 
 # Modify to add downloads for other models of interest.
 RUN mkdir /wtp_models && cd /wtp_models && \
     git clone https://huggingface.co/benjamin/wtp-bert-mini && \
     python3 -m spacy download xx_sent_ud_sm
 
+########################################################################
+FROM install_wget as cpu_component_build
+RUN install torch --index-url https://download.pytorch.org/whl/cpu
+
+########################################################################
+FROM install_wget as gpu_component_build
+RUN pip install torch
+
+########################################################################
+# Change to gpu to test out GPU build mode.
+FROM cpu_component_build as run_tests_true
+
 RUN --mount=target=.,readwrite \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs_translation.py; fi
 
+
+########################################################################
+FROM ${BUILD_TYPE}_component_build
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Azure Translation" \
