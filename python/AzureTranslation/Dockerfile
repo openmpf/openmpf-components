@@ -32,7 +32,7 @@ ARG BUILD_TAG=latest
 ARG RUN_TESTS=false
 # To enable GPU resources, update
 # below line to BUILD_TYPE=gpu
-ARG BUILD_TYPE=gpu
+ARG BUILD_TYPE=cpu
 
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} as download_python_packages
 
@@ -56,22 +56,19 @@ RUN mkdir /wtp_models && cd /wtp_models && \
 
 ########################################################################
 FROM download_python_packages as cpu_component_build
-RUN install torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
 
 ########################################################################
 FROM download_python_packages as gpu_component_build
 RUN pip install torch
 
 ########################################################################
-# Change to gpu to test out GPU build mode.
-FROM gpu_component_build as run_tests_true
+
+FROM ${BUILD_TYPE}_component_build as component_final
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs_translation.py; fi
-
-########################################################################
-FROM ${BUILD_TYPE}_component_build
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Azure Translation" \
