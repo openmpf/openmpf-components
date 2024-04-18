@@ -32,7 +32,7 @@ ARG BUILD_TAG=latest
 ARG RUN_TESTS=false
 # To enable GPU resources, update
 # below line to BUILD_TYPE=gpu
-ARG BUILD_TYPE=gpu
+ARG BUILD_TYPE=cpu
 
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} as download_python_packages
 
