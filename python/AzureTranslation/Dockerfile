@@ -60,6 +60,11 @@ RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
 
 ########################################################################
 FROM download_python_packages as gpu_component_build
+
+# Environment variables required by nvidia runtime.
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+
 RUN pip install torch
 
 ########################################################################
