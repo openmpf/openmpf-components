@@ -87,9 +87,11 @@ class TextSplitterModel:
             if GPU_AVAILABLE:
                 model_setting = "cuda"
             else:
-                log.warning("Warning, no cuda support for this installation of PyTorch. "
-                            "Please reinstall PyTorch with GPU support by setting "
-                            "`ARGS BUILD_TYPE=gpu` in the Dockerfile for this component.")
+                log.warning("PyTorch determined that CUDA is not available. "
+                            "You may need to update the NVIDIA driver for the host system, "
+                            "or reinstall PyTorch with GPU support by setting "
+                            "ARGS BUILD_TYPE=gpu in the Dockerfile when building this component.")
+
                 model_setting = "cpu"
 
         if wtp_model_name in WTP_MANDATORY_ADAPTOR:
