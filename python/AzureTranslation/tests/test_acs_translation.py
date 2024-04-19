@@ -75,7 +75,7 @@ class TestAcsTranslation(unittest.TestCase):
         cls.mock_server = MockServer()
         cls.wtp_model = TextSplitterModel("wtp-bert-mini", "cpu", "en")
         if LOCAL_TEST_WTP_MODEL:
-            cls.wtp_adv_model = TextSplitterModel("wtp-canine-s-1l", "cuda", "en")
+            cls.wtp_adv_model = TextSplitterModel("wtp-canine-s-1l", "cuda", "zh")
         cls.spacy_model = TextSplitterModel("xx_sent_ud_sm", "cpu", "en")
 
 
@@ -624,11 +624,11 @@ class TestAcsTranslation(unittest.TestCase):
     def test_split_wtp_advanced_known_language(self, _):
         # This test should only be run manually outside of a Docker build.
         # The WtP canine model is ~1 GB and not worth downloading and adding to the pre-built Docker image.
-
-
         if not LOCAL_TEST_WTP_MODEL:
             return
 
+        # For this test, we're more interested in the changes in behavior
+        # caused by WtP split. So the translation files are mainly placeholders.
         self.set_results_file('traditional-chinese-detect-result.json')
         self.set_results_file('split-sentence/art-of-war-translation-1.json')
         self.set_results_file('split-sentence/art-of-war-translation-2.json')
@@ -637,7 +637,7 @@ class TestAcsTranslation(unittest.TestCase):
 
         text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
         detection_props = dict(TEXT=text)
-        TranslationClient(get_test_properties(), self.wtp_adv_model).add_translations(detection_props)
+        TranslationClient(get_test_properties(SENTENCE_MODEL="wtp-canine-s-1l"), self.wtp_adv_model).add_translations(detection_props)
 
         self.assertEqual(5, len(detection_props))
         self.assertEqual(text, detection_props['TEXT'])
@@ -646,7 +646,6 @@ class TestAcsTranslation(unittest.TestCase):
             .read_text().strip()
         self.assertEqual(expected_translation, detection_props['TRANSLATION'])
         self.assertEqual('EN', detection_props['TRANSLATION TO LANGUAGE'])
-
         self.assertEqual('zh-Hant', detection_props['TRANSLATION SOURCE LANGUAGE'])
         self.assertAlmostEqual(1.0,
             float(detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
@@ -654,41 +653,39 @@ class TestAcsTranslation(unittest.TestCase):
         detect_request_text = self.get_request_body()[0]['Text']
         self.assertEqual(text[0:TranslationClient.DETECT_MAX_CHARS], detect_request_text)
 
-        expected_chunk_lengths = [86, 116, 104, 114]
+        # Main test starts here:
+        expected_chunk_lengths = [61, 150, 61, 148]
         self.assertEqual(sum(expected_chunk_lengths), len(text.replace('\n','')))
         translation_request1 = self.get_request_body()[0]['Text']
         self.assertTrue(translation_request1.startswith('兵者，'))
-        self.assertTrue(translation_request1.endswith('而不危也；'))
+        self.assertTrue(translation_request1.endswith('四曰將，五曰法。'))
         self.assertEqual(expected_chunk_lengths[0], len(translation_request1))
         self.assertNotIn('\n', translation_request1,
                             'Newlines were not properly removed')
         self.assertNotIn(' ', translation_request1,
                             'Spaces should not be added to Chinese text.')
 
-
         translation_request2 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[1], len(translation_request2))
-        self.assertTrue(translation_request2.startswith('天者，陰陽'))
-        self.assertTrue(translation_request2.endswith('兵眾孰強？'))
-        self.assertNotIn('\n', translation_request1,
+        self.assertTrue(translation_request2.startswith('道者，令民於上同意'))
+        self.assertTrue(translation_request2.endswith('賞罰孰明'))
+        self.assertNotIn('\n', translation_request2,
                             'Newlines were not properly removed')
-        self.assertNotIn(' ', translation_request1,
+        self.assertNotIn(' ', translation_request2,
                             'Spaces should not be added to Chinese text.')
-
 
         translation_request3 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[2], len(translation_request3))
-        self.assertTrue(translation_request3.startswith('士卒孰練？'))
-        self.assertTrue(translation_request3.endswith('遠而示之近。'))
+        self.assertTrue(translation_request3.startswith('？吾以此知勝'))
+        self.assertTrue(translation_request3.endswith('因利而制權也。'))
         self.assertNotIn('\n', translation_request3,
                             'Newlines were not properly removed')
         self.assertNotIn(' ', translation_request3,
                             'Spaces should not be added to Chinese text.')
 
-
         translation_request4 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[3], len(translation_request4))
-        self.assertTrue(translation_request4.startswith('利而誘之，'))
+        self.assertTrue(translation_request4.startswith('兵者，詭道也。'))
         self.assertTrue(translation_request4.endswith('勝負見矣。'))
         self.assertNotIn('\n', translation_request4,
                             'Newlines were not properly removed')
@@ -1060,7 +1057,6 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual("Is this, a sentence as well? ", actual[1])
         self.assertEqual("Maybe...maybe not? \n ", actual[2])
         self.assertEqual("All done, I think!", actual[3])
-
 
         actual = list(TextSplitter.split(input_text,
             35,

@@ -66,9 +66,9 @@ class TextSplitterModel:
         self._default_lang = default_lang
         self._mandatory_wtp_language = False
         self.split = lambda t, **param: [t]
-        self.update_model(model_name, model_setting)
+        self.update_model(model_name, model_setting, default_lang)
 
-    def update_model(self, model_name: str, model_setting: str = "", default_lang: str="en"):
+    def update_model(self, model_name: str, model_setting: str = "cpu", default_lang: str="en"):
         if model_name:
             if "wtp" in model_name:
                 self._update_wtp_model(model_name, model_setting, default_lang)
@@ -80,8 +80,8 @@ class TextSplitterModel:
                 log.info(f"Setup spaCy model: {model_name}")
 
     def _update_wtp_model(self, wtp_model_name: str,
-                          model_setting: str = "cpu",
-                          default_lang: str="en") -> None:
+                          model_setting,
+                          default_lang) -> None:
 
         if model_setting == "gpu" or model_setting == "cuda":
             if GPU_AVAILABLE:
@@ -91,14 +91,20 @@ class TextSplitterModel:
                             "You may need to update the NVIDIA driver for the host system, "
                             "or reinstall PyTorch with GPU support by setting "
                             "ARGS BUILD_TYPE=gpu in the Dockerfile when building this component.")
-
                 model_setting = "cpu"
+        elif model_setting != "cpu":
+            log.warning("Invalid WtP model setting. Only `cpu` and `cuda` "
+                        "(or `gpu`) WtP model options available at this time. "
+                        "Defaulting to `cpu` mode.")
+            model_setting = "cpu"
 
         if wtp_model_name in WTP_MANDATORY_ADAPTOR:
             self._mandatory_wtp_language = True
             self._default_lang = default_lang
 
-        if self._model_name != wtp_model_name:
+        if self._model_name == wtp_model_name:
+            log.info(f"Using cached model: {self._model_name}")
+        else:
             self._model_name = wtp_model_name
             # Check if model has been downloaded
             if os.path.exists(os.path.join(WTP_MODELS_PATH, wtp_model_name)):
