@@ -24,4 +24,4 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from .acs_translation_component import AcsTranslationComponent, TranslationClient
+from .text_splitter import TextSplitter, TextSplitterModel
