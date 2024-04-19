@@ -80,8 +80,8 @@ class TextSplitterModel:
                 log.info(f"Setup spaCy model: {model_name}")
 
     def _update_wtp_model(self, wtp_model_name: str,
-                          model_setting,
-                          default_lang) -> None:
+                          model_setting: str,
+                          default_lang: str) -> None:
 
         if model_setting == "gpu" or model_setting == "cuda":
             if GPU_AVAILABLE:
