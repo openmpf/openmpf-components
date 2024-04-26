@@ -7,11 +7,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2023 The MITRE Corporation                                      #
+# Copyright 2024 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -28,16 +28,52 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 ARG RUN_TESTS=false
+# To enable GPU resources, update
+# below line to BUILD_TYPE=gpu
+ARG BUILD_TYPE=cpu
+
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} as download_python_packages
+
 
 RUN pip install --no-cache-dir langcodes
+
+RUN apt-get update && \
+    apt-get install -y git git-lfs && \
+    git lfs install && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install WtP and spaCy
+RUN pip install --upgrade pip && \
+    pip install "spacy>=3.7.4" && \
+    pip install "wtpsplit>=1.3.0"
+
+# Modify to add downloads for other models of interest.
+RUN mkdir /wtp_models && cd /wtp_models && \
+    git clone https://huggingface.co/benjamin/wtp-bert-mini && \
+    python3 -m spacy download xx_sent_ud_sm
+
+########################################################################
+FROM download_python_packages as cpu_component_build
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+########################################################################
+FROM download_python_packages as gpu_component_build
+
+# Environment variables required by nvidia runtime.
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+
+RUN pip install torch
+
+########################################################################
+
+FROM ${BUILD_TYPE}_component_build as component_final
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs_translation.py; fi
-
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Azure Translation" \

@@ -112,8 +112,8 @@ int main(int argc, char* argv[]) {
         if (argc > 4) {
             // read the confidence threshold
             std::string threshold(argv[4]);
-            algorithm_properties["CONFIDENCE_THRESHOLD"] = threshold;
-            std::cout << "  Confidence threshold: " << threshold << std::endl;
+            algorithm_properties["QUALITY_SELECTION_THRESHOLD"] = threshold;
+            std::cout << "  Quality selection threshold: " << threshold << std::endl;
         }
 
         if (argc > 5) {

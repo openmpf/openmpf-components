@@ -26,6 +26,7 @@
 
 #include "KeywordTagging.h"
 #include <string>
+#include <codecvt>
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -278,7 +279,7 @@ bool KeywordTagging::comp_regex(const MPFJob &job, const wstring &full_text,
 
 set<wstring> KeywordTagging::search_regex(const MPFJob &job, const wstring &full_text,
                                           const map<wstring, vector<pair<wstring, bool>>> &json_kvs_regex,
-                                          map<wstring, vector<string>>  &trigger_words_offset,
+                                          map<wstring, map<wstring, vector<string>>> &trigger_tags_words_offset,
                                           bool full_regex) {
     wstring found_tags_regex = L"";
     set<wstring> found_keys_regex;
@@ -288,19 +289,21 @@ set<wstring> KeywordTagging::search_regex(const MPFJob &job, const wstring &full
     }
 
     for (const auto &kv : json_kvs_regex) {
-        auto key = kv.first;
+        auto key = boost::locale::to_lower(kv.first);
         auto values = kv.second;
+        map<wstring, vector<string>>  trigger_words_offset;
         for (const pair<wstring, bool> &value : values) {
             wstring regex_pattern = value.first;
             bool case_sens = value.second;
 
             if (comp_regex(job, full_text, regex_pattern, trigger_words_offset, full_regex, case_sens)) {
                 found_keys_regex.insert(key);
+                trigger_tags_words_offset[key] = trigger_words_offset;
                 // Discontinue searching unless full regex search is enabled.
                 if (!full_regex) {
                     break;
                 }
-            }
+            }      
         }
     }
 
@@ -542,31 +545,49 @@ void KeywordTagging::process_text_tagging(Properties &detection_properties, cons
 
         bool full_regex = DetectionComponentUtils::GetProperty(job.job_properties, "FULL_REGEX_SEARCH", true);
 
-        set<wstring> trigger_words;
-        map<wstring, vector<string>> trigger_words_offset;
-        set<wstring> found_tags_regex = search_regex(job, text, json_kvs_regex, trigger_words_offset, full_regex);
+        map<wstring, map<wstring, vector<string>>> trigger_tags_words_offset;
+        set<wstring> found_tags_regex = search_regex(job, text, json_kvs_regex, trigger_tags_words_offset, full_regex);
         all_found_tags.insert(found_tags_regex.begin(), found_tags_regex.end());
 
         wstring tag_string = boost::algorithm::join(found_tags_regex, L"; ");
 
-        vector<string> offsets_list;
-        vector<wstring> triggers_list;
+        map<wstring, map<wstring, vector<string>>>::iterator trigger_tags_words_offset_iterator = trigger_tags_words_offset.begin();
+        while(trigger_tags_words_offset_iterator != trigger_tags_words_offset.end())
+        {
+            vector<string> offsets_list;
+            vector<wstring> triggers_list;
 
-        wstring tag_trigger = boost::algorithm::join(trigger_words, L"; ");
+            wstring tag = trigger_tags_words_offset_iterator->first;
+            boost::to_upper(tag);
+            map<wstring, vector<string>> trigger_words_offset = trigger_tags_words_offset_iterator->second;
 
-        for (auto const& word_offset : trigger_words_offset) {
-            triggers_list.push_back(word_offset.first);
-            offsets_list.push_back(boost::algorithm::join(word_offset.second, ", "));
-        }
+            for (auto const& word_offset : trigger_words_offset) {
+                triggers_list.push_back(word_offset.first);
+                offsets_list.push_back(boost::algorithm::join(word_offset.second, ", "));
+            }
+            
+            string tag_offset = boost::algorithm::join(offsets_list, "; ");
+            wstring tag_trigger = boost::algorithm::join(triggers_list, L"; ");
 
-        string tag_offset = boost::algorithm::join(offsets_list, "; ");
-        tag_trigger = tag_trigger + boost::algorithm::join(triggers_list, L"; ");
-
-        detection_properties[boost::locale::conv::utf_to_utf<char>(prop) + " TRIGGER WORDS"] = boost::locale::conv::utf_to_utf<char>(tag_trigger);
-        detection_properties[boost::locale::conv::utf_to_utf<char>(prop)+ " TRIGGER WORDS OFFSET"] = tag_offset;
+            detection_properties[boost::locale::conv::utf_to_utf<char>(prop) + " " + boost::locale::conv::utf_to_utf<char>(tag) + " TRIGGER WORDS"] = boost::locale::conv::utf_to_utf<char>(tag_trigger);
+            detection_properties[boost::locale::conv::utf_to_utf<char>(prop) + " " + boost::locale::conv::utf_to_utf<char>(tag) + " TRIGGER WORDS OFFSET"] = tag_offset;
+            trigger_tags_words_offset_iterator++;
+        }   
     }
 
     if (has_text) {
+        // store off earlier tags
+        boost::regex delimiter{"( *; *)"};
+        boost::sregex_token_iterator iter(detection_properties["TAGS"].begin(), 
+            detection_properties["TAGS"].end(), delimiter, -1);
+        boost::sregex_token_iterator end;
+
+        while(iter != end)
+        {
+            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> convert_s_to_ws;
+            all_found_tags.insert(boost::to_lower_copy(convert_s_to_ws.from_bytes(*iter++)));
+        }
+
         wstring tag_string = boost::algorithm::join(all_found_tags, L"; ");
         detection_properties["TAGS"] = boost::locale::conv::utf_to_utf<char>(tag_string);
     }

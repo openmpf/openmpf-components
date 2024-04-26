@@ -6,6 +6,8 @@ This repository contains source code for the OpenMPF CLIP detection component. C
 
 The following are the properties that can be specified for the component. Each property has a default value and so none of them necessarily need to be specified for processing jobs.
 
+- `MODEL_NAME`: Specifies the CLIP model that is loaded and used by the component. The only supported models are 'ViT-L/14' (the default model) and 'ViT-B/32'.
+
 - `NUMBER_OF_CLASSIFICATIONS`: Specifies how many of the top classifications you want to return. The default value is set to 1, and so you'll only see the classification with the greatest confidence.
 
 - `CLASSIFICATION_PATH`: If specified, this allows the user to give the component a file path to their own list of classifications in a CSV file, if the COCO or ImageNet class lists aren't of interest. See below for the formatting that's required for that file.
@@ -14,15 +16,17 @@ The following are the properties that can be specified for the component. Each p
 
 - `TEMPLATE_PATH`: If specified, this allows the user to give the component a file path to their own list of templates. See below for the formatting that's required for that file. The OpenAI developers admitted that the process of developing templates was a lot of trial and error, so feel free to come up with your own!
 
-- `NUMBER_OF_TEMPLATES`: There are three template files that are included in the component, with the number of templates in each being 1, 7, and 80. The one template is a basic template, while the 7 and 80 come from the OpenAI team when trying to [improve performance](https://github.com/openai/CLIP/blob/main/notebooks/Prompt_Engineering_for_ImageNet.ipynb) on the ImageNet dataset. The default value is 80, while 1 and 7 are the only other valid inputs. Also this property is overridden if a `TEMPLATE_PATH` is specified.
+- `TEMPLATE_TYPE`: There are three template files that are included in the component, with the number of templates in each being 1, 7, and 80. The one template is a basic template, while the 7 and 80 come from the OpenAI team when trying to [improve performance](https://github.com/openai/CLIP/blob/main/notebooks/Prompt_Engineering_for_ImageNet.ipynb) on the ImageNet dataset. The default value is 'openai_80', while 'openai_1' and 'openai_7' are the only other valid inputs. Also this property is overridden if a `TEMPLATE_PATH` is specified.
 
-- `ENABLE_CROPPING`: A boolean toggle to specify if the image is to be cropped into 144 images of size 224x224 which cover all areas of the original. By default, this is set to true. This technique is described Section 7 of the paper "[Going deeper with convolutions](https://arxiv.org/abs/1409.4842)" from Szegedy, et al. 
+- `ENABLE_CROPPING`: A boolean toggle to specify if the image is to be cropped into 144 images of size 224x224 which cover all areas of the original. By default, this is set to true. This technique is described in Section 7 of the paper "[Going deeper with convolutions](https://arxiv.org/abs/1409.4842)" from Szegedy, et al. 
 
 - `ENABLE_TRITON`: A boolean toggle to specify whether the component should use a Triton inference server to process the image job. By default this is set to false.
 
 - `INCLUDE_FEATURES`: A boolean toggle to specify whether the `FEATURE` detection property is included with each detection. By default, this is set to false.
 
 - `TRITON_SERVER`: Specifies the Triton server `<host>:<port>` to use for inferencing. By default, this is set to 'clip-detection-server:8001'.
+
+- `DETECTION_FRAME_BATCH_SIZE`: Specifies the batch size when processing video files. By default, this is set to 64.
 
 ## Detection Properties
 
@@ -54,6 +58,42 @@ tench,"tench, Tinca tinca"
 kite (bird of prey),kite
 magpie,magpie
 ```
+# Non-Triton Performance
+The table below shows the performance of this component on a NVIDIA Tesla V100 32GB GPU, for varying batch sizes with both models:
+| Model Name | Batch Size | Total Time (seconds) | Average Time per Batch (seconds) | Average Images per Second |
+|------------|------------|----------------------|----------------------------------|---------------------------|
+|   ViT-B/32 |         16 |              38.5732 |                          0.04311 |                  371.1126 |
+|   ViT-B/32 |         32 |              37.3478 |                          0.08349 |                   383.289 |
+|   ViT-B/32 |         64 |              34.6141 |                           0.1548 |                  413.5598 |
+|   ViT-B/32 |        128 |               35.897 |                            0.321 |                  398.7798 |
+|   ViT-B/32 |        256 |              33.5689 |                           0.6003 |                  426.4364 |
+|   ViT-B/32 |        512 |              36.3621 |                           1.3006 |                  393.6791 |
+|   ViT-L/14 |         16 |             108.6101 |                           0.1214 |                  131.8017 |
+|   ViT-L/14 |         32 |             103.8613 |                           0.2322 |                   137.828 |
+|   ViT-L/14 |         64 |             101.1478 |                           0.4522 |                  141.5256 |
+|   ViT-L/14 |        128 |             102.0473 |                           0.9125 |                  140.2781 |
+|   ViT-L/14 |        256 |              99.6637 |                           1.7823 |                   143.633 |
+|   ViT-L/14 |        512 |             105.8889 |                           3.7873 |                  135.1889 |
+
+# Triton Performance
+The table below shows the performance of this component with Triton on a NVIDIA Tesla V100 32GB GPU, for varying batch sizes:
+| Model Name | Batch Size | VRAM Usage (MiB) | Total Time (seconds) | Average Time per Batch (seconds) | Average Images per Second |
+|------------|------------|------------------|----------------------|----------------------------------|---------------------------|
+|   ViT-B/32 |         16 |             1249 |              23.9591 |                          0.02678 |                  597.4765 |
+|   ViT-B/32 |         32 |             1675 |              20.1931 |                          0.04514 |                  708.9055 |
+|   ViT-B/32 |         64 |             1715 |             33.08468 |                           0.1479 |                  432.6776 |
+|   ViT-B/32 |        128 |             1753 |              35.3511 |                           0.3161 |                  404.9379 |
+|   ViT-B/32 |        256 |             1827 |              33.7730 |                           0.6040 |                  423.8593 |
+|   ViT-L/14 |         16 |             1786 |             126.2017 |                           0.1411 |                  113.4295 |
+|   ViT-L/14 |         32 |             2414 |             114.7415 |                           0.2565 |                  124.7587 |
+|   ViT-L/14 |         64 |             2662 |             132.1087 |                           0.5906 |                  108.3577 |
+|   ViT-L/14 |        128 |             3150 |             140.7985 |                           1.2590 |                  101.6701 |
+|   ViT-L/14 |        256 |             3940 |             131.6293 |                           2.3540 |                  108.7524 |
+
+# Future Research
+* Investigate using the CLIP interrogator for determining text prompts for classification.
+* Investigate methods to automate the generation of text prompts.
+  * [Context Optimization (CoOp)](http://arxiv.org/abs/2109.01134) and [Conditional Context Optimization (CoCoOp)](http://arxiv.org/abs/2203.05557) models a prompt's context as a set of learnable vectors that can be optimized for the classes you're looking for, with CoCoOp improving on CoOp's ability in classifying to classes unseen by CoOp in training. 
 
 # Known Issues
 
