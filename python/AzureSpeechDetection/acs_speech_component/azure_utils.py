@@ -28,6 +28,9 @@
 #  BCP-47 code in each value list will be used (the rest are primarily for
 #  reference in case of later changes or customization)
 
+# This mapping is also used to generate `ISO_LANGUAGE` codes after
+# Speech-to-Text conversion. The last ISO code listed in the key list will be used.
+
 # Supported languages can be found here:
 # https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=stt
 ISO6393_TO_BCP47 = dict(
