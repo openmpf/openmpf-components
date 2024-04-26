@@ -134,10 +134,10 @@ ISO6393_TO_BCP47 = dict(
     NEP='ne', # Nepali
     NPI='ne', # Nepali (individual language)
     NLD='nl', # Dutch, Flemish
-    #NOR='nb', # Note: `nn`, `no`, and `nb` correspond to variants of Norwegian. But Azure
-               # only supports `nb`.
+    NOR='nb', # Note: `nn`, `no`, and `nb` correspond to variants of Norwegian. But Azure
+               # only supports `nb`. Also redirecting default Norwegian.
     NOB='nb', # Norwegian Bokmål (Norway)
-    #NNO='nb', # Norwegian Nynorsk
+    #NNO='nb', # Norwegian Nynorsk is not directly supported.
     NYA='nya', # `Azure uses ISO-639-3 variant for Nyanja instead of ISO-639-2
     NSO='nso', # Sesotho sa Leboa
     ORI='or', # Several variants exist for Odia
@@ -334,8 +334,8 @@ def iso_to_bcp(language_code: str) -> Optional[str]:
     elif lang_code.lower() in BCP_CODES:
         return lang_code.lower()
     elif lang_info := langcodes.get(lang_code):
-        # TODO, after langcodes conversion, we may want to consider double checking the BCP codes again
-        # discard if value does not match supported codes.
+        # TODO, after langcodes conversion, we may want to consider double checking the BCP codes
+        # again discard if value does not match supported codes.
         return lang_info.language
     elif bcp_code_var := ISO639_VAR_TO_BCP47.get(lang_code):
         logger.warning(
