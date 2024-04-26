@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.2
+# syntax=docker/dockerfile:1.4
 
 #############################################################################
 # NOTICE                                                                    #
@@ -29,47 +29,28 @@
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 
-ARG RUN_TESTS=false
 # To enable GPU resources, update
 # below line to BUILD_TYPE=gpu
 ARG BUILD_TYPE=cpu
 
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} as download_python_packages
+FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS python_build
 
 
-RUN pip install --no-cache-dir langcodes
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS cpu_component
 
-RUN apt-get update && \
-    apt-get install -y git git-lfs && \
-    git lfs install && \
-    rm -rf /var/lib/apt/lists/*
+ARG BUILD_TYPE
 
-# Install WtP and spaCy
-RUN pip install --upgrade pip && \
-    pip install "spacy>=3.7.4" && \
-    pip install "wtpsplit>=1.3.0"
+RUN --mount=from=python_build,source=/home/mpf/openmpf-projects/openmpf-python-component-sdk/detection/nlp_text_splitter,target=/tmp/nlp_text_splitter \
+<<eot
+    cd /tmp/nlp_text_splitter
+    if [[ ${BUILD_TYPE,,} = gpu ]]; then
+        ./install.sh --gpu
+    else
+        ./install.sh
+    fi
+eot
 
-# Modify to add downloads for other models of interest.
-RUN mkdir /wtp_models && cd /wtp_models && \
-    git clone https://huggingface.co/benjamin/wtp-bert-mini && \
-    python3 -m spacy download xx_sent_ud_sm
-
-########################################################################
-FROM download_python_packages as cpu_component_build
-RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
-
-########################################################################
-FROM download_python_packages as gpu_component_build
-
-# Environment variables required by nvidia runtime.
-ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
-
-RUN pip install torch
-
-########################################################################
-
-FROM ${BUILD_TYPE}_component_build as component_final
+ARG RUN_TESTS=false
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
@@ -81,3 +62,10 @@ LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
+
+FROM cpu_component AS gpu_component
+
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+
+FROM ${BUILD_TYPE}_component
