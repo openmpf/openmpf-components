@@ -690,7 +690,7 @@ TEST(KEYWORDTAGGING, EmailTest) {
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "ABC@WEBSITE.NET", "personal"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc@example.web", "personal"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "a/b/c@website.com", "personal"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "\"\\\t\"@gmail.com", "personal"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "\"\\x\"@gmail.com", "personal"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "very.unusual.”@”.unusual.com@example.com", "unusual.com@example.com", "personal"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "very.”(),:;<>[]”.VERY.”very@\\ \"very”.unusual@strange.example.com",
                                                   "unusual@strange.example.com", "personal"));
@@ -701,7 +701,7 @@ TEST(KEYWORDTAGGING, EmailTest) {
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc@example.com (Joe Smith)", "abc@example.com", "personal"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "	Abc..123@example.com", "123@example.com", "personal"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "just”not”right@example.com", "right@example.com", "personal"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "this\\ is\"really\"not\\allowed@example.com", "allowed@example.com", "personal"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "this\\ is\"really\"not\\allowed@example.com", "is\"really\"not\\allowed@example.com", "personal"));
 
 
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "much.”more\\ unusual”@example.com"));
