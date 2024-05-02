@@ -149,23 +149,33 @@ class TransformerTaggingComponent:
 
             # split input sentence further on newline or carriage return if flag is set
             if (config.split_on_newline):
-                for new_sentence in probe_str.splitlines():
-                    probe_list.append(new_sentence.lstrip())
+                for new_sentence in probe_str.splitlines(keepends=True):
+                    probe_list.append(new_sentence)
             else:
                 probe_list.append(probe_str)
+
+            # an offset counter to track offset start if newline flag is set
+            offset_counter: int = start
+            offset_end: int
 
             for probe_sent in probe_list:
                 # get similarity scores for the input sentence with each corpus sentence
                 probe_sent_embed = self._cached_model.encode(probe_sent, convert_to_tensor=True, show_progress_bar=False)
                 scores = [float(util.cos_sim(probe_sent_embed, corpus_sent_embed)) for corpus_sent_embed in corpus.embed]
 
+                # determine offset ending of sentence
+                offset_end = offset_counter + (len(probe_sent) - 1)
+
                 probe_df = pd.DataFrame({
                     "input text": probe_sent,
                     "corpus text": corpus.json["text"],
                     "tag": corpus.json["tag"].str.lower(),
                     "score": scores,
-                    "offset": str(start) + "-" + str(end - 1)
+                    "offset": str(offset_counter) + "-" + str(offset_end)
                 })
+
+                # set and adjust offset counter so that next line has correct start offset
+                offset_counter = offset_end + 1
 
                 # sort by score then group by tag so each group will be sorted highest to lowest score,
                 # then take top row for each group
