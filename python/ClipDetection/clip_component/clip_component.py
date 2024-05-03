@@ -157,7 +157,8 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         kwargs = self._parse_properties(image_job.job_properties)
         image = image_reader.get_image()
 
-        manual_args = ["--root", "/ckb-nfs/home/zcafego/", "--seed", "1", "--trainer", "CoOp", "--dataset-config-file", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/configs/datasets/imagenet.yaml", "--config-file", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/configs/trainers/CoOp/vit_l14_ep50.yaml", "--output-dir", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/output/evaluation/CoOp/vit_l14_ep50_16shots/nctx16_cscFalse_ctpend/imagenet/seed1", "--model-dir", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/output/imagenet/CoOp/vit_l14_ep50_16shots/nctx16_cscFalse_ctpend/seed1", "--load-epoch", "50", "--eval-only", "TRAINER.COOP.N_CTX", "16", "TRAINER.COOP.CSC", "False", "TRAINER.COOP.CLASS_TOKEN_POSITION", "end"]
+        # Add manual_args inside list
+        manual_args = []
         args = self._create_arg_parser(manual_args)
         main(args)
 
@@ -225,7 +226,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
 class ClipWrapper(object):
     def __init__(self, model_name='ViT-L/14'):
         logger.info("Loading model...")
-        model, _ = clip.load(model_name, device=device, download_root='/ckb-nfs/home/zcafego/.cache/clip')
+        model, _ = clip.load(model_name, device=device, download_root='/models')
         logger.info("Model loaded.")
 
         self._model = model
