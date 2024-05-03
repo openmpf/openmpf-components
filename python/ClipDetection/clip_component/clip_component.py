@@ -27,9 +27,11 @@
 import logging
 import os
 import csv
+import sys
 from pkg_resources import resource_filename
 from itertools import islice
 from typing import Iterable, Mapping
+import argparse
 
 from PIL import Image
 import cv2
@@ -39,6 +41,7 @@ import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 import clip
+from CoOp.train import main
 
 import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException, triton_to_np_dtype
@@ -92,11 +95,71 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             triton_server = triton_server
         )
 
+    def _create_arg_parser(self, manual_args):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--root", type=str, default="", help="path to dataset")
+        parser.add_argument("--output-dir", type=str, default="", help="output directory")
+        parser.add_argument(
+            "--resume",
+            type=str,
+            default="",
+            help="checkpoint directory (from which the training resumes)",
+        )
+        parser.add_argument(
+            "--seed", type=int, default=-1, help="only positive value enables a fixed seed"
+        )
+        parser.add_argument(
+            "--source-domains", type=str, nargs="+", help="source domains for DA/DG"
+        )
+        parser.add_argument(
+            "--target-domains", type=str, nargs="+", help="target domains for DA/DG"
+        )
+        parser.add_argument(
+            "--transforms", type=str, nargs="+", help="data augmentation methods"
+        )
+        parser.add_argument(
+            "--config-file", type=str, default="", help="path to config file"
+        )
+        parser.add_argument(
+            "--dataset-config-file",
+            type=str,
+            default="",
+            help="path to config file for dataset setup",
+        )
+        parser.add_argument("--trainer", type=str, default="", help="name of trainer")
+        parser.add_argument("--backbone", type=str, default="", help="name of CNN backbone")
+        parser.add_argument("--head", type=str, default="", help="name of head")
+        parser.add_argument("--eval-only", action="store_true", help="evaluation only")
+        parser.add_argument(
+            "--model-dir",
+            type=str,
+            default="",
+            help="load model from this directory for eval-only mode",
+        )
+        parser.add_argument(
+            "--load-epoch", type=int, help="load model weights at this epoch for evaluation"
+        )
+        parser.add_argument(
+            "--no-train", action="store_true", help="do not call trainer.train()"
+        )
+        parser.add_argument(
+            "opts",
+            default=None,
+            nargs=argparse.REMAINDER,
+            help="modify config options using the command-line",
+        )
+        args = parser.parse_args(manual_args)
+        return args
+
     def get_detections_from_image_reader(self, image_job, image_reader):
         logger.info("Received image job: %s", image_job)
 
         kwargs = self._parse_properties(image_job.job_properties)
         image = image_reader.get_image()
+
+        manual_args = ["--root", "/ckb-nfs/home/zcafego/", "--seed", "1", "--trainer", "CoOp", "--dataset-config-file", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/configs/datasets/imagenet.yaml", "--config-file", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/configs/trainers/CoOp/vit_l14_ep50.yaml", "--output-dir", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/output/evaluation/CoOp/vit_l14_ep50_16shots/nctx16_cscFalse_ctpend/imagenet/seed1", "--model-dir", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/output/imagenet/CoOp/vit_l14_ep50_16shots/nctx16_cscFalse_ctpend/seed1", "--load-epoch", "50", "--eval-only", "TRAINER.COOP.N_CTX", "16", "TRAINER.COOP.CSC", "False", "TRAINER.COOP.CLASS_TOKEN_POSITION", "end"]
+        args = self._create_arg_parser(manual_args)
+        main(args)
 
         num_detections = 0
         try:
@@ -162,7 +225,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
 class ClipWrapper(object):
     def __init__(self, model_name='ViT-L/14'):
         logger.info("Loading model...")
-        model, _ = clip.load(model_name, device=device, download_root='/models')
+        model, _ = clip.load(model_name, device=device, download_root='/ckb-nfs/home/zcafego/.cache/clip')
         logger.info("Model loaded.")
 
         self._model = model
