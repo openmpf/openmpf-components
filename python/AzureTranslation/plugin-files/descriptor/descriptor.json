@@ -10,7 +10,7 @@
     "description": "Uses Azure Cognitive Services to perform translation.",
     "actionType": "DETECTION",
     "trackType": "TRANSLATION",
-    "outputChangedCounter" : 1,
+    "outputChangedCounter": 1,
     "requiresCollection": {
       "states": []
     },
@@ -41,19 +41,19 @@
         },
         {
           "name": "TO_LANGUAGE",
-          "description": "The BCP-47 language code for language that the properties should be translated to.",
+          "description": "The BCP-47 language code for language that the properties should be translated to. Please consult README to query Azure's supported list of BCP-47 codes for translation.",
           "type": "STRING",
           "defaultValue": "en"
         },
         {
           "name": "FROM_LANGUAGE",
-          "description": "Optional property that indicates the source language of the text. When provided, it disables automatic language detection. If the text isn't actually the specified FROM_LANGUAGE, the translation endpoint returns the text unmodified.",
+          "description": "Optional property that indicates the source BCP-47 language code of the text (i.e. 'es' to translate from text confirmed to be in Spanish). When provided, it disables automatic language detection. If the text isn't actually the specified FROM_LANGUAGE, the translation endpoint returns the text unmodified.  Please consult README to query Azure's supported list of BCP-47 codes for translation.",
           "type": "STRING",
           "defaultValue": ""
         },
         {
           "name": "SUGGESTED_FROM_LANGUAGE",
-          "description": "Optional property that indicates the fallback source language to use when automatic language detection fails. The value from this property is only used when automatic language detection fails.",
+          "description": "Optional property that indicates the fallback source BCP-47 language code to use when automatic language detection fails (i.e. 'es' to translate text that is suspected to be in Spanish). The value from this property is only used when automatic language detection fails.  Please consult README to query Azure's supported list of BCP-47 codes for translation.",
           "type": "STRING",
           "defaultValue": ""
         },
@@ -80,6 +80,36 @@
           "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection determine the language from which to translate. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, fall back to FROM_LANGUAGE.",
           "type": "STRING",
           "defaultValue": "ISO_LANGUAGE,DECODED_LANGUAGE,LANGUAGE"
+        },
+        {
+          "name": "SENTENCE_SPLITTER_CHAR_COUNT",
+          "description": "Integer value specifying maximum number of characters to process through sentence splitter.",
+          "type": "INT",
+          "defaultValue": "500"
+        },
+        {
+          "name": "SENTENCE_MODEL",
+          "description": "Name of sentence segmentation model. Supported options are spaCy's multilingual `xx_sent_ud_sm` model and the Where's the Point (WtP) `wtp-bert-mini` model.",
+          "type": "STRING",
+          "defaultValue": "wtp-bert-mini"
+        },
+        {
+          "name": "SENTENCE_MODEL_CPU_ONLY",
+          "description": "If set to true, only use CPU resources for the sentence detection model. If set to False, allow sentence model to also use GPU resources (for Docker deployments, please consult README for more info).",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE",
+          "description": "More advanced WTP models will require a target language. This property sets the default language to use for sentence splitting, unless `FROM_LANGUAGE`, `SUGGESTED_FROM_LANGUAGE`, or Azure language detection return a different, WtP-supported language option.",
+          "type": "STRING",
+          "defaultValue": "en"
+        },
+        {
+          "name": "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG",
+          "description": "Specifies whether to pass input language to sentence splitter algorithm. Currently, only WtP supports model adjustments by input language.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
         }
       ]
     }
@@ -104,8 +134,7 @@
       "name": "AZURE TRANSLATION TEXT FILE ACTION",
       "description": "Uses Azure Cognitive Services to perform translation on a plain text file.",
       "algorithm": "AZURETRANSLATION",
-      "properties": [
-      ]
+      "properties": []
     }
   ],
   "tasks": [
