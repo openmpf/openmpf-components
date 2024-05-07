@@ -338,5 +338,22 @@ class TestTransformerTagging(unittest.TestCase):
 
         self.assertAlmostEqual(matches, props["TEXT TRAVEL TRIGGER SENTENCES MATCHES"])
 
+    def test_newline(self):
+        NEWLINE_SAMPLE = (
+            'This first sentence is about driving to the beach\nAnother sentence about driving to the beach\n\n\n\nThis sentence is also about driving to the beach and ends in a period.\n'
+        )
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=NEWLINE_SAMPLE))
+        job = mpf.GenericJob('Test Generic', 'test.txt', \
+            dict(ENABLE_DEBUG='true', ENABLE_NEWLINE_SPLIT='true'), {}, ff_track)
+        comp = TransformerTaggingComponent()
+        result = comp.get_detections_from_generic(job)
+
+        props = result[0].detection_properties
+
+        expectedPersonalSentences: str = 'This first sentence is about driving to the beach\n; Another sentence about driving to the beach\n; This sentence is also about driving to the beach and ends in a period.'
+        expectedPersonalOffsets: str = '0-49; 50-93; 97-166'
+        self.assertEqual(expectedPersonalSentences, props["TEXT TRAVEL TRIGGER SENTENCES"])
+        self.assertEqual(expectedPersonalOffsets, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
+
 if __name__ == '__main__':
     unittest.main()
