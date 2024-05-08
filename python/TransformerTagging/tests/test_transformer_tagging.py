@@ -260,7 +260,7 @@ class TestTransformerTagging(unittest.TestCase):
     def test_maintain_tags_from_earlier_feedforward_task(self):
         ff_track = mpf.GenericTrack(-1, dict(TEXT=SHORT_SAMPLE))
         job = mpf.GenericJob('Test Generic', 'test.pdf', {}, {}, ff_track)
-        # add tags
+
         firstTag = "FIRST_TAG"
         job.feed_forward_track.detection_properties["TAGS"] = firstTag
         comp = TransformerTaggingComponent()
@@ -338,11 +338,26 @@ class TestTransformerTagging(unittest.TestCase):
 
         self.assertAlmostEqual(matches, props["TEXT TRAVEL TRIGGER SENTENCES MATCHES"])
 
-    def test_newline(self):
-        NEWLINE_SAMPLE = (
-            'This first sentence is about driving to the beach\nAnother sentence about driving to the beach\n\n\n\nThis sentence is also about driving to the beach and ends in a period.\n'
+    def test_newline_split(self):
+        sample = (
+            'This first sentence is about driving to the beach\n'
+            'Another sentence about driving to the beach\n\n\n\n'
+            'This sentence is also about driving to the beach and ends in a period.\n'
+            '   Beach sentence begins and ends with \t whitespace   \n'
+            'Final beach sentence!'
         )
-        ff_track = mpf.GenericTrack(-1, dict(TEXT=NEWLINE_SAMPLE))
+
+        trigger_sentences = (
+            'This first sentence is about driving to the beach; '
+            'Another sentence about driving to the beach; '
+            'This sentence is also about driving to the beach and ends in a period.; '
+            'Beach sentence begins and ends with \t whitespace; '
+            'Final beach sentence!'
+        )
+
+        offsets = '0-48; 50-92; 97-166; 171-218; 223-243'
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=sample))
         job = mpf.GenericJob('Test Generic', 'test.txt', \
             dict(ENABLE_DEBUG='true', ENABLE_NEWLINE_SPLIT='true'), {}, ff_track)
         comp = TransformerTaggingComponent()
@@ -350,10 +365,8 @@ class TestTransformerTagging(unittest.TestCase):
 
         props = result[0].detection_properties
 
-        expectedPersonalSentences: str = 'This first sentence is about driving to the beach\n; Another sentence about driving to the beach\n; This sentence is also about driving to the beach and ends in a period.'
-        expectedPersonalOffsets: str = '0-49; 50-93; 97-166'
-        self.assertEqual(expectedPersonalSentences, props["TEXT TRAVEL TRIGGER SENTENCES"])
-        self.assertEqual(expectedPersonalOffsets, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
+        self.assertEqual(trigger_sentences, props["TEXT TRAVEL TRIGGER SENTENCES"])
+        self.assertEqual(offsets, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
 
 if __name__ == '__main__':
     unittest.main()

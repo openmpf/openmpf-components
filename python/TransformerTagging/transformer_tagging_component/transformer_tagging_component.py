@@ -44,8 +44,7 @@ logger = logging.getLogger('TransformerTaggingComponent')
 class TransformerTaggingComponent:
 
     def __init__(self):
-        # self._cached_model = SentenceTransformer('/models/all-mpnet-base-v2')
-        self._cached_model = SentenceTransformer('/home/mpf/git/openmpf-projects/openmpf-components/python/TransformerTagging/models/all-mpnet-base-v2') # DEBUG
+        self._cached_model = SentenceTransformer('/models/all-mpnet-base-v2')
         self._cached_corpuses: Dict[str, Corpus] = {}
 
 
@@ -152,27 +151,35 @@ class TransformerTaggingComponent:
             else:
                 probe_list = [probe_str]
 
-            # an offset counter to track offset start if newline flag is set
+            # an offset counter to track character offset start
             offset_counter = start
 
-            for probe_sent in probe_list:
-                # get similarity scores for the input sentence with each corpus sentence
-                probe_sent_embed = self._cached_model.encode(probe_sent, convert_to_tensor=True, show_progress_bar=False)
-                scores = [float(util.cos_sim(probe_sent_embed, corpus_sent_embed)) for corpus_sent_embed in corpus.embed]
+            for probe in probe_list:
+                # strip probe of leading and trailing whitespace
+                stripped_probe = probe.strip()
+                
+                # determine probe character offsets
+                num_leading_chars = len(probe) - len(probe.lstrip())
+                offset_start = offset_counter + num_leading_chars 
+                offset_end = offset_start + len(stripped_probe) - 1
 
-                # determine offset ending of sentence
-                offset_end = offset_counter + (len(probe_sent) - 1)
+                # set character offset counter for next iteration
+                offset_counter += len(probe)
+
+                if stripped_probe == "":
+                    continue
+
+                # get similarity scores for the input sentence with each corpus sentence
+                embed_probe = self._cached_model.encode(stripped_probe, convert_to_tensor=True, show_progress_bar=False)
+                scores = [float(util.cos_sim(embed_probe, corpus_entry)) for corpus_entry in corpus.embed]
 
                 probe_df = pd.DataFrame({
-                    "input text": probe_sent,
+                    "input text": stripped_probe,
                     "corpus text": corpus.json["text"],
                     "tag": corpus.json["tag"].str.lower(),
                     "score": scores,
-                    "offset": str(offset_counter) + "-" + str(offset_end)
+                    "offset": str(offset_start) + "-" + str(offset_end)
                 })
-
-                # set and adjust offset counter so that next line has correct start offset
-                offset_counter = offset_end + 1
 
                 # sort by score then group by tag so each group will be sorted highest to lowest score,
                 # then take top row for each group
