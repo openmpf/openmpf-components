@@ -38,14 +38,14 @@ import time
 from pkg_resources import resource_filename
 from nltk.tokenize.punkt import PunktSentenceTokenizer
 import pandas as pd
-import re
 
 logger = logging.getLogger('TransformerTaggingComponent')
 
 class TransformerTaggingComponent:
 
     def __init__(self):
-        self._cached_model = SentenceTransformer('/models/all-mpnet-base-v2')
+        # self._cached_model = SentenceTransformer('/models/all-mpnet-base-v2')
+        self._cached_model = SentenceTransformer('/home/mpf/git/openmpf-projects/openmpf-components/python/TransformerTagging/models/all-mpnet-base-v2') # DEBUG
         self._cached_corpuses: Dict[str, Corpus] = {}
 
 
@@ -145,18 +145,15 @@ class TransformerTaggingComponent:
         # for each sentence in input
         for start, end in PunktSentenceTokenizer().span_tokenize(input_text):
             probe_str = input_text[start:end]
-            probe_list: list = []
 
             # split input sentence further on newline or carriage return if flag is set
             if (config.split_on_newline):
-                for new_sentence in probe_str.splitlines(keepends=True):
-                    probe_list.append(new_sentence)
+                probe_list = probe_str.splitlines(keepends=True)
             else:
-                probe_list.append(probe_str)
+                probe_list = [probe_str]
 
             # an offset counter to track offset start if newline flag is set
-            offset_counter: int = start
-            offset_end: int
+            offset_counter = start
 
             for probe_sent in probe_list:
                 # get similarity scores for the input sentence with each corpus sentence
