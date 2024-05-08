@@ -132,6 +132,10 @@
     "tag": "financial"
   },
   {
+    "text": "This sentence is gift card.",
+    "tag": "financial"
+  },
+  {
     "text": "This sentence is birth",
     "tag": "personal"
   },
@@ -149,6 +153,10 @@
   },
   {
     "text": "This sentence is email.",
+    "tag": "personal"
+  },
+  {
+    "text": "This sentence is gmail.",
     "tag": "personal"
   },
   {

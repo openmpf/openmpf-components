@@ -39,6 +39,12 @@
           "defaultValue": "transformer_text_tags_corpus.json"
         },
         {
+          "name": "ENABLE_NEWLINE_SPLIT",
+          "description": "If true, newline and carriage return characters will be treated as sentence breaks.",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
           "name": "ENABLE_DEBUG",
           "description": "If true, each detection will include a `TRIGGER SENTENCES MATCHES` property for each entry in `TAGS`. The value will be the sentences in the corpus which met the score threshold for that tag.",
           "type": "BOOLEAN",
