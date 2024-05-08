@@ -42,16 +42,13 @@ from unittest import mock
 import mpf_component_api as mpf
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
-from nlp_text_splitter import TextSplitterModel, TextSplitter
+from nlp_text_splitter import TextSplitterModel
 from acs_translation_component.acs_translation_component import (AcsTranslationComponent,
     get_azure_char_count, TranslationClient, NewLineBehavior, ChineseAndJapaneseCodePoints,
     AcsTranslateUrlBuilder, get_n_azure_chars)
 
 from acs_translation_component.convert_language_code import iso_to_bcp
 
-# Set to true to test the WtP canine-s-1l model locally
-# Note, this will download ~1 GB to your local storage.
-LOCAL_TEST_WTP_MODEL = False
 SEEN_TRACE_IDS = set()
 
 CHINESE_SAMPLE_TEXT = '你好，你叫什么名字？'
@@ -74,8 +71,6 @@ class TestAcsTranslation(unittest.TestCase):
     def setUpClass(cls):
         cls.mock_server = MockServer()
         cls.wtp_model = TextSplitterModel("wtp-bert-mini", "cpu", "en")
-        if LOCAL_TEST_WTP_MODEL:
-            cls.wtp_adv_model = TextSplitterModel("wtp-canine-s-1l", "cuda", "zh")
         cls.spacy_model = TextSplitterModel("xx_sent_ud_sm", "cpu", "en")
 
 
@@ -600,97 +595,6 @@ class TestAcsTranslation(unittest.TestCase):
                             'Spaces should not be added to Chinese text.')
 
 
-    def test_split_engine_difference(self):
-        # Note: we can only use the WtP models for subsequent tests
-        # involving Chinese text because only WtP's multilingual models
-        # can detect some of '。' characters used for this language.
-        text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
-
-        text_without_newlines = text.replace('\n', '')
-
-        actual = self.wtp_model._split_wtp(text_without_newlines)
-        self.assertEqual(3, len(actual))
-        for line in actual:
-            self.assertTrue(line.endswith('。'))
-
-        actual = self.spacy_model._split_spacy(text_without_newlines)
-        self.assertEqual(1, len(actual))
-
-        # However, WtP prefers newlines over the '。' character.
-        actual = self.wtp_model._split_wtp(text)
-        self.assertEqual(10, len(actual))
-
-    @mock.patch.object(TranslationClient, 'DETECT_MAX_CHARS', new_callable=lambda: 150)
-    def test_split_wtp_advanced_known_language(self, _):
-        # This test should only be run manually outside of a Docker build.
-        # The WtP canine model is ~1 GB and not worth downloading and adding to the pre-built Docker image.
-        if not LOCAL_TEST_WTP_MODEL:
-            return
-
-        # For this test, we're more interested in the changes in behavior
-        # caused by WtP split. So the translation files are mainly placeholders.
-        self.set_results_file('traditional-chinese-detect-result.json')
-        self.set_results_file('split-sentence/art-of-war-translation-1.json')
-        self.set_results_file('split-sentence/art-of-war-translation-2.json')
-        self.set_results_file('split-sentence/art-of-war-translation-3.json')
-        self.set_results_file('split-sentence/art-of-war-translation-4.json')
-
-        text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
-        detection_props = dict(TEXT=text)
-        TranslationClient(get_test_properties(SENTENCE_MODEL="wtp-canine-s-1l"), self.wtp_adv_model).add_translations(detection_props)
-
-        self.assertEqual(5, len(detection_props))
-        self.assertEqual(text, detection_props['TEXT'])
-
-        expected_translation = (TEST_DATA / 'split-sentence/art-war-translation.txt') \
-            .read_text().strip()
-        self.assertEqual(expected_translation, detection_props['TRANSLATION'])
-        self.assertEqual('EN', detection_props['TRANSLATION TO LANGUAGE'])
-        self.assertEqual('zh-Hant', detection_props['TRANSLATION SOURCE LANGUAGE'])
-        self.assertAlmostEqual(1.0,
-            float(detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
-
-        detect_request_text = self.get_request_body()[0]['Text']
-        self.assertEqual(text[0:TranslationClient.DETECT_MAX_CHARS], detect_request_text)
-
-        # Main test starts here:
-        expected_chunk_lengths = [61, 150, 61, 148]
-        self.assertEqual(sum(expected_chunk_lengths), len(text.replace('\n','')))
-        translation_request1 = self.get_request_body()[0]['Text']
-        self.assertTrue(translation_request1.startswith('兵者，'))
-        self.assertTrue(translation_request1.endswith('四曰將，五曰法。'))
-        self.assertEqual(expected_chunk_lengths[0], len(translation_request1))
-        self.assertNotIn('\n', translation_request1,
-                            'Newlines were not properly removed')
-        self.assertNotIn(' ', translation_request1,
-                            'Spaces should not be added to Chinese text.')
-
-        translation_request2 = self.get_request_body()[0]['Text']
-        self.assertEqual(expected_chunk_lengths[1], len(translation_request2))
-        self.assertTrue(translation_request2.startswith('道者，令民於上同意'))
-        self.assertTrue(translation_request2.endswith('賞罰孰明'))
-        self.assertNotIn('\n', translation_request2,
-                            'Newlines were not properly removed')
-        self.assertNotIn(' ', translation_request2,
-                            'Spaces should not be added to Chinese text.')
-
-        translation_request3 = self.get_request_body()[0]['Text']
-        self.assertEqual(expected_chunk_lengths[2], len(translation_request3))
-        self.assertTrue(translation_request3.startswith('？吾以此知勝'))
-        self.assertTrue(translation_request3.endswith('因利而制權也。'))
-        self.assertNotIn('\n', translation_request3,
-                            'Newlines were not properly removed')
-        self.assertNotIn(' ', translation_request3,
-                            'Spaces should not be added to Chinese text.')
-
-        translation_request4 = self.get_request_body()[0]['Text']
-        self.assertEqual(expected_chunk_lengths[3], len(translation_request4))
-        self.assertTrue(translation_request4.startswith('兵者，詭道也。'))
-        self.assertTrue(translation_request4.endswith('勝負見矣。'))
-        self.assertNotIn('\n', translation_request4,
-                            'Newlines were not properly removed')
-        self.assertNotIn(' ', translation_request4,
-                            'Spaces should not be added to Chinese text.')
 
     @mock.patch.object(TranslationClient, 'DETECT_MAX_CHARS', new_callable=lambda: 150)
     def test_split_wtp_unknown_lang(self, _):
@@ -979,98 +883,7 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(['en'], query_dict['to'])
 
 
-    def test_guess_split_simple_sentence(self):
-        input_text = 'Hello, what is your name? My name is John.'
-        actual = list(TextSplitter.split(input_text,
-            28,
-            28,
-            get_azure_char_count,
-            self.wtp_model))
-        self.assertEqual(input_text, ''.join(actual))
-        self.assertEqual(2, len(actual))
 
-        # "Hello, what is your name?"
-        self.assertEqual('Hello, what is your name? ', actual[0])
-        # " My name is John."
-        self.assertEqual('My name is John.', actual[1])
-
-        input_text = 'Hello, what is your name? My name is John.'
-        actual = list(TextSplitter.split(input_text,
-            28,
-            28,
-            get_azure_char_count,
-            self.spacy_model))
-        self.assertEqual(input_text, ''.join(actual))
-        self.assertEqual(2, len(actual))
-
-        # "Hello, what is your name?"
-        self.assertEqual('Hello, what is your name? ', actual[0])
-        # " My name is John."
-        self.assertEqual('My name is John.', actual[1])
-
-
-
-    def test_split_sentence_end_punctuation(self):
-        input_text = 'Hello. How are you? asdfasdf'
-        actual = list(TextSplitter.split(input_text,
-            20,
-            10,
-            get_azure_char_count,
-            self.wtp_model))
-
-        self.assertEqual(input_text, ''.join(actual))
-        self.assertEqual(2, len(actual))
-
-        self.assertEqual('Hello. How are you? ', actual[0])
-        self.assertEqual('asdfasdf', actual[1])
-
-        actual = list(TextSplitter.split(input_text,
-            20,
-            10,
-            get_azure_char_count,
-            self.spacy_model))
-
-        self.assertEqual(input_text, ''.join(actual))
-        self.assertEqual(2, len(actual))
-
-        self.assertEqual('Hello. How are you? ', actual[0])
-        self.assertEqual('asdfasdf', actual[1])
-
-
-    def test_guess_split_edge_cases(self):
-        input_text = ("This is a sentence (Dr.Test). Is this,"
-                      " a sentence as well? Maybe...maybe not?"
-                      " \n All done, I think!")
-
-        # Split using WtP model.
-        actual = list(TextSplitter.split(input_text,
-            30,
-            30,
-            get_azure_char_count,
-            self.wtp_model))
-
-        self.assertEqual(input_text, ''.join(actual))
-        self.assertEqual(4, len(actual))
-
-        # WtP should detect and split out each sentence
-        self.assertEqual("This is a sentence (Dr.Test). ", actual[0])
-        self.assertEqual("Is this, a sentence as well? ", actual[1])
-        self.assertEqual("Maybe...maybe not? \n ", actual[2])
-        self.assertEqual("All done, I think!", actual[3])
-
-        actual = list(TextSplitter.split(input_text,
-            35,
-            35,
-            get_azure_char_count,
-            self.spacy_model))
-        self.assertEqual(input_text, ''.join(actual))
-        self.assertEqual(4, len(actual))
-
-        # Split using spaCy model.
-        self.assertEqual("This is a sentence (Dr.Test). ", actual[0])
-        self.assertEqual("Is this, a sentence as well? ", actual[1])
-        self.assertEqual("Maybe...maybe not? \n ", actual[2])
-        self.assertEqual("All done, I think!", actual[3])
 
 
     def test_no_translate_no_detect_when_language_ff_prop_matches(self):
