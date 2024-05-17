@@ -1,7 +1,7 @@
 {
     "componentName": "ClipDetection",
-    "componentVersion": "8.0",
-    "middlewareVersion": "8.0",
+    "componentVersion": "9.0",
+    "middlewareVersion": "9.0",
     "sourceLanguage": "python",
     "batchLibrary": "ClipDetection",
     "environmentVariables": [],
@@ -22,16 +22,22 @@
             ],
             "properties": [
                 {
+                    "name": "MODEL_NAME",
+                    "description": "Specifies which CLIP model to load for inferencing. The available models are 'ViT-L/14' and 'ViT-B/32'.",
+                    "type": "STRING",
+                    "defaultValue": "ViT-L/14"
+                },
+                {
                     "name": "NUMBER_OF_CLASSIFICATIONS",
                     "description": "The number of classifications, N, to be returned. The N highest confidence classifications found by the network will be returned with their associated confidence values. The value must be greater than 0, and less than the size of the model output layer.",
                     "type": "INT",
                     "defaultValue": "1"
                 }, 
                 {
-                    "name": "NUMBER_OF_TEMPLATES",
-                    "description": "The number of templates to be used in the text encoder. The current acceptable values are 7 and 80.",
-                    "type": "INT",
-                    "defaultValue": "80"
+                    "name": "TEMPLATE_TYPE",
+                    "description": "The number of templates to be used in the text encoder. The current acceptable values are 'openai_1', 'openai_7', and 'openai_80'.",
+                    "type": "STRING",
+                    "defaultValue": "openai_80"
                 }, 
                 {
                     "name": "CLASSIFICATION_LIST",
@@ -53,7 +59,7 @@
                 },
                 {
                     "name": "ENABLE_CROPPING",
-                    "description": "If true, the image will be cropped into 144 images of size 224x224. The results from each of these images is averaged to get the results. Not available for use on CPU.",
+                    "description": "If true, the image will be cropped into 144 images of size 224x224. The results from each of these images is averaged to get the results. Not recommended for use on CPU.",
                     "type": "BOOLEAN",
                     "defaultValue": "true"
                 },
@@ -74,6 +80,12 @@
                     "description": "Triton server <host>:<port> to use for inferencing.",
                     "type": "STRING",
                     "defaultValue": "clip-detection-server:8001"
+                },
+                {
+                    "name": "DETECTION_FRAME_BATCH_SIZE",
+                    "description": "Number of frames to batch inference when processing video. GPU VRAM dependant. If ENABLE_CROPPING is set to true, then the value will be ignored and set to 1.",
+                    "type": "INT",
+                    "defaultValue": "64"
                 }
             ] 
         }
@@ -93,6 +105,10 @@
                 {
                     "name": "ENABLE_TRITON",
                     "value": "true"
+                },
+                {
+                    "name": "DETECTION_FRAME_BATCH_SIZE",
+                    "value": "32"
                 }
             ]
         },
@@ -119,6 +135,10 @@
                 {
                     "name": "CLASSIFICATION_LIST",
                     "value": "imagenet"
+                },
+                {
+                    "name": "DETECTION_FRAME_BATCH_SIZE",
+                    "value": "32"
                 }
             ]
         }

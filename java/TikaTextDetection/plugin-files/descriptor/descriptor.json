@@ -1,9 +1,9 @@
 {
   "componentName" : "TikaTextDetection",
-  "componentVersion" : "8.0",
-  "middlewareVersion" : "8.0",
+  "componentVersion" : "9.0",
+  "middlewareVersion" : "9.0",
   "sourceLanguage" : "java",
-  "batchLibrary" : "mpf-tika-text-detection-component-8.0.jar",
+  "batchLibrary" : "mpf-tika-text-detection-component-9.0.jar",
   "environmentVariables" : [],
   "algorithm" : {
     "name": "TIKATEXT",
@@ -21,12 +21,6 @@
         "DETECTION_TEXT_TIKA"
       ],
       "properties": [
-        {
-          "name": "CONFIDENCE_THRESHOLD",
-          "description": "The minimum confidence score which must be met or exceeded. Detections below this threshold are silently discarded.",
-          "type": "DOUBLE",
-          "defaultValue": "-2"
-        },
         {
           "name": "STORE_METADATA",
           "description": "Specifies whether or not to store metadata as a separate track detection.",

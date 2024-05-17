@@ -55,11 +55,10 @@ bool containsProp(const std::string &exp_text, const std::vector<MPFGenericTrack
                   const std::string &property, int index = -1) {
     if (index != -1) {
         if (tracks[index].detection_properties.count(property) == 0) {
-            return true;
+            return false;
         }
 
         std::string text = tracks[index].detection_properties.at(property);
-
 
         return text.find(exp_text) != std::string::npos;
     }
@@ -70,7 +69,6 @@ bool containsProp(const std::string &exp_text, const std::vector<MPFGenericTrack
         }
 
         std::string text = tracks[i].detection_properties.at(property);
-
 
         if (text.find(exp_text) != std::string::npos)
             return true;
@@ -270,10 +268,10 @@ TEST(KEYWORDTAGGING, LanguageTest) {
     ASSERT_TRUE(tagger.Init());
 
     ASSERT_NO_FATAL_FAILURE(runKeywordTagging("data/eng-bul.txt", tagger, results, custom_properties));
-    assertInText("data/eng-bul.txt", "foreign-text", results, "TAGS", 0);
-    assertInText("data/eng-bul.txt", "свободни", results, "TEXT TRIGGER WORDS", 0);
-    assertInText("data/eng-bul.txt", "106-113", results, "TEXT TRIGGER WORDS OFFSET", 0);
-    assertInText("data/eng-bul.txt", "Всички хора се раждат свободни", results, "TEXT", 0);
+    assertInText("data/eng-bul.txt", "foreign-text", results, "TAGS");
+    assertInText("data/eng-bul.txt", "свободни", results, "TEXT FOREIGN-TEXT TRIGGER WORDS");
+    assertInText("data/eng-bul.txt", "106-113", results, "TEXT FOREIGN-TEXT TRIGGER WORDS OFFSET");
+    assertInText("data/eng-bul.txt", "Всички хора се раждат свободни", results, "TEXT");
 
     ASSERT_TRUE(tagger.Close());
 }
@@ -606,18 +604,43 @@ TEST(KEYWORDTAGGING, FeedForwardTags) {
     ASSERT_TRUE(tagger.Init());
 
     MPFGenericTrack track(0.9,
-                              {{"TAGS", "FeedForwardTag"},
-                               {"BAR", "cash"}});
-        MPFGenericJob job("JOB NAME", "/some/path", track,
-                          { { "FEED_FORWARD_PROP_TO_PROCESS", "FOO,BAR" } }, {});
+                          {{"TAGS", "FeedForwardTag"},
+                          {"BAR", "cash"}});
+    MPFGenericJob job("JOB NAME", "/some/path", track,
+                      { { "FEED_FORWARD_PROP_TO_PROCESS", "FOO,BAR" } }, {});
 
-        std::vector<MPFGenericTrack> results = tagger.GetDetections(job);
-        ASSERT_EQ(1, results.size());
-        ASSERT_EQ(track.confidence, results.at(0).confidence);
+    std::vector<MPFGenericTrack> results = tagger.GetDetections(job);
+    ASSERT_EQ(1, results.size());
+    ASSERT_EQ(track.confidence, results.at(0).confidence);
 
-        Properties props = results.at(0).detection_properties;
-        ASSERT_EQ(4, props.size());
-        ASSERT_EQ("feedforwardtag; financial", props["TAGS"]);
+    Properties props = results.at(0).detection_properties;
+    ASSERT_EQ(4, props.size());
+    ASSERT_EQ("feedforwardtag; financial", props["TAGS"]);
+}
+
+
+TEST(KEYWORDTAGGING, NewLines) {
+    KeywordTagging tagger;
+    std::vector<MPFGenericTrack> results;
+    std::map<std::string, std::string> custom_properties = {{}};
+
+    tagger.SetRunDirectory("../plugin");
+
+    ASSERT_TRUE(tagger.Init());
+
+    ASSERT_NO_FATAL_FAILURE(runKeywordTagging("data/test-newlines.txt", tagger, results, custom_properties));
+    assertInText("data/test-newlines.txt", "identity document", results, "TAGS");
+    assertInText("data/test-newlines.txt", "address", results, "TEXT IDENTITY DOCUMENT TRIGGER WORDS");
+    assertInText("data/test-newlines.txt", "37-43", results, "TEXT IDENTITY DOCUMENT TRIGGER WORDS OFFSET");
+    assertInText("data/test-newlines.txt", "personal", results, "TAGS");
+    assertInText("data/test-newlines.txt", "777-777-7777", results, "TEXT PERSONAL TRIGGER WORDS");
+    assertInText("data/test-newlines.txt", "83-94", results, "TEXT PERSONAL TRIGGER WORDS OFFSET");
+    assertInText("data/test-newlines.txt", "564-456-46", results, "TEXT PERSONAL TRIGGER WORDS");
+    assertInText("data/test-newlines.txt", "145-154", results, "TEXT PERSONAL TRIGGER WORDS OFFSET");
+    assertInText("data/test-newlines.txt", "Text", results, "TEXT PERSONAL TRIGGER WORDS");
+    assertInText("data/test-newlines.txt", "19-22", results, "TEXT PERSONAL TRIGGER WORDS OFFSET");
+
+    ASSERT_TRUE(tagger.Close());
 }
 
 TEST(KEYWORDTAGGING, PhoneNumberTest) {

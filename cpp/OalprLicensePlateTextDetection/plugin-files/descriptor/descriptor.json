@@ -1,7 +1,7 @@
 {
   "componentName": "OalprLicensePlateTextDetection",
-  "componentVersion": "8.0",
-  "middlewareVersion": "8.0",
+  "componentVersion": "9.0",
+  "middlewareVersion": "9.0",
   "sourceLanguage": "c++",
   "setupFile": "setup/componentSetup.yml",
   "batchLibrary": "${MPF_HOME}/plugins/OalprLicensePlateTextDetection/lib/libmpfOALPRLicensePlateTextDetection.so",
@@ -34,12 +34,7 @@
       "name": "OALPR LICENSE PLATE TEXT DETECTION ACTION",
       "description": "Executes the OALPR license plate text detection algorithm using the default parameters.",
       "algorithm": "OALPR",
-      "properties": [
-        {
-          "name": "CONFIDENCE_THRESHOLD",
-          "value": "80"
-        }
-      ]
+      "properties": []
     }
   ],
   "tasks": [

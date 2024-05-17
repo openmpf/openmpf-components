@@ -1,7 +1,7 @@
 {
   "componentName": "AzureSpeechDetection",
-  "componentVersion": "8.0",
-  "middlewareVersion": "8.0",
+  "componentVersion": "9.0",
+  "middlewareVersion": "9.0",
   "sourceLanguage": "python",
   "batchLibrary": "AzureSpeechDetection",
   "environmentVariables": [],
@@ -10,7 +10,7 @@
     "description": "Uses Azure Cognitive Services to perform speech-to-text.",
     "actionType": "DETECTION",
     "trackType": "SPEECH",
-    "outputChangedCounter" : 2,
+    "outputChangedCounter": 2,
     "requiresCollection": {
       "states": []
     },
@@ -59,7 +59,7 @@
         },
         {
           "name": "LANGUAGE",
-          "description": "The language/locale to use for transcription.",
+          "description": "The language/locale, in BCP-47 format, to use for transcription. Please consult README to review Azure's supported list of BCP-47 codes.",
           "type": "STRING",
           "defaultValue": "en-US"
         },

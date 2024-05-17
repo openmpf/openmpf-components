@@ -1,0 +1,8 @@
+[
+    {
+        "language": "fake-lang",
+        "score": 1.0,
+        "isTranslationSupported": true,
+        "isTransliterationSupported": true
+    }
+]

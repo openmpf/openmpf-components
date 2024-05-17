@@ -45,10 +45,10 @@ class TestClip(unittest.TestCase):
             data_uri=self._get_test_file('dog.jpg'),
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 3,
-                NUMBER_OF_TEMPLATES = 1,
-                CLASSIFICATION_LIST = 'coco',
-                ENABLE_CROPPING='False',
-                INCLUDE_FEATURES = 'True'
+                TEMPLATE_TYPE = 'openai_1',
+                ENABLE_CROPPING ='False',
+                INCLUDE_FEATURES = 'True',
+                MODEL_NAME="ViT-B/32"
             ),
             media_properties={},
             feed_forward_location=None
@@ -73,26 +73,57 @@ class TestClip(unittest.TestCase):
             media_properties={},
             feed_forward_location=None
         )
-        result = list(ClipComponent().get_detections_from_image(job))[0]
+        component = ClipComponent()
+        result = list(component.get_detections_from_image(job))[0]
+
         self.assertEqual(job.job_properties["NUMBER_OF_CLASSIFICATIONS"], len(self._output_to_list(result.detection_properties["CLASSIFICATION LIST"])))
         self.assertTrue("violent scene" in self._output_to_list(result.detection_properties["CLASSIFICATION LIST"]))
         self.assertEqual("violent scene", result.detection_properties["CLASSIFICATION"])
-    
+        
     def test_image_file_rollup(self):
         job = mpf.ImageJob(
             job_name='test-image-rollup',
             data_uri=self._get_test_file('dog.jpg'),
             job_properties=dict(
                 NUMBER_OF_CLASSIFICATIONS = 4,
-                NUMBER_OF_TEMPLATES = 1,
+                TEMPLATE_TYPE = 'openai_1',
                 CLASSIFICATION_PATH = self._get_test_file("rollup.csv"),
-                ENABLE_CROPPING='False'
+                ENABLE_CROPPING = 'False'
             ),
             media_properties={},
             feed_forward_location=None
         )
         result = list(ClipComponent().get_detections_from_image(job))[0]
         self.assertEqual("indoor animal", result.detection_properties["CLASSIFICATION"])
+
+    def test_video_file(self):
+        job = mpf.VideoJob(
+            job_name='test-video',
+            data_uri=self._get_test_file('test_video.mp4'),
+            start_frame=0,
+            stop_frame=14,
+            job_properties=dict(
+                TEMPLATE_TYPE = 'openai_1',
+                ENABLE_CROPPING = 'False',
+                DETECTION_FRAME_BATCH_SIZE = 4
+            ),
+            media_properties={},
+            feed_forward_track=None
+        )
+        component = ClipComponent()
+        results = list(component.get_detections_from_video(job))
+
+        self.assertEqual(results[0].detection_properties['CLASSIFICATION'], "dog")
+        self.assertEqual(results[0].start_frame, 0)
+        self.assertEqual(results[0].stop_frame, 4)
+
+        self.assertEqual(results[1].detection_properties['CLASSIFICATION'], "orange")
+        self.assertEqual(results[1].start_frame, 5)
+        self.assertEqual(results[1].stop_frame, 9)
+
+        self.assertEqual(results[2].detection_properties['CLASSIFICATION'], "dog")
+        self.assertEqual(results[2].start_frame, 10)
+        self.assertEqual(results[2].stop_frame, 14)
 
     @staticmethod
     def _get_test_file(filename):

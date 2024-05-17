@@ -344,18 +344,6 @@ void KeywordTagging::load_tags_json(const MPFJob &job, map<wstring, vector<pair<
     LOG4CXX_DEBUG(hw_logger_, "Read JSON")
 }
 
-wstring clean_whitespace(const wstring &input) {
-    boost::wregex re(L"\n(\n|[[:space:]])+");
-    boost::wregex re2(L"\\\\n(\\\\n|[[:space:]])+");
-
-    wstring result = boost::regex_replace(input, re, L"\n");
-    wstring result2 = boost::regex_replace(result, re2, L"\\\\n");
-
-    result2 = boost::trim_copy(result2);
-
-    return result2;
-}
-
 bool is_only_ascii_whitespace(const wstring &str) {
     auto it = str.begin();
     do {
@@ -529,14 +517,13 @@ void KeywordTagging::process_text_tagging(Properties &detection_properties, cons
     for (auto const& it : prop_texts) {
         prop = it.first;
         prop_text = it.second;
-        wstring text = clean_whitespace(prop_text);
 
         LOG4CXX_DEBUG(hw_logger_, "Processing tags on " +
                                   boost::locale::conv::utf_to_utf<char>(prop))
         LOG4CXX_DEBUG(hw_logger_, "Text is: " +
-                                  boost::locale::conv::utf_to_utf<char>(text))
+                                  boost::locale::conv::utf_to_utf<char>(prop_text))
 
-        if (is_only_ascii_whitespace(text)) {
+        if (is_only_ascii_whitespace(prop_text)) {
             LOG4CXX_WARN(hw_logger_, "No text to process for " +
                                      boost::locale::conv::utf_to_utf<char>(prop))
             continue;
@@ -546,7 +533,7 @@ void KeywordTagging::process_text_tagging(Properties &detection_properties, cons
         bool full_regex = DetectionComponentUtils::GetProperty(job.job_properties, "FULL_REGEX_SEARCH", true);
 
         map<wstring, map<wstring, vector<string>>> trigger_tags_words_offset;
-        set<wstring> found_tags_regex = search_regex(job, text, json_kvs_regex, trigger_tags_words_offset, full_regex);
+        set<wstring> found_tags_regex = search_regex(job, prop_text, json_kvs_regex, trigger_tags_words_offset, full_regex);
         all_found_tags.insert(found_tags_regex.begin(), found_tags_regex.end());
 
         wstring tag_string = boost::algorithm::join(found_tags_regex, L"; ");
