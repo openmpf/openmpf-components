@@ -306,7 +306,7 @@ class TrainerBase:
 class SimpleTrainer(TrainerBase):
     """A simple trainer class implementing generic functions."""
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, classnames=[]):
         super().__init__()
         self.check_cfg(cfg)
 
@@ -321,9 +321,9 @@ class SimpleTrainer(TrainerBase):
         self.output_dir = cfg.OUTPUT_DIR
 
         self.cfg = cfg
-        self.build_data_loader()
-        self.build_model()
-        self.evaluator = build_evaluator(cfg, lab2cname=self.lab2cname)
+        # self.build_data_loader()
+        self.build_model(classnames)
+        # self.evaluator = build_evaluator(cfg, lab2cname=self.lab2cname)
         self.best_result = -np.inf
 
     def check_cfg(self, cfg):
@@ -443,23 +443,23 @@ class SimpleTrainer(TrainerBase):
             self.save_model(self.epoch, self.output_dir)
 
     @torch.no_grad()
-    def test(self, image=None, split=None):
+    def test(self, images=None, split=None):
         """A generic testing pipeline."""
         self.set_model_mode("eval")
-        self.evaluator.reset()
+        # self.evaluator.reset()
 
-        if split is None:
-            split = self.cfg.TEST.SPLIT
+        # if split is None:
+        #     split = self.cfg.TEST.SPLIT
 
-        if split == "val" and self.val_loader is not None:
-            data_loader = self.val_loader
-        else:
-            split = "test"  # in case val_loader is None
-            data_loader = self.test_loader
+        # if split == "val" and self.val_loader is not None:
+        #     data_loader = self.val_loader
+        # else:
+        #     split = "test"  # in case val_loader is None
+        #     data_loader = self.test_loader
 
         # print(f"Evaluate on the *{split}* set")
 
-        return self.model_inference(image)
+        return self.model_inference(images)
     
         for batch_idx, batch in enumerate(tqdm(data_loader)):
             input, label = self.parse_batch_test(batch)

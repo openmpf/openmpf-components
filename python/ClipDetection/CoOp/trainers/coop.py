@@ -203,7 +203,7 @@ class CustomCLIP(nn.Module):
         logit_scale = self.logit_scale.exp()
         logits = logit_scale * image_features @ text_features.t()
 
-        return logits
+        return logits, image_features
 
 
 @TRAINER_REGISTRY.register()
@@ -217,9 +217,9 @@ class CoOp(TrainerX):
     def check_cfg(self, cfg):
         assert cfg.TRAINER.COOP.PREC in ["fp16", "fp32", "amp"]
 
-    def build_model(self):
+    def build_model(self, classnames=[]):
         cfg = self.cfg
-        classnames = self.dm.dataset.classnames
+        classnames = classnames
 
         clip_model = load_clip_to_cpu(cfg)
         

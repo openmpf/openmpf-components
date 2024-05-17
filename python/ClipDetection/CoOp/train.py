@@ -129,7 +129,7 @@ def setup_cfg(args):
 
     return cfg
 
-def get_trainer(args):
+def get_trainer(args, classnames=[]):
     cfg = setup_cfg(args)
     if cfg.SEED >= 0:
         set_random_seed(cfg.SEED)
@@ -137,7 +137,7 @@ def get_trainer(args):
     if torch.cuda.is_available() and cfg.USE_CUDA:
         torch.backends.cudnn.benchmark = True
     
-    return build_trainer(cfg)
+    return build_trainer(cfg, classnames)
 
 def main(args, image=None):
     cfg = setup_cfg(args)

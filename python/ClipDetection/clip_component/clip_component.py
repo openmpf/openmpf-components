@@ -172,23 +172,28 @@ class CoOpWrapper(object):
                 f"Properties incompatible with CoOp. Make sure that CLASSIFICATION_LIST='imagenet', TEMPLATE_PATH='', CLASSIFICATION_PATH='', and ENABLE_TRITON=False.",
                 mpf.DetectionError.INVALID_PROPERTY
             )
-        self._manual_args = ["--root", "/ckb-nfs/home/zcafego/", "--seed", "1", "--trainer", "CoOp", "--dataset-config-file", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/configs/datasets/imagenet.yaml", "--config-file", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/configs/trainers/CoOp/vit_l14_ep50.yaml", "--output-dir", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/output/evaluation/CoOp/vit_l14_ep50_16shots/nctx16_cscFalse_ctpend/imagenet/seed1", "--model-dir", "/ckb-nfs/home/zcafego/git/openmpf-projects/openmpf-components/python/ClipDetection/CoOp/output/imagenet/CoOp/vit_l14_ep50_16shots/nctx16_cscFalse_ctpend/seed1", "--load-epoch", "50", "--eval-only", "TRAINER.COOP.N_CTX", "16", "TRAINER.COOP.CSC", "False", "TRAINER.COOP.CLASS_TOKEN_POSITION", "end"]
+        self._manual_args = ["--seed", "1", "--trainer", "CoOp", "--config-file", "./CoOp/configs/trainers/CoOp/vit_l14_ep50.yaml", "--model-dir", "./CoOp/output/imagenet/CoOp/vit_l14_ep50_16shots/nctx16_cscFalse_ctpend/seed1", "--load-epoch", "50", "--eval-only", "TRAINER.COOP.N_CTX", "16", "TRAINER.COOP.CSC", "False", "TRAINER.COOP.CLASS_TOKEN_POSITION", "end"]
         self.args = self._create_arg_parser(self._manual_args)
         self._class_mapping = self._get_mapping_from_classifications(os.path.realpath(resource_filename(__name__, f'data/imagenet_classification_list.csv')))
-        # Run main to return trainer object
-        # self.trainer = trainer
-        self.trainer = get_trainer(self.args)
-
-        # In get_detections, we would run self.trainer.load_model and self.trainer.test
+        self.classnames = self._class_mapping.keys()
+        # Create trainer object
+        print("Creating trainer...")
+        self.trainer = get_trainer(self.args, self.classnames)
+        print("Trainer created.")
 
     def get_detections(self, images, **kwargs):
+        # Preprocess image
         self._preprocessor = ImagePreprocessor(enable_cropping=False, image_size=224)
         images = [Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)) for image in images]
         image_sizes = [image.size for image in images]
         torch_imgs = torch.stack([self._preprocessor.preprocess(image).squeeze(0) for image in images]).to(device)
 
+        # Load model
+        print("Loading model...")
         self.trainer.load_model(self.args.model_dir, epoch = self.args.load_epoch)
-        output = self.trainer.test(image=torch_imgs)
+        print("Model loaded.")
+        # Pass image through model
+        output, image_features = self.trainer.test(images=torch_imgs)
 
         softmax = torch.nn.Softmax(dim=1)(output)
         values, indices = softmax.topk(kwargs['num_classifications'])
@@ -215,9 +220,8 @@ class CoOpWrapper(object):
                 "CLASSIFICATION LIST": classification_list
             }
             
-            # TODO: Find way to support 'include_features' when using CoOp
-            # if kwargs['include_features']:
-            #     detection_properties['FEATURE'] = base64.b64encode(image_features.cpu().numpy()).decode()
+            if kwargs['include_features']:
+                detection_properties['FEATURE'] = base64.b64encode(image_features.cpu().numpy()).decode()
 
             yield mpf.ImageLocation(
                 x_left_upper = 0,
