@@ -69,7 +69,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         return prop
 
     def _parse_properties(self, job_properties):
-        model_name = self._get_prop(job_properties, "MODEL_NAME", "ViT-L/14", ["ViT-L/14", "ViT-B/32"])
+        model_name = self._get_prop(job_properties, "MODEL_NAME", "ViT-L/14", ["ViT-L/14", "ViT-B/32", "CoOp"])
         batch_size = self._get_prop(job_properties, "DETECTION_FRAME_BATCH_SIZE", 64)
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
         classification_path = os.path.expandvars(self._get_prop(job_properties, "CLASSIFICATION_PATH", ''))
@@ -95,6 +95,136 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             triton_server = triton_server
         )
 
+    def get_detections_from_image_reader(self, image_job, image_reader):
+        logger.info("Received image job: %s", image_job)
+
+        kwargs = self._parse_properties(image_job.job_properties)
+        image = image_reader.get_image()
+
+        num_detections = 0
+        try:
+            wrapper = self._get_model_wrapper(model_name=kwargs['model_name'], kwargs=kwargs)
+            detections = wrapper.get_detections((image,), **kwargs)
+            for detection in detections:
+                yield detection
+                num_detections += 1
+            logger.info(f"Job complete. Found {num_detections} detections.")
+        
+        except Exception as e:
+            logger.exception(f'Job failed due to: {e}')
+            raise
+
+    @staticmethod
+    def _batches_from_video_capture(video_capture, batch_size):
+        frames = []
+        for frame in video_capture:
+            frames.append(frame)
+            if len(frames) >= batch_size:
+                yield len(frames), np.stack(frames)
+                frames = []
+        
+        if len(frames):
+            padded = np.pad(
+                array=np.stack(frames),
+                pad_width=((0, batch_size - len(frames)), (0, 0), (0, 0), (0, 0)),
+                mode='constant',
+                constant_values=0
+            )
+            yield len(frames), padded
+
+    def get_detections_from_video_capture(self,
+                                          video_job: mpf.VideoJob,
+                                          video_capture: mpf_util.VideoCapture) -> Iterable[mpf.VideoTrack]:
+        logger.info("Received video job: %s", video_job)
+        kwargs = self._parse_properties(video_job.job_properties)
+        
+        # If processing a video where each frame is cropped into 144 images, the batch size is set to one so that the crops aren't split between batches
+        batch_size = 1 if kwargs['enable_cropping'] else kwargs['batch_size']
+        
+        batch_gen = self._batches_from_video_capture(video_capture, batch_size)
+        detections = []
+        wrapper = self._get_model_wrapper(kwargs['model_name'], **kwargs)
+
+        for n, batch in batch_gen:
+            try:
+                detections += list(islice(wrapper.get_detections(batch, **kwargs), n))
+            except Exception as e:
+                logger.exception(f"Job failed due to: {e}")
+                raise
+        
+        tracks = create_tracks(detections)
+        logger.info(f"Job complete. Found {len(tracks)} tracks.")
+        return tracks
+
+    def _get_model_wrapper(self, model_name, kwargs):   
+        if model_name not in self._model_wrappers:
+            if model_name == "CoOp":
+                self._model_wrappers['CoOp'] = CoOpWrapper(**kwargs)
+            else:
+                self._model_wrappers[model_name] = ClipWrapper(model_name)
+
+        return self._model_wrappers[model_name]
+
+class CoOpWrapper(object):
+    def __init__(self, **kwargs):
+        if (kwargs['classification_list'] == 'coco') or (kwargs['template_path'] != '') or (kwargs['classification_path'] != '') or (kwargs['enable_triton'] == True):
+            raise mpf.DetectionException(
+                f"Properties incompatible with CoOp. Make sure that CLASSIFICATION_LIST='imagenet', TEMPLATE_PATH='', CLASSIFICATION_PATH='', and ENABLE_TRITON=False.",
+                mpf.DetectionError.INVALID_PROPERTY
+            )
+        self._class_mapping = self._get_mapping_from_classifications(os.path.realpath(resource_filename(__name__, f'data/imagenet_classification_list.csv')))
+        # Run main to return trainer object
+        # self.trainer = trainer
+
+        # In get_detections, we would run self.trainer.load_model and self.trainer.test
+
+    def get_detections(self, images, **kwargs):
+        self._preprocessor = ImagePreprocessor(enable_cropping=False, image_size=224)
+        images = [Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)) for image in images]
+        image_sizes = [image.size for image in images]
+        torch_imgs = torch.stack([self._preprocessor.preprocess(image).squeeze(0) for image in images]).to(device)
+
+        manual_args =[]
+        args = self._create_arg_parser(manual_args)
+        output = main(args, image=torch_imgs)
+        softmax = torch.nn.Softmax(dim=1)(output)
+        values, indices = softmax.topk(kwargs['num_classifications'])
+
+        for detection_values, detection_indices, image_size in zip(values, indices, image_sizes):
+            classification_list = []
+            classification_confidence_list = []
+            count = 0
+            for value, index in zip(detection_values, detection_indices):
+                if count >= kwargs['num_classifications']:
+                    break
+                class_name = self._class_mapping[list(self._class_mapping.keys())[int(index)]]
+                if class_name not in classification_list:
+                    classification_list.append(class_name)
+                    classification_confidence_list.append(str(value.item()))
+                    count += 1
+            
+            classification_list = '; '.join(classification_list)
+            classification_confidence_list = '; '.join(classification_confidence_list)
+            
+            detection_properties = {
+                "CLASSIFICATION": classification_list.split('; ')[0],
+                "CLASSIFICATION CONFIDENCE LIST": classification_confidence_list,
+                "CLASSIFICATION LIST": classification_list
+            }
+            
+            # TODO: Find way to support 'include_features' when using CoOp
+            # if kwargs['include_features']:
+            #     detection_properties['FEATURE'] = base64.b64encode(image_features.cpu().numpy()).decode()
+
+            yield mpf.ImageLocation(
+                x_left_upper = 0,
+                y_left_upper = 0,
+                width = image_size[0],
+                height = image_size[1],
+                confidence = float(classification_confidence_list.split('; ')[0]),
+                detection_properties = detection_properties
+            )
+    
     def _create_arg_parser(self, manual_args):
         parser = argparse.ArgumentParser()
         parser.add_argument("--root", type=str, default="", help="path to dataset")
@@ -150,79 +280,16 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         )
         args = parser.parse_args(manual_args)
         return args
-
-    def get_detections_from_image_reader(self, image_job, image_reader):
-        logger.info("Received image job: %s", image_job)
-
-        kwargs = self._parse_properties(image_job.job_properties)
-        image = image_reader.get_image()
-
-        # Add manual_args inside list
-        manual_args = []
-        args = self._create_arg_parser(manual_args)
-        main(args)
-
-        num_detections = 0
-        try:
-            wrapper = self._get_model_wrapper(kwargs['model_name'])
-            detections = wrapper.get_detections((image,), **kwargs)
-            for detection in detections:
-                yield detection
-                num_detections += 1
-            logger.info(f"Job complete. Found {num_detections} detections.")
-        
-        except Exception as e:
-            logger.exception(f'Job failed due to: {e}')
-            raise
-
+    
     @staticmethod
-    def _batches_from_video_capture(video_capture, batch_size):
-        frames = []
-        for frame in video_capture:
-            frames.append(frame)
-            if len(frames) >= batch_size:
-                yield len(frames), np.stack(frames)
-                frames = []
-        
-        if len(frames):
-            padded = np.pad(
-                array=np.stack(frames),
-                pad_width=((0, batch_size - len(frames)), (0, 0), (0, 0), (0, 0)),
-                mode='constant',
-                constant_values=0
-            )
-            yield len(frames), padded
-
-    def get_detections_from_video_capture(self,
-                                          video_job: mpf.VideoJob,
-                                          video_capture: mpf_util.VideoCapture) -> Iterable[mpf.VideoTrack]:
-        logger.info("Received video job: %s", video_job)
-        kwargs = self._parse_properties(video_job.job_properties)
-        
-        # If processing a video where each frame is cropped into 144 images, the batch size is set to one so that the crops aren't split between batches
-        batch_size = 1 if kwargs['enable_cropping'] else kwargs['batch_size']
-        
-        batch_gen = self._batches_from_video_capture(video_capture, batch_size)
-        detections = []
-        wrapper = self._get_model_wrapper(kwargs['model_name'])
-
-        for n, batch in batch_gen:
-            try:
-                detections += list(islice(wrapper.get_detections(batch, **kwargs), n))
-            except Exception as e:
-                logger.exception(f"Job failed due to: {e}")
-                raise
-        
-        tracks = create_tracks(detections)
-        logger.info(f"Job complete. Found {len(tracks)} tracks.")
-        return tracks
-
-    def _get_model_wrapper(self, model_name):
-        if model_name not in self._model_wrappers:
-            self._model_wrappers[model_name] = ClipWrapper(model_name)
-
-        return self._model_wrappers[model_name]
-
+    def _get_mapping_from_classifications(classification_path: str) -> Mapping[str, str]:
+        with open(classification_path) as csvfile:
+            mapping = {}
+            csvreader = csv.reader(csvfile)
+            for row in csvreader:
+                mapping[row[0].strip()] = row[1].strip()
+                
+        return mapping
 class ClipWrapper(object):
     def __init__(self, model_name='ViT-L/14'):
         logger.info("Loading model...")
@@ -364,7 +431,7 @@ class ClipWrapper(object):
 
             try:
                 logger.info("Updating classifications...")
-                self._class_mapping = self._get_mapping_from_classifications(classification_path)
+                self._class_mapping = self._get_mapping_from_classifications(self._classification_path)
                 logger.info("Classifications updated.")
             except Exception:
                 raise mpf.DetectionException(

@@ -130,12 +130,12 @@ def setup_cfg(args):
     return cfg
 
 
-def main(args):
+def main(args, image=None):
     cfg = setup_cfg(args)
     if cfg.SEED >= 0:
         print("Setting fixed seed: {}".format(cfg.SEED))
         set_random_seed(cfg.SEED)
-    setup_logger(cfg.OUTPUT_DIR)
+    # setup_logger(cfg.OUTPUT_DIR)
 
     if torch.cuda.is_available() and cfg.USE_CUDA:
         torch.backends.cudnn.benchmark = True
@@ -148,8 +148,7 @@ def main(args):
 
     if args.eval_only:
         trainer.load_model(args.model_dir, epoch=args.load_epoch)
-        trainer.test()
-        return
+        return trainer.test(image=image)
 
     if not args.no_train:
         trainer.train()

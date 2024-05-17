@@ -443,7 +443,7 @@ class SimpleTrainer(TrainerBase):
             self.save_model(self.epoch, self.output_dir)
 
     @torch.no_grad()
-    def test(self, split=None):
+    def test(self, image=None, split=None):
         """A generic testing pipeline."""
         self.set_model_mode("eval")
         self.evaluator.reset()
@@ -459,6 +459,8 @@ class SimpleTrainer(TrainerBase):
 
         print(f"Evaluate on the *{split}* set")
 
+        return self.model_inference(image)
+    
         for batch_idx, batch in enumerate(tqdm(data_loader)):
             input, label = self.parse_batch_test(batch)
             output = self.model_inference(input)

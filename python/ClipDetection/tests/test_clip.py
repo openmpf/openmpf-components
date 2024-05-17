@@ -38,6 +38,24 @@ import mpf_component_api as mpf
 logging.basicConfig(level=logging.DEBUG)
 
 class TestClip(unittest.TestCase):
+    def test_image_coop(self):
+        job = mpf.ImageJob(
+            job_name='test-image-coop',
+            data_uri=self._get_test_file('dog.jpg'),
+            job_properties=dict(
+                CLASSIFICATION_LIST='imagenet',
+                NUMBER_OF_CLASSIFICATIONS = 3,
+                TEMPLATE_TYPE = 'openai_1',
+                ENABLE_CROPPING ='False',
+                INCLUDE_FEATURES = 'True',
+                MODEL_NAME="CoOp"
+            ),
+            media_properties={},
+            feed_forward_location=None 
+        )
+        component = ClipComponent()
+        result = list(component.get_detections_from_image(job))[0]
+        self.assertTrue("toy terrier", result.detection_properties["CLASSIFICATION"])
 
     def test_image_file(self):
         job = mpf.ImageJob(
