@@ -84,16 +84,12 @@ class PromptLearner(nn.Module):
         else:
             # random initialization
             if cfg.TRAINER.COOP.CSC:
-                print("Initializing class-specific contexts")
                 ctx_vectors = torch.empty(n_cls, n_ctx, ctx_dim, dtype=dtype)
             else:
-                print("Initializing a generic context")
                 ctx_vectors = torch.empty(n_ctx, ctx_dim, dtype=dtype)
             nn.init.normal_(ctx_vectors, std=0.02)
             prompt_prefix = " ".join(["X"] * n_ctx)
 
-        print(f'Initial context: "{prompt_prefix}"')
-        print(f"Number of context words (tokens): {n_ctx}")
 
         self.ctx = nn.Parameter(ctx_vectors)  # to be optimized
 
@@ -225,17 +221,14 @@ class CoOp(TrainerX):
         cfg = self.cfg
         classnames = self.dm.dataset.classnames
 
-        print(f"Loading CLIP (backbone: {cfg.MODEL.BACKBONE.NAME})")
         clip_model = load_clip_to_cpu(cfg)
         
         if cfg.TRAINER.COOP.PREC == "fp32" or cfg.TRAINER.COOP.PREC == "amp":
             # CLIP's default precision is fp16
             clip_model.float()
 
-        print("Building custom CLIP")
         self.model = CustomCLIP(cfg, classnames, clip_model)
 
-        print("Turning off gradients in both the image and the text encoder")
         for name, param in self.model.named_parameters():
             if "prompt_learner" not in name:
                 param.requires_grad_(False)
@@ -255,7 +248,6 @@ class CoOp(TrainerX):
         # big, which slows down the copy operation in DataParallel
         device_count = torch.cuda.device_count()
         if device_count > 1:
-            print(f"Multiple GPUs detected (n_gpus={device_count}), use all of them!")
             self.model = nn.DataParallel(self.model)
 
     def forward_backward(self, batch):
@@ -322,6 +314,5 @@ class CoOp(TrainerX):
             if "token_suffix" in state_dict:
                 del state_dict["token_suffix"]
 
-            print("Loading weights to {} " 'from "{}" (epoch = {})'.format(name, model_path, epoch))
             # set strict=False
             self._models[name].load_state_dict(state_dict, strict=False)

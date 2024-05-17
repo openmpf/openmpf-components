@@ -457,7 +457,7 @@ class SimpleTrainer(TrainerBase):
             split = "test"  # in case val_loader is None
             data_loader = self.test_loader
 
-        print(f"Evaluate on the *{split}* set")
+        # print(f"Evaluate on the *{split}* set")
 
         return self.model_inference(image)
     

@@ -18,7 +18,7 @@ _C.SEED = -1
 _C.USE_CUDA = True
 # Print detailed information
 # E.g. trainer, dataset, and backbone
-_C.VERBOSE = True
+_C.VERBOSE = False
 
 ###########################
 # Input

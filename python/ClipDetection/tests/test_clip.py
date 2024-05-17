@@ -56,6 +56,8 @@ class TestClip(unittest.TestCase):
         component = ClipComponent()
         result = list(component.get_detections_from_image(job))[0]
         self.assertTrue("toy terrier", result.detection_properties["CLASSIFICATION"])
+        result = list(component.get_detections_from_image(job))[0]
+        self.assertTrue("toy terrier", result.detection_properties["CLASSIFICATION"])
 
     def test_image_file(self):
         job = mpf.ImageJob(
