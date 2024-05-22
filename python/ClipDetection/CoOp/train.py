@@ -1,3 +1,15 @@
+################################################################
+# CHANGES MADE TO FILE                                         #
+# ------------------------------------------------------------ #
+# Created get_trainer() function.                              #
+#   - Functions like main() but doesn't initialize logger and  #
+#     returns trainer object from build_trainer(cfg) call      #
+#                                                              #
+#   - trainer.load_model() and trainer.train() are called in   #
+#     clip_component.py                                        #
+################################################################
+
+
 import argparse
 import torch
 

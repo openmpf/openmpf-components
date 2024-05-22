@@ -1,3 +1,11 @@
+################################################################
+# CHANGES MADE TO FILE                                         #
+# ------------------------------------------------------------ #
+# Parameter classnames=[] added to CoOp class __init__.        #
+#   - Used to bypass need for DataManager object.              #
+#                                                              #
+################################################################
+
 import os.path as osp
 import random
 import numpy as np
