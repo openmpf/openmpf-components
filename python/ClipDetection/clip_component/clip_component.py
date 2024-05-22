@@ -143,7 +143,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         
         batch_gen = self._batches_from_video_capture(video_capture, batch_size)
         detections = []
-        wrapper = self._get_model_wrapper(kwargs['model_name'], **kwargs)
+        wrapper = self._get_model_wrapper(model_name=kwargs['model_name'], kwargs=kwargs)
 
         for n, batch in batch_gen:
             try:
@@ -189,9 +189,8 @@ class CoOpWrapper(object):
         torch_imgs = torch.stack([self._preprocessor.preprocess(image).squeeze(0) for image in images]).to(device)
 
         # Load model
-        print("Loading model...")
         self.trainer.load_model(self.args.model_dir, epoch = self.args.load_epoch)
-        print("Model loaded.")
+        
         # Pass image through model
         output, image_features = self.trainer.test(images=torch_imgs)
 

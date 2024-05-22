@@ -144,6 +144,38 @@ class TestClip(unittest.TestCase):
         self.assertEqual(results[2].start_frame, 10)
         self.assertEqual(results[2].stop_frame, 14)
 
+    def test_video_file_coop(self):
+        job = mpf.VideoJob(
+            job_name='test-video',
+            data_uri=self._get_test_file('test_video.mp4'),
+            start_frame=0,
+            stop_frame=14,
+            job_properties=dict(
+                MODEL_NAME = 'CoOp',
+                CLASSIFICATION_LIST = 'imagenet',
+                TEMPLATE_TYPE = 'openai_1',
+                ENABLE_CROPPING = 'False',
+                DETECTION_FRAME_BATCH_SIZE = 4
+            ),
+            media_properties={},
+            feed_forward_track=None
+        )
+        component = ClipComponent()
+        results = list(component.get_detections_from_video(job))
+        print(results[0])
+
+        self.assertEqual(results[0].detection_properties['CLASSIFICATION'], "Border collie")
+        self.assertEqual(results[0].start_frame, 0)
+        self.assertEqual(results[0].stop_frame, 4)
+
+        self.assertEqual(results[1].detection_properties['CLASSIFICATION'], "anemone fish")
+        self.assertEqual(results[1].start_frame, 5)
+        self.assertEqual(results[1].stop_frame, 9)
+
+        self.assertEqual(results[2].detection_properties['CLASSIFICATION'], "Border collie")
+        self.assertEqual(results[2].start_frame, 10)
+        self.assertEqual(results[2].stop_frame, 14)
+
     @staticmethod
     def _get_test_file(filename):
         return os.path.join(os.path.dirname(__file__), 'data', filename)
