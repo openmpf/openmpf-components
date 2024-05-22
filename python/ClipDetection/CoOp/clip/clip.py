@@ -1,3 +1,11 @@
+################################################################
+# CHANGES MADE TO FILE                                         #
+# ------------------------------------------------------------ #
+# Modified CLIP files to support ViT-L/14 model                #
+#     - From OpenAI source code for CLIP                       #
+#                                                              #
+################################################################
+
 import hashlib
 import os
 import urllib

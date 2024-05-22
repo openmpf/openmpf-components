@@ -3,6 +3,13 @@ The files in the following directories have been created for use in the ClipDete
 ./configs/CoOp/vit_l14_ep50.yaml
 
 
+The files in the following directories have been modified (see top of file for description of changes):
+
+./train.py
+./trainers/coop.py
+./clip/clip.py
+
+
 The files in the following directories CAN PROBABLY BE DELETED:
 
 ./configs/* (except for files listed above)
