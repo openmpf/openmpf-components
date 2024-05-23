@@ -102,14 +102,14 @@ Each input property listed in `FEED_FORWARD_PROP_TO_PROCESS` that's present, and
 not just whitespace, which has sentences that scored high enough against entries in
 the corpus file, will result in the following output properties:
 
-- `TEXT [TAG] TRIGGER SENTENCES`
-- `TEXT [TAG] TRIGGER SENTENCES OFFSET`
-- `TEXT [TAG] TRIGGER SENTENCES SCORE`
-- `TRANSLATION [TAG] TRIGGER SENTENCES`
-- `TRANSLATION [TAG] TRIGGER SENTENCES OFFSET`
-- `TRANSLATION [TAG] TRIGGER SENTENCES SCORE`
+- `TEXT <TAG> TRIGGER SENTENCES`
+- `TEXT <TAG> TRIGGER SENTENCES OFFSET`
+- `TEXT <TAG> TRIGGER SENTENCES SCORE`
+- `TRANSLATION <TAG> TRIGGER SENTENCES`
+- `TRANSLATION <TAG> TRIGGER SENTENCES OFFSET`
+- `TRANSLATION <TAG> TRIGGER SENTENCES SCORE`
 
-The `[TAG]` value in each of the output properties above will be the `tag` 
+The `<TAG>` value in each of the output properties above will be the `tag` 
 value from the corpus file that the trigger sentence scored against.
 
 The tags associated with the trigger sentences will be stored in a `TAGS` output 
@@ -121,19 +121,19 @@ matter if the trigger sentences are found in only one or multiple input properti
 in `FEED_FORWARD_PROP_TO_PROCESS`.
 
 When the `TEXT` property is processed, the input sentence(s) that triggered each tag will
-be stored in `TEXT [TAG] TRIGGER SENTENCES`. Note that because semicolons can be part of
+be stored in `TEXT <TAG> TRIGGER SENTENCES`. Note that because semicolons can be part of
 the trigger sentence itself, those semicolons will be encapsulated in brackets. For
 example, `This sentence has has a semicolon;` in the input `TEXT` is reported as:
-`TEXT [TAG] TRIGGER SENTENCES=This sentence has has a semicolon[;]; other trigger sentence`.
+`TEXT <TAG> TRIGGER SENTENCES=This sentence has has a semicolon[;]; other trigger sentence`.
 
 For each trigger sentence in `TEXT`, the substring index range will be stored in 
-`TEXT [TAG] TRIGGER SENTENCES OFFSET`. Each group of indexes, referring to the same
+`TEXT <TAG> TRIGGER SENTENCES OFFSET`. Each group of indexes, referring to the same
 trigger sentence reported in sequence, is separated by a semicolon followed by a space.
 Indexes within a single group are separated by commas. For example:
 
 ```
-TEXT [TAG] TRIGGER SENTENCES=trigger sentence 1; trigger sentence 2
-TEXT [TAG] TRIGGER SENTENCES OFFSET=0-17, 40-57; 112-129
+TEXT <TAG> TRIGGER SENTENCES=trigger sentence 1; trigger sentence 2
+TEXT <TAG> TRIGGER SENTENCES OFFSET=0-17, 40-57; 112-129
 ```
  
 This means that `trigger sentence 1` occurs twice in the text at the index ranges
@@ -143,18 +143,18 @@ When `ENABLE_DEBUG` is set to true, the output properties will also include a
 `TRIGGER SENTENCES MATCHES` property containing a semicolon-separated list of the 
 `text` sentences in the corpus that were triggered for that tag:
 
-- `TEXT [TAG] TRIGGER SENTENCES`
-- `TEXT [TAG] TRIGGER SENTENCES MATCHES`
-- `TEXT [TAG] TRIGGER SENTENCES OFFSET`
-- `TEXT [TAG] TRIGGER SENTENCES SCORE`
-- `TRANSLATION [TAG] TRIGGER SENTENCES`
-- `TRANSLATION [TAG] TRIGGER SENTENCES MATCHES`
-- `TRANSLATION [TAG] TRIGGER SENTENCES OFFSET`
-- `TRANSLATION [TAG] TRIGGER SENTENCES SCORE`
+- `TEXT <TAG> TRIGGER SENTENCES`
+- `TEXT <TAG> TRIGGER SENTENCES MATCHES`
+- `TEXT <TAG> TRIGGER SENTENCES OFFSET`
+- `TEXT <TAG> TRIGGER SENTENCES SCORE`
+- `TRANSLATION <TAG> TRIGGER SENTENCES`
+- `TRANSLATION <TAG> TRIGGER SENTENCES MATCHES`
+- `TRANSLATION <TAG> TRIGGER SENTENCES OFFSET`
+- `TRANSLATION <TAG> TRIGGER SENTENCES SCORE`
 
 For example:
 
 ```
-TEXT [TAG] TRIGGER SENTENCES=trigger sentence 1; trigger sentence 2
-TEXT [TAG] TRIGGER SENTENCES MATCHES=Corpus sentence matching trigger sentence 1; Corpus sentence matching trigger sentence 2
+TEXT <TAG> TRIGGER SENTENCES=trigger sentence 1; trigger sentence 2
+TEXT <TAG> TRIGGER SENTENCES MATCHES=Corpus sentence matching trigger sentence 1; Corpus sentence matching trigger sentence 2
 ```
