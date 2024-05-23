@@ -18,27 +18,27 @@ from dassl.config import get_cfg_default
 from dassl.engine import build_trainer
 
 # custom
-import CoOp.datasets.oxford_pets
-import CoOp.datasets.oxford_flowers
-import CoOp.datasets.fgvc_aircraft
-import CoOp.datasets.dtd
-import CoOp.datasets.eurosat
-import CoOp.datasets.stanford_cars
-import CoOp.datasets.food101
-import CoOp.datasets.sun397
-import CoOp.datasets.caltech101
-import CoOp.datasets.ucf101
-import CoOp.datasets.cococrops
-import CoOp.datasets.imagenet
+# import CoOp.datasets.oxford_pets
+# import CoOp.datasets.oxford_flowers
+# import CoOp.datasets.fgvc_aircraft
+# import CoOp.datasets.dtd
+# import CoOp.datasets.eurosat
+# import CoOp.datasets.stanford_cars
+# import CoOp.datasets.food101
+# import CoOp.datasets.sun397
+# import CoOp.datasets.caltech101
+# import CoOp.datasets.ucf101
+# import CoOp.datasets.cococrops
+# import CoOp.datasets.imagenet
 
-import CoOp.datasets.imagenet_sketch
-import CoOp.datasets.imagenetv2
-import CoOp.datasets.imagenet_a
-import CoOp.datasets.imagenet_r
+# import CoOp.datasets.imagenet_sketch
+# import CoOp.datasets.imagenetv2
+# import CoOp.datasets.imagenet_a
+# import CoOp.datasets.imagenet_r
 
 import CoOp.trainers.coop
-import CoOp.trainers.cocoop
-import CoOp.trainers.zsclip
+# import CoOp.trainers.cocoop
+# import CoOp.trainers.zsclip
 
 import os 
 
