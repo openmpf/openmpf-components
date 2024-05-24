@@ -43,7 +43,7 @@ RUN --mount=type=tmpfs,target=/var/cache/apt \
 
 RUN pip3 install --upgrade pip
 
-RUN pip3 install ftfy regex tqdm
+RUN pip3 install ftfy regex tqdm 'setuptools<70'
 
 RUN --mount=type=tmpfs,target=/tmp \
         mkdir /tmp/CLIP; \
