@@ -1,3 +1,16 @@
+##################################################################
+# CHANGES MADE TO FILE                                           #
+# -------------------------------------------------------------- #
+# Parameter classnames=[] added to SimpleTrainer class __init__. #
+#   - Used to bypass need for DataManager object.                #
+#                                                                #
+# Prevent SimpleTrainer from creating DataLoader or Evaluator    #
+#                                                                #
+# Simplify SimpleTrainer.test() by simply returning model        #
+# inference call on single image passed to it as parameter       #
+#                                                                #
+##################################################################
+
 import time
 import numpy as np
 import os.path as osp

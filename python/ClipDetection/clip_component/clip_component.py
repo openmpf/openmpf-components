@@ -41,7 +41,7 @@ import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 import clip
-from CoOp.train import main, get_trainer
+from CoOp.train import get_trainer
 
 import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException, triton_to_np_dtype
@@ -172,7 +172,7 @@ class CoOpWrapper(object):
                 f"Properties incompatible with CoOp. Make sure that CLASSIFICATION_LIST='imagenet', TEMPLATE_PATH='', CLASSIFICATION_PATH='', and ENABLE_TRITON=False.",
                 mpf.DetectionError.INVALID_PROPERTY
             )
-        self._manual_args = ["--seed", "1", "--trainer", "CoOp", "--config-file", "./CoOp/configs/trainers/CoOp/vit_l14_ep50.yaml", "--model-dir", "./CoOp/output/imagenet/CoOp/vit_l14_ep50_16shots/nctx16_cscFalse_ctpend/seed1", "--load-epoch", "50", "--eval-only", "TRAINER.COOP.N_CTX", "16", "TRAINER.COOP.CSC", "False", "TRAINER.COOP.CLASS_TOKEN_POSITION", "end"]
+        self._manual_args = ["--seed", "1", "--trainer", "CoOp", "--config-file", "/opt/coop_src/CoOp/configs/trainers/CoOp/vit_l14_ep50.yaml", "--model-dir", "/opt/coop_src/CoOp/output/imagenet/CoOp/vit_l14_ep50_16shots/nctx16_cscFalse_ctpend/seed1", "--load-epoch", "50", "--eval-only", "TRAINER.COOP.N_CTX", "16", "TRAINER.COOP.CSC", "False", "TRAINER.COOP.CLASS_TOKEN_POSITION", "end"]
         self.args = self._create_arg_parser(self._manual_args)
         self._class_mapping = self._get_mapping_from_classifications(os.path.realpath(resource_filename(__name__, f'data/imagenet_classification_list.csv')))
         self.classnames = self._class_mapping.keys()
