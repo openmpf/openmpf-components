@@ -86,6 +86,12 @@
                     "description": "Number of frames to batch inference when processing video. GPU VRAM dependant. If ENABLE_CROPPING is set to true, then the value will be ignored and set to 1.",
                     "type": "INT",
                     "defaultValue": "64"
+                },
+                {
+                    "name": "CUDA_DEVICE_ID",
+                    "description": "CUDA device / GPU to use. Set to -1 to only use CPU.",
+                    "type": "INT",
+                    "propertiesKey": "detection.cuda.device.id"
                 }
             ] 
         }
