@@ -80,7 +80,9 @@ class ArgosLanguageMapper:
         "ukr": "uk",
         "zho": "zh",
         "zho-hans": "zh",
-        "zho-hant": "zt"
+        "zho-hant": "zt",
+        "hans": "zh",
+        "hant": "zt"
     }
 
     # Chinese has two scripts, traditional and simplified.
