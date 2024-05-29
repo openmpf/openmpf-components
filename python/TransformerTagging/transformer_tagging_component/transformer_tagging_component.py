@@ -89,7 +89,7 @@ class TransformerTaggingComponent:
             }
 
             config = JobConfig(new_job_props)
-            corpus = self._get_corpus(config.corpus_path)
+            corpus = self._get_corpus(config.corpus_path, config)
             self._add_tags(config, corpus, new_ff_props)
 
             return [ff_track]
@@ -119,9 +119,9 @@ class TransformerTaggingComponent:
             raise
 
 
-    def _get_corpus(self, corpus_path):
+    def _get_corpus(self, corpus_path, config):
         if not corpus_path in self._cached_corpuses:
-            self._cached_corpuses[corpus_path] = Corpus(corpus_path, self._cached_model)
+            self._cached_corpuses[corpus_path] = Corpus(corpus_path, self._cached_model, config.threshold)
 
         return self._cached_corpuses[corpus_path]
 
@@ -177,6 +177,7 @@ class TransformerTaggingComponent:
                     "input text": stripped_probe,
                     "corpus text": corpus.json["text"],
                     "tag": corpus.json["tag"].str.lower(),
+                    "threshold": corpus.json["threshold"],
                     "score": scores,
                     "offset": str(offset_start) + "-" + str(offset_end)
                 })
@@ -187,7 +188,7 @@ class TransformerTaggingComponent:
                 top_per_tag = probe_df.groupby(['tag'], sort=False).head(1)
 
                 # filter out results that are below threshold
-                top_per_tag_threshold = top_per_tag[top_per_tag["score"] >= config.threshold]
+                top_per_tag_threshold = top_per_tag[(top_per_tag["score"] >= top_per_tag["threshold"])]
                 all_tag_results.append(top_per_tag_threshold)
 
         # if no tags found in text return
@@ -239,8 +240,14 @@ class TransformerTaggingComponent:
 
 
 class Corpus:
-    def __init__(self, corpus_path, model):
+    def __init__(self, corpus_path, model, default_threshold):
         self.json = pd.read_json(corpus_path)
+
+        # enter default threshold for entries without corpus defined values
+        if 'threshold' in self.json.columns:
+            self.json["threshold"] = self.json["threshold"].fillna(default_threshold)
+        else:
+            self.json['threshold'] = default_threshold
 
         start = time.time()
         self.embed= model.encode(self.json["text"], convert_to_tensor=True, show_progress_bar=False)
