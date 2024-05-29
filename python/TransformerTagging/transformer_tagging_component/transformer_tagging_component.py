@@ -103,7 +103,7 @@ class TransformerTaggingComponent:
                     ' jobs, but no feed forward track provided. ')
 
             config = JobConfig(job.job_properties)
-            corpus = self._get_corpus(config.corpus_path)
+            corpus = self._get_corpus(config.corpus_path, config)
 
             self._add_tags(config, corpus, job_feed_forward.detection_properties)
 
