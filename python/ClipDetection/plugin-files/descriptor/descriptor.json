@@ -89,7 +89,7 @@
                 },
                 {
                     "name": "CUDA_DEVICE_ID",
-                    "description": "CUDA device / GPU to use. Set to -1 to only use CPU.",
+                    "description": "ID of CUDA device (typically 0) that will be used to run the models. When less than 0 CUDA will be disabled.",
                     "type": "INT",
                     "propertiesKey": "detection.cuda.device.id"
                 }

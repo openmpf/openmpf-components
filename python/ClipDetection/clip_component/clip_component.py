@@ -50,13 +50,14 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 logger = logging.getLogger('ClipComponent')
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+# device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     detection_type = 'CLASS'
 
     def __init__(self):
         self._model_wrappers = {}
+        self._device = None
 
     @staticmethod
     def _get_prop(job_properties, key, default_value, accept_values=[]):
@@ -80,6 +81,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         template_type = self._get_prop(job_properties, "TEMPLATE_TYPE", 'openai_80', ['openai_1', 'openai_7', 'openai_80'])
         template_path = os.path.expandvars(self._get_prop(job_properties, "TEMPLATE_PATH", ''))
         triton_server = self._get_prop(job_properties, "TRITON_SERVER", 'clip-detection-server:8001')
+        cuda_device_id = self._get_prop(job_properties, "CUDA_DEVICE_ID", -1)
 
         return dict(
             model_name = model_name,
@@ -92,19 +94,25 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             num_classifications = num_classifications,
             template_type = template_type,
             template_path = template_path,
-            triton_server = triton_server
+            triton_server = triton_server,
+            cuda_device_id = cuda_device_id
         )
 
     def get_detections_from_image_reader(self, image_job, image_reader):
         logger.info("Received image job: %s", image_job)
 
         kwargs = self._parse_properties(image_job.job_properties)
+        if kwargs['cuda_device_id'] >= 0:
+            self._device = torch.device(f'cuda:{kwargs['cuda_device_id']}')
+        else:
+            self._device = torch.device('cpu')
+
         image = image_reader.get_image()
 
         num_detections = 0
         try:
             wrapper = self._get_model_wrapper(model_name=kwargs['model_name'], kwargs=kwargs)
-            detections = wrapper.get_detections((image,), **kwargs)
+            detections = wrapper.get_detections((image,), self._device, **kwargs)
             for detection in detections:
                 yield detection
                 num_detections += 1
@@ -147,7 +155,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
 
         for n, batch in batch_gen:
             try:
-                detections += list(islice(wrapper.get_detections(batch, **kwargs), n))
+                detections += list(islice(wrapper.get_detections(batch, self._device, **kwargs), n))
             except Exception as e:
                 logger.exception(f"Job failed due to: {e}")
                 raise
@@ -161,7 +169,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             if model_name == "CoOp":
                 self._model_wrappers['CoOp'] = CoOpWrapper(**kwargs)
             else:
-                self._model_wrappers[model_name] = ClipWrapper(model_name)
+                self._model_wrappers[model_name] = ClipWrapper(self._device, model_name)
 
         return self._model_wrappers[model_name]
 
@@ -173,6 +181,9 @@ class CoOpWrapper(object):
                 mpf.DetectionError.INVALID_PROPERTY
             )
         self._manual_args = ["--seed", "1", "--trainer", "CoOp", "--config-file", "/opt/coop_src/CoOp/configs/trainers/CoOp/vit_l14_ep50.yaml", "--model-dir", "/opt/coop_src/CoOp/output/imagenet/CoOp/vit_l14_ep50_16shots/nctx16_cscFalse_ctpend/seed1", "--load-epoch", "50", "--eval-only", "TRAINER.COOP.N_CTX", "16", "TRAINER.COOP.CSC", "False", "TRAINER.COOP.CLASS_TOKEN_POSITION", "end"]
+        if kwargs['cuda_device_id'] >= 0:
+            self._manual_args.append('--cuda')
+            
         self.args = self._create_arg_parser(self._manual_args)
         self._class_mapping = self._get_mapping_from_classifications(os.path.realpath(resource_filename(__name__, f'data/imagenet_classification_list.csv')))
         self.classnames = self._class_mapping.keys()
@@ -181,7 +192,7 @@ class CoOpWrapper(object):
         self.trainer = get_trainer(self.args, self.classnames)
         print("Trainer created.")
 
-    def get_detections(self, images, **kwargs):
+    def get_detections(self, images, device, **kwargs):
         # Preprocess image
         self._preprocessor = ImagePreprocessor(enable_cropping=False, image_size=224)
         images = [Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)) for image in images]
@@ -284,6 +295,7 @@ class CoOpWrapper(object):
             nargs=argparse.REMAINDER,
             help="modify config options using the command-line",
         )
+        parser.add_argument("--cuda", action="store_true", help="enable use of CUDA.")
         args = parser.parse_args(manual_args)
         return args
     
@@ -297,7 +309,7 @@ class CoOpWrapper(object):
                 
         return mapping
 class ClipWrapper(object):
-    def __init__(self, model_name='ViT-L/14'):
+    def __init__(self, device, model_name='ViT-L/14'):
         logger.info("Loading model...")
         model, _ = clip.load(model_name, device=device, download_root='/models')
         logger.info("Model loaded.")
@@ -317,7 +329,7 @@ class ClipWrapper(object):
 
         self._inferencing_server = None
 
-    def get_detections(self, images, **kwargs) -> Iterable[mpf.ImageLocation]:
+    def get_detections(self, images, device, **kwargs) -> Iterable[mpf.ImageLocation]:
         templates_changed = self._check_template_list(kwargs['template_path'], kwargs['template_type'])
         self._check_class_list(kwargs['classification_path'], kwargs['classification_list'], templates_changed)
 

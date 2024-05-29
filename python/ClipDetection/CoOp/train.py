@@ -7,6 +7,9 @@
 #                                                              #
 #   - trainer.load_model() and trainer.train() are called in   #
 #     clip_component.py                                        #
+#                                                              #
+#   - extend_cfg() has added cuda parameter to set model       #
+#     precision to fp32 or fp16                                #
 ################################################################
 
 
@@ -91,7 +94,7 @@ def reset_cfg(cfg, args):
         cfg.MODEL.HEAD.NAME = args.head
 
 
-def extend_cfg(cfg):
+def extend_cfg(cfg, cuda=True):
     """
     Add new config variables.
 
@@ -108,7 +111,10 @@ def extend_cfg(cfg):
     cfg.TRAINER.COOP.N_CTX = 16  # number of context vectors
     cfg.TRAINER.COOP.CSC = False  # class-specific context
     cfg.TRAINER.COOP.CTX_INIT = ""  # initialization words
-    cfg.TRAINER.COOP.PREC = "fp32"  # fp16, fp32, amp
+    if cuda:
+        cfg.TRAINER.COOP.PREC = "fp16"  # fp16, fp32, amp
+    else:
+        cfg.TRAINER.COOP.PREC = "fp32"
     cfg.TRAINER.COOP.CLASS_TOKEN_POSITION = "end"  # 'middle' or 'end' or 'front'
 
     cfg.TRAINER.COCOOP = CN()
@@ -121,7 +127,7 @@ def extend_cfg(cfg):
 
 def setup_cfg(args):
     cfg = get_cfg_default()
-    extend_cfg(cfg)
+    extend_cfg(cfg, args.cuda)
 
     # 1. From the dataset config file
     if args.dataset_config_file:
