@@ -103,7 +103,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
 
         kwargs = self._parse_properties(image_job.job_properties)
         if kwargs['cuda_device_id'] >= 0:
-            self._device = torch.device(f'cuda:{kwargs['cuda_device_id']}')
+            self._device = torch.device(f"cuda:{kwargs['cuda_device_id']}")
         else:
             self._device = torch.device('cpu')
 

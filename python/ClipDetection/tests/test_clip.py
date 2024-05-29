@@ -48,7 +48,8 @@ class TestClip(unittest.TestCase):
                 TEMPLATE_TYPE = 'openai_1',
                 ENABLE_CROPPING ='False',
                 INCLUDE_FEATURES = 'True',
-                MODEL_NAME="CoOp"
+                MODEL_NAME="CoOp",
+                CUDA_DEVICE_ID = -1
             ),
             media_properties={},
             feed_forward_location=None 
