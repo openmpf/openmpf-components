@@ -390,10 +390,10 @@ class SimpleTrainer(TrainerBase):
         self.sched = build_lr_scheduler(self.optim, cfg.OPTIM)
         self.register_model("model", self.model, self.optim, self.sched)
 
-        device_count = torch.cuda.device_count()
-        if device_count > 1:
-            print(f"Detected {device_count} GPUs (use nn.DataParallel)")
-            self.model = nn.DataParallel(self.model)
+        # device_count = torch.cuda.device_count()
+        # if device_count > 1 and cfg.USE_CUDA:
+        #     print(f"Detected {device_count} GPUs (use nn.DataParallel)")
+        #     self.model = nn.DataParallel(self.model)
 
     def train(self):
         super().train(self.start_epoch, self.max_epoch)
@@ -471,7 +471,7 @@ class SimpleTrainer(TrainerBase):
         #     data_loader = self.test_loader
 
         # print(f"Evaluate on the *{split}* set")
-
+        images = images.to(self.device)
         return self.model_inference(images)
     
         for batch_idx, batch in enumerate(tqdm(data_loader)):

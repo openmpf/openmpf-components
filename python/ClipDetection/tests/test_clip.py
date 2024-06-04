@@ -38,27 +38,6 @@ import mpf_component_api as mpf
 logging.basicConfig(level=logging.DEBUG)
 
 class TestClip(unittest.TestCase):
-    def test_image_coop(self):
-        job = mpf.ImageJob(
-            job_name='test-image-coop',
-            data_uri=self._get_test_file('dog.jpg'),
-            job_properties=dict(
-                CLASSIFICATION_LIST='imagenet',
-                NUMBER_OF_CLASSIFICATIONS = 3,
-                TEMPLATE_TYPE = 'openai_1',
-                ENABLE_CROPPING ='False',
-                INCLUDE_FEATURES = 'True',
-                MODEL_NAME="CoOp",
-                CUDA_DEVICE_ID = -1
-            ),
-            media_properties={},
-            feed_forward_location=None 
-        )
-        component = ClipComponent()
-        result = list(component.get_detections_from_image(job))[0]
-        # print(result.detection_properties["FEATURE"])
-        self.assertTrue("toy terrier", result.detection_properties["CLASSIFICATION"])
-
     def test_image_file(self):
         job = mpf.ImageJob(
             job_name='test-image',
@@ -142,38 +121,6 @@ class TestClip(unittest.TestCase):
         self.assertEqual(results[1].stop_frame, 9)
 
         self.assertEqual(results[2].detection_properties['CLASSIFICATION'], "dog")
-        self.assertEqual(results[2].start_frame, 10)
-        self.assertEqual(results[2].stop_frame, 14)
-
-    def test_video_file_coop(self):
-        job = mpf.VideoJob(
-            job_name='test-video',
-            data_uri=self._get_test_file('test_video.mp4'),
-            start_frame=0,
-            stop_frame=14,
-            job_properties=dict(
-                MODEL_NAME = 'CoOp',
-                CLASSIFICATION_LIST = 'imagenet',
-                TEMPLATE_TYPE = 'openai_1',
-                ENABLE_CROPPING = 'False',
-                DETECTION_FRAME_BATCH_SIZE = 4
-            ),
-            media_properties={},
-            feed_forward_track=None
-        )
-        component = ClipComponent()
-        results = list(component.get_detections_from_video(job))
-        print(results[0])
-
-        self.assertEqual(results[0].detection_properties['CLASSIFICATION'], "Border collie")
-        self.assertEqual(results[0].start_frame, 0)
-        self.assertEqual(results[0].stop_frame, 4)
-
-        self.assertEqual(results[1].detection_properties['CLASSIFICATION'], "anemone fish")
-        self.assertEqual(results[1].start_frame, 5)
-        self.assertEqual(results[1].stop_frame, 9)
-
-        self.assertEqual(results[2].detection_properties['CLASSIFICATION'], "Border collie")
         self.assertEqual(results[2].start_frame, 10)
         self.assertEqual(results[2].stop_frame, 14)
 

@@ -41,7 +41,7 @@ import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 import clip
-from CoOp.train import get_trainer
+from CoOp.train_private import get_trainer
 
 import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException, triton_to_np_dtype
@@ -192,9 +192,9 @@ class CoOpWrapper(object):
                 f"Properties incompatible with CoOp. Make sure that CLASSIFICATION_LIST='imagenet', TEMPLATE_PATH='', CLASSIFICATION_PATH='', and ENABLE_TRITON=False.",
                 mpf.DetectionError.INVALID_PROPERTY
             )
-        self._manual_args = self._get_coop_args() # ["--seed", "1", "--trainer", "CoOp", "--config-file", "/opt/coop_src/CoOp/configs/trainers/CoOp/vit_l14_ep50.yaml", "--model-dir", "/models", "--load-epoch", "50", "--eval-only", "TRAINER.COOP.N_CTX", "16", "TRAINER.COOP.CSC", "False", "TRAINER.COOP.CLASS_TOKEN_POSITION", "end"]
+        self._manual_args = self._get_coop_args()
         if kwargs['cuda_device_id'] >= 0:
-            self._manual_args.insert('--cuda', 0)
+            self._manual_args.insert(0, '--cuda')
             
         self.args = self._create_arg_parser(self._manual_args)
         self._class_mapping = self._get_mapping_from_classifications(os.path.realpath(resource_filename(__name__, f'data/imagenet_classification_list.csv')))
@@ -203,6 +203,7 @@ class CoOpWrapper(object):
         print("Creating trainer...")
         self.trainer = get_trainer(self.args, self.classnames, kwargs['cuda_device_id'])
         print("Trainer created.")
+        self.trainer.load_model(self.args.model_dir, epoch = self.args.load_epoch)
 
     def get_detections(self, images, device, **kwargs):
         # Preprocess image
@@ -211,8 +212,7 @@ class CoOpWrapper(object):
         image_sizes = [image.size for image in images]
         torch_imgs = torch.stack([self._preprocessor.preprocess(image).squeeze(0) for image in images]).to(device)
 
-        # Load model and pass image
-        self.trainer.load_model(self.args.model_dir, epoch = self.args.load_epoch)
+        # Pass image through model
         output, image_features = self.trainer.test(images=torch_imgs)
 
         softmax = torch.nn.Softmax(dim=1)(output)
@@ -321,7 +321,7 @@ class CoOpWrapper(object):
     
     @staticmethod
     def _get_coop_args():
-        with open(os.path.realpath(resource_filename(__name__, 'data/coop_args.txt'))) as f:
+        with open(os.path.realpath(resource_filename(__name__, 'data/coop_args_private.txt'))) as f:
             args = f.read().strip().split()
         return args
 
