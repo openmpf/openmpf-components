@@ -41,7 +41,7 @@ import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 import clip
-from CoOp.train_private import get_trainer
+from CoOp.train import get_trainer
 
 import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException, triton_to_np_dtype
@@ -321,7 +321,7 @@ class CoOpWrapper(object):
     
     @staticmethod
     def _get_coop_args():
-        with open(os.path.realpath(resource_filename(__name__, 'data/coop_args_private.txt'))) as f:
+        with open(os.path.realpath(resource_filename(__name__, 'data/coop_args.txt'))) as f:
             args = f.read().strip().split()
         return args
 
