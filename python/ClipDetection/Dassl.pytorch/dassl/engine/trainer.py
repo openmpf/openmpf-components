@@ -1,5 +1,5 @@
 ##################################################################
-# CHANGES MADE TO FILE                                           #
+# OpenMPF Modifications                                          #
 # -------------------------------------------------------------- #
 # Parameter classnames=[] added to SimpleTrainer class __init__. #
 #   - Used to bypass need for DataManager object.                #
@@ -319,12 +319,12 @@ class TrainerBase:
 class SimpleTrainer(TrainerBase):
     """A simple trainer class implementing generic functions."""
 
-    def __init__(self, cfg, classnames=[]):
+    def __init__(self, cfg, classnames=[], device_id=-1):
         super().__init__()
         self.check_cfg(cfg)
 
-        if torch.cuda.is_available() and cfg.USE_CUDA:
-            self.device = torch.device("cuda")
+        if torch.cuda.is_available() and cfg.USE_CUDA and device_id >= 0:
+            self.device = torch.device(f"cuda:{device_id}")
         else:
             self.device = torch.device("cpu")
 

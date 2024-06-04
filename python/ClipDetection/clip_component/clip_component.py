@@ -192,7 +192,7 @@ class CoOpWrapper(object):
                 f"Properties incompatible with CoOp. Make sure that CLASSIFICATION_LIST='imagenet', TEMPLATE_PATH='', CLASSIFICATION_PATH='', and ENABLE_TRITON=False.",
                 mpf.DetectionError.INVALID_PROPERTY
             )
-        self._manual_args = ["--seed", "1", "--trainer", "CoOp", "--config-file", "/opt/coop_src/CoOp/configs/trainers/CoOp/vit_l14_ep50.yaml", "--model-dir", "/opt/coop_src/CoOp/output/imagenet/CoOp/vit_l14_ep50_16shots/nctx16_cscFalse_ctpend/seed1", "--load-epoch", "50", "--eval-only", "TRAINER.COOP.N_CTX", "16", "TRAINER.COOP.CSC", "False", "TRAINER.COOP.CLASS_TOKEN_POSITION", "end"]
+        self._manual_args = self._get_coop_args() # ["--seed", "1", "--trainer", "CoOp", "--config-file", "/opt/coop_src/CoOp/configs/trainers/CoOp/vit_l14_ep50.yaml", "--model-dir", "/models", "--load-epoch", "50", "--eval-only", "TRAINER.COOP.N_CTX", "16", "TRAINER.COOP.CSC", "False", "TRAINER.COOP.CLASS_TOKEN_POSITION", "end"]
         if kwargs['cuda_device_id'] >= 0:
             self._manual_args.insert('--cuda', 0)
             
@@ -201,7 +201,7 @@ class CoOpWrapper(object):
         self.classnames = self._class_mapping.keys()
         # Create trainer object
         print("Creating trainer...")
-        self.trainer = get_trainer(self.args, self.classnames)
+        self.trainer = get_trainer(self.args, self.classnames, kwargs['cuda_device_id'])
         print("Trainer created.")
 
     def get_detections(self, images, device, **kwargs):
@@ -318,6 +318,13 @@ class CoOpWrapper(object):
                 mapping[row[0].strip()] = row[1].strip()
                 
         return mapping
+    
+    @staticmethod
+    def _get_coop_args():
+        with open(os.path.realpath(resource_filename(__name__, 'data/coop_args.txt'))) as f:
+            args = f.read().strip().split()
+        return args
+
 class ClipWrapper(object):
     def __init__(self, device, model_name='ViT-L/14'):
         logger.info("Loading model...")
