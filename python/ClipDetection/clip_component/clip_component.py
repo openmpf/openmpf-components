@@ -27,7 +27,6 @@
 import logging
 import os
 import csv
-import sys
 from pkg_resources import resource_filename
 from itertools import islice
 from typing import Iterable, Mapping

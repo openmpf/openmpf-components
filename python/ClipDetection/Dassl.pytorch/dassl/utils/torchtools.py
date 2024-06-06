@@ -74,7 +74,7 @@ def save_checkpoint(
         print('Best checkpoint saved to "{}"'.format(best_fpath))
 
 
-def load_checkpoint(fpath):
+def load_checkpoint(fpath, device='cpu'):
     r"""Load checkpoint.
 
     ``UnicodeDecodeError`` can be well handled, which means
@@ -96,7 +96,7 @@ def load_checkpoint(fpath):
     if not osp.exists(fpath):
         raise FileNotFoundError('File is not found at "{}"'.format(fpath))
 
-    map_location = None if torch.cuda.is_available() else "cpu"
+    map_location = device
 
     try:
         checkpoint = torch.load(fpath, map_location=map_location)
