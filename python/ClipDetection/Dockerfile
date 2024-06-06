@@ -29,11 +29,12 @@
 ARG MODELS_REGISTRY=openmpf/
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:8.0.0 as models
+FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:9.0.0-feature as models
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 COPY --from=models /models/ViT-B-32.pt /models/ViT-B-32.pt
 COPY --from=models /models/ViT-L-14.pt /models/ViT-L-14.pt
+COPY --from=models /models/model.pth.tar-50 /models/prompt_learner/model.pth.tar-50
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
