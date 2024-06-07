@@ -830,10 +830,6 @@ TEST(KEYWORDTAGGING, DateTest) {
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "Sep 20", "date"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "September 20", "date"));
 
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "iPhone11 Mar 19, 24", "11 Mar 19; Mar 19, 24", "date"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "On 3 Mar 19, 24 men swam a race", "3 Mar 19; Mar 19, 24", "date"));
-
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "gfkjkjn30-11-2011avs-122343", "30-11-2011", "date"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "Sept. 5 th", "date"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "Sept 20 2024", "date"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "Sep 20 2024", "date"));
@@ -864,6 +860,12 @@ TEST(KEYWORDTAGGING, DateTest) {
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "APR 03",  "date"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "MAY 20 24",  "date"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "JUN 2024",  "date"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "Jan9987",  "date"));
+
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "iPhone11 Mar 19, 24", "11 Mar 19; Mar 19, 24", "date"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "On 3 Mar 19, 24 men swam a race", "3 Mar 19; Mar 19, 24", "date"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "gfkjkjn30-11-2011avs-122343", "30-11-2011", "date"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "Jan9987123", "Jan9987",  "date"));
 
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "12-09-2022-30-10-2015"));
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "32-12-2024"));
@@ -879,8 +881,8 @@ TEST(KEYWORDTAGGING, FinancialTest) {
     ASSERT_TRUE(tagger.Init());
 
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "$", "financial"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ".د.ج", "financial"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ".د.م", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "د.ج", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "د.م", "financial"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "₲", "financial"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "Kč", "financial"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "ރ", "financial"));
@@ -889,6 +891,8 @@ TEST(KEYWORDTAGGING, FinancialTest) {
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "¤ 42", "¤", "financial"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "ABC ден 123", "ден", "financial"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123฿123", "฿", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ".د.ج", "د.ج", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ".د.م", "د.م", "financial"));
 
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "12 bucks"));
 }
