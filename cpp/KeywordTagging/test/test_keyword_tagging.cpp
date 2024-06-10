@@ -893,6 +893,7 @@ TEST(KEYWORDTAGGING, FinancialTest) {
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123฿123", "฿", "financial"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ".د.ج", "د.ج", "financial"));
     ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ".د.م", "د.م", "financial"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "رابط التسجيل في منحة 1500 د.ج بالجزائر 2024", "د.ج", "financial"));
 
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "12 bucks"));
 }
