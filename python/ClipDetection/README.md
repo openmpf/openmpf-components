@@ -53,7 +53,7 @@ A {} in an open field.
 
 The need for custom classifications arose when training on the ImageNet classifications, where any different class can have many equivalent names. For example, one of the classes is "great white shark, white shark, man-eater, man-eating shark, Carcharodon carcharias". We found the model to be most performant when given a single representative class title. For this case, 'great white shark' makes the most sense. The `imagenet_classification_list.csv` file gives representative titles for each class, adapted from .ipynb files on the [CLIP GitHub page](https://github.com/openai/CLIP/blob/main/notebooks/Prompt_Engineering_for_ImageNet.ipynb).
 
-As for the format of the CSV file, it has two columns. The first being the representative name, and the second being the full name of the class. The representative name is what goes inside the brackets, {}, of the templates, and the full name is what will be used when displaying results. Below are a couple of examples of rows from the ImageNet classifications. Note that in the first example, quotes are put around the full classification name so they're easier to read and so that those commas aren't confused for the separator.
+As for the format of the CSV file, it has two columns. The first column contains the representative name, and the second contains the full name of the class. The representative name is what goes inside the brackets, {}, of the templates, and the full name is what will be used when displaying results. Below are a couple of examples of rows from the ImageNet classifications. Note that in the first example, quotes are put around the full classification name so they're easier to read and so that those commas aren't confused for the separator.
 
 ```
 tench,"tench, Tinca tinca"
@@ -99,7 +99,7 @@ The table below shows the performance of this component with Triton on a NVIDIA 
 # Future Research
 * Investigate using the CLIP interrogator for determining text prompts for classification.
 * Investigate methods to automate the generation of text prompts.
-  * [Context Optimization (CoOp)](http://arxiv.org/abs/2109.01134) and [Conditional Context Optimization (CoCoOp)](http://arxiv.org/abs/2203.05557) models a prompt's context as a set of learnable vectors that can be optimized for the classes you're looking for, with CoCoOp improving on CoOp's ability in classifying to classes unseen by CoOp in training. 
+  * [Context Optimization (CoOp)](http://arxiv.org/abs/2109.01134) and [Conditional Context Optimization (CoCoOp)](http://arxiv.org/abs/2203.05557) model a prompt's context as a set of learnable vectors that can be optimized for the classes you're looking for, with CoCoOp improving on CoOp's ability in classifying to classes unseen by CoOp in training. 
 
 # Known Issues
 
