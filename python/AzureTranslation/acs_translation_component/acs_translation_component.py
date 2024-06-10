@@ -42,7 +42,7 @@ from typing import Callable, Dict, List, Literal, Mapping, Match, NamedTuple, \
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-from nlp_text_splitter.text_splitter import TextSplitter, TextSplitterModel
+from nlp_text_splitter import TextSplitterModel, TextSplitter
 
 from . import convert_language_code
 

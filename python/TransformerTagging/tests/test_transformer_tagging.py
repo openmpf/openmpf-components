@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2023 The MITRE Corporation                                      #
+# Copyright 2024 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -260,7 +260,7 @@ class TestTransformerTagging(unittest.TestCase):
     def test_maintain_tags_from_earlier_feedforward_task(self):
         ff_track = mpf.GenericTrack(-1, dict(TEXT=SHORT_SAMPLE))
         job = mpf.GenericJob('Test Generic', 'test.pdf', {}, {}, ff_track)
-        # add tags
+
         firstTag = "FIRST_TAG"
         job.feed_forward_track.detection_properties["TAGS"] = firstTag
         comp = TransformerTaggingComponent()
@@ -337,6 +337,36 @@ class TestTransformerTagging(unittest.TestCase):
         self.assertAlmostEqual(score_3, float(score_result_3), places=3)
 
         self.assertAlmostEqual(matches, props["TEXT TRAVEL TRIGGER SENTENCES MATCHES"])
+
+    def test_newline_split(self):
+        sample = (
+            'This first sentence is about driving to the beach\n'
+            'Another sentence about driving to the beach\n\n\n\n'
+            'This sentence is also about driving to the beach and ends in a period.\n'
+            '   Beach sentence begins and ends with \t whitespace   \n'
+            'Final beach sentence!'
+        )
+
+        trigger_sentences = (
+            'This first sentence is about driving to the beach; '
+            'Another sentence about driving to the beach; '
+            'This sentence is also about driving to the beach and ends in a period.; '
+            'Beach sentence begins and ends with \t whitespace; '
+            'Final beach sentence!'
+        )
+
+        offsets = '0-48; 50-92; 97-166; 171-218; 223-243'
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=sample))
+        job = mpf.GenericJob('Test Generic', 'test.txt', \
+            dict(ENABLE_DEBUG='true', ENABLE_NEWLINE_SPLIT='true'), {}, ff_track)
+        comp = TransformerTaggingComponent()
+        result = comp.get_detections_from_generic(job)
+
+        props = result[0].detection_properties
+
+        self.assertEqual(trigger_sentences, props["TEXT TRAVEL TRIGGER SENTENCES"])
+        self.assertEqual(offsets, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
 
 if __name__ == '__main__':
     unittest.main()

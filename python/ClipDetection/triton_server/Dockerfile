@@ -7,11 +7,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2023 The MITRE Corporation                                      #
+# Copyright 2024 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -28,7 +28,7 @@
 
 ARG MODELS_REGISTRY=openmpf/
 
-FROM ${MODELS_REGISTRY}openmpf_clip_detection_triton_models:8.0.0 as models
+FROM ${MODELS_REGISTRY}openmpf_clip_detection_triton_models:9.0.0 as models
 
 FROM nvcr.io/nvidia/tritonserver:22.04-py3 as openmpf_triton_server
 
