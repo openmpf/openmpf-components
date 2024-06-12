@@ -128,7 +128,8 @@
 			{"pattern": "(\\b)name(\\b)"},
 			{"pattern": "(\\b)address(\\b)"},
 			{"pattern": "(\\b)nationality(\\b)"},
-			{"pattern": "(?<![A-Za-z])(?!pb)(Post|p)[\\.\\-\/\t ]*(?=(office|o|box|b))((Office|o)[\\.\\-\/\t ]*)?((Box|B)[\\.\\-\/\t ]*)?(#?[\\.\\-\/\t ]*\\d{0,9})(?![A-Za-z])"}
+			{"pattern": "(?<![A-Za-z])(?!pb)(Post|p)[\\.\\-\/\t ]*(?=(office|o|box|b))((Office|o)[\\.\\-\/\t ]*)?((Box|B)[\\.\\-\/\t ]*)?(#?[\\.\\-\/\t ]*\\d{0,9})(?![A-Za-z])"},
+			{"pattern": "(?<![\\/\\-:]\\w)(?<!\\w[\\/\\-:])(?<!\\w)\\d{3}([-.:\\/])\\d{2}\\1\\d{4}(?![-.:\\/]*\\w)"}
 		],
 		"travel": [
 			{"pattern": "(\\b)airline(\\b)"},
