@@ -44,7 +44,8 @@ logger = logging.getLogger('TransformerTaggingComponent')
 class TransformerTaggingComponent:
 
     def __init__(self):
-        self._cached_model = SentenceTransformer('/models/all-mpnet-base-v2')
+        # self._cached_model = SentenceTransformer('/models/all-mpnet-base-v2')
+        self._cached_model = SentenceTransformer('/home/mpf/git/openmpf-projects/openmpf-components/python/TransformerTagging/models/all-mpnet-base-v2')
         self._cached_corpuses: Dict[str, Corpus] = {}
 
 
@@ -132,7 +133,7 @@ class TransformerTaggingComponent:
             if input_text:
                 break
             elif input_text == "":
-                logger.warning(f'No {prop_to_tag.lower()} to tag found in track.')
+                logger.warning(f'No {prop_to_tag} to tag found in track.')
                 break
         else:
             logger.warning("Feed forward element missing one of the following properties: "
@@ -176,7 +177,7 @@ class TransformerTaggingComponent:
                 probe_df = pd.DataFrame({
                     "input text": stripped_probe,
                     "corpus text": corpus.json["text"],
-                    "tag": corpus.json["tag"].str.lower(),
+                    "tag": corpus.json["tag"].str.upper(),
                     "score": scores,
                     "offset": str(offset_start) + "-" + str(offset_end)
                 })

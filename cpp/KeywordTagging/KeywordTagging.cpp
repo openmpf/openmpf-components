@@ -289,7 +289,7 @@ set<wstring> KeywordTagging::search_regex(const MPFJob &job, const wstring &full
     }
 
     for (const auto &kv : json_kvs_regex) {
-        auto key = boost::locale::to_lower(kv.first);
+        auto key = boost::locale::to_upper(kv.first);
         auto values = kv.second;
         map<wstring, vector<string>>  trigger_words_offset;
         for (const pair<wstring, bool> &value : values) {
@@ -572,7 +572,7 @@ void KeywordTagging::process_text_tagging(Properties &detection_properties, cons
         while(iter != end)
         {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> convert_s_to_ws;
-            all_found_tags.insert(boost::to_lower_copy(convert_s_to_ws.from_bytes(*iter++)));
+            all_found_tags.insert(boost::to_upper_copy(convert_s_to_ws.from_bytes(*iter++)));
         }
 
         wstring tag_string = boost::algorithm::join(all_found_tags, L"; ");

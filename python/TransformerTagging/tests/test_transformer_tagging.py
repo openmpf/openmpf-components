@@ -45,7 +45,7 @@ SHORT_SAMPLE = (
     'I plan to spend all day at the beach tomorrow.'
 )
 
-SHORT_SAMPLE_TAGS = "travel"
+SHORT_SAMPLE_TAGS = "TRAVEL"
 SHORT_SAMPLE_TRIGGER_SENTENCES = "I drove to the beach today and will be staying overnight at a hotel."
 SHORT_SAMPLE_OFFSET = "0-67"
 SHORT_SAMPLE_SCORE = 0.4680028557777405
@@ -176,7 +176,7 @@ class TestTransformerTagging(unittest.TestCase):
 
         props = result[0].detection_properties
 
-        self.assertEqual("TRAVEL; FINANCIAL".casefold(), props["TAGS"])
+        self.assertEqual("TRAVEL; FINANCIAL", props["TAGS"])
         self.assertEqual(SHORT_SAMPLE_TRIGGER_SENTENCES, props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_SAMPLE_OFFSET, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
         self.assertAlmostEqual(SHORT_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
@@ -208,7 +208,7 @@ class TestTransformerTagging(unittest.TestCase):
         beach_score_2 = 0.4624265432357788
         beach_score_result_1, beach_score_result_2 = props["TEXT BEACH TRIGGER SENTENCES SCORE"].split(";")
 
-        self.assertEqual("beach", props["TAGS"])
+        self.assertEqual("BEACH", props["TAGS"])
         self.assertEqual(beach_sentences, props["TEXT BEACH TRIGGER SENTENCES"])
         self.assertEqual('0-67; 197-242', props["TEXT BEACH TRIGGER SENTENCES OFFSET"])
         self.assertAlmostEqual(beach_score_1, float(beach_score_result_1), places=3)
@@ -327,7 +327,7 @@ class TestTransformerTagging(unittest.TestCase):
 
         props = result[0].detection_properties
 
-        self.assertEqual("travel", props["TAGS"])
+        self.assertEqual("TRAVEL", props["TAGS"])
         self.assertEqual(trigger_sentences, props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(offsets, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
 

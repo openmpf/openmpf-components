@@ -1,6 +1,6 @@
 {
 	"TAGS_BY_REGEX": {
-		"vehicle": [
+		"VEHICLE": [
 			{"pattern": "auto"},
 			{"pattern": "(\\b)bike(\\b)"},
 			{"pattern": "(\\b)bus(\\b)"},
@@ -15,7 +15,7 @@
 			{"pattern": "(\\b)vehicle(\\b)"},
 			{"pattern": "(\\b)vin(\\b)"}
 		],
-		"financial": [
+		"FINANCIAL": [
 			{"pattern": "financ"},
 			{"pattern": "bank"},
 			{"pattern": "(\\b)ATM(\\b)"},
@@ -36,7 +36,7 @@
 			{"pattern": "(\\b)savings(\\b)"},
 			{"pattern": "(\\b)transaction(\\b)"}
 		],
-		"personal": [
+		"PERSONAL": [
 			{"pattern": "birth"},
 			{"pattern": "\\d{1,3}(—|-)\\d{1,3}(—|-)\\d{2,4}"},
 			{"pattern": "\\d{1,3}/\\d{1,3}/\\d{2,4}"},
@@ -50,7 +50,7 @@
 			{"pattern": "(\\b)telephone(\\b)"},
 			{"pattern": "(\\b)username(\\b)"}
 		],
-		"weapon": [
+		"WEAPON": [
 			{"pattern": "(\\b)firearm(\\b)"},
 			{"pattern": "(\\b)grenade(\\b)"},
 			{"pattern": "(\\b)gun(\\b)"},
@@ -58,7 +58,7 @@
 			{"pattern": "(\\b)rifle(\\b)"},
 			{"pattern": "(\\b)sword(\\b)"}
 		],
-		"identity document": [
+		"IDENTITY DOCUMENT": [
 			{"pattern": "(\\b)passport(\\b)"},
 			{"pattern": "(\\b)citizen(\\b)"},
 			{"pattern": "(\\b)license(\\b)"},
@@ -70,7 +70,7 @@
 			{"pattern": "(\\b)address(\\b)"},
 			{"pattern": "(\\b)nationality(\\b)"}
 		],
-		"travel": [
+		"TRAVEL": [
 			{"pattern": "(\\b)airline(\\b)"},
 			{"pattern": "(\\b)airport(\\b)"},
 			{"pattern": "(\\b)booking(\\b)"},
