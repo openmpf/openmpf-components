@@ -128,18 +128,22 @@ class TransformerTaggingComponent:
 
 
     def _add_tags(self, config, corpus, ff_props: Dict[str, str]):
+        input_texts = {}
         for prop_to_tag in config.props_to_process:
             input_text = ff_props.get(prop_to_tag, None)
             if input_text:
-                break
-            elif input_text == "":
-                logger.warning(f'No {prop_to_tag} to tag found in track.')
-                break
-        else:
+                input_texts[prop_to_tag] = input_text
+
+        if not input_texts:
             logger.warning("Feed forward element missing one of the following properties: "
                            + ", ".join(config.props_to_process))
             return
+            
+        for prop_to_tag in input_texts:
+            self._add_tags_for_prop(config, corpus, ff_props, prop_to_tag, input_texts[prop_to_tag])
 
+
+    def _add_tags_for_prop(self, config, corpus, ff_props: Dict[str, str], prop_to_tag, input_text):
         all_tag_results = []
 
         # for each sentence in input
@@ -204,7 +208,7 @@ class TransformerTaggingComponent:
 
             if "TAGS" in ff_props:
                 # only add tag if it is not already in ff_props["TAGS"], else do nothing
-                if tag.casefold() not in ff_props["TAGS"].casefold():
+                if tag.upper() not in ff_props["TAGS"].upper():
                     ff_props["TAGS"] = ff_props["TAGS"] + "; " + tag
             else:
                 ff_props["TAGS"] = tag

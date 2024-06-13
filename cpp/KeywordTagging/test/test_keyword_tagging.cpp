@@ -247,7 +247,7 @@ TEST(KEYWORDTAGGING, MissingPropertyToProcessTest) {
 
     MPFImageLocation location(1, 2, 3, 4, 5,
                               {{"SOME_PROP_1", "SOME_VAL_1"},
-                               {"SOME_PROP_2", "SOME_VAL_2"}}); // no TEXT or TRANSCRIPT provided
+                               {"SOME_PROP_2", "SOME_VAL_2"}}); // none of the properties in FEED_FORWARD_PROP_TO_PROCESS provided
     MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
 
     std::vector<MPFImageLocation> results = tagger.GetDetections(job);
@@ -316,7 +316,7 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
 
     {
         MPFImageLocation location(1, 2, 3, 4, 5,
-                                  {{"TRANSLATION", "cash"},
+                                  {{"SOME_PROP", "cash"},
                                    {"TEXT", "car"}});
         MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
 
@@ -328,10 +328,10 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(location.height, results.at(0).height);
         ASSERT_EQ(location.confidence, results.at(0).confidence);
 
-        // default FEED_FORWARD_PROP_TO_PROCESS is used (TEXT, TRANSCRIPT) so tagging should run only on TEXT
+        // default FEED_FORWARD_PROP_TO_PROCESS is used so tagging should run only on TEXT
         Properties props = results.at(0).detection_properties;
         ASSERT_EQ(5, props.size());
-        ASSERT_EQ("cash", props["TRANSLATION"]);
+        ASSERT_EQ("cash", props["SOME_PROP"]);
         ASSERT_EQ("car", props["TEXT"]);
         ASSERT_EQ("VEHICLE", props["TAGS"]);
         ASSERT_EQ("car", props["TEXT VEHICLE TRIGGER WORDS"]);
@@ -356,7 +356,7 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(7, props.size());
         ASSERT_EQ("cash", props["TRANSLATION"]);
         ASSERT_EQ("car", props["TEXT"]);
-        ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags added in alphabetical order
+        ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in alphabetical order
         ASSERT_EQ("cash", props["TRANSLATION FINANCIAL TRIGGER WORDS"]);
         ASSERT_EQ("0-3", props["TRANSLATION FINANCIAL TRIGGER WORDS OFFSET"]);
         ASSERT_EQ("car", props["TEXT VEHICLE TRIGGER WORDS"]);
@@ -379,7 +379,7 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(7, props.size());
         ASSERT_EQ("cash", props["BAR"]);
         ASSERT_EQ("car", props["FOO"]);
-        ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags added in alphabetical order
+        ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in alphabetical order
         ASSERT_EQ("car", props["FOO VEHICLE TRIGGER WORDS"]);
         ASSERT_EQ("0-2", props["FOO VEHICLE TRIGGER WORDS OFFSET"]);
         ASSERT_EQ("cash", props["BAR FINANCIAL TRIGGER WORDS"]);
@@ -517,7 +517,7 @@ TEST(KEYWORDTAGGING, ProcessRepeatTags) {
     ASSERT_TRUE(tagger.Init());
 
     MPFImageLocation location(1, 2, 3, 4, 5,
-                              {{"TEXT", "cash-car-suv"},
+                              {{"TEXT", "cash-suv-car"},
                                {"OTHER TEXT", "car-cash-suv"},
                                {"MORE TEXT", "cash cash"},
                                {"BLANK TEXT", " "}});
@@ -535,22 +535,22 @@ TEST(KEYWORDTAGGING, ProcessRepeatTags) {
     Properties props = results.at(0).detection_properties;
     ASSERT_EQ(15, props.size());
 
-    ASSERT_EQ("cash-car-suv", props["TEXT"]);
+    ASSERT_EQ("cash-suv-car", props["TEXT"]);
     ASSERT_EQ("car-cash-suv", props["OTHER TEXT"]);
     ASSERT_EQ("cash cash", props["MORE TEXT"]);
     ASSERT_EQ(" ", props["BLANK TEXT"]);
 
-    ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags added in alphabetical order
+    ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in alphabetical order
 
-    ASSERT_EQ("cash", props["TEXT FINANCIAL TRIGGER WORDS"]); // words added in alphabetical order
-    ASSERT_EQ("0-3", props["TEXT FINANCIAL TRIGGER WORDS OFFSET"]); // offsets line up with words
-    ASSERT_EQ("car; suv", props["TEXT VEHICLE TRIGGER WORDS"]);
-    ASSERT_EQ("5-7; 9-11", props["TEXT VEHICLE TRIGGER WORDS OFFSET"]);
+    ASSERT_EQ("cash", props["TEXT FINANCIAL TRIGGER WORDS"]);
+    ASSERT_EQ("0-3", props["TEXT FINANCIAL TRIGGER WORDS OFFSET"]);
+    ASSERT_EQ("car; suv", props["TEXT VEHICLE TRIGGER WORDS"]); // words in alphabetical order
+    ASSERT_EQ("9-11; 5-7", props["TEXT VEHICLE TRIGGER WORDS OFFSET"]); // offsets line up with words
 
-    ASSERT_EQ("cash", props["OTHER TEXT FINANCIAL TRIGGER WORDS"]); // words added in alphabetical order
-    ASSERT_EQ("4-7", props["OTHER TEXT FINANCIAL TRIGGER WORDS OFFSET"]); // offsets line up with words
-    ASSERT_EQ("car; suv", props["OTHER TEXT VEHICLE TRIGGER WORDS"]);
-    ASSERT_EQ("0-2; 9-11", props["OTHER TEXT VEHICLE TRIGGER WORDS OFFSET"]);
+    ASSERT_EQ("cash", props["OTHER TEXT FINANCIAL TRIGGER WORDS"]);
+    ASSERT_EQ("4-7", props["OTHER TEXT FINANCIAL TRIGGER WORDS OFFSET"]);
+    ASSERT_EQ("car; suv", props["OTHER TEXT VEHICLE TRIGGER WORDS"]); // words in alphabetical order
+    ASSERT_EQ("0-2; 9-11", props["OTHER TEXT VEHICLE TRIGGER WORDS OFFSET"]); // offsets line up with words
 
     ASSERT_EQ("cash", props["MORE TEXT FINANCIAL TRIGGER WORDS"]);
     ASSERT_EQ("0-3, 5-8", props["MORE TEXT FINANCIAL TRIGGER WORDS OFFSET"]); // offsets are in ascending order
