@@ -212,7 +212,7 @@ class TestTransformerTagging(unittest.TestCase):
 
         props = result[0].detection_properties
 
-        self.assertEqual("TRAVEL; FINANCIAL", props["TAGS"]) # tags in alphabetical order
+        self.assertEqual("FINANCIAL; TRAVEL", props["TAGS"]) # tags in alphabetical order
         self.assertEqual(SHORT_BEACH_SAMPLE_TRIGGER_SENTENCES, props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_BEACH_SAMPLE_OFFSET, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
         self.assertAlmostEqual(SHORT_BEACH_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)

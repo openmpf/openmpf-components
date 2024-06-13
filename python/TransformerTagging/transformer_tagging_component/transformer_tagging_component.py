@@ -202,7 +202,7 @@ class TransformerTaggingComponent:
 
         # create detection properties for each tag found in the text
         # detection properties formatted as <input property> <tag> TRIGGER SENTENCES...
-        for tag in all_tag_results["tag"].unique():
+        for tag in sorted(all_tag_results["tag"].unique()): # alphabetical order
             tag_df = all_tag_results[all_tag_results["tag"] == tag]
 
             if "TAGS" in ff_props:
