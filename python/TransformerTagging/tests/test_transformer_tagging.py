@@ -212,7 +212,7 @@ class TestTransformerTagging(unittest.TestCase):
 
         props = result[0].detection_properties
 
-        self.assertEqual("FINANCIAL; TRAVEL", props["TAGS"]) # tags in alphabetical order
+        self.assertEqual("FINANCIAL; TRAVEL", props["TAGS"]) # tags in lexicographic order
         self.assertEqual(SHORT_BEACH_SAMPLE_TRIGGER_SENTENCES, props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_BEACH_SAMPLE_OFFSET, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])
         self.assertAlmostEqual(SHORT_BEACH_SAMPLE_SCORE, float(props["TEXT TRAVEL TRIGGER SENTENCES SCORE"]), places=3)
@@ -296,7 +296,7 @@ class TestTransformerTagging(unittest.TestCase):
         self.assertEqual(1, len(result))
 
         props = result[0].detection_properties
-        expectedTags = firstTag + "; " + SHORT_BEACH_SAMPLE_TAGS # tags in alphabetical order
+        expectedTags = firstTag + "; " + SHORT_BEACH_SAMPLE_TAGS # tags in lexicographic order
 
         self.assertEqual(expectedTags, props["TAGS"])
 
@@ -426,7 +426,7 @@ class TestTransformerTagging(unittest.TestCase):
         self.assertEqual(1, len(result))
 
         props = result[0].detection_properties
-        self.assertEqual('TRAVEL; VEHICLE', props["TAGS"]) # tags in alphabetical order
+        self.assertEqual('TRAVEL; VEHICLE', props["TAGS"]) # tags in lexicographic order
 
         self.assertEqual(SHORT_BEACH_SAMPLE_TRIGGER_SENTENCES, props["TEXT TRAVEL TRIGGER SENTENCES"])
         self.assertEqual(SHORT_BEACH_SAMPLE_OFFSET, props["TEXT TRAVEL TRIGGER SENTENCES OFFSET"])

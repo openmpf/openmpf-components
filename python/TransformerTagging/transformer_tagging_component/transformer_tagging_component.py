@@ -138,8 +138,8 @@ class TransformerTaggingComponent:
                            + ", ".join(config.props_to_process))
             return
             
-        for prop_to_tag in input_texts:
-            self._add_tags_for_prop(config, corpus, ff_props, prop_to_tag, input_texts[prop_to_tag])
+        for prop_to_tag, input_text in input_texts.items():
+            self._add_tags_for_prop(config, corpus, ff_props, prop_to_tag, input_text)
 
 
     def _add_tags_for_prop(self, config, corpus, ff_props: Dict[str, str], prop_to_tag, input_text):
@@ -202,7 +202,7 @@ class TransformerTaggingComponent:
 
         # create detection properties for each tag found in the text
         # detection properties formatted as <input property> <tag> TRIGGER SENTENCES...
-        for tag in sorted(all_tag_results["tag"].unique()): # alphabetical order
+        for tag in sorted(all_tag_results["tag"].unique()): # lexicographic order
             tag_df = all_tag_results[all_tag_results["tag"] == tag]
 
             if "TAGS" in ff_props:

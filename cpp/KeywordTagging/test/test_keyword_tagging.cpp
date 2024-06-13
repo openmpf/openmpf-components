@@ -356,7 +356,7 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(7, props.size());
         ASSERT_EQ("cash", props["TRANSLATION"]);
         ASSERT_EQ("car", props["TEXT"]);
-        ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in alphabetical order
+        ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in lexicographic order
         ASSERT_EQ("cash", props["TRANSLATION FINANCIAL TRIGGER WORDS"]);
         ASSERT_EQ("0-3", props["TRANSLATION FINANCIAL TRIGGER WORDS OFFSET"]);
         ASSERT_EQ("car", props["TEXT VEHICLE TRIGGER WORDS"]);
@@ -379,7 +379,7 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(7, props.size());
         ASSERT_EQ("cash", props["BAR"]);
         ASSERT_EQ("car", props["FOO"]);
-        ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in alphabetical order
+        ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in lexicographic order
         ASSERT_EQ("car", props["FOO VEHICLE TRIGGER WORDS"]);
         ASSERT_EQ("0-2", props["FOO VEHICLE TRIGGER WORDS OFFSET"]);
         ASSERT_EQ("cash", props["BAR FINANCIAL TRIGGER WORDS"]);
@@ -540,16 +540,16 @@ TEST(KEYWORDTAGGING, ProcessRepeatTags) {
     ASSERT_EQ("cash cash", props["MORE TEXT"]);
     ASSERT_EQ(" ", props["BLANK TEXT"]);
 
-    ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in alphabetical order
+    ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in lexicographic order
 
     ASSERT_EQ("cash", props["TEXT FINANCIAL TRIGGER WORDS"]);
     ASSERT_EQ("0-3", props["TEXT FINANCIAL TRIGGER WORDS OFFSET"]);
-    ASSERT_EQ("car; suv", props["TEXT VEHICLE TRIGGER WORDS"]); // words in alphabetical order
+    ASSERT_EQ("car; suv", props["TEXT VEHICLE TRIGGER WORDS"]); // words in lexicographic order
     ASSERT_EQ("9-11; 5-7", props["TEXT VEHICLE TRIGGER WORDS OFFSET"]); // offsets line up with words
 
     ASSERT_EQ("cash", props["OTHER TEXT FINANCIAL TRIGGER WORDS"]);
     ASSERT_EQ("4-7", props["OTHER TEXT FINANCIAL TRIGGER WORDS OFFSET"]);
-    ASSERT_EQ("car; suv", props["OTHER TEXT VEHICLE TRIGGER WORDS"]); // words in alphabetical order
+    ASSERT_EQ("car; suv", props["OTHER TEXT VEHICLE TRIGGER WORDS"]); // words in lexicographic order
     ASSERT_EQ("0-2; 9-11", props["OTHER TEXT VEHICLE TRIGGER WORDS OFFSET"]); // offsets line up with words
 
     ASSERT_EQ("cash", props["MORE TEXT FINANCIAL TRIGGER WORDS"]);

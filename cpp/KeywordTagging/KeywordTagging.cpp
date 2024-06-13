@@ -291,7 +291,7 @@ set<wstring> KeywordTagging::search_regex(const MPFJob &job, const wstring &full
     for (const auto &kv : json_kvs_regex) {
         auto key = boost::locale::to_upper(kv.first);
         auto values = kv.second;
-        map<wstring, vector<string>> trigger_words_offset; // sorted alphabetically by default
+        map<wstring, vector<string>> trigger_words_offset; // map will sort items lexicographically
         for (const pair<wstring, bool> &value : values) {
             wstring regex_pattern = value.first;
             bool case_sens = value.second;
@@ -512,7 +512,7 @@ void KeywordTagging::process_text_tagging(Properties &detection_properties, cons
     wstring prop_text;
 
     bool has_text = false;
-    set<wstring> all_found_tags; // sorted alphabetically by default
+    set<wstring> all_found_tags; // set will sort items lexicographically
 
     for (auto const& it : prop_texts) {
         prop = it.first;
