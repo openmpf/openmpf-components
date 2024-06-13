@@ -142,7 +142,7 @@ if trigger words are found:
 - `TRANSLATION <TAG> TRIGGER WORDS OFFSET`
 
 Let's assume that we need process the `TEXT` property. The substring(s) that
-triggered each tag will be stored in `TEXT <TAG> TRIGGER WORDS` in alphabetical
+triggered each tag will be stored in `TEXT <TAG> TRIGGER WORDS` in lexicographic
 order. For each trigger word the substring index range relative to the `TEXT`
 output will be stored in `TEXT <TAG> TRIGGER WORDS OFFSET`. Because the same
 trigger word can be encountered multiple times in the `TEXT` output, the results
@@ -168,7 +168,7 @@ trailing whitespace, regardless of the regex pattern used. The respective
 `TEXT <TAG> TRIGGER WORDS OFFSET` indexes refer to the trimmed substrings.
 
 The tags associated with the trigger words will be stored in a `TAGS` output
-property in alphabetical order, separated by semicolons. Note that there is only
+property in lexicographic order, separated by semicolons. Note that there is only
 one `TAGS` output property. This is unlike `TRIGGER WORDS` and
 `TRIGGER WORDS OFFSET`, which are prefixed by the input property that produced those
 trigger words. Each tag will only appear once in `TAGS` no matter how many trigger
