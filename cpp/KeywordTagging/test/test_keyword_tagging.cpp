@@ -119,13 +119,13 @@ TEST(KEYWORDTAGGING, TaggingTest) {
 
     // Test basic tagging
     ASSERT_NO_FATAL_FAILURE(runKeywordTagging("data/text-demo.txt", tagger, results, custom_properties));
-    assertNotInText("data/text-demo.txt", "personal", results, "TAGS");
+    assertNotInText("data/text-demo.txt", "PERSONAL", results, "TAGS");
     ASSERT_TRUE(results[0].detection_properties.at("TAGS").length() == 0);
     results.clear();
 
     // Test escaped backslash text tagging.
     ASSERT_NO_FATAL_FAILURE(runKeywordTagging("data/test-backslash.txt", tagger, results, custom_properties));
-    assertInText("data/test-backslash.txt", "backslash; personal", results, "TAGS");
+    assertInText("data/test-backslash.txt", "BACKSLASH; PERSONAL", results, "TAGS");
     assertInText("data/test-backslash.txt", "\\", results, "TEXT BACKSLASH TRIGGER WORDS");
     assertInText("data/test-backslash.txt", "0, 12, 15, 16, 18, 19, 20, 21", results, "TEXT BACKSLASH TRIGGER WORDS OFFSET");
     assertInText("data/test-backslash.txt", "TEXT", results, "TEXT PERSONAL TRIGGER WORDS");
@@ -145,7 +145,7 @@ TEST(KEYWORDTAGGING, MulitpleTagsTest) {
 
     ASSERT_NO_FATAL_FAILURE(runKeywordTagging("data/tags-keyword.txt", tagger, results, custom_properties));
     assertInText("data/tags-keyword.txt", "Passenger Passport", results, "TEXT");
-    assertInText("data/tags-keyword.txt", "identity document; travel", results, "TAGS");
+    assertInText("data/tags-keyword.txt", "IDENTITY DOCUMENT; TRAVEL", results, "TAGS");
     assertInText("data/tags-keyword.txt", "Passport", results, "TEXT IDENTITY DOCUMENT TRIGGER WORDS");
     assertInText("data/tags-keyword.txt", "10-17", results, "TEXT IDENTITY DOCUMENT TRIGGER WORDS OFFSET");
     assertInText("data/tags-keyword.txt", "Passenger", results, "TEXT TRAVEL TRIGGER WORDS");
@@ -153,7 +153,7 @@ TEST(KEYWORDTAGGING, MulitpleTagsTest) {
     results.clear();
 
     ASSERT_NO_FATAL_FAILURE(runKeywordTagging("data/tags-regex.txt", tagger, results, custom_properties));
-    assertInText("data/tags-regex.txt", "case-insensitive-tag; financial; personal", results, "TAGS");
+    assertInText("data/tags-regex.txt", "CASE-INSENSITIVE-TAG; FINANCIAL; PERSONAL", results, "TAGS");
     assertInText("data/tags-regex.txt", "financ", results, "TEXT CASE-INSENSITIVE-TAG TRIGGER WORDS");
     assertInText("data/tags-regex.txt", "0-5", results, "TEXT CASE-INSENSITIVE-TAG TRIGGER WORDS OFFSET");
     assertInText("data/tags-regex.txt", "financ", results, "TEXT FINANCIAL TRIGGER WORDS");
@@ -164,7 +164,7 @@ TEST(KEYWORDTAGGING, MulitpleTagsTest) {
 
     // Test multiple text tagging w/ delimiter tag.
     ASSERT_NO_FATAL_FAILURE(runKeywordTagging("data/tags-regex-delimiter.txt", tagger, results, custom_properties));
-    assertInText("data/tags-regex-delimiter.txt", "case-insensitive-tag; delimiter-test; financial; personal",
+    assertInText("data/tags-regex-delimiter.txt", "CASE-INSENSITIVE-TAG; DELIMITER-TEST; FINANCIAL; PERSONAL",
                   results, "TAGS");
     assertInText("data/tags-regex-delimiter.txt", "financ", results, "TEXT CASE-INSENSITIVE-TAG TRIGGER WORDS");
     assertInText("data/tags-regex-delimiter.txt", "0-5", results, "TEXT CASE-INSENSITIVE-TAG TRIGGER WORDS OFFSET");
@@ -189,7 +189,7 @@ TEST(KEYWORDTAGGING, FullSearch) {
     ASSERT_TRUE(tagger.Init());
 
     ASSERT_NO_FATAL_FAILURE(runKeywordTagging("data/tags-keywordregex.txt", tagger, results, custom_properties));
-    assertInText("data/tags-keywordregex.txt", "case-insensitive-tag; case-sensitive-tag; financial; personal; vehicle",
+    assertInText("data/tags-keywordregex.txt", "CASE-INSENSITIVE-TAG; CASE-SENSITIVE-TAG; FINANCIAL; PERSONAL; VEHICLE",
                  results, "TAGS");
     assertInText("data/tags-keywordregex.txt", "Financ", results, "TEXT CASE-INSENSITIVE-TAG TRIGGER WORDS");
     assertInText("data/tags-keywordregex.txt", "37-42", results, "TEXT CASE-INSENSITIVE-TAG TRIGGER WORDS OFFSET");
@@ -205,7 +205,7 @@ TEST(KEYWORDTAGGING, FullSearch) {
 
     // With full regex search disabled, number of reported triggers and offsets will decrease.
     ASSERT_NO_FATAL_FAILURE(runKeywordTagging("data/tags-keywordregex.txt", tagger, results, custom_properties_disabled));
-    assertInText("data/tags-keywordregex.txt", "case-insensitive-tag; case-sensitive-tag; financial; personal; vehicle",
+    assertInText("data/tags-keywordregex.txt", "CASE-INSENSITIVE-TAG; CASE-SENSITIVE-TAG; FINANCIAL; PERSONAL; VEHICLE",
                   results, "TAGS");
     assertInText("data/tags-keywordregex.txt", "Financ", results, "TEXT CASE-INSENSITIVE-TAG TRIGGER WORDS");
     assertInText("data/tags-keywordregex.txt", "37-42", results, "TEXT CASE-INSENSITIVE-TAG TRIGGER WORDS OFFSET");
@@ -231,7 +231,7 @@ TEST(KEYWORDTAGGING, LanguageTest) {
     ASSERT_TRUE(tagger.Init());
 
     ASSERT_NO_FATAL_FAILURE(runKeywordTagging("data/eng-bul.txt", tagger, results, custom_properties));
-    assertInText("data/eng-bul.txt", "foreign-text", results, "TAGS");
+    assertInText("data/eng-bul.txt", "FOREIGN-TEXT", results, "TAGS");
     assertInText("data/eng-bul.txt", "свободни", results, "TEXT FOREIGN-TEXT TRIGGER WORDS");
     assertInText("data/eng-bul.txt", "106-113", results, "TEXT FOREIGN-TEXT TRIGGER WORDS OFFSET");
     assertInText("data/eng-bul.txt", "Всички хора се раждат свободни", results, "TEXT");
@@ -247,7 +247,7 @@ TEST(KEYWORDTAGGING, MissingPropertyToProcessTest) {
 
     MPFImageLocation location(1, 2, 3, 4, 5,
                               {{"SOME_PROP_1", "SOME_VAL_1"},
-                               {"SOME_PROP_2", "SOME_VAL_2"}}); // no TEXT or TRANSCRIPT provided
+                               {"SOME_PROP_2", "SOME_VAL_2"}}); // none of the properties in FEED_FORWARD_PROP_TO_PROCESS provided
     MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
 
     std::vector<MPFImageLocation> results = tagger.GetDetections(job);
@@ -316,7 +316,7 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
 
     {
         MPFImageLocation location(1, 2, 3, 4, 5,
-                                  {{"TRANSLATION", "cash"},
+                                  {{"SOME_PROP", "cash"},
                                    {"TEXT", "car"}});
         MPFImageJob job("JOB NAME", "/some/path", location, {}, {});
 
@@ -328,12 +328,12 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(location.height, results.at(0).height);
         ASSERT_EQ(location.confidence, results.at(0).confidence);
 
-        // default FEED_FORWARD_PROP_TO_PROCESS is used (TEXT, TRANSCRIPT) so tagging should run only on TEXT
+        // default FEED_FORWARD_PROP_TO_PROCESS is used so tagging should run only on TEXT
         Properties props = results.at(0).detection_properties;
         ASSERT_EQ(5, props.size());
-        ASSERT_EQ("cash", props["TRANSLATION"]);
+        ASSERT_EQ("cash", props["SOME_PROP"]);
         ASSERT_EQ("car", props["TEXT"]);
-        ASSERT_EQ("vehicle", props["TAGS"]);
+        ASSERT_EQ("VEHICLE", props["TAGS"]);
         ASSERT_EQ("car", props["TEXT VEHICLE TRIGGER WORDS"]);
         ASSERT_EQ("0-2", props["TEXT VEHICLE TRIGGER WORDS OFFSET"]);
     }
@@ -356,7 +356,7 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(7, props.size());
         ASSERT_EQ("cash", props["TRANSLATION"]);
         ASSERT_EQ("car", props["TEXT"]);
-        ASSERT_EQ("financial; vehicle", props["TAGS"]); // tags added in alphabetical order
+        ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in lexicographic order
         ASSERT_EQ("cash", props["TRANSLATION FINANCIAL TRIGGER WORDS"]);
         ASSERT_EQ("0-3", props["TRANSLATION FINANCIAL TRIGGER WORDS OFFSET"]);
         ASSERT_EQ("car", props["TEXT VEHICLE TRIGGER WORDS"]);
@@ -379,7 +379,7 @@ TEST(KEYWORDTAGGING, ProcessAllProperties) {
         ASSERT_EQ(7, props.size());
         ASSERT_EQ("cash", props["BAR"]);
         ASSERT_EQ("car", props["FOO"]);
-        ASSERT_EQ("financial; vehicle", props["TAGS"]); // tags added in alphabetical order
+        ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in lexicographic order
         ASSERT_EQ("car", props["FOO VEHICLE TRIGGER WORDS"]);
         ASSERT_EQ("0-2", props["FOO VEHICLE TRIGGER WORDS OFFSET"]);
         ASSERT_EQ("cash", props["BAR FINANCIAL TRIGGER WORDS"]);
@@ -424,7 +424,7 @@ TEST(KEYWORDTAGGING, ProcessTrackAndDetectionProperties) {
         ASSERT_EQ(5, props.size());
         ASSERT_EQ("airport", props["TEXT"]);
         ASSERT_EQ("SOME_VAL_3", props["SOME_PROP_3"]);
-        ASSERT_EQ("travel", props["TAGS"]);
+        ASSERT_EQ("TRAVEL", props["TAGS"]);
         ASSERT_EQ("airport", props["TEXT TRAVEL TRIGGER WORDS"]);
         ASSERT_EQ("0-6", props["TEXT TRAVEL TRIGGER WORDS OFFSET"]);
 
@@ -439,7 +439,7 @@ TEST(KEYWORDTAGGING, ProcessTrackAndDetectionProperties) {
         ASSERT_EQ(5, props.size());
         ASSERT_EQ("SOME_VAL_1", props["SOME_PROP_1"]);
         ASSERT_EQ("car", props["TEXT"]);
-        ASSERT_EQ("vehicle", props["TAGS"]);
+        ASSERT_EQ("VEHICLE", props["TAGS"]);
         ASSERT_EQ("car", props["TEXT VEHICLE TRIGGER WORDS"]);
         ASSERT_EQ("0-2", props["TEXT VEHICLE TRIGGER WORDS OFFSET"]);
 
@@ -454,7 +454,7 @@ TEST(KEYWORDTAGGING, ProcessTrackAndDetectionProperties) {
         ASSERT_EQ(5, props.size());
         ASSERT_EQ("SOME_VAL_2", props["SOME_PROP_2"]);
         ASSERT_EQ("username", props["TEXT"]);
-        ASSERT_EQ("personal", props["TAGS"]);
+        ASSERT_EQ("PERSONAL", props["TAGS"]);
         ASSERT_EQ("username", props["TEXT PERSONAL TRIGGER WORDS"]);
         ASSERT_EQ("0-7", props["TEXT PERSONAL TRIGGER WORDS OFFSET"]);
     }
@@ -502,7 +502,7 @@ TEST(KEYWORDTAGGING, ProcessTrackAndDetectionProperties) {
         Properties props = location.detection_properties;
         ASSERT_EQ(4, props.size());
         ASSERT_EQ("username", props["TRANSCRIPT"]);
-        ASSERT_EQ("personal", props["TAGS"]);
+        ASSERT_EQ("PERSONAL", props["TAGS"]);
         ASSERT_EQ("username", props["TRANSCRIPT PERSONAL TRIGGER WORDS"]);
         ASSERT_EQ("0-7", props["TRANSCRIPT PERSONAL TRIGGER WORDS OFFSET"]);
     }
@@ -517,7 +517,7 @@ TEST(KEYWORDTAGGING, ProcessRepeatTags) {
     ASSERT_TRUE(tagger.Init());
 
     MPFImageLocation location(1, 2, 3, 4, 5,
-                              {{"TEXT", "cash-car-suv"},
+                              {{"TEXT", "cash-suv-car"},
                                {"OTHER TEXT", "car-cash-suv"},
                                {"MORE TEXT", "cash cash"},
                                {"BLANK TEXT", " "}});
@@ -535,22 +535,22 @@ TEST(KEYWORDTAGGING, ProcessRepeatTags) {
     Properties props = results.at(0).detection_properties;
     ASSERT_EQ(15, props.size());
 
-    ASSERT_EQ("cash-car-suv", props["TEXT"]);
+    ASSERT_EQ("cash-suv-car", props["TEXT"]);
     ASSERT_EQ("car-cash-suv", props["OTHER TEXT"]);
     ASSERT_EQ("cash cash", props["MORE TEXT"]);
     ASSERT_EQ(" ", props["BLANK TEXT"]);
 
-    ASSERT_EQ("financial; vehicle", props["TAGS"]); // tags added in alphabetical order
+    ASSERT_EQ("FINANCIAL; VEHICLE", props["TAGS"]); // tags in lexicographic order
 
-    ASSERT_EQ("cash", props["TEXT FINANCIAL TRIGGER WORDS"]); // words added in alphabetical order
-    ASSERT_EQ("0-3", props["TEXT FINANCIAL TRIGGER WORDS OFFSET"]); // offsets line up with words
-    ASSERT_EQ("car; suv", props["TEXT VEHICLE TRIGGER WORDS"]);
-    ASSERT_EQ("5-7; 9-11", props["TEXT VEHICLE TRIGGER WORDS OFFSET"]);
+    ASSERT_EQ("cash", props["TEXT FINANCIAL TRIGGER WORDS"]);
+    ASSERT_EQ("0-3", props["TEXT FINANCIAL TRIGGER WORDS OFFSET"]);
+    ASSERT_EQ("car; suv", props["TEXT VEHICLE TRIGGER WORDS"]); // words in lexicographic order
+    ASSERT_EQ("9-11; 5-7", props["TEXT VEHICLE TRIGGER WORDS OFFSET"]); // offsets line up with words
 
-    ASSERT_EQ("cash", props["OTHER TEXT FINANCIAL TRIGGER WORDS"]); // words added in alphabetical order
-    ASSERT_EQ("4-7", props["OTHER TEXT FINANCIAL TRIGGER WORDS OFFSET"]); // offsets line up with words
-    ASSERT_EQ("car; suv", props["OTHER TEXT VEHICLE TRIGGER WORDS"]);
-    ASSERT_EQ("0-2; 9-11", props["OTHER TEXT VEHICLE TRIGGER WORDS OFFSET"]);
+    ASSERT_EQ("cash", props["OTHER TEXT FINANCIAL TRIGGER WORDS"]);
+    ASSERT_EQ("4-7", props["OTHER TEXT FINANCIAL TRIGGER WORDS OFFSET"]);
+    ASSERT_EQ("car; suv", props["OTHER TEXT VEHICLE TRIGGER WORDS"]); // words in lexicographic order
+    ASSERT_EQ("0-2; 9-11", props["OTHER TEXT VEHICLE TRIGGER WORDS OFFSET"]); // offsets line up with words
 
     ASSERT_EQ("cash", props["MORE TEXT FINANCIAL TRIGGER WORDS"]);
     ASSERT_EQ("0-3, 5-8", props["MORE TEXT FINANCIAL TRIGGER WORDS OFFSET"]); // offsets are in ascending order
@@ -567,8 +567,8 @@ TEST(KEYWORDTAGGING, FeedForwardTags) {
     ASSERT_TRUE(tagger.Init());
 
     MPFGenericTrack track(0.9,
-                          {{"TAGS", "FeedForwardTag"},
-                          {"BAR", "cash"}});
+                          { {"TAGS", "NAN; FINANCIAL STABILITY; ALPHA"},
+                            {"BAR", "cash"} });
     MPFGenericJob job("JOB NAME", "/some/path", track,
                       { { "FEED_FORWARD_PROP_TO_PROCESS", "FOO,BAR" } }, {});
 
@@ -578,7 +578,7 @@ TEST(KEYWORDTAGGING, FeedForwardTags) {
 
     Properties props = results.at(0).detection_properties;
     ASSERT_EQ(4, props.size());
-    ASSERT_EQ("feedforwardtag; financial", props["TAGS"]);
+    ASSERT_EQ("ALPHA; FINANCIAL; FINANCIAL STABILITY; NAN", props["TAGS"]); // tags in lexicographic order
 }
 
 
@@ -592,10 +592,10 @@ TEST(KEYWORDTAGGING, NewLines) {
     ASSERT_TRUE(tagger.Init());
 
     ASSERT_NO_FATAL_FAILURE(runKeywordTagging("data/test-newlines.txt", tagger, results, custom_properties));
-    assertInText("data/test-newlines.txt", "identity document", results, "TAGS");
+    assertInText("data/test-newlines.txt", "IDENTITY DOCUMENT", results, "TAGS");
     assertInText("data/test-newlines.txt", "address", results, "TEXT IDENTITY DOCUMENT TRIGGER WORDS");
     assertInText("data/test-newlines.txt", "37-43", results, "TEXT IDENTITY DOCUMENT TRIGGER WORDS OFFSET");
-    assertInText("data/test-newlines.txt", "personal", results, "TAGS");
+    assertInText("data/test-newlines.txt", "PERSONAL", results, "TAGS");
     assertInText("data/test-newlines.txt", "777-777-7777", results, "TEXT PERSONAL TRIGGER WORDS");
     assertInText("data/test-newlines.txt", "83-94", results, "TEXT PERSONAL TRIGGER WORDS OFFSET");
     assertInText("data/test-newlines.txt", "564-456-46", results, "TEXT PERSONAL TRIGGER WORDS");
