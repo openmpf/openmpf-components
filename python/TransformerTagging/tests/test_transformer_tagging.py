@@ -288,14 +288,14 @@ class TestTransformerTagging(unittest.TestCase):
                              dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
                              {}, ff_track)
 
-        job.feed_forward_track.detection_properties["TAGS"] = "VEL" # substring of "TRAVEL"
+        job.feed_forward_track.detection_properties["TAGS"] = "VEL; TRAVEL MAP; ALPHA"
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_generic(job)
 
         self.assertEqual(1, len(result))
 
         props = result[0].detection_properties
-        expected_tags = "TRAVEL; VEL" # tags in lexicographic order
+        expected_tags = "ALPHA; TRAVEL; TRAVEL MAP; VEL" # tags in lexicographic order
 
         self.assertEqual(expected_tags, props["TAGS"])
 
