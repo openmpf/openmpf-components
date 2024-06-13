@@ -37,18 +37,20 @@ import urllib.parse
 import urllib.request
 import uuid
 from typing import Callable, Dict, List, Literal, Mapping, Match, NamedTuple, \
-    Optional, Sequence, TypedDict, TypeVar, Union
+    Optional, Sequence, Tuple, TypedDict, TypeVar, Union
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
+from acs_translation_component.multi_language_processor import DetectedLangInfo, TranslationMetrics, MultiLanguageProcessor
 from nlp_text_splitter import TextSplitterModel, TextSplitter
 
 from . import convert_language_code
 
 log = logging.getLogger('AcsTranslationComponent')
 
-
+MULTI_LANG_REPORT = "MULTI_LANGUAGE_REPORT"
+UNIDENTIFIED_LANGUAGE = 'UNKNOWN'
 
 class AcsTranslationComponent:
 
@@ -199,6 +201,75 @@ class TranslationClient:
         self.translation_count = 0
 
 
+    def _select_source_lang(self, translation_result: TranslationResult) -> Tuple[str, str, float]:
+        if detect_result := translation_result.detect_result:
+            source_lang = detect_result.primary_language
+            source_lang_confidence = str(detect_result.primary_language_confidence)
+
+            # This is only used for MULTI_LANGUAGE_REPORT.
+            # When MULTI_LANGUAGE_REPORT is present,
+            # detections will not generate an alternative prediction or score.
+            source_lang_conf_score = detect_result.primary_language_confidence
+
+            if detect_result.alternative_language:
+                source_lang += f'; {detect_result.alternative_language}'
+                source_lang_confidence += f'; {detect_result.alternative_language_confidence}'
+            return (source_lang, source_lang_confidence, source_lang_conf_score)
+        return ("", "", -1)
+
+    def _run_reports_through_translation(self,
+                                         text_to_translate: str,
+                                         prop_to_translate: str,
+                                         metrics: TranslationMetrics,
+                                         detection_properties: Dict[str,str]):
+
+        if metrics.singleton:
+            translation_result = self._translate_text(text_to_translate, detection_properties)
+            source_lang, source_lang_confidence, _ = self._select_source_lang(translation_result)
+            if source_lang:
+                detection_properties['TRANSLATION SOURCE LANGUAGE'] = source_lang
+                detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE'] \
+                    = source_lang_confidence
+            if translation_result.skipped:
+                detection_properties['SKIPPED TRANSLATION'] = 'TRUE'
+                if translation_result.language_not_supported:
+                    detection_properties['MISSING_LANGUAGE_MODELS'] \
+                            = translation_result.detect_result.primary_language
+                else:
+                    log.info(f'Skipped translation of the "{prop_to_translate}" property because it was '
+                            'already in the target language.')
+            else:
+                detection_properties['TRANSLATION'] = translation_result.translated_text
+                log.info(f'Successfully translated the "{prop_to_translate}" property.')
+        elif metrics.language_reports:
+            for language_report in metrics.language_reports:
+                sub_text = text_to_translate[language_report.start_idx:language_report.end_idx]
+                if language_report.language.upper() == UNIDENTIFIED_LANGUAGE:
+                    metrics.unknown_lang.add(language_report.language)
+                    metrics.translations.append(sub_text)
+                    continue
+
+                translation_result = self._translate_text(sub_text,
+                                                            detection_properties,
+                                                            language_report)
+                source_lang, _, source_lang_conf_score \
+                    = self._select_source_lang(translation_result)
+
+                if translation_result.language_not_supported:
+                    metrics.unknown_lang.add(translation_result.detect_result.primary_language)
+
+                if not translation_result.skipped:
+                    metrics.skipped_translation = False
+                    metrics.lang_text_count[source_lang]+=len(sub_text)
+                    metrics.lang_conf[source_lang].append(source_lang_conf_score)
+                    metrics.translations.append(translation_result.translated_text)
+                else:
+                    metrics.translations.append(sub_text)
+
+        if metrics.unknown_lang:
+            detection_properties['MISSING_LANGUAGE_MODELS'] = ','.join(x for x in metrics.unknown_lang)
+
+
     def add_translations(self, detection_properties: Dict[str, str]) -> None:
         """
         Adds translations to detection_properties. detection_properties is modified in place.
@@ -211,38 +282,34 @@ class TranslationClient:
                 continue
 
             log.info(f'Attempting to translate the "{prop_name}" property...')
-            translation_result = self._translate_text(text_to_translate, detection_properties)
             detection_properties['TRANSLATION TO LANGUAGE'] = self._to_language
 
-            if detect_result := translation_result.detect_result:
-                source_lang = detect_result.primary_language
-                source_lang_confidence = str(detect_result.primary_language_confidence)
-                if detect_result.alternative_language:
-                    source_lang += f'; {detect_result.alternative_language}'
-                    source_lang_confidence += f'; {detect_result.alternative_language_confidence}'
+            metrics = TranslationMetrics()
+            if text_language_report := detection_properties.get(MULTI_LANG_REPORT):
+                metrics.singleton = False
+                for report in text_language_report.split(";"):
+                    metrics.language_reports.append(MultiLanguageProcessor.extract_lang_report(report))
 
-                detection_properties['TRANSLATION SOURCE LANGUAGE'] = source_lang
+            self._run_reports_through_translation(
+                text_to_translate,
+                prop_name,
+                metrics,
+                detection_properties)
 
-                detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE'] \
-                    = source_lang_confidence
-
-            if translation_result.skipped:
-                detection_properties['SKIPPED TRANSLATION'] = 'TRUE'
-                if translation_result.language_not_supported:
-                    detection_properties['MISSING_LANGUAGE_MODELS'] \
-                            = translation_result.detect_result.primary_language
-                else:
-                    log.info(f'Skipped translation of the "{prop_name}" property because it was '
-                             'already in the target language.')
-            else:
-                detection_properties['TRANSLATION'] = translation_result.translated_text
-                log.info(f'Successfully translated the "{prop_name}" property.')
+            MultiLanguageProcessor.aggregate_translation_results(metrics,
+                prop_name,
+                self._to_language,
+                self._to_lang_word_separator,
+                detection_properties,
+                log,
+                metrics.singleton)
 
             self.translation_count += 1
             return  # Only process first matched property.
 
 
-    def _translate_text(self, text: str, detection_properties: Dict[str, str]) -> TranslationResult:
+    def _translate_text(self, text: str, detection_properties: Dict[str, str],
+                        lang_report: Optional[DetectedLangInfo] = None) -> TranslationResult:
         """
         Translates the given text. If the text is longer than ACS allows, we will split up the
         text and translate each part separately. If, during the current job, we have seen the
@@ -251,7 +318,12 @@ class TranslationClient:
         if cached_translation := self._translation_cache.get(text):
             return cached_translation
 
-        if self._provided_from_language:
+        if lang_report:
+            source_lang_script = f"{lang_report.language}-{lang_report.script}"
+            source_lang = convert_language_code.iso_to_bcp(source_lang_script)
+            detect_result = DetectResult(source_lang, lang_report.conf)
+            from_lang, from_lang_confidence, *_ = detect_result
+        elif self._provided_from_language:
             detect_result = DetectResult(self._provided_from_language, 1)
             from_lang, from_lang_confidence, *_ = detect_result
         elif upstream_lang := self._get_upstream_language(detection_properties):
@@ -551,9 +623,6 @@ def set_query_params(url: str, query_params: Mapping[str, str]) -> str:
     query_string = urllib.parse.urlencode(query_dict, doseq=True)
     replaced_parts = url_parts._replace(query=query_string)
     return urllib.parse.urlunparse(replaced_parts)
-
-
-
 
 
 def get_acs_headers(subscription_key: str) -> Dict[str, str]:
