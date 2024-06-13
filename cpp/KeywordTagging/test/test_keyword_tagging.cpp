@@ -567,8 +567,8 @@ TEST(KEYWORDTAGGING, FeedForwardTags) {
     ASSERT_TRUE(tagger.Init());
 
     MPFGenericTrack track(0.9,
-                          {{"TAGS", "FEEDFORWARDTAG"},
-                          {"BAR", "cash"}});
+                          { {"TAGS", "NAN"}, // substring of "FINANCIAL"
+                            {"BAR", "cash"} });
     MPFGenericJob job("JOB NAME", "/some/path", track,
                       { { "FEED_FORWARD_PROP_TO_PROCESS", "FOO,BAR" } }, {});
 
@@ -578,7 +578,7 @@ TEST(KEYWORDTAGGING, FeedForwardTags) {
 
     Properties props = results.at(0).detection_properties;
     ASSERT_EQ(4, props.size());
-    ASSERT_EQ("FEEDFORWARDTAG; FINANCIAL", props["TAGS"]);
+    ASSERT_EQ("FINANCIAL; NAN", props["TAGS"]); // tags in lexicographic order
 }
 
 
