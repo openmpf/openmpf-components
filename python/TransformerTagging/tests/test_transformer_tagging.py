@@ -288,17 +288,16 @@ class TestTransformerTagging(unittest.TestCase):
                              dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
                              {}, ff_track)
 
-        firstTag = "FIRST_TAG"
-        job.feed_forward_track.detection_properties["TAGS"] = firstTag
+        job.feed_forward_track.detection_properties["TAGS"] = "VEL" # substring of "TRAVEL"
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_generic(job)
 
         self.assertEqual(1, len(result))
 
         props = result[0].detection_properties
-        expectedTags = firstTag + "; " + SHORT_BEACH_SAMPLE_TAGS # tags in lexicographic order
+        expected_tags = "TRAVEL; VEL" # tags in lexicographic order
 
-        self.assertEqual(expectedTags, props["TAGS"])
+        self.assertEqual(expected_tags, props["TAGS"])
 
 
     def test_matches_with_semicolons(self):

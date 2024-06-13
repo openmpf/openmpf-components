@@ -200,17 +200,18 @@ class TransformerTaggingComponent:
 
         all_tag_results = pd.concat(all_tag_results)
 
+        ff_tags = set()
+        if "TAGS" in ff_props:
+            ff_tags = {t.strip().upper() for t in ff_props["TAGS"].split(';')}
+
+        new_tags = set(all_tag_results["tag"].unique())
+
+        ff_props["TAGS"] = "; ".join(sorted(ff_tags.union(new_tags))) # lexicographic order
+
         # create detection properties for each tag found in the text
         # detection properties formatted as <input property> <tag> TRIGGER SENTENCES...
-        for tag in sorted(all_tag_results["tag"].unique()): # lexicographic order
+        for tag in new_tags: 
             tag_df = all_tag_results[all_tag_results["tag"] == tag]
-
-            if "TAGS" in ff_props:
-                # only add tag if it is not already in ff_props["TAGS"], else do nothing
-                if tag.upper() not in ff_props["TAGS"].upper():
-                    ff_props["TAGS"] = ff_props["TAGS"] + "; " + tag
-            else:
-                ff_props["TAGS"] = tag
 
             sents = []
             offsets = []
@@ -229,7 +230,7 @@ class TransformerTaggingComponent:
                     # all entries should have the same match, so just use the first
                     matches.append(input_text_df["corpus text"].values[0].replace(';', '[;]'))
 
-            prop_name_sent = prop_to_tag + " " + tag.upper() + " TRIGGER SENTENCES"
+            prop_name_sent = prop_to_tag + " " + tag + " TRIGGER SENTENCES"
             prop_name_offset = prop_name_sent + " OFFSET"
             prop_name_score = prop_name_sent + " SCORE"
 
