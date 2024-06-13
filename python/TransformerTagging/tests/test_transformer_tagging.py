@@ -60,7 +60,9 @@ class TestTransformerTagging(unittest.TestCase):
 
     def test_generic_job(self):
         ff_track = mpf.GenericTrack(-1, dict(TEXT=SHORT_BEACH_SAMPLE))
-        job = mpf.GenericJob('Test Generic', 'test.pdf', {}, {}, ff_track)
+        job = mpf.GenericJob('Test Generic', 'test.pdf',
+                             dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                             {}, ff_track)
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_generic(job)
 
@@ -75,7 +77,10 @@ class TestTransformerTagging(unittest.TestCase):
 
 
     def test_plaintext_job(self):
-        job = mpf.GenericJob('Test Plaintext', str(TEST_DATA / 'simple_input.txt'), {}, {})
+        job = mpf.GenericJob('Test Plaintext',
+                             str(TEST_DATA / 'simple_input.txt'), 
+                             dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                             {})
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_generic(job)
 
@@ -91,7 +96,10 @@ class TestTransformerTagging(unittest.TestCase):
 
     def test_audio_job(self):
         ff_track = mpf.AudioTrack(0, 1, -1, dict(TEXT=SHORT_BEACH_SAMPLE))
-        job = mpf.AudioJob('Test Audio', 'test.wav', 0, 1, {}, {}, ff_track)
+        job = mpf.AudioJob('Test Audio',
+                           'test.wav', 0, 1,
+                           dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                           {}, ff_track)
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_audio(job)
 
@@ -107,7 +115,10 @@ class TestTransformerTagging(unittest.TestCase):
 
     def test_image_job(self):
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SHORT_BEACH_SAMPLE))
-        job = mpf.ImageJob('Test Image', 'test.jpg', {}, {}, ff_loc)
+        job = mpf.ImageJob('Test Image',
+                           'test.jpg',
+                           dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                           {}, ff_loc)
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_image(job)
 
@@ -129,7 +140,10 @@ class TestTransformerTagging(unittest.TestCase):
                 1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=SHORT_BEACH_SAMPLE))
             },
             dict(TEXT=SHORT_BEACH_SAMPLE))
-        job = mpf.VideoJob('Test Video', 'test.mp4', 0, 1, {}, {}, ff_track)
+        job = mpf.VideoJob('Test Video',
+                           'test.mp4', 0, 1,
+                           dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                           {}, ff_track)
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_video(job)
 
@@ -156,7 +170,10 @@ class TestTransformerTagging(unittest.TestCase):
 
     def test_no_feed_forward_location(self):
         comp = TransformerTaggingComponent()
-        job = mpf.ImageJob('Test', 'test.jpg', {}, {})
+        job = mpf.ImageJob('Test',
+                           'test.jpg',
+                           dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                           {})
 
         with self.assertRaises(mpf.DetectionException) as cm:
             list(comp.get_detections_from_image(job))
@@ -165,7 +182,10 @@ class TestTransformerTagging(unittest.TestCase):
 
     def test_no_feed_forward_track(self):
         comp = TransformerTaggingComponent()
-        job = mpf.VideoJob('test', 'test.mp4', 0, 1, {}, {})
+        job = mpf.VideoJob('test',
+                           'test.mp4', 0, 1,
+                           dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                           {})
 
         with self.assertRaises(mpf.DetectionException) as cm:
             list(comp.get_detections_from_video(job))
@@ -177,9 +197,13 @@ class TestTransformerTagging(unittest.TestCase):
         self.assertEqual(mpf.DetectionError.UNSUPPORTED_DATA_TYPE, cm.exception.error_code)
 
 
-    def test_custom_confidence_threshold(self):
+    def test_custom_score_threshold(self):
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SHORT_BEACH_SAMPLE))
-        job = mpf.ImageJob('Test Image', 'test.jpg', dict(SCORE_THRESHOLD=".2"), {}, ff_loc)
+        job = mpf.ImageJob('Test Image',
+                           'test.jpg', 
+                           dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json"),
+                                SCORE_THRESHOLD=".2"),
+                           {}, ff_loc)
 
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_image(job)
@@ -202,35 +226,12 @@ class TestTransformerTagging(unittest.TestCase):
         self.assertAlmostEqual(custom_threshold_sentence_score, float(props["TEXT FINANCIAL TRIGGER SENTENCES SCORE"]), places=3)
 
 
-    def test_custom_tagging_file(self):
-        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SHORT_BEACH_SAMPLE))
-        job = mpf.ImageJob('Test Image', 'test.jpg',
-                           dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "custom_corpus.json")), {}, ff_loc)
-
-        comp = TransformerTaggingComponent()
-        result = comp.get_detections_from_image(job)
-
-        self.assertEqual(1, len(result))
-
-        props = result[0].detection_properties
-
-        beach_sentences = 'I drove to the beach today and will be staying overnight at a hotel.; ' \
-                          'I plan to spend all day at the beach tomorrow.'
-
-        beach_score_1 = 0.4417020082473755
-        beach_score_2 = 0.4624265432357788
-        beach_score_result_1, beach_score_result_2 = props["TEXT BEACH TRIGGER SENTENCES SCORE"].split(";")
-
-        self.assertEqual("BEACH", props["TAGS"])
-        self.assertEqual(beach_sentences, props["TEXT BEACH TRIGGER SENTENCES"])
-        self.assertEqual('0-67; 197-242', props["TEXT BEACH TRIGGER SENTENCES OFFSET"])
-        self.assertAlmostEqual(beach_score_1, float(beach_score_result_1), places=3)
-        self.assertAlmostEqual(beach_score_2, float(beach_score_result_2), places=3)
-
-
     def test_debugging_show_matches(self):
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SHORT_BEACH_SAMPLE))
-        job = mpf.ImageJob('Test Image', 'test.jpg', {}, {}, ff_loc)
+        job = mpf.ImageJob('Test Image',
+                           'test.jpg',
+                           dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                           {}, ff_loc)
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_image(job)
 
@@ -250,7 +251,10 @@ class TestTransformerTagging(unittest.TestCase):
 
     def test_missing_property_to_process(self):
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(INPUT="some input"))
-        job = mpf.ImageJob('Test Image', 'test.jpg', {}, {}, ff_loc)
+        job = mpf.ImageJob('Test Image',
+                           'test.jpg',
+                           dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                           {}, ff_loc)
 
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_image(job)
@@ -267,7 +271,10 @@ class TestTransformerTagging(unittest.TestCase):
 
     def test_missing_text_to_process(self):
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=""))
-        job = mpf.ImageJob('Test Image', 'test.jpg', {}, {}, ff_loc)
+        job = mpf.ImageJob('Test Image',
+                           'test.jpg',
+                           dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                           {}, ff_loc)
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_image(job)
 
@@ -276,7 +283,10 @@ class TestTransformerTagging(unittest.TestCase):
 
     def test_maintain_tags_from_earlier_feedforward_task(self):
         ff_track = mpf.GenericTrack(-1, dict(TEXT=SHORT_BEACH_SAMPLE))
-        job = mpf.GenericJob('Test Generic', 'test.pdf', {}, {}, ff_track)
+        job = mpf.GenericJob('Test Generic',
+                             'test.pdf',
+                             dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                             {}, ff_track)
 
         firstTag = "FIRST_TAG"
         job.feed_forward_track.detection_properties["TAGS"] = firstTag
@@ -293,18 +303,21 @@ class TestTransformerTagging(unittest.TestCase):
 
     def test_matches_with_semicolons(self):
         SEMICOLON_SAMPLE = (
-            'I drove to the beach today; it was a long drive. '
+            'I rode my bike to the beach today; it was a long trip. '
         )
         ff_track = mpf.GenericTrack(-1, dict(TEXT=SEMICOLON_SAMPLE))
-        job = mpf.GenericJob('Test Generic', 'test.pdf', {}, {}, ff_track)
+        job = mpf.GenericJob('Test Generic',
+                             'test.pdf',
+                             dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                             {}, ff_track)
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_generic(job)
 
         self.assertEqual(1, len(result))
         props = result[0].detection_properties
 
-        expected_output = "I drove to the beach today[;] it was a long drive."
-        self.assertEqual(expected_output, props["TEXT TRAVEL TRIGGER SENTENCES"])
+        expected_output = "I rode my bike to the beach today[;] it was a long trip."
+        self.assertEqual(expected_output, props["TEXT VEHICLE TRIGGER SENTENCES"])
 
 
     def test_repeat_trigger_job(self):
@@ -337,8 +350,12 @@ class TestTransformerTagging(unittest.TestCase):
         )
 
         ff_track = mpf.GenericTrack(-1, dict(TEXT=sample))
-        job = mpf.GenericJob('Test Repeat', 'test.pdf', \
-            dict(ENABLE_DEBUG='true', SCORE_THRESHOLD='0.4'), {}, ff_track)
+        job = mpf.GenericJob('Test Repeat',
+                             'test.pdf',
+                             dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json"),
+                                  SCORE_THRESHOLD='0.4',
+                                  ENABLE_DEBUG='true'),
+                             {}, ff_track)
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_generic(job)
 
@@ -378,8 +395,12 @@ class TestTransformerTagging(unittest.TestCase):
         offsets = '0-48; 50-92; 97-166; 171-218; 223-243'
 
         ff_track = mpf.GenericTrack(-1, dict(TEXT=sample))
-        job = mpf.GenericJob('Test Generic', 'test.txt', \
-            dict(ENABLE_DEBUG='true', ENABLE_NEWLINE_SPLIT='true'), {}, ff_track)
+        job = mpf.GenericJob('Test Generic',
+                             'test.txt',
+                             dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json"),
+                                  ENABLE_NEWLINE_SPLIT='true',
+                                  ENABLE_DEBUG='true'),
+                             {}, ff_track)
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_generic(job)
 
@@ -394,7 +415,10 @@ class TestTransformerTagging(unittest.TestCase):
                                     dict(TEXT=SHORT_BEACH_SAMPLE,
                                          TRANSLATION=SHORT_PARK_SAMPLE,
                                          TRANSCRIPT=SHORT_BEACH_SAMPLE + ' ' + SHORT_PARK_SAMPLE))
-        job = mpf.GenericJob('Test Generic', 'test.pdf', {}, {}, ff_track)
+        job = mpf.GenericJob('Test Generic',
+                             'test.pdf',
+                             dict(TRANSFORMER_TAGGING_CORPUS=str(TEST_CONFIG / "minimal_corpus.json")),
+                             {}, ff_track)
 
         comp = TransformerTaggingComponent()
         result = comp.get_detections_from_generic(job)
