@@ -944,3 +944,41 @@ TEST(KEYWORDTAGGING, POBoxTest) {
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "box @123"));
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "number 123"));
 }
+
+TEST(KEYWORDTAGGING, SSNTest) {
+    KeywordTagging tagger;
+    tagger.SetRunDirectory("../plugin");
+    ASSERT_TRUE(tagger.Init());
+
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123.45.6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123:45:6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123/45/6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "333-22-3333", "IDENTITY DOCUMENT"));
+
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc 123-45-6789 abc", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123 123-45-6789 123", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc234 123-45-6789 abc123", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc234abc... 123-45-6789 abc123", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "-123-45-6789-", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ":123-45-6789.", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ":333-22-3333", "333-22-3333", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "333-22-3333:", "333-22-3333", "IDENTITY DOCUMENT"));
+
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "1a1aa----1000-00-0000b2"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "a000-00-0000"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "a1000-00-00002b"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "000-00:0000"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "000.00-0000"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "000:00/0000"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "084:74.0090"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "d084:74:0090r"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "k333-22-3333"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "k:333-22-3333"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, ":k333-22-3333"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "k:k333-22-3333"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "333-22-3333k"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "333-22-3333k:"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "333-22-3333:k"));
+    ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "333-22-3333k:k"));
+}
