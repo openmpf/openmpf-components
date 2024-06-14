@@ -950,20 +950,20 @@ TEST(KEYWORDTAGGING, SSNTest) {
     tagger.SetRunDirectory("../plugin");
     ASSERT_TRUE(tagger.Init());
 
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123-45-6789", "identity document"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123.45.6789", "identity document"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123:45:6789", "identity document"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123/45/6789", "identity document"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "333-22-3333", "identity document"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123.45.6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123:45:6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123/45/6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "333-22-3333", "IDENTITY DOCUMENT"));
 
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc 123-45-6789 abc", "123-45-6789", "identity document"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123 123-45-6789 123", "123-45-6789", "identity document"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc234 123-45-6789 abc123", "123-45-6789", "identity document"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc234abc... 123-45-6789 abc123", "123-45-6789", "identity document"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "-123-45-6789-", "123-45-6789", "identity document"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ":123-45-6789.", "123-45-6789", "identity document"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ":333-22-3333", "333-22-3333", "identity document"));
-    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "333-22-3333:", "333-22-3333", "identity document"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc 123-45-6789 abc", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "123 123-45-6789 123", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc234 123-45-6789 abc123", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "abc234abc... 123-45-6789 abc123", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "-123-45-6789-", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ":123-45-6789.", "123-45-6789", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, ":333-22-3333", "333-22-3333", "IDENTITY DOCUMENT"));
+    ASSERT_NO_FATAL_FAILURE(assertTextAndTagFound(tagger, "333-22-3333:", "333-22-3333", "IDENTITY DOCUMENT"));
 
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "1a1aa----1000-00-0000b2"));
     ASSERT_NO_FATAL_FAILURE(assertTextNotFound(tagger, "a000-00-0000"));
