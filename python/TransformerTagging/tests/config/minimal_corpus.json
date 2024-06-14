@@ -1,0 +1,26 @@
+[
+  {
+    "text": "This sentence is airline.",
+    "tag": "TRAVEL"
+  },
+  {
+    "text": "This sentence is airport.",
+    "tag": "TRAVEL"
+  },
+  {
+    "text": "This sentence is hotel.",
+    "tag": "TRAVEL"
+  },
+  {
+    "text": "This sentence is bike.",
+    "tag": "VEHICLE"
+  },
+  {
+    "text": "This sentence is bank.",
+    "tag": "FINANCIAL"
+  },
+  {
+    "text": "This sentence is dummy.",
+    "tag": "OTHER"
+  }
+]
