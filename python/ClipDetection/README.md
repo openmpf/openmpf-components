@@ -6,19 +6,21 @@ This repository contains source code for the OpenMPF CLIP detection component. C
 
 The following are the properties that can be specified for the component. Each property has a default value and so none of them necessarily need to be specified for processing jobs.
 
-- `MODEL_NAME`: Specifies the CLIP model that is loaded and used by the component, as well as allowing the component to utilize CoOp for ImageNet classification. The only supported models are 'ViT-L/14' (the default model), 'ViT-B/32', and 'CoOp'. 
+- `MODEL_NAME`: Specifies the CLIP model that is loaded and used by the component, as well as allowing the component to utilize CoOp for ImageNet classification. The only supported models are 'ViT-L/14' (the default model), 'ViT-B/32', and 'CoOp'. Also, a value of 'CoOp' will throw an eror if `ENABLE_BINARY_CLASSIFICATION`='True'.
 
 - `NUMBER_OF_CLASSIFICATIONS`: Specifies how many of the top classifications you want to return. The default value is set to 1, and so you'll only see the classification with the greatest confidence.
 
 - `TEMPLATE_TYPE`: There are three template files that are included in the component, with the number of templates in each being 1, 7, and 80. The one template is a basic template, while the 7 and 80 come from the OpenAI team when trying to [improve performance](https://github.com/openai/CLIP/blob/main/notebooks/Prompt_Engineering_for_ImageNet.ipynb) on the ImageNet dataset. The default value is 'openai_80', while 'openai_1' and 'openai_7' are the only other valid inputs. Also this property is overridden if a `TEMPLATE_PATH` is specified.
 
-- `TEMPLATE_PATH`: If specified, this allows the user to give the component a file path to their own list of templates. See below for the formatting that's required for that file. The OpenAI developers admitted that the process of developing templates was a lot of trial and error, so feel free to come up with your own! Also, a value of '' is required if `MODEL_NAME`='CoOp'.
+- `TEMPLATE_PATH`: If specified, this allows the user to give the component a file path to their own list of templates. See below for the formatting that's required for that file. The OpenAI developers admitted that the process of developing templates was a lot of trial and error, so feel free to come up with your own! Also, a value of '' is required if `MODEL_NAME`='CoOp' or if `ENABLE_BINARY_CLASSIFICATION`='True'.
 
 - `CLASSIFICATION_LIST`: Specifies whether the user wants to use the COCO or ImageNet classification list, by specifying 'coco' or 'imagenet', respectively. By default, this is set to 'coco'. Also this property is overridden if a `CLASSIFICATION_PATH` is given, and a value of 'imagenet' is required if `MODEL_NAME`='CoOp'.
 
 - `CLASSIFICATION_PATH`: If specified, this allows the user to give the component a file path to their own list of classifications in a CSV file, if the COCO or ImageNet class lists aren't of interest. See below for the formatting that's required for that file. Also, a value of '' is required if `MODEL_NAME`='CoOp'.
 
 - `ENABLE_CROPPING`: A boolean toggle to specify if the image is to be cropped into 144 images of size 224x224 which cover all areas of the original. By default, this is set to true. This technique is described in Section 7 of the paper "[Going deeper with convolutions](https://arxiv.org/abs/1409.4842)" from Szegedy, et al. 
+
+- `ENABLE_BINARY_CLASSIFICATION`: A boolean toggle to specify if the component should run binary queries for each class in `CLASSIFICATION_LIST`. For each image, a list of `ImageLocation` objects for each positive query will be returned along with their confidences. 
 
 - `ENABLE_TRITON`: A boolean toggle to specify whether the component should use a Triton inference server to process the image job. By default this is set to false. Also, a value of false is required if `MODEL_NAME`='CoOp'.
 

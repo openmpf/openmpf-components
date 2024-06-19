@@ -29,7 +29,8 @@ import os
 import csv
 from pkg_resources import resource_filename
 from itertools import islice
-from typing import Iterable, Mapping
+from typing import Iterable, Mapping, Dict, Tuple
+import numpy.typing as npt
 import argparse
 from abc import ABC, abstractmethod
 
@@ -67,7 +68,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             )
         return prop
 
-    def _parse_properties(self, job_properties):
+    def _parse_properties(self, job_properties: Mapping[str, str]) -> Dict[str, any]:
         model_name = self._get_prop(job_properties, "MODEL_NAME", "ViT-L/14", ["ViT-L/14", "ViT-B/32", "CoOp"])
         batch_size = self._get_prop(job_properties, "DETECTION_FRAME_BATCH_SIZE", 64)
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
@@ -98,7 +99,9 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             cuda_device_id = cuda_device_id
         )
 
-    def get_detections_from_image_reader(self, image_job, image_reader):
+    def get_detections_from_image_reader(self,
+                                         image_job: mpf.ImageJob,
+                                         image_reader: mpf_util.ImageReader) -> Iterable[mpf.ImageLocation]:
         logger.info("Received image job: %s", image_job)
 
         kwargs = self._parse_properties(image_job.job_properties)
@@ -128,7 +131,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             raise
 
     @staticmethod
-    def _batches_from_video_capture(video_capture, batch_size):
+    def _batches_from_video_capture(video_capture: mpf_util.VideoCapture, batch_size: int) -> Iterable[Tuple[int, npt.NDArray]]:
         frames = []
         for frame in video_capture:
             frames.append(frame)
@@ -178,7 +181,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         logger.info(f"Job complete. Found {len(tracks)} tracks.")
         return tracks
 
-    def _get_model_wrapper(self, model_name, kwargs, device): 
+    def _get_model_wrapper(self, model_name: str, kwargs: Dict[str, any], device): 
         if model_name not in self._model_wrappers:
             if model_name == "CoOp":
                 self._model_wrappers['CoOp'] = CoOpWrapper(**kwargs)
@@ -589,6 +592,9 @@ class BinaryWrapper(BaseWrapper):
                     "CLASSIFICATION CONFIDENCE LIST": [str(confidence)],
                     "CLASSIFICATION LIST": [label]
                 }
+                if kwargs['include_features']:
+                    detection_properties['FEATURE'] = base64.b64encode(image_features.cpu().numpy()).decode()
+
                 image_locations.append(
                     mpf.ImageLocation(
                         x_left_upper = 0,
