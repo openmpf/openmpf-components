@@ -64,6 +64,12 @@
                     "defaultValue": "true"
                 },
                 {
+                    "name": "ENABLE_BINARY_CLASSIFICATION",
+                    "description": "If true, the image will be queried individually for each classification. The results will contain a track for each classification that is positively identified.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
                     "name": "ENABLE_TRITON",
                     "description": "If true, inferencing will be performed via a configured Triton inference server. If MODEL_NAME=='CoOp', then 'false' is the only supported value.",
                     "type": "BOOLEAN",

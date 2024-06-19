@@ -31,6 +31,7 @@ from pkg_resources import resource_filename
 from itertools import islice
 from typing import Iterable, Mapping
 import argparse
+from abc import ABC, abstractmethod
 
 from PIL import Image
 import cv2
@@ -72,6 +73,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
         classification_path = os.path.expandvars(self._get_prop(job_properties, "CLASSIFICATION_PATH", ''))
         enable_cropping = self._get_prop(job_properties, "ENABLE_CROPPING", True)
+        enable_binary = self._get_prop(job_properties, "ENABLE_BINARY_CLASSIFICATION", False)
         enable_triton = self._get_prop(job_properties, "ENABLE_TRITON", False)
         include_features = self._get_prop(job_properties, "INCLUDE_FEATURES", False)
         num_classifications = self._get_prop(job_properties, "NUMBER_OF_CLASSIFICATIONS", 1)
@@ -86,6 +88,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             classification_list = classification_list,
             classification_path = classification_path,
             enable_cropping = enable_cropping,
+            enable_binary = enable_binary,
             enable_triton = enable_triton,
             include_features = include_features,
             num_classifications = num_classifications,
@@ -175,16 +178,167 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         logger.info(f"Job complete. Found {len(tracks)} tracks.")
         return tracks
 
-    def _get_model_wrapper(self, model_name, kwargs, device):   
+    def _get_model_wrapper(self, model_name, kwargs, device): 
         if model_name not in self._model_wrappers:
             if model_name == "CoOp":
                 self._model_wrappers['CoOp'] = CoOpWrapper(**kwargs)
+                wrapper = self._model_wrappers['CoOp']
+            elif kwargs['enable_binary']:
+                if model_name == "CoOp":
+                    raise mpf.DetectionException(
+                        "When ENABLE_BINARY_CLASSIFICATION == True, MODEL_NAME must be either ViT-L/14 or ViT-B/32.",
+                        mpf.DetectionError.INVALID_PROPERTY
+                    )
+                wrapper_name = f"binary_{model_name}"
+                if wrapper_name not in self._model_wrappers:
+                    self._model_wrappers[wrapper_name] = BinaryWrapper(device, model_name)
+                wrapper = self._model_wrappers[wrapper_name]
             else:
                 self._model_wrappers[model_name] = ClipWrapper(device, model_name)
+                wrapper = self._model_wrappers[model_name]
 
-        return self._model_wrappers[model_name]
+        return wrapper
 
-class CoOpWrapper(object):
+class BaseWrapper(ABC):
+    '''
+    Base class that is inherited by other wrapper classes. Contains shared variables and functions, and requires any inheriting classes to define a get_detections() function.
+    '''
+    def __init__(self, device, model_name):
+        logger.info("Loading model...")
+        model, _ = clip.load(model_name, device=device, download_root='/models')
+        logger.info("Model loaded.")
+
+        self._model = model    
+        self._input_resolution = self._model.visual.input_resolution
+        self._device = device
+
+        self._preprocessor = None
+        self._classification_path = ''
+        self._template_path = ''
+        self._classification_list = ''
+
+        self._templates = None
+        self._template_type = None
+        self._class_mapping = None
+        self._text_features = None
+
+        self._inferencing_server = None
+
+    @abstractmethod
+    def get_detections(self, images, device, **kwargs):
+        pass
+
+    def _check_template_list(self, template_path: str, template_type: str, enable_binary: bool = False) -> bool:
+        if template_path != '':
+            if (not os.path.exists(template_path)):
+                raise mpf.DetectionException(
+                    f"The path {template_path} is not valid",
+                    mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
+                )
+            elif self._template_path != template_path:
+                self._template_path = template_path
+            
+                try:
+                    logger.info("Updating templates...")
+                    self._templates = self._get_templates_from_file(template_path)
+                    logger.info("Templates updated.")
+                    return True
+                except:
+                    raise mpf.DetectionException(
+                        f"Could not read templates from {template_path}",
+                        mpf.DetectionError.COULD_NOT_READ_DATAFILE
+                    )
+        elif (self._templates == None) or (template_type != self._template_type):
+            if template_type == 'openai_80':
+                template_filename = 'eighty_templates.txt'
+            elif template_type == 'openai_7':
+                template_filename = 'seven_templates.txt'
+            elif template_type == 'openai_1':
+                template_filename = 'one_template.txt'
+            
+            template_path = os.path.realpath(resource_filename(__name__, 'data/' + template_filename))
+            logger.info("Updating templates...")
+            self._templates = self._get_templates_from_file(template_path)
+            if enable_binary:
+                not_template_path = os.path.realpath(resource_filename(__name__, 'data/not_' + template_filename))
+                self._not_templates = self._get_templates_from_file(not_template_path)
+
+            self._template_type = template_type
+            logger.info("Templates updated.")
+            return True
+        return False
+
+    def _check_class_list(self, classification_path: str, classification_list: str, templates_changed: bool, enable_binary: bool = False) -> None:
+        if classification_path != "":
+            if (not os.path.exists(classification_path)):
+                raise mpf.DetectionException(
+                    f"The path {classification_path} is not valid",
+                    mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
+                )
+        else:
+            if self._classification_list != classification_list.lower():
+                self._classification_list = classification_list.lower()
+            classification_path = os.path.realpath(resource_filename(__name__, f'data/{self._classification_list}_classification_list.csv'))
+        
+        if self._classification_path != classification_path or templates_changed:
+            self._classification_path = classification_path
+
+            try:
+                logger.info("Updating classifications...")
+                self._class_mapping = self._get_mapping_from_classifications(self._classification_path)
+                logger.info("Classifications updated.")
+            except Exception:
+                raise mpf.DetectionException(
+                    f"Could not read classifications from {classification_path}",
+                    mpf.DetectionError.COULD_NOT_READ_DATAFILE
+                )
+
+            with torch.no_grad():
+                logger.info("Creating text embeddings...")
+                if enable_binary:
+                    self._binary_features = {}
+                    for label in self._class_mapping.keys():
+                        text_features = []
+                        for template in [self._templates, self._not_templates]:
+                            text_phrases = [template.format(label) for template in template]
+                            text_tokens = clip.tokenize(text_phrases).to(self._device)
+                            text_embeddings = self._model.encode_text(text_tokens)
+                            text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
+                            text_embedding = text_embeddings.mean(dim=0)
+                            text_embedding /= text_embedding.norm()
+                            text_features.append(text_embedding)
+                        text_features = torch.stack(text_features, dim=1).float().to(self._device)
+                        self._binary_features[label] = text_features
+                        
+                else:
+                    text_features = []
+                    for label in self._class_mapping.keys():
+                        text_phrases = [template.format(label) for template in self._templates]
+                        text_tokens = clip.tokenize(text_phrases).to(self._device)
+                        text_embeddings = self._model.encode_text(text_tokens)
+                        text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
+                        text_embedding = text_embeddings.mean(dim=0)
+                        text_embedding /= text_embedding.norm()
+                        text_features.append(text_embedding)
+                    self._text_features = torch.stack(text_features, dim=1).float().to(self._device)
+                logger.info("Text embeddings created.")
+
+    @staticmethod
+    def _get_mapping_from_classifications(classification_path: str) -> Mapping[str, str]:
+        with open(classification_path) as csvfile:
+            mapping = {}
+            csvreader = csv.reader(csvfile)
+            for row in csvreader:
+                mapping[row[0].strip()] = row[1].strip()
+                
+        return mapping
+
+    @staticmethod
+    def _get_templates_from_file(template_path: str) -> Iterable[str]:
+        with open(template_path) as f:
+            return [line.strip() for line in f.readlines()]
+
+class CoOpWrapper(BaseWrapper):
     def __init__(self, **kwargs):
         if (kwargs['classification_list'] == 'coco') or (kwargs['template_path'] != '') or (kwargs['classification_path'] != '') or (kwargs['enable_triton'] == True):
             raise mpf.DetectionException(
@@ -309,42 +463,14 @@ class CoOpWrapper(object):
         return args
     
     @staticmethod
-    def _get_mapping_from_classifications(classification_path: str) -> Mapping[str, str]:
-        with open(classification_path) as csvfile:
-            mapping = {}
-            csvreader = csv.reader(csvfile)
-            for row in csvreader:
-                mapping[row[0].strip()] = row[1].strip()
-                
-        return mapping
-    
-    @staticmethod
     def _get_coop_args():
         with open(os.path.realpath(resource_filename(__name__, 'data/coop_args.txt'))) as f:
             args = f.read().strip().split()
         return args
 
-class ClipWrapper(object):
+class ClipWrapper(BaseWrapper):
     def __init__(self, device, model_name='ViT-L/14'):
-        logger.info("Loading model...")
-        model, _ = clip.load(model_name, device=device, download_root='/models')
-        logger.info("Model loaded.")
-
-        self._model = model
-        self._preprocessor = None
-        self._input_resolution = self._model.visual.input_resolution
-
-        self._classification_path = ''
-        self._template_path = ''
-        self._classification_list = ''
-
-        self._templates = None
-        self._template_type = None
-        self._class_mapping = None
-        self._text_features = None
-
-        self._inferencing_server = None
-        self._device = device
+        super().__init__(device, model_name)
 
     def get_detections(self, images, device, **kwargs) -> Iterable[mpf.ImageLocation]:
         self._device = device
@@ -414,95 +540,66 @@ class ClipWrapper(object):
                 detection_properties = detection_properties
             )
 
-    def _check_template_list(self, template_path: str, template_type: str) -> bool:
-        if template_path != '':
-            if (not os.path.exists(template_path)):
-                raise mpf.DetectionException(
-                    f"The path {template_path} is not valid",
-                    mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
-                )
-            elif self._template_path != template_path:
-                self._template_path = template_path
+class BinaryWrapper(BaseWrapper):
+    def __init__(self, device, model_name='ViT-L/14'):
+        super().__init__(device, model_name)
+
+    def get_detections(self, images, device, **kwargs) -> Iterable[mpf.ImageLocation]:
+        if kwargs['template_path'] != "":
+            raise mpf.DetectionException(
+                "For binary classification, you must use a provided TEMPLATE_TYPE. Make sure TEMPLATE_PATH = ''.",
+                mpf.DetectionError.INVALID_PROPERTY
+            )
+
+        self._device = device
+        templates_changed = self._check_template_list(kwargs['template_path'], kwargs['template_type'], True)
+        self._check_class_list(kwargs['classification_path'], kwargs['classification_list'], templates_changed, True)
+
+        self._preprocessor = ImagePreprocessor(kwargs['enable_cropping'], self._input_resolution)
+        images = [Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)) for image in images]
+        image_sizes = [image.size for image in images]
+        torch_imgs = torch.stack([self._preprocessor.preprocess(image).squeeze(0) for image in images]).to(self._device)
+        if kwargs['enable_cropping']:
+            torch_imgs = torch_imgs.squeeze(0)
+
+        with torch.no_grad():
+            image_features = self._model.encode_image(torch_imgs).float()
+
+        with torch.no_grad():
+            image_features /= image_features.norm(dim=-1, keepdim=True)
+
+        image_results = [[] for image in images] # List of ImageLocation objects for each image. So len(class_results) = number of images
+        for label, text_features in self._binary_features.items():
+            image_results.append([])
+            similarity = (100.0 * image_features @ text_features).softmax(dim=-1).to(self._device)
+            if kwargs['enable_cropping']:
+                similarity = torch.mean(similarity, 0).unsqueeze(0)
             
-                try:
-                    logger.info("Updating templates...")
-                    self._templates = self._get_templates_from_file(template_path)
-                    logger.info("Templates updated.")
-                    return True
-                except:
-                    raise mpf.DetectionException(
-                        f"Could not read templates from {template_path}",
-                        mpf.DetectionError.COULD_NOT_READ_DATAFILE
+            values, indices = similarity.topk(1)
+            for image_idx, (value, index) in enumerate(zip(values, indices)):
+                if index.item() == 0:
+                    image_results[image_idx].append((label, value.item()))
+
+        for image_result, image_size in zip(image_results, image_sizes):
+            image_result_sorted = sorted(image_result, key=lambda tup: tup[1], reverse=True)
+            image_locations = []
+            for label, confidence in image_result_sorted:
+                detection_properties = {
+                    "CLASSIFICATION": label,
+                    "CLASSIFICATION CONFIDENCE LIST": [str(confidence)],
+                    "CLASSIFICATION LIST": [label]
+                }
+                image_locations.append(
+                    mpf.ImageLocation(
+                        x_left_upper = 0,
+                        y_left_upper = 0,
+                        width = image_size[0],
+                        height = image_size[1],
+                        confidence = confidence,
+                        detection_properties = detection_properties
                     )
-        elif (self._templates == None) or (template_type != self._template_type):
-            if template_type == 'openai_80':
-                template_filename = 'eighty_templates.txt'
-            elif template_type == 'openai_7':
-                template_filename = 'seven_templates.txt'
-            elif template_type == 'openai_1':
-                template_filename = 'one_template.txt'
-            
-            template_path = os.path.realpath(resource_filename(__name__, 'data/' + template_filename))
-            logger.info("Updating templates...")
-            self._templates = self._get_templates_from_file(template_path)
-            self._template_type = template_type
-            logger.info("Templates updated.")
-            return True
-        return False
-
-    def _check_class_list(self, classification_path: str, classification_list: str, templates_changed: bool) -> None:
-        if classification_path != "":
-            if (not os.path.exists(classification_path)):
-                raise mpf.DetectionException(
-                    f"The path {classification_path} is not valid",
-                    mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
                 )
-        else:
-            if self._classification_list != classification_list.lower():
-                self._classification_list = classification_list.lower()
-            classification_path = os.path.realpath(resource_filename(__name__, f'data/{self._classification_list}_classification_list.csv'))
-        
-        if self._classification_path != classification_path or templates_changed:
-            self._classification_path = classification_path
-
-            try:
-                logger.info("Updating classifications...")
-                self._class_mapping = self._get_mapping_from_classifications(self._classification_path)
-                logger.info("Classifications updated.")
-            except Exception:
-                raise mpf.DetectionException(
-                    f"Could not read classifications from {classification_path}",
-                    mpf.DetectionError.COULD_NOT_READ_DATAFILE
-                )
-
-            with torch.no_grad():
-                logger.info("Creating text embeddings...")
-                text_features = []
-                for label in self._class_mapping.keys():
-                    text_phrases = [template.format(label) for template in self._templates]
-                    text_tokens = clip.tokenize(text_phrases).to(self._device)
-                    text_embeddings = self._model.encode_text(text_tokens)
-                    text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
-                    text_embedding = text_embeddings.mean(dim=0)
-                    text_embedding /= text_embedding.norm()
-                    text_features.append(text_embedding)
-                self._text_features = torch.stack(text_features, dim=1).float().to(self._device)
-                logger.info("Text embeddings created.")
-    
-    @staticmethod
-    def _get_mapping_from_classifications(classification_path: str) -> Mapping[str, str]:
-        with open(classification_path) as csvfile:
-            mapping = {}
-            csvreader = csv.reader(csvfile)
-            for row in csvreader:
-                mapping[row[0].strip()] = row[1].strip()
-                
-        return mapping
-
-    @staticmethod
-    def _get_templates_from_file(template_path: str) -> Iterable[str]:
-        with open(template_path) as f:
-            return [line.strip() for line in f.readlines()]
+            yield image_locations
 
 class CLIPInferencingServer(object):
     '''

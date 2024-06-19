@@ -95,6 +95,22 @@ class TestClip(unittest.TestCase):
         result = list(ClipComponent().get_detections_from_image(job))[0]
         self.assertEqual("indoor animal", result.detection_properties["CLASSIFICATION"])
 
+    def test_image_file_binary(self):
+        job = mpf.ImageJob(
+            job_name='test-image-binary',
+            data_uri=self._get_test_file('dog.jpg'),
+            job_properties=dict(
+                MODEL_NAME = 'ViT-B/32',
+                TEMPLATE_TYPE = 'openai_1',
+                ENABLE_CROPPING = 'False',
+                ENABLE_BINARY_CLASSIFICATION = 'True'
+            ),
+            media_properties={},
+            feed_forward_location=None
+        )
+        results = list(ClipComponent().get_detections_from_image(job))[0]
+        self.assertEqual("dog", results[0].detection_properties["CLASSIFICATION"])
+
     def test_video_file(self):
         job = mpf.VideoJob(
             job_name='test-video',
