@@ -172,6 +172,7 @@ class TransformerTaggingComponent:
                 # get similarity scores for the input sentence with each corpus sentence
                 embed_probe = self._cached_model.encode(stripped_probe, convert_to_tensor=True, show_progress_bar=False)
                 scores = [float(util.cos_sim(embed_probe, corpus_entry)) for corpus_entry in corpus.embed]
+                tag_scores = [float(util.cos_sim(embed_probe, tag_entry)) for tag_entry in corpus.tag_embed]
 
                 probe_df = pd.DataFrame({
                     "input text": stripped_probe,
@@ -179,8 +180,18 @@ class TransformerTaggingComponent:
                     "tag": corpus.json["tag"].str.lower(),
                     "threshold": corpus.json["threshold"],
                     "score": scores,
+                    "use tag score": corpus.json["use tag score"],
+                    "tag score": tag_scores,
                     "offset": str(offset_start) + "-" + str(offset_end)
                 })
+
+                # filter out entries that don't meet tag score
+                #probe_df.set_index(['tag_compare'], inplace=True)
+                use_tag_values = probe_df[probe_df["use tag score"] == "true"]
+                entries_meet_tag_threshold = use_tag_values[use_tag_values["tag score"] >= use_tag_values["threshold"]]
+
+                # combine all entries back together
+                probe_df = pd.concat([probe_df[probe_df["use tag score"] == "false"], entries_meet_tag_threshold])
 
                 # sort by score then group by tag so each group will be sorted highest to lowest score,
                 # then take top row for each group
@@ -248,9 +259,16 @@ class Corpus:
             self.json["threshold"] = self.json["threshold"].fillna(default_threshold)
         else:
             self.json['threshold'] = default_threshold
+        # fill in 'use tag score' fields
+        if 'use tag score' in self.json.columns:
+            self.json["use tag score"] = self.json["use tag score"].fillna("false")
+        else:
+            self.json['use tag score'] = "false"
 
         start = time.time()
         self.embed= model.encode(self.json["text"], convert_to_tensor=True, show_progress_bar=False)
+        self.tag_embed= model.encode([f'This sentence is {tag}' for tag in self.json["tag"].str.lower()], convert_to_tensor=True, show_progress_bar=False)
+
         elapsed = time.time() - start
         logger.info(f"Successfully encoded corpus in {elapsed} seconds.")
 
