@@ -1,0 +1,20 @@
+{
+    "track_type_properties": [
+        {
+            "type": "CLASS",
+            "properties": ["CLASSIFICATION"]
+        }
+    ],
+    "entity_mappings": [
+        {
+            "entity": "vehicle",
+            "track_types": [
+                "car",
+                "motorbike",
+                "bus",
+                "truck",
+                "bicycle"
+            ]
+        }
+    ]
+}
