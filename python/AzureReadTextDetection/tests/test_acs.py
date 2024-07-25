@@ -341,6 +341,7 @@ def get_test_properties(**extra_properties):
     return {
         'ACS_URL': os.getenv('ACS_URL', 'http://localhost:10669/vision/v3.1/read/analyze'),
         'ACS_SUBSCRIPTION_KEY': os.getenv('ACS_SUBSCRIPTION_KEY', 'test_key'),
+        'GET_READ_RESULT_ATTEMPTS_DELAY_MS': '50',
         **extra_properties
     }
 
