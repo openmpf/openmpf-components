@@ -73,8 +73,7 @@
       "name": "ARGOS TRANSLATION TEXT FILE ACTION",
       "description": "Uses Argos Translation to perform translation on a plain text file.",
       "algorithm": "ARGOSTRANSLATION",
-      "properties": [
-      ]
+      "properties": []
     }
   ],
   "tasks": [
