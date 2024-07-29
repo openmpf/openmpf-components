@@ -1,0 +1,29 @@
+{
+    "componentName": "LlavaDetection",
+    "componentVersion": "9.0",
+    "middlewareVersion": "9.0",
+    "sourceLanguage": "python",
+    "batchLibrary": "LlavaDetection",
+    "environmentVariables": [],
+    "algorithm": {
+        "name": "llava",
+        "description": "llava. Fill out description...",
+        "actionType": "DETECTION",
+        "trackType": "CLASS",
+        "outputChangedCounter": 1,
+        "requiresCollection": {
+            "states": []
+        },
+        "providesCollection": {
+            "states": [
+                "DETECTION",
+                "DETECTION_CLASS",
+                "DETECTION_CLASS_LLAVA"
+            ],
+            "properties": [] 
+        }
+    },
+    "actions": [],
+    "tasks": [],
+    "pipelines": []
+}
