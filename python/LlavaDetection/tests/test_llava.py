@@ -39,10 +39,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 class TestLlava(unittest.TestCase):
     def test_image_file(self):
-        ff_loc = mpf.ImageLocation(0, 0, 900, 1600, -1, dict(CLASSIFICATION="dog"))
+        ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
         job = mpf.ImageJob(
             job_name='test-image',
-            data_uri=self._get_test_file('dog.jpg'),
+            data_uri=self._get_test_file('person.jpg'),
             job_properties=dict(),
             media_properties={},
             feed_forward_location=ff_loc
@@ -50,8 +50,40 @@ class TestLlava(unittest.TestCase):
         component = LlavaComponent()
         result = list(component.get_detections_from_image(job))[0]
         
-        print(result)
+        self.assertTrue("CLOTHING" in result.detection_properties and "ACTIVITY" in result.detection_properties)
+        self.assertTrue(len(result.detection_properties["CLOTHING"]) > 0 and len(result.detection_properties["ACTIVITY"]) > 0)
     
+    def test_custom_config(self):
+        ff_loc = mpf.ImageLocation(0, 0, 900, 1600, -1, dict(CLASSIFICATION="DOG"))
+        job = mpf.ImageJob(
+            job_name='test-image',
+            data_uri=self._get_test_file('dog.jpg'),
+            job_properties=dict(
+                CONFIG_JSON_PATH=self._get_test_file('custom_config.json')
+            ),
+            media_properties={},
+            feed_forward_location=ff_loc
+        )
+        component = LlavaComponent()
+        result = list(component.get_detections_from_image(job))[0]
+        
+        self.assertTrue("DESCRIPTION" in result.detection_properties)
+        self.assertTrue(len(result.detection_properties["DESCRIPTION"]) > 0)
+
+    def test_video_file(self):
+        ff_loc = mpf.ImageLocation(0, 0, 900, 1600, -1, dict(CLASSIFICATION="DOG"))
+        job = mpf.ImageJob(
+            job_name='test-image',
+            data_uri=self._get_test_file('dog.jpg'),
+            job_properties=dict(
+                CONFIG_JSON_PATH=self._get_test_file('custom_config.json')
+            ),
+            media_properties={},
+            feed_forward_location=ff_loc
+        )
+        component = LlavaComponent()
+        result = list(component.get_detections_from_image(job))[0]
+
     @staticmethod
     def _get_test_file(filename):
         return os.path.join(os.path.dirname(__file__), 'data', filename)

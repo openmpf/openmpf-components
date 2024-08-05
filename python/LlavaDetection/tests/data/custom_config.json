@@ -1,0 +1,13 @@
+[
+    {
+        "classes": [
+            "DOG"
+        ],
+        "prompts": [
+            {
+                "detectionProperty": "DESCRIPTION",
+                "prompt": "Describe the color and breed of the dog."
+            }
+        ]
+    }
+]

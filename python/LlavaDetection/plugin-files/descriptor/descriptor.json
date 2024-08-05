@@ -20,7 +20,14 @@
                 "DETECTION_CLASS",
                 "DETECTION_CLASS_LLAVA"
             ],
-            "properties": [] 
+            "properties": [
+                {
+                    "name": "CONFIG_JSON_PATH",
+                    "description": "Path to JSON file which contains the classes and questions.",
+                    "type": "str",
+                    "defaultValue": ""
+                }
+            ] 
         }
     },
     "actions": [],
