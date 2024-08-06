@@ -71,18 +71,30 @@ class TestLlava(unittest.TestCase):
         self.assertTrue(len(result.detection_properties["DESCRIPTION"]) > 0)
 
     def test_video_file(self):
-        ff_loc = mpf.ImageLocation(0, 0, 900, 1600, -1, dict(CLASSIFICATION="DOG"))
-        job = mpf.ImageJob(
-            job_name='test-image',
-            data_uri=self._get_test_file('dog.jpg'),
+        ff_track =  mpf.VideoTrack(
+            start_frame=0,
+            stop_frame=0,
+            confidence=-1,
+            frame_locations={0: mpf.ImageLocation(x_left_upper=0, y_left_upper=0, width=3456, height=5184, confidence=-1, detection_properties={'CLASSIFICATION': 'dog', 'CLASSIFICATION CONFIDENCE LIST': '-1', 'CLASSIFICATION LIST': 'dog'})},
+            detection_properties={'CLASSIFICATION': 'dog'}
+        )
+        
+        job = mpf.VideoJob(
+            job_name='test-video',
+            data_uri=self._get_test_file('test_video.mp4'),
+            start_frame=0,
+            stop_frame=0,
             job_properties=dict(
                 CONFIG_JSON_PATH=self._get_test_file('custom_config.json')
             ),
             media_properties={},
-            feed_forward_location=ff_loc
+            feed_forward_track=ff_track
         )
         component = LlavaComponent()
-        result = list(component.get_detections_from_image(job))[0]
+        results = component.get_detections_from_video(job)
+
+        for result in results:
+            print(result)
 
     @staticmethod
     def _get_test_file(filename):

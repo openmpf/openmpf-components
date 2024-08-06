@@ -23,7 +23,7 @@
             "properties": [
                 {
                     "name": "CONFIG_JSON_PATH",
-                    "description": "Path to JSON file which contains the classes and questions.",
+                    "description": "Path to JSON file which contains the classes and prompts.",
                     "type": "str",
                     "defaultValue": ""
                 }

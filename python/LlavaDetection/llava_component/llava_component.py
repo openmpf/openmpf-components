@@ -26,7 +26,7 @@ class LlavaComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     def get_detections_from_image_reader(self, image_job: mpf.ImageJob, image_reader: mpf_util.ImageReader) -> Sequence[mpf.ImageLocation]:
         logger.info('[%s] Received image job: ', image_job.job_name, image_job)
 
-        return self._get_feed_forward_detections(image_job, image_job.feed_forward_location, image_reader.get_image())
+        return self._get_feed_forward_detections(image_job, image_job.feed_forward_location, [image_reader.get_image()])
 
     def get_detections_from_video_capture(self, video_job: mpf.VideoJob, video_capture: mpf_util.VideoCapture) -> Sequence[mpf.VideoTrack]:
         logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
@@ -44,17 +44,25 @@ class LlavaComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             # Get job properties
             kwargs = JobConfig(job.job_properties)
             self._update_class_questions(kwargs.config_json_path)
+            b64_images = []
+
+            if video_job:
+                detection_props = list(job_feed_forward.frame_locations.values())[0].detection_properties
+            else:
+                detection_props = job_feed_forward.detection_properties
             
-            # Encode image for ollama
-            encode_params = [int(cv2.IMWRITE_PNG_COMPRESSION), 9]
-            _, buffer = cv2.imencode('.png', media, encode_params)
-            b64_bytearr = base64.b64encode(buffer).decode("utf-8")
+            # Encode images for ollama
+            for img in media:
+                encode_params = [int(cv2.IMWRITE_PNG_COMPRESSION), 9]
+                _, buffer = cv2.imencode('.png', img, encode_params)
+                b64_images.append(base64.b64encode(buffer).decode("utf-8"))
 
             # If classification has questions that we want to ask, send queries to ollama model
             classification = job_feed_forward.detection_properties["CLASSIFICATION"]
-            if classification in self.class_questions:
-                for tag, prompt in self.class_questions[classification].items():
-                    job_feed_forward.detection_properties[tag] = ollama.generate(self.model, prompt, images=[b64_bytearr])['response']
+            if classification.lower() in self.class_questions:
+                for tag, prompt in self.class_questions[classification.lower()].items():
+                    for b64_bytearr in b64_images:
+                        detection_props[tag] = ollama.generate(self.model, prompt, images=[b64_bytearr])['response']
 
             yield job_feed_forward
 
@@ -74,7 +82,7 @@ class LlavaComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             with open(config_json_path, 'r') as f:
                 data = json.load(f)
                 for class_dict in data:
-                    classes, prompts = class_dict['classes'], class_dict['prompts']
+                    classes, prompts = [cls.lower() for cls in class_dict['classes']], class_dict['prompts']
                     for cls in classes:
                         if cls not in self.class_questions:
                             self.class_questions[cls] = dict()
