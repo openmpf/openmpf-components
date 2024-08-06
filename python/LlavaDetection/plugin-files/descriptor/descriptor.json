@@ -7,7 +7,7 @@
     "environmentVariables": [],
     "algorithm": {
         "name": "llava",
-        "description": "llava. Fill out description...",
+        "description": "This component utilizes ollama to communicate with a LLaVA model server to generate descriptive text for inputted media.",
         "actionType": "DETECTION",
         "trackType": "CLASS",
         "outputChangedCounter": 1,
@@ -23,14 +23,46 @@
             "properties": [
                 {
                     "name": "CONFIG_JSON_PATH",
-                    "description": "Path to JSON file which contains the classes and prompts.",
+                    "description": "Path to a custom JSON file which contains the classes and prompts.",
                     "type": "str",
                     "defaultValue": ""
                 }
             ] 
         }
     },
-    "actions": [],
-    "tasks": [],
-    "pipelines": []
+    "actions": [
+        {
+            "name": "LLAVA DETECTION (WITH FF REGION) ACTION",
+            "description": "Add description...",
+            "algorithm": "llava",
+            "properties": [
+                {
+                    "name": "FEED_FORWARD_TYPE",
+                    "value": "REGION"
+                },
+                {
+                    "name": "FEED_FORWARD_TOP_QUALITY_COUNT",
+                    "value": "1"
+                }
+            ]
+        }
+    ],
+    "tasks": [
+        {
+            "name": "LLAVA DETECTION (WITH FF REGION) TASK",
+            "description":"Add description...",
+            "actions": [
+                "LLAVA DETECTION (WITH FF REGION) ACTION"
+            ]
+        }
+    ],
+    "pipelines": [
+        {
+            "name": "LLAVA DETECTION (WITH FF REGION) PIPELINE",
+            "description":"Add description...",
+            "tasks": [
+                "LLAVA DETECTION (WITH FF REGION) TASK"
+            ]
+        }
+    ]
 }
