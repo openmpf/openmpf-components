@@ -57,10 +57,10 @@ class TestLlava(unittest.TestCase):
     def test_custom_config(self):
         ff_loc = mpf.ImageLocation(0, 0, 900, 1600, -1, dict(CLASSIFICATION="DOG"))
         job = mpf.ImageJob(
-            job_name='test-image',
+            job_name='test-custom',
             data_uri=self._get_test_file('dog.jpg'),
             job_properties=dict(
-                CONFIG_JSON_PATH=self._get_test_file('custom_config.json')
+                PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json')
             ),
             media_properties={},
             feed_forward_location=ff_loc
@@ -81,7 +81,7 @@ class TestLlava(unittest.TestCase):
             start_frame=0,
             stop_frame=0,
             job_properties=dict(
-                CONFIG_JSON_PATH=self._get_test_file('custom_config.json')
+                PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json')
             ),
             media_properties={},
             feed_forward_track=ff_track

@@ -10,11 +10,11 @@ The component is built to support multi-stage pipelines where feed forward track
 
 The following are the properties that can be specified for the component. Each property has a default value and so none of them necessarily need to be specified for processing jobs.
 
-- `CONFIG_JSON_PATH`: Description
+- `PROMPT_CONFIGURATION_PATH`: Description
 
 # Config File
 
-The config file is a JSON formatted file that is used by the component to know which prompts to ask LLaVA depending on the calss of the object. The user can write their own config file and can be used by setting the `CONFIG_JSON_PATH` property. The following is an example of the proper syntax to follow:
+The config file is a JSON formatted file that is used by the component to know which prompts to ask LLaVA depending on the calss of the object. The user can write their own config file and can be used by setting the `PROMPT_CONFIGURATION_PATH` property. The following is an example of the proper syntax to follow:
 
 ```json
 [

@@ -22,7 +22,7 @@
             ],
             "properties": [
                 {
-                    "name": "CONFIG_JSON_PATH",
+                    "name": "PROMPT_CONFIGURATION_PATH",
                     "description": "Path to a custom JSON file which contains the classes and associated prompts that will be sent to LLaVA.",
                     "type": "str",
                     "defaultValue": ""
@@ -34,7 +34,7 @@
         {
             "name": "LLAVA DETECTION (WITH FF REGION) ACTION",
             "description": "Runs LLaVA with prompts for the class of the detection passed in.",
-            "algorithm": "llava",
+            "algorithm": "LLaVA",
             "properties": [
                 {
                     "name": "FEED_FORWARD_TYPE",

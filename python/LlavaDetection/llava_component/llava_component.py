@@ -65,7 +65,7 @@ class LlavaComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             
             # Get job properties
             kwargs = JobConfig(job.job_properties)
-            self._update_class_prompts(kwargs.config_json_path)
+            self._update_class_prompts(kwargs.prompt_config_path)
 
             # Send prompts to ollama to generate responses
             if video_job:
@@ -79,7 +79,7 @@ class LlavaComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         except Exception as e:
             logger.exception(f"Failed to complete job due to the following exception: {e}")
 
-    def _update_class_prompts(self, config_json_path):
+    def _update_class_prompts(self, prompt_config_path):
         '''
         Updates self.class_prompts dictionary to have the following format
 
@@ -90,7 +90,7 @@ class LlavaComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         }
         '''
         try:
-            with open(config_json_path, 'r') as f:
+            with open(prompt_config_path, 'r') as f:
                 data = json.load(f)
                 for class_dict in data:
                     classes, prompts = [cls.lower() for cls in class_dict['classes']], class_dict['prompts']
@@ -120,13 +120,13 @@ class LlavaComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
 
 class JobConfig:
     def __init__(self, job_properties: Mapping[str, str]):
-        self.config_json_path = self._get_prop(job_properties, "CONFIG_JSON_PATH", "")
-        if self.config_json_path == "":
-            self.config_json_path = os.path.join(os.path.dirname(__file__), 'data', 'config.json')
+        self.prompt_config_path = self._get_prop(job_properties, "PROMPT_CONFIGURATION_PATH", "")
+        if self.prompt_config_path == "":
+            self.prompt_config_path = os.path.join(os.path.dirname(__file__), 'data', 'prompts.json')
         
-        if not os.path.exists(self.config_json_path):
+        if not os.path.exists(self.prompt_config_path):
             raise mpf.DetectionException(
-                "Invalid path provided for config JSON file: ",
+                "Invalid path provided for prompt config JSON file: ",
                 mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
             )
 

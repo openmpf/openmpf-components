@@ -29,8 +29,6 @@
 FROM ollama/ollama
 
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y python3=3.10.6-1~22.04 && \
-    apt-get install --no-install-recommends -y python3-pip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
