@@ -38,6 +38,7 @@ import mpf_component_api as mpf
 logging.basicConfig(level=logging.DEBUG)
 
 class TestLlava(unittest.TestCase):
+
     def test_image_file(self):
         ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
         job = mpf.ImageJob(
@@ -71,14 +72,8 @@ class TestLlava(unittest.TestCase):
         self.assertTrue(len(result.detection_properties["DESCRIPTION"]) > 0)
 
     def test_video_file(self):
-        ff_track =  mpf.VideoTrack(
-            start_frame=0,
-            stop_frame=0,
-            confidence=0,
-            frame_locations={},
-            detection_properties={'CLASSIFICATION': 'dog'}
-        )
-        ff_track.frame_locations[0] = mpf.ImageLocation(x_left_upper=0, y_left_upper=0, width=3456, height=5184, confidence=0, detection_properties={'CLASSIFICATION': 'dog', 'CLASSIFICATION CONFIDENCE LIST': '0', 'CLASSIFICATION LIST': 'dog'})
+        ff_track =  mpf.VideoTrack(0, 0, -1, {}, {'CLASSIFICATION': 'DOG'})
+        ff_track.frame_locations[0] = mpf.ImageLocation(0, 0, 3456, 5184, -1, {'CLASSIFICATION': 'DOG', 'CLASSIFICATION CONFIDENCE LIST': '-1', 'CLASSIFICATION LIST': 'DOG'})
 
         job = mpf.VideoJob(
             job_name='test-video',

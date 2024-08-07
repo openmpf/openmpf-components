@@ -6,8 +6,8 @@
     "batchLibrary": "LlavaDetection",
     "environmentVariables": [],
     "algorithm": {
-        "name": "llava",
-        "description": "This component utilizes ollama to communicate with a LLaVA model server to generate descriptive text for inputted media.",
+        "name": "LLaVA",
+        "description": "LLaVA prompt response generation.",
         "actionType": "DETECTION",
         "trackType": "CLASS",
         "outputChangedCounter": 1,
@@ -23,7 +23,7 @@
             "properties": [
                 {
                     "name": "CONFIG_JSON_PATH",
-                    "description": "Path to a custom JSON file which contains the classes and prompts.",
+                    "description": "Path to a custom JSON file which contains the classes and associated prompts that will be sent to LLaVA.",
                     "type": "str",
                     "defaultValue": ""
                 }
@@ -33,16 +33,12 @@
     "actions": [
         {
             "name": "LLAVA DETECTION (WITH FF REGION) ACTION",
-            "description": "Add description...",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
             "algorithm": "llava",
             "properties": [
                 {
                     "name": "FEED_FORWARD_TYPE",
                     "value": "REGION"
-                },
-                {
-                    "name": "FEED_FORWARD_TOP_QUALITY_COUNT",
-                    "value": "1"
                 }
             ]
         }
@@ -50,7 +46,7 @@
     "tasks": [
         {
             "name": "LLAVA DETECTION (WITH FF REGION) TASK",
-            "description":"Add description...",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
             "actions": [
                 "LLAVA DETECTION (WITH FF REGION) ACTION"
             ]
@@ -59,7 +55,7 @@
     "pipelines": [
         {
             "name": "LLAVA DETECTION (WITH FF REGION) PIPELINE",
-            "description":"Add description...",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
             "tasks": [
                 "LLAVA DETECTION (WITH FF REGION) TASK"
             ]

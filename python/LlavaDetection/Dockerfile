@@ -26,7 +26,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-ARG MODELS_REGISTRY=openmpf/
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
