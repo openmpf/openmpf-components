@@ -115,6 +115,9 @@ class JobRunner(object):
         self._media_type = media_type
         self._merge_lines = mpf_util.get_property(job_properties, 'MERGE_LINES', True)
         self._max_attempts = mpf_util.get_property(job_properties, 'MAX_GET_READ_RESULT_ATTEMPTS', -1)
+        self._get_results_delay_sec = mpf_util.get_property(
+                job_properties, 'GET_READ_RESULT_ATTEMPTS_DELAY_MS', 5_000) / 1000
+
         subscription_key = self._get_required_property('ACS_SUBSCRIPTION_KEY', job_properties)
 
         if is_image_or_video(media_type):
@@ -155,9 +158,9 @@ class JobRunner(object):
                                     ).process_read_results(read_results_json)
 
     def _get_acs_result(self, result_request):
+        time.sleep(self._get_results_delay_sec)
         logger.info('Contacting ACS server for read results.')
         attempt_num = 0
-        wait_sec = 5
         while attempt_num < self._max_attempts or self._max_attempts <= 0:
             logger.info('Attempting to retrieve layout Analysis results from %s',
                         result_request.get_full_url())
@@ -178,9 +181,9 @@ class JobRunner(object):
                     f'Layout Analysis failed. HTTP response body: {json_results}')
             # Analysis still running. Wait and then retry GET request.
             logger.info('Layout Analysis results not available yet. Recontacting server in %s seconds.',
-                        wait_sec)
+                        self._get_results_delay_sec)
 
-            time.sleep(wait_sec)
+            time.sleep(self._get_results_delay_sec)
             attempt_num += 1
 
         logger.error('Max attempts exceeded. Unable to retrieve server results. Ending job.')
@@ -548,4 +551,3 @@ class ReadResultsProcessor(object):
                                                          bounding_box, confidence))
                 line_num += 1
         return detections
-
