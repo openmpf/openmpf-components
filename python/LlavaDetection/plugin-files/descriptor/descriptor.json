@@ -24,8 +24,14 @@
                 {
                     "name": "PROMPT_CONFIGURATION_PATH",
                     "description": "Path to a custom JSON file which contains the classes and associated prompts that will be sent to LLaVA.",
-                    "type": "str",
+                    "type": "STRING",
                     "defaultValue": ""
+                },
+                {
+                    "name": "OLLAMA_CLIENT_HOST_URL",
+                    "description": "Something",
+                    "type": "STRING",
+                    "defaultValue": "llava-detection-server:11434"
                 }
             ] 
         }

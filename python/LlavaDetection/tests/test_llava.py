@@ -27,6 +27,7 @@
 import sys
 import os
 import logging
+import warnings
 
 # Add clip_component to path.
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -35,7 +36,7 @@ from llava_component.llava_component import LlavaComponent
 import unittest
 import mpf_component_api as mpf
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 class TestLlava(unittest.TestCase):
 
@@ -44,7 +45,9 @@ class TestLlava(unittest.TestCase):
         job = mpf.ImageJob(
             job_name='test-image',
             data_uri=self._get_test_file('person.jpg'),
-            job_properties=dict(),
+            job_properties=dict(
+                OLLAMA_CLIENT_HOST_URL='localhost:11434'
+            ),
             media_properties={},
             feed_forward_location=ff_loc
         )
@@ -53,6 +56,10 @@ class TestLlava(unittest.TestCase):
         
         self.assertTrue("CLOTHING" in result.detection_properties and "ACTIVITY" in result.detection_properties)
         self.assertTrue(len(result.detection_properties["CLOTHING"]) > 0 and len(result.detection_properties["ACTIVITY"]) > 0)
+
+        print("Test Image File:\n" + "-"*16)
+        print(f"CLOTHING: \n\n{result.detection_properties['CLOTHING']}\n")
+        print(f"ACTIVITY: \n\n{result.detection_properties['ACTIVITY']}\n\n")
     
     def test_custom_config(self):
         ff_loc = mpf.ImageLocation(0, 0, 900, 1600, -1, dict(CLASSIFICATION="DOG"))
@@ -60,7 +67,8 @@ class TestLlava(unittest.TestCase):
             job_name='test-custom',
             data_uri=self._get_test_file('dog.jpg'),
             job_properties=dict(
-                PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json')
+                PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json'),
+                OLLAMA_CLIENT_HOST_URL='localhost:11434'
             ),
             media_properties={},
             feed_forward_location=ff_loc
@@ -71,7 +79,12 @@ class TestLlava(unittest.TestCase):
         self.assertTrue("DESCRIPTION" in result.detection_properties)
         self.assertTrue(len(result.detection_properties["DESCRIPTION"]) > 0)
 
+        print("Test Custom Config:\n" + "-"*19)
+        print(f"DESCRIPTION: \n\n{result.detection_properties['DESCRIPTION']}\n\n")
+
     def test_video_file(self):
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
+
         ff_track =  mpf.VideoTrack(0, 0, -1, {}, {'CLASSIFICATION': 'DOG'})
         ff_track.frame_locations[0] = mpf.ImageLocation(0, 0, 3456, 5184, -1, {'CLASSIFICATION': 'DOG', 'CLASSIFICATION CONFIDENCE LIST': '-1', 'CLASSIFICATION LIST': 'DOG'})
 
@@ -81,7 +94,8 @@ class TestLlava(unittest.TestCase):
             start_frame=0,
             stop_frame=0,
             job_properties=dict(
-                PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json')
+                PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json'),
+                OLLAMA_CLIENT_HOST_URL='localhost:11434'
             ),
             media_properties={},
             feed_forward_track=ff_track
@@ -89,9 +103,12 @@ class TestLlava(unittest.TestCase):
         component = LlavaComponent()
         result = list(component.get_detections_from_video(job))[0]
 
+        print("Test Video File:\n" + "-"*16)
         for ff_location in result.frame_locations.values():
             self.assertTrue("DESCRIPTION" in ff_location.detection_properties)
-            self.assertTrue(len(ff_location.detection_properties["DESCRIPTION"]) > 0)
+            self.assertTrue(len(ff_location.detection_properties['DESCRIPTION']) > 0)
+        
+            print(f"DESCRIPTION: \n\n{ff_location.detection_properties['DESCRIPTION']}\n")
 
     @staticmethod
     def _get_test_file(filename):

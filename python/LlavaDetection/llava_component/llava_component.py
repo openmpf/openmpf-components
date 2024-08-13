@@ -31,53 +31,64 @@ import json
 import ollama
 
 import logging
-from typing import Mapping, Sequence
+from typing import Mapping, Iterable
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 logger = logging.getLogger('LlavaComponent')
 
-class LlavaComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
+class LlavaComponent:
     detection_type = 'CLASS'
 
     def __init__(self):
         self.model = 'llava:34b'
+        self.host_url = ''
+        self.client = None
         self.class_prompts = dict()
 
-    def get_detections_from_image_reader(self, image_job: mpf.ImageJob, image_reader: mpf_util.ImageReader) -> Sequence[mpf.ImageLocation]:
-        logger.info('[%s] Received image job: ', image_job.job_name, image_job)
+    def get_detections_from_image(self, image_job: mpf.ImageJob) -> Iterable[mpf.ImageLocation]:
+        logger.info('Received image job: %s', image_job.job_name)
 
-        return self._get_feed_forward_detections(image_job, image_job.feed_forward_location, image_reader.get_image())
+        image_reader = mpf_util.ImageReader(image_job)
+        kwargs = JobConfig(image_job.job_properties)
+        return self._get_feed_forward_detections(image_job.feed_forward_location, image_reader, kwargs)
+    
+    def get_detections_from_video(self, video_job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
+        logger.info('Received video job: %s', video_job.job_name)
 
-    def get_detections_from_video_capture(self, video_job: mpf.VideoJob, video_capture: mpf_util.VideoCapture) -> Sequence[mpf.VideoTrack]:
-        logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
+        video_capture = mpf_util.VideoCapture(video_job)
+        kwargs = JobConfig(video_job.job_properties)
+        return self._get_feed_forward_detections(video_job.feed_forward_track, video_capture, kwargs, is_video_job=True)
 
-        return self._get_feed_forward_detections(video_job, video_job.feed_forward_track, video_capture, video_job=True)
+    def _get_feed_forward_detections(self, job_feed_forward, reader, kwargs, is_video_job=False):
+        if job_feed_forward is None: 
+            raise mpf.DetectionException(
+                "Component can only process feed forward jobs, but no feed forward track provided.",
+                mpf.DetectionError.UNSUPPORTED_DATA_TYPE
+            )
+    
+        # Get job properties
+        self._update_class_prompts(kwargs.prompt_config_path)
 
-    def _get_feed_forward_detections(self, job, job_feed_forward, media, video_job=False):
         try:
-            if job_feed_forward is None: 
-                raise mpf.DetectionException(
-                    "Component can only process feed forward jobs, but no feed forward track provided.",
-                    mpf.DetectionError.UNSUPPORTED_DATA_TYPE
-                )
-            
-            # Get job properties
-            kwargs = JobConfig(job.job_properties)
-            self._update_class_prompts(kwargs.prompt_config_path)
+            if self.client is None or kwargs.ollama_client_host_url != self.host_url:
+                self.host_url = kwargs.ollama_client_host_url
+                self.client = ollama.Client(host=self.host_url)
+        except:
+            raise mpf.DetectionException(
+                "Could not instantiate Ollama Client: ",
+                mpf.DetectionError.NETWORK_ERROR
+            )
+        
+        # Send prompts to ollama to generate responses
+        if is_video_job:
+            for frame, ff_location in zip(reader, job_feed_forward.frame_locations.values()):
+                self._get_ollama_response(frame, ff_location)
+        else:
+            self._get_ollama_response(reader.get_image(), job_feed_forward)
 
-            # Send prompts to ollama to generate responses
-            if video_job:
-                for frame, ff_location in zip(media, job_feed_forward.frame_locations.values()):
-                    self._get_ollama_response(frame, ff_location)
-            else:
-                self._get_ollama_response(media, job_feed_forward)
-
-            return [job_feed_forward]
-
-        except Exception as e:
-            logger.exception(f"Failed to complete job due to the following exception: {e}")
+        return [job_feed_forward]
 
     def _update_class_prompts(self, prompt_config_path):
         '''
@@ -109,6 +120,7 @@ class LlavaComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         Communicates with ollama server to generate LLaVA responses and adds them to 
         the feed forward location's detection_properties dict.
         '''
+        # Encode image to bytestring
         encode_params = [int(cv2.IMWRITE_PNG_COMPRESSION), 9]
         _, buffer = cv2.imencode('.png', image, encode_params)
         b64_bytearr = base64.b64encode(buffer).decode("utf-8")
@@ -116,7 +128,13 @@ class LlavaComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         classification = ff_location.detection_properties["CLASSIFICATION"]
         if classification.lower() in self.class_prompts:
             for tag, prompt in self.class_prompts[classification.lower()].items():
-                ff_location.detection_properties[tag] = ollama.generate(self.model, prompt, images=[b64_bytearr])['response']
+                try:
+                    ff_location.detection_properties[tag] = self.client.generate(self.model, prompt, images=[b64_bytearr])['response']
+                except:
+                    raise mpf.DetectionException(
+                        "Could not communicate with Ollama server: ",
+                        mpf.DetectionError.NETWORK_ERROR
+                    )
 
 class JobConfig:
     def __init__(self, job_properties: Mapping[str, str]):
@@ -124,6 +142,8 @@ class JobConfig:
         if self.prompt_config_path == "":
             self.prompt_config_path = os.path.join(os.path.dirname(__file__), 'data', 'prompts.json')
         
+        self.ollama_client_host_url = self._get_prop(job_properties, "OLLAMA_CLIENT_HOST_URL", "llava-detection-server")
+
         if not os.path.exists(self.prompt_config_path):
             raise mpf.DetectionException(
                 "Invalid path provided for prompt config JSON file: ",
