@@ -51,29 +51,27 @@ class LlavaComponent:
         logger.info('Received image job: %s', image_job.job_name)
 
         image_reader = mpf_util.ImageReader(image_job)
-        kwargs = JobConfig(image_job.job_properties)
-        return self._get_feed_forward_detections(image_job.feed_forward_location, image_reader, kwargs)
+        config = JobConfig(image_job.job_properties)
+        return self._get_feed_forward_detections(image_job.feed_forward_location, image_reader, config)
     
     def get_detections_from_video(self, video_job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         logger.info('Received video job: %s', video_job.job_name)
 
         video_capture = mpf_util.VideoCapture(video_job)
-        kwargs = JobConfig(video_job.job_properties)
-        return self._get_feed_forward_detections(video_job.feed_forward_track, video_capture, kwargs, is_video_job=True)
+        config = JobConfig(video_job.job_properties)
+        return self._get_feed_forward_detections(video_job.feed_forward_track, video_capture, config, is_video_job=True)
 
-    def _get_feed_forward_detections(self, job_feed_forward, reader, kwargs, is_video_job=False):
+    def _get_feed_forward_detections(self, job_feed_forward, reader, config, is_video_job=False):
         if job_feed_forward is None: 
             raise mpf.DetectionException(
                 "Component can only process feed forward jobs, but no feed forward track provided.",
                 mpf.DetectionError.UNSUPPORTED_DATA_TYPE
             )
-    
-        # Get job properties
-        self._update_class_prompts(kwargs.prompt_config_path)
 
+        self._update_class_prompts(config.prompt_config_path)
         try:
-            if self.client is None or kwargs.ollama_client_host_url != self.host_url:
-                self.host_url = kwargs.ollama_client_host_url
+            if self.client is None or config.ollama_client_host_url != self.host_url:
+                self.host_url = config.ollama_client_host_url
                 self.client = ollama.Client(host=self.host_url)
         except:
             raise mpf.DetectionException(

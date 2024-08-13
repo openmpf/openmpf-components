@@ -28,17 +28,48 @@ import sys
 import os
 import logging
 import warnings
+import ollama
+import httpx
 
 # Add clip_component to path.
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from llava_component.llava_component import LlavaComponent
 
 import unittest
+import unittest.mock
+from unittest.mock import MagicMock, Mock
 import mpf_component_api as mpf
 
-# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
+USE_MOCKS = True
 
 class TestLlava(unittest.TestCase):
+
+    def run_patched_job(self, component, job):
+        if isinstance(job, mpf.ImageJob):
+            detection_func = component.get_detections_from_image
+        elif isinstance(job, mpf.VideoJob):
+            detection_func = component.get_detections_from_video
+        else:
+            raise Exception("Must be image or video job.")
+    
+        if not USE_MOCKS:
+            return detection_func(job)
+        
+        def get_generate_output(job_name, prompt):
+            outputs = {
+                'test-image': {"Describe what this person is wearing": "The person in the image is wearing a dark suit with a matching tie. The shirt underneath appears to be light-colored, possibly white or off-white. He has glasses on his face and is smiling as he shakes hands with someone who isn't fully visible in the frame. His attire suggests a formal setting, possibly for business or an event that requires professional dress code.", "Describe what this person is doing": "The person in the image appears to be shaking someone's hand. They are wearing a suit and tie, which suggests they may be in a professional or formal setting. The context of the photo is not clear from this angle, but it looks like they could be at an event or gathering where such interactions are common."},
+                'test-custom': {"Describe the color and breed of the dog.": "The dog in the image appears to be a Golden Retriever. The breed is known for its golden-colored fur, which can range from pale blonde to deeper golden shades, often with some darker feathering around the ears and along the tail. This specific dog has a beautiful golden coat that suggests it may be younger or well-groomed. The facial features of Golden Retriever dogs are also quite distinctive, such as their expressive eyes and long, floppy ears. They are medium to large-sized breed with a friendly and intelligent disposition."},
+                'test-video': {"Describe the color and breed of the dog.": "The dog in the image appears to be a Border Collie. The breed is characterized by its black and white color pattern, which you can see here with distinct patches of black fur against a mostly white background. Border Collies are known for their intelligent eyes and expressive faces, which they use to work livestock. They also have a double coat that is thick and wavy in texture. In this photo, the dog looks well-groomed and healthy."}
+            }
+            return {"response": f"{outputs[job_name][prompt]}"}
+
+        mock_container = MagicMock()
+        with unittest.mock.patch("ollama.Client", return_value=mock_container):
+            mock_container.generate = Mock(side_effect=lambda model, prompt, images: get_generate_output(job.job_name, prompt))
+
+            results = list(detection_func(job))
+            return results
 
     def test_image_file(self):
         ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
@@ -52,7 +83,7 @@ class TestLlava(unittest.TestCase):
             feed_forward_location=ff_loc
         )
         component = LlavaComponent()
-        result = list(component.get_detections_from_image(job))[0]
+        result = self.run_patched_job(component, job)[0]
         
         self.assertTrue("CLOTHING" in result.detection_properties and "ACTIVITY" in result.detection_properties)
         self.assertTrue(len(result.detection_properties["CLOTHING"]) > 0 and len(result.detection_properties["ACTIVITY"]) > 0)
@@ -74,7 +105,7 @@ class TestLlava(unittest.TestCase):
             feed_forward_location=ff_loc
         )
         component = LlavaComponent()
-        result = list(component.get_detections_from_image(job))[0]
+        result = self.run_patched_job(component, job)[0]
         
         self.assertTrue("DESCRIPTION" in result.detection_properties)
         self.assertTrue(len(result.detection_properties["DESCRIPTION"]) > 0)
@@ -101,7 +132,7 @@ class TestLlava(unittest.TestCase):
             feed_forward_track=ff_track
         )
         component = LlavaComponent()
-        result = list(component.get_detections_from_video(job))[0]
+        result = self.run_patched_job(component, job)[0]
 
         print("Test Video File:\n" + "-"*16)
         for ff_location in result.frame_locations.values():
