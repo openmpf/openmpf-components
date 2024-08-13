@@ -77,7 +77,7 @@ class LlavaComponent:
                 self.client = ollama.Client(host=self.host_url)
         except:
             raise mpf.DetectionException(
-                "Could not instantiate Ollama Client: ",
+                "Could not instantiate Ollama Client. Make sure OLLAMA_CLIENT_HOST_URL is set correctly: ",
                 mpf.DetectionError.NETWORK_ERROR
             )
         
@@ -142,7 +142,7 @@ class JobConfig:
         if self.prompt_config_path == "":
             self.prompt_config_path = os.path.join(os.path.dirname(__file__), 'data', 'prompts.json')
         
-        self.ollama_client_host_url = self._get_prop(job_properties, "OLLAMA_CLIENT_HOST_URL", "llava-detection-server")
+        self.ollama_client_host_url = self._get_prop(job_properties, "OLLAMA_CLIENT_HOST_URL", "llava-detection-server:11434")
 
         if not os.path.exists(self.prompt_config_path):
             raise mpf.DetectionException(
