@@ -38,18 +38,40 @@
     },
     "actions": [
         {
+            "name": "LLAVA DETECTION ACTION",
+            "description": "Runs LLaVA with prompts for each video frame passed in.",
+            "algorithm": "LLaVA",
+            "properties": [
+                {
+                    "name": "FRAME_INTERVAL",
+                    "value": "128"
+                }
+            ]
+        },
+        {
             "name": "LLAVA DETECTION (WITH FF REGION) ACTION",
-            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "description": "Runs LLaVA with prompts for the class of the feed forward detection passed in.",
             "algorithm": "LLaVA",
             "properties": [
                 {
                     "name": "FEED_FORWARD_TYPE",
                     "value": "REGION"
+                },
+                {
+                    "name": "FEED_FORWARD_TOP_QUALITY_COUNT",
+                    "value": "1"
                 }
             ]
         }
     ],
     "tasks": [
+        {
+            "name": "LLAVA DETECTION TASK",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "actions": [
+                "LLAVA DETECTION ACTION"
+            ]
+        },
         {
             "name": "LLAVA DETECTION (WITH FF REGION) TASK",
             "description": "Runs LLaVA with prompts for the class of the detection passed in.",
@@ -59,6 +81,13 @@
         }
     ],
     "pipelines": [
+        {
+            "name": "LLAVA DETECTION PIPELINE",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "tasks": [
+                "LLAVA DETECTION TASK"
+            ]
+        },
         {
             "name": "LLAVA DETECTION (WITH FF REGION) PIPELINE",
             "description": "Runs LLaVA with prompts for the class of the detection passed in.",
