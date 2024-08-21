@@ -44,7 +44,7 @@ logger = logging.getLogger('TransformerTaggingComponent')
 class TransformerTaggingComponent:
 
     def __init__(self):
-        self._cached_model = SentenceTransformer('/models/all-mpnet-base-v2')
+        self._cached_model = SentenceTransformer('/tmp/models/all-mpnet-base-v2')
         self._cached_corpuses: Dict[str, Corpus] = {}
 
 
@@ -223,6 +223,8 @@ class TransformerTaggingComponent:
             sents = []
             offsets = []
             scores = []
+            use_tag_scores = []
+            tag_scores = []
             matches = []
 
             for input_text in tag_df["input text"].unique():
@@ -237,13 +239,21 @@ class TransformerTaggingComponent:
                     # all entries should have the same match, so just use the first
                     matches.append(input_text_df["corpus text"].values[0].replace(';', '[;]'))
 
+                use_tag_scores.append(input_text_df["use tag score"].values[0].replace(';', '[;]'))
+                if input_text_df["use tag score"].values[0]:
+                    tag_scores.append(input_text_df["tag score"].values[0].astype(str))
+
             prop_name_sent = prop_to_tag + " " + tag.upper() + " TRIGGER SENTENCES"
             prop_name_offset = prop_name_sent + " OFFSET"
             prop_name_score = prop_name_sent + " SCORE"
+            prop_name_tag_flag = prop_name_sent + " USE TAG SCORE"
+            prop_name_tag_score = prop_name_sent + " TAG SCORE"
 
             ff_props[prop_name_sent] = "; ".join(sents)
             ff_props[prop_name_offset] = "; ".join(offsets)
             ff_props[prop_name_score] = "; ".join(scores)
+            ff_props[prop_name_tag_flag] = "; ".join(use_tag_scores)
+            ff_props[prop_name_tag_score] = "; ".join(tag_scores)
 
             if config.debug:
                 prop_name_matches = prop_name_sent + " MATCHES"
