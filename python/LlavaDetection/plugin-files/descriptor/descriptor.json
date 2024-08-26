@@ -28,7 +28,7 @@
                     "defaultValue": ""
                 },
                 {
-                    "name": "OLLAMA_CLIENT_HOST_URL",
+                    "name": "OLLAMA_SERVER",
                     "description": "Something",
                     "type": "STRING",
                     "defaultValue": "llava-detection-server:11434"
@@ -38,13 +38,101 @@
     },
     "actions": [
         {
-            "name": "LLAVA DETECTION ACTION",
+            "name": "LLAVA DETECTION (256 FRAME INTERVAL) ACTION",
+            "description": "Runs LLaVA with prompts for each video frame passed in.",
+            "algorithm": "LLaVA",
+            "properties": [
+                {
+                    "name": "FRAME_INTERVAL",
+                    "value": "256"
+                }
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (128 FRAME INTERVAL) ACTION",
             "description": "Runs LLaVA with prompts for each video frame passed in.",
             "algorithm": "LLaVA",
             "properties": [
                 {
                     "name": "FRAME_INTERVAL",
                     "value": "128"
+                }
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (64 FRAME INTERVAL) ACTION",
+            "description": "Runs LLaVA with prompts for each video frame passed in.",
+            "algorithm": "LLaVA",
+            "properties": [
+                {
+                    "name": "FRAME_INTERVAL",
+                    "value": "64"
+                }
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (32 FRAME INTERVAL) ACTION",
+            "description": "Runs LLaVA with prompts for each video frame passed in.",
+            "algorithm": "LLaVA",
+            "properties": [
+                {
+                    "name": "FRAME_INTERVAL",
+                    "value": "32"
+                }
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (16 FRAME INTERVAL) ACTION",
+            "description": "Runs LLaVA with prompts for each video frame passed in.",
+            "algorithm": "LLaVA",
+            "properties": [
+                {
+                    "name": "FRAME_INTERVAL",
+                    "value": "16"
+                }
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (8 FRAME INTERVAL) ACTION",
+            "description": "Runs LLaVA with prompts for each video frame passed in.",
+            "algorithm": "LLaVA",
+            "properties": [
+                {
+                    "name": "FRAME_INTERVAL",
+                    "value": "8"
+                }
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (4 FRAME INTERVAL) ACTION",
+            "description": "Runs LLaVA with prompts for each video frame passed in.",
+            "algorithm": "LLaVA",
+            "properties": [
+                {
+                    "name": "FRAME_INTERVAL",
+                    "value": "4"
+                }
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (2 FRAME INTERVAL) ACTION",
+            "description": "Runs LLaVA with prompts for each video frame passed in.",
+            "algorithm": "LLaVA",
+            "properties": [
+                {
+                    "name": "FRAME_INTERVAL",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (1 FRAME INTERVAL) ACTION",
+            "description": "Runs LLaVA with prompts for each video frame passed in.",
+            "algorithm": "LLaVA",
+            "properties": [
+                {
+                    "name": "FRAME_INTERVAL",
+                    "value": "1"
                 }
             ]
         },
@@ -66,10 +154,66 @@
     ],
     "tasks": [
         {
-            "name": "LLAVA DETECTION TASK",
+            "name": "LLAVA DETECTION (256 FRAME INTERVAL) TASK",
             "description": "Runs LLaVA with prompts for the class of the detection passed in.",
             "actions": [
-                "LLAVA DETECTION ACTION"
+                "LLAVA DETECTION (256 FRAME INTERVAL) ACTION"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (128 FRAME INTERVAL) TASK",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "actions": [
+                "LLAVA DETECTION (128 FRAME INTERVAL) ACTION"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (64 FRAME INTERVAL) TASK",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "actions": [
+                "LLAVA DETECTION (64 FRAME INTERVAL) ACTION"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (32 FRAME INTERVAL) TASK",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "actions": [
+                "LLAVA DETECTION (32 FRAME INTERVAL) ACTION"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (16 FRAME INTERVAL) TASK",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "actions": [
+                "LLAVA DETECTION (16 FRAME INTERVAL) ACTION"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (8 FRAME INTERVAL) TASK",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "actions": [
+                "LLAVA DETECTION (8 FRAME INTERVAL) ACTION"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (4 FRAME INTERVAL) TASK",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "actions": [
+                "LLAVA DETECTION (4 FRAME INTERVAL) ACTION"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (2 FRAME INTERVAL) TASK",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "actions": [
+                "LLAVA DETECTION (2 FRAME INTERVAL) ACTION"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (1 FRAME INTERVAL) TASK",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "actions": [
+                "LLAVA DETECTION (1 FRAME INTERVAL) ACTION"
             ]
         },
         {
@@ -82,10 +226,66 @@
     ],
     "pipelines": [
         {
-            "name": "LLAVA DETECTION PIPELINE",
+            "name": "LLAVA DETECTION (256 FRAME INTERVAL) PIPELINE",
             "description": "Runs LLaVA with prompts for the class of the detection passed in.",
             "tasks": [
-                "LLAVA DETECTION TASK"
+                "LLAVA DETECTION (256 FRAME INTERVAL) TASK"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (128 FRAME INTERVAL) PIPELINE",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "tasks": [
+                "LLAVA DETECTION (128 FRAME INTERVAL) TASK"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (64 FRAME INTERVAL) PIPELINE",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "tasks": [
+                "LLAVA DETECTION (64 FRAME INTERVAL) TASK"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (32 FRAME INTERVAL) PIPELINE",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "tasks": [
+                "LLAVA DETECTION (32 FRAME INTERVAL) TASK"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (16 FRAME INTERVAL) PIPELINE",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "tasks": [
+                "LLAVA DETECTION (16 FRAME INTERVAL) TASK"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (8 FRAME INTERVAL) PIPELINE",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "tasks": [
+                "LLAVA DETECTION (8 FRAME INTERVAL) TASK"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (4 FRAME INTERVAL) PIPELINE",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "tasks": [
+                "LLAVA DETECTION (4 FRAME INTERVAL) TASK"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (2 FRAME INTERVAL) PIPELINE",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "tasks": [
+                "LLAVA DETECTION (2 FRAME INTERVAL) TASK"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (1 FRAME INTERVAL) PIPELINE",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "tasks": [
+                "LLAVA DETECTION (1 FRAME INTERVAL) TASK"
             ]
         },
         {
