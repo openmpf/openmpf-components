@@ -25,7 +25,7 @@
 #############################################################################
 
 
-from typing import Sequence, Dict, Tuple
+from typing import Optional, Sequence, Dict, NamedTuple
 
 import pathlib
 import logging
@@ -34,26 +34,35 @@ import mpf_component_util as mpf_util
 
 from argostranslate import package, translate
 
+from argos_translation_component.multi_language_processor import DetectedLangInfo, TranslationMetrics, MultiLanguageProcessor
 from .argos_language_mapper import ArgosLanguageMapper
 
 logger = logging.getLogger('ArgosTranslationComponent')
 
+MULTI_LANG_REPORT = "MULTI_LANGUAGE_REPORT"
+UNIDENTIFIED_LANGUAGE = 'UNKNOWN'
+
+class ArgosTranslationCache(NamedTuple):
+    source_lang: str
+    target_lang: str
+    text: str
+class ArgosTranslationModel(NamedTuple):
+    source_lang: str
+    target_lang: str
+    model: Optional[translate.ITranslation]
 
 class ArgosTranslationComponent:
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         logger.info(f'Received video job.')
-
         return self.get_feed_forward_detections(job, job.feed_forward_track, video_job=True)
 
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
-
         return self.get_feed_forward_detections(job, job.feed_forward_location)
 
     def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
         logger.info(f'Received audio job.')
-
         return self.get_feed_forward_detections(job, job.feed_forward_track)
 
     @staticmethod
@@ -107,10 +116,10 @@ class ArgosTranslationComponent:
 class TranslationWrapper:
     def __init__(self, job_props):
         self.supported_languages = self.get_supported_languages_codes()
-
         self._installed_languages = translate.get_installed_languages()
-
         self.installed_lang_codes = [lang.code for lang in self._installed_languages]
+        # (Input Lang, Output Lang, Translation Model)
+        self._cached_translation_model = ArgosTranslationModel("", "", None)
 
         self._props_to_translate = [
             prop.strip() for prop in
@@ -141,7 +150,7 @@ class TranslationWrapper:
                 prop_type=str
             ).split(',')
         ]
-
+        # Set a default language to translate from.
         self._from_lang = mpf_util.get_property(
             properties=job_props,
             key='DEFAULT_SOURCE_LANGUAGE',
@@ -156,11 +165,19 @@ class TranslationWrapper:
             prop_type=str
         ).lower().strip()
 
+        if self._from_lang == "":
+            logger.info("No default source language selected!")
+        elif self._from_lang in ArgosLanguageMapper.iso_map:
+            self._from_lang = ArgosLanguageMapper.get_code(self._from_lang, self._from_script)
+        elif self._from_lang != "" and self._from_lang not in self.supported_languages:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                f"Default source language, {self._from_lang}, is not supported."
+            )
 
         # TODO: Add support for non-English translations in the future.
+        self._to_lang_word_separator = " "
         self._to_lang = "en"
-
-        self._translation_cache: Dict[str, Tuple[str, str]] = {}
+        self._translation_cache: Dict[ArgosTranslationCache, str] = {}
 
     @staticmethod
     def get_supported_languages_codes():
@@ -171,13 +188,113 @@ class TranslationWrapper:
             package.update_package_index()
             available_packages = package.get_available_packages()
 
-        # TODO: Update if we want to support translations to non-English languages.
-        available_packages = [y.from_code for y in list(
-            filter(
-                lambda x: x.to_code == "en", available_packages
-            )
-        )]
+        available_packages = [y.from_code for y in available_packages]
         return available_packages
+
+
+    def _check_lang_script_codes(self, lang:str, script:str):
+        if lang:
+            if lang in self.supported_languages:
+                return lang
+            elif lang in ArgosLanguageMapper.iso_map:
+                lang = ArgosLanguageMapper.get_code(lang, script)
+                return lang
+            else:
+                raise mpf.DetectionError.DETECTION_FAILED.exception(
+                    f"Source language, {lang}, is not supported."
+                )
+        else:
+            raise mpf.DetectionError.MISSING_PROPERTY.exception(
+                'None of the properties from "LANGUAGE_FEED_FORWARD_PROP" '
+                f'({self._lang_prop_names}) were found in the feed forward track and no '
+                '"DEFAULT_SOURCE_LANGUAGE" was provided.')
+
+    def _check_installed_lang(self, source_lang:str):
+        if source_lang not in self.installed_lang_codes:
+            logger.info(f"Language {source_lang} is not installed. Installing package.")
+
+            # From Argos Translate for downloading language models.
+            available_packages = package.get_available_packages()
+            available_package = list(
+                filter(
+                    lambda x: x.from_code == source_lang and x.to_code == self._to_lang, available_packages
+                )
+            )[0]
+
+            download_path = available_package.download()
+            package.install_from_path(download_path)
+
+            logger.info(f"Successfully installed {source_lang}.")
+
+            self.installed_lang_codes = [lang.code for lang in translate.get_installed_languages()]
+            self._installed_languages = translate.get_installed_languages()
+
+        # (Input Lang, Output Lang, Translation Model)
+        if self._cached_translation_model.source_lang == source_lang and \
+            self._cached_translation_model.target_lang == self._to_lang:
+            return
+
+        from_lang = list(filter(
+            lambda x: x.code == source_lang,
+            self._installed_languages))[0]
+        to_lang = list(filter(
+            lambda x: x.code == self._to_lang,
+            self._installed_languages))[0]
+
+        translation_model = from_lang.get_translation(to_lang)
+
+        self._cached_translation_model = ArgosTranslationModel(source_lang, self._to_lang, translation_model)
+
+    def _run_translation(self, source_lang: str, prop_to_translate: str, input_text:str) -> str:
+        if source_lang == self._to_lang:
+            logger.info(f'Skipped translation of the "{prop_to_translate}" '
+            f'property because it was already in the target language.')
+            return input_text
+
+        if cached_translation := self._translation_cache.get(ArgosTranslationCache(source_lang, self._to_lang, input_text)):
+            return cached_translation
+
+        self._check_installed_lang(source_lang)
+
+        if self._cached_translation_model.model is None:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                f"No valid translation model from {source_lang} to {self._to_lang}, "
+                f"check if any packages are missing."
+            )
+        logger.info(f"Translating the {prop_to_translate} property.")
+        translated_text = self._cached_translation_model.model.translate(input_text)
+        trans_key = ArgosTranslationCache(source_lang, self._to_lang, input_text)
+        self._translation_cache[trans_key] = translated_text
+        logger.info("Translation complete.")
+        return translated_text
+
+    def _run_reports_through_translation(self,
+                                         metrics: TranslationMetrics,
+                                         prop_to_translate: str,
+                                         input_text: str):
+        for report in metrics.language_reports:
+            sub_text = input_text[report.start_idx:report.end_idx]
+            sub_lang = report.language
+            if sub_lang == UNIDENTIFIED_LANGUAGE:
+                logger.info(f'Text to translate contains an UNIDENTIFIED language '
+                            f'for this section [{report.start_idx}-{report.end_idx}].')
+                metrics.translations.append(sub_text)
+                metrics.unknown_lang = True
+                continue
+            sub_script = report.script
+            sub_source_lang = self._check_lang_script_codes(sub_lang, sub_script)
+            translated_text = self._run_translation(sub_source_lang,
+                                                    prop_to_translate,
+                                                    sub_text)
+            if translated_text == sub_text:
+                logger.info(f'Text to translate unchanged '
+                            f'for this section [{report.start_idx}-{report.end_idx}].')
+                metrics.translations.append(sub_text)
+            else:
+                metrics.skipped_translation = False
+                metrics.translations.append(translated_text)
+                metrics.lang_text_count[sub_source_lang] += len(sub_text)
+                metrics.lang_conf[sub_source_lang].append(report.conf)
 
     def add_translations(self, ff_props: Dict[str, str]):
         for prop_to_translate in self._props_to_translate:
@@ -188,99 +305,29 @@ class TranslationWrapper:
             logger.warning("No text to translate found in track.")
             return
 
-        if cached_translation := self._translation_cache.get(input_text):
-            ff_props['TRANSLATION'] = cached_translation[0]
-            ff_props['TRANSLATION_SOURCE_LANGUAGE'] = cached_translation[1]
-            return
-
+        source_script = self._from_script
         for script_prop_name in self._script_prop_names:
             if script_prop_name in ff_props:
-                self._from_script = ff_props.get(script_prop_name).lower().strip()
+                source_script = ff_props.get(script_prop_name).lower().strip()
                 break
 
+        source_lang = self._from_lang
         for lang_prop_name in self._lang_prop_names:
             if lang_prop_name in ff_props:
-                lang = ff_props.get(lang_prop_name).lower().strip()
-                if lang in self.supported_languages:
-                    self._from_lang = lang
-                    break
-                # TODO: Change if supporting non-English translations.
-                elif lang in ('en','eng'):
-                    ff_props['SKIPPED_TRANSLATION'] = 'TRUE'
-                    logger.info(f'Skipped translation of the "{prop_to_translate}" '
-                        f'property because it was already in the target language.')
-                    return
-                elif lang in ArgosLanguageMapper.iso_map:
-                    # Convert supported languages to ISO-639-1
-                    self._from_lang = ArgosLanguageMapper.get_code(lang, self._from_script)
-                    break
-                else:
-                    raise mpf.DetectionError.DETECTION_FAILED.exception(
-                        f"Source language, {lang}, is not supported."
-                    )
+                source_lang = ff_props.get(lang_prop_name).lower().strip()
+                break
+
+        metrics = TranslationMetrics()
+        if text_language_report := ff_props.get(MULTI_LANG_REPORT):
+            for report in text_language_report.split(";"):
+                metrics.language_reports.append(MultiLanguageProcessor.extract_lang_report(report))
         else:
-            # Before converting to IS0-639-1, keep name of original default setting.
-            source_lang_name = self._from_lang
-            if self._from_lang in ArgosLanguageMapper.iso_map:
-                self._from_lang = ArgosLanguageMapper.get_code(self._from_lang, self._from_script)
-            if self._from_lang == 'en':
-                ff_props['SKIPPED_TRANSLATION'] = 'TRUE'
-                logger.info(f'Skipped translation of the "{prop_to_translate}" '
-                            f'property because it was already in the target language.')
-                return
+            metrics.language_reports.append(DetectedLangInfo(source_lang, source_script, 0, len(input_text), 1))
 
-            if self._from_lang == "":
-                raise mpf.DetectionError.MISSING_PROPERTY.exception(
-                    'None of the properties from "LANGUAGE_FEED_FORWARD_PROP" '
-                    f'({self._lang_prop_names}) were found in the feed forward track and no '
-                    '"DEFAULT_SOURCE_LANGUAGE" was provided.')
-
-            if self._from_lang != "" and self._from_lang not in self.supported_languages:
-                raise mpf.DetectionError.DETECTION_FAILED.exception(
-                    f"Default source language, {source_lang_name}, is not supported."
-                )
-
-        if self._from_lang not in self.installed_lang_codes:
-            logger.info(f"Language {self._from_lang} is not installed. Installing package.")
-
-            # From Argos Translate for downloading language models.
-            available_packages = package.get_available_packages()
-            available_package = list(
-                filter(
-                    lambda x: x.from_code == self._from_lang and x.to_code == self._to_lang, available_packages
-                )
-            )[0]
-
-            download_path = available_package.download()
-            package.install_from_path(download_path)
-
-            logger.info(f"Successfully installed {self._from_lang}.")
-
-            self.installed_lang_codes = [lang.code for lang in translate.get_installed_languages()]
-            self._installed_languages = translate.get_installed_languages()
-
-        from_lang = list(filter(
-            lambda x: x.code == self._from_lang,
-            self._installed_languages))[0]
-        to_lang = list(filter(
-            lambda x: x.code == self._to_lang,
-            self._installed_languages))[0]
-
-        translation = from_lang.get_translation(to_lang)
-
-        if translation is None:
-            raise mpf.DetectionError.DETECTION_FAILED.exception(
-                f"No valid translation model from {self._from_lang} to {self._to_lang}, "
-                f"check if any packages are missing."
-            )
-
-        logger.info(f"Translating the {prop_to_translate} property.")
-
-        translated_text = translation.translate(input_text)
-
-        self._translation_cache[input_text] = (translated_text, self._from_lang)
-
-        logger.info("Translation complete.")
-
-        ff_props['TRANSLATION_SOURCE_LANGUAGE'] = self._from_lang
-        ff_props['TRANSLATION'] = translated_text
+        self._run_reports_through_translation(metrics, prop_to_translate, input_text)
+        MultiLanguageProcessor.aggregate_translation_results(metrics,
+            prop_to_translate,
+            self._to_lang,
+            self._to_lang_word_separator,
+            ff_props,
+            logger)
