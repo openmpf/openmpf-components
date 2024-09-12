@@ -28,7 +28,7 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM openmpf/openmpf_python_executor_ssb:${BUILD_TAG}
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
