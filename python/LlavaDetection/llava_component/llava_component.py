@@ -105,6 +105,8 @@ class LlavaComponent:
             else:
                 tracks.append(img_location)
 
+            video_decode_timer.start()
+
         for track in tracks:
             reader.reverse_transform(track)
 
