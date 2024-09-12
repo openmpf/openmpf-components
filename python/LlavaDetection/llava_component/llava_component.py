@@ -80,7 +80,7 @@ class LlavaComponent:
 
         return tracks
 
-    def _get_frame_detections(self, media, config, is_video_job=False):
+    def _get_frame_detections(self, reader, config, is_video_job=False):
         self._update_prompts(config.prompt_config_path)
         self._check_client(config.ollama_server)
 
@@ -90,11 +90,11 @@ class LlavaComponent:
         video_process_timer = Timer()
 
         video_decode_timer.start()
-        for idx, frame in enumerate(media):
+        for idx, frame in enumerate(reader):
             video_decode_timer.pause()
             frame_count += 1
 
-            width, height, _ = frame.shape
+            height, width, _ = frame.shape
             detection_properties = dict()
 
             self._get_ollama_response(self.frame_prompts, frame, detection_properties, video_process_timer)
@@ -106,6 +106,9 @@ class LlavaComponent:
                 tracks.append(img_location)
 
             video_decode_timer.start()
+
+        for track in tracks:
+            reader.reverse_transform(track)
 
         if is_video_job:
             return tracks, video_process_timer, video_decode_timer, frame_count
