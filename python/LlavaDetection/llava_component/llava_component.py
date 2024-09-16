@@ -121,11 +121,11 @@ class LlavaComponent:
         classification = job_feed_forward.detection_properties["CLASSIFICATION"].lower()
 
         # Send prompts to ollama to generate responses
-        if is_video_job:
-            frame_count = 0
-            video_decode_timer = Timer()
-            video_process_timer = Timer()
+        frame_count = 0
+        video_decode_timer = Timer()
+        video_process_timer = Timer()
 
+        if is_video_job:
             video_decode_timer.start()
             for frame, ff_location in zip(reader, job_feed_forward.frame_locations.values()):
                 video_decode_timer.pause()
