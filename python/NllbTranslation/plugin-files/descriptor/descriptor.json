@@ -1,0 +1,122 @@
+{
+  "componentName": "NllbTranslation",
+  "componentVersion": "9.0",
+  "middlewareVersion": "9.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "NllbTranslation",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "NLLBTRANSLATION",
+    "description": "Uses No Language Left Behind to perform translations.",
+    "actionType": "DETECTION",
+    "trackType": "TRANSLATION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TRANSLATION",
+        "DETECTION_TRANSLATION_Nllb"
+      ],
+      "properties": [
+        {
+          "name": "FEED_FORWARD_PROP_TO_PROCESS",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to consider translating. If the first property listed is present, then that property will be translated. If it's not, then the next property in the list is considered. At most, one property will be translated.",
+          "type": "STRING",
+          "defaultValue": "TEXT,TRANSCRIPT"
+        },
+        {
+          "name": "PRETRAINED_MODEL",
+          "description": "Path to offline nllb-200-distilled-600M model.",
+          "type": "STRING",
+          "defaultValue": "/models/nllb-200-distilled-600M"
+        },
+        {
+          "name": "LANGUAGE_FEED_FORWARD_PROP",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection determine the language from which to translate. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, fall back to DEFAULT_SOURCE_LANGUAGE.",
+          "type": "STRING",
+          "defaultValue": "ISO_LANGUAGE,DECODED_LANGUAGE,LANGUAGE"
+        },
+        {
+          "name": "SCRIPT_FEED_FORWARD_PROP",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection determine the script from which to translate. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, fall back to DEFAULT_SOURCE_SCRIPT.",
+          "type": "STRING",
+          "defaultValue": "ISO_SCRIPT,DECODED_SCRIPT,SCRIPT"
+        },
+        {
+          "name": "TARGET_LANGUAGE",
+          "description": "The ISO-639-3 language code for language and script that the input test should be translated to.",
+          "type": "STRING",
+          "defaultValue": "eng"
+        },
+        {
+          "name": "TARGET_SCRIPT",
+          "description": "The ISO-15924 language code for language and script that the input test should be translated to.",
+          "type": "STRING",
+          "defaultValue": "Latn"
+        },
+        {
+          "name": "DEFAULT_SOURCE_LANGUAGE",
+          "description": "The ISO-639-2 language code for language and script that the input text should be translated from.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "DEFAULT_SOURCE_SCRIPT",
+          "description": "The ISO-15924 language code for language and script that the input text should be translated from.",
+          "type": "STRING",
+          "defaultValue": ""
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "NO LANGUAGE LEFT BEHIND TRANSLATION TEXT FILE ACTION",
+      "description": "Performs Nllb translation on a plain text file.",
+      "algorithm": "NLLBTRANSLATION",
+      "properties": []
+    },
+    {
+      "name": "NO LANGUAGE LEFT BEHIND TRANSLATION (WITH FF REGION) ACTION",
+      "description": "Performs Nllb translation on feed-forward tracks and detections.",
+      "algorithm": "NLLBTRANSLATION",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "value": "TRUE"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "NO LANGUAGE LEFT BEHIND TRANSLATION TEXT FILE TASK",
+      "description": "Uses No Language Left Behind to perform translation on a plain text file.",
+      "actions": [
+        "NO LANGUAGE LEFT BEHIND TRANSLATION TEXT FILE ACTION"
+      ]
+    },
+    {
+      "name": "NO LANGUAGE LEFT BEHIND TRANSLATION (WITH FF REGION) TASK",
+      "description": "Uses No Language Left Behindto perform translation on feed-forward tracks and detections.",
+      "actions": [
+        "NO LANGUAGE LEFT BEHIND TRANSLATION (WITH FF REGION) ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "NO LANGUAGE LEFT BEHIND TRANSLATION TEXT FILE PIPELINE",
+      "description": "Performs Nllb translation on a plain text file.",
+      "tasks": [
+        "NO LANGUAGE LEFT BEHIND TRANSLATION TEXT FILE TASK"
+      ]
+    }
+  ]
+}
