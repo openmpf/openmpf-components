@@ -87,8 +87,8 @@
             "name": "LLAVA DETECTION (WITH FF REGION FROM YOLO OBJECT DETECTION) PIPELINE",
             "description": "Runs LLaVA with prompts for the class of the detection passed in.",
             "tasks": [
-                "LLAVA DETECTION (WITH FF REGION) TASK",
-                "OCV TRITON YOLO OBJECT DETECTION TASK"
+                "OCV TRITON YOLO OBJECT DETECTION TASK",
+                "LLAVA DETECTION (WITH FF REGION) TASK"
             ]
         }
     ]
