@@ -47,26 +47,44 @@ class LlavaComponent:
         self.host_url = ''
         self.client = None
         self.class_prompts = dict()
+        # self.json_class_prompts = dict()
         self.frame_prompts = dict()
+
+        # self.json_failed = True
+        # self.json_attempts = 0
+        # self.json_limit = 3
 
     def get_detections_from_image(self, image_job: mpf.ImageJob) -> Iterable[mpf.ImageLocation]:
         logger.info('Received image job: %s', image_job.job_name)
+
+        self.video_process_timer = Timer()
+        self.video_decode_timer = Timer()
+        self.frame_count = 0
 
         config = JobConfig(image_job.job_properties)
         image_reader = mpf_util.ImageReader(image_job)
 
         if image_job.feed_forward_location is None:
             return self._get_frame_detections([image_reader.get_image(),], config)
-        return self._get_feed_forward_detections(image_job.feed_forward_location, image_reader, config)
+        # elif config.prompt_json_format:
+        #     return self._get_feed_forward_detections_json(image_job.feed_forward_location, image_reader, config)
+        else:
+            return self._get_feed_forward_detections(image_job.feed_forward_location, image_reader, config)
 
     def get_detections_from_video(self, video_job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         logger.info('Received video job: %s', video_job.job_name)
+
+        self.video_process_timer = Timer()
+        self.video_decode_timer = Timer()
+        self.frame_count = 0
 
         config = JobConfig(video_job.job_properties)
         video_capture = mpf_util.VideoCapture(video_job)
 
         if video_job.feed_forward_track is None:
             tracks, video_process_timer, video_decode_timer, frame_count = self._get_frame_detections(video_capture, config, is_video_job=True)
+        # elif config.prompt_json_format:
+        #     tracks, video_process_timer, video_decode_timer, frame_count = self._get_feed_forward_detections_json(video_job.feed_forward_track, video_capture, config, is_video_job=True)
         else:
             tracks, video_process_timer, video_decode_timer, frame_count = self._get_feed_forward_detections(video_job.feed_forward_track, video_capture, config, is_video_job=True)
 
@@ -81,7 +99,7 @@ class LlavaComponent:
         return tracks
 
     def _get_frame_detections(self, reader, config, is_video_job=False):
-        self._update_prompts(config.prompt_config_path)
+        self._update_prompts(config.prompt_config_path, config.prompt_json_config_path)
         self._check_client(config.ollama_server)
 
         tracks = []
@@ -101,25 +119,82 @@ class LlavaComponent:
 
             img_location = mpf.ImageLocation(0, 0, width, height, -1, detection_properties)
             if is_video_job:
-                tracks.append(mpf.VideoTrack(idx, idx, -1, {idx: img_location}, detection_properties))
+                tracks.append(mpf.VideoTrack(idx, idx, -1, { idx:img_location }, detection_properties))
             else:
                 tracks.append(img_location)
 
             video_decode_timer.start()
 
-        for track in tracks:
-            reader.reverse_transform(track)
-
         if is_video_job:
+            for track in tracks:
+                reader.reverse_transform(track)
             return tracks, video_process_timer, video_decode_timer, frame_count
         return tracks
 
+    # def _get_feed_forward_detections_json(self, job_feed_forward, reader, config, is_video_job=False):
+    #     self._update_prompts(config.prompt_config_path, config.prompt_json_config_path)
+    #     self._check_client(config.ollama_server)
+
+    #     classification = job_feed_forward.detection_properties["CLASSIFICATION"].lower()
+
+    #     # Send prompts to ollama to generate responses
+    #     frame_count = 0
+    #     video_decode_timer = Timer()
+    #     video_process_timer = Timer()
+
+    #     prompts_to_use = self.json_class_prompts if config.prompt_json_format else self.class_prompts
+    #     if is_video_job:
+    #         video_decode_timer.start()
+    #         for frame, ff_location in zip(reader, job_feed_forward.frame_locations.values()):
+    #             video_decode_timer.pause()
+    #             frame_count += 1
+
+    #             encoded = self._encode_image(frame)
+    #             for tag, prompt in prompts_to_use[classification].items():
+    #                 # re-initialize json_attempts=0 and json_failed=True
+    #                 while (self.json_attempts <= self.json_limit) and (self.json_failed):
+    #                     self.json_attempts += 1
+    #                     response = self._get_ollama_response_json(prompt, encoded, video_process_timer)
+
+    #                     try:
+    #                         response_json = json.loads(response)
+    #                         # Read through json, create keys and add to detection properties
+    #                         for key, val in response_json.items():
+    #                             ff_location.detection_properties['LLAVA_' + key.upper()] = val
+
+    #                         self.json_failed = False
+    #                     except:
+    #                         logger.warning(f"LLaVA failed to produce valid JSON output. Failed {self.json_attempts} of {self.json_limit} attempts.")
+    #                         continue
+    #                 # Check if json_failed=True. If so, add 'FAILED TO PROCESS LLAVA RESPONSE' and 'FULL LLAVA RESPONSE' to detection_properties
+    #                 # logger.warning(f"Using last full LLaVA response instead of parsed JSON output.")
+
+    #             video_decode_timer.start()
+    #     else:
+    #         encoded = self._encode_image(reader.get_image())
+    #         for tag, prompt in prompts_to_use.items():
+    #             while (self.json_attempts <= self.json_limit) and (self.json_failed):
+    #                 self.json_attempts += 1
+    #                 response = self._get_ollama_response_json(prompt, encoded, video_process_timer)
+    #                 logger.info(response)
+    #                 try:
+    #                     response_json = json.loads(response)
+    #                     for key, val in response_json.items():
+    #                         job_feed_forward.detection_properties['LLAVA_' + key.upper()] = val
+    #                     self.json_failed = False
+    #                 except:
+    #                     continue
+
+    #     if is_video_job:
+    #         return [job_feed_forward], video_process_timer, video_decode_timer, frame_count
+    #     else:
+    #       return [job_feed_forward]
+
     def _get_feed_forward_detections(self, job_feed_forward, reader, config, is_video_job=False):
-        self._update_prompts(config.prompt_config_path)
+        self._update_prompts(config.prompt_config_path, config.prompt_json_config_path)
         self._check_client(config.ollama_server)
 
         classification = job_feed_forward.detection_properties["CLASSIFICATION"].lower()
-
         # Send prompts to ollama to generate responses
         frame_count = 0
         video_decode_timer = Timer()
@@ -131,12 +206,14 @@ class LlavaComponent:
                 video_decode_timer.pause()
                 frame_count += 1
 
-                self._get_ollama_response(self.class_prompts[classification], frame, ff_location.detection_properties, video_process_timer)
+                if classification in self.class_prompts:
+                    self._get_ollama_response(self.class_prompts[classification], frame, ff_location.detection_properties, video_process_timer)
 
                 video_decode_timer.start()
             return [job_feed_forward], video_process_timer, video_decode_timer, frame_count
         else:
-            self._get_ollama_response(self.class_prompts[classification], reader.get_image(), job_feed_forward.detection_properties, video_process_timer)
+            if classification in self.class_prompts:
+                self._get_ollama_response(self.class_prompts[classification], reader.get_image(), job_feed_forward.detection_properties, video_process_timer)
             return [job_feed_forward]
 
     def _check_client(self, host_url):
@@ -155,7 +232,7 @@ class LlavaComponent:
         _, buffer = cv2.imencode('.png', image, encode_params)
         return base64.b64encode(buffer).decode("utf-8")
 
-    def _update_prompts(self, prompt_config_path):
+    def _update_prompts(self, prompt_config_path, prompt_json_config_path):
         '''
         Updates self.class_prompts dictionary to have the following format
 
@@ -180,12 +257,33 @@ class LlavaComponent:
 
                 for frame_dict in frame_dicts:
                     self.frame_prompts[frame_dict['detectionProperty']] = frame_dict['prompt']
+            
+            # with open(prompt_json_config_path, 'r') as f:
+            #     data = json.load(f)
+            #     json_class_dicts = data['classPrompts']
+            #     for class_dict in json_class_dicts:
+            #         classes, prompt = [cls.lower() for cls in class_dict['classes']], class_dict['prompt']
+            #         for cls in classes:
+            #             self.class_prompts[cls] = { 'JSON':prompt }
+ 
         except:
             raise mpf.DetectionException(
                 "Invalid JSON structure for component: ",
                 mpf.DetectionError.COULD_NOT_READ_DATAFILE
             )
 
+    # def _get_ollama_response_json(self, prompt, encoded_image, video_process_timer):
+    #     try:
+    #         video_process_timer.start()
+    #         response = self.client.generate(self.model, prompt, images=[encoded_image])['response']
+    #         video_process_timer.pause()
+    #         return response
+    #     except:
+    #         raise mpf.DetectionException(
+    #             "Could not communicate with Ollama server: ",
+    #             mpf.DetectionError.NETWORK_ERROR
+    #         )
+        
     def _get_ollama_response(self, prompt_dict, image, detection_properties, video_process_timer):
         try:
             encoded = self._encode_image(image)
@@ -204,6 +302,12 @@ class JobConfig:
         self.prompt_config_path = self._get_prop(job_properties, "PROMPT_CONFIGURATION_PATH", "")
         if self.prompt_config_path == "":
             self.prompt_config_path = os.path.join(os.path.dirname(__file__), 'data', 'prompts.json')
+        
+        self.prompt_json_config_path = self._get_prop(job_properties, "PROMPT_JSON_CONFIGURATION_PATH", "")
+        if self.prompt_json_config_path == "":
+            self.prompt_json_config_path = os.path.join(os.path.dirname(__file__), 'data', 'json_prompts.json')
+        
+        self.prompt_json_format = self._get_prop(job_properties, "PROMPT_JSON_FORMAT", False)
 
         self.ollama_server = self._get_prop(job_properties, "OLLAMA_SERVER", "llava-detection-server:11434")
         if not os.path.exists(self.prompt_config_path):

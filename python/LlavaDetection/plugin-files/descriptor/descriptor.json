@@ -28,6 +28,18 @@
                     "defaultValue": ""
                 },
                 {
+                    "name": "PROMPT_JSON_CONFIGURATION_PATH",
+                    "description": "Path to a custom JSON file which contains classes and prompts that specify LLaVA to return a JSON object.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "PROMPT_JSON_FORMAT",
+                    "description": "Enables returning a JSON formatted response from LLaVA, with the prompt specified at PROMPT_JSON_CONFIGURATION_PATH job property.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
                     "name": "OLLAMA_SERVER",
                     "description": "Something",
                     "type": "STRING",
@@ -84,7 +96,7 @@
             ]
         },
         {
-            "name": "LLAVA DETECTION (WITH FF REGION FROM YOLO OBJECT DETECTION) PIPELINE",
+            "name": "LLAVA DETECTION (WITH FF REGION FROM TRITON YOLO OBJECT DETECTION) PIPELINE",
             "description": "Runs LLaVA with prompts for the class of the detection passed in.",
             "tasks": [
                 "OCV TRITON YOLO OBJECT DETECTION TASK",

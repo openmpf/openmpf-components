@@ -80,7 +80,7 @@ class TestLlava(unittest.TestCase):
             job_name='test-image',
             data_uri=self._get_test_file('person.jpg'),
             job_properties=dict(
-                OLLAMA_CLIENT_HOST_URL='localhost:11434'
+                OLLAMA_SERVER='localhost:11434'
             ),
             media_properties={},
             feed_forward_location=ff_loc
@@ -90,7 +90,22 @@ class TestLlava(unittest.TestCase):
         
         self.assertTrue("CLOTHING" in result.detection_properties and "ACTIVITY" in result.detection_properties)
         self.assertTrue(len(result.detection_properties["CLOTHING"]) > 0 and len(result.detection_properties["ACTIVITY"]) > 0)
-    
+
+    def test_image_file_no_prompts(self):
+        ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
+        job = mpf.ImageJob(
+            job_name='test-image-no-prompts',
+            data_uri=self._get_test_file('person.jpg'),
+            job_properties=dict(
+                PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json'),
+                OLLAMA_SERVER='localhost:11434'
+            ),
+            media_properties={},
+            feed_forward_location=ff_loc
+        )
+        component = LlavaComponent()
+        result = self.run_patched_job(component, job)[0]
+
     def test_custom_config(self):
         ff_loc = mpf.ImageLocation(0, 0, 900, 1600, -1, dict(CLASSIFICATION="DOG"))
         job = mpf.ImageJob(
@@ -98,7 +113,7 @@ class TestLlava(unittest.TestCase):
             data_uri=self._get_test_file('dog.jpg'),
             job_properties=dict(
                 PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json'),
-                OLLAMA_CLIENT_HOST_URL='localhost:11434'
+                OLLAMA_SERVER='localhost:11434'
             ),
             media_properties={},
             feed_forward_location=ff_loc
@@ -122,7 +137,7 @@ class TestLlava(unittest.TestCase):
             stop_frame=0,
             job_properties=dict(
                 PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json'),
-                OLLAMA_CLIENT_HOST_URL='localhost:11434'
+                OLLAMA_SERVER='localhost:11434'
             ),
             media_properties={},
             feed_forward_track=ff_track
@@ -140,7 +155,7 @@ class TestLlava(unittest.TestCase):
             data_uri=self._get_test_file('dog.jpg'),
             job_properties=dict(
                 PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json'),
-                OLLAMA_CLIENT_HOST_URL='localhost:11434'
+                OLLAMA_SERVER='localhost:11434'
             ),
             media_properties={},
             feed_forward_location=None
@@ -159,7 +174,7 @@ class TestLlava(unittest.TestCase):
             stop_frame=14,
             job_properties=dict(
                 PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json'),
-                OLLAMA_CLIENT_HOST_URL='localhost:11434'
+                OLLAMA_SERVER='localhost:11434'
             ),
             media_properties={},
             feed_forward_track=None
@@ -169,6 +184,39 @@ class TestLlava(unittest.TestCase):
         for result in results:    
             self.assertTrue("LOCATION" in result.detection_properties and "DESCRIPTION" in result.detection_properties)
             self.assertTrue(len(result.detection_properties["LOCATION"]) > 0 and len(result.detection_properties["DESCRIPTION"]) > 0)
+
+    # def test_json_response_image(self):
+    #     ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
+    #     job = mpf.ImageJob(
+    #         job_name='test-json-response-image',
+    #         data_uri=self._get_test_file('person.jpg'),
+    #         job_properties=dict(
+    #             OLLAMA_CLIENT_HOST_URL='localhost:11434',
+    #             PROMPT_JSON_FORMAT='True'
+    #         ),
+    #         media_properties={},
+    #         feed_forward_location=ff_loc
+    #     )
+    #     component = LlavaComponent()
+    #     result = self.run_patched_job(component, job)[0]
+    #     print(result)
+
+    # def test_json_response_video(self):
+    #     ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
+    #     job = mpf.ImageJob(
+    #         job_name='test-json-response-image',
+    #         data_uri=self._get_test_file('person.jpg'),
+    #         job_properties=dict(
+    #             OLLAMA_CLIENT_HOST_URL='localhost:11434',
+    #             PROMPT_JSON_FORMAT='True'
+    #         ),
+    #         media_properties={},
+    #         feed_forward_location=ff_loc
+    #     )
+    #     component = LlavaComponent()
+    #     result = self.run_patched_job(component, job)[0]
+    #     print(result)
+
 
     @staticmethod
     def _get_test_file(filename):
