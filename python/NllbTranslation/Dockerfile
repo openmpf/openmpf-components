@@ -33,7 +33,8 @@ FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 ARG RUN_TESTS=false
 
 RUN pip install --no-cache-dir \
-    'transformers'
+    'transformers' \
+    'torch'
 
 # download nllb model
 RUN --mount=type=tmpfs,target=/tmp/models \
@@ -42,8 +43,8 @@ RUN --mount=type=tmpfs,target=/tmp/models \
     "from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; \
     tokenizer = AutoTokenizer.from_pretrained('facebook/nllb-200-distilled-600M'); \
     model = AutoModelForSeq2SeqLM.from_pretrained('facebook/nllb-200-distilled-600M'); \
-    tokenizer.save_pretrained('./models/facebook/nllb-200-distilled-600M'); \
-    model.save_pretrained('./models/facebook/nllb-200-distilled-600M')"
+    tokenizer.save_pretrained('/models/facebook/nllb-200-distilled-600M'); \
+    model.save_pretrained('/models/facebook/nllb-200-distilled-600M')"
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \

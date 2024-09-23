@@ -42,8 +42,8 @@ class NllbTranslationComponent:
 
     def __init__(self):
         # get nllb-200-distilled-600M model
-        self._model = AutoModelForSeq2SeqLM.from_pretrained("/models/facebook/nllb-200-distilled-600M",
-                                                  use_auth_token=False, local_files_only=True)
+        self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
+                                                            token=False, local_files_only=True)
     
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
@@ -91,9 +91,8 @@ class NllbTranslationComponent:
     def _get_translation(self, ff_track, config):
 
         # get tokenizer
-        #TODO update pretrained path to be configurable
         start = time.time()
-        self._tokenizer = AutoTokenizer.from_pretrained("/models/facebook/nllb-200-distilled-600M",
+        self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
                                                   use_auth_token=False, local_files_only=True, src_lang=config.translate_from_language)
         elapsed = time.time() - start
         logger.info(f"Successfully loaded tokenizer in {elapsed} seconds.")
@@ -124,7 +123,7 @@ class NllbTranslationComponent:
 class JobConfig:
     def __init__(self, props: Mapping[str, str], ff_props):
 
-        self.props_to_translate = [
+        self.props_to_translate: list[str] = [
             prop.strip() for prop in
             mpf_util.get_property(
                 properties=props,
@@ -134,13 +133,17 @@ class JobConfig:
             ).split(',')
         ]
 
+        # cached model
+        self.cached_model_location: str = mpf_util.get_property(props, 'PRETRAINED_MODEL',
+                                                                '/models/facebook/nllb-200-distilled-600M')
+
         # language to translate to
-        self.translate_to_language = NllbLanguageMapper.get_code(
+        self.translate_to_language: str = NllbLanguageMapper.get_code(
             mpf_util.get_property(props, 'TARGET_LANGUAGE', 'eng'),
             mpf_util.get_property(props, 'TARGET_SCRIPT', 'Latn'))
 
         # get language to translate from
-        ff_lang_props = [
+        ff_lang_props: list[str] = [
             prop.strip() for prop in
             mpf_util.get_property(
                 properties=props,
@@ -160,7 +163,7 @@ class JobConfig:
             sourceLanguage = mpf_util.get_property(props, 'DEFAULT_SOURCE_LANGUAGE', '')
 
         # get script to translate from
-        ff_script_props = [
+        ff_script_props: list[str] = [
             prop.strip() for prop in
             mpf_util.get_property(
                 properties=props,

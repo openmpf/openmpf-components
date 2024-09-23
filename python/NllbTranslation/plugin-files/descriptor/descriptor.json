@@ -30,7 +30,7 @@
           "name": "PRETRAINED_MODEL",
           "description": "Path to offline nllb-200-distilled-600M model.",
           "type": "STRING",
-          "defaultValue": "/models/nllb-200-distilled-600M"
+          "defaultValue": "/models/facebook/nllb-200-distilled-600M"
         },
         {
           "name": "LANGUAGE_FEED_FORWARD_PROP",

@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import annotations
+
 class NllbLanguageMapper:
 
     # double nested dictionary to convert ISO-639-3 language and ISO-15924 script into Flores-200
