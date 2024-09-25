@@ -150,6 +150,22 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(self.TRANSLATION, result_props["TEXT TRANSLATION"])
 
+    def test_plaintext_job(self):
+        #set default props
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        #load source language
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+
+        job = mpf.GenericJob('Test Plaintext', 
+                             str(Path(__file__).parent / 'data' / 'translation.txt'), 
+                             test_generic_job_props,
+                             {})
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(self.TRANSLATION, result_props["TEXT TRANSLATION"])
+
     def test_unsupported_source_language(self):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)

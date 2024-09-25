@@ -47,25 +47,39 @@ class NllbTranslationComponent:
     
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
-        return self._get_feed_forward_detections(job, job.feed_forward_location, video_job=False)
+        return self._get_feed_forward_detections(job.job_properties, job.feed_forward_location, video_job=False)
 
     def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
         logger.info(f'Received audio job.')
-        return self._get_feed_forward_detections(job, job.feed_forward_track, video_job=False)
+        return self._get_feed_forward_detections(job.job_properties, job.feed_forward_track, video_job=False)
     
     def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         logger.info(f'Received video job.')
-        return self._get_feed_forward_detections(job, job.feed_forward_track, video_job=True)
+        return self._get_feed_forward_detections(job.job_properties, job.feed_forward_track, video_job=True)
 
     def get_detections_from_generic(self, job: mpf.GenericJob) -> Sequence[mpf.GenericTrack]:
         logger.info(f'Received generic job.')
 
         if job.feed_forward_track:
-            return self._get_feed_forward_detections(job, job.feed_forward_track)
+            return self._get_feed_forward_detections(job.job_properties, job.feed_forward_track)
         else:
-            logger.info('Job did not contain a feed forward track.')
+            logger.info('Job did not contain a feed forward track. Creating '
+                        'one and assuming translation is in a plain text file.')
 
-    def _get_feed_forward_detections(self, job, ff_track, video_job=False):
+            # open file
+            with open(job.data_uri, 'r', newline='') as f:
+                text = f.read()
+
+            ff_track = mpf.GenericTrack(detection_properties=dict(TEXT=text))
+
+            new_job_props = {
+                **job.job_properties,
+                'FEED_FORWARD_PROP_TO_PROCESS': 'TEXT'
+            }
+
+            return self._get_feed_forward_detections(new_job_props, ff_track)
+
+    def _get_feed_forward_detections(self, job_properties, ff_track, video_job=False):
         try:
             if ff_track is None:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
@@ -73,7 +87,7 @@ class NllbTranslationComponent:
                     ' jobs, but no feed forward track provided. ')
 
             # load config
-            config = JobConfig(job.job_properties, ff_track.detection_properties)
+            config = JobConfig(job_properties, ff_track.detection_properties)
 
             self._get_translation(ff_track, config)
 
