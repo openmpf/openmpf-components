@@ -58,17 +58,18 @@ class OrToolsSubjectComponent:
         min_iou = mpf_util.get_property(job.job_properties, 'MIN_IOU', 0.03)
         entity_type_to_tracks = get_tracks_grouped_by_entity_type(job, config)
         assignments = list(Assignment.assign_tracks(min_iou, entity_type_to_tracks))
-        subject_entities = convert_subject_assignments(assignments)
+        subject_entities = list(convert_subject_assignments(assignments))
         all_entities = {
-            mpf_sub.EntityType('subject'): list(subject_entities)
+            mpf_sub.EntityType('subject'): subject_entities
         }
         non_subject_entities = get_non_subject_entities(entity_type_to_tracks)
         for entity_type, entities in non_subject_entities.items():
             all_entities[entity_type] = [create_mpf_entity(e) for e in entities]
 
         relationships = get_relationship_dict(assignments, non_subject_entities, media_id)
-        num_entities = sum(len(es) for es in all_entities.values())
-        log.info(f'Finished running subject tracking job. Found {num_entities} entities.')
+        num_non_subject_entities = sum(len(es) for es in non_subject_entities.values())
+        log.info(f'Finished running subject tracking job. Found {len(subject_entities)} subjects '
+                 f'and {num_non_subject_entities} non-subject entities.')
         return mpf_sub.SubjectTrackingResults(all_entities, relationships)
 
 
@@ -143,7 +144,7 @@ class TrackTypeConfig:
 
         self._entity_type_mappings: Dict[mpf_sub.TrackType, mpf_sub.EntityType] = {}
         for entity_mapping in config_json['entity_mappings']:
-            entity_type = entity_mapping['entity'].lower()
+            entity_type = entity_mapping['entity_type'].lower()
             for track_type in entity_mapping['track_types']:
                 self._entity_type_mappings[track_type.lower()] = entity_type
 
@@ -180,6 +181,7 @@ class Assignment:
             min_iou: float,
             entity_type_to_tracks: Multimap[mpf_sub.EntityType, TrackWithTypes]
             ) -> Iterator[TrackAssignment]:
+        log.info('Starting track assignment.')
         face_tracks = entity_type_to_tracks.get(mpf_sub.EntityType('face'), ())
         person_tracks = entity_type_to_tracks.get(mpf_sub.EntityType('person'), ())
         model = cp_model.CpModel()
@@ -200,6 +202,7 @@ class Assignment:
                 yield TrackAssignment.face_only(ft)
 
         for person_face_assignment_group in model_vars_grouped_by_person.values():
+            # Prevent a face track from being assigned to more than one person track.
             model.AddAtMostOne(person_face_assignment_group)
 
         cls._add_overlap_constraints(assignments_grouped_by_face, model)
@@ -214,15 +217,19 @@ class Assignment:
 
         yield from cls._create_output_assignments(
                 person_tracks, assignments_grouped_by_face, solver)
+        log.info('Track assignment completed.')
 
 
     @staticmethod
     def _add_overlap_constraints(
             assignment_vars: List[List[AssignmentVar]],
             model: cp_model.CpModel) -> None:
+        # Ensure that none of the person tracks assigned to a subject have frames in common.
         for face_group in assignment_vars:
             for p1_assignment_var, p2_assignment_var in itertools.combinations(face_group, 2):
                 if frames_in_common(p1_assignment_var.person_track, p2_assignment_var.person_track):
+                    # The two person tracks have frames in common, so only one of the two can be
+                    # assigned to a subject.
                     model.AddAtMostOne((p1_assignment_var.model_var, p2_assignment_var.model_var))
 
 
@@ -389,7 +396,8 @@ def get_subject_proximity_relationships(
 
 # TODO include in output
 def get_subject_to_subject_relationships(
-            assignments: Sequence[TrackAssignment], media_id: mpf_sub.MediaId):
+            assignments: Sequence[TrackAssignment],
+            media_id: mpf_sub.MediaId) -> Iterable[mpf_sub.Relationship]:
     for assignment1, assignment2 in itertools.combinations(assignments, 2):
         if frames := assignment1.get_overlap_frames(assignment2):
             media_ref = mpf_sub.MediaReference(media_id, frames)

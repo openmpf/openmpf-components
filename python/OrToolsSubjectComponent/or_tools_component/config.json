@@ -7,7 +7,7 @@
     ],
     "entity_mappings": [
         {
-            "entity": "vehicle",
+            "entity_type": "vehicle",
             "track_types": [
                 "car",
                 "motorbike",
