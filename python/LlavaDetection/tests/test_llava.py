@@ -193,7 +193,7 @@ class TestLlava(unittest.TestCase):
             job_name='test-json-response-image',
             data_uri=self._get_test_file('car_1.jpg'),
             job_properties=dict(
-                OLLAMA_SERVER='ckb-gpu-lambda:11434',
+                OLLAMA_SERVER='localhost:11434',
                 ENABLE_JSON_PROMPT_FORMAT='True'
             ),
             media_properties={},
