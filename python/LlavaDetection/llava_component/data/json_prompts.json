@@ -5,7 +5,7 @@
                 "PERSON"
             ],
             "prompts": [
-                "Describe the person in JSON. The JSON should have the following keys: type (Answer with ‘Public figure’, ‘guard’, ‘civilian’,’unsure’), clothing (type of top clothing, color), estimated_age_range (Answer with 'minor/child', 'adult', 'elderly’, or 'unsure’), estimated_gender, hair_color."
+                "Provide a detailed description of the person as a JSON string. The JSON should have the following keys: Type (Answer with ‘Public figure’, ‘guard’, ‘civilian’,’unsure’), clothing (describe clothing color, location and type(dress, shirt, jacket, scarf, t-shirt, jeans, etc)), estimated_age_range (Answer with 'minor/child', 'adult', 'elderly’, or 'unsure’), estimated_gender, estimated_race, accessories (list of accessory objects), has_glasses (boolean),glasses (type, color, describe), has_object_in_hand (boolean), object_in_hand(type, color, describe), has_shoes, shoe (type, color, describe), hair_color, eye_color, facial_hair, facial_features, emotion_of_person, action_performed, background(describe, color, type), other_notable_characteristics. Accessory objects should have the following attributes: type (scarf, hat, etc..), color, describe."
             ]
         },
         {
@@ -15,7 +15,7 @@
                 "BUS"
             ],
             "prompts": [
-                "Describe the vehicle in JSON. The JSON should have the following keys: make, type, model, color."
+                "Describe the vehicle in JSON. The JSON should have the following keys: make, type, model, color, decals (list of decal objects), licence_plate (describe state and plate number), and other_notable_characteristics."
             ]
         }
     ]
