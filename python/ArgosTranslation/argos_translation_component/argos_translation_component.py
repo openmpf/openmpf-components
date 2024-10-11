@@ -66,8 +66,8 @@ class ArgosTranslationComponent:
 
         text = job.media_properties.get('SELECTED_CONTENT')
         if not text:
-            logger.info('Job did not contain a feed forward track. Assuming '
-                        'media file is a plain text file containing the text to '
+            logger.info('Job did not contain a feed forward track or specify selected content. '
+                        'Assuming media file is a plain text file containing the text to '
                         'be translated.')
             text = pathlib.Path(job.data_uri).read_text().strip()
 
