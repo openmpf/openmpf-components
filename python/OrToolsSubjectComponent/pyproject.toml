@@ -32,7 +32,9 @@ build-backend = "setuptools.build_meta"
 name = "OrToolsSubjectComponent"
 version = "9.0"
 dependencies = [
-    "ortools"
+    "ortools",
+    # Prevent ortools from downgrading protobuf.
+    "protobuf>=5.28.3"
 ]
 
 [project.entry-points."mpf.exported_component"]

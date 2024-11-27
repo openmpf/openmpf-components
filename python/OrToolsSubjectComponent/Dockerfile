@@ -28,7 +28,7 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_subject_build:${BUILD_TAG} AS build_component
 
-RUN pip install ortools
+RUN pip install ortools 'protobuf>=5.28.3'
 
 RUN --mount=target=.,readwrite install-component.sh
 
