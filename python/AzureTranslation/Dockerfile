@@ -33,16 +33,13 @@ ARG BUILD_TAG=latest
 # below line to BUILD_TYPE=gpu
 ARG BUILD_TYPE=cpu
 
-FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS python_build
+FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
-
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS cpu_component
+RUN pip install langcodes
 
 ARG BUILD_TYPE
-
-RUN --mount=from=python_build,source=/home/mpf/openmpf-projects/openmpf-python-component-sdk/detection/nlp_text_splitter,target=/tmp/nlp_text_splitter \
-<<eot
-    cd /tmp/nlp_text_splitter
+RUN <<eot
+    cd /home/mpf/openmpf-projects/openmpf-python-component-sdk/detection/nlp_text_splitter
     if [[ ${BUILD_TYPE,,} = gpu ]]; then
         ./install.sh --gpu
     else
@@ -51,10 +48,20 @@ RUN --mount=from=python_build,source=/home/mpf/openmpf-projects/openmpf-python-c
 eot
 
 ARG RUN_TESTS=false
+RUN --mount=target=.,readwrite <<eot
+    install-component.sh;
+    if [ "${RUN_TESTS,,}" == true ]; then
+        python tests/test_acs_translation.py;
+    fi
+eot
 
-RUN --mount=target=.,readwrite \
-    install-component.sh; \
-    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_acs_translation.py; fi
+
+FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG} AS cpu_component
+
+COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+
+COPY --from=build $PLUGINS_DIR/AzureTranslation $PLUGINS_DIR/AzureTranslation
+
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Azure Translation" \
@@ -63,9 +70,10 @@ LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
 
+
 FROM cpu_component AS gpu_component
 
 ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 FROM ${BUILD_TYPE}_component
