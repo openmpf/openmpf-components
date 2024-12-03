@@ -35,12 +35,6 @@ ARG BUILD_TYPE=cpu
 
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
-RUN --mount=type=tmpfs,target=/var/cache/apt \
-    --mount=type=tmpfs,target=/var/lib/apt/lists  \
-    --mount=type=tmpfs,target=/tmp \
-    apt-get update; \
-    apt-get install --no-install-recommends -y g++ python3.8-dev
-
 RUN pip install langcodes
 
 ARG BUILD_TYPE
