@@ -35,7 +35,7 @@ import logging
 import typing
 import uuid
 from typing import (Any, Collection, Dict, Iterable, Iterator, List, Mapping,
-                    NamedTuple, NewType, Optional, Sequence, TextIO, Tuple)
+                    NamedTuple, NewType, Optional, TextIO, Tuple)
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -68,8 +68,10 @@ class OrToolsSubjectComponent:
 
         relationships = get_relationship_dict(assignments, non_subject_entities, media_id)
         num_non_subject_entities = sum(len(es) for es in non_subject_entities.values())
-        log.info(f'Finished running subject tracking job. Found {len(subject_entities)} subjects '
-                 f'and {num_non_subject_entities} non-subject entities.')
+        num_relationships = sum(len(rs) for rs in relationships.values())
+        log.info(f'Finished running subject tracking job. Found {len(subject_entities)} subjects, '
+                 f'{num_non_subject_entities} non-subject entities, '
+                 f'and {num_relationships} relationships.')
         return mpf_sub.SubjectTrackingResults(all_entities, relationships)
 
 
@@ -376,12 +378,13 @@ def get_relationship_dict(
         entity_groups: Multimap[mpf_sub.EntityType, NonSubjectEntity],
         media_id: mpf_sub.MediaId) -> Multimap[mpf_sub.RelationshipType, mpf_sub.Relationship]:
     relationships = itertools.chain(
-            get_subject_proximity_relationships(assignments, entity_groups, media_id),
-            get_entity_proximity_relationships(entity_groups, media_id))
+            get_subject_to_entity_proximity_relationships(assignments, entity_groups, media_id),
+            get_entity_proximity_relationships(entity_groups, media_id),
+            get_subject_to_subject_proximity_relationships(assignments, media_id))
     return {mpf_sub.RelationshipType('proximity'): list(relationships)}
 
 
-def get_subject_proximity_relationships(
+def get_subject_to_entity_proximity_relationships(
         assignments: Iterable[TrackAssignment],
         entity_groups: Multimap[mpf_sub.EntityType, NonSubjectEntity],
         media_id: mpf_sub.MediaId) -> Iterable[mpf_sub.Relationship]:
@@ -394,9 +397,9 @@ def get_subject_proximity_relationships(
                 media_ref = mpf_sub.MediaReference(media_id, proximity_frames)
                 yield mpf_sub.Relationship(ids, (media_ref,))
 
-# TODO include in output
-def get_subject_to_subject_relationships(
-            assignments: Sequence[TrackAssignment],
+
+def get_subject_to_subject_proximity_relationships(
+            assignments: Iterable[TrackAssignment],
             media_id: mpf_sub.MediaId) -> Iterable[mpf_sub.Relationship]:
     for assignment1, assignment2 in itertools.combinations(assignments, 2):
         if frames := assignment1.get_overlap_frames(assignment2):
