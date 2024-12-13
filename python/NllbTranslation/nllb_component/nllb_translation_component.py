@@ -35,6 +35,8 @@ import mpf_component_util as mpf_util
 from typing import Sequence, Dict, Mapping
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from .nllb_utils import NllbLanguageMapper
+from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
+from wtpsplit import WtP
 
 logger = logging.getLogger('Nllb')
 
@@ -123,16 +125,49 @@ class NllbTranslationComponent:
 
         logger.info(f' Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
         for prop_to_translate, text in text_to_translate.items():
-            inputs = self._tokenizer(text, return_tensors="pt")
-            translated_tokens = self._model.generate(
-                **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=360)
 
-            tranlsation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+            # split input text into a list of sentences to support max translation length of 360 characters
+            logger.info(f' Translating character limit set to: {config.nllb_character_limit}')
+            if len(text) < config.nllb_character_limit:
+                text_list = [text]
+            else:
+                # split input values & model
+                wtp_lang: str = WtpLanguageSettings.convert_to_iso(config.translate_from_language)
+                test_splitter_model = TextSplitterModel("wtp-bert-mini", "cpu", wtp_lang)
 
-            logger.info(f'{prop_to_translate} translation is: {tranlsation}')
+                logger.info(f'Text to translate is larger than the {config.nllb_character_limit} limit, splitting into smaller sentences')
+                input_text_sentences = TextSplitter.split(
+                    text,
+                    config.nllb_character_limit,
+                    0,
+                    len,
+                    test_splitter_model)
+
+                text_list = list(input_text_sentences)
+
+            translation = ""
+
+            for sentence in text_list:
+                inputs = self._tokenizer(sentence, return_tensors="pt")
+                translated_tokens = self._model.generate(
+                    **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
+
+                sentence_tranlsation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+
+                # need to add space between sentences back
+                if translation == "":
+                    translation += sentence_tranlsation
+                else:
+                    translation = " ".join([translation, sentence_tranlsation])
+                    #translation = (translation + " " + sentence_tranlsation)
+
+            logger.info(f'{prop_to_translate} translation is: {translation}')
 
             ff_prop_name: str = prop_to_translate + " TRANSLATION"
-            ff_track.detection_properties[ff_prop_name] = tranlsation
+            ff_track.detection_properties[ff_prop_name] = translation
+
+    def get_text_len(self, input_str: str) -> int:
+        return len(input_str)
 
 class JobConfig:
     def __init__(self, props: Mapping[str, str], ff_props):
@@ -199,6 +234,9 @@ class JobConfig:
             sourceLanguage,
             sourceScript)
         
+        # set translation limit. default to 360 if no value set
+        self.nllb_character_limit = mpf_util.get_property(props, 'TRANSLATION_CHARACTER_LIMIT', 360)
+
         # if no source language is provided or language is not supported, no translation can be done
         if not bool(self.translate_from_language):
             logger.exception('Unsupported or no source language provided')

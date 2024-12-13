@@ -232,5 +232,26 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEquals('', result_props.get('TEXT TRANSLATION', ''))
 
+    def test_sentence_split_job(self):
+        #set default props
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        #load source language
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+        test_generic_job_props['TRANSLATION_CHARACTER_LIMIT'] = 25
+
+        #tranlation to split into multiple sentences
+        long_translation_text = (
+            'Das ist Satz eins. Das ist Satz zwei. Und das ist Satz drei.'
+        )
+        expected_translation = "That's sentence one. That's sentence two. And this is sentence three."
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=long_translation_text))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(expected_translation, result_props["TEXT TRANSLATION"])
+
 if __name__ == '__main__':
     unittest.main()
