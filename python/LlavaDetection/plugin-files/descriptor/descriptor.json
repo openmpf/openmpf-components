@@ -44,8 +44,14 @@
                     "description": "Something",
                     "type": "STRING",
                     "defaultValue": "llava-detection-server:11434"
+                },
+                {
+                    "name": "GENERATE_FRAME_RATE_CAP",
+                    "description": "Get description from other FRAME_RATE_CAP property",
+                    "type": "DOUBLE",
+                    "defaultValue": "1.0"
                 }
-            ] 
+            ]
         }
     },
     "actions": [
@@ -53,10 +59,34 @@
             "name": "LLAVA DETECTION ACTION",
             "description": "Runs LLaVA with prompts for each video frame passed in.",
             "algorithm": "LLaVA",
-            "properties": []
+            "properties": [
+                {
+                    "name": "ARTIFACT_EXTRACTION_POLICY_BEST_DETECTION_PROP_NAMES_LIST",
+                    "value": "ANNOTATED BY LLAVA"
+                }
+            ]
         },
         {
-            "name": "LLAVA DETECTION (WITH FF REGION) ACTION",
+            "name": "LLAVA DETECTION (WITH FF REGION AND JSON PROMPT) ACTION",
+            "description": "Something",
+            "algorithm": "LLaVA",
+            "properties": [
+                {
+                    "name": "FEED_FORWARD_TYPE",
+                    "value": "REGION"
+                },     
+                {
+                    "name": "ENABLE_JSON_PROMPT_FORMAT",
+                    "value": "true"
+                },
+                {
+                    "name": "ARTIFACT_EXTRACTION_POLICY_BEST_DETECTION_PROP_NAMES_LIST",
+                    "value": "ANNOTATED BY LLAVA"
+                }
+            ]
+	    },
+        {
+            "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION) ACTION",
             "description": "Runs LLaVA with prompts for the class of the feed forward detection passed in.",
             "algorithm": "LLaVA",
             "properties": [
@@ -67,11 +97,15 @@
                 {
                     "name": "FEED_FORWARD_TOP_QUALITY_COUNT",
                     "value": "1"
+                },
+                {
+                    "name": "GENERATE_FRAME_RATE_CAP",
+                    "value": "-1"
                 }
             ]
         },
         {
-            "name": "LLAVA DETECTION (JSON PROMPT WITH FF REGION) ACTION",
+            "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) ACTION",
             "description": "Something",
             "algorithm": "LLaVA",
             "properties": [
@@ -86,6 +120,10 @@
                 {
                     "name": "ENABLE_JSON_PROMPT_FORMAT",
                     "value": "true"
+                },
+                {
+                    "name": "GENERATE_FRAME_RATE_CAP",
+                    "value": "-1"
                 }
             ]
         }
@@ -99,42 +137,57 @@
             ]
         },
         {
-            "name": "LLAVA DETECTION (WITH FF REGION) TASK",
-            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "name": "LLAVA DETECTION (WITH FF REGION AND JSON PROMPT) TASK",
+            "description": "Runs LLaVA with prompts for each video frame passed in.",
             "actions": [
-                "LLAVA DETECTION (WITH FF REGION) ACTION"
+                "LLAVA DETECTION (WITH FF REGION AND JSON PROMPT) ACTION"
             ]
         },
         {
-            "name": "LLAVA DETECTION (JSON PROMPT WITH FF REGION) TASK",
+            "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION) TASK",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "actions": [
+                "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION) ACTION"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) TASK",
             "description": "Something",
             "actions": [
-                "LLAVA DETECTION (JSON PROMPT WITH FF REGION) ACTION"
+                "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) ACTION"
             ]
         }
     ],
     "pipelines": [
         {
             "name": "LLAVA DETECTION PIPELINE",
-            "description":"Runs LLaVA with prompts for each video frame passed in.",
+            "description":"Runs LLaVA with prompts on images and videos at the specified frame rate.",
             "tasks": [
                 "LLAVA DETECTION TASK"
             ]
         },
         {
-            "name": "LLAVA DETECTION (WITH FF REGION FROM TRITON YOLO OBJECT DETECTION) PIPELINE",
-            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "name": "LLAVA DETECTION (WITH FF REGION FROM TRITON YOLO AND JSON PROMPT) PIPELINE",
+            "description":"Runs LLaVA with prompts on images and videos at the specified frame rate.",
             "tasks": [
                 "OCV TRITON YOLO OBJECT DETECTION TASK",
-                "LLAVA DETECTION (WITH FF REGION) TASK"
+                "LLAVA DETECTION (WITH FF REGION AND JSON PROMPT) TASK"
             ]
         },
         {
-            "name": "LLAVA DETECTION (JSON PROMPT WITH FF REGION FROM TRITON YOLO OBJECT DETECTION) PIPELINE",
+            "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION FROM TRITON YOLO) PIPELINE",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "tasks": [
+                "OCV TRITON YOLO OBJECT DETECTION TASK",
+                "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION) TASK"
+            ]
+        },
+        {
+            "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION FROM TRITON YOLO AND JSON PROMPT) PIPELINE",
             "description": "Something",
             "tasks": [
                 "OCV TRITON YOLO OBJECT DETECTION TASK",
-                "LLAVA DETECTION (JSON PROMPT WITH FF REGION) TASK"
+                "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) TASK"
             ]
         }
     ]

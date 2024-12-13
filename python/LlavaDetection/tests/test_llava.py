@@ -29,6 +29,7 @@ import os
 import logging
 import warnings
 import json
+from PIL import Image
 
 # Add clip_component to path.
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -137,14 +138,14 @@ class TestLlava(unittest.TestCase):
             stop_frame=0,
             job_properties=dict(
                 PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json'),
-                OLLAMA_SERVER='localhost:11434'
+                OLLAMA_SERVER='localhost:11434',
+                GENERATE_FRAME_RATE_CAP='-1'
             ),
             media_properties={},
             feed_forward_track=ff_track
         )
         component = LlavaComponent()
         result = list(self.run_patched_job(component, job))[0]
-        # print(result)
         for ff_location in result.frame_locations.values():
             self.assertTrue("DESCRIPTION" in ff_location.detection_properties)
             self.assertTrue(len(ff_location.detection_properties['DESCRIPTION']) > 0)
@@ -174,14 +175,14 @@ class TestLlava(unittest.TestCase):
             stop_frame=14,
             job_properties=dict(
                 PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json'),
-                OLLAMA_SERVER='localhost:11434'
+                OLLAMA_SERVER='localhost:11434',
+                GENERATE_FRAME_RATE_CAP='-1'
             ),
             media_properties={},
             feed_forward_track=None
         )  
         component = LlavaComponent()
         results = self.run_patched_job(component, job)
-        # print(result)
         for result in results:    
             self.assertTrue("LOCATION" in result.detection_properties and "DESCRIPTION" in result.detection_properties)
             self.assertTrue(len(result.detection_properties["LOCATION"]) > 0 and len(result.detection_properties["DESCRIPTION"]) > 0)
@@ -191,7 +192,7 @@ class TestLlava(unittest.TestCase):
         ff_loc = mpf.ImageLocation(0, 0, 262, 192, -1, dict(CLASSIFICATION="CAR"))
         job = mpf.ImageJob(
             job_name='test-json-response-image',
-            data_uri=self._get_test_file('car_1.jpg'),
+            data_uri=self._get_test_file('car.jpg'),
             job_properties=dict(
                 OLLAMA_SERVER='localhost:11434',
                 ENABLE_JSON_PROMPT_FORMAT='True'
@@ -201,7 +202,6 @@ class TestLlava(unittest.TestCase):
         )
         component = LlavaComponent()
         result = self.run_patched_job(component, job)[0]
-        print(result)
 
     def test_json_response_video(self):
         warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
@@ -217,15 +217,77 @@ class TestLlava(unittest.TestCase):
             job_properties=dict(
                 OLLAMA_SERVER='localhost:11434',
                 ENABLE_JSON_PROMPT_FORMAT='True',
-                JSON_PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_json_prompts.json')
+                JSON_PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_json_prompts.json'),
+                GENERATE_FRAME_RATE_CAP='-1'
             ),
             media_properties={},
             feed_forward_track=ff_track
         )
         component = LlavaComponent()
         result = list(self.run_patched_job(component, job))[0]
-        print(result)
+    
+    def test_video_file_nth_frame(self):
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
 
+        ff_track =  mpf.VideoTrack(0, 0, -1, {}, {'CLASSIFICATION': 'DOG'})
+        for i in range(5):
+            ff_track.frame_locations[i] = mpf.ImageLocation(0, 0, 3456, 5184, -1, {'CLASSIFICATION': 'DOG', 'CLASSIFICATION CONFIDENCE LIST': '-1', 'CLASSIFICATION LIST': 'DOG'})
+
+        job = mpf.VideoJob(
+            job_name='test-video-nth-frame',
+            data_uri=self._get_test_file('test_video.mp4'),
+            start_frame=0,
+            stop_frame=4,
+            job_properties=dict(
+                PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_prompts.json'),
+                OLLAMA_SERVER='localhost:11434',
+                GENERATE_FRAME_RATE_CAP='1.0'
+            ),
+            media_properties={
+                'FPS': '2'
+            },
+            feed_forward_track=ff_track
+        )
+        component = LlavaComponent()
+        result = list(self.run_patched_job(component, job))[0]
+
+        for i, ff_location in result.frame_locations.items():
+            if i % 2 == 0:
+                self.assertTrue("DESCRIPTION" in ff_location.detection_properties)
+                self.assertTrue(len(ff_location.detection_properties['DESCRIPTION']) > 0)
+            else:
+                self.assertTrue("DESCRIPTION" not in ff_location.detection_properties)
+
+    def test_video_file_nth_frame_json(self):
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
+
+        ff_track =  mpf.VideoTrack(0, 0, -1, {}, {'CLASSIFICATION': 'DOG'})
+        for i in range(5):
+            ff_track.frame_locations[i] = mpf.ImageLocation(0, 0, 3456, 5184, -1, {'CLASSIFICATION': 'DOG', 'CLASSIFICATION CONFIDENCE LIST': '-1', 'CLASSIFICATION LIST': 'DOG'})
+
+        job = mpf.VideoJob(
+            job_name='test-video-nth-frame-json',
+            data_uri=self._get_test_file('test_video.mp4'),
+            start_frame=0,
+            stop_frame=4,
+            job_properties=dict(
+                JSON_PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_json_prompts.json'),
+                ENABLE_JSON_PROMPT_FORMAT='True',
+                OLLAMA_SERVER='localhost:11434'
+            ),
+            media_properties={
+                'FPS': '2'
+            },
+            feed_forward_track=ff_track
+        )
+        component = LlavaComponent()
+        result = list(self.run_patched_job(component, job))[0]
+
+        for i, ff_location in result.frame_locations.items():
+            if i % 2 == 0:
+                self.assertTrue("LLAVA" in ff_location.detection_properties)
+            else:
+                self.assertTrue("LLAVA" not in ff_location.detection_properties)
 
     @staticmethod
     def _get_test_file(filename):
