@@ -44,7 +44,7 @@ logger = logging.getLogger('TransformerTaggingComponent')
 class TransformerTaggingComponent:
 
     def __init__(self):
-        self._cached_model = SentenceTransformer('/tmp/models/all-mpnet-base-v2')
+        self._cached_model = SentenceTransformer('/models/all-mpnet-base-v2')
         self._cached_corpuses: Dict[str, Corpus] = {}
 
 
