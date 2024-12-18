@@ -60,6 +60,8 @@ FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG} AS cpu_component
 
 COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 
+COPY --from=build /opt/wtp /opt/wtp
+
 COPY --from=build $PLUGINS_DIR/AzureTranslation $PLUGINS_DIR/AzureTranslation
 
 
