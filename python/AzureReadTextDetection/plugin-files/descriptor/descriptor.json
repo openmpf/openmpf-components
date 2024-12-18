@@ -50,6 +50,12 @@
           "description": "Maximum number of GET requests to retrieve read detection results. When set to 0 or below, allow unlimited retries until server finishes processing.",
           "type": "INT",
           "defaultValue": "-1"
+        },
+        {
+          "name": "GET_READ_RESULT_ATTEMPTS_DELAY_MS",
+          "description": "Delay in milliseconds between GET requests to retrieve read detection results.",
+          "type": "INT",
+          "defaultValue": "5000"
         }
       ]
     }

@@ -1,290 +1,290 @@
 [
   {
     "text": "This sentence is auto.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is bike.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is bus.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is car.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is motor vehicle.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is motorcycle.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is suv.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is truck.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is trolley.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is tram.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is van.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is vehicle.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is vin.",
-    "tag": "vehicle"
+    "tag": "VEHICLE"
   },
   {
     "text": "This sentence is finance.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is financial.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is bank.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is ATM.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is balance.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is bill.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is cash.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is credit.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is debit.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is deposit.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is dollar.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is dollars.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is loan.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is money.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is mortgage.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is payment.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is purchase.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is salary.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is savings.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is transaction.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is gift card.",
-    "tag": "financial"
+    "tag": "FINANCIAL"
   },
   {
     "text": "This sentence is birth",
-    "tag": "personal"
+    "tag": "PERSONAL"
   },
   {
     "text": "This sentence is 3G",
-    "tag": "personal"
+    "tag": "PERSONAL"
   },
   {
     "text": "This sentence is 4G",
-    "tag": "personal"
+    "tag": "PERSONAL"
   },
   {
     "text": "This sentence is cellular.",
-    "tag": "personal"
+    "tag": "PERSONAL"
   },
   {
     "text": "This sentence is email.",
-    "tag": "personal"
+    "tag": "PERSONAL"
   },
   {
     "text": "This sentence is gmail.",
-    "tag": "personal"
+    "tag": "PERSONAL"
   },
   {
     "text": "This sentence is fax.",
-    "tag": "personal"
+    "tag": "PERSONAL"
   },
   {
     "text": "This sentence is password.",
-    "tag": "personal"
+    "tag": "PERSONAL"
   },
   {
     "text": "This sentence is text.",
-    "tag": "personal"
+    "tag": "PERSONAL"
   },
   {
     "text": "This sentence is telephone.",
-    "tag": "personal"
+    "tag": "PERSONAL"
   },
   {
     "text": "This sentence is username.",
-    "tag": "personal"
+    "tag": "PERSONAL"
   },
   {
     "text": "This sentence is firearm.",
-    "tag": "weapon"
+    "tag": "WEAPON"
   },
   {
     "text": "This sentence is grenade.",
-    "tag": "weapon"
+    "tag": "WEAPON"
   },
   {
     "text": "This sentence is gun.",
-    "tag": "weapon"
+    "tag": "WEAPON"
   },
   {
     "text": "This sentence is knife.",
-    "tag": "weapon"
+    "tag": "WEAPON"
   },
   {
     "text": "This sentence is rifle",
-    "tag": "weapon"
+    "tag": "WEAPON"
   },
   {
     "text": "This sentence is sword.",
-    "tag": "weapon"
+    "tag": "WEAPON"
   },
   {
     "text": "This sentence is passport.",
-    "tag": "identity document"
+    "tag": "IDENTITY DOCUMENT"
   },
   {
     "text": "This sentence is citizen.",
-    "tag": "identity document"
+    "tag": "IDENTITY DOCUMENT"
   },
   {
     "text": "This sentence is license.",
-    "tag": "identity document"
+    "tag": "IDENTITY DOCUMENT"
   },
   {
     "text": "This sentence is country.",
-    "tag": "identity document"
+    "tag": "IDENTITY DOCUMENT"
   },
   {
     "text": "This sentence is DOB.",
-    "tag": "identity document"
+    "tag": "IDENTITY DOCUMENT"
   },
   {
     "text": "This sentence is identity.",
-    "tag": "identity document"
+    "tag": "IDENTITY DOCUMENT"
   },
   {
     "text": "This sentence is surname.",
-    "tag": "identity document"
+    "tag": "IDENTITY DOCUMENT"
   },
   {
     "text": "This sentence is name.",
-    "tag": "identity document"
+    "tag": "IDENTITY DOCUMENT"
   },
   {
     "text": "This sentence is address.",
-    "tag": "identity document"
+    "tag": "IDENTITY DOCUMENT"
   },
   {
     "text": "This sentence is nationality.",
-    "tag": "identity document"
+    "tag": "IDENTITY DOCUMENT"
   },
   {
     "text": "This sentence is airline.",
-    "tag": "travel"
+    "tag": "TRAVEL"
   },
   {
     "text": "This sentence is airport.",
-    "tag": "travel"
+    "tag": "TRAVEL"
   },
   {
     "text": "This sentence is booking.",
-    "tag": "travel"
+    "tag": "TRAVEL"
   },
   {
     "text": "This sentence is hotel.",
-    "tag": "travel"
+    "tag": "TRAVEL"
   },
   {
     "text": "This sentence is itinerary.",
-    "tag": "travel"
+    "tag": "TRAVEL"
   },
   {
     "text": "This sentence is motel.",
-    "tag": "travel"
+    "tag": "TRAVEL"
   },
   {
     "text": "This sentence is passenger.",
-    "tag": "travel"
+    "tag": "TRAVEL"
   },
   {
     "text": "This sentence is reservation.",
-    "tag": "travel"
+    "tag": "TRAVEL"
   },
   {
     "text": "This sentence is roundtrip.",
-    "tag": "travel"
+    "tag": "TRAVEL"
   },
   {
     "text": "This sentence is travel.",
-    "tag": "travel"
+    "tag": "TRAVEL"
   },
   {
     "text": "This sentence is trip.",
-    "tag": "travel"
+    "tag": "TRAVEL"
   }
 ]

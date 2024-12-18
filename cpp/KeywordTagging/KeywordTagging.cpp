@@ -247,9 +247,9 @@ bool KeywordTagging::comp_regex(const MPFJob &job, const wstring &full_text,
         boost::wregex reg_matcher;
 
         if (case_sensitive) {
-            reg_matcher = boost::wregex(regstr, boost::regex_constants::extended);
+            reg_matcher = boost::wregex(regstr, boost::regex_constants::perl);
         } else {
-            reg_matcher = boost::wregex(regstr, boost::regex_constants::extended | boost::regex::icase);
+            reg_matcher = boost::wregex(regstr, boost::regex_constants::perl | boost::regex::icase);
         }
 
         boost::wsmatch m;
@@ -289,9 +289,9 @@ set<wstring> KeywordTagging::search_regex(const MPFJob &job, const wstring &full
     }
 
     for (const auto &kv : json_kvs_regex) {
-        auto key = boost::locale::to_lower(kv.first);
+        auto key = boost::locale::to_upper(kv.first);
         auto values = kv.second;
-        map<wstring, vector<string>>  trigger_words_offset;
+        map<wstring, vector<string>> trigger_words_offset; // map will sort items lexicographically
         for (const pair<wstring, bool> &value : values) {
             wstring regex_pattern = value.first;
             bool case_sens = value.second;
@@ -482,7 +482,7 @@ bool KeywordTagging::Supports(MPFDetectionDataType data_type) {
 bool KeywordTagging::get_text_to_process(const MPFJob &job, const Properties &detection_properties, map<string, wstring> &prop_texts) {
     string props_to_process = DetectionComponentUtils::GetProperty<string>(job.job_properties,
                                                                            "FEED_FORWARD_PROP_TO_PROCESS",
-                                                                           "TEXT, TRANSCRIPT");
+                                                                           "TEXT,TRANSCRIPT,TRANSLATION");
     vector<string> split_props_to_process;
     boost::split(split_props_to_process, props_to_process, boost::is_any_of(","));
     wstring text;
@@ -512,7 +512,7 @@ void KeywordTagging::process_text_tagging(Properties &detection_properties, cons
     wstring prop_text;
 
     bool has_text = false;
-    set<wstring> all_found_tags;
+    set<wstring> all_found_tags; // set will sort items lexicographically
 
     for (auto const& it : prop_texts) {
         prop = it.first;
@@ -572,7 +572,7 @@ void KeywordTagging::process_text_tagging(Properties &detection_properties, cons
         while(iter != end)
         {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> convert_s_to_ws;
-            all_found_tags.insert(boost::to_lower_copy(convert_s_to_ws.from_bytes(*iter++)));
+            all_found_tags.insert(boost::to_upper_copy(convert_s_to_ws.from_bytes(*iter++)));
         }
 
         wstring tag_string = boost::algorithm::join(all_found_tags, L"; ");

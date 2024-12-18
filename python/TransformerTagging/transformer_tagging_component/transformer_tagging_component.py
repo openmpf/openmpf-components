@@ -127,18 +127,22 @@ class TransformerTaggingComponent:
 
 
     def _add_tags(self, config, corpus, ff_props: Dict[str, str]):
+        input_texts = {}
         for prop_to_tag in config.props_to_process:
             input_text = ff_props.get(prop_to_tag, None)
             if input_text:
-                break
-            elif input_text == "":
-                logger.warning(f'No {prop_to_tag.lower()} to tag found in track.')
-                break
-        else:
+                input_texts[prop_to_tag] = input_text
+
+        if not input_texts:
             logger.warning("Feed forward element missing one of the following properties: "
                            + ", ".join(config.props_to_process))
             return
+            
+        for prop_to_tag, input_text in input_texts.items():
+            self._add_tags_for_prop(config, corpus, ff_props, prop_to_tag, input_text)
 
+
+    def _add_tags_for_prop(self, config, corpus, ff_props: Dict[str, str], prop_to_tag, input_text):
         all_tag_results = []
 
         # for each sentence in input
@@ -177,7 +181,7 @@ class TransformerTaggingComponent:
                 probe_df = pd.DataFrame({
                     "input text": stripped_probe,
                     "corpus text": corpus.json["text"],
-                    "tag": corpus.json["tag"].str.lower(),
+                    "tag": corpus.json["tag"].str.upper(),
                     "threshold": corpus.json["threshold"],
                     "score": scores,
                     "use tag score": corpus.json["use tag score"],
@@ -208,17 +212,18 @@ class TransformerTaggingComponent:
 
         all_tag_results = pd.concat(all_tag_results)
 
+        ff_tags = set()
+        if "TAGS" in ff_props:
+            ff_tags = {t.strip().upper() for t in ff_props["TAGS"].split(';')}
+
+        new_tags = set(all_tag_results["tag"].unique())
+
+        ff_props["TAGS"] = "; ".join(sorted(ff_tags.union(new_tags))) # lexicographic order
+
         # create detection properties for each tag found in the text
         # detection properties formatted as <input property> <tag> TRIGGER SENTENCES...
-        for tag in all_tag_results["tag"].unique():
+        for tag in new_tags: 
             tag_df = all_tag_results[all_tag_results["tag"] == tag]
-
-            if "TAGS" in ff_props:
-                # only add tag if it is not already in ff_props["TAGS"], else do nothing
-                if tag.casefold() not in ff_props["TAGS"].casefold():
-                    ff_props["TAGS"] = ff_props["TAGS"] + "; " + tag
-            else:
-                ff_props["TAGS"] = tag
 
             sents = []
             offsets = []
