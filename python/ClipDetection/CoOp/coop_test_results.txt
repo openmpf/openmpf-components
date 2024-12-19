@@ -1,0 +1,1008 @@
+CoOp Results:
+
+tench: 1/50
+goldfish: 36/50
+great white shark: 45/50
+tiger shark: 13/50
+hammerhead shark: 23/50
+electric ray: 0/50
+stingray: 0/50
+rooster: 0/50
+hen: 25/50
+ostrich: 2/50
+brambling: 16/50
+goldfinch: 5/50
+house finch: 48/50
+junco: 40/50
+indigo bunting: 49/50
+American robin: 49/50
+bulbul: 10/50
+jay: 40/50
+magpie: 25/50
+chickadee: 47/50
+American dipper: 14/50
+kite (bird of prey): 48/50
+bald eagle: 48/50
+vulture: 17/50
+great grey owl: 49/50
+fire salamander: 7/50
+smooth newt: 0/50
+newt: 0/50
+spotted salamander: 49/50
+axolotl: 42/50
+American bullfrog: 22/50
+tree frog: 12/50
+tailed frog: 9/50
+loggerhead sea turtle: 50/50
+leatherback sea turtle: 9/50
+mud turtle: 1/50
+terrapin: 4/50
+box turtle: 19/50
+banded gecko: 22/50
+green iguana: 7/50
+Carolina anole: 28/50
+desert grassland whiptail lizard: 46/50
+agama: 0/50
+frilled-necked lizard: 42/50
+alligator lizard: 13/50
+Gila monster: 24/50
+European green lizard: 0/50
+chameleon: 0/50
+Komodo dragon: 1/50
+Nile crocodile: 17/50
+American alligator: 0/50
+triceratops: 50/50
+worm snake: 1/50
+ring-necked snake: 49/50
+eastern hog-nosed snake: 0/50
+smooth green snake: 5/50
+kingsnake: 0/50
+garter snake: 0/50
+water snake: 0/50
+vine snake: 1/50
+night snake: 0/50
+boa constrictor: 2/50
+African rock python: 22/50
+Indian cobra: 7/50
+green mamba: 0/50
+sea snake: 0/50
+Saharan horned viper: 4/50
+eastern diamondback rattlesnake: 50/50
+sidewinder rattlesnake: 0/50
+trilobite: 5/50
+harvestman: 6/50
+scorpion: 0/50
+yellow garden spider: 5/50
+barn spider: 1/50
+European garden spider: 49/50
+southern black widow: 0/50
+tarantula: 37/50
+wolf spider: 2/50
+tick: 0/50
+centipede: 0/50
+black grouse: 19/50
+ptarmigan: 20/50
+ruffed grouse: 46/50
+prairie grouse: 11/50
+peafowl: 31/50
+quail: 45/50
+partridge: 0/50
+african grey parrot: 48/50
+macaw: 49/50
+sulphur-crested cockatoo: 44/50
+lorikeet: 49/50
+coucal: 39/50
+bee eater: 46/50
+hornbill: 34/50
+hummingbird: 18/50
+jacamar: 44/50
+toucan: 49/50
+duck: 21/50
+red-breasted merganser: 47/50
+goose: 19/50
+black swan: 2/50
+tusker: 29/50
+echidna: 41/50
+platypus: 2/50
+wallaby: 41/50
+koala: 1/50
+wombat: 30/50
+jellyfish: 0/50
+sea anemone: 0/50
+brain coral: 38/50
+flatworm: 25/50
+nematode: 0/50
+conch: 15/50
+snail: 42/50
+slug: 12/50
+sea slug: 9/50
+chiton: 0/50
+chambered nautilus: 7/50
+Dungeness crab: 46/50
+rock crab: 6/50
+fiddler crab: 4/50
+red king crab: 3/50
+American lobster: 43/50
+spiny lobster: 44/50
+crayfish: 13/50
+hermit crab: 39/50
+isopod: 33/50
+white stork: 18/50
+black stork: 6/50
+spoonbill: 39/50
+flamingo: 0/50
+little blue heron: 29/50
+great egret: 47/50
+bittern bird: 8/50
+crane bird: 5/50
+limpkin: 48/50
+common gallinule: 20/50
+American coot: 20/50
+bustard: 0/50
+ruddy turnstone: 50/50
+dunlin: 25/50
+common redshank: 0/50
+dowitcher: 39/50
+oystercatcher: 28/50
+pelican: 0/50
+king penguin: 50/50
+albatross: 31/50
+grey whale: 2/50
+killer whale: 46/50
+dugong: 47/50
+sea lion: 44/50
+Chihuahua: 5/50
+Japanese Chin: 35/50
+Maltese: 0/50
+Pekingese: 32/50
+Shih Tzu: 40/50
+King Charles Spaniel: 43/50
+Papillon: 0/50
+toy terrier: 23/50
+Rhodesian Ridgeback: 40/50
+Afghan Hound: 21/50
+Basset Hound: 26/50
+Beagle: 2/50
+Bloodhound: 12/50
+Bluetick Coonhound: 37/50
+Black and Tan Coonhound: 35/50
+Treeing Walker Coonhound: 48/50
+English foxhound: 16/50
+Redbone Coonhound: 27/50
+borzoi: 44/50
+Irish Wolfhound: 21/50
+Italian Greyhound: 44/50
+Whippet: 21/50
+Ibizan Hound: 40/50
+Norwegian Elkhound: 39/50
+Otterhound: 21/50
+Saluki: 28/50
+Scottish Deerhound: 46/50
+Weimaraner: 46/50
+Staffordshire Bull Terrier: 38/50
+American Staffordshire Terrier: 36/50
+Bedlington Terrier: 37/50
+Border Terrier: 41/50
+Kerry Blue Terrier: 5/50
+Irish Terrier: 33/50
+Norfolk Terrier: 34/50
+Norwich Terrier: 0/50
+Yorkshire Terrier: 33/50
+Wire Fox Terrier: 34/50
+Lakeland Terrier: 16/50
+Sealyham Terrier: 43/50
+Airedale Terrier: 26/50
+Cairn Terrier: 31/50
+Australian Terrier: 7/50
+Dandie Dinmont Terrier: 8/50
+Boston Terrier: 41/50
+Miniature Schnauzer: 25/50
+Giant Schnauzer: 27/50
+Standard Schnauzer: 33/50
+Scottish Terrier: 36/50
+Tibetan Terrier: 33/50
+Australian Silky Terrier: 9/50
+Soft-coated Wheaten Terrier: 42/50
+West Highland White Terrier: 48/50
+Lhasa Apso: 0/50
+Flat-Coated Retriever: 45/50
+Curly-coated Retriever: 16/50
+Golden Retriever: 33/50
+Labrador Retriever: 38/50
+Chesapeake Bay Retriever: 37/50
+German Shorthaired Pointer: 41/50
+Vizsla: 44/50
+English Setter: 28/50
+Irish Setter: 25/50
+Gordon Setter: 34/50
+Brittany dog: 0/50
+Clumber Spaniel: 44/50
+English Springer Spaniel: 41/50
+Welsh Springer Spaniel: 44/50
+Cocker Spaniel: 0/50
+Sussex Spaniel: 21/50
+Irish Water Spaniel: 41/50
+Kuvasz: 0/50
+Schipperke: 33/50
+Groenendael dog: 5/50
+Malinois: 36/50
+Briard: 0/50
+Australian Kelpie: 33/50
+Komondor: 26/50
+Old English Sheepdog: 33/50
+Shetland Sheepdog: 34/50
+collie: 1/50
+Border Collie: 27/50
+Bouvier des Flandres dog: 27/50
+Rottweiler: 42/50
+German Shepherd Dog: 48/50
+Dobermann: 31/50
+Miniature Pinscher: 45/50
+Greater Swiss Mountain Dog: 18/50
+Bernese Mountain Dog: 41/50
+Appenzeller Sennenhund: 0/50
+Entlebucher Sennenhund: 44/50
+Boxer: 27/50
+Bullmastiff: 42/50
+Tibetan Mastiff: 44/50
+French Bulldog: 44/50
+Great Dane: 30/50
+St. Bernard: 0/50
+husky: 0/50
+Alaskan Malamute: 31/50
+Siberian Husky: 28/50
+Dalmatian: 29/50
+Affenpinscher: 34/50
+Basenji: 0/50
+pug: 11/50
+Leonberger: 31/50
+Newfoundland dog: 42/50
+Great Pyrenees dog: 45/50
+Samoyed: 48/50
+Pomeranian: 30/50
+Chow Chow: 0/50
+Keeshond: 46/50
+brussels griffon: 29/50
+Pembroke Welsh Corgi: 44/50
+Cardigan Welsh Corgi: 25/50
+Toy Poodle: 35/50
+Miniature Poodle: 14/50
+Standard Poodle: 26/50
+Mexican hairless dog (xoloitzcuintli): 49/50
+grey wolf: 0/50
+Alaskan tundra wolf: 42/50
+red wolf or maned wolf: 36/50
+coyote: 0/50
+dingo: 0/50
+dhole: 7/50
+African wild dog: 48/50
+hyena: 33/50
+red fox: 0/50
+kit fox: 0/50
+Arctic fox: 3/50
+grey fox: 4/50
+tabby cat: 49/50
+tiger cat: 7/50
+Persian cat: 42/50
+Siamese cat: 50/50
+Egyptian Mau: 8/50
+cougar: 18/50
+lynx: 0/50
+leopard: 0/50
+snow leopard: 37/50
+jaguar: 15/50
+lion: 2/50
+tiger: 0/50
+cheetah: 0/50
+brown bear: 17/50
+American black bear: 42/50
+polar bear: 43/50
+sloth bear: 36/50
+mongoose: 0/50
+meerkat: 11/50
+tiger beetle: 1/50
+ladybug: 16/50
+ground beetle: 20/50
+longhorn beetle: 28/50
+leaf beetle: 2/50
+dung beetle: 2/50
+rhinoceros beetle: 49/50
+weevil: 1/50
+fly: 0/50
+bee: 25/50
+ant: 0/50
+grasshopper: 0/50
+cricket insect: 0/50
+stick insect: 38/50
+cockroach: 6/50
+praying mantis: 15/50
+cicada: 6/50
+leafhopper: 50/50
+lacewing: 20/50
+dragonfly: 0/50
+damselfly: 50/50
+red admiral butterfly: 17/50
+ringlet butterfly: 39/50
+monarch butterfly: 38/50
+small white butterfly: 29/50
+sulphur butterfly: 47/50
+gossamer-winged butterfly: 4/50
+starfish: 13/50
+sea urchin: 2/50
+sea cucumber: 0/50
+cottontail rabbit: 44/50
+hare: 0/50
+Angora rabbit: 48/50
+hamster: 50/50
+porcupine: 11/50
+fox squirrel: 1/50
+marmot: 35/50
+beaver: 0/50
+guinea pig: 36/50
+common sorrel horse: 0/50
+zebra: 0/50
+pig: 35/50
+wild boar: 0/50
+warthog: 44/50
+hippopotamus: 45/50
+ox: 0/50
+water buffalo: 0/50
+bison: 25/50
+ram (adult male sheep): 24/50
+bighorn sheep: 48/50
+Alpine ibex: 31/50
+hartebeest: 0/50
+impala (antelope): 6/50
+gazelle: 1/50
+arabian camel: 40/50
+llama: 22/50
+weasel: 0/50
+mink: 0/50
+European polecat: 13/50
+black-footed ferret: 45/50
+otter: 46/50
+skunk: 0/50
+badger: 1/50
+armadillo: 6/50
+three-toed sloth: 50/50
+orangutan: 46/50
+gorilla: 0/50
+chimpanzee: 28/50
+gibbon: 0/50
+siamang: 0/50
+guenon: 0/50
+patas monkey: 0/50
+baboon: 30/50
+macaque: 21/50
+langur: 41/50
+black-and-white colobus: 49/50
+proboscis monkey: 48/50
+marmoset: 0/50
+white-headed capuchin: 20/50
+howler monkey: 3/50
+titi monkey: 0/50
+Geoffroy's spider monkey: 0/50
+common squirrel monkey: 18/50
+ring-tailed lemur: 48/50
+indri: 0/50
+Asian elephant: 5/50
+African bush elephant: 48/50
+red panda: 47/50
+giant panda: 49/50
+snoek fish: 8/50
+eel: 0/50
+silver salmon: 0/50
+rock beauty fish: 0/50
+clownfish: 50/50
+sturgeon: 0/50
+gar fish: 0/50
+lionfish: 44/50
+pufferfish: 46/50
+abacus: 2/50
+abaya: 46/50
+academic gown: 50/50
+accordion: 0/50
+acoustic guitar: 43/50
+aircraft carrier: 47/50
+airliner: 22/50
+airship: 16/50
+altar: 10/50
+ambulance: 43/50
+amphibious vehicle: 33/50
+analog clock: 1/50
+apiary: 45/50
+apron: 20/50
+trash can: 1/50
+assault rifle: 18/50
+backpack: 21/50
+bakery: 3/50
+balance beam: 0/50
+balloon: 1/50
+ballpoint pen: 32/50
+Band-Aid: 43/50
+banjo: 0/50
+baluster / handrail: 40/50
+barbell: 13/50
+barber chair: 33/50
+barbershop: 4/50
+barn: 0/50
+barometer: 0/50
+barrel: 2/50
+wheelbarrow: 30/50
+baseball: 32/50
+basketball: 49/50
+bassinet: 0/50
+bassoon: 45/50
+swimming cap: 29/50
+bath towel: 15/50
+bathtub: 2/50
+station wagon: 30/50
+lighthouse: 0/50
+beaker: 10/50
+military hat (bearskin or shako): 42/50
+beer bottle: 36/50
+beer glass: 35/50
+bell tower: 9/50
+baby bib: 40/50
+tandem bicycle: 50/50
+bikini: 28/50
+ring binder: 3/50
+binoculars: 43/50
+birdhouse: 40/50
+boathouse: 0/50
+bobsleigh: 25/50
+bolo tie: 49/50
+poke bonnet: 0/50
+bookcase: 31/50
+bookstore: 31/50
+bottle cap: 2/50
+hunting bow: 25/50
+bow tie: 38/50
+brass memorial plaque: 33/50
+bra: 32/50
+breakwater: 0/50
+breastplate: 2/50
+broom: 0/50
+bucket: 0/50
+buckle: 8/50
+bulletproof vest: 29/50
+high-speed train: 46/50
+butcher shop: 5/50
+taxicab: 35/50
+cauldron: 12/50
+candle: 10/50
+cannon: 10/50
+canoe: 2/50
+can opener: 14/50
+cardigan: 41/50
+car mirror: 4/50
+carousel: 1/50
+tool kit: 31/50
+cardboard box / carton: 12/50
+car wheel: 12/50
+automated teller machine: 45/50
+cassette: 0/50
+cassette player: 9/50
+castle: 0/50
+catamaran: 0/50
+CD player: 19/50
+cello: 0/50
+mobile phone: 19/50
+chain: 0/50
+chain-link fence: 17/50
+chain mail: 30/50
+chainsaw: 36/50
+storage chest: 2/50
+chiffonier: 6/50
+bell or wind chime: 15/50
+china cabinet: 38/50
+Christmas stocking: 47/50
+church: 0/50
+movie theater: 49/50
+cleaver: 0/50
+cliff dwelling: 40/50
+cloak: 0/50
+clogs: 21/50
+cocktail shaker: 4/50
+coffee mug: 30/50
+coffeemaker: 8/50
+spiral or coil: 2/50
+combination lock: 38/50
+computer keyboard: 1/50
+candy store: 24/50
+container ship: 50/50
+convertible: 0/50
+corkscrew: 23/50
+cornet: 0/50
+cowboy boot: 41/50
+cowboy hat: 34/50
+cradle: 0/50
+construction crane: 20/50
+crash helmet: 41/50
+crate: 0/50
+infant bed: 48/50
+Crock Pot: 45/50
+croquet ball: 44/50
+crutch: 13/50
+cuirass: 50/50
+dam: 0/50
+desk: 13/50
+desktop computer: 0/50
+rotary dial telephone: 48/50
+diaper: 23/50
+digital clock: 24/50
+digital watch: 28/50
+dining table: 31/50
+dishcloth: 45/50
+dishwasher: 0/50
+disc brake: 12/50
+dock: 0/50
+dog sled: 49/50
+dome: 0/50
+doormat: 20/50
+drilling rig: 39/50
+drum: 0/50
+drumstick: 15/50
+dumbbell: 1/50
+Dutch oven: 1/50
+electric fan: 3/50
+electric guitar: 40/50
+electric locomotive: 48/50
+entertainment center: 0/50
+envelope: 0/50
+espresso machine: 8/50
+face powder: 34/50
+feather boa: 22/50
+filing cabinet: 45/50
+fireboat: 50/50
+fire truck: 48/50
+fire screen: 4/50
+flagpole: 26/50
+flute: 0/50
+folding chair: 37/50
+football helmet: 47/50
+forklift: 35/50
+fountain: 0/50
+fountain pen: 28/50
+four-poster bed: 42/50
+freight car: 47/50
+French horn: 37/50
+frying pan: 38/50
+fur coat: 42/50
+garbage truck: 41/50
+gas mask or respirator: 48/50
+gas pump: 47/50
+goblet: 9/50
+go-kart: 47/50
+golf ball: 23/50
+golf cart: 37/50
+gondola: 3/50
+gong: 0/50
+gown: 8/50
+grand piano: 1/50
+greenhouse: 0/50
+radiator grille: 37/50
+grocery store: 7/50
+guillotine: 20/50
+hair clip: 13/50
+hair spray: 12/50
+half-track: 6/50
+hammer: 0/50
+hamper: 26/50
+hair dryer: 11/50
+hand-held computer: 0/50
+handkerchief: 0/50
+hard disk drive: 50/50
+harmonica: 6/50
+harp: 0/50
+combine harvester: 14/50
+hatchet: 27/50
+holster: 35/50
+home theater: 18/50
+honeycomb: 0/50
+hook: 0/50
+hoop skirt: 46/50
+gymnastic horizontal bar: 45/50
+horse-drawn vehicle: 46/50
+hourglass: 1/50
+iPod: 0/50
+clothes iron: 45/50
+carved pumpkin: 49/50
+jeans: 32/50
+jeep: 2/50
+T-shirt: 16/50
+jigsaw puzzle: 49/50
+rickshaw: 7/50
+joystick: 31/50
+kimono: 47/50
+knee pad: 26/50
+knot: 0/50
+lab coat: 33/50
+ladle: 2/50
+lampshade: 4/50
+laptop computer: 4/50
+lawn mower: 0/50
+lens cap: 7/50
+letter opener: 19/50
+library: 0/50
+lifeboat: 5/50
+lighter: 2/50
+limousine: 34/50
+ocean liner: 0/50
+lipstick: 23/50
+slip-on shoe: 45/50
+lotion: 19/50
+music speaker: 29/50
+loupe magnifying glass: 7/50
+sawmill: 11/50
+magnetic compass: 16/50
+messenger bag: 22/50
+mailbox: 6/50
+tights: 0/50
+one-piece bathing suit: 40/50
+manhole cover: 48/50
+maraca: 10/50
+marimba: 0/50
+mask: 11/50
+matchstick: 12/50
+maypole: 8/50
+maze: 0/50
+measuring cup: 34/50
+medicine cabinet: 30/50
+megalith: 9/50
+microphone: 14/50
+microwave oven: 39/50
+military uniform: 19/50
+milk can: 12/50
+minibus: 32/50
+miniskirt: 7/50
+minivan: 17/50
+missile: 37/50
+mitten: 27/50
+mixing bowl: 1/50
+mobile home: 8/50
+ford model t: 22/50
+modem: 1/50
+monastery: 0/50
+monitor: 0/50
+moped: 27/50
+mortar and pestle: 38/50
+graduation cap: 8/50
+mosque: 19/50
+mosquito net: 20/50
+vespa: 13/50
+mountain bike: 39/50
+tent: 1/50
+computer mouse: 4/50
+mousetrap: 27/50
+moving van: 5/50
+muzzle: 3/50
+metal nail: 0/50
+neck brace: 39/50
+necklace: 14/50
+baby pacifier: 33/50
+notebook computer: 0/50
+obelisk: 10/50
+oboe: 0/50
+ocarina: 16/50
+odometer: 49/50
+oil filter: 15/50
+pipe organ: 49/50
+oscilloscope: 45/50
+overskirt: 0/50
+bullock cart: 40/50
+oxygen mask: 10/50
+product packet / packaging: 0/50
+paddle: 0/50
+paddle wheel: 31/50
+padlock: 13/50
+paintbrush: 10/50
+pajamas: 34/50
+palace: 0/50
+pan flute: 40/50
+paper towel: 0/50
+parachute: 0/50
+parallel bars: 1/50
+park bench: 30/50
+parking meter: 16/50
+railroad car: 0/50
+patio: 0/50
+payphone: 38/50
+pedestal: 0/50
+pencil case: 23/50
+pencil sharpener: 27/50
+perfume: 38/50
+Petri dish: 2/50
+photocopier: 11/50
+plectrum: 0/50
+Pickelhaube: 27/50
+picket fence: 30/50
+pickup truck: 35/50
+pier: 0/50
+piggy bank: 47/50
+pill bottle: 31/50
+pillow: 1/50
+ping-pong ball: 41/50
+pinwheel: 17/50
+pirate ship: 28/50
+drink pitcher: 19/50
+block plane: 44/50
+planetarium: 35/50
+plastic bag: 6/50
+plate rack: 35/50
+farm plow: 0/50
+plunger: 14/50
+Polaroid camera: 9/50
+pole: 3/50
+police van: 45/50
+poncho: 8/50
+pool table: 37/50
+soda bottle: 6/50
+plant pot: 2/50
+potter's wheel: 14/50
+power drill: 29/50
+prayer rug: 40/50
+printer: 6/50
+prison: 36/50
+missile: 32/50
+projector: 0/50
+hockey puck: 48/50
+punching bag: 37/50
+purse: 32/50
+quill: 4/50
+quilt: 2/50
+race car: 44/50
+racket: 0/50
+radiator: 0/50
+radio: 9/50
+radio telescope: 38/50
+rain barrel: 40/50
+recreational vehicle: 45/50
+fishing casting reel: 48/50
+reflex camera: 0/50
+refrigerator: 0/50
+remote control: 0/50
+restaurant: 1/50
+revolver: 0/50
+rifle: 38/50
+rocking chair: 22/50
+rotisserie: 25/50
+eraser: 0/50
+rugby ball: 49/50
+ruler measuring stick: 37/50
+sneaker: 5/50
+safe: 13/50
+safety pin: 15/50
+salt shaker: 11/50
+sandal: 4/50
+sarong: 35/50
+saxophone: 30/50
+scabbard: 0/50
+weighing scale: 27/50
+school bus: 49/50
+schooner: 0/50
+scoreboard: 36/50
+CRT monitor: 0/50
+screw: 0/50
+screwdriver: 1/50
+seat belt: 18/50
+sewing machine: 40/50
+shield: 0/50
+shoe store: 13/50
+shoji screen / room divider: 10/50
+shopping basket: 3/50
+shopping cart: 9/50
+shovel: 1/50
+shower cap: 30/50
+shower curtain: 31/50
+ski: 22/50
+balaclava ski mask: 46/50
+sleeping bag: 36/50
+slide rule: 35/50
+sliding door: 6/50
+slot machine: 49/50
+snorkel: 18/50
+snowmobile: 50/50
+snowplow: 46/50
+soap dispenser: 21/50
+soccer ball: 37/50
+sock: 19/50
+solar thermal collector: 22/50
+sombrero: 22/50
+soup bowl: 29/50
+keyboard space bar: 14/50
+space heater: 11/50
+space shuttle: 2/50
+spatula: 0/50
+motorboat: 0/50
+spider web: 0/50
+spindle: 1/50
+sports car: 26/50
+spotlight: 0/50
+stage: 0/50
+steam locomotive: 47/50
+through arch bridge: 0/50
+steel drum: 9/50
+stethoscope: 18/50
+scarf: 39/50
+stone wall: 11/50
+stopwatch: 34/50
+stove: 9/50
+strainer: 0/50
+tram: 29/50
+stretcher: 1/50
+couch: 29/50
+stupa: 41/50
+submarine: 0/50
+suit: 0/50
+sundial: 6/50
+sunglasses: 16/50
+sunglasses: 13/50
+sunscreen: 6/50
+suspension bridge: 23/50
+mop: 0/50
+sweatshirt: 13/50
+swim trunks / shorts: 32/50
+swing: 7/50
+electrical switch: 1/50
+syringe: 1/50
+table lamp: 32/50
+tank: 0/50
+tape player: 21/50
+teapot: 47/50
+teddy bear: 31/50
+television: 3/50
+tennis ball: 45/50
+thatched roof: 39/50
+front curtain: 0/50
+thimble: 0/50
+threshing machine: 37/50
+throne: 35/50
+tile roof: 25/50
+toaster: 28/50
+tobacco shop: 16/50
+toilet seat: 17/50
+torch: 1/50
+totem pole: 44/50
+tow truck: 25/50
+toy store: 32/50
+tractor: 0/50
+semi-trailer truck: 47/50
+tray: 2/50
+trench coat: 39/50
+tricycle: 15/50
+trimaran: 44/50
+tripod: 0/50
+triumphal arch: 36/50
+trolleybus: 11/50
+trombone: 6/50
+hot tub: 8/50
+turnstile: 14/50
+typewriter keyboard: 50/50
+umbrella: 8/50
+unicycle: 10/50
+upright piano: 8/50
+vacuum cleaner: 44/50
+vase: 29/50
+vaulted or arched ceiling: 12/50
+velvet fabric: 1/50
+vending machine: 10/50
+vestment: 0/50
+viaduct: 24/50
+violin: 8/50
+volleyball: 45/50
+waffle iron: 40/50
+wall clock: 39/50
+wallet: 8/50
+wardrobe: 4/50
+military aircraft: 2/50
+sink: 0/50
+washing machine: 21/50
+water bottle: 15/50
+water jug: 1/50
+water tower: 20/50
+whiskey jug: 29/50
+whistle: 0/50
+hair wig: 34/50
+window screen: 6/50
+window shade: 28/50
+Windsor tie: 15/50
+wine bottle: 28/50
+airplane wing: 4/50
+wok: 14/50
+wooden spoon: 23/50
+wool: 13/50
+split-rail fence: 26/50
+shipwreck: 0/50
+sailboat: 26/50
+yurt: 46/50
+website: 2/50
+comic book: 42/50
+crossword: 44/50
+traffic or street sign: 21/50
+traffic light: 0/50
+dust jacket: 0/50
+menu: 1/50
+plate: 0/50
+guacamole: 40/50
+consomme: 0/50
+hot pot: 41/50
+trifle: 35/50
+ice cream: 19/50
+popsicle: 7/50
+baguette: 0/50
+bagel: 45/50
+pretzel: 48/50
+cheeseburger: 44/50
+hot dog: 50/50
+mashed potatoes: 43/50
+cabbage: 29/50
+broccoli: 44/50
+cauliflower: 40/50
+zucchini: 35/50
+spaghetti squash: 35/50
+acorn squash: 28/50
+butternut squash: 35/50
+cucumber: 9/50
+artichoke: 16/50
+bell pepper: 39/50
+cardoon: 36/50
+mushroom: 0/50
+Granny Smith apple: 46/50
+strawberry: 0/50
+orange: 0/50
+lemon: 6/50
+fig: 22/50
+pineapple: 26/50
+banana: 1/50
+jackfruit: 16/50
+cherimoya (custard apple): 47/50
+pomegranate: 11/50
+hay: 1/50
+carbonara: 39/50
+chocolate syrup: 31/50
+dough: 18/50
+meatloaf: 48/50
+pizza: 38/50
+pot pie: 47/50
+burrito: 50/50
+red wine: 9/50
+espresso: 0/50
+tea cup: 20/50
+eggnog: 27/50
+mountain: 0/50
+bubble: 0/50
+cliff: 0/50
+coral reef: 0/50
+geyser: 1/50
+lakeshore: 0/50
+promontory: 0/50
+sandbar: 0/50
+beach: 0/50
+valley: 0/50
+volcano: 0/50
+baseball player: 38/50
+bridegroom: 21/50
+scuba diver: 22/50
+rapeseed: 45/50
+daisy: 10/50
+yellow lady's slipper: 50/50
+corn: 0/50
+acorn: 0/50
+rose hip: 21/50
+horse chestnut seed: 40/50
+coral fungus: 41/50
+agaric: 8/50
+gyromitra: 1/50
+stinkhorn mushroom: 43/50
+earth star fungus: 0/50
+hen of the woods mushroom: 49/50
+bolete: 30/50
+corn cob: 35/50
+toilet paper: 37/50
+
+
+Accuracy Results:
+Total: 50,000
+Correct: 20,771
+Accuracy: 41.5%
