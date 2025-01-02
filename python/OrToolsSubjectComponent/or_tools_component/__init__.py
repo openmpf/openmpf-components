@@ -47,6 +47,7 @@ log = logging.getLogger(__name__)
 
 FrameIndex = NewType('FrameIndex', int)
 
+timing = mpf.Timing.with_logger(log)
 
 class OrToolsSubjectComponent:
 
@@ -178,6 +179,7 @@ class TrackTypeConfig:
 
 class Assignment:
     @classmethod
+    @timing.time_func
     def assign_tracks(
             cls,
             min_iou: float,
