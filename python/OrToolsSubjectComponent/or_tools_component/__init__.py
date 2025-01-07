@@ -35,7 +35,7 @@ import logging
 import typing
 import uuid
 from typing import (Any, Collection, Dict, Iterable, Iterator, List, Mapping,
-                    NamedTuple, NewType, Optional, TextIO, Tuple)
+                    NamedTuple, NewType, Optional, TextIO, Tuple, TypeVar)
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -51,6 +51,7 @@ timing = mpf.Timing.with_logger(log)
 
 class OrToolsSubjectComponent:
 
+    @timing.time_func
     def get_subjects(self, job: mpf_sub.SubjectTrackingJob) -> mpf_sub.SubjectTrackingResults:
         log.info('Received subject tracking job.')
         media_id = get_media_id(job)
@@ -76,26 +77,30 @@ class OrToolsSubjectComponent:
         return mpf_sub.SubjectTrackingResults(all_entities, relationships)
 
 
-class TrackWithTypes(NamedTuple):
+@dataclasses.dataclass
+class TrackWithTypes:
     id: mpf_sub.TrackId
     entity_type: mpf_sub.EntityType
     track_type: mpf_sub.TrackType
     track: mpf.VideoTrack
+    frame_locations: Mapping[FrameIndex, mpf.ImageLocation] = dataclasses.field(init=False)
+    detection_rects: Mapping[FrameIndex, mpf_util.Rect[int]] = dataclasses.field(init=False)
+
+    def __post_init__(self):
+        self.frame_locations = typing.cast(
+            Mapping[FrameIndex, mpf.ImageLocation],
+            self.track.frame_locations)
+        self.detection_rects = {
+            fi: mpf_util.Rect.from_image_location(fl)
+            for fi, fl in self.frame_locations.items()}
 
     def to_non_subject_entity(self) -> NonSubjectEntity:
         return NonSubjectEntity(uuid.uuid4(), self)
-
-    @property
-    def frame_locations(self) -> Mapping[FrameIndex, mpf.ImageLocation]:
-        return typing.cast(Mapping[FrameIndex, mpf.ImageLocation], self.track.frame_locations)
 
 
 class NonSubjectEntity(NamedTuple):
     id: uuid.UUID
     track_info: TrackWithTypes
-
-
-to_rect = mpf_util.Rect.from_image_location
 
 
 def get_config() -> TrackTypeConfig:
@@ -273,6 +278,19 @@ class TrackAssignment:
     face_track: Optional[TrackWithTypes]
     person_tracks: Collection[TrackWithTypes]
     subject_id: uuid.UUID = dataclasses.field(init=False, default_factory=uuid.uuid4)
+    detection_rects: Mapping[FrameIndex, List[mpf_util.Rect[int]]] = (
+            dataclasses.field(init=False))
+
+    def __post_init__(self):
+        self.detection_rects = collections.defaultdict(list)
+        if self.face_track:
+            tracks = itertools.chain((self.face_track,), self.person_tracks)
+        else:
+            tracks = self.person_tracks
+        for track in tracks:
+            for frame_idx, rect in track.detection_rects.items():
+                self.detection_rects[frame_idx].append(rect)
+
 
     @staticmethod
     def face_only(face_track: TrackWithTypes):
@@ -282,52 +300,43 @@ class TrackAssignment:
     def person_only(person_track: TrackWithTypes):
         return TrackAssignment(-1, None, (person_track,))
 
-    def all_tracks(self) -> Iterable[TrackWithTypes]:
-        if self.face_track:
-            yield self.face_track
-        yield from self.person_tracks
-
-    def all_detections(self) -> Iterator[Tuple[FrameIndex, mpf.ImageLocation]]:
-        return (
-            (FrameIndex(fi), d)
-            for t in self.all_tracks()
-            for fi, d in t.frame_locations.items())
-
-
-    def get_detection_rects(self, frame_index: FrameIndex) -> Iterator[mpf_util.Rect[int]]:
-        return (
-            to_rect(d) for t in self.all_tracks()
-            if (d := t.frame_locations.get(frame_index)))
-
 
     def get_overlap_frames(self, other: TrackAssignment) -> List[FrameIndex]:
-        results = set()
-        for frame_idx, detection in self.all_detections():
-            if frame_idx in results:
-                continue
-            rect1 = to_rect(detection)
-            if any(rect1 & r2 for r2 in other.get_detection_rects(frame_idx)):
-                results.add(frame_idx)
-        return sorted(results)
+        return [
+            fi for fi, rs1, rs2
+                in get_items_with_common_keys(self.detection_rects, other.detection_rects)
+            if any_intersection(rs1, rs2)]
+
+
+def any_intersection(
+        rects1: Iterable[mpf_util.Rect[int]],
+        rects2: Iterable[mpf_util.Rect[int]]) -> bool:
+    return any(rects_intersect(r1, r2) for r1 in rects1 for r2 in rects2)
+
+
+def rects_intersect(r1: mpf_util.Rect[int], r2: mpf_util.Rect[int]) -> bool:
+    left_rect, right_rect = sorted((r1, r2), key=lambda r: r.x)
+    if right_rect.x > left_rect.x + left_rect.width:
+        return False
+    top_rect, bottom_rect = sorted((r1, r2), key=lambda r: r.y)
+    return bottom_rect.y <= top_rect.y + top_rect.height
 
 
 def iou_sum(track1: TrackWithTypes, track2: TrackWithTypes, min_iou: float) -> float:
     if not frame_ranges_overlap(track1, track2):
         return -1
-    t1_detections = track1.frame_locations
-    t2_detections = track2.frame_locations
-    idxs_in_both = t1_detections.keys() & t2_detections.keys()
-    return sum(iou(t1_detections[i], t2_detections[i], min_iou) for i in idxs_in_both)
+    return sum(
+        iou(r1, r2, min_iou)
+        for _, r1, r2 in get_items_with_common_keys(track1.detection_rects, track2.detection_rects))
 
 
-def iou(det1: mpf.ImageLocation, det2: mpf.ImageLocation, min_iou: float) -> float:
-    rect1 = to_rect(det1)
-    rect2 = to_rect(det2)
+def iou(rect1: mpf_util.Rect[int], rect2: mpf_util.Rect[int], min_iou: float) -> float:
     if intersection := rect1 & rect2:
         result = intersection.area / (rect1.area + rect2.area - intersection.area)
         return result if result >= min_iou else 0
     else:
         return -1
+
 
 def frame_ranges_overlap(track1: TrackWithTypes, track2: TrackWithTypes) -> bool:
     if track1.track.start_frame < track2.track.start_frame:
@@ -339,9 +348,7 @@ def frame_ranges_overlap(track1: TrackWithTypes, track2: TrackWithTypes) -> bool
 def frames_in_common(track1: TrackWithTypes, track2: TrackWithTypes) -> bool:
     if not frame_ranges_overlap(track1, track2):
         return False
-    fl1 = track1.frame_locations
-    fl2 = track2.frame_locations
-    return any(frame_idx in fl2 for frame_idx in fl1.keys())
+    return any(get_items_with_common_keys(track1.frame_locations, track2.frame_locations))
 
 
 def convert_subject_assignments(
@@ -375,6 +382,7 @@ def create_mpf_entity(entity: NonSubjectEntity) -> mpf_sub.Entity:
             {entity.track_info.track_type: (entity.track_info.id,)})
 
 
+@timing.time_func('Finding relationships')
 def get_relationship_dict(
         assignments: Iterable[TrackAssignment],
         entity_groups: Multimap[mpf_sub.EntityType, NonSubjectEntity],
@@ -391,10 +399,9 @@ def get_subject_to_entity_proximity_relationships(
         entity_groups: Multimap[mpf_sub.EntityType, NonSubjectEntity],
         media_id: mpf_sub.MediaId) -> Iterable[mpf_sub.Relationship]:
     for subject_track_assignment in assignments:
-        subject_rects = index_track_assignment_by_frame(subject_track_assignment)
         flattened_entities = (e for eg in entity_groups.values() for e in eg)
         for entity in flattened_entities:
-            if proximity_frames := get_subject_proximity_frames(subject_rects, entity):
+            if proximity_frames := get_subject_proximity_frames(subject_track_assignment, entity):
                 ids = [subject_track_assignment.subject_id, entity.id]
                 media_ref = mpf_sub.MediaReference(media_id, proximity_frames)
                 yield mpf_sub.Relationship(ids, (media_ref,))
@@ -420,28 +427,14 @@ def get_entity_proximity_relationships(
             media_ref = mpf_sub.MediaReference(media_id, frames)
             yield mpf_sub.Relationship(ids, (media_ref,))
 
-
-def index_track_assignment_by_frame(
-        track_assignment: TrackAssignment) -> Multimap[FrameIndex, mpf_util.Rect[int]]:
-    index = collections.defaultdict(list)
-    for i, detection in track_assignment.all_detections():
-        index[i].append(to_rect(detection))
-    return index
-
-
 def get_subject_proximity_frames(
-        subject_rects: Multimap[FrameIndex, mpf_util.Rect[int]],
+        subject: TrackAssignment,
         entity_track: NonSubjectEntity) -> List[FrameIndex]:
+    return sorted(
+        fi for fi, subj_rects, det_rect in get_items_with_common_keys(
+                subject.detection_rects, entity_track.track_info.detection_rects)
+        if any_intersection((det_rect,), subj_rects))
 
-    entity_frame_locations = entity_track.track_info.frame_locations
-    proximity_frames = []
-    common_idxs = subject_rects.keys() & entity_frame_locations.keys()
-    for idx in common_idxs:
-        entity_rect = to_rect(entity_frame_locations[idx])
-        overlap_found = any(entity_rect & s for s in subject_rects[idx])
-        if overlap_found:
-            proximity_frames.append(idx)
-    return sorted(proximity_frames)
 
 
 def get_entity_pairs(
@@ -452,12 +445,20 @@ def get_entity_pairs(
 
 
 def get_entity_proximity_frames(entity1: NonSubjectEntity, entity2: NonSubjectEntity) -> List[int]:
-    e1_detections = entity1.track_info.frame_locations
-    e2_detections = entity2.track_info.frame_locations
-    common_idxs = e1_detections.keys() & e2_detections.keys()
     return sorted(
-        i for i in common_idxs if image_locations_intersect(e1_detections[i], e2_detections[i]))
+        fi for fi, r1, r2 in get_items_with_common_keys(
+                entity1.track_info.detection_rects, entity2.track_info.detection_rects)
+        if rects_intersect(r1, r2))
 
 
-def image_locations_intersect(loc1: mpf.ImageLocation, loc2: mpf.ImageLocation) -> bool:
-    return bool(to_rect(loc1) & to_rect(loc2))
+K = TypeVar('K')
+V1 = TypeVar('V1')
+V2 = TypeVar('V2')
+
+def get_items_with_common_keys(
+        mapping1: Mapping[K, V1],
+        mapping2: Mapping[K, V2]) -> Iterator[Tuple[K, V1, V2]]:
+    if len(mapping1) <= len(mapping2):
+        return ((k, v1, v2) for k, v1 in mapping1.items() if (v2 := mapping2.get(k)))
+    else:
+        return ((k, v1, v2) for k, v2 in mapping2.items() if (v1 := mapping1.get(k)))
