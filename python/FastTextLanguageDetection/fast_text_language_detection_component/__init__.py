@@ -247,8 +247,6 @@ class LangDetectResult(NamedTuple):
 
 
 class TraditionalChineseChars:
-    _TRADITIONAL_ONLY_CHARS = None
-
     @classmethod
     def has_any(cls, text: str) -> bool:
         traditional_only_chars = cls._get_traditional_only_char_set()
@@ -256,11 +254,9 @@ class TraditionalChineseChars:
 
     @classmethod
     def _get_traditional_only_char_set(cls) -> Set[str]:
-        if cls._TRADITIONAL_ONLY_CHARS:
-            return cls._TRADITIONAL_ONLY_CHARS
         # chinese-traditional-only.txt is a plain text file containing each Chinese character that
         # is only used in Traditional Chinese.
-        chars = importlib.resources.read_text(__name__, 'chinese-traditional-only.txt')
+        chars = importlib.resources.read_text(__name__, 'chinese-traditional-only.txt').strip()
         char_set = set(chars)
-        cls._TRADITIONAL_ONLY_CHARS = char_set
+        cls._get_traditional_only_char_set = lambda: char_set
         return char_set
