@@ -188,11 +188,11 @@ class TestLlava(unittest.TestCase):
             self.assertTrue(len(result.detection_properties["LOCATION"]) > 0 and len(result.detection_properties["DESCRIPTION"]) > 0)
 
     def test_json_response_image(self):
-        # ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
-        ff_loc = mpf.ImageLocation(0, 0, 262, 192, -1, dict(CLASSIFICATION="CAR"))
+        ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
+        # ff_loc = mpf.ImageLocation(0, 0, 262, 192, -1, dict(CLASSIFICATION="CAR"))
         job = mpf.ImageJob(
             job_name='test-json-response-image',
-            data_uri=self._get_test_file('car.jpg'),
+            data_uri=self._get_test_file('person.jpg'),
             job_properties=dict(
                 OLLAMA_SERVER='localhost:11434',
                 ENABLE_JSON_PROMPT_FORMAT='True'

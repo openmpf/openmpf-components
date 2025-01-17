@@ -67,7 +67,7 @@ class LlavaComponent:
         image_reader = mpf_util.ImageReader(image_job)
 
         if image_job.feed_forward_location is None:
-            return self._get_frame_detections([image_reader.get_image(),], config)
+            return self._get_frame_detections(image_job, [image_reader.get_image(),], config)
         elif config.enable_json_prompt_format:
             return self._get_feed_forward_detections_json(image_job.feed_forward_location, image_reader, config)
         else:
@@ -84,7 +84,7 @@ class LlavaComponent:
         video_capture = mpf_util.VideoCapture(video_job)
 
         if video_job.feed_forward_track is None:
-            tracks = self._get_frame_detections(video_capture, config, is_video_job=True)
+            tracks = self._get_frame_detections(video_job, video_capture, config, is_video_job=True)
         elif config.enable_json_prompt_format:
             tracks = self._get_feed_forward_detections_json(video_job.feed_forward_track, video_capture, config, is_video_job=True)
         else:
@@ -102,8 +102,13 @@ class LlavaComponent:
 
         return tracks
 
-    def _get_frame_detections(self, reader, config, is_video_job=False):
+    def _get_frame_detections(self, job, reader, config, is_video_job=False):
         # Check if both frame_rate_cap and generate_frame_rate_cap are set > 0. If so, throw exception
+        if (mpf_util.get_property(job.job_properties, 'FRAME_RATE_CAP', -1) > 0) and (config.frames_per_second_to_process > 0):
+            raise mpf.DetectionException(
+                "Cannot have FRAME_RATE_CAP and GENERATE_FRAME_RATE_CAP both set to values greater than zero on jobs without feed forward detections:",
+                mpf.DetectionError.INVALID_PROPERTY
+            )
 
         self._update_prompts(config.prompt_config_path, config.json_prompt_config_path)
         self._check_client(config.ollama_server)
@@ -206,11 +211,30 @@ class LlavaComponent:
 
     def _update_detection_properties(self, detection_properties, response_json):
         key_list = self._get_keys(response_json)
+        key_vals = dict()
+        keywords = []
         for key_str in key_list:
             split_key = [' '.join(x.split('_')) for x in ('llava' + key_str).split('||')]
             key, val = " ".join([s.upper() for s in split_key[:-1]]), split_key[-1]
-            detection_properties[key] = val
-        detection_properties['ANNOTATED BY LLAVA'] = True
+            key_vals[key] = val
+        
+        if ('LLAVA VISIBLE PERSON' not in key_vals) or ('unsure' not in key_vals['LLAVA VISIBLE PERSON'].lower()):
+            for key, val in key_vals.items():
+                if ('VISIBLE' in key) and ('unsure' in val.lower()):
+                    keywords.append(key.split(' VISIBLE ')[1])
+                    key_vals.pop(key)
+
+            for keyword in keywords:
+                pattern = re.compile(fr'\b{keyword}\b')
+                for key_to_remove in filter(pattern.search, key_vals):
+                    key_vals.pop(key_to_remove)
+            
+            for key, val in key_vals.items():
+                if 'unsure' in val:
+                    key_vals.pop(key)
+            
+            detection_properties.update(key_vals)
+            detection_properties['ANNOTATED BY LLAVA'] = True
 
     def _get_keys(self, response_json):
         if isinstance(response_json, list) or isinstance(response_json, str):

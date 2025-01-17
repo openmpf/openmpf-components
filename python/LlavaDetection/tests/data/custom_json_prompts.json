@@ -7,14 +7,6 @@
             "prompts": [
                 "Describe the dog in JSON. The JSON should have the following keys: breed, color, size."
             ]
-        },
-        {
-            "classes": [
-                "DECAL"
-            ],
-            "prompts": [
-                "Describe the decal in JSON. The JSON should have the following keys: colors (list of color names in image, in order of prominence) and description (in a few sentences, give a brief description of the decal)."
-            ]
         }
     ]
 }
