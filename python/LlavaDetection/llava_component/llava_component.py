@@ -157,34 +157,52 @@ class LlavaComponent:
         prompts_to_use = self.json_class_prompts if config.enable_json_prompt_format else self.class_prompts
         if is_video_job:
             self.video_decode_timer.start()
-            for idx, frame, ff_location in zip(range(len(job_feed_forward.frame_locations)), reader, job_feed_forward.frame_locations.values()):
-                if (config.frames_per_second_to_process <= 0) or (idx % config.frames_per_second_to_process == 0):
-                    self.video_decode_timer.pause()
-                    self.frame_count += 1
+            frame_indices = { i:frame for i, frame in zip(job_feed_forward.keys(), reader) }
+            first_frame = True
+            idx = 0
+            # for idx in range(max(job_feed_forward.frame_locations) + 1):
+            while idx <= max(job_feed_forward.frame_locations):
+                if config.frames_per_second_to_process > 0:
+                    if first_frame:
+                        while (idx not in job_feed_forward.frame_detections):
+                            idx += 1
+                        first_frame = False
+                    else:
+                        idx += config.frames_per_second_to_process
+                        while (idx not in job_feed_forward.frame_locations):
+                            idx += 1
 
-                    encoded = self._encode_image(frame)
-                    if classification in prompts_to_use:
-                        for tag, prompt in prompts_to_use[classification].items():
-                            # re-initialize json_attempts=0 and json_failed=True
-                            json_attempts, json_failed = 0, True
-                            while (json_attempts < self.json_limit) and (json_failed):
-                                json_attempts += 1
-                                response = self._get_ollama_response_json(prompt, encoded)
-                                # logger.info(response)
-                                try:
-                                    response = response.split('```json\n')[1].split('```')[0]
-                                    response_json = json.loads(response)
-                                    self._update_detection_properties(ff_location.detection_properties, response_json)
-                                    json_failed = False
-                                except:
-                                    logger.warning(f"LLaVA failed to produce valid JSON output. Failed {json_attempts} of {self.json_limit} attempts.")
-                                    continue
-                            if json_failed:
-                                logger.warning(f"Using last full LLaVA response instead of parsed JSON output.")
-                                job_feed_forward.detection_properties['FAILED TO PROCESS LLAVA RESPONSE'] = True
-                                job_feed_forward.detection_properties['FULL LLAVA RESPONSE'] = response
+                if idx > max(job_feed_forward.frame_locations): break
+                self.video_decode_timer.pause()
 
-                        self.video_decode_timer.start()
+                frame = frame_indices[idx]
+                ff_location = job_feed_forward.frame_locations[idx]
+                self.frame_count += 1
+
+                encoded = self._encode_image(frame)
+                if classification in prompts_to_use:
+                    for tag, prompt in prompts_to_use[classification].items():
+                        # re-initialize json_attempts=0 and json_failed=True
+                        json_attempts, json_failed = 0, True
+                        while (json_attempts < self.json_limit) and (json_failed):
+                            json_attempts += 1
+                            response = self._get_ollama_response_json(prompt, encoded)
+                            # logger.info(response)
+                            try:
+                                response = response.split('```json\n')[1].split('```')[0]
+                                response_json = json.loads(response)
+                                self._update_detection_properties(ff_location.detection_properties, response_json)
+                                json_failed = False
+                            except:
+                                logger.warning(f"LLaVA failed to produce valid JSON output. Failed {json_attempts} of {self.json_limit} attempts.")
+                                continue
+                        if json_failed:
+                            logger.warning(f"Using last full LLaVA response instead of parsed JSON output.")
+                            job_feed_forward.detection_properties['FAILED TO PROCESS LLAVA RESPONSE'] = True
+                            job_feed_forward.detection_properties['FULL LLAVA RESPONSE'] = response
+
+                    idx += 1
+                    self.video_decode_timer.start()
         else:
             encoded = self._encode_image(reader.get_image())
             if classification in prompts_to_use:
@@ -210,6 +228,7 @@ class LlavaComponent:
         return [job_feed_forward]
 
     def _update_detection_properties(self, detection_properties, response_json):
+        ignore_words = ['unsure', 'none', 'false', 'no', 'unclear', '']
         key_list = self._get_keys(response_json)
         key_vals = dict()
         keywords = []
@@ -217,10 +236,10 @@ class LlavaComponent:
             split_key = [' '.join(x.split('_')) for x in ('llava' + key_str).split('||')]
             key, val = " ".join([s.upper() for s in split_key[:-1]]), split_key[-1]
             key_vals[key] = val
-        
-        if ('LLAVA VISIBLE PERSON' not in key_vals) or ('unsure' not in key_vals['LLAVA VISIBLE PERSON'].lower()):
+
+        if ('LLAVA VISIBLE PERSON' not in key_vals) or (key_vals['LLAVA VISIBLE PERSON'].strip().lower() not in ignore_words):
             for key, val in key_vals.items():
-                if ('VISIBLE' in key) and ('unsure' in val.lower()):
+                if ('VISIBLE' in key) and (val.strip().lower() in ignore_words):
                     keywords.append(key.split(' VISIBLE ')[1])
                     key_vals.pop(key)
 
@@ -230,7 +249,7 @@ class LlavaComponent:
                     key_vals.pop(key_to_remove)
             
             for key, val in key_vals.items():
-                if 'unsure' in val:
+                if val.strip().lower() in ignore_words:
                     key_vals.pop(key)
             
             detection_properties.update(key_vals)
@@ -265,15 +284,32 @@ class LlavaComponent:
 
         if is_video_job:
             video_decode_timer.start()
-            for idx, frame, ff_location in zip(range(len(job_feed_forward.frame_locations)), reader, job_feed_forward.frame_locations.values()):
-                if (config.frames_per_second_to_process <= 0) or (idx % config.frames_per_second_to_process == 0):
-                    video_decode_timer.pause()
-                    frame_count += 1
+            frame_indices = { i:frame for i, frame in zip(job_feed_forward.keys(), reader) }
+            first_frame = True
+            idx = 0
+            while idx <= max(job_feed_forward.frame_locations):
+                if config.frames_per_second_to_process > 0:
+                    if first_frame:
+                        while (idx not in job_feed_forward.frame_detections):
+                            idx += 1
+                        first_frame = False
+                    else:
+                        idx += config.frames_per_second_to_process
+                        while (idx not in job_feed_forward.frame_locations):
+                            idx += 1
+                
+                if idx > max(job_feed_forward.frame_locations): break
+                video_decode_timer.pause()
 
-                    if classification in self.class_prompts:
-                        self._get_ollama_response(self.class_prompts[classification], frame, ff_location.detection_properties, video_process_timer)
+                frame = frame_indices[idx]
+                ff_location = job_feed_forward.frame_locations[idx]
+                frame_count += 1
 
-                    video_decode_timer.start()
+                if classification in self.class_prompts:
+                    self._get_ollama_response(self.class_prompts[classification], frame, ff_location.detection_properties, video_process_timer)
+
+                idx += 1
+                video_decode_timer.start()
             return [job_feed_forward]
         else:
             if classification in self.class_prompts:
