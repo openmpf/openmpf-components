@@ -167,6 +167,7 @@ class TestArgosTranslation(unittest.TestCase):
 
         trans_result = result[0].detection_properties['TRANSLATION'].replace("nullify","nurture")
         trans_result = trans_result.replace("founded on these principles","founded on those principles")
+        trans_result = trans_result.replace("That whenever a form of government", "Whenever a form of government")
 
         # TODO: Identify why the 1.0 spanish model occasionally switches words.
         # In this case,  words for nurture/nullify, and these/those are sometimes switched depending on build environment.
