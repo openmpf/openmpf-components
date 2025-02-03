@@ -29,7 +29,6 @@ import os
 import logging
 import warnings
 import json
-from PIL import Image
 
 # Add clip_component to path.
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
