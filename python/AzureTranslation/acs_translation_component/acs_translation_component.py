@@ -95,9 +95,12 @@ class AcsTranslationComponent:
                                                      self._cached_sent_model,
                                                      job.feed_forward_track)
         else:
-            log.info('Job did not contain a feed forward track. Assuming media '
-                     'file is a plain text file containing the text to be translated.')
-            text = pathlib.Path(job.data_uri).read_text().strip()
+            text = job.media_properties.get('SELECTED_CONTENT')
+            if not text:
+                log.info('Job did not contain a feed forward track or specify selected content. '
+                         'Assuming media file is a plain text file containing the text to '
+                         'be translated.')
+                text = pathlib.Path(job.data_uri).read_text().strip()
             track = mpf.GenericTrack(detection_properties=dict(TEXT=text))
             modified_job_props = {**job.job_properties, 'FEED_FORWARD_PROP_TO_PROCESS': 'TEXT'}
             modified_job = job._replace(job_properties=modified_job_props)
