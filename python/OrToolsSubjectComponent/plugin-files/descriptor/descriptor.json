@@ -8,7 +8,7 @@
             "name": "MIN_IOU",
             "description" : "Minimum required intersection over union for two tracks to be associated.",
             "type": "FLOAT",
-            "defaultValue": "0.03"
+            "defaultValue": "0.9"
         }
     ]
 }
