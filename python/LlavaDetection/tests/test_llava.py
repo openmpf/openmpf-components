@@ -291,3 +291,6 @@ class TestLlava(unittest.TestCase):
     @staticmethod
     def _get_test_file(filename):
         return os.path.join(os.path.dirname(__file__), 'data', filename)
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
