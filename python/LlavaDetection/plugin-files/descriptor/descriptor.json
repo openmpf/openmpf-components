@@ -41,7 +41,7 @@
                 },
                 {
                     "name": "OLLAMA_SERVER",
-                    "description": "Something",
+                    "description": "Something to be completed later.",
                     "type": "STRING",
                     "defaultValue": "llava-detection-server:11434"
                 },
