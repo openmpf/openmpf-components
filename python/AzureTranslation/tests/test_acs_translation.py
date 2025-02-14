@@ -57,6 +57,31 @@ CHINESE_SAMPLE_TEXT_ENG_TRANSLATE = 'Hello, what\'s your name?'
 SPANISH_SAMPLE_TEXT = '¿Dónde está la biblioteca?'
 SPANISH_SAMPLE_TEXT_ENG_TRANSLATE = 'Where\'s the library?'
 
+CHINESE_SAMPLE_TEXT_REPORT = "第一 条人人生而自由,在尊严和权利上一律平等。他们赋有理性和良心,并应以兄 弟关系的精神相对待。"
+CHINESE_SAMPLE_TEXT_REPORT_ENG_TRANSLATE = (
+    "Article 1. All human beings are born free and equal in dignity and rights. "
+    "They are endowed with reason and conscience and should be treated in a spirit of brotherhood."
+)
+
+MULTI_LANGUAGE_REPORT = (
+    "lang: zho-hans, section: 0-48, conf: 0.6386098072481651; "
+    "lang: eng-latn, section: 48-216, conf: 0.4348198323425756"
+)
+
+UNKNOWN_MULTI_LANGUAGE_REPORT = (
+    "lang: UNKNOWN, section: 0-48, conf: 0.6386098072481651; "
+    "lang: eng-latn, section: 48-216, conf: 0.4348198323425756"
+)
+
+MULTI_LANGUAGE_REPORT_ENG_ONLY = (
+    "lang: eng-latn, section: 48-216, conf: 0.4348198323425756"
+)
+
+MULTI_LANGUAGE_REPORT_INCOMPLETE = (
+    "lang: zho, section: 0-48, conf: 0.6386098072481651; "
+    "lang: eng-latn, section: 48-216, conf: 0.4348198323425756"
+)
+
 TEST_DATA = pathlib.Path(__file__).parent / 'data'
 
 logging.basicConfig(level=logging.DEBUG)
@@ -908,7 +933,6 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(1, len(results))
 
         result = results[0]
-        print(result.detection_properties)
 
         self.assertEqual(SPANISH_SAMPLE_TEXT, result.detection_properties['TEXT'])
         self.assertEqual(SPANISH_SAMPLE_TEXT_ENG_TRANSLATE,
@@ -928,7 +952,6 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(1, len(results))
 
         result_props = results[0].detection_properties
-        print(result_props)
         self.assertNotIn('TRANSLATION', result_props)
         self.assertEqual('EN', result_props['TRANSLATION TO LANGUAGE'])
         self.assertEqual('si', result_props['TRANSLATION SOURCE LANGUAGE'])
@@ -1039,6 +1062,67 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(15, get_azure_char_count('😀😀😀😀😀12345'))
         self.assertEqual(20, get_azure_char_count('😀' * 5 + '👍' * 5))
 
+
+    def test_multi_lang_report(self):
+        self.set_results_file('results-chinese-long.json')
+        self.set_results_file('results-chinese-long.json')
+        text = CHINESE_SAMPLE_TEXT_REPORT + CHINESE_SAMPLE_TEXT_REPORT_ENG_TRANSLATE
+        detection_props = dict(TEXT=text, MULTI_LANGUAGE_REPORT=MULTI_LANGUAGE_REPORT)
+
+        ff_track = mpf.GenericTrack(-1, detection_props)
+        job = mpf.GenericJob('Test', 'test.pdf', get_test_properties(), {}, ff_track)
+        results = list(AcsTranslationComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(text, results[0].detection_properties['TEXT'])
+
+        expected_translation = (CHINESE_SAMPLE_TEXT_REPORT_ENG_TRANSLATE + ' ' + CHINESE_SAMPLE_TEXT_REPORT_ENG_TRANSLATE)
+        self.assertEqual(expected_translation, detection_props['TRANSLATION'])
+        self.assertEqual('EN', detection_props['TRANSLATION TO LANGUAGE'])
+
+        self.assertEqual('zh-hans', detection_props['TRANSLATION SOURCE LANGUAGE'])
+        self.assertAlmostEqual(0.6386098072481651,
+            float(detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+
+        detect_request_text = self.get_request_body()[0]['Text']
+        self.assertEqual(text[0:48], detect_request_text)
+
+        # Translation should still work with only lang info.
+        detection_props = dict(TEXT=text, MULTI_LANGUAGE_REPORT=MULTI_LANGUAGE_REPORT_INCOMPLETE)
+        ff_track = mpf.GenericTrack(-1, detection_props)
+        job = mpf.GenericJob('Test', 'test.pdf', get_test_properties(), {}, ff_track)
+        results = list(AcsTranslationComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(text, results[0].detection_properties['TEXT'])
+        self.assertEqual(expected_translation, detection_props['TRANSLATION'])
+        self.assertAlmostEqual(0.6386098072481651,
+            float(detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+        detect_request_text = self.get_request_body()[0]['Text']
+        self.assertEqual(text[0:48], detect_request_text)
+
+
+        # Translation should be skipped for this case
+        detection_props = dict(TEXT=text, MULTI_LANGUAGE_REPORT=UNKNOWN_MULTI_LANGUAGE_REPORT)
+        ff_track = mpf.GenericTrack(-1, detection_props)
+        job = mpf.GenericJob('Test', 'test.pdf', get_test_properties(), {}, ff_track)
+        results = list(AcsTranslationComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(text, results[0].detection_properties['TEXT'])
+        self.assertEqual(results[0].detection_properties['SKIPPED TRANSLATION'], "TRUE")
+
+        # Translation should be skipped for this case
+        detection_props = dict(TEXT=CHINESE_SAMPLE_TEXT_REPORT_ENG_TRANSLATE,
+                               MULTI_LANGUAGE_REPORT=MULTI_LANGUAGE_REPORT_ENG_ONLY)
+        ff_track = mpf.GenericTrack(-1, detection_props)
+        job = mpf.GenericJob('Test', 'test.pdf', get_test_properties(), {}, ff_track)
+        results = list(AcsTranslationComponent().get_detections_from_generic(job))
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(CHINESE_SAMPLE_TEXT_REPORT_ENG_TRANSLATE,
+                         results[0].detection_properties['TEXT'])
+        self.assertEqual(results[0].detection_properties['SKIPPED TRANSLATION'], "TRUE")
 
 def get_test_properties(**extra_properties):
     return {

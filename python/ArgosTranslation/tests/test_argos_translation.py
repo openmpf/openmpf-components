@@ -41,6 +41,13 @@ RUSSIAN_SHORT_SAMPLE = "Где библиотека?"
 CHINESE_SHORT_SAMPLE = "你好，你叫什么名字？"
 SHORT_OUTPUT = "Where's the library?"
 
+SPANISH_ENGLISH_INPUT = SPANISH_SHORT_SAMPLE + SHORT_OUTPUT
+
+MULTI_LANGUAGE_REPORT_SPA_ENG = (
+    "lang: spa-latn, section: 0-26, conf: 1; "
+    "lang: eng-latn, section: 26-46, conf: 1"
+)
+
 # Note: Argos-Chinese translations have improved over time.
 SHORT_OUTPUT_CHINESE = "Hello. What's your name?"
 
@@ -71,7 +78,7 @@ class TestArgosTranslation(unittest.TestCase):
         result = comp.get_detections_from_generic(job)
 
         self.assertEqual(1, len(result))
-        self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual('es', result[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertEqual(SHORT_OUTPUT, result[0].detection_properties['TRANSLATION'])
 
     def test_plaintext_job(self):
@@ -81,7 +88,7 @@ class TestArgosTranslation(unittest.TestCase):
         result = comp.get_detections_from_generic(job)
 
         self.assertEqual(1, len(result))
-        self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual('es', result[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertEqual(SHORT_OUTPUT, result[0].detection_properties['TRANSLATION'])
 
     def test_audio_job(self):
@@ -91,7 +98,7 @@ class TestArgosTranslation(unittest.TestCase):
         result = comp.get_detections_from_audio(job)
 
         self.assertEqual(1, len(result))
-        self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual('es', result[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertEqual(SHORT_OUTPUT, result[0].detection_properties['TRANSLATION'])
 
     def test_image_job(self):
@@ -101,8 +108,19 @@ class TestArgosTranslation(unittest.TestCase):
         result = comp.get_detections_from_image(job)
 
         self.assertEqual(1, len(result))
-        self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual('es', result[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertEqual(SHORT_OUTPUT, result[0].detection_properties['TRANSLATION'])
+
+    def test_language_report(self):
+        ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT=SPANISH_SHORT_SAMPLE+SHORT_OUTPUT, LANGUAGE='ES',
+                                                          MULTI_LANGUAGE_REPORT=MULTI_LANGUAGE_REPORT_SPA_ENG))
+        job = mpf.ImageJob('Test Image', 'test.jpg', dict(DEFAULT_SOURCE_LANGUAGE='ZH'), {}, ff_loc)
+        comp = ArgosTranslationComponent()
+        result = comp.get_detections_from_image(job)
+
+        self.assertEqual(1, len(result))
+        self.assertEqual('es', result[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
+        self.assertEqual(SHORT_OUTPUT + " " + SHORT_OUTPUT, result[0].detection_properties['TRANSLATION'])
 
     def test_video_job(self):
         ff_track = mpf.VideoTrack(
@@ -117,9 +135,9 @@ class TestArgosTranslation(unittest.TestCase):
         result = comp.get_detections_from_video(job)
 
         self.assertEqual(1, len(result))
-        self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
-        self.assertEqual('es', result[0].frame_locations[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
-        self.assertEqual('ru', result[0].frame_locations[1].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual('es', result[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
+        self.assertEqual('es', result[0].frame_locations[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
+        self.assertEqual('ru', result[0].frame_locations[1].detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertEqual(SHORT_OUTPUT, result[0].detection_properties['TRANSLATION'])
         self.assertEqual(SHORT_OUTPUT, result[0].frame_locations[0].detection_properties['TRANSLATION'])
         self.assertEqual(SHORT_OUTPUT, result[0].frame_locations[1].detection_properties['TRANSLATION'])
@@ -143,9 +161,9 @@ class TestArgosTranslation(unittest.TestCase):
         # Should skip English tracks
         self.assertEqual('TRUE', result[0].frame_locations[3].detection_properties['SKIPPED_TRANSLATION'])
 
-        self.assertEqual('ru', result[0].frame_locations[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
-        self.assertEqual('es', result[0].frame_locations[1].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
-        self.assertEqual('zh', result[0].frame_locations[2].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual('ru', result[0].frame_locations[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
+        self.assertEqual('es', result[0].frame_locations[1].detection_properties['TRANSLATION SOURCE LANGUAGE'])
+        self.assertEqual('zh', result[0].frame_locations[2].detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertEqual(SHORT_OUTPUT, result[0].frame_locations[0].detection_properties['TRANSLATION'])
         self.assertEqual(SHORT_OUTPUT, result[0].frame_locations[1].detection_properties['TRANSLATION'])
         self.assertEqual(SHORT_OUTPUT_CHINESE, result[0].frame_locations[2].detection_properties['TRANSLATION'])
@@ -163,7 +181,7 @@ class TestArgosTranslation(unittest.TestCase):
         result = comp.get_detections_from_generic(job)
 
         self.assertEqual(1, len(result))
-        self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual('es', result[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
 
         trans_result = result[0].detection_properties['TRANSLATION'].replace("nullify","nurture")
         trans_result = trans_result.replace("founded on these principles","founded on those principles")
@@ -186,7 +204,7 @@ class TestArgosTranslation(unittest.TestCase):
         result = comp.get_detections_from_generic(job)
 
         self.assertEqual(1, len(result))
-        self.assertEqual('ru', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual('ru', result[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertEqual(MED_OUTPUT, result[0].detection_properties['TRANSLATION'])
 
     def test_no_feed_forward_location(self):
@@ -244,7 +262,7 @@ class TestArgosTranslation(unittest.TestCase):
         result = comp.get_detections_from_image(job)
 
         self.assertEqual(1, len(result))
-        self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual('es', result[0].detection_properties['TRANSLATION SOURCE LANGUAGE'])
         self.assertEqual(SHORT_OUTPUT, result[0].detection_properties['TRANSLATION'])
 
     def test_translation_cache(self):
@@ -266,7 +284,7 @@ class TestArgosTranslation(unittest.TestCase):
 
         self.assertEqual(SPANISH_SHORT_SAMPLE, result.detection_properties['TEXT'])
         self.assertEqual(SHORT_OUTPUT, result.detection_properties['TRANSLATION'])
-        self.assertEqual('es', result.detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
+        self.assertEqual('es', result.detection_properties['TRANSLATION SOURCE LANGUAGE'])
 
         detection1 = result.frame_locations[0]
         self.assertEqual(SPANISH_SHORT_SAMPLE, detection1.detection_properties['TEXT'])
