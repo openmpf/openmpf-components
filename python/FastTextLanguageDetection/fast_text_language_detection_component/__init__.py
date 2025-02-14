@@ -31,7 +31,7 @@ import importlib.resources
 import logging
 import pathlib
 import typing
-from typing import Dict, Mapping, NamedTuple, Optional, Set, Tuple, TypeVar
+from typing import Dict, Mapping, NamedTuple, NoReturn, Optional, Set, Tuple, TypeVar
 
 import fasttext
 import numpy as np
@@ -78,9 +78,7 @@ class FastTextLanguageDetectionComponent:
             log.info('Received video job.')
             ff_track = job.feed_forward_track
             if not ff_track:
-                raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                    'Component can only process feed forward jobs, '
-                    'but no feed forward track provided. ')
+                fail_when_missing_feed_forward()
             detector = LanguageDetector(job.job_properties)
             detector.add_language_detections(ff_track.detection_properties)
             for ff_location in ff_track.frame_locations.values():
@@ -101,9 +99,7 @@ def get_detections_from_non_composite(
     try:
         log.info('Received job.')
         if ff_track is None:
-            raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                'Component can only process feed forward jobs, '
-                'but no feed forward track provided.')
+            fail_when_missing_feed_forward()
         detector = LanguageDetector(job_properties)
         detector.add_language_detections(ff_track.detection_properties)
         log.info('Processing complete.')
@@ -111,6 +107,12 @@ def get_detections_from_non_composite(
     except Exception:
         log.exception('Failed to complete job due to the following exception:')
         raise
+
+
+def fail_when_missing_feed_forward() -> NoReturn:
+    raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
+        'Component requires a feed forward track when processing video, image, and audio jobs,'
+        'but no feed forward track was provided.')
 
 
 _UNKNOWN = '<UNKNOWN>'
