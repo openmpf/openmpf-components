@@ -40,4 +40,5 @@ Chinese.
 The component will never output `lzh_Hani`. `lzh_Hani` refers to
 [Classical Chinese](https://en.wikipedia.org/wiki/Classical_Chinese), an arcane form of Chinese
 writing. When the model is provided with things like text with only whitespace or text with only
-emoji, it will output `lzh_Hani` with a very high confidence.
+emoji, it will output `lzh_Hani` with a very high confidence. When the model outputs `lzh_Hani`,
+the component will set `ISO_LANGUAGE` and `ISO_SCRIPT` to `<UNKNOWN>`.
