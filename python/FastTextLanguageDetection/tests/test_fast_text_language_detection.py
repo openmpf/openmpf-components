@@ -70,14 +70,14 @@ class TestComponent(unittest.TestCase):
         ff_track = mpf.GenericTrack(1, {'TEXT': ' '})
         job = mpf.GenericJob('test job', '', {}, {}, ff_track)
         results = FastTextLanguageDetectionComponent().get_detections_from_generic(job)
-        self._assert_results_match('<UNKNOWN>', '<UNKNOWN>', 0, results)
+        self._assert_results_match('UNKNOWN', 'UNKNOWN', 0, results)
 
 
     def test_emoji_text_job(self):
         ff_track = mpf.GenericTrack(1, {'TEXT': '😑🤦'})
         job = mpf.GenericJob('test job', '', {}, {}, ff_track)
         results = FastTextLanguageDetectionComponent().get_detections_from_generic(job)
-        self._assert_results_match('<UNKNOWN>', '<UNKNOWN>', 0, results)
+        self._assert_results_match('UNKNOWN', 'UNKNOWN', 0, results)
 
 
     def test_image_job(self):

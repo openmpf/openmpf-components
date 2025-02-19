@@ -111,11 +111,11 @@ def get_detections_from_non_composite(
 
 def fail_when_missing_feed_forward() -> NoReturn:
     raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-        'Component requires a feed forward track when processing video, image, and audio jobs,'
+        'Component requires a feed forward track when processing video, image, and audio jobs, '
         'but no feed forward track was provided.')
 
 
-_UNKNOWN = '<UNKNOWN>'
+_UNKNOWN = 'UNKNOWN'
 
 class LanguageDetector:
     _CACHED_MODEL: Optional[CachedModel] = None

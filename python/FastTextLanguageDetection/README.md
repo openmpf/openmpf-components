@@ -18,7 +18,7 @@ identification on text.
   be populated with the ISO-639-3 and ISO-15924 codes for language and script
   respectively. This represents the top predicted language for any given text
   input. If no language is detected, `ISO_LANGUAGE` and `ISO_SCRIPT` will be set to
-  `<UNKNOWN>`.
+  `UNKNOWN`.
 
 - `PRIMARY_LANGUAGE_CONFIDENCE` contains the confidence that the `ISO_LANGUAGE` and `ISO_SCRIPT`
   properties are correct.
@@ -41,4 +41,4 @@ The component will never output `lzh_Hani`. `lzh_Hani` refers to
 [Classical Chinese](https://en.wikipedia.org/wiki/Classical_Chinese), an arcane form of Chinese
 writing. When the model is provided with things like text with only whitespace or text with only
 emoji, it will output `lzh_Hani` with a very high confidence. When the model outputs `lzh_Hani`,
-the component will set `ISO_LANGUAGE` and `ISO_SCRIPT` to `<UNKNOWN>`.
+the component will set `ISO_LANGUAGE` and `ISO_SCRIPT` to `UNKNOWN`.
