@@ -88,8 +88,8 @@ class ArgosTranslationComponent:
         try:
             if job_feed_forward is None:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                    f'Component can only process feed forward '
-                    ' jobs, but no feed forward track provided. ')
+                    'Component requires a feed forward track when processing video, image, and '
+                    'audio jobs, but no feed forward track was provided.')
 
             tw = TranslationWrapper(job. job_properties)
             tw.add_translations(job_feed_forward.detection_properties)
