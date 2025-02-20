@@ -52,8 +52,6 @@ class LlavaComponent:
         self.json_class_prompts = dict()
         self.frame_prompts = dict()
 
-        # self.json_failed = True
-        # self.json_attempts = 0
         self.json_limit = 3
 
     def get_detections_from_image(self, image_job: mpf.ImageJob) -> Iterable[mpf.ImageLocation]:
@@ -67,11 +65,14 @@ class LlavaComponent:
         image_reader = mpf_util.ImageReader(image_job)
 
         if image_job.feed_forward_location is None:
-            return self._get_frame_detections(image_job, [image_reader.get_image(),], config)
+            detections = self._get_frame_detections(image_job, [image_reader.get_image(),], config)
         elif config.enable_json_prompt_format:
-            return self._get_feed_forward_detections_json(image_job.feed_forward_location, image_reader, config)
+            detections = self._get_feed_forward_detections_json(image_job.feed_forward_location, image_reader, config)
         else:
-            return self._get_feed_forward_detections(image_job.feed_forward_location, image_reader, config)
+            detections = self._get_feed_forward_detections(image_job.feed_forward_location, image_reader, config)
+        
+        logger.info(f"Job complete. Found {len(detections)} detections.")
+        return detections
 
     def get_detections_from_video(self, video_job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         logger.info('Received video job: %s', video_job.job_name)
@@ -100,6 +101,7 @@ class LlavaComponent:
             logger.info("Total detection and tracking time: "
                         f"{process_time:0.3f} seconds ({self.frame_count / process_time:0.3f} frames/second)")
 
+        logger.info(f"Job complete. Found {len(tracks)} tracks.")
         return tracks
 
     def _get_frame_detections(self, job, reader, config, is_video_job=False):
@@ -157,14 +159,13 @@ class LlavaComponent:
         prompts_to_use = self.json_class_prompts if config.enable_json_prompt_format else self.class_prompts
         if is_video_job:
             self.video_decode_timer.start()
-            frame_indices = { i:frame for i, frame in zip(job_feed_forward.keys(), reader) }
+            frame_indices = { i:frame for i, frame in zip(job_feed_forward.frame_locations.keys(), reader) }
             first_frame = True
             idx = 0
-            # for idx in range(max(job_feed_forward.frame_locations) + 1):
             while idx <= max(job_feed_forward.frame_locations):
                 if config.frames_per_second_to_process > 0:
                     if first_frame:
-                        while (idx not in job_feed_forward.frame_detections):
+                        while (idx not in job_feed_forward.frame_locations):
                             idx += 1
                         first_frame = False
                     else:
@@ -187,7 +188,6 @@ class LlavaComponent:
                         while (json_attempts < self.json_limit) and (json_failed):
                             json_attempts += 1
                             response = self._get_ollama_response_json(prompt, encoded)
-                            # logger.info(response)
                             try:
                                 response = response.split('```json\n')[1].split('```')[0]
                                 response_json = json.loads(response)
@@ -211,7 +211,6 @@ class LlavaComponent:
                     while (json_attempts <= self.json_limit) and (json_failed):
                         json_attempts += 1
                         response = self._get_ollama_response_json(prompt, encoded)
-                        # logger.info(response)
                         try:
                             response = response.split('```json\n')[1].split('```')[0]
                             response_json = json.loads(response)
@@ -284,13 +283,13 @@ class LlavaComponent:
 
         if is_video_job:
             video_decode_timer.start()
-            frame_indices = { i:frame for i, frame in zip(job_feed_forward.keys(), reader) }
+            frame_indices = { i:frame for i, frame in zip(job_feed_forward.frame_locations.keys(), reader) }
             first_frame = True
             idx = 0
             while idx <= max(job_feed_forward.frame_locations):
                 if config.frames_per_second_to_process > 0:
                     if first_frame:
-                        while (idx not in job_feed_forward.frame_detections):
+                        while (idx not in job_feed_forward.frame_locations):
                             idx += 1
                         first_frame = False
                     else:

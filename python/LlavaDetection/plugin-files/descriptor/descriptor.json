@@ -41,13 +41,13 @@
                 },
                 {
                     "name": "OLLAMA_SERVER",
-                    "description": "Something to be completed later.",
+                    "description": "Ollama server <host>:<port> to use for inferencing.",
                     "type": "STRING",
                     "defaultValue": "llava-detection-server:11434"
                 },
                 {
                     "name": "GENERATE_FRAME_RATE_CAP",
-                    "description": "Get description from other FRAME_RATE_CAP property",
+                    "description": "The threshold on the maximum number of frames to process in the video segment within one second of the native video time. If set to a value > 0, then an internal frame interval is calculated as max(1, floor(mediaNativeFPS / GENERATE_FRAME_RATE_CAP)). If set <= 0, property is disabled and every frame is used. Throws exception if FRAME_RATE_CAP and GENERATE_FRAME_RATE_CAP both set > 0.",
                     "type": "DOUBLE",
                     "defaultValue": "1.0"
                 }
@@ -68,7 +68,7 @@
         },
         {
             "name": "LLAVA DETECTION (WITH FF REGION AND JSON PROMPT) ACTION",
-            "description": "Something",
+            "description": "Runs LLaVA with prompts that specify JSON object outputs for the class of the feed forward detection passed in.",
             "algorithm": "LLaVA",
             "properties": [
                 {
@@ -87,7 +87,7 @@
 	    },
         {
             "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION) ACTION",
-            "description": "Runs LLaVA with prompts for the class of the feed forward detection passed in.",
+            "description": "Runs LLaVA with prompts for the class of the feed forward detection passed in, only processing for the exemplar of each track.",
             "algorithm": "LLaVA",
             "properties": [
                 {
@@ -106,7 +106,7 @@
         },
         {
             "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) ACTION",
-            "description": "Something",
+            "description": "Runs LLaVA with prompts that specify JSON object outputs for the class of the feed forward detection passed in, only processing for the exemplar of each track.",
             "algorithm": "LLaVA",
             "properties": [
                 {
@@ -138,21 +138,21 @@
         },
         {
             "name": "LLAVA DETECTION (WITH FF REGION AND JSON PROMPT) TASK",
-            "description": "Runs LLaVA with prompts for each video frame passed in.",
+            "description": "Runs LLaVA with prompts that specify JSON object outputs for the class of the feed forward detection passed in.",
             "actions": [
                 "LLAVA DETECTION (WITH FF REGION AND JSON PROMPT) ACTION"
             ]
         },
         {
             "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION) TASK",
-            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "description": "Runs LLaVA with prompts for the class of the feed forward detection passed in, only processing for the exemplar of each track.",
             "actions": [
                 "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION) ACTION"
             ]
         },
         {
             "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) TASK",
-            "description": "Something",
+            "description": "Runs LLaVA with prompts that specify JSON object outputs for the class of the feed forward detection passed in, only processing for the exemplar of each track.",
             "actions": [
                 "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) ACTION"
             ]
@@ -168,7 +168,7 @@
         },
         {
             "name": "LLAVA DETECTION (WITH FF REGION FROM TRITON YOLO AND JSON PROMPT) PIPELINE",
-            "description":"Runs LLaVA with prompts on images and videos at the specified frame rate.",
+            "description":"Runs LLaVA with prompts that specify JSON object outputs on images and videos at the specified frame rate.",
             "tasks": [
                 "OCV TRITON YOLO OBJECT DETECTION TASK",
                 "LLAVA DETECTION (WITH FF REGION AND JSON PROMPT) TASK"
@@ -176,7 +176,7 @@
         },
         {
             "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION FROM TRITON YOLO) PIPELINE",
-            "description": "Runs LLaVA with prompts for the class of the detection passed in.",
+            "description": "Runs LLaVA with prompts for the class of the detection passed in, only processing the exemplar from each track.",
             "tasks": [
                 "OCV TRITON YOLO OBJECT DETECTION TASK",
                 "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION) TASK"
@@ -184,7 +184,7 @@
         },
         {
             "name": "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION FROM TRITON YOLO AND JSON PROMPT) PIPELINE",
-            "description": "Something",
+            "description": "Runs LLaVA with prompts that specify JSON object outputs for the class of the detection passed in, only processing the exemplar from each track.",
             "tasks": [
                 "OCV TRITON YOLO OBJECT DETECTION TASK",
                 "LLAVA DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) TASK"
