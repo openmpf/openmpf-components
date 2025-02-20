@@ -294,7 +294,7 @@ class LlavaComponent:
                         first_frame = False
                     else:
                         idx += config.frames_per_second_to_process
-                        while (idx not in job_feed_forward.frame_locations):
+                        while (idx not in job_feed_forward.frame_locations) and (idx <= max(job_feed_forward.frame_locations)):
                             idx += 1
                 
                 if idx > max(job_feed_forward.frame_locations): break
@@ -307,7 +307,6 @@ class LlavaComponent:
                 if classification in self.class_prompts:
                     self._get_ollama_response(self.class_prompts[classification], frame, ff_location.detection_properties, video_process_timer)
 
-                idx += 1
                 video_decode_timer.start()
             return [job_feed_forward]
         else:
