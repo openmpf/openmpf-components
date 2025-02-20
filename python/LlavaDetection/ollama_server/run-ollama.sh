@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -o errexit -o pipefail -o xtrace
+
 /bin/ollama serve &
 
 while [ "$(ollama list | grep 'NAME')" == "" ]; do
