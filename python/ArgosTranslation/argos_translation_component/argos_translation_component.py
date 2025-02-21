@@ -63,31 +63,33 @@ class ArgosTranslationComponent:
             tw = TranslationWrapper(job.job_properties)
             tw.add_translations(job.feed_forward_track.detection_properties)
             return [job.feed_forward_track]
-        else:
-            logger.info('Job did not contain a feed forward track. Assuming '
-                        'media file is a plain text file containing the text to '
+
+        text = job.media_properties.get('SELECTED_CONTENT')
+        if not text:
+            logger.info('Job did not contain a feed forward track or specify selected content. '
+                        'Assuming media file is a plain text file containing the text to '
                         'be translated.')
             text = pathlib.Path(job.data_uri).read_text().strip()
 
-            new_job_props = {
-                **job.job_properties,
-                'FEED_FORWARD_PROP_TO_PROCESS': 'TEXT'
-            }
-            new_ff_props = dict(TEXT=text)
-            ff_track = mpf.GenericTrack(detection_properties=new_ff_props)
+        new_job_props = {
+            **job.job_properties,
+            'FEED_FORWARD_PROP_TO_PROCESS': 'TEXT'
+        }
+        new_ff_props = dict(TEXT=text)
+        ff_track = mpf.GenericTrack(detection_properties=new_ff_props)
 
-            tw = TranslationWrapper(new_job_props)
-            tw.add_translations(new_ff_props)
+        tw = TranslationWrapper(new_job_props)
+        tw.add_translations(new_ff_props)
 
-            return [ff_track]
+        return [ff_track]
 
     @staticmethod
     def get_feed_forward_detections(job, job_feed_forward, video_job=False):
         try:
             if job_feed_forward is None:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                    f'Component can only process feed forward '
-                    ' jobs, but no feed forward track provided. ')
+                    'Component requires a feed forward track when processing video, image, and '
+                    'audio jobs, but no feed forward track was provided.')
 
             tw = TranslationWrapper(job. job_properties)
             tw.add_translations(job_feed_forward.detection_properties)
