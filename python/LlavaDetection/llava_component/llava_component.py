@@ -161,18 +161,21 @@ class LlavaComponent:
             self.video_decode_timer.start()
             frame_indices = { i:frame for i, frame in zip(job_feed_forward.frame_locations.keys(), reader) }
             first_frame = True
-            idx = 0
+            idx = -1
             while idx <= max(job_feed_forward.frame_locations):
-                if config.frames_per_second_to_process > 0:
-                    if first_frame:
-                        while (idx not in job_feed_forward.frame_locations):
-                            idx += 1
-                        first_frame = False
-                    else:
-                        idx += config.frames_per_second_to_process
-                        while (idx not in job_feed_forward.frame_locations):
-                            idx += 1
+                # Logic to determine next frame to process
+                if first_frame:
+                    while (idx not in job_feed_forward.frame_locations):
+                        idx += 1
+                    first_frame = False
+                elif (config.frames_per_second_to_process > 0):
+                    idx += config.frames_per_second_to_process
+                    while (idx not in job_feed_forward.frame_locations) and (idx <= max(job_feed_forward.frame_locations)):
+                        idx += 1
+                else:
+                    idx += 1
 
+                # Break out of loop if outside of frame indices in track
                 if idx > max(job_feed_forward.frame_locations): break
                 self.video_decode_timer.pause()
 
@@ -201,7 +204,6 @@ class LlavaComponent:
                             job_feed_forward.detection_properties['FAILED TO PROCESS LLAVA RESPONSE'] = True
                             job_feed_forward.detection_properties['FULL LLAVA RESPONSE'] = response
 
-                    idx += 1
                     self.video_decode_timer.start()
         else:
             encoded = self._encode_image(reader.get_image())
@@ -276,7 +278,6 @@ class LlavaComponent:
         self._check_client(config.ollama_server)
 
         classification = job_feed_forward.detection_properties["CLASSIFICATION"].lower()
-        # Send prompts to ollama to generate responses
         frame_count = 0
         video_decode_timer = Timer()
         video_process_timer = Timer()
@@ -287,16 +288,19 @@ class LlavaComponent:
             first_frame = True
             idx = 0
             while idx <= max(job_feed_forward.frame_locations):
-                if config.frames_per_second_to_process > 0:
-                    if first_frame:
-                        while (idx not in job_feed_forward.frame_locations):
-                            idx += 1
-                        first_frame = False
-                    else:
-                        idx += config.frames_per_second_to_process
-                        while (idx not in job_feed_forward.frame_locations) and (idx <= max(job_feed_forward.frame_locations)):
-                            idx += 1
+                # Logic to determine next frame to process
+                if first_frame:
+                    while (idx not in job_feed_forward.frame_locations):
+                        idx += 1
+                    first_frame = False
+                elif (config.frames_per_second_to_process > 0):
+                    idx += config.frames_per_second_to_process
+                    while (idx not in job_feed_forward.frame_locations) and (idx <= max(job_feed_forward.frame_locations)):
+                        idx += 1
+                else:
+                    idx += 1
                 
+                # Break out of loop if outside of frame indices in track
                 if idx > max(job_feed_forward.frame_locations): break
                 video_decode_timer.pause()
 

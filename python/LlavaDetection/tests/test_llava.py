@@ -56,9 +56,12 @@ class TestLlava(unittest.TestCase):
 
         mock_container = MagicMock()
         with unittest.mock.patch("ollama.Client", return_value=mock_container):
-            mock_container.generate = Mock(side_effect=side_effect_function)
-            results = list(detection_func(job))
-            return results
+            with unittest.mock.patch.object(LlavaComponent, "_encode_image") as _encoded_image_mocked:
+                mock_container.generate = Mock(side_effect=side_effect_function)
+                _encoded_image_mocked.return_value = ""
+
+                results = list(detection_func(job))
+                return results
 
     def test_image_file(self):
         ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
@@ -372,7 +375,8 @@ class TestLlava(unittest.TestCase):
         result = self.run_patched_job(component, job, side_effect_function)[0]
         
         for key, value in result.detection_properties.items():
-            self.assertTrue(value.strip().lower() != 'unsure')
+            if key.startswith("LLAVA"):
+                self.assertTrue(value.strip().lower() != 'unsure')
 
     @staticmethod
     def _get_test_file(filename):
