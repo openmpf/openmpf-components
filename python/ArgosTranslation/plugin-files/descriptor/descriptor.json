@@ -70,6 +70,21 @@
       ]
     },
     {
+      "name": "ARGOS TRANSLATION (WITH FF REGION AND NO TASK MERGING) ACTION",
+      "description": "Uses Argos Translation to perform translation on feed-forward tracks and detections.",
+      "algorithm": "ARGOSTRANSLATION",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "value": "FALSE"
+        }
+      ]
+    },
+    {
       "name": "ARGOS TRANSLATION TEXT FILE ACTION",
       "description": "Uses Argos Translation to perform translation on a plain text file.",
       "algorithm": "ARGOSTRANSLATION",
@@ -86,6 +101,13 @@
       ]
     },
     {
+      "name": "ARGOS TRANSLATION (WITH FF REGION AND NO TASK MERGING) TASK",
+      "description": "Uses Argos Translate to perform translation on feed-forward tracks and detections.",
+      "actions": [
+        "ARGOS TRANSLATION (WITH FF REGION AND NO TASK MERGING) ACTION"
+      ]
+    },
+    {
       "name": "ARGOS TRANSLATION TEXT FILE TASK",
       "description": "Uses Argos Translate to perform translation on a plain text file.",
       "actions": [
@@ -99,6 +121,14 @@
       "description": "Uses Argos Translate to perform translation on a plain text file.",
       "tasks": [
         "ARGOS TRANSLATION TEXT FILE TASK"
+      ]
+    },
+    {
+      "name": "ARGOS TRANSLATION (WITH FASTTEXT LANGUAGE ID) TEXT FILE PIPELINE",
+      "description": "Uses Argos Translate to perform translation on a plain text file.",
+      "tasks": [
+        "FASTTEXT LANGUAGE ID TEXT FILE TASK",
+        "ARGOS TRANSLATION (WITH FF REGION AND NO TASK MERGING) TASK"
       ]
     }
   ]
