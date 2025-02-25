@@ -160,25 +160,8 @@ class LlavaComponent:
         if is_video_job:
             self.video_decode_timer.start()
             frame_indices = { i:frame for i, frame in zip(job_feed_forward.frame_locations.keys(), reader) }
-            first_frame = True
-            idx = -1
-            while idx <= max(job_feed_forward.frame_locations):
-                # Logic to determine next frame to process
-                if first_frame:
-                    while (idx not in job_feed_forward.frame_locations):
-                        idx += 1
-                    first_frame = False
-                elif (config.frames_per_second_to_process > 0):
-                    idx += config.frames_per_second_to_process
-                    while (idx not in job_feed_forward.frame_locations) and (idx <= max(job_feed_forward.frame_locations)):
-                        idx += 1
-                else:
-                    idx += 1
-
-                # Break out of loop if outside of frame indices in track
-                if idx > max(job_feed_forward.frame_locations): break
+            for idx in self._get_frames_to_process(list(frame_indices.keys()), config.frames_per_second_to_process):
                 self.video_decode_timer.pause()
-
                 frame = frame_indices[idx]
                 ff_location = job_feed_forward.frame_locations[idx]
                 self.frame_count += 1
@@ -285,25 +268,9 @@ class LlavaComponent:
         if is_video_job:
             video_decode_timer.start()
             frame_indices = { i:frame for i, frame in zip(job_feed_forward.frame_locations.keys(), reader) }
-            first_frame = True
-            idx = 0
-            while idx <= max(job_feed_forward.frame_locations):
-                # Logic to determine next frame to process
-                if first_frame:
-                    while (idx not in job_feed_forward.frame_locations):
-                        idx += 1
-                    first_frame = False
-                elif (config.frames_per_second_to_process > 0):
-                    idx += config.frames_per_second_to_process
-                    while (idx not in job_feed_forward.frame_locations) and (idx <= max(job_feed_forward.frame_locations)):
-                        idx += 1
-                else:
-                    idx += 1
-                
-                # Break out of loop if outside of frame indices in track
-                if idx > max(job_feed_forward.frame_locations): break
+            frames_to_process = self._get_frames_to_process(list(frame_indices.keys()), config.frames_per_second_to_process)
+            for idx in frames_to_process:
                 video_decode_timer.pause()
-
                 frame = frame_indices[idx]
                 ff_location = job_feed_forward.frame_locations[idx]
                 frame_count += 1
@@ -402,6 +369,41 @@ class LlavaComponent:
                 mpf.DetectionError.NETWORK_ERROR
                 )
 
+    def _get_frames_to_process(self, frame_locations: list, skip: int) -> list:
+        if not frame_locations:
+            return []
+        
+        retval = []
+        curr = frame_locations[0]
+        retval.append(curr)
+        want = curr + skip
+
+        for i in range(1, len(frame_locations)):
+            
+            next = math.inf
+            if i + 1 < len(frame_locations):
+                next = frame_locations[i + 1]
+
+            if next < want:
+                continue
+
+            curr = frame_locations[i]
+
+            curr_delta = abs(want - curr)
+            next_delta = abs(next - want)
+
+            too_close_to_last = (curr - retval[-1]) <= (skip / 3)
+
+            if curr_delta <= next_delta and not too_close_to_last:
+                retval.append(curr)
+                want = curr + skip
+                continue
+
+            if next != math.inf:
+                retval.append(next)
+                want = next + skip
+
+        return retval
 class JobConfig:
     def __init__(self, job_properties: Mapping[str, str], media_properties=None):
         self.prompt_config_path = self._get_prop(job_properties, "PROMPT_CONFIGURATION_PATH", "")

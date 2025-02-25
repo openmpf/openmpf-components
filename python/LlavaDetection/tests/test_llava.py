@@ -377,6 +377,24 @@ class TestLlava(unittest.TestCase):
         for key, value in result.detection_properties.items():
             if key.startswith("LLAVA"):
                 self.assertTrue(value.strip().lower() != 'unsure')
+    
+    def test_get_frames(self):
+        component = LlavaComponent()
+        self.assertEqual(component._get_frames_to_process([], 1), [])
+        self.assertEqual(component._get_frames_to_process([1], 2), [1])
+        self.assertEqual(component._get_frames_to_process([503], 2), [503])
+        self.assertEqual(component._get_frames_to_process([503, 1_000], 5_000), [503])
+        self.assertEqual(component._get_frames_to_process([0,1,2,3,4,5], 1), [0,1,2,3,4,5])
+        self.assertEqual(component._get_frames_to_process([0,1,2,3,4,5], 2), [0,2,4, 5])
+        self.assertEqual(component._get_frames_to_process([0,1,2,3,4,5], 3), [0,3,5])
+        self.assertEqual(component._get_frames_to_process([0,1,2,3,4,5,900], 3), [0,3,5,900])
+        self.assertEqual(component._get_frames_to_process([4,900,902,905,906,907,908,909,910,911,912,913], 5), [4,900,905,910,913])
+        self.assertEqual(component._get_frames_to_process([910,911,912,913,914,915,916,917,918], 6), [910,916])
+        self.assertEqual(component._get_frames_to_process([910,911,912,913,914,915,916,917,918,919], 6), [910,916,919])
+        self.assertEqual(component._get_frames_to_process([910,911,912,913,914,915,916,917,918,919,920], 6), [910,916,920])
+        self.assertEqual(component._get_frames_to_process([910,911,912,913,914,915,916,917,918,919,920,921], 6), [910,916,921])
+        self.assertEqual(component._get_frames_to_process([910,911,912,913,914,915,916,917,918,919,920,921,922], 6), [910,916,922])
+        self.assertEqual(component._get_frames_to_process([910,911,912,913,914,915,916,917,918,5_000,5_001,10_000], 6), [910,916,5_000,10_000])
 
     @staticmethod
     def _get_test_file(filename):
