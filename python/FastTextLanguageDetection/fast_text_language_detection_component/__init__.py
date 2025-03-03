@@ -202,7 +202,7 @@ class LanguageDetector:
             path = model_params.path
         else:
             assert model_params.hf_repo and model_params.hf_file
-            path = hf_hub_download(repo_id=model_params.hf_repo, filename=model_params.hf_file)
+            path = hf_hub_download(repo_id=model_params.hf_repo, filename=model_params.hf_file, local_files_only=True)
         log.info(f'Loading model from: {path}')
         cls._CACHED_MODEL = CachedModel(model_params, fasttext.load_model(path))
         return cls._CACHED_MODEL.model
