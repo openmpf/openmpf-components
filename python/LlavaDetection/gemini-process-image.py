@@ -14,7 +14,7 @@ def main():
     try:
         client = genai.Client(api_key=args.api_key)
         # print(client.models.generate_content(model=args.model, contents=[args.prompt, Image.open(args.filepath)]).text)
-        print(f"{__file__}: model: \"{args.model}\", and filepath: \"{args.filepath}\", and prompt: \"{args.prompt}\", and api_key: \"{args.api_key}\"") # DEBUG
+        print(f"{__file__}: model: \"{args.model}\", filepath: \"{args.filepath}\", prompt: \"{args.prompt}\", api_key: \"{args.api_key}\"") # DEBUG
         sys.exit(0)
     except Exception as e:
         print(e, file=sys.stderr)

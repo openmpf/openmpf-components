@@ -48,7 +48,7 @@ RUN mkdir -p /gemini-subprocess/venv; \
     source /gemini-subprocess/venv/bin/activate; \
     pip3 install google-genai
 
-COPY gemini-subprocess/* /gemini-subprocess
+COPY gemini-process-image.py /gemini-subprocess
 
 RUN pip3 install --upgrade pip
 
@@ -61,7 +61,7 @@ RUN --mount=target=.,readwrite \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_llava.py; fi
 
 # Test Gemini (remove this)
-RUN /gemini-subprocess/run-gemini.sh -f DUMMY_FILE -p DUMMY_PROMPT -a DUMMY_API_KEY
+RUN /gemini-subprocess/venv/bin/python3 /gemini-subprocess/gemini-process-image.py -f DUMMY_FILE -p DUMMY_PROMPT -a DUMMY_API_KEY
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF LLaVA Detection" \
