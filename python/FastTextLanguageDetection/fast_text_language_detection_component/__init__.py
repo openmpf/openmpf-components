@@ -26,7 +26,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 import importlib.resources
 import logging
 import pathlib
@@ -37,7 +36,6 @@ import fasttext
 import numpy as np
 import numpy.typing as npt
 from fasttext.FastText import _FastText as FastTextModel
-from huggingface_hub import hf_hub_download
 
 import mpf_component_api as mpf
 
@@ -194,48 +192,19 @@ class LanguageDetector:
 
     @classmethod
     def _get_model(cls, job_properties: Mapping[str, str]) -> FastTextModel:
-        model_params = ModelLoadParams(job_properties)
-        if cls._CACHED_MODEL and cls._CACHED_MODEL.parameters == model_params:
+        path = job_properties.get('MODEL_PATH', '').strip() or '/opt/fasttext/models/glotlid.bin'
+        if cls._CACHED_MODEL and cls._CACHED_MODEL.path == path:
             return cls._CACHED_MODEL.model
 
-        if model_params.path:
-            path = model_params.path
-        else:
-            assert model_params.hf_repo and model_params.hf_file
-            path = hf_hub_download(repo_id=model_params.hf_repo, filename=model_params.hf_file)
         log.info(f'Loading model from: {path}')
-        cls._CACHED_MODEL = CachedModel(model_params, fasttext.load_model(path))
+        cls._CACHED_MODEL = CachedModel(path, fasttext.load_model(path))
         return cls._CACHED_MODEL.model
 
 
 class CachedModel(NamedTuple):
-    parameters: ModelLoadParams
+    path: str
     model: FastTextModel
 
-
-@dataclasses.dataclass
-class ModelLoadParams:
-    job_properties: dataclasses.InitVar[Mapping[str, str]]
-    path: Optional[str] = None
-    hf_repo: Optional[str] = None
-    hf_file: Optional[str] = None
-
-    def __post_init__(self, job_properties: Mapping[str, str]):
-        self.path = self._get_prop('MODEL_PATH', job_properties)
-        if self.path:
-            self.hf_repo = None
-            self.hf_file = None
-        else:
-            self.hf_repo = self._get_prop('HUGGING_FACE_REPO', job_properties, 'cis-lmu/glotlid')
-            self.hf_file = self._get_prop('HUGGING_FACE_FILE', job_properties, 'model.bin')
-
-    @staticmethod
-    def _get_prop(name: str, job_properties: Mapping[str, str], default=None):
-        prop_value = job_properties.get(name)
-        if prop_value and (stripped := prop_value.strip()):
-            return stripped
-        else:
-            return default
 
 
 class LangDetectResult(NamedTuple):
