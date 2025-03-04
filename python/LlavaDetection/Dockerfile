@@ -45,8 +45,7 @@ RUN --mount=type=tmpfs,target=/var/cache/apt \
 # Create separate venv for Python 3.9 subprocess
 RUN mkdir -p /gemini-subprocess/venv; \
     python3.9 -m venv /gemini-subprocess/venv; \
-    source /gemini-subprocess/venv/bin/activate; \
-    pip3 install google-genai
+    /gemini-subprocess/venv/bin/pip3 install google-genai
 
 COPY gemini-process-image.py /gemini-subprocess
 
