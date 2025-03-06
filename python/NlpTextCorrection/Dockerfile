@@ -51,6 +51,10 @@ FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
 
 COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 
+COPY --from=build /usr/lib/x86_64-linux-gnu/libhunspell-1.7.so.0 /usr/lib/x86_64-linux-gnu/
+
+COPY --from=build /usr/share/hunspell /usr/share/hunspell
+
 COPY --from=build $PLUGINS_DIR/NlpTextCorrection $PLUGINS_DIR/NlpTextCorrection
 
 
