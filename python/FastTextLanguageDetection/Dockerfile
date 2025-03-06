@@ -30,7 +30,7 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
-RUN pip install --no-cache-dir fasttext huggingface_hub
+RUN pip install --no-cache-dir fasttext huggingface_hub 'numpy<2'
 
 RUN python <<eot
 import huggingface_hub
