@@ -1,0 +1,59 @@
+{
+    "componentName": "LlamaVideoSummarization",
+    "componentVersion": "9.0",
+    "middlewareVersion": "9.0",
+    "sourceLanguage": "python",
+    "batchLibrary": "LlamaVideoSummarization",
+    "environmentVariables": [],
+    "algorithm": {
+        "name": "LLAMAVIDEO",
+        "description": "LLaMA video summarization",
+        "actionType": "DETECTION",
+        "trackType": "TEXT",
+        "outputChangedCounter": 1,
+        "requiresCollection": {
+            "states": []
+        },
+        "providesCollection": {
+            "states": [
+                "DETECTION",
+                "DETECTION_TEXT",
+                "DETECTION_TEXT_LLAMA_VIDEO"
+            ],
+            "properties": [
+                {
+                    "name": "MODEL_NAME",
+                    "description": "Specifies which CLIP model to load for inferencing. The available models are 'ViT-L/14' and 'ViT-B/32'.",
+                    "type": "STRING",
+                    "defaultValue": "ViT-L/14"
+                }
+            ] 
+        }
+    },
+    "actions": [
+        {
+            "name": "CLIP COCO CLASSIFICATION ACTION",
+            "description": "Runs CLIP classification on the COCO dataset classes.",
+            "algorithm": "CLIP",
+            "properties": []
+        }
+    ],
+    "tasks": [
+        {
+            "name": "CLIP COCO CLASSIFICATION TASK",
+            "description": "Runs CLIP classification on the COCO dataset classes.",
+            "actions": [
+                "CLIP COCO CLASSIFICATION ACTION"
+            ]
+        }
+    ],
+    "pipelines": [
+        {
+            "name": "CLIP COCO CLASSIFICATION PIPELINE",
+            "description": "Runs CLIP classification on the COCO dataset classes.",
+            "tasks": [
+                "CLIP COCO CLASSIFICATION TASK"
+            ]
+        }
+    ]
+}
