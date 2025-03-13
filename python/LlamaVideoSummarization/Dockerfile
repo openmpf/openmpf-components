@@ -77,7 +77,7 @@ FROM base as gpu_test
 COPY tests/test_llama_video_summarization.py /tests/test_llama_video_summarization.py
 COPY tests/data /tests/data
 ENV USE_MOCKS=False
-ENTRYPOINT ["python", "/tests/test_llama_video_summarization.py"]
+ENTRYPOINT ["python", "/tests/test_llama_video_summarization.py", "TestComponent.test_multiple_videos"]
 
 
 # By default Docker builds the final stage

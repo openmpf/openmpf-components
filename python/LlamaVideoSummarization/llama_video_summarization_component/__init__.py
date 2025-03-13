@@ -32,6 +32,7 @@ import pickle
 import socket
 import subprocess
 
+from jsonschema import validate, ValidationError
 from typing import Iterable, Mapping, Tuple
 
 import mpf_component_api as mpf
@@ -56,7 +57,7 @@ class LlamaVideoSummarizationComponent:
             job_config = _parse_properties(job.job_properties)
             job_config['video_path'] = job.data_uri
 
-            response_json = self.child_process.send_job_get_response(job_config)
+            response_json = self._get_detections_from_subprocess(job_config)
 
             log.info('Processing complete.')
 
@@ -71,6 +72,56 @@ class LlamaVideoSummarizationComponent:
         except Exception:
             log.exception('Failed to complete job due to the following exception:')
             raise
+
+    def _get_detections_from_subprocess(self, job_config: dict) -> dict:
+        schema_str = job_config['generation_json_schema']
+        schema_json = json.loads(schema_str)
+
+        max_attempts = job_config['generation_max_attempts']
+        timeline_check_threshold = job_config['timeline_check_threshold']
+
+        last_error = None
+        for attempt in range(max_attempts):
+            response = self.child_process.send_job_get_response(job_config)
+
+            print(f'RESPONSE: {response}') # DEBUG
+
+            if not response:
+                last_error = f'Empty response.'
+                log.warning(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
+                continue
+
+            try:
+                response_json = json.loads(response)
+            except ValueError:
+                last_error = f'Response is not valid JSON.'
+                log.warning(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
+                continue
+
+            try:
+                validate(response_json, schema_json)
+            except ValidationError:
+                last_error = 'Response JSON is not in the desired format.'
+                log.warning(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
+                continue
+
+            if timeline_check_threshold != -1:
+                video_length = float(response_json['video_length'])
+                last_event_end = float(response_json['video_event_timeline'][-1]['timestamp_end'])
+                if abs(video_length - last_event_end) > timeline_check_threshold:
+                    last_error = (f'Video length doesn\'t correspond with last event timestamp end. '
+                        f'abs({video_length} - {last_event_end}) > {timeline_check_threshold}.')
+                    log.warning(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
+                    continue
+
+            last_error = None
+            break
+
+        if last_error:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {last_error}')
+
+        return response_json
+
 
 def _parse_properties(props: Mapping[str, str]) -> dict:
     process_fps = mpf_util.get_property(
@@ -88,6 +139,8 @@ def _parse_properties(props: Mapping[str, str]) -> dict:
         props, 'SYSTEM_PROMPT_PATH', '')
     generation_max_attempts = mpf_util.get_property(
         props, 'GENERATION_MAX_ATTEMPTS', 3)
+    timeline_check_threshold = mpf_util.get_property(
+        props, 'TIMELINE_CHECK_THRESHOLD', 20)
 
     generation_prompt = _read_file(generation_prompt_path)
     generation_json_schema = _read_file(generation_json_schema_path)
@@ -103,7 +156,8 @@ def _parse_properties(props: Mapping[str, str]) -> dict:
         generation_prompt = generation_prompt,
         generation_json_schema = generation_json_schema,
         system_prompt = system_prompt,
-        generation_max_attempts = generation_max_attempts
+        generation_max_attempts = generation_max_attempts,
+        timeline_check_threshold = timeline_check_threshold
     )
 
 def _read_file(path: str) -> str:
@@ -136,7 +190,7 @@ class ChildProcess:
         self._proc.wait()
         print("Subprocess terminated")
 
-    def send_job_get_response(self, config: dict) -> dict:
+    def send_job_get_response(self, config: dict):
         job_bytes = pickle.dumps(config)
         self._socket.write(len(job_bytes).to_bytes(4, 'little'))
         self._socket.write(job_bytes)

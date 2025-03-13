@@ -25,20 +25,17 @@
 #############################################################################
 
 import io
-import json
 import os
 import pickle
 import signal
 import socket
 import torch
 
-from jsonschema import validate, ValidationError
 from transformers import AutoModelForCausalLM, AutoProcessor
 from typing import Mapping
 
 DEVICE = "cuda:0"
 MODEL_PATH = "DAMO-NLP-SG/VideoLLaMA3-7B"
-DELTA_TIMELINE_LENGTH_VS_LAST_EVENT_TIMESTAMP_END = 20 # seconds
 
 class VideoProcessor:
 
@@ -133,7 +130,7 @@ class SocketHandler:
 
     def send_error(self, error: str):
         error_bytes = pickle.dumps(error)
-        self._socket_stream.write((0).to_bytes(4, 'little')) # signal error
+        self._socket_stream.write((0).to_bytes(4, 'little')) # indicate an error
         self._socket_stream.write(len(error_bytes).to_bytes(4, 'little'))
         self._socket_stream.write(error_bytes)
         self._socket_stream.flush()
@@ -154,47 +151,9 @@ if __name__ == '__main__':
     video_processor = VideoProcessor()
 
     while job := socket_handler.get_next_job():
-
-        schema_str = job['generation_json_schema']
-        schema_json = json.loads(schema_str)
-
-        max_attempts = job['generation_max_attempts']
-
-        sent_response = False
-        last_error = None
-        for attempt in range(max_attempts):
+        try:
             response = video_processor.process(job)
-
-            if not response:
-                last_error = f'Empty response.'
-                print(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
-                continue
-
-            try:
-                response_json = json.loads(response)
-            except ValueError:
-                last_error = f'Response is not valid JSON.'
-                print(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
-                continue
-
-            try:
-                validate(response_json, schema_json)
-            except ValidationError:
-                last_error = f'Response JSON is not in the desired format.'
-                print(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
-                continue
-
-            video_length = float(response_json['video_length'])
-            last_event_end = float(response_json['video_event_timeline'][-1]['timestamp_end'])
-            if abs(video_length - last_event_end) > DELTA_TIMELINE_LENGTH_VS_LAST_EVENT_TIMESTAMP_END:
-                last_error = (f'Video length doesn\'t correspond with last event timestamp end. '
-                    f'abs({video_length} - {last_event_end}) > {DELTA_TIMELINE_LENGTH_VS_LAST_EVENT_TIMESTAMP_END}.')
-                print(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
-                continue
-
-            socket_handler.send_response(response_json)
-            sent_response = True
-            break
-
-        if not sent_response:
-            socket_handler.send_error(last_error)
+            socket_handler.send_response(response)
+        except Exception as e:
+            print(f'Failed to summarize video: {e}')
+            socket_handler.send_error(e)
