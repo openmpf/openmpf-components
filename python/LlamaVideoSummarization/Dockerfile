@@ -28,7 +28,7 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} as base
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
@@ -63,14 +63,22 @@ RUN --mount=target=.,readwrite \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_llama_video_summarization.py; fi
 
-# DEBUG
-# COPY tests/test_llama_video_summarization.py /tests/test_llama_video_summarization.py
-# COPY tests/data /tests/data
-# ENTRYPOINT ["python", "/tests/test_llama_video_summarization.py"]
-
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF LLaMA Video Summarization" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
+
+
+# Optional build target for running unit tests with a GPU
+FROM base as gpu_test
+
+COPY tests/test_llama_video_summarization.py /tests/test_llama_video_summarization.py
+COPY tests/data /tests/data
+ENV USE_MOCKS=False
+ENTRYPOINT ["python", "/tests/test_llama_video_summarization.py"]
+
+
+# By default Docker builds the final stage
+FROM base as final
