@@ -62,6 +62,12 @@
                     "description": "Maximum number of attempts for the model to generate output in the correct JSON format with a timeline that covers the full length of the video.",
                     "type": "INT",
                     "defaultValue": "3"
+                },
+                {
+                    "name": "TIMELINE_CHECK_THRESHOLD",
+                    "description": "Specifies the number of seconds the video length determined by the model can differ from the last event end time. If exceeded, another attempt will be made to generate the output. Set to -1 to disable check.",
+                    "type": "INT",
+                    "defaultValue": "20"
                 }
             ] 
         }
