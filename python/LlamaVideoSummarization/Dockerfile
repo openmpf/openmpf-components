@@ -63,6 +63,11 @@ RUN --mount=target=.,readwrite \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_llama_video_summarization.py; fi
 
+# DEBUG
+# COPY tests/test_llama_video_summarization.py /tests/test_llama_video_summarization.py
+# COPY tests/data /tests/data
+# ENTRYPOINT ["python", "/tests/test_llama_video_summarization.py"]
+
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF LLaMA Video Summarization" \
       org.label-schema.schema-version="1.0" \

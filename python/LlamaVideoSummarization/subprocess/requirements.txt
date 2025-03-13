@@ -8,3 +8,4 @@ ffmpeg-python
 imageio
 opencv-python
 accelerate==1.0.1
+jsonschema

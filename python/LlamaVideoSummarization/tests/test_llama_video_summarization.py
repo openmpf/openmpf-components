@@ -43,10 +43,15 @@ TEST_DATA = pathlib.Path(__file__).parent / 'data'
 class TestComponent(unittest.TestCase):
 
     def test_video(self):
-        job = mpf.VideoJob('test job', str(TEST_DATA / 'cat_and_chicken.mp4'), {}, {}, {}, {})
-        results = LlamaVideoSummarizationComponent().get_detections_from_video(job)
-        print(results) # DEBUG
+        component = LlamaVideoSummarizationComponent()
+
+        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 100, {}, {})
+        results = component.get_detections_from_video(job)
         self.assertIn("cat", results[0].detection_properties["TEXT"])
+
+        job = mpf.VideoJob('dog job', str(TEST_DATA / 'dog.mp4'), 0, 200, {}, {})
+        results = component.get_detections_from_video(job)
+        self.assertIn("dog", results[0].detection_properties["TEXT"])
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
