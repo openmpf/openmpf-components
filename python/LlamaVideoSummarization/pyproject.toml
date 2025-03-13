@@ -37,7 +37,7 @@ dependencies = [
 ]
 
 [project.entry-points."mpf.exported_component"]
-component = "llava_video_summarization_component:LlamaVideoSummarizationComponent"
+component = "llama_video_summarization_component:LlamaVideoSummarizationComponent"
 
 [tool.setuptools.package-data]
 llama_video_summarization_component = ["*"]

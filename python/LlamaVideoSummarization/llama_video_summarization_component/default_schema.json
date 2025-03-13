@@ -1,0 +1,18 @@
+{
+    "type" : "object",
+    "properties" : {
+        "video_summary" : {"type" : "string"},
+        "video_length" : {"type" : "number"},
+        "video_event_timeline" : {
+            "type" : "array",
+            "items": {
+                "type" : "object",
+                "properties" : {
+                    "timestamp_start": {"type" : "number"},
+                    "timestamp_end": {"type" : "number"},
+                    "description" : {"type" : "string"}
+                }
+            }
+        }
+    }
+}

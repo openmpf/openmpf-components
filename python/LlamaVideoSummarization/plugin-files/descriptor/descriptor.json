@@ -22,37 +22,73 @@
             ],
             "properties": [
                 {
-                    "name": "MODEL_NAME",
-                    "description": "Specifies which CLIP model to load for inferencing. The available models are 'ViT-L/14' and 'ViT-B/32'.",
+                    "name": "PROCESS_FPS",
+                    "description": "Specifies the number of frames per second of video to process. Between 0 and 10.",
+                    "type": "INT",
+                    "defaultValue": "1"
+                },
+                {
+                    "name": "MAX_FRAMES",
+                    "description": "Specifies the maximum number of frames to process. NOTE: Doesn't seem to work.",
+                    "type": "INT",
+                    "defaultValue": "180"
+                },
+                {
+                    "name": "MAX_NEW_TOKENS",
+                    "description": "Specifies the maximum number of output tokens to generate. Ignores the number of tokens in the input prompt. Increase this value if the response is empty. May need to increase for longer videos.",
+                    "type": "INT",
+                    "defaultValue": "1024"
+                },
+                {
+                    "name": "GENERATION_PROMPT_PATH",
+                    "description": "Path to the text file containing the generation prompt.",
                     "type": "STRING",
-                    "defaultValue": "ViT-L/14"
+                    "defaultValue": "default_prompt.txt"
+                },
+                {
+                    "name": "GENERATION_JSON_SCHEMA_PATH",
+                    "description": "Path to the JSON file containing the JSON schema format for the model to generate.",
+                    "type": "STRING",
+                    "defaultValue": "default_schema.json"
+                },
+                {
+                    "name": "SYSTEM_PROMPT_PATH",
+                    "description": "Path to the text file containing the system (role) prompt. If empty, the generation prompt is used for the system prompt.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "GENERATION_MAX_ATTEMPTS",
+                    "description": "Maximum number of attempts for the model to generate output in the correct JSON format with a timeline that covers the full length of the video.",
+                    "type": "INT",
+                    "defaultValue": "3"
                 }
             ] 
         }
     },
     "actions": [
         {
-            "name": "CLIP COCO CLASSIFICATION ACTION",
-            "description": "Runs CLIP classification on the COCO dataset classes.",
-            "algorithm": "CLIP",
+            "name": "LLAMA VIDEO SUMMARIZATION ACTION",
+            "description": "Runs LLaMA video summarization.",
+            "algorithm": "LLAMAVIDEO",
             "properties": []
         }
     ],
     "tasks": [
         {
-            "name": "CLIP COCO CLASSIFICATION TASK",
-            "description": "Runs CLIP classification on the COCO dataset classes.",
+            "name": "LLAMA VIDEO SUMMARIZATION TASK",
+            "description": "Runs LLaMA video summarization.",
             "actions": [
-                "CLIP COCO CLASSIFICATION ACTION"
+                "LLAMA VIDEO SUMMARIZATION ACTION"
             ]
         }
     ],
     "pipelines": [
         {
-            "name": "CLIP COCO CLASSIFICATION PIPELINE",
-            "description": "Runs CLIP classification on the COCO dataset classes.",
+            "name": "LLAMA VIDEO SUMMARIZATION PIPELINE",
+            "description": "Runs LLaMA video summarization.",
             "tasks": [
-                "CLIP COCO CLASSIFICATION TASK"
+                "LLAMA VIDEO SUMMARIZATION TASK"
             ]
         }
     ]

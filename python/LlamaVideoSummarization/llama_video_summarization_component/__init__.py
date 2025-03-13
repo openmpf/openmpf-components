@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import importlib.resources
+import json
 import logging
 import os
 import pickle
@@ -37,31 +39,6 @@ import mpf_component_util as mpf_util
 
 log = logging.getLogger('LlamaVideoSummarizationComponent')
 
-DEFAULT_PROMPT = \
-'''
-Follow these instructions:
-
-You are a helpful assistant. Provide information in following JSON format:
-
-{
-"video_summary": "A general short summary of the activity in the video",
-"video_length": "Full length of the video in seconds",
-"video_event_timeline": [
-    {
-        "timestamp": "event A start time in seconds - event A end time in seconds",
-        "description": "Description of event A"
-    },
-    {
-        "timestamp": "event B start time in seconds - event B end time in seconds",
-        "description": "Description of event B"
-    },
-    {
-        "timestamp": "event C start time in seconds - event C end time in seconds",
-        "description": "Description of event C"
-    }
-],
-}
-'''
 
 class LlamaVideoSummarizationComponent:
 
@@ -76,51 +53,65 @@ class LlamaVideoSummarizationComponent:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                     'Component cannot process feed forward jobs.')
             
-            job_config = JobConfig(job.job_properties)
+            job_config = _parse_properties(job.job_properties)
+            job_config['video_path'] = job.data_uri
 
-            self.child_process.send_job(job_config)
-
-            # TODO: Create subprocess and feed in pickled dict
-
-            # detector = LanguageDetector(job.job_properties)
-            # detector.add_language_detections(ff_track.detection_properties)
-            # for ff_location in ff_track.frame_locations.values():
-            #     detector.add_language_detections(ff_location.detection_properties)
+            response_json = self.child_process.send_job_get_response(job_config)
 
             log.info('Processing complete.')
 
-            track = mpf.VideoTrack(0, 0, detection_properties={'TEXT': 'HELLO'})
+            track = mpf.VideoTrack(job.start_frame, job.stop_frame,\
+                detection_properties={\
+                    'TEXT' : response_json['video_summary'],\
+                    'VIDEO LENGTH' : response_json['video_length'],\
+                    'VIDEO EVENT TIMELINE': json.dumps(response_json['video_event_timeline'])\
+                })
 
             return (track,)
         except Exception:
             log.exception('Failed to complete job due to the following exception:')
             raise
 
+def _parse_properties(props: Mapping[str, str]) -> dict:
+    process_fps = mpf_util.get_property(
+        props, 'PROCESS_FPS', 1)
+    max_frames = mpf_util.get_property(
+        props, 'MAX_FRAMES', 180)
+    max_new_tokens = mpf_util.get_property(
+        props, 'MAX_NEW_TOKENS', 1024)
 
-class JobConfig:
+    generation_prompt_path = mpf_util.get_property(
+        props, 'GENERATION_PROMPT_PATH', 'default_prompt.txt')
+    generation_json_schema_path = mpf_util.get_property(
+        props, 'GENERATION_JSON_SCHEMA_PATH', 'default_schema.json')
+    system_prompt_path = mpf_util.get_property(
+        props, 'SYSTEM_PROMPT_PATH', '')
+    generation_max_attempts = mpf_util.get_property(
+        props, 'GENERATION_MAX_ATTEMPTS', 3)
 
-    def __init__(self, props: Mapping[str, str]):
-        self.process_fps = mpf_util.get_property(
-            props, 'PROCESS_FPS', 1)
-        self.max_frames = mpf_util.get_property(
-            props, 'MAX_FRAMES', 180)
-        self.max_new_tokens = mpf_util.get_property(
-            props, 'MAX_NEW_TOKENS', 1024)
+    generation_prompt = _read_file(generation_prompt_path)
+    generation_json_schema = _read_file(generation_json_schema_path)
 
-        generation_prompt_path = os.path.expandvars(mpf_util.get_property(
-            props, 'GENERATION_PROMPT_PATH', ''))
-        system_prompt_path = os.path.expandvars(mpf_util.get_property(
-            props, 'SYSTEM_PROMPT_PATH', ''))
+    system_prompt = generation_prompt
+    if system_prompt_path:
+        system_prompt = _read_file(system_prompt_path)
 
-        self.generation_prompt = DEFAULT_PROMPT
-        if generation_prompt_path:
-            with open(generation_prompt_path,"r") as f:
-                self.generation_prompt = f.read()
+    return dict(
+        process_fps = process_fps,
+        max_frames = max_frames,
+        max_new_tokens = max_new_tokens,
+        generation_prompt = generation_prompt,
+        generation_json_schema = generation_json_schema,
+        system_prompt = system_prompt,
+        generation_max_attempts = generation_max_attempts
+    )
 
-        self.system_prompt = self.generation_prompt
-        if system_prompt_path:
-            with open(system_prompt_path,"r") as f:
-                self.system_prompt = f.read()
+def _read_file(path: str) -> str:
+    expanded_path = os.path.expandvars(path)
+    if os.path.dirname(expanded_path):
+        with open(expanded_path, "r") as f:
+            return f.read()
+    return importlib.resources.read_text(__name__, path).strip()
 
 
 class ChildProcess:
@@ -135,15 +126,23 @@ class ChildProcess:
                     env=env)
             self._socket = parent_socket.makefile('rwb')
 
-    def send_job(self, job: JobConfig): # TODO: Annotate return type
-        job = "REQUEST" # DEBUG
-        job_bytes = pickle.dumps(job)
+    def __del__(self):
+        print("Terminating subprocess...")
+        self._socket.close()
+        self._proc.terminate()
+        self._proc.wait()
+        print("Subprocess terminated")
+
+    def send_job_get_response(self, config: dict) -> dict:
+        job_bytes = pickle.dumps(config)
         self._socket.write(len(job_bytes).to_bytes(4, 'little'))
         self._socket.write(job_bytes)
         self._socket.flush()
 
         response_length = int.from_bytes(self._socket.read(4), 'little')
-        response = pickle.loads(self._socket.read(response_length))
-        print(f'{response=}')
+        if response_length == 0:
+            error_length = int.from_bytes(self._socket.read(4), 'little')
+            error = pickle.loads(self._socket.read(error_length))
+            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
 
-        return response
+        return pickle.loads(self._socket.read(response_length))
