@@ -1,0 +1,38 @@
+{
+    "classPrompts": [
+        {
+            "classes": [
+                "PERSON"
+            ],
+            "prompts": [
+                {
+                    "detectionProperty": "CLOTHING",
+                    "prompt": "Describe what this person is wearing"
+                },
+                {
+                    "detectionProperty": "ACTIVITY",
+                    "prompt": "Describe what this person is doing"
+                }
+            ]
+        },
+        {
+            "classes": [
+                "CAR",
+                "TRUCK",
+                "BUS"
+            ],
+            "prompts": [
+                {
+                    "detectionProperty": "DESCRIPTION",
+                    "prompt": "Describe this vehicle"
+                }
+            ]
+        }
+    ],
+    "framePrompts": [
+        {
+            "detectionProperty": "LOCATION",
+            "prompt": "Describe the location in this scene"
+        }
+    ]
+}

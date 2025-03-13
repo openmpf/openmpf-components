@@ -1,0 +1,194 @@
+{
+    "componentName": "GeminiDetection",
+    "componentVersion": "9.0",
+    "middlewareVersion": "9.0",
+    "sourceLanguage": "python",
+    "batchLibrary": "GeminiDetection",
+    "environmentVariables": [],
+    "algorithm": {
+        "name": "Gemini",
+        "description": "Gemini prompt response generation.",
+        "actionType": "DETECTION",
+        "trackType": "CLASS",
+        "outputChangedCounter": 1,
+        "requiresCollection": {
+            "states": []
+        },
+        "providesCollection": {
+            "states": [
+                "DETECTION",
+                "DETECTION_CLASS",
+                "DETECTION_CLASS_GEMINI"
+            ],
+            "properties": [
+                {
+                    "name": "PROMPT_CONFIGURATION_PATH",
+                    "description": "Path to a custom JSON file which contains the classes and associated prompts that will be sent to Gemini.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "JSON_PROMPT_CONFIGURATION_PATH",
+                    "description": "Path to a custom JSON file which contains classes and prompts that specify Gemini to return a JSON object.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "ENABLE_JSON_PROMPT_FORMAT",
+                    "description": "Enables returning a JSON formatted response from Gemini, with the prompt specified at PROMPT_JSON_CONFIGURATION_PATH job property.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
+                    "name": "GEMINI_API_KEY",
+                    "description": "Gemini API key.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "GENERATE_FRAME_RATE_CAP",
+                    "description": "The threshold on the maximum number of frames to process in the video segment within one second of the native video time. If set to a value > 0, then an internal frame interval is calculated as max(1, floor(mediaNativeFPS / GENERATE_FRAME_RATE_CAP)). If set <= 0, property is disabled and every frame is used. Throws exception if FRAME_RATE_CAP and GENERATE_FRAME_RATE_CAP both set > 0.",
+                    "type": "DOUBLE",
+                    "defaultValue": "1.0"
+                }
+            ]
+        }
+    },
+    "actions": [
+        {
+            "name": "GEMINI DETECTION ACTION",
+            "description": "Runs Gemini with prompts for each video frame passed in.",
+            "algorithm": "Gemini",
+            "properties": [
+                {
+                    "name": "ARTIFACT_EXTRACTION_POLICY_BEST_DETECTION_PROP_NAMES_LIST",
+                    "value": "ANNOTATED BY GEMINI"
+                }
+            ]
+        },
+        {
+            "name": "GEMINI DETECTION (WITH FF REGION AND JSON PROMPT) ACTION",
+            "description": "Runs Gemini with prompts that specify JSON object outputs for the class of the feed forward detection passed in.",
+            "algorithm": "Gemini",
+            "properties": [
+                {
+                    "name": "FEED_FORWARD_TYPE",
+                    "value": "REGION"
+                },     
+                {
+                    "name": "ENABLE_JSON_PROMPT_FORMAT",
+                    "value": "true"
+                },
+                {
+                    "name": "ARTIFACT_EXTRACTION_POLICY_BEST_DETECTION_PROP_NAMES_LIST",
+                    "value": "ANNOTATED BY GEMINI"
+                }
+            ]
+	    },
+        {
+            "name": "GEMINI DETECTION (EXEMPLAR ONLY WITH FF REGION) ACTION",
+            "description": "Runs Gemini with prompts for the class of the feed forward detection passed in, only processing for the exemplar of each track.",
+            "algorithm": "Gemini",
+            "properties": [
+                {
+                    "name": "FEED_FORWARD_TYPE",
+                    "value": "REGION"
+                },
+                {
+                    "name": "FEED_FORWARD_TOP_QUALITY_COUNT",
+                    "value": "1"
+                },
+                {
+                    "name": "GENERATE_FRAME_RATE_CAP",
+                    "value": "-1"
+                }
+            ]
+        },
+        {
+            "name": "GEMINI DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) ACTION",
+            "description": "Runs Gemini with prompts that specify JSON object outputs for the class of the feed forward detection passed in, only processing for the exemplar of each track.",
+            "algorithm": "Gemini",
+            "properties": [
+                {
+                    "name": "FEED_FORWARD_TYPE",
+                    "value": "REGION"
+                },
+                {
+                    "name": "FEED_FORWARD_TOP_QUALITY_COUNT",
+                    "value": "1"
+                },
+                {
+                    "name": "ENABLE_JSON_PROMPT_FORMAT",
+                    "value": "true"
+                },
+                {
+                    "name": "GENERATE_FRAME_RATE_CAP",
+                    "value": "-1"
+                }
+            ]
+        }
+    ],
+    "tasks": [
+        {
+            "name": "GEMINI DETECTION TASK",
+            "description": "Runs Gemini with prompts for each video frame passed in.",
+            "actions": [
+                "GEMINI DETECTION ACTION"
+            ]
+        },
+        {
+            "name": "GEMINI DETECTION (WITH FF REGION AND JSON PROMPT) TASK",
+            "description": "Runs Gemini with prompts that specify JSON object outputs for the class of the feed forward detection passed in.",
+            "actions": [
+                "GEMINI DETECTION (WITH FF REGION AND JSON PROMPT) ACTION"
+            ]
+        },
+        {
+            "name": "GEMINI DETECTION (EXEMPLAR ONLY WITH FF REGION) TASK",
+            "description": "Runs Gemini with prompts for the class of the feed forward detection passed in, only processing for the exemplar of each track.",
+            "actions": [
+                "GEMINI DETECTION (EXEMPLAR ONLY WITH FF REGION) ACTION"
+            ]
+        },
+        {
+            "name": "GEMINI DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) TASK",
+            "description": "Runs Gemini with prompts that specify JSON object outputs for the class of the feed forward detection passed in, only processing for the exemplar of each track.",
+            "actions": [
+                "GEMINI DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) ACTION"
+            ]
+        }
+    ],
+    "pipelines": [
+        {
+            "name": "GEMINI DETECTION PIPELINE",
+            "description":"Runs Gemini with prompts on images and videos at the specified frame rate.",
+            "tasks": [
+                "GEMINI DETECTION TASK"
+            ]
+        },
+        {
+            "name": "GEMINI DETECTION (WITH FF REGION FROM TRITON YOLO AND JSON PROMPT) PIPELINE",
+            "description":"Runs Gemini with prompts that specify JSON object outputs on images and videos at the specified frame rate.",
+            "tasks": [
+                "OCV TRITON YOLO OBJECT DETECTION TASK",
+                "GEMINI DETECTION (WITH FF REGION AND JSON PROMPT) TASK"
+            ]
+        },
+        {
+            "name": "GEMINI DETECTION (EXEMPLAR ONLY WITH FF REGION FROM TRITON YOLO) PIPELINE",
+            "description": "Runs Gemini with prompts for the class of the detection passed in, only processing the exemplar from each track.",
+            "tasks": [
+                "OCV TRITON YOLO OBJECT DETECTION TASK",
+                "GEMINI DETECTION (EXEMPLAR ONLY WITH FF REGION) TASK"
+            ]
+        },
+        {
+            "name": "GEMINI DETECTION (EXEMPLAR ONLY WITH FF REGION FROM TRITON YOLO AND JSON PROMPT) PIPELINE",
+            "description": "Runs Gemini with prompts that specify JSON object outputs for the class of the detection passed in, only processing the exemplar from each track.",
+            "tasks": [
+                "OCV TRITON YOLO OBJECT DETECTION TASK",
+                "GEMINI DETECTION (EXEMPLAR ONLY WITH FF REGION AND JSON PROMPT) TASK"
+            ]
+        }
+    ]
+}
