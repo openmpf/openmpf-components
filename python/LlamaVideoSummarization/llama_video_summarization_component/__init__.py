@@ -84,8 +84,6 @@ class LlamaVideoSummarizationComponent:
         for attempt in range(max_attempts):
             response = self.child_process.send_job_get_response(job_config)
 
-            print(f'RESPONSE: {response}') # DEBUG
-
             if not response:
                 last_error = f'Empty response.'
                 log.warning(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')

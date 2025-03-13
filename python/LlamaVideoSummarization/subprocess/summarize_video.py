@@ -44,13 +44,17 @@ class VideoProcessor:
 
         self._model = AutoModelForCausalLM.from_pretrained(
             MODEL_PATH,
+            local_files_only=True,
             trust_remote_code=True,
             device_map={"": DEVICE},
             torch_dtype=torch.bfloat16,
             attn_implementation="flash_attention_2",
         )
         
-        self._processor = AutoProcessor.from_pretrained(MODEL_PATH, trust_remote_code=True)
+        self._processor = AutoProcessor.from_pretrained(
+            MODEL_PATH,
+            trust_remote_code=True,
+            local_files_only=True)
 
         print("Loaded model/processor")
 
