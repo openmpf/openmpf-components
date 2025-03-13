@@ -107,11 +107,14 @@ def _parse_properties(props: Mapping[str, str]) -> dict:
     )
 
 def _read_file(path: str) -> str:
-    expanded_path = os.path.expandvars(path)
-    if os.path.dirname(expanded_path):
-        with open(expanded_path, "r") as f:
-            return f.read()
-    return importlib.resources.read_text(__name__, path).strip()
+    try:
+        expanded_path = os.path.expandvars(path)
+        if os.path.dirname(expanded_path):
+            with open(expanded_path, "r") as f:
+                return f.read()
+        return importlib.resources.read_text(__name__, expanded_path).strip()
+    except:
+        raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(f"Could not read \"{path}\".")
 
 
 class ChildProcess:
