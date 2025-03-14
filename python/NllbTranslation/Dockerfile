@@ -42,6 +42,8 @@ FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 
+COPY --from=build /opt/wtp /opt/wtp
+
 RUN pip install --no-cache-dir \
     'torch' \
     'transformers'
