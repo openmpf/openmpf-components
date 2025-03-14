@@ -36,7 +36,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from typing import Callable, Dict, List, Literal, Mapping, Match, NamedTuple, \
+from typing import Callable, Dict, List, Literal, Mapping, Match, NamedTuple, NoReturn, \
     Optional, Sequence, TypedDict, TypeVar, Union
 
 import mpf_component_api as mpf
@@ -60,9 +60,7 @@ class AcsTranslationComponent:
             log.info(f'Received video job: {job}')
             ff_track = job.feed_forward_track
             if ff_track is None:
-                raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                    'Component can only process feed forward jobs, '
-                    'but no feed forward track provided. ')
+                fail_when_missing_feed_forward()
 
             tc = TranslationClient(job.job_properties, self._cached_sent_model)
             tc.add_translations(ff_track.detection_properties)
@@ -95,9 +93,12 @@ class AcsTranslationComponent:
                                                      self._cached_sent_model,
                                                      job.feed_forward_track)
         else:
-            log.info('Job did not contain a feed forward track. Assuming media '
-                     'file is a plain text file containing the text to be translated.')
-            text = pathlib.Path(job.data_uri).read_text().strip()
+            text = job.media_properties.get('SELECTED_CONTENT')
+            if not text:
+                log.info('Job did not contain a feed forward track or specify selected content. '
+                         'Assuming media file is a plain text file containing the text to '
+                         'be translated.')
+                text = pathlib.Path(job.data_uri).read_text().strip()
             track = mpf.GenericTrack(detection_properties=dict(TEXT=text))
             modified_job_props = {**job.job_properties, 'FEED_FORWARD_PROP_TO_PROCESS': 'TEXT'}
             modified_job = job._replace(job_properties=modified_job_props)
@@ -115,9 +116,7 @@ def get_detections_from_non_composite(
     try:
         log.info(f'Received job: {job}')
         if ff_track is None:
-            raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                'Component can only process feed forward jobs, '
-                'but no feed forward track provided.')
+            fail_when_missing_feed_forward()
 
         tc = TranslationClient(job.job_properties, sentence_model)
         tc.add_translations(ff_track.detection_properties)
@@ -127,6 +126,12 @@ def get_detections_from_non_composite(
     except Exception:
         log.exception('Failed to complete job due to the following exception:')
         raise
+
+
+def fail_when_missing_feed_forward() -> NoReturn:
+    raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
+        'Component requires a feed forward track when processing video, image, and audio jobs, '
+        'but no feed forward track was provided.')
 
 
 class DetectResult(NamedTuple):
