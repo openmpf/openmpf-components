@@ -36,6 +36,7 @@ from typing import Mapping
 
 DEVICE = "cuda:0"
 MODEL_PATH = "DAMO-NLP-SG/VideoLLaMA3-7B"
+MODEL_REVISION = os.environ.get("MODEL_REVISION", "main")
 
 class VideoProcessor:
 
@@ -44,6 +45,7 @@ class VideoProcessor:
 
         self._model = AutoModelForCausalLM.from_pretrained(
             MODEL_PATH,
+            revision=MODEL_REVISION,
             local_files_only=True,
             trust_remote_code=True,
             device_map={"": DEVICE},
@@ -53,6 +55,7 @@ class VideoProcessor:
         
         self._processor = AutoProcessor.from_pretrained(
             MODEL_PATH,
+            revision=MODEL_REVISION,
             trust_remote_code=True,
             local_files_only=True)
 

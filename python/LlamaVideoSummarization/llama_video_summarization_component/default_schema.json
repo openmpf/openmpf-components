@@ -1,4 +1,5 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type" : "object",
     "properties" : {
         "video_summary" : {"type" : "string"},
@@ -11,8 +12,11 @@
                     "timestamp_start": {"type" : "number"},
                     "timestamp_end": {"type" : "number"},
                     "description" : {"type" : "string"}
-                }
-            }
+                },
+                "required": ["timestamp_start", "timestamp_end", "description"]
+            },
+            "minItems": 1
         }
-    }
+    },
+    "required": ["video_summary", "video_length", "video_event_timeline"]
 }

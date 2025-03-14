@@ -50,10 +50,13 @@ RUN --mount=type=bind,source=subprocess/requirements.txt,target=/tmp/requirement
     python3.10 -m venv /llama/venv; \
     /llama/venv/bin/pip install --cert /etc/ssl/certs/ca-certificates.crt -r /tmp/requirements.txt
 
+# https://huggingface.co/DAMO-NLP-SG/VideoLLaMA3-7B/tree/fd2ad62f4cec8814750a908774c199681dbb89fd
+ENV MODEL_REVISION fd2ad62f4cec8814750a908774c199681dbb89fd
+
 RUN . /llama/venv/bin/activate; \
     pip install "huggingface_hub[hf_transfer]"; \
     pip install hf_transfer; \
-    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt HF_HUB_ENABLE_HF_TRANSFER=1 huggingface-cli download "DAMO-NLP-SG/VideoLLaMA3-7B"
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt HF_HUB_ENABLE_HF_TRANSFER=1 huggingface-cli download "DAMO-NLP-SG/VideoLLaMA3-7B" --revision ${MODEL_REVISION}
 
 COPY subprocess/summarize_video.py /llama/summarize_video.py
 
