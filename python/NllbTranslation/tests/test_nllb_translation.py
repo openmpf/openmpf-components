@@ -238,7 +238,7 @@ class TestNllbTranslation(unittest.TestCase):
         #load source language
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
-        test_generic_job_props['TRANSLATION_CHARACTER_LIMIT'] = 25
+        test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '25'
 
         #tranlation to split into multiple sentences
         long_translation_text = (

@@ -64,7 +64,7 @@
         },
         {
           "name": "DEFAULT_SOURCE_LANGUAGE",
-          "description": "The ISO-639-2 language code for language and script that the input text should be translated from.",
+          "description": "The ISO-639-3 language code for language and script that the input text should be translated from.",
           "type": "STRING",
           "defaultValue": ""
         },

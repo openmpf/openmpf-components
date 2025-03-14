@@ -32,7 +32,7 @@ import time
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-from typing import Sequence, Dict, Mapping
+from typing import Optional, Sequence, Mapping
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from .nllb_utils import NllbLanguageMapper
 from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
