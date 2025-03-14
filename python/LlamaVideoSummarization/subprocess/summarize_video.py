@@ -25,23 +25,30 @@
 #############################################################################
 
 import io
+import logging
 import os
 import pickle
 import signal
 import socket
+import sys
 import torch
 
 from transformers import AutoModelForCausalLM, AutoProcessor
-from typing import Mapping
+from typing import Mapping, Union
 
 DEVICE = "cuda:0"
 MODEL_PATH = "DAMO-NLP-SG/VideoLLaMA3-7B"
 MODEL_REVISION = os.environ.get("MODEL_REVISION", "main")
 
+LOG_FORMAT = '%(levelname)-5s %(process)d [%(filename)s:%(lineno)d] - %(message)s'
+
+logging.basicConfig(stream=sys.stdout, format=LOG_FORMAT, level=logging.DEBUG)
+log = logging.getLogger('LlamaVideoSummarizationSubprocess')
+
 class VideoProcessor:
 
     def __init__(self):
-        print("Loading model/processor...")
+        log.info("Loading model/processor...")
 
         self._model = AutoModelForCausalLM.from_pretrained(
             MODEL_PATH,
@@ -59,21 +66,21 @@ class VideoProcessor:
             trust_remote_code=True,
             local_files_only=True)
 
-        print("Loaded model/processor")
+        log.info("Loaded model/processor")
 
 
     def process(self, job: dict) -> str:
 
-        print(f"Processing \"{job['video_path']}\" with "
+        log.info(f"Processing \"{job['video_path']}\" with "
             f"fps: {job['process_fps']}, "
             f"max_frames: {job['max_frames']}, "
-            f"max_new_tokens: {job['max_new_tokens']},")
+            f"max_new_tokens: {job['max_new_tokens']}")
 
         if job['system_prompt'] == job['generation_prompt']:
-            print(f"system_prompt/generation_prompt:\n\n{job['system_prompt']}\n")
+            log.debug(f"system_prompt/generation_prompt:\n\n{job['system_prompt']}\n")
         else:
-            print(f"system_prompt:\n\n{job['system_prompt']}\n")
-            print(f"generation_prompt:\n\n{job['generation_prompt']}\n")
+            log.debug(f"system_prompt:\n\n{job['system_prompt']}\n")
+            log.debug(f"generation_prompt:\n\n{job['generation_prompt']}\n")
 
         conversation = [
             # {"role": "system", "content": "You are a helpful assistant."},
@@ -100,7 +107,7 @@ class VideoProcessor:
         output_ids = self._model.generate(**inputs, max_new_tokens=job['max_new_tokens'])
         response = self._processor.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
 
-        print(f"Response:\n\n{response}")
+        log.info(f"Response:\n\n{response}")
 
         return response
 
@@ -151,6 +158,10 @@ def signal_handler(signal, frame):
 
 if __name__ == '__main__':
 
+    if len(sys.argv) > 1:
+        log_level = int(sys.argv[1])
+        log.setLevel(log_level)
+
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
@@ -162,5 +173,5 @@ if __name__ == '__main__':
             response = video_processor.process(job)
             socket_handler.send_response(response)
         except Exception as e:
-            print(f'Failed to summarize video: {e}')
+            log.error(f'Failed to summarize video: {e}')
             socket_handler.send_error(e)

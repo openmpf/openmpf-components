@@ -68,6 +68,18 @@
                     "description": "Specifies the number of seconds the video length determined by the model can differ from the last event end time. If exceeded, another attempt will be made to generate the output. Set to -1 to disable check.",
                     "type": "INT",
                     "defaultValue": "20"
+                },
+                {
+                    "name": "TARGET_SEGMENT_LENGTH",
+                    "description": "Set to -1 to disable segmenting the video.",
+                    "type": "INT",
+                    "defaultValue": "-1"
+                },
+                {
+                    "name": "TARGET_VFR_SEGMENT_LENGTH",
+                    "description": "Set to -1 to disable segmenting the video.",
+                    "type": "INT",
+                    "defaultValue": "-1"
                 }
             ] 
         }

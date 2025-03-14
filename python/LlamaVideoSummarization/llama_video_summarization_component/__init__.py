@@ -44,7 +44,7 @@ log = logging.getLogger('LlamaVideoSummarizationComponent')
 class LlamaVideoSummarizationComponent:
 
     def __init__(self):
-        self.child_process = ChildProcess(['/llama/venv/bin/python3', '/llama/summarize_video.py'])
+        self.child_process = ChildProcess(['/llama/venv/bin/python3', '/llama/summarize_video.py', str(log.getEffectiveLevel())])
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         try:
@@ -61,12 +61,27 @@ class LlamaVideoSummarizationComponent:
 
             log.info('Processing complete.')
 
-            track = mpf.VideoTrack(job.start_frame, job.stop_frame,\
-                detection_properties={\
-                    'TEXT' : response_json['video_summary'],\
-                    'VIDEO LENGTH' : response_json['video_length'],\
-                    'VIDEO EVENT TIMELINE': json.dumps(response_json['video_event_timeline'])\
-                })
+            summary_properties={
+                'TEXT' : response_json['video_summary'],
+                'VIDEO LENGTH' : response_json['video_length'],
+                'VIDEO EVENT TIMELINE': json.dumps(response_json['video_event_timeline'])
+            }
+
+            stop_frame = 0
+            if 'FRAME_COUNT' in job.media_properties:
+                stop_frame = job.media_properties['FRAME_COUNT']
+            elif 'FPS' in job.media_properties:
+                video_fps = float(job.media_properties['FPS'])
+                video_secs = float(response_json['video_length'])
+                stop_frame = int(video_secs * video_fps)
+
+            track = mpf.VideoTrack(0, stop_frame, 1.0,\
+                # add dummy locations to prevent the Workflow Manager from dropping / truncating track
+                frame_locations={
+                    0: mpf.ImageLocation(0, 0, 0, 0, 1.0),
+                    stop_frame: mpf.ImageLocation(0, 0, 0, 0, 1.0)
+                },
+                detection_properties=summary_properties)
 
             return (track,)
         except Exception:
