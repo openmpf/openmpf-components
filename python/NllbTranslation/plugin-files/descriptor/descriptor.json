@@ -44,6 +44,12 @@
           "type": "STRING",
           "defaultValue": "ISO_SCRIPT,DECODED_SCRIPT,SCRIPT"
         },
+{
+          "name": "SENTENCE_SPLITTER_CHAR_COUNT",
+          "description": "Integer value specifying maximum number of characters to process through sentence splitter.",
+          "type": "INT",
+          "defaultValue": "500"
+        },
         {
           "name": "TARGET_LANGUAGE",
           "description": "The ISO-639-3 language code for language and script that the input test should be translated to.",

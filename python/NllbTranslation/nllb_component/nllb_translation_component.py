@@ -237,3 +237,6 @@ class JobConfig:
             raise mpf.DetectionException(
                 f'Target translation ({sourceLanguage}) language is empty or unsupported',
                 mpf.DetectionError.INVALID_PROPERTY)
+        
+        # set translation limit. default to 360 if no value set
+        self.nllb_character_limit = mpf_util.get_property(props, 'SENTENCE_SPLITTER_CHAR_COUNT', 360)
