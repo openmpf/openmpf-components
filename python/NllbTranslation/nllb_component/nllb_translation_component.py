@@ -43,7 +43,6 @@ logger = logging.getLogger('Nllb')
 class NllbTranslationComponent:
 
     def __init__(self):
-        # get nllb-200-distilled-600M model
         self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
                                                             token=False, local_files_only=True)
     
@@ -113,7 +112,7 @@ class NllbTranslationComponent:
         elapsed = time.time() - start
         logger.info(f"Successfully loaded tokenizer in {elapsed} seconds.")
 
-        logger.info(f'Getting Translation....')
+        logger.info(f'Getting translation....')
 
         text_to_translate: dict = {}
 
@@ -123,16 +122,16 @@ class NllbTranslationComponent:
             if input_text and not input_text.isdigit() and not (re.match(("^[" + string.punctuation + "]*$").replace("/","\/"), input_text)):
                 text_to_translate[prop_to_translate] = input_text
 
-        logger.info(f' Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
+        logger.info(f'Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
         for prop_to_translate, text in text_to_translate.items():
 
             # split input text into a list of sentences to support max translation length of 360 characters
-            logger.info(f' Translating character limit set to: {config.nllb_character_limit}')
+            logger.info(f'Translating character limit set to: {config.nllb_character_limit}')
             if len(text) < config.nllb_character_limit:
                 text_list = [text]
             else:
                 # split input values & model
-                wtp_lang: str = WtpLanguageSettings.convert_to_iso(config.translate_from_language)
+                wtp_lang: Optional[str] = WtpLanguageSettings.convert_to_iso(config.translate_from_language)
                 test_splitter_model = TextSplitterModel("wtp-bert-mini", "cpu", wtp_lang)
 
                 logger.info(f'Text to translate is larger than the {config.nllb_character_limit} limit, splitting into smaller sentences')
@@ -152,14 +151,13 @@ class NllbTranslationComponent:
                 translated_tokens = self._model.generate(
                     **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
 
-                sentence_tranlsation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+                sentence_translation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
 
                 # need to add space between sentences back
                 if translation == "":
-                    translation += sentence_tranlsation
+                    translation = sentence_translation
                 else:
-                    translation = " ".join([translation, sentence_tranlsation])
-                    #translation = (translation + " " + sentence_tranlsation)
+                    translation = " ".join([translation, sentence_translation])
 
             logger.info(f'{prop_to_translate} translation is: {translation}')
 
@@ -187,7 +185,7 @@ class JobConfig:
                                                                 '/models/facebook/nllb-200-distilled-600M')
 
         # language to translate to
-        self.translate_to_language: str = NllbLanguageMapper.get_code(
+        self.translate_to_language: Optional[str] = NllbLanguageMapper.get_code(
             mpf_util.get_property(props, 'TARGET_LANGUAGE', 'eng'),
             mpf_util.get_property(props, 'TARGET_SCRIPT', 'Latn'))
 
@@ -234,11 +232,7 @@ class JobConfig:
             sourceLanguage,
             sourceScript)
         
-        # set translation limit. default to 360 if no value set
-        self.nllb_character_limit = mpf_util.get_property(props, 'TRANSLATION_CHARACTER_LIMIT', 360)
-
-        # if no source language is provided or language is not supported, no translation can be done
-        if not bool(self.translate_from_language):
+        if not self.translate_from_language:
             logger.exception('Unsupported or no source language provided')
             raise mpf.DetectionException(
                 f'Target translation ({sourceLanguage}) language is empty or unsupported',
