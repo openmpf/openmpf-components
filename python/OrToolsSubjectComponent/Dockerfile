@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.4
-
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -28,54 +26,22 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
+FROM ${BUILD_REGISTRY}openmpf_python_subject_build:${BUILD_TAG} AS build_component
 
-# To enable GPU resources, update
-# below line to BUILD_TYPE=gpu
-ARG BUILD_TYPE=cpu
+RUN pip install ortools 'protobuf>=5.28.3'
 
-FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
-
-RUN pip install langcodes
-
-ARG BUILD_TYPE
-RUN <<eot
-    cd /home/mpf/openmpf-projects/openmpf-python-component-sdk/detection/nlp_text_splitter
-    if [[ ${BUILD_TYPE,,} = gpu ]]; then
-        ./install.sh --gpu
-    else
-        ./install.sh
-    fi
-eot
-
-ARG RUN_TESTS=false
-RUN --mount=target=.,readwrite <<eot
-    install-component.sh;
-    if [ "${RUN_TESTS,,}" == true ]; then
-        python tests/test_acs_translation.py;
-    fi
-eot
+RUN --mount=target=.,readwrite install-component.sh
 
 
-FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG} AS cpu_component
+FROM ${BUILD_REGISTRY}openmpf_python_subject_executor:${BUILD_TAG}
 
-COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+COPY --from=build_component $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 
-COPY --from=build /opt/wtp /opt/wtp
-
-COPY --from=build $PLUGINS_DIR/AzureTranslation $PLUGINS_DIR/AzureTranslation
-
+COPY --from=build_component $PLUGINS_DIR/OrToolsSubjectComponent $PLUGINS_DIR/OrToolsSubjectComponent
 
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF Azure Translation" \
+      org.label-schema.name="OpenMPF OR-Tools Subject Component" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
-
-
-FROM cpu_component AS gpu_component
-
-ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
-
-FROM ${BUILD_TYPE}_component
