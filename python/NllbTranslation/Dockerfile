@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.2
+# syntax=docker/dockerfile:1.4
 
 #############################################################################
 # NOTICE                                                                    #
@@ -28,13 +28,23 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 ARG RUN_TESTS=false
 
+FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
+
+RUN <<eot
+    cd /home/mpf/openmpf-projects/openmpf-python-component-sdk/detection/nlp_text_splitter
+    ./install.sh
+eot
+
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
+
+COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+
 RUN pip install --no-cache-dir \
-    'transformers' \
-    'torch'
+    'torch' \
+    'transformers'
 
 # download nllb model
 RUN --mount=type=tmpfs,target=/tmp/models \
