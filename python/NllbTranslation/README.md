@@ -8,23 +8,23 @@ This component translates the input text from a given source language to English
 # Job Properties
 The below properties can be optionally provided to alter the behavior of the component.
 
-- `FEED_FORWARD_PROP_TO_PROCESS`: Controls which properties of the feed-forward track or detection are considered for translation. This should be a comma-separated list of property names. The default properties are `"TEXT,TRANSCRIPT"`. Each named property in the list that is present is translated and the resulting translations will be added to the feed forward track. The defaul properties will be saved as `TEXT TRANSLATION` or `TRANSCRIPT TRANSLATION` depending on which (or both) is present. For other property names that are provided, the tranlastion property will follow the same convention and tranlastions will be saved to a `[PROPERTY NAME] TRANSLATION`.
+- `FEED_FORWARD_PROP_TO_PROCESS`: Controls which properties of the feed-forward track or detection are considered for translation. This should be a comma-separated list of property names. The default properties are `"TEXT,TRANSCRIPT"`. Each named property in the list that is present is translated and the resulting translations will be added to the feed forward track. The default properties will be saved as `TEXT TRANSLATION` or `TRANSCRIPT TRANSLATION` depending on which (or both) is present. For other property names that are provided, the translation property will follow the same convention and translations will be saved to a `[PROPERTY NAME] TRANSLATION`.
 
-- `LANGUAGE_FEED_FORWARD_PROP`: Is an optional feed-forward property that comes from an earlier stage in a pipeline, indicating which language to translate from. The default values are `"ISO_LANGUAGE, DECODED_LANGUAGE, LANGUAGE"`. The ISO 639-3 standard is the expected input for any of these fields. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, the languge to translate from will be determiend by the DEFAULT_SOURCE_LANGUAGE property instead.
+- `LANGUAGE_FEED_FORWARD_PROP`: Is an optional feed-forward property that comes from an earlier stage in a pipeline, indicating which language to translate from. The default values are `"ISO_LANGUAGE, DECODED_LANGUAGE, LANGUAGE"`. The ISO 639-3 standard is the expected input for any of these fields. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, the language to translate from will be determined by the DEFAULT_SOURCE_LANGUAGE property instead.
 
-- `SCRIPT_FEED_FORWARD_PROP`: Is an optional feed-forward property that is set from an earleir stage in the a pipeline, indicating which source script to use during translation. The default values are `"ISO_SCRIPT, DECODED_SCRIPT, SCRIPT"`. The ISO 15925 is expected as the input for these fields. The first property that is found in the list will be used, otherwise the the DEFAULT_SOURCE_SCRIPT property will be used to select the script to be used for translation.
+- `SCRIPT_FEED_FORWARD_PROP`: Is an optional feed-forward property that is set from an earlier stage in the a pipeline, indicating which source script to use during translation. The default values are `"ISO_SCRIPT, DECODED_SCRIPT, SCRIPT"`. The ISO 15924 is expected as the input for these fields. The first property that is found in the list will be used, otherwise the the DEFAULT_SOURCE_SCRIPT property will be used to select the script to be used for translation.
 
 - `DEFAULT_SOURCE_LANGUAGE`: The default source language to use if none of the property names listed in `LANGUAGE_FEED_FORWARD_PROP` are present in a feed-forward track or detection. Values should be in the ISO 639-3 standard.
 
-- `DEFAULT_SOURCE_SCRIPT`: The default source script to use if none of the property names listed in the `SCRIPT_FEED_FORWARD_PROP` are present in a feed-forward track or detection. Values should be in the ISO 15925 standard.
+- `DEFAULT_SOURCE_SCRIPT`: The default source script to use if none of the property names listed in the `SCRIPT_FEED_FORWARD_PROP` are present in a feed-forward track or detection. Values should be in the ISO 15924 standard.
 
 - `TARGET_LANGUAGE`: Optional property to define a language to translate to. This value defaults to english if the property is not present.
 
-- `TARGET_SCRIPT`: Optional property to define a script to be used in tranlating a language to. This value defaults to latin.
+- `TARGET_SCRIPT`: Optional property to define a script to be used in translating a language to. This value defaults to latin.
 
 
 # Language Identifiers
-The following are the ISO 639-3 and ISO 15925 codes, and their corresponding languages which Nllb can translate.
+The following are the ISO 639-3 and ISO 15924 codes, and their corresponding languages which Nllb can translate.
 
 | ISO-639-3 | ISO-15924  |              Language              
 | --------- | ---------- | ----------------------------------
