@@ -116,24 +116,24 @@ class GeminiComponent:
         self.video_process_timer = Timer()
 
         self.video_decode_timer.start()
-        for idx, frame in enumerate(reader):
-            if (config.frames_per_second_to_process <= 0) or (idx % config.frames_per_second_to_process == 0):
-                self.video_decode_timer.pause()
-                self.frame_count += 1
+        for idx, frame in zip(self._get_frames_to_process(list(range(len(reader))), config.frames_per_second_to_process), reader):
+        # for idx, frame in enumerate(reader):
+            self.video_decode_timer.pause()
+            self.frame_count += 1
 
-                height, width, _ = frame.shape
-                detection_properties = dict()
+            height, width, _ = frame.shape
+            detection_properties = dict()
 
-                self._get_gemini_response(self.frame_prompts, job.data_uri, detection_properties, self.video_process_timer)
+            self._get_gemini_response(self.frame_prompts, job.data_uri, detection_properties, self.video_process_timer)
 
-                img_location = mpf.ImageLocation(0, 0, width, height, -1, detection_properties)
-                if is_video_job:
-                    tracks.append(mpf.VideoTrack(idx, idx, -1, { idx:img_location }, detection_properties))
-                else:
-                    tracks.append(img_location)
+            img_location = mpf.ImageLocation(0, 0, width, height, -1, detection_properties)
+            if is_video_job:
+                tracks.append(mpf.VideoTrack(idx, idx, -1, { idx:img_location }, detection_properties))
+            else:
+                tracks.append(img_location)
 
-                self.video_decode_timer.start()
-
+            self.video_decode_timer.start()
+            
         if is_video_job:
             for track in tracks:
                 reader.reverse_transform(track)

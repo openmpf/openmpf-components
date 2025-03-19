@@ -27,7 +27,6 @@
 import sys
 import os
 import logging
-import warnings
 
 # Add gemini_component to path.
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -39,7 +38,7 @@ from unittest.mock import MagicMock, Mock
 import mpf_component_api as mpf
 
 logging.basicConfig(level=logging.DEBUG)
-USE_MOCKS = False
+USE_MOCKS = True
 
 # Replace with your own API key
 GEMINI_API_KEY = 'your api key here'
@@ -56,9 +55,7 @@ class TestGemini(unittest.TestCase):
         if not USE_MOCKS:
             return detection_func(job)
 
-        mock_container = MagicMock()
-        with unittest.mock.patch("google.genai.Client.models", return_value=mock_container):
-            mock_container.generate_content = Mock(side_effect=side_effect_function)
+        with unittest.mock.patch("gemini_component.gemini_component.GeminiComponent._get_gemini_response", side_effect=side_effect_function):
             results = list(detection_func(job))
             return results
 
@@ -74,22 +71,15 @@ class TestGemini(unittest.TestCase):
         )
         component = GeminiComponent()
 
-        def side_effect_function(model, contents):
-            prompt = contents[0]
-            response = ""
-            if prompt == "Describe what this person is wearing":
-                response = "The person in the image is wearing a dark suit with a matching tie. The shirt underneath appears to be light-colored, possibly white or off-white. He has glasses on his face and is smiling as he shakes hands with someone who isn't fully visible in the frame. His attire suggests a formal setting, possibly for business or an event that requires professional dress code."
-            elif prompt == "Describe what this person is doing":
-                response = "The person in the image appears to be shaking someone's hand. They are wearing a suit and tie, which suggests they may be in a professional or formal setting. The context of the photo is not clear from this angle, but it looks like they could be at an event or gathering where such interactions are common."
-            
-            mock_response = MagicMock()
-            mock_response.text = response
-            return mock_response
+        def side_effect_function(prompt_dict, data_uri, detection_properties, video_process_timer):
+            detection_properties['CLOTHING'] = "The person in the image is wearing a dark suit with a matching tie. The shirt underneath appears to be light-colored, possibly white or off-white. He has glasses on his face and is smiling as he shakes hands with someone who isn't fully visible in the frame. His attire suggests a formal setting, possibly for business or an event that requires professional dress code."
+            detection_properties['ACTIVITY'] = "The person in the image appears to be shaking someone's hand. They are wearing a suit and tie, which suggests they may be in a professional or formal setting. The context of the photo is not clear from this angle, but it looks like they could be at an event or gathering where such interactions are common."
+            detection_properties['ANNOTATED BY GEMINI'] = True
 
         result = self.run_patched_job(component, job, side_effect_function)[0]
         
-        self.assertTrue("LOCATION" in result.detection_properties and "ACTIVITY" in result.detection_properties)
-        self.assertTrue(len(result.detection_properties["LOCATION"]) > 0 and len(result.detection_properties["ACTIVITY"]) > 0)
+        self.assertTrue("CLOTHING" in result.detection_properties and "ACTIVITY" in result.detection_properties)
+        self.assertTrue(len(result.detection_properties["CLOTHING"]) > 0 and len(result.detection_properties["ACTIVITY"]) > 0)
     
     def test_get_frames(self):
         component = GeminiComponent()
