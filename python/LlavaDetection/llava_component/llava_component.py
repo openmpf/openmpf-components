@@ -41,6 +41,8 @@ import mpf_component_util as mpf_util
 
 logger = logging.getLogger('LlavaComponent')
 
+IGNORE_WORDS = ['unsure', 'none', 'false', 'no', 'unclear', 'n/a', '']
+
 class LlavaComponent:
     detection_type = 'CLASS'
 
@@ -214,7 +216,6 @@ class LlavaComponent:
         return [job_feed_forward]
 
     def _update_detection_properties(self, detection_properties, response_json):
-        ignore_words = ['unsure', 'none', 'false', 'no', 'unclear', 'n/a', '']
         key_list = self._get_keys(response_json)
         key_vals = dict()
         keywords = []
@@ -223,33 +224,50 @@ class LlavaComponent:
             key, val = " ".join([s.upper() for s in split_key[:-1]]), split_key[-1]
             key_vals[key] = val
 
-        if ('LLAVA VISIBLE PERSON' not in key_vals) or (key_vals['LLAVA VISIBLE PERSON'].strip().lower() not in ignore_words):
+        if ('LLAVA VISIBLE PERSON' not in key_vals) or (key_vals['LLAVA VISIBLE PERSON'].strip().lower() not in IGNORE_WORDS):
             ret_key_vals = dict(key_vals)
             for key, val in key_vals.items():
-                if ('VISIBLE' in key) and (val.strip().lower() in ignore_words):
+                if ('VISIBLE' in key) and (val.strip().lower() in IGNORE_WORDS):
                     keywords.append(key.split(' VISIBLE ')[1])
                     ret_key_vals.pop(key)
 
+            # TODO: Test removal of features if "VISIBLE" feature is to be ignored
             for keyword in keywords:
                 pattern = re.compile(fr'\b{keyword}\b')
                 for key_to_remove in filter(pattern.search, key_vals):
                     ret_key_vals.pop(key_to_remove)
             
             for key, val in key_vals.items():
-                if val.strip().lower() in ignore_words:
+                if val.strip().lower() in IGNORE_WORDS:
                     ret_key_vals.pop(key)
             
             detection_properties.update(ret_key_vals)
             detection_properties['ANNOTATED BY LLAVA'] = True
 
     def _get_keys(self, response_json):
-        if isinstance(response_json, str):
+        if not response_json:
+            yield f'||none'
+
+        elif isinstance(response_json, str):
             yield f'||{response_json}'
+
         elif isinstance(response_json, list):
             yield f'||{json.dumps(response_json)}'
+
         elif isinstance(response_json, dict):
             if self._is_lowest_level(response_json):
-                yield f'||{json.dumps(response_json)}'
+
+                # TODO: Check every element and drop if ignorable
+                return_response_json = dict(response_json)
+                for key, val in response_json.items():
+                    if val.strip().lower() in IGNORE_WORDS:
+                        return_response_json.pop(key)
+
+                if not return_response_json:
+                    yield f'||none'
+                else:
+                    yield f'||{json.dumps(return_response_json)}'
+
             else:
                 for key, value in response_json.items():
                     yield from (f'||{key}{p}' for p in self._get_keys(value))
