@@ -369,7 +369,7 @@ class LlavaComponent:
         try:
             self.video_process_timer.start()
             response = self.client.generate(self.model, prompt, images=[encoded_image])['response']
-            logger.debug("Ollama response:\n{response}")
+            logger.debug(f"Ollama response:\n{response}")
             self.video_process_timer.pause()
             return response
         except Exception as e:
@@ -384,7 +384,7 @@ class LlavaComponent:
             for tag, prompt in prompt_dict.items():
                 video_process_timer.start()
                 response = self.client.generate(self.model, prompt, images=[encoded])['response']
-                logger.debug("Ollama response:\n{response}")
+                logger.debug(f"Ollama response:\n{response}")
                 detection_properties[tag] = response
                 video_process_timer.pause()
             detection_properties['ANNOTATED BY LLAVA'] = True
