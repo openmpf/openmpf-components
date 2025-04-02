@@ -313,9 +313,9 @@ class LlavaComponent:
             if self.client is None or host_url != self.host_url:
                 self.host_url = host_url
                 self.client = ollama.Client(host=self.host_url)
-        except:
+        except Exception as e:
             raise mpf.DetectionException(
-                "Could not instantiate Ollama Client. Make sure OLLAMA_SERVER is set correctly: ",
+                f"Could not instantiate Ollama Client. Make sure OLLAMA_SERVER is set correctly: {e}",
                 mpf.DetectionError.NETWORK_ERROR
             )
 
@@ -369,11 +369,12 @@ class LlavaComponent:
         try:
             self.video_process_timer.start()
             response = self.client.generate(self.model, prompt, images=[encoded_image])['response']
+            logger.debug("Ollama response:\n{response}")
             self.video_process_timer.pause()
             return response
-        except:
+        except Exception as e:
             raise mpf.DetectionException(
-                "Could not communicate with Ollama server: ",
+                f"Could not communicate with Ollama server: {e}",
                 mpf.DetectionError.NETWORK_ERROR
             )
         
@@ -382,13 +383,15 @@ class LlavaComponent:
             encoded = self._encode_image(image)
             for tag, prompt in prompt_dict.items():
                 video_process_timer.start()
-                detection_properties[tag] = self.client.generate(self.model, prompt, images=[encoded])['response']
+                response = self.client.generate(self.model, prompt, images=[encoded])['response']
+                logger.debug("Ollama response:\n{response}")
+                detection_properties[tag] = response
                 video_process_timer.pause()
             detection_properties['ANNOTATED BY LLAVA'] = True
             
-        except:
+        except Exception as e:
             raise mpf.DetectionException(
-                "Could not communicate with Ollama server: ",
+                f"Could not communicate with Ollama server: {e}",
                 mpf.DetectionError.NETWORK_ERROR
                 )
 
