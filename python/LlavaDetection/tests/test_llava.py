@@ -378,6 +378,35 @@ class TestLlava(unittest.TestCase):
             if key.startswith("LLAVA"):
                 self.assertTrue(value.strip().lower() != 'unsure')
     
+    def test_ignore_unsure_results(self):
+        ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
+        job = mpf.ImageJob(
+            job_name='test-ignore-unsure',
+            data_uri=self._get_test_file('person.jpg'),
+            job_properties=dict(
+                OLLAMA_SERVER='localhost:11434',
+                JSON_PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_json_prompts.json'),
+                ENABLE_JSON_PROMPT_FORMAT='True' 
+            ),
+            media_properties={},
+            feed_forward_location=ff_loc
+        )
+        component = LlavaComponent()
+
+        def side_effect_function(model, prompt, images):
+            with open(os.path.join(os.path.dirname(__file__), 'data', 'outputs', f"{job.job_name}-output.txt")) as f:
+                response = f.read()
+
+            return {"response": f"{response}"}
+
+        result = self.run_patched_job(component, job, side_effect_function)[0]
+        
+        print(result.detection_properties) # DEBUG
+
+        for key, value in result.detection_properties.items():
+            if key.startswith("LLAVA"):
+                self.assertTrue(value.strip().lower() != 'unsure')
+
     def test_get_frames(self):
         component = LlavaComponent()
         self.assertEqual(component._get_frames_to_process([], 1), [])

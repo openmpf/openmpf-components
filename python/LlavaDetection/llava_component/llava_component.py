@@ -179,8 +179,9 @@ class LlavaComponent:
                                 response_json = json.loads(response)
                                 self._update_detection_properties(ff_location.detection_properties, response_json)
                                 json_failed = False
-                            except:
-                                logger.warning(f"LLaVA failed to produce valid JSON output. Failed {json_attempts} of {self.json_limit} attempts.")
+                            except Exception as e:
+                                logger.warning(f"LLaVA failed to produce valid JSON output: {e}")
+                                logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
                                 continue
                         if json_failed:
                             logger.warning(f"Using last full LLaVA response instead of parsed JSON output.")
@@ -193,7 +194,7 @@ class LlavaComponent:
             if classification in prompts_to_use:
                 for tag, prompt in prompts_to_use[classification].items():
                     json_attempts, json_failed = 0, True
-                    while (json_attempts <= self.json_limit) and (json_failed):
+                    while (json_attempts < self.json_limit) and (json_failed):
                         json_attempts += 1
                         response = self._get_ollama_response_json(prompt, encoded)
                         try:
@@ -201,8 +202,9 @@ class LlavaComponent:
                             response_json = json.loads(response)
                             self._update_detection_properties(job_feed_forward.detection_properties, response_json)
                             json_failed = False
-                        except:
-                            logger.warning(f"LLaVA failed to produce valid JSON output. Failed {json_attempts} of {self.json_limit} attempts.")
+                        except Exception as e:
+                            logger.warning(f"LLaVA failed to produce valid JSON output: {e}")
+                            logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
                             continue
                     if json_failed:
                         logger.warning(f"Using last full LLaVA response instead of parsed JSON output.")
@@ -212,7 +214,7 @@ class LlavaComponent:
         return [job_feed_forward]
 
     def _update_detection_properties(self, detection_properties, response_json):
-        ignore_words = ['unsure', 'none', 'false', 'no', 'unclear', '']
+        ignore_words = ['unsure', 'none', 'false', 'no', 'unclear', 'n/a', '']
         key_list = self._get_keys(response_json)
         key_vals = dict()
         keywords = []
@@ -222,25 +224,28 @@ class LlavaComponent:
             key_vals[key] = val
 
         if ('LLAVA VISIBLE PERSON' not in key_vals) or (key_vals['LLAVA VISIBLE PERSON'].strip().lower() not in ignore_words):
+            ret_key_vals = dict(key_vals)
             for key, val in key_vals.items():
                 if ('VISIBLE' in key) and (val.strip().lower() in ignore_words):
                     keywords.append(key.split(' VISIBLE ')[1])
-                    key_vals.pop(key)
+                    ret_key_vals.pop(key)
 
             for keyword in keywords:
                 pattern = re.compile(fr'\b{keyword}\b')
                 for key_to_remove in filter(pattern.search, key_vals):
-                    key_vals.pop(key_to_remove)
+                    ret_key_vals.pop(key_to_remove)
             
             for key, val in key_vals.items():
                 if val.strip().lower() in ignore_words:
-                    key_vals.pop(key)
+                    ret_key_vals.pop(key)
             
-            detection_properties.update(key_vals)
+            detection_properties.update(ret_key_vals)
             detection_properties['ANNOTATED BY LLAVA'] = True
 
     def _get_keys(self, response_json):
-        if isinstance(response_json, list) or isinstance(response_json, str):
+        if isinstance(response_json, str):
+            yield f'||{response_json}'
+        elif isinstance(response_json, list):
             yield f'||{json.dumps(response_json)}'
         elif isinstance(response_json, dict):
             if self._is_lowest_level(response_json):
