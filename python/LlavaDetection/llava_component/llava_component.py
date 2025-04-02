@@ -41,7 +41,7 @@ import mpf_component_util as mpf_util
 
 logger = logging.getLogger('LlavaComponent')
 
-IGNORE_WORDS = ['unsure', 'none', 'false', 'no', 'unclear', 'n/a', 'unspecified', 'unknown', '']
+IGNORE_WORDS = ['unsure', 'none', 'false', 'no', 'unclear', 'n/a', 'unspecified', 'unknown', 'unreadable', 'not visible', 'none visible', '']
 
 class LlavaComponent:
     detection_type = 'CLASS'
@@ -224,11 +224,14 @@ class LlavaComponent:
             key, val = " ".join([s.upper() for s in split_key[:-1]]), split_key[-1]
             key_vals[key] = val
 
-        # TODO: Work with any class, rollup vehicle
+        # TODO: Implement this generically to work with any class. Specify rollup class in prompt JSON file.
         is_person = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() is 'person')
         ignore_person = is_person and ('LLAVA VISIBLE PERSON' in key_vals) and (key_vals['LLAVA VISIBLE PERSON'].strip().lower() in IGNORE_WORDS)
 
-        if not ignore_person:
+        is_vehicle = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() in ['car', 'truck', 'bus'])
+        ignore_vehicle = is_vehicle and ('LLAVA VISIBLE VEHICLE' in key_vals) and (key_vals['LLAVA VISIBLE VEHICLE'].strip().lower() in IGNORE_WORDS)
+
+        if not ignore_person and not ignore_vehicle:
             tmp_key_vals = dict(key_vals)
             for key, val in key_vals.items():
                 if ('VISIBLE' in key) and (val.strip().lower() in IGNORE_WORDS):
@@ -251,6 +254,8 @@ class LlavaComponent:
             
             detection_properties.update(key_vals)
             detection_properties['ANNOTATED BY LLAVA'] = True
+
+            logger.debug(f"{detection_properties=}")
 
     def _get_keys(self, response_json):
         if not response_json:
