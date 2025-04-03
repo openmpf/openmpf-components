@@ -39,7 +39,8 @@ import mpf_component_util as mpf_util
 
 logger = logging.getLogger('GeminiComponent')
 
-IGNORE_WORDS = ['unsure', 'none', 'false', 'no', 'unclear', 'n/a', 'unspecified', 'unknown', 'unreadable', 'not visible', 'none visible', '']
+IGNORE_WORDS = ['unsure', 'none', 'false', 'no', 'unclear', 'n/a', 'unspecified', 'unknown', 'unreadable', 'not visible', 'none visible']
+IGNORE_PREFIXES = tuple([s + ' ' for s in IGNORE_WORDS])
 
 class GeminiComponent:
     detection_type = 'CLASS'
@@ -231,18 +232,18 @@ class GeminiComponent:
             key_vals[key] = val
 
         # TODO: Implement this generically to work with any class. Specify rollup class in prompt JSON file.
-        is_person = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() is 'person')
-        ignore_person = is_person and ('GEMINI VISIBLE PERSON' in key_vals) and (key_vals['GEMINI VISIBLE PERSON'].strip().lower() in IGNORE_WORDS)
+        is_person = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() == 'person')
+        ignore_person = is_person and ('GEMINI VISIBLE PERSON' in key_vals) and (self._ignore(key_vals['GEMINI VISIBLE PERSON']))
 
         is_vehicle = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() in ['car', 'truck', 'bus'])
-        ignore_vehicle = is_vehicle and ('GEMINI VISIBLE VEHICLE' in key_vals) and (key_vals['GEMINI VISIBLE VEHICLE'].strip().lower() in IGNORE_WORDS)
+        ignore_vehicle = is_vehicle and ('GEMINI VISIBLE VEHICLE' in key_vals) and (self._ignore(key_vals['GEMINI VISIBLE VEHICLE']))
 
         if not ignore_person and not ignore_vehicle:
             tmp_key_vals = dict(key_vals)
             for key, val in key_vals.items():
                 if 'VISIBLE' in key:
                     tmp_key_vals.pop(key)
-                    if val.strip().lower() in IGNORE_WORDS:
+                    if self._ignore(val):
                         keywords.append(key.split(' VISIBLE ')[1])
             key_vals = tmp_key_vals
 
@@ -255,7 +256,7 @@ class GeminiComponent:
             
             tmp_key_vals = dict(key_vals)
             for key, val in key_vals.items():
-                if val.strip().lower() in IGNORE_WORDS:
+                if self._ignore(val):
                     tmp_key_vals.pop(key)
             key_vals = tmp_key_vals
             
@@ -277,10 +278,9 @@ class GeminiComponent:
         elif isinstance(response_json, dict):
             if self._is_lowest_level(response_json):
 
-                # TODO: Check every element and drop if ignorable
                 return_response_json = dict(response_json)
                 for key, val in response_json.items():
-                    if val.strip().lower() in IGNORE_WORDS:
+                    if self._ignore(val):
                         return_response_json.pop(key)
 
                 if not return_response_json:
@@ -290,7 +290,10 @@ class GeminiComponent:
 
             else:
                 for key, value in response_json.items():
-                    yield from (f'||{key}{p}' for p in self._get_keys(value))
+                    if self._ignore(key):
+                        yield f'||none'
+                    else:
+                        yield from (f'||{key}{p}' for p in self._get_keys(value))
 
     @staticmethod
     def _is_lowest_level(response_json):
@@ -298,6 +301,12 @@ class GeminiComponent:
             if not isinstance(val, str):
                 return False
         return True
+
+    @staticmethod
+    def _ignore(input):
+        return not input or \
+            input.strip().lower() in IGNORE_WORDS or \
+            input.strip().lower().startswith(IGNORE_PREFIXES)
 
     def _update_prompts(self, prompt_config_path, json_prompt_config_path):
         '''
