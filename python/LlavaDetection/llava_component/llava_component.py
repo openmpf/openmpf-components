@@ -41,7 +41,8 @@ import mpf_component_util as mpf_util
 
 logger = logging.getLogger('LlavaComponent')
 
-IGNORE_WORDS = ['unsure', 'none', 'false', 'no', 'unclear', 'n/a', 'unspecified', 'unknown', 'unreadable', 'not visible', 'none visible', '']
+IGNORE_WORDS = ('unsure', 'none', 'false', 'no', 'unclear', 'n/a', 'unspecified', 'unknown', 'unreadable', 'not visible', 'none visible')
+IGNORE_PREFIXES = tuple([s + ' ' for s in IGNORE_WORDS])
 
 class LlavaComponent:
     detection_type = 'CLASS'
@@ -225,18 +226,19 @@ class LlavaComponent:
             key_vals[key] = val
 
         # TODO: Implement this generically to work with any class. Specify rollup class in prompt JSON file.
-        is_person = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() is 'person')
-        ignore_person = is_person and ('LLAVA VISIBLE PERSON' in key_vals) and (key_vals['LLAVA VISIBLE PERSON'].strip().lower() in IGNORE_WORDS)
+        is_person = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() == 'person')
+        ignore_person = is_person and ('LLAVA VISIBLE PERSON' in key_vals) and (self._ignore(key_vals['LLAVA VISIBLE PERSON']))
 
         is_vehicle = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() in ['car', 'truck', 'bus'])
-        ignore_vehicle = is_vehicle and ('LLAVA VISIBLE VEHICLE' in key_vals) and (key_vals['LLAVA VISIBLE VEHICLE'].strip().lower() in IGNORE_WORDS)
+        ignore_vehicle = is_vehicle and ('LLAVA VISIBLE VEHICLE' in key_vals) and (self._ignore(key_vals['LLAVA VISIBLE VEHICLE']))
 
         if not ignore_person and not ignore_vehicle:
             tmp_key_vals = dict(key_vals)
             for key, val in key_vals.items():
-                if ('VISIBLE' in key) and (val.strip().lower() in IGNORE_WORDS):
-                    keywords.append(key.split(' VISIBLE ')[1])
+                if 'VISIBLE' in key:
                     tmp_key_vals.pop(key)
+                    if self._ignore(val):
+                        keywords.append(key.split(' VISIBLE ')[1])
             key_vals = tmp_key_vals
 
             tmp_key_vals = dict(key_vals)
@@ -248,7 +250,7 @@ class LlavaComponent:
             
             tmp_key_vals = dict(key_vals)
             for key, val in key_vals.items():
-                if val.strip().lower() in IGNORE_WORDS:
+                if self._ignore(val):
                     tmp_key_vals.pop(key)
             key_vals = tmp_key_vals
             
@@ -261,7 +263,7 @@ class LlavaComponent:
         if not response_json:
             yield f'||none'
 
-        elif isinstance(response_json, str):
+        elif isinstance(response_json, (str, bool)):
             yield f'||{response_json}'
 
         elif isinstance(response_json, list):
@@ -270,10 +272,9 @@ class LlavaComponent:
         elif isinstance(response_json, dict):
             if self._is_lowest_level(response_json):
 
-                # TODO: Check every element and drop if ignorable
                 return_response_json = dict(response_json)
                 for key, val in response_json.items():
-                    if val.strip().lower() in IGNORE_WORDS:
+                    if self._ignore(val):
                         return_response_json.pop(key)
 
                 if not return_response_json:
@@ -283,14 +284,24 @@ class LlavaComponent:
 
             else:
                 for key, value in response_json.items():
-                    yield from (f'||{key}{p}' for p in self._get_keys(value))
-        
+                    if self._ignore(key):
+                        yield f'||none'
+                    else:
+                        yield from (f'||{key}{p}' for p in self._get_keys(value))
+    
     @staticmethod
     def _is_lowest_level(response_json):
         for key, val in response_json.items():
             if not isinstance(val, str):
                 return False
         return True
+    
+    @staticmethod
+    def _ignore(input):
+        return not input or \
+            input.strip().lower() in IGNORE_WORDS or \
+            input.strip().lower().startswith(IGNORE_PREFIXES)
+
 
     def _get_feed_forward_detections(self, job_feed_forward, reader, config, is_video_job=False):
         self._update_prompts(config.prompt_config_path, config.json_prompt_config_path)

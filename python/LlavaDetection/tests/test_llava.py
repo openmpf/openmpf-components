@@ -373,13 +373,14 @@ class TestLlava(unittest.TestCase):
                 '{"describe": "The woman is walking indoors, possibly in a corridor or hall. The background is out of focus and does not provide any specific information."}',
             'LLAVA PERSON CLOTHING' : '{"upper body clothing": "black top", "lower body clothing": "black pants"}',
             'LLAVA PERSON ESTIMATED GENDER' : 'female',
-            'LLAVA PERSON GLASSES' : '{"describe": "No glasses visible"}',
             'LLAVA PERSON OBJECT IN HAND' : '{"type": "bag", "color": "dark", "describe": "Person is carrying a large dark bag."}',
             'LLAVA PERSON SHOE' : '{"type": "sneakers", "color": "white", "describe": "Woman is wearing white sneakers"}',
             'LLAVA PERSON TYPE' : 'civilian',
             'LLAVA PERSON NEST LEVEL 1 LEVEL 1' : 'valid',
             'LLAVA PERSON NEST LEVEL 1 NEST LEVEL 2 LEVEL 2' : 'valid',
             'LLAVA PERSON NEST LEVEL 1 NEST LEVEL 2 NEST LEVEL 3' : '{"level 3": "valid"}',
+            'LLAVA PERSON OTHER NOTABLE CHARACTERISTICS NORMAL' : 'behavior',
+            'LLAVA PERSON OTHER NOTABLE CHARACTERISTICS BEHAVIOR' : 'normal',
             'ANNOTATED BY LLAVA' : True
         }
 
@@ -418,7 +419,9 @@ class TestLlava(unittest.TestCase):
                 '{"color": "dark", "location": "pants", "description": "Dark-colored pants that are only partially visible."}',
             'LLAVA PERSON ESTIMATED AGE RANGE' : 'adult',
             'LLAVA PERSON ESTIMATED GENDER' : 'male',
+            'LLAVA PERSON PERSON WEARING SHOE' : 'True',
             'LLAVA PERSON SHOE' : '{"type": "sneaker", "color": "black", "description": "Black sneaker on the foot."}',
+            'LLAVA PERSON HEAD FEATURES BALD' : 'True',
             'LLAVA PERSON HEAD FEATURES HEAD COVER TYPE' : 'hoodie',
             'LLAVA PERSON ACTION PERFORMED' : 'walking',
             'LLAVA PERSON BACKGROUND' : '{"describe": "The person is in a building with an indoor surface visible behind them.", "type": "indoors"}',
