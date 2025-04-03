@@ -240,9 +240,10 @@ class GeminiComponent:
         if not ignore_person and not ignore_vehicle:
             tmp_key_vals = dict(key_vals)
             for key, val in key_vals.items():
-                if ('VISIBLE' in key) and (val.strip().lower() in IGNORE_WORDS):
-                    keywords.append(key.split(' VISIBLE ')[1])
+                if 'VISIBLE' in key:
                     tmp_key_vals.pop(key)
+                    if val.strip().lower() in IGNORE_WORDS:
+                        keywords.append(key.split(' VISIBLE ')[1])
             key_vals = tmp_key_vals
 
             tmp_key_vals = dict(key_vals)
@@ -267,7 +268,7 @@ class GeminiComponent:
         if not response_json:
             yield f'||none'
 
-        elif isinstance(response_json, str):
+        elif isinstance(response_json, (str, bool)):
             yield f'||{response_json}'
 
         elif isinstance(response_json, list):
