@@ -29,6 +29,7 @@ import os
 import json
 import math
 import subprocess
+import re
 
 import logging
 from typing import Mapping, Iterable
@@ -37,6 +38,8 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 logger = logging.getLogger('GeminiComponent')
+
+IGNORE_WORDS = ['unsure', 'none', 'false', 'no', 'unclear', 'n/a', 'unspecified', 'unknown', 'unreadable', 'not visible', 'none visible', '']
 
 class GeminiComponent:
     detection_type = 'CLASS'
@@ -61,9 +64,9 @@ class GeminiComponent:
 
         if image_job.feed_forward_location is None:
             if config.enable_json_prompt_format:
-                detections = self._get_frame_detections_json(image_job.feed_forward_location, image_reader, config)
+                detections = self._get_frame_detections_json(image_job, [image_reader.get_image()], config)
             else:
-                detections = self._get_frame_detections(image_job, [image_reader.get_image(),], config)
+                detections = self._get_frame_detections(image_job, [image_reader.get_image()], config)
         else:
             raise mpf.DetectionException(
                 "Feed forward jobs not supported yet: ",
@@ -85,7 +88,7 @@ class GeminiComponent:
 
         if video_job.feed_forward_track is None:
             if config.enable_json_prompt_format:
-                tracks = self._get_frame_detections_json(video_job.feed_forward_track, video_capture, config, is_video_job=True)
+                tracks = self._get_frame_detections_json(video_job, video_capture, config, is_video_job=True)
             else:
                 tracks = self._get_frame_detections(video_job, video_capture, config, is_video_job=True)
         else:
@@ -125,7 +128,6 @@ class GeminiComponent:
 
         self.video_decode_timer.start()
         for idx, frame in zip(self._get_frames_to_process(list(range(len(reader))), config.frames_per_second_to_process), reader):
-        # for idx, frame in enumerate(reader):
             self.video_decode_timer.pause()
             self.frame_count += 1
 
@@ -155,16 +157,140 @@ class GeminiComponent:
 
         return tracks
 
+    def _get_frame_detections_json(self, job, reader, config, is_video_job=False):
+        # Check if both frame_rate_cap and generate_frame_rate_cap are set > 0. If so, throw exception
+        if (mpf_util.get_property(job.job_properties, 'FRAME_RATE_CAP', -1) > 0) and (config.frames_per_second_to_process > 0):
+            raise mpf.DetectionException(
+                "Cannot have FRAME_RATE_CAP and GENERATE_FRAME_RATE_CAP both set to values greater than zero on jobs without feed forward detections:",
+                mpf.DetectionError.INVALID_PROPERTY
+            )
+
+        self._update_prompts(config.prompt_config_path, config.json_prompt_config_path)
+        self.gemini_api_key = config.gemini_api_key
+
+        classification = config.classification.strip().lower()
+
+        tracks = []
+        self.frame_count = 0
+        self.video_decode_timer = Timer()
+        self.video_process_timer = Timer()
+
+        self.video_decode_timer.start()
+        for idx, frame in zip(self._get_frames_to_process(list(range(len(reader))), config.frames_per_second_to_process), reader):
+            self.video_decode_timer.pause()
+            self.frame_count += 1
+
+            height, width, _ = frame.shape
+            detection_properties = dict()
+
+            self.video_process_timer.start()
+            if classification in self.json_class_prompts:
+                for tag, prompt in self.json_class_prompts[classification].items():
+                    # re-initialize json_attempts=0 and json_failed=True
+                    json_attempts, json_failed = 0, True
+                    while (json_attempts < self.json_limit) and (json_failed):
+                        json_attempts += 1
+                        response = self._get_gemini_response(job.data_uri, prompt)
+                        try:
+                            response = response.split('```json\n')[1].split('```')[0]
+                            response_json = json.loads(response)
+                            self._update_detection_properties(detection_properties, response_json)
+                            json_failed = False
+                        except Exception as e:
+                            logger.warning(f"Gemini failed to produce valid JSON output: {e}")
+                            logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
+                            continue
+                    if json_failed:
+                        logger.warning(f"Using last full Gemini response instead of parsed JSON output.")
+                        detection_properties['FAILED TO PROCESS GEMINI RESPONSE'] = True
+                        detection_properties['FULL GEMINI RESPONSE'] = response
+
+            self.video_process_timer.pause()
+
+            img_location = mpf.ImageLocation(0, 0, width, height, -1, detection_properties)
+            if is_video_job:
+                tracks.append(mpf.VideoTrack(idx, idx, -1, { idx:img_location }, detection_properties))
+            else:
+                tracks.append(img_location)
+
+            self.video_decode_timer.start()
+            
+        if is_video_job:
+            for track in tracks:
+                reader.reverse_transform(track)
+
+        return tracks
+
+    def _update_detection_properties(self, detection_properties, response_json):
+        key_list = self._get_keys(response_json)
+        key_vals = dict()
+        keywords = []
+        for key_str in key_list:
+            split_key = [' '.join(x.split('_')) for x in ('gemini' + key_str).split('||')]
+            key, val = " ".join([s.upper() for s in split_key[:-1]]), split_key[-1]
+            key_vals[key] = val
+
+        # TODO: Implement this generically to work with any class. Specify rollup class in prompt JSON file.
+        is_person = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() is 'person')
+        ignore_person = is_person and ('GEMINI VISIBLE PERSON' in key_vals) and (key_vals['GEMINI VISIBLE PERSON'].strip().lower() in IGNORE_WORDS)
+
+        is_vehicle = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() in ['car', 'truck', 'bus'])
+        ignore_vehicle = is_vehicle and ('GEMINI VISIBLE VEHICLE' in key_vals) and (key_vals['GEMINI VISIBLE VEHICLE'].strip().lower() in IGNORE_WORDS)
+
+        if not ignore_person and not ignore_vehicle:
+            tmp_key_vals = dict(key_vals)
+            for key, val in key_vals.items():
+                if ('VISIBLE' in key) and (val.strip().lower() in IGNORE_WORDS):
+                    keywords.append(key.split(' VISIBLE ')[1])
+                    tmp_key_vals.pop(key)
+            key_vals = tmp_key_vals
+
+            tmp_key_vals = dict(key_vals)
+            for keyword in keywords:
+                pattern = re.compile(fr'\b{keyword}\b')
+                for key_to_remove in filter(pattern.search, key_vals):
+                    tmp_key_vals.pop(key_to_remove, None)
+            key_vals = tmp_key_vals
+            
+            tmp_key_vals = dict(key_vals)
+            for key, val in key_vals.items():
+                if val.strip().lower() in IGNORE_WORDS:
+                    tmp_key_vals.pop(key)
+            key_vals = tmp_key_vals
+            
+            detection_properties.update(key_vals)
+            detection_properties['ANNOTATED BY GEMINI'] = True
+
+            logger.debug(f"{detection_properties=}")
+
     def _get_keys(self, response_json):
-        if isinstance(response_json, list) or isinstance(response_json, str):
+        if not response_json:
+            yield f'||none'
+
+        elif isinstance(response_json, str):
+            yield f'||{response_json}'
+
+        elif isinstance(response_json, list):
             yield f'||{json.dumps(response_json)}'
+
         elif isinstance(response_json, dict):
             if self._is_lowest_level(response_json):
-                yield f'||{json.dumps(response_json)}'
+
+                # TODO: Check every element and drop if ignorable
+                return_response_json = dict(response_json)
+                for key, val in response_json.items():
+                    if val.strip().lower() in IGNORE_WORDS:
+                        return_response_json.pop(key)
+
+                if not return_response_json:
+                    yield f'||none'
+                else:
+                    yield f'||{json.dumps(return_response_json)}'
+
             else:
                 for key, value in response_json.items():
                     yield from (f'||{key}{p}' for p in self._get_keys(value))
-        
+
     @staticmethod
     def _is_lowest_level(response_json):
         for key, val in response_json.items():
@@ -299,6 +425,7 @@ class JobConfig:
         
         self.gemini_api_key = self._get_prop(job_properties, "GEMINI_API_KEY", "")
         generate_frame_rate_cap = self._get_prop(job_properties, "GENERATE_FRAME_RATE_CAP", 1.0)
+        self.classification = self._get_prop(job_properties, "CLASSIFICATION", "")
 
         if (media_properties != None) and (generate_frame_rate_cap > 0):
             # Check if fps exists. If not throw mpf.DetectionError.MISSING_PROPERTY exception

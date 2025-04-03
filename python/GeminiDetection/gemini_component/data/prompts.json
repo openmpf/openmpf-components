@@ -17,6 +17,7 @@
         },
         {
             "classes": [
+                "VEHICLE",
                 "CAR",
                 "TRUCK",
                 "BUS"

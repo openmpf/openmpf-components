@@ -50,6 +50,12 @@
                     "description": "The threshold on the maximum number of frames to process in the video segment within one second of the native video time. If set to a value > 0, then an internal frame interval is calculated as max(1, floor(mediaNativeFPS / GENERATE_FRAME_RATE_CAP)). If set <= 0, property is disabled and every frame is used. Throws exception if FRAME_RATE_CAP and GENERATE_FRAME_RATE_CAP both set > 0.",
                     "type": "DOUBLE",
                     "defaultValue": "1.0"
+                },
+                {
+                    "name": "CLASSIFICATION",
+                    "description": "The class of the object(s) in the media. Used to determine the prompt(s). Examples: PERSON, VEHICLE.",
+                    "type": "STRING",
+                    "defaultValue": ""
                 }
             ]
         }
@@ -60,6 +66,44 @@
             "description": "Runs Gemini with prompts for each video frame passed in.",
             "algorithm": "Gemini",
             "properties": [
+                {
+                    "name": "ARTIFACT_EXTRACTION_POLICY_BEST_DETECTION_PROP_NAMES_LIST",
+                    "value": "ANNOTATED BY GEMINI"
+                }
+            ]
+        },
+        {
+            "name": "GEMINI PERSON DETECTION (WITH JSON PROMPT) ACTION",
+            "description": "Runs Gemini person prompt that specifies JSON object outputs on images and videos at the specified frame rate.",
+            "algorithm": "Gemini",
+            "properties": [
+                {
+                    "name": "CLASSIFICATION",
+                    "value": "PERSON"
+                },
+                {
+                    "name": "ENABLE_JSON_PROMPT_FORMAT",
+                    "value": "true"
+                },
+                {
+                    "name": "ARTIFACT_EXTRACTION_POLICY_BEST_DETECTION_PROP_NAMES_LIST",
+                    "value": "ANNOTATED BY GEMINI"
+                }
+            ]
+        },
+        {
+            "name": "GEMINI VEHICLE DETECTION (WITH JSON PROMPT) ACTION",
+            "description": "Runs Gemini vehicle prompt that specifies JSON object outputs on images and videos at the specified frame rate.",
+            "algorithm": "Gemini",
+            "properties": [
+                {
+                    "name": "CLASSIFICATION",
+                    "value": "VEHICLE"
+                },
+                {
+                    "name": "ENABLE_JSON_PROMPT_FORMAT",
+                    "value": "true"
+                },
                 {
                     "name": "ARTIFACT_EXTRACTION_POLICY_BEST_DETECTION_PROP_NAMES_LIST",
                     "value": "ANNOTATED BY GEMINI"
@@ -137,6 +181,20 @@
             ]
         },
         {
+            "name": "GEMINI PERSON DETECTION (WITH JSON PROMPT) TASK",
+            "description": "Runs Gemini person prompt that specifies JSON object outputs on images and videos at the specified frame rate.",
+            "actions": [
+                "GEMINI PERSON DETECTION (WITH JSON PROMPT) ACTION"
+            ]
+        },
+        {
+            "name": "GEMINI VEHICLE DETECTION (WITH JSON PROMPT) TASK",
+            "description": "Runs Gemini vehicle prompt that specifies JSON object outputs on images and videos at the specified frame rate.",
+            "actions": [
+                "GEMINI VEHICLE DETECTION (WITH JSON PROMPT) ACTION"
+            ]
+        },
+        {
             "name": "GEMINI DETECTION (WITH FF REGION AND JSON PROMPT) TASK",
             "description": "Runs Gemini with prompts that specify JSON object outputs for the class of the feed forward detection passed in.",
             "actions": [
@@ -164,6 +222,20 @@
             "description":"Runs Gemini with prompts on images and videos at the specified frame rate.",
             "tasks": [
                 "GEMINI DETECTION TASK"
+            ]
+        },
+        {
+            "name": "GEMINI PERSON DETECTION (WITH JSON PROMPT) PIPELINE",
+            "description":"Runs Gemini person prompt that specifies JSON object outputs on images and videos at the specified frame rate.",
+            "tasks": [
+                "GEMINI PERSON DETECTION (WITH JSON PROMPT) TASK"
+            ]
+        },
+        {
+            "name": "GEMINI VEHICLE DETECTION (WITH JSON PROMPT) PIPELINE",
+            "description":"Runs Gemini vehicle prompt that specifies JSON object outputs on images and videos at the specified frame rate.",
+            "tasks": [
+                "GEMINI VEHICLE DETECTION (WITH JSON PROMPT) TASK"
             ]
         },
         {
