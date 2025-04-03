@@ -45,7 +45,9 @@ class GeminiComponent:
         self.model_name = 'gemini-1.5-pro'
         self.gemini_api_key = ''
         self.class_prompts = dict()
+        self.json_class_prompts = dict()
         self.frame_prompts = dict()
+        self.json_limit = 3
 
     def get_detections_from_image(self, image_job: mpf.ImageJob) -> Iterable[mpf.ImageLocation]:
         logger.info('Received image job: %s', image_job.job_name)
@@ -58,7 +60,10 @@ class GeminiComponent:
         image_reader = mpf_util.ImageReader(image_job)
 
         if image_job.feed_forward_location is None:
-            detections = self._get_frame_detections(image_job, [image_reader.get_image(),], config)
+            if config.enable_json_prompt_format:
+                detections = self._get_frame_detections_json(image_job.feed_forward_location, image_reader, config)
+            else:
+                detections = self._get_frame_detections(image_job, [image_reader.get_image(),], config)
         else:
             raise mpf.DetectionException(
                 "Feed forward jobs not supported yet: ",
@@ -79,7 +84,10 @@ class GeminiComponent:
         video_capture = mpf_util.VideoCapture(video_job)
 
         if video_job.feed_forward_track is None:
-            tracks = self._get_frame_detections(video_job, video_capture, config, is_video_job=True)
+            if config.enable_json_prompt_format:
+                tracks = self._get_frame_detections_json(video_job.feed_forward_track, video_capture, config, is_video_job=True)
+            else:
+                tracks = self._get_frame_detections(video_job, video_capture, config, is_video_job=True)
         else:
             raise mpf.DetectionException(
                 "Feed forward jobs not supported yet: ",
@@ -107,7 +115,7 @@ class GeminiComponent:
                 mpf.DetectionError.INVALID_PROPERTY
             )
 
-        self._update_prompts(config.prompt_config_path)
+        self._update_prompts(config.prompt_config_path, config.json_prompt_config_path)
         self.gemini_api_key = config.gemini_api_key
 
         tracks = []
@@ -125,7 +133,12 @@ class GeminiComponent:
             detection_properties = dict()
 
             self.video_process_timer.start()
-            self._get_gemini_response(self.frame_prompts, job.data_uri, detection_properties)
+
+            for tag, prompt in self.frame_prompts.items():
+                response = self._get_gemini_response(job.data_uri, prompt)
+                detection_properties[tag] = response
+            detection_properties['ANNOTATED BY GEMINI'] = True
+
             self.video_process_timer.pause()
 
             img_location = mpf.ImageLocation(0, 0, width, height, -1, detection_properties)
@@ -159,7 +172,7 @@ class GeminiComponent:
                 return False
         return True
 
-    def _update_prompts(self, prompt_config_path):
+    def _update_prompts(self, prompt_config_path, json_prompt_config_path):
         '''
         Updates self.class_prompts dictionary to have the following format
 
@@ -184,46 +197,50 @@ class GeminiComponent:
 
                 for frame_dict in frame_dicts:
                     self.frame_prompts[frame_dict['detectionProperty']] = frame_dict['prompt']
+
+            with open(json_prompt_config_path, 'r') as f:
+                data = json.load(f)
+                json_class_dicts = data['classPrompts']
+                for class_dict in json_class_dicts:
+                    classes, prompts = [cls.lower() for cls in class_dict['classes']], class_dict['prompts']
+                    for cls in classes:
+                        for idx, prompt in enumerate(prompts):
+                            self.json_class_prompts[cls] = { f'JSON_{idx}':prompt }
+
         except Exception as e:
             raise mpf.DetectionException(
                 f"Invalid JSON structure for component: {e}",
                 mpf.DetectionError.COULD_NOT_READ_DATAFILE
             )
+
+    def _get_gemini_response(self, data_uri, prompt):
         
-    def _get_gemini_response(self, prompt_dict, data_uri, detection_properties):
+        process = None
+        try:
+            # Call subprocess
+            process = subprocess.Popen([
+                "/gemini-subprocess/venv/bin/python3",
+                "/gemini-subprocess/gemini-process-image.py",
+                "-f", data_uri,
+                "-p", prompt,
+                "-a", self.gemini_api_key],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate()
+        except Exception as e:
+            raise mpf.DetectionException(
+                f"Subprocess error: {e}",
+                mpf.DetectionError.DETECTION_FAILED)
+
+        if process.returncode == 0:
+            response = stdout.decode()
+            logger.info(response)
+        else:
+            raise mpf.DetectionException(
+                f"Subprocess failed: {stderr}",
+                mpf.DetectionError.DETECTION_FAILED)
         
-            for tag, prompt in prompt_dict.items():
-
-                process = None
-                try:
-                    # Call subprocess
-                    process = subprocess.Popen([
-                        "/gemini-subprocess/venv/bin/python3",
-                        "/gemini-subprocess/gemini-process-image.py",
-                        "-f", data_uri,
-                        "-p", prompt,
-                        "-a", self.gemini_api_key],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE)
-                    stdout, stderr = process.communicate()
-                except Exception as e:
-                    raise mpf.DetectionException(
-                        f"Subprocess error: {e}",
-                        mpf.DetectionError.DETECTION_FAILED
-                        )
-
-                if process.returncode == 0:
-                    response = stdout.decode()
-                    logger.info(response)
-                else:
-                    raise mpf.DetectionException(
-                        f"Subprocess failed: {stderr}",
-                        mpf.DetectionError.DETECTION_FAILED
-                    )
-                detection_properties[tag] = response
-
-            detection_properties['ANNOTATED BY GEMINI'] = True
-            
+        return response
 
     def _get_frames_to_process(self, frame_locations: list, skip: int) -> list:
         if not frame_locations:
@@ -260,6 +277,8 @@ class GeminiComponent:
                 want = next + skip
 
         return retval
+
+
 class JobConfig:
     def __init__(self, job_properties: Mapping[str, str], media_properties=None):
         self.prompt_config_path = self._get_prop(job_properties, "PROMPT_CONFIGURATION_PATH", "")
@@ -271,6 +290,12 @@ class JobConfig:
                 "Invalid path provided for prompt config file: ",
                 mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
             )
+        
+        self.json_prompt_config_path = self._get_prop(job_properties, "JSON_PROMPT_CONFIGURATION_PATH", "")
+        if self.json_prompt_config_path == "":
+            self.json_prompt_config_path = os.path.join(os.path.dirname(__file__), 'data', 'json_prompts.json')
+        
+        self.enable_json_prompt_format = self._get_prop(job_properties, "ENABLE_JSON_PROMPT_FORMAT", False)
         
         self.gemini_api_key = self._get_prop(job_properties, "GEMINI_API_KEY", "")
         generate_frame_rate_cap = self._get_prop(job_properties, "GENERATE_FRAME_RATE_CAP", 1.0)
