@@ -43,7 +43,7 @@ class GeminiComponent:
 
     def __init__(self):
         self.model_name = 'gemini-1.5-pro'
-        self.api_key = ''
+        self.gemini_api_key = ''
         self.class_prompts = dict()
         self.frame_prompts = dict()
 
@@ -124,7 +124,9 @@ class GeminiComponent:
             height, width, _ = frame.shape
             detection_properties = dict()
 
-            self._get_gemini_response(self.frame_prompts, job.data_uri, detection_properties, self.video_process_timer)
+            self.video_process_timer.start()
+            self._get_gemini_response(self.frame_prompts, job.data_uri, detection_properties)
+            self.video_process_timer.pause()
 
             img_location = mpf.ImageLocation(0, 0, width, height, -1, detection_properties)
             if is_video_job:
@@ -188,31 +190,40 @@ class GeminiComponent:
                 mpf.DetectionError.COULD_NOT_READ_DATAFILE
             )
         
-    def _get_gemini_response(self, prompt_dict, data_uri, detection_properties, video_process_timer):
-        try:
+    def _get_gemini_response(self, prompt_dict, data_uri, detection_properties):
+        
             for tag, prompt in prompt_dict.items():
-                video_process_timer.start()
-                # Call subprocess
-                process = subprocess.Popen(["/gemini-subprocess/venv/bin/python3", "/gemini-subprocess/gemini-process-image.py", "-f", data_uri, "-p", prompt, "-a", self.api_key], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                video_process_timer.pause()
-                stdout, stderr = process.communicate()
+
+                process = None
+                try:
+                    # Call subprocess
+                    process = subprocess.Popen([
+                        "/gemini-subprocess/venv/bin/python3",
+                        "/gemini-subprocess/gemini-process-image.py",
+                        "-f", data_uri,
+                        "-p", prompt,
+                        "-a", self.gemini_api_key],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE)
+                    stdout, stderr = process.communicate()
+                except Exception as e:
+                    raise mpf.DetectionException(
+                        f"Subprocess error: {e}",
+                        mpf.DetectionError.DETECTION_FAILED
+                        )
 
                 if process.returncode == 0:
                     response = stdout.decode()
                     logger.info(response)
                 else:
                     raise mpf.DetectionException(
-                        f"Could not communicate with Gemini: {stderr}",
-                        mpf.DetectionError.NETWORK_ERROR
+                        f"Subprocess failed: {stderr}",
+                        mpf.DetectionError.DETECTION_FAILED
                     )
                 detection_properties[tag] = response
+
             detection_properties['ANNOTATED BY GEMINI'] = True
             
-        except Exception as e:
-            raise mpf.DetectionException(
-                f"Could not communicate with Gemini: {e}",
-                mpf.DetectionError.NETWORK_ERROR
-                )
 
     def _get_frames_to_process(self, frame_locations: list, skip: int) -> list:
         if not frame_locations:
