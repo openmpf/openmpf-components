@@ -266,9 +266,9 @@ class GeminiComponent:
             key_vals = tmp_key_vals
             
             detection_properties.update(key_vals)
-            detection_properties['ANNOTATED BY GEMINI'] = True
-
-            logger.debug(f"{detection_properties=}")
+        
+        detection_properties['ANNOTATED BY GEMINI'] = True
+        logger.debug(f"{detection_properties=}")
 
     def _get_keys(self, response_json, flatten):
         if not response_json:
