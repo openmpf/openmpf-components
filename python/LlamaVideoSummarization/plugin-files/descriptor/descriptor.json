@@ -71,15 +71,21 @@
                 },
                 {
                     "name": "TARGET_SEGMENT_LENGTH",
-                    "description": "Set to -1 to disable segmenting the video.",
+                    "description": "Default segment length is 180 seconds. Set to -1 to disable segmenting the video.",
                     "type": "INT",
-                    "defaultValue": "-1"
+                    "defaultValue": "180"
                 },
                 {
                     "name": "VFR_TARGET_SEGMENT_LENGTH",
-                    "description": "Set to -1 to disable segmenting the video.",
+                    "description": "Default segment length is 180 seconds. Set to -1 to disable segmenting the video.",
                     "type": "INT",
-                    "defaultValue": "-1"
+                    "defaultValue": "180"
+                },
+                {
+                    "name": "SEGMENT_LENGTH_SPECIFICATION",
+                    "description": "The value for determining how to interpret TARGET_SEGMENT_LENGTH, VFR_TARGET_SEGMENT_LENGTH, MIN_SEGMENT_LENGTH, and VFR_MIN_SEGMENT_LENGTH. The value of this property MUST be one of the following choices. FRAME: Segment lengths are specified in number of frames. SECONDS: Segment lengths are specified in number of seconds. When set to SECONDS, the VFR segment lengths use the average video frame rate, not the video PTS values.",
+                    "type": "STRING",
+                    "defaultValue": "SECONDS"
                 }
             ] 
         }
