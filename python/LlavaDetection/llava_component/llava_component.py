@@ -217,7 +217,12 @@ class LlavaComponent:
         return [job_feed_forward]
 
     def _update_detection_properties(self, detection_properties, response_json):
-        key_list = self._get_keys(response_json)
+
+        # TODO: Implement this generically to work with any class. Specify rollup class in prompt JSON file.
+        is_person = ('CLASSIFICATION' in detection_properties) and (detection_properties['CLASSIFICATION'].lower() == 'person')
+        is_vehicle = ('CLASSIFICATION' in detection_properties) and (detection_properties['CLASSIFICATION'].lower() in ['car', 'truck', 'bus'])
+
+        key_list = self._get_keys(response_json, is_vehicle) # TODO: flatten should be an algorithm property or specified in the prompts file
         key_vals = dict()
         keywords = []
         for key_str in key_list:
@@ -225,11 +230,7 @@ class LlavaComponent:
             key, val = " ".join([s.upper() for s in split_key[:-1]]), split_key[-1]
             key_vals[key] = val
 
-        # TODO: Implement this generically to work with any class. Specify rollup class in prompt JSON file.
-        is_person = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() == 'person')
         ignore_person = is_person and ('LLAVA VISIBLE PERSON' in key_vals) and (self._ignore(key_vals['LLAVA VISIBLE PERSON']))
-
-        is_vehicle = ('CLASSIFICATION' in key_vals) and (key_vals['CLASSIFICATION'].lower() in ['car', 'truck', 'bus'])
         ignore_vehicle = is_vehicle and ('LLAVA VISIBLE VEHICLE' in key_vals) and (self._ignore(key_vals['LLAVA VISIBLE VEHICLE']))
 
         if not ignore_person and not ignore_vehicle:
@@ -255,11 +256,11 @@ class LlavaComponent:
             key_vals = tmp_key_vals
             
             detection_properties.update(key_vals)
-            detection_properties['ANNOTATED BY LLAVA'] = True
 
-            logger.debug(f"{detection_properties=}")
+        detection_properties['ANNOTATED BY LLAVA'] = True
+        logger.debug(f"{detection_properties=}")
 
-    def _get_keys(self, response_json):
+    def _get_keys(self, response_json, flatten):
         if not response_json:
             yield f'||none'
 
@@ -272,22 +273,25 @@ class LlavaComponent:
         elif isinstance(response_json, dict):
             if self._is_lowest_level(response_json):
 
-                return_response_json = dict(response_json)
+                tmp_response_json = dict(response_json)
                 for key, val in response_json.items():
                     if self._ignore(val):
-                        return_response_json.pop(key)
+                        tmp_response_json.pop(key)
+                response_json = tmp_response_json
 
-                if not return_response_json:
+                if not response_json:
                     yield f'||none'
+                elif flatten:
+                    yield from (f'||{key}||{val}' for key, val in response_json.items())
                 else:
-                    yield f'||{json.dumps(return_response_json)}'
+                    yield f'||{json.dumps(response_json)}'
 
             else:
                 for key, value in response_json.items():
                     if self._ignore(key):
                         yield f'||none'
                     else:
-                        yield from (f'||{key}{p}' for p in self._get_keys(value))
+                        yield from (f'||{key}{p}' for p in self._get_keys(value, flatten))
     
     @staticmethod
     def _is_lowest_level(response_json):
