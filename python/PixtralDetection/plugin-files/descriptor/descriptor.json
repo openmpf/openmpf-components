@@ -1,0 +1,70 @@
+{
+    "componentName": "PixtralDetection",
+    "componentVersion": "9.0",
+    "middlewareVersion": "9.0",
+    "sourceLanguage": "python",
+    "batchLibrary": "PixtralDetection",
+    "environmentVariables": [],
+    "algorithm": {
+        "name": "Pixtral",
+        "description": "Pixtral prompt response generation.",
+        "actionType": "DETECTION",
+        "trackType": "CLASS",
+        "outputChangedCounter": 1,
+        "requiresCollection": {
+            "states": []
+        },
+        "providesCollection": {
+            "states": [
+                "DETECTION",
+                "DETECTION_CLASS",
+                "DETECTION_CLASS_PIXTRAL"
+            ],
+            "properties": [
+                {
+                    "name": "PROMPT_CONFIGURATION_PATH",
+                    "description": "Path to a custom JSON file which contains the classes and associated prompts that will be sent to Pixtral.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "JSON_PROMPT_CONFIGURATION_PATH",
+                    "description": "Path to a custom JSON file which contains classes and prompts that specify Gemini to return a JSON object.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                }
+            ]
+        }
+    },
+    "actions": [
+        {
+            "name": "PIXTRAL CRYPTOCURRENCY DETECTION (JSON PROMPT) ACTION",
+            "description": "Runs Pixtral with JSON prompts for each image.",
+            "algorithm": "Pixtral",
+            "properties": [
+                {
+                    "name": "ARTIFACT_EXTRACTION_POLICY_BEST_DETECTION_PROP_NAMES_LIST",
+                    "value": "ANNOTATED BY PIXTRAL"
+                }
+            ]
+        }
+    ],
+    "tasks": [
+        {
+            "name": "PIXTRAL CRYPTOCURRENCY DETECTION (JSON PROMPT) TASK",
+            "description": "Runs Pixtral with JSON prompts for each image.",
+            "actions": [
+                "PIXTRAL CRYPTOCURRENCY DETECTION (JSON PROMPT) ACTION"
+            ]
+        }
+    ],
+    "pipelines": [
+        {
+            "name": "PIXTRAL CRYPTOCURRENCY DETECTION (JSON PROMPT) PIPELINE",
+            "description":"Runs Pixtral with JSON prompts for each image.",
+            "tasks": [
+                "PIXTRAL CRYPTOCURRENCY DETECTION (JSON PROMPT) TASK"
+            ]
+        }
+    ]
+}

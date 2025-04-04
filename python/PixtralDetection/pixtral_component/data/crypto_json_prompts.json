@@ -1,0 +1,8 @@
+{
+    "classPrompts": [],
+    "framePrompts": [
+        {
+            "prompt": "Extract details from this screenshot in JSON format and include answers only if 100% confident for each object if not, provide unsure. The JSON should have the following keys: Name of website/program/App, Software Version, Account Name, Wallet balance, Wallet address, Transaction History ( that includes Transaction Type, From Account name / number, To Account name / number , Transaction Amount, Transaction Date, Transaction Time, From Currency type (e.g. MXR, USD, GBP), To Currency type, Max Transaction cost, , Transaction Fee, Memo or additional description, Transaction Status, Payment / confirmation ID), Wallet Restore Height, Security Settings, Backup and Recovery Options, Log files, Synchronization Status, Daemon Status, User Interface Elements, BlockHeight and any other notable details seen in image"
+        }
+    ]
+}
