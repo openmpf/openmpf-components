@@ -42,6 +42,7 @@ import mpf_component_util as mpf_util
 logger = logging.getLogger('PixtralComponent')
 
 os.environ['HF_HUB_OFFLINE'] = '1'
+os.environ['CUDE_DEVICE_ID'] = '7'
 
 IGNORE_WORDS = ('unsure', 'none', 'false', 'no', 'unclear', 'n/a', 'unspecified', 'unknown', 'unreadable', 'not visible', 'none visible')
 IGNORE_PREFIXES = tuple([s + ' ' for s in IGNORE_WORDS])
@@ -50,8 +51,8 @@ class PixtralComponent:
     detection_type = 'CLASS'
 
     def __init__(self):
-        # self.model_name = 'mistralai/Pixtral-12B-2409'
-        self.model_name = '/root/.cache/huggingface/hub/models--mistralai--Pixtral-12B-2409/snapshots/c21b6fd59bfe3b1246861d2811d0d6ae53f78915'
+        self.model_name = 'mistralai/Pixtral-12B-2409'
+        # self.model_name = '/root/.cache/huggingface/hub/models--mistralai--Pixtral-12B-2409/snapshots/c21b6fd59bfe3b1246861d2811d0d6ae53f78915'
         self.host_url = ''
         self.sampling_params = None
         self.llm = LLM(
@@ -163,7 +164,7 @@ class PixtralComponent:
 
         elif isinstance(response_json, list):
             for elt in response_json:
-                yield from (f'||{key}' for key in self._get_keys(elt))
+                yield from self._get_keys(elt)
 
         elif isinstance(response_json, dict):
             if self._is_lowest_level(response_json):
