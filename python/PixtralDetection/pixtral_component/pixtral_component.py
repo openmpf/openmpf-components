@@ -51,8 +51,8 @@ class PixtralComponent:
     detection_type = 'CLASS'
 
     def __init__(self):
-        self.model_name = 'mistralai/Pixtral-12B-2409'
-        # self.model_name = '/root/.cache/huggingface/hub/models--mistralai--Pixtral-12B-2409/snapshots/c21b6fd59bfe3b1246861d2811d0d6ae53f78915'
+        # self.model_name = 'mistralai/Pixtral-12B-2409'
+        self.model_name = '/root/.cache/huggingface/hub/models--mistralai--Pixtral-12B-2409/snapshots/c21b6fd59bfe3b1246861d2811d0d6ae53f78915'
         self.host_url = ''
         self.sampling_params = None
         self.llm = LLM(
