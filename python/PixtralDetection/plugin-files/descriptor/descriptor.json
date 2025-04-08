@@ -32,6 +32,12 @@
                     "description": "Path to a custom JSON file which contains classes and prompts that specify Gemini to return a JSON object.",
                     "type": "STRING",
                     "defaultValue": ""
+                },
+                {
+                    "name": "TEMPERATURE",
+                    "description": "Sets the temperature for the sampling parameters of the model. Must be a float between 0 and 1, inclusive.",
+                    "type": "FLOAT",
+                    "defaultValue": "0.7"
                 }
             ]
         }
