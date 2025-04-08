@@ -140,6 +140,7 @@ class GeminiComponent:
             for tag, prompt in self.frame_prompts.items():
                 response = self._get_gemini_response(job.data_uri, prompt)
                 detection_properties[tag] = response
+            # TODO: detection_properties['CLASSIFICATION'] = classification.upper()
             detection_properties['ANNOTATED BY GEMINI'] = True
 
             self.video_process_timer.pause()
@@ -267,6 +268,7 @@ class GeminiComponent:
             
             detection_properties.update(key_vals)
         
+        detection_properties['CLASSIFICATION'] = classification.upper()
         detection_properties['ANNOTATED BY GEMINI'] = True
         logger.debug(f"{detection_properties=}")
 
