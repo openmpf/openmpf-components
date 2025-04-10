@@ -40,7 +40,6 @@ import mpf_component_util as mpf_util
 
 log = logging.getLogger('LlamaVideoSummarizationComponent')
 
-
 class LlamaVideoSummarizationComponent:
 
     def __init__(self):
@@ -61,29 +60,10 @@ class LlamaVideoSummarizationComponent:
 
             log.info('Processing complete.')
 
-            summary_properties={
-                'TEXT' : response_json['video_summary'],
-                'VIDEO LENGTH' : response_json['video_length'],
-                'VIDEO EVENT TIMELINE': json.dumps(response_json['video_event_timeline'])
-            }
+            tracks = create_tracks(job, response_json)
 
-            stop_frame = 0
-            if 'FRAME_COUNT' in job.media_properties:
-                stop_frame = job.media_properties['FRAME_COUNT']
-            elif 'FPS' in job.media_properties:
-                video_fps = float(job.media_properties['FPS'])
-                video_secs = float(response_json['video_length'])
-                stop_frame = int(video_secs * video_fps)
+            return tracks
 
-            track = mpf.VideoTrack(0, stop_frame, 1.0,\
-                # add dummy locations to prevent the Workflow Manager from dropping / truncating track
-                frame_locations={
-                    0: mpf.ImageLocation(0, 0, 0, 0, 1.0),
-                    stop_frame: mpf.ImageLocation(0, 0, 0, 0, 1.0)
-                },
-                detection_properties=summary_properties)
-
-            return (track,)
         except Exception:
             log.exception('Failed to complete job due to the following exception:')
             raise
@@ -135,6 +115,82 @@ class LlamaVideoSummarizationComponent:
 
         return response_json
 
+def _create_segment_summary_track(job: mpf.VideoJob, detections: dict) -> mpf.VideoTrack:
+    stop_frame = 0
+    if 'FRAME_COUNT' in job.media_properties:
+        stop_frame = job.start_frame + int(job.media_properties['FRAME_COUNT'])
+    elif 'FPS' in job.media_properties:
+        video_fps = float(job.media_properties['FPS'])
+        video_secs = float(detections['video_length']) # LLM output, not sure if reliable. Can we get ffprobe output from WFM?
+        stop_frame = job.start_frame + int(video_secs * video_fps)
+    else:
+        stop_frame = job.stop_frame
+    
+    start_frame = job.start_frame
+    segment_id = str(start_frame) + "-" + str(stop_frame)
+    segment_summary={
+        "SEGMENT_ID": segment_id,
+        "SEGMENT_LENGTH": detections['video_length'],
+        "SEGMENT_SUMMARY": "TRUE",
+        "TEXT": detections['video_summary']
+    }
+    track = mpf.VideoTrack(start_frame, stop_frame, 1.0,\
+    # add dummy locations to prevent the Workflow Manager from dropping / truncating track
+    frame_locations={
+        0: mpf.ImageLocation(0, 0, 0, 0, 1.0),
+        stop_frame: mpf.ImageLocation(0, 0, 0, 0, 1.0)
+    },
+    detection_properties=segment_summary)
+    return track
+
+def create_tracks(job: mpf.VideoJob, detections: dict) -> Iterable[mpf.VideoTrack]:
+    tracks = []
+    if detections['video_event_timeline']:
+        summary_track = _create_segment_summary_track(job, detections)
+        tracks.append(summary_track)
+        segment_length = detections['video_length']
+        segment_id = summary_track.detection_properties['SEGMENT_ID']
+        for event in detections['video_event_timeline']:
+            event_start_frame = job.start_frame
+            event_stop_frame = 0
+            event_start_time = int(event['timestamp_start']*1000)
+            event_stop_time = int(event['timestamp_end']*1000)
+            if 'FRAME_COUNT' in job.media_properties:
+                event_start_frame = int(float(job.media_properties['FRAME_COUNT']) *
+                                        (event['timestamp_start']/segment_length))
+                event_stop_frame = int(float(job.media_properties['FRAME_COUNT']) *
+                                       (event['timestamp_end']/segment_length))
+            elif 'FPS' in job.media_properties:
+                video_fps = float(job.media_properties['FPS'])
+                video_secs = float(event_stop_time - event_start_time)/1000
+                event_stop_frame = int(video_secs * video_fps)
+                event_start_frame = int((event_start_time * video_fps)/1000)
+            else:
+                event_stop_frame = int(job.stop_frame/segment_length*event['timestamp_end'])
+
+            event_description={
+                "SEGMENT_ID": segment_id,
+                "TEXT": event['description'],
+                "TIMESTAMP_START": event["timestamp_start"], # debug only, sanity check track start/stop times
+                "TIMESTAMP_END": event["timestamp_end"], # debug only, sanity check track start/stop times
+            }
+            track = mpf.VideoTrack(event_start_frame, event_stop_frame, 1.0,\
+            # add dummy locations to prevent the Workflow Manager from dropping / truncating track
+            frame_locations={
+                event_start_frame: mpf.ImageLocation(0, 0, 0, 0, 1.0),
+                event_stop_frame: mpf.ImageLocation(0, 0, 0, 0, 1.0)
+            },
+            detection_properties=event_description)
+            track.start_time = event_start_time
+            track.stop_time = event_stop_time
+            track.start_offset_time = event_start_time
+            track.stop_offset_time = event_stop_time
+            tracks.append(track)
+
+    else: # no events timeline, create summary only
+        tracks.append(_create_segment_summary_track(job, detections))
+    
+    return tracks
 
 def _parse_properties(props: Mapping[str, str]) -> dict:
     process_fps = mpf_util.get_property(

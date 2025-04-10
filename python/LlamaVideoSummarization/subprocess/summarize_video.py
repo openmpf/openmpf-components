@@ -57,7 +57,8 @@ class VideoProcessor:
             trust_remote_code=True,
             device_map={"": DEVICE},
             torch_dtype=torch.bfloat16,
-            attn_implementation="flash_attention_2",
+            # tempurature=0.2,
+            attn_implementation="flash_attention_2"
         )
         
         self._processor = AutoProcessor.from_pretrained(
