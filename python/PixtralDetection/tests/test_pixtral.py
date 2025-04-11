@@ -51,7 +51,7 @@ class TestPixtral(unittest.TestCase):
         component = PixtralComponent()
 
         result = component.get_detections_from_image(job)[0]
-        print(result)
+        self.assertTrue('ANNOTATED BY PIXTRAL' in result.detection_properties)
 
     @staticmethod
     def _get_test_file(filename):

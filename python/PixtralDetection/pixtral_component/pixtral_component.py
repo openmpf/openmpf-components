@@ -27,6 +27,7 @@
 import time
 import os
 import cv2
+from PIL import Image
 import base64
 import json
 import re
@@ -51,14 +52,13 @@ class PixtralComponent:
     detection_type = 'CLASS'
 
     def __init__(self):
-        # self.model_name = 'mistralai/Pixtral-12B-2409'
         self.model_name = '/root/.cache/huggingface/hub/models--mistralai--Pixtral-12B-2409/snapshots/c21b6fd59bfe3b1246861d2811d0d6ae53f78915'
+        # self.model_name = 'mistralai/Pixtral-12B-2409'
         self.host_url = ''
         self.sampling_params = None
         self.llm = LLM(
             model=self.model_name,
             tokenizer_mode="mistral"
-            # max_model_len=13472
         )
         self.class_prompts = dict()
         self.json_class_prompts = dict()
@@ -93,7 +93,6 @@ class PixtralComponent:
         for idx, frame in enumerate(reader):
             height, width, _ = frame.shape
             detection_properties = { 'CLASSIFICATION': 'SCREENSHOT' }
-
             encoded = self._encode_image(frame, job.media_properties['MIME_TYPE'])
             for tag, prompt in self.json_frame_prompts.items():
                 json_attempts, json_failed = 0, True
@@ -125,12 +124,31 @@ class PixtralComponent:
     def _update_detection_properties(self, detection_properties, response_json):
         key_list = self._get_keys(response_json) 
         key_vals = dict()
-        keywords = []
-        for key_str in key_list:
-            split_key = [' '.join(x.split('_')) for x in ('pixtral' + key_str).split('||')]
-            key, val = " ".join([s.upper() for s in split_key[:-1]]), split_key[-1]
+        for split_key in key_list:
+            key, val = "PIXTRAL " + " ".join([s.upper() for s in split_key[:-1]]), split_key[-1]
             key_vals[key] = val
 
+        key_vals = self._remove_unsure(key_vals)
+        
+        detection_properties.update(key_vals)
+        detection_properties['ANNOTATED BY PIXTRAL'] = True
+
+    def _get_keys(self, response_json, path=[], flatten=True):
+        if isinstance(response_json, list) and response_json:
+            for elt in response_json:
+                yield from self._get_keys(elt, path)
+        elif isinstance(response_json, dict) and response_json:
+            if not flatten and self._is_lowest_level(response_json):
+                response_json = self._remove_unsure(response_json)
+                yield path + [json.dumps(response_json)]
+            else:
+                for key, value in response_json.items():
+                    yield from self._get_keys(value, path + [key])
+        else:
+            yield path + [response_json]
+    
+    def _remove_unsure(self, key_vals):
+        keywords = []
         tmp_key_vals = dict(key_vals)
         for key, val in key_vals.items():
             if 'VISIBLE' in key:
@@ -151,49 +169,16 @@ class PixtralComponent:
             if self._ignore(val):
                 tmp_key_vals.pop(key)
         key_vals = tmp_key_vals
-        
-        detection_properties.update(key_vals)
-        detection_properties['ANNOTATED BY PIXTRAL'] = True
 
-    def _get_keys(self, response_json):
-        if not response_json:
-            yield f'||none'
+        return key_vals
 
-        elif isinstance(response_json, (str, bool)):
-            yield f'||{response_json}'
-
-        elif isinstance(response_json, list):
-            for elt in response_json:
-                yield from self._get_keys(elt)
-
-        elif isinstance(response_json, dict):
-            if self._is_lowest_level(response_json):
-
-                tmp_response_json = dict(response_json)
-                for key, val in response_json.items():
-                    if self._ignore(val):
-                        tmp_response_json.pop(key)
-                response_json = tmp_response_json
-
-                if not response_json:
-                    yield f'||none'
-                else:
-                    yield from (f'||{key}||{val}' for key, val in response_json.items())
-
-            else:
-                for key, value in response_json.items():
-                    if self._ignore(key):
-                        yield f'||none'
-                    else:
-                        yield from (f'||{key}{p}' for p in self._get_keys(value))
-        
     @staticmethod
     def _is_lowest_level(response_json):
         for key, val in response_json.items():
             if not isinstance(val, (str, bool)):
                 return False
         return True
-    
+
     @staticmethod
     def _ignore(input):
         return not input or \
@@ -247,7 +232,7 @@ class PixtralComponent:
  
         except Exception as e:
             raise mpf.DetectionException(
-                f"Invalid JSON structure for component: {e}",
+                f"Could not read prompt files: {e}",
                 mpf.DetectionError.COULD_NOT_READ_DATAFILE
             )
 
@@ -256,23 +241,27 @@ class PixtralComponent:
             messages = [{"role": "user", "content": [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": encoded_image}}]}]
             outputs = self.llm.chat(messages, sampling_params=self.sampling_params)
             return outputs[0].outputs[0].text
-        except:
+        except Exception as e:
             raise mpf.DetectionException(
-                "Could not communicate with Pixtral server: ",
+                f"Could not communicate with Pixtral server: {e}",
                 mpf.DetectionError.NETWORK_ERROR
             )
     
 class JobConfig:
     def __init__(self, job_properties: Mapping[str, str]):
         self.prompt_config_path = self._get_prop(job_properties, "PROMPT_CONFIGURATION_PATH", "")
+        self.json_prompt_config_path = self._get_prop(job_properties, "JSON_PROMPT_CONFIGURATION_PATH", "")    
+        self.temperature = self._get_prop(job_properties, "TEMPERATURE", 0.7)
+
+        self.check_properties()
+
+    def check_properties(self):
         if self.prompt_config_path == "":
             self.prompt_config_path = os.path.join(os.path.dirname(__file__), 'data', 'crypto_prompts.json')
-        
-        self.json_prompt_config_path = self._get_prop(job_properties, "JSON_PROMPT_CONFIGURATION_PATH", "")
+
         if self.json_prompt_config_path == "":
             self.json_prompt_config_path = os.path.join(os.path.dirname(__file__), 'data', 'crypto_json_prompts.json')
-        
-        self.temperature = self._get_prop(job_properties, "TEMPERATURE", 0.7)
+
         if self.temperature > 1.0 or self.temperature < 0.0:
             raise mpf.DetectionException(
                 "Invalid value for TEMPERATURE. Make sure it is set to a value between 0 and 1, inclusive.",
