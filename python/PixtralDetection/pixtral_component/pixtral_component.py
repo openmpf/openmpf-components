@@ -27,7 +27,6 @@
 import time
 import os
 import cv2
-from PIL import Image
 import base64
 import json
 import re
@@ -43,7 +42,6 @@ import mpf_component_util as mpf_util
 logger = logging.getLogger('PixtralComponent')
 
 os.environ['HF_HUB_OFFLINE'] = '1'
-os.environ['CUDE_DEVICE_ID'] = '7'
 
 IGNORE_WORDS = ('unsure', 'none', 'false', 'no', 'unclear', 'n/a', 'unspecified', 'unknown', 'unreadable', 'not visible', 'none visible')
 IGNORE_PREFIXES = tuple([s + ' ' for s in IGNORE_WORDS])
