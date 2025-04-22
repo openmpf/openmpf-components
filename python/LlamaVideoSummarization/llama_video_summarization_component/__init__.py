@@ -141,12 +141,8 @@ class LlamaVideoSummarizationComponent:
 
 def _create_segment_summary_track(job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
     start_frame = job.start_frame
-    video_fps = float(job.media_properties['FPS'])
-    segment_secs = float(response_json['video_length'])
-    calculated_stop_frame = job.start_frame + int(segment_secs * video_fps)
-    stop_frame = job.stop_frame - 1
+    stop_frame = job.stop_frame
     
-    #segment_id = str(start_frame) + "-" + str(stop_frame)
     segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
     detection_properties={
         "SEGMENT ID": segment_id,
@@ -160,8 +156,10 @@ def _create_segment_summary_track(job: mpf.VideoJob, response_json: dict) -> mpf
 
     track = mpf.VideoTrack(start_frame, stop_frame, 1.0,\
     # add dummy locations to prevent the Workflow Manager from dropping / truncating track
-    frame_locations={
-        middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
+    frame_locations = {
+        start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+        middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+        stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
     },
     detection_properties=detection_properties)
     return track
@@ -199,8 +197,10 @@ def _create_tracks(job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.Video
             offset_middle_frame = int((offset_stop_frame - offset_start_frame) / 2) + offset_start_frame
             track = mpf.VideoTrack(offset_start_frame, offset_stop_frame, 1.0,\
             # add dummy locations to prevent the Workflow Manager from dropping / truncating track
-            frame_locations={
-                offset_middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
+            frame_locations = {
+                offset_start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                offset_middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                offset_stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
             },
             detection_properties=detection_properties)
             track.start_time = event_start_time
