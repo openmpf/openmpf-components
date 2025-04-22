@@ -70,6 +70,12 @@
                     "defaultValue": "20"
                 },
                 {
+                    "name": "SEGMENT_LENGTH_CHECK_THRESHOLD",
+                    "description": "Specifies the number of seconds the video length determined by the model can differ from the last event end time. If exceeded, another attempt will be made to generate the output. Set to -1 to disable check.",
+                    "type": "INT",
+                    "defaultValue": "30"
+                },
+                {
                     "name": "TARGET_SEGMENT_LENGTH",
                     "description": "Default segment length is 180 seconds. Set to -1 to disable segmenting the video.",
                     "type": "INT",
