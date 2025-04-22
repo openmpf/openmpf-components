@@ -108,7 +108,7 @@ class VideoProcessor:
         output_ids = self._model.generate(**inputs, max_new_tokens=job['max_new_tokens'])
         response = self._processor.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
 
-        log.info(f"Response:\n\n{response}")
+        log.debug(f"Response:\n\n{response}")
 
         return response
 
