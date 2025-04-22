@@ -57,7 +57,7 @@ class LlamaVideoSummarizationComponent:
 
             job_config = _parse_properties(job.job_properties, actual_segment_length)
             job_config['video_path'] = job.data_uri
-            job_config['max_length'] = actual_segment_length
+            job_config['desired_length'] = actual_segment_length
 
             response_json = self._get_detections_from_subprocess(job_config)
 
@@ -76,9 +76,10 @@ class LlamaVideoSummarizationComponent:
         schema_json = json.loads(schema_str)
 
         max_attempts = job_config['generation_max_attempts']
-        attempts = dict(timeline=0,
-                segment_length=0,
-                other=0)
+        attempts = dict(
+            base=0,
+            segment_length=0,
+            timeline=0)
 
         timeline_check_threshold = job_config['timeline_check_threshold']
 
@@ -90,43 +91,43 @@ class LlamaVideoSummarizationComponent:
 
             if not response:
                 last_error = f'Empty response.'
-                log.warning(last_error, f'Failed {attempts["other"] + 1} of {max_attempts} attempts.')
-                attempts['other'] += 1
+                log.warning(last_error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+                attempts['base'] += 1
                 continue
 
             try:
                 response_json = json.loads(response)
             except ValueError:
                 last_error = f'Response is not valid JSON.'
-                log.warning(last_error, f'Failed {attempts["other"] + 1} of {max_attempts} attempts.')
-                attempts['other'] += 1
+                log.warning(last_error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+                attempts['base'] += 1
                 continue
 
             try:
                 validate(response_json, schema_json)
             except ValidationError:
                 last_error = 'Response JSON is not in the desired format.'
-                log.warning(last_error, f'Failed {attempts["other"] + 1} of {max_attempts} attempts.')
-                attempts['other'] += 1
+                log.warning(last_error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+                attempts['base'] += 1
                 continue
 
             if segment_length_check_threshold != -1:
-                video_length = float(response_json['video_length'])
-                max_length = float(job_config['max_length'])
-                if abs(video_length - max_length) > segment_length_check_threshold:
-                    last_error = (f'Video length doesn\'t match expected segment length. '
-                        f'abs({video_length} - {max_length}) > {segment_length_check_threshold}.')
-                    log.warning(last_error, f'Failed {attempts["segment_length"] + 1} of {max_attempts} attempts.')
+                segment_length = float(response_json['video_length'])
+                desired_length = float(job_config['desired_length'])
+                if abs(segment_length - desired_length) > segment_length_check_threshold:
+                    last_error = (f'Video segment length doesn\'t match desired segment length. '
+                        f'abs({segment_length} - {desired_length}) > {segment_length_check_threshold}.')
+                    log.warning(last_error, f'Failed {attempts["segment_length"] + 1} of {max_attempts} segment length attempts.')
                     attempts['segment_length'] += 1
                     continue
 
             if timeline_check_threshold != -1:
-                video_length = float(response_json['video_length'])
+                segment_length = float(response_json['video_length'])
                 last_event_end = float(response_json['video_event_timeline'][-1]['timestamp_end'])
-                if abs(video_length - last_event_end) > timeline_check_threshold:
-                    last_error = (f'Video length doesn\'t correspond with last event timestamp end. '
-                        f'abs({video_length} - {last_event_end}) > {timeline_check_threshold}.')
-                    log.warning(last_error, f'Failed {attempts["timeline"] + 1} of {max_attempts} attempts.')
+                if abs(segment_length - last_event_end) > timeline_check_threshold:
+                    last_error = (f'Video segment length doesn\'t correspond with last event timestamp end. '
+                        f'abs({segment_length} - {last_event_end}) > {timeline_check_threshold}.')
+                    log.warning(last_error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
                     attempts['timeline'] += 1
                     continue
 
@@ -141,8 +142,8 @@ class LlamaVideoSummarizationComponent:
 def _create_segment_summary_track(job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
     start_frame = job.start_frame
     video_fps = float(job.media_properties['FPS'])
-    video_secs = float(response_json['video_length'])
-    calculated_stop_frame = job.start_frame + int(video_secs * video_fps)
+    segment_secs = float(response_json['video_length'])
+    calculated_stop_frame = job.start_frame + int(segment_secs * video_fps)
     stop_frame = job.stop_frame - 1
     
     #segment_id = str(start_frame) + "-" + str(stop_frame)
@@ -176,19 +177,18 @@ def _create_tracks(job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.Video
 
         # get FPS
         video_fps = float(job.media_properties['FPS'])
-        segment_length = response_json['video_length']
         segment_start_time = int((job.start_frame / video_fps)*1000)
         for event in response_json['video_event_timeline']:
             # get offset start/stop times
             event_start_time = int(event['timestamp_start']*1000)
             event_stop_time = int(event['timestamp_end']*1000)
             # calculate event duration
-            video_secs = float(event_stop_time - event_start_time)/1000
+            event_secs = float(event_stop_time - event_start_time)/1000
 
             # calculate offset start/stop frames
             event_start_frame = int((event_start_time * video_fps)/1000)
             offset_start_frame = job.start_frame + event_start_frame
-            offset_stop_frame = (int(video_secs * video_fps) - 1) + offset_start_frame
+            offset_stop_frame = (int(event_secs * video_fps) - 1) + offset_start_frame
 
             detection_properties={
                 "SEGMENT ID": segment_id,
