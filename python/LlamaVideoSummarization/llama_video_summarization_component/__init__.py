@@ -53,14 +53,17 @@ class LlamaVideoSummarizationComponent:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                     'Component cannot process feed forward jobs.')
             
-            job_config = _parse_properties(job.job_properties)
+            actual_segment_length = (job.stop_frame - job.start_frame) / float(job.media_properties['FPS'])
+
+            job_config = _parse_properties(job.job_properties, actual_segment_length)
             job_config['video_path'] = job.data_uri
+            job_config['max_length'] = actual_segment_length
 
             response_json = self._get_detections_from_subprocess(job_config)
 
             log.info('Processing complete.')
 
-            tracks = create_tracks(job, response_json)
+            tracks = _create_tracks(job, response_json)
 
             return tracks
 
@@ -73,30 +76,49 @@ class LlamaVideoSummarizationComponent:
         schema_json = json.loads(schema_str)
 
         max_attempts = job_config['generation_max_attempts']
+        attempts = dict(timeline=0,
+                segment_length=0,
+                other=0)
+
         timeline_check_threshold = job_config['timeline_check_threshold']
 
+        segment_length_check_threshold = job_config['segment_length_check_threshold']
+
         last_error = None
-        for attempt in range(max_attempts):
+        while max(attempts.values()) <= max_attempts:
             response = self.child_process.send_job_get_response(job_config)
 
             if not response:
                 last_error = f'Empty response.'
-                log.warning(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
+                log.warning(last_error, f'Failed {attempts["other"] + 1} of {max_attempts} attempts.')
+                attempts['other'] += 1
                 continue
 
             try:
                 response_json = json.loads(response)
             except ValueError:
                 last_error = f'Response is not valid JSON.'
-                log.warning(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
+                log.warning(last_error, f'Failed {attempts["other"] + 1} of {max_attempts} attempts.')
+                attempts['other'] += 1
                 continue
 
             try:
                 validate(response_json, schema_json)
             except ValidationError:
                 last_error = 'Response JSON is not in the desired format.'
-                log.warning(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
+                log.warning(last_error, f'Failed {attempts["other"] + 1} of {max_attempts} attempts.')
+                attempts['other'] += 1
                 continue
+
+            if segment_length_check_threshold != -1:
+                video_length = float(response_json['video_length'])
+                max_length = float(job_config['max_length'])
+                if abs(video_length - max_length) > segment_length_check_threshold:
+                    last_error = (f'Video length doesn\'t match expected segment length. '
+                        f'abs({video_length} - {max_length}) > {segment_length_check_threshold}.')
+                    log.warning(last_error, f'Failed {attempts["segment_length"] + 1} of {max_attempts} attempts.')
+                    attempts['segment_length'] += 1
+                    continue
 
             if timeline_check_threshold != -1:
                 video_length = float(response_json['video_length'])
@@ -104,7 +126,8 @@ class LlamaVideoSummarizationComponent:
                 if abs(video_length - last_event_end) > timeline_check_threshold:
                     last_error = (f'Video length doesn\'t correspond with last event timestamp end. '
                         f'abs({video_length} - {last_event_end}) > {timeline_check_threshold}.')
-                    log.warning(last_error, f'Failed {attempt + 1} of {max_attempts} attempts.')
+                    log.warning(last_error, f'Failed {attempts["timeline"] + 1} of {max_attempts} attempts.')
+                    attempts['timeline'] += 1
                     continue
 
             last_error = None
@@ -115,84 +138,83 @@ class LlamaVideoSummarizationComponent:
 
         return response_json
 
-def _create_segment_summary_track(job: mpf.VideoJob, detections: dict) -> mpf.VideoTrack:
-    stop_frame = 0
-    if 'FRAME_COUNT' in job.media_properties:
-        stop_frame = job.start_frame + int(job.media_properties['FRAME_COUNT'])
-    elif 'FPS' in job.media_properties:
-        video_fps = float(job.media_properties['FPS'])
-        video_secs = float(detections['video_length']) # LLM output, not sure if reliable. Can we get ffprobe output from WFM?
-        stop_frame = job.start_frame + int(video_secs * video_fps)
-    else:
-        stop_frame = job.stop_frame
-    
+def _create_segment_summary_track(job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
     start_frame = job.start_frame
-    segment_id = str(start_frame) + "-" + str(stop_frame)
-    segment_summary={
-        "SEGMENT_ID": segment_id,
-        "SEGMENT_LENGTH": detections['video_length'],
-        "SEGMENT_SUMMARY": "TRUE",
-        "TEXT": detections['video_summary']
+    video_fps = float(job.media_properties['FPS'])
+    video_secs = float(response_json['video_length'])
+    calculated_stop_frame = job.start_frame + int(video_secs * video_fps)
+    stop_frame = job.stop_frame - 1
+    
+    #segment_id = str(start_frame) + "-" + str(stop_frame)
+    segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
+    detection_properties={
+        "SEGMENT ID": segment_id,
+        "SEGMENT LENGTH": response_json['video_length'],
+        "SEGMENT SUMMARY": "TRUE",
+        "TEXT": response_json['video_summary']
     }
+    frame_width = int(job.media_properties['FRAME_WIDTH'])
+    frame_height = int(job.media_properties['FRAME_HEIGHT'])
+    middle_frame = int((stop_frame - start_frame) / 2) + start_frame
+
     track = mpf.VideoTrack(start_frame, stop_frame, 1.0,\
     # add dummy locations to prevent the Workflow Manager from dropping / truncating track
     frame_locations={
-        0: mpf.ImageLocation(0, 0, 0, 0, 1.0),
-        stop_frame: mpf.ImageLocation(0, 0, 0, 0, 1.0)
+        middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
     },
-    detection_properties=segment_summary)
+    detection_properties=detection_properties)
     return track
 
-def create_tracks(job: mpf.VideoJob, detections: dict) -> Iterable[mpf.VideoTrack]:
+def _create_tracks(job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
     tracks = []
-    if detections['video_event_timeline']:
-        summary_track = _create_segment_summary_track(job, detections)
+    frame_width = int(job.media_properties['FRAME_WIDTH'])
+    frame_height = int(job.media_properties['FRAME_HEIGHT'])
+    if response_json['video_event_timeline']:
+        summary_track = _create_segment_summary_track(job, response_json)
         tracks.append(summary_track)
-        segment_length = detections['video_length']
-        segment_id = summary_track.detection_properties['SEGMENT_ID']
-        for event in detections['video_event_timeline']:
-            event_start_frame = job.start_frame
-            event_stop_frame = 0
+        segment_id = summary_track.detection_properties['SEGMENT ID']
+
+        # get FPS
+        video_fps = float(job.media_properties['FPS'])
+        segment_length = response_json['video_length']
+        segment_start_time = int((job.start_frame / video_fps)*1000)
+        for event in response_json['video_event_timeline']:
+            # get offset start/stop times
             event_start_time = int(event['timestamp_start']*1000)
             event_stop_time = int(event['timestamp_end']*1000)
-            if 'FRAME_COUNT' in job.media_properties:
-                event_start_frame = int(float(job.media_properties['FRAME_COUNT']) *
-                                        (event['timestamp_start']/segment_length))
-                event_stop_frame = int(float(job.media_properties['FRAME_COUNT']) *
-                                       (event['timestamp_end']/segment_length))
-            elif 'FPS' in job.media_properties:
-                video_fps = float(job.media_properties['FPS'])
-                video_secs = float(event_stop_time - event_start_time)/1000
-                event_stop_frame = int(video_secs * video_fps)
-                event_start_frame = int((event_start_time * video_fps)/1000)
-            else:
-                event_stop_frame = int(job.stop_frame/segment_length*event['timestamp_end'])
+            # calculate event duration
+            video_secs = float(event_stop_time - event_start_time)/1000
 
-            event_description={
-                "SEGMENT_ID": segment_id,
+            # calculate offset start/stop frames
+            event_start_frame = int((event_start_time * video_fps)/1000)
+            offset_start_frame = job.start_frame + event_start_frame
+            offset_stop_frame = (int(video_secs * video_fps) - 1) + offset_start_frame
+
+            detection_properties={
+                "SEGMENT ID": segment_id,
                 "TEXT": event['description'],
-                "TIMESTAMP_START": event["timestamp_start"], # debug only, sanity check track start/stop times
-                "TIMESTAMP_END": event["timestamp_end"], # debug only, sanity check track start/stop times
+                "TIMESTAMP START": event["timestamp_start"], # debug only, sanity check track start/stop times
+                "TIMESTAMP END": event["timestamp_end"], # debug only, sanity check track start/stop times
             }
-            track = mpf.VideoTrack(event_start_frame, event_stop_frame, 1.0,\
+            offset_middle_frame = int((offset_stop_frame - offset_start_frame) / 2) + offset_start_frame
+            track = mpf.VideoTrack(offset_start_frame, offset_stop_frame, 1.0,\
             # add dummy locations to prevent the Workflow Manager from dropping / truncating track
             frame_locations={
-                event_start_frame: mpf.ImageLocation(0, 0, 0, 0, 1.0),
-                event_stop_frame: mpf.ImageLocation(0, 0, 0, 0, 1.0)
+                offset_middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
             },
-            detection_properties=event_description)
+            detection_properties=detection_properties)
             track.start_time = event_start_time
             track.stop_time = event_stop_time
-            track.start_offset_time = event_start_time
-            track.stop_offset_time = event_stop_time
+            track.start_offset_time = event_start_time + segment_start_time
+            track.stop_offset_time = event_stop_time + segment_start_time
             tracks.append(track)
 
     else: # no events timeline, create summary only
-        tracks.append(_create_segment_summary_track(job, detections))
+        tracks.append(_create_segment_summary_track(job, response_json))
     
     return tracks
 
-def _parse_properties(props: Mapping[str, str]) -> dict:
+def _parse_properties(props: Mapping[str, str], actual_segment_length) -> dict:
     process_fps = mpf_util.get_property(
         props, 'PROCESS_FPS', 1)
     max_frames = mpf_util.get_property(
@@ -210,8 +232,11 @@ def _parse_properties(props: Mapping[str, str]) -> dict:
         props, 'GENERATION_MAX_ATTEMPTS', 3)
     timeline_check_threshold = mpf_util.get_property(
         props, 'TIMELINE_CHECK_THRESHOLD', 20)
+    
+    segment_length_check_threshold = mpf_util.get_property(
+        props, 'SEGMENT_LENGTH_CHECK_THRESHOLD', 30)
 
-    generation_prompt = _read_file(generation_prompt_path)
+    generation_prompt = _read_file(generation_prompt_path) % (actual_segment_length, actual_segment_length)
     generation_json_schema = _read_file(generation_json_schema_path)
 
     system_prompt = generation_prompt
@@ -226,7 +251,8 @@ def _parse_properties(props: Mapping[str, str]) -> dict:
         generation_json_schema = generation_json_schema,
         system_prompt = system_prompt,
         generation_max_attempts = generation_max_attempts,
-        timeline_check_threshold = timeline_check_threshold
+        timeline_check_threshold = timeline_check_threshold,
+        segment_length_check_threshold = segment_length_check_threshold
     )
 
 def _read_file(path: str) -> str:

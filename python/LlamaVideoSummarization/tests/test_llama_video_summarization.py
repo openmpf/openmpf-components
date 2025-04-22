@@ -47,16 +47,67 @@ TEST_DATA = pathlib.Path(__file__).parent / 'data'
 DUMMY_TIMELINE = \
 [
     {
-        "timestamp_start": 0,
-        "timestamp_end": 50,
+        "timestamp_start": 0.0,
+        "timestamp_end": 3.0,
         "description": "Something happened."
     },
     {
-        "timestamp_start": 51,
-        "timestamp_end": 99,
+        "timestamp_start": 3.1,
+        "timestamp_end": 6.8,
         "description": "Something else happened."
     }
 ]
+
+CAT_TIMELINE = {
+    "video_summary": "A cat is sitting on a cobblestone street, looking around as people walk by.",
+    "video_length": 6.8,
+    "video_event_timeline": [
+        {
+            "timestamp_start": 0.0,
+            "timestamp_end": 4.9,
+            "description": "The cat is sitting on the cobblestone street, looking around."
+        },
+        {
+            "timestamp_start": 5.0,
+            "timestamp_end": 6.8,
+            "description": "The cat looks back at the camera and then walks away."
+        }
+    ]
+}
+
+DOG_TIMELINE = {
+    "video_summary": "A dog sitting by a window and looking around.",
+    "video_length": 6.12,
+    "video_event_timeline": [
+        {
+            "timestamp_start": 0.0,
+            "timestamp_end": 6.12,
+            "description": "Dog sitting by the window."
+        }
+    ]
+}
+
+CAT_VIDEO_PROPERTIES = {
+    'DURATION': '6890',
+    'FPS': '25',
+    'FRAME_COUNT': '172',
+    'FRAME_HEIGHT': '360',
+    'FRAME_WIDTH': '640',
+    'HAS_CONSTANT_FRAME_RATE': 'true',
+    'MIME_TYPE': 'video/mp4',
+    'ROTATION': '0.0'
+}
+
+DOG_VIDEO_PROPERTIES = {
+    'DURATION': '6170',
+    'FPS': '25',
+    'FRAME_COUNT': '154',
+    'FRAME_HEIGHT': '240',
+    'FRAME_WIDTH': '426',
+    'HAS_CONSTANT_FRAME_RATE': 'true',
+    'MIME_TYPE': 'video/mp4',
+    'ROTATION': '0.0'
+}
 
 class TestComponent(unittest.TestCase):
 
@@ -74,49 +125,40 @@ class TestComponent(unittest.TestCase):
     def test_multiple_videos(self):
         component = LlamaVideoSummarizationComponent()
 
-        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 100, {}, {})
-        results = self.run_patched_job(component, job, json.dumps(
-            {
-                "video_summary": "This is a video of a cat.",
-                "video_length": 100,
-                "video_event_timeline": DUMMY_TIMELINE
-            }))
+        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 171, {}, CAT_VIDEO_PROPERTIES, {})
+        results = self.run_patched_job(component, job, json.dumps(CAT_TIMELINE))
         
-        job = mpf.VideoJob('dog job', str(TEST_DATA / 'dog.mp4'), 0, 100, {}, {})
-        results = self.run_patched_job(component, job, json.dumps(
-            {
-                "video_summary": "This is a video of a dog.",
-                "video_length": 100,
-                "video_event_timeline": DUMMY_TIMELINE
-            }))
+        self.assertIn("cat", results[0].detection_properties["TEXT"])
+        job = mpf.VideoJob('dog job', str(TEST_DATA / 'dog.mp4'), 0, 153, {}, DOG_VIDEO_PROPERTIES, {})
+        results = self.run_patched_job(component, job, json.dumps(DOG_TIMELINE))
         self.assertIn("dog", results[0].detection_properties["TEXT"])
 
 
     def test_invalid_timeline(self):
         component = LlamaVideoSummarizationComponent()
-
-        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 100,
+        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000,
             { 
                 "GENERATION_MAX_ATTEMPTS" : "1"
             }, 
-            {})
+            CAT_VIDEO_PROPERTIES, {})
         with self.assertRaises(mpf.DetectionException) as cm:
-            results = self.run_patched_job(component, job, json.dumps(
+            self.run_patched_job(component, job, json.dumps(
             {
                 "video_summary": "This is a video of a cat.",
                 "video_length": 500,
                 "video_event_timeline": DUMMY_TIMELINE
             }))
-        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("Video length", str(cm.exception))
+            self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+            self.assertIn("Video length", str(cm.exception))
 
         # test disabling time check
-        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 100, 
+        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000, 
             {
                 "GENERATION_MAX_ATTEMPTS" : "1",
-                "TIMELINE_CHECK_THRESHOLD" : "-1"
+                "TIMELINE_CHECK_THRESHOLD" : "-1",
+                "SEGMENT_LENGTH_CHECK_THRESHOLD": "-1"
             },
-            {})
+            CAT_VIDEO_PROPERTIES, {})
         results = self.run_patched_job(component, job, json.dumps(
         {
             "video_summary": "This is a video of a cat.",
@@ -132,7 +174,7 @@ class TestComponent(unittest.TestCase):
             {
                 "GENERATION_MAX_ATTEMPTS" : "1"
             },
-            {})
+            CAT_VIDEO_PROPERTIES, {})
 
         with self.assertRaises(mpf.DetectionException) as cm:
             results = self.run_patched_job(component, job, "garbage xyz")
@@ -142,68 +184,35 @@ class TestComponent(unittest.TestCase):
 
     def test_empty_response(self):
         component = LlamaVideoSummarizationComponent()
-        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 100,
+        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 171,
             {
                 "GENERATION_MAX_ATTEMPTS" : "1"
             },
-            {})
+            CAT_VIDEO_PROPERTIES, {})
 
         with self.assertRaises(mpf.DetectionException) as cm:
-            results = self.run_patched_job(component, job, "")
+            self.run_patched_job(component, job, "")
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("Empty response", str(cm.exception))
 
-    def test_video_segmentation(self):
-        component = LlamaVideoSummarizationComponent()
-        job1 = mpf.VideoJob(
-            job_name='japan street walk 1',
-            data_uri=str( TEST_DATA / 'ECMuU75kJCs.0m0s-3m0s.mp4'),
-            start_frame=0,
-            stop_frame=4477,
-            job_properties=dict(
-                GENERATION_MAX_ATTEMPTS=3,
-                PROCESS_FPS=1,
-                MAX_FRAMES=180,
-                MAX_NEW_TOKENS=4096,
-                TIMELINE_CHECK_THRESHOLD=-1
-            ),
-            media_properties=dict(FRAME_COUNT=4477),
-            feed_forward_track=None)
-        job2 = mpf.VideoJob(
-            job_name='japan street walk 2',
-            data_uri=str( TEST_DATA / 'ECMuU75kJCs.3m0s-6m0s.mp4'),
-            start_frame=4478,
-            stop_frame=8818,
-            job_properties=dict(
-                GENERATION_MAX_ATTEMPTS=3,
-                PROCESS_FPS=1,
-                MAX_FRAMES=180,
-                MAX_NEW_TOKENS=4096,
-                TIMELINE_CHECK_THRESHOLD=-1
-            ),
-            media_properties=dict(FRAME_COUNT=4339),
-            feed_forward_track=None)
-        json1 = {'video_summary': 'The video showcases a vending machine, a quiet street, and various buildings in an urban setting. It begins with a close-up of the vending machine, then pans to show the street, including a small cafe, before continuing to display more buildings and streets.', 'video_length': 180.0, 'video_event_timeline': [{'timestamp_start': 0.0, 'timestamp_end': 26.57, 'description': 'Close-up of a vending machine filled with drinks.'}, {'timestamp_start': 26.57, 'timestamp_end': 49.44, 'description': 'View of a street with a cafe and a pedestrian crossing.'}, {'timestamp_start': 49.44, 'timestamp_end': 105.84, 'description': 'A view of a sidewalk next to a building with a tree and bushes.'}, {'timestamp_start': 105.84, 'timestamp_end': 139.82, 'description': 'A view of a sidewalk next to a building with a tree and bushes.'}, {'timestamp_start': 139.82, 'timestamp_end': 167.34, 'description': 'A view of a sidewalk next to a building with a tree and bushes.'}, {'timestamp_start': 167.34, 'timestamp_end': 181.67, 'description': 'A view of a sidewalk next to a building with a tree and bushes.'}]}
-        job1_result = self.run_patched_job(component, job1, json.dumps(json1))
-
-        json2 = {'video_summary': 'The video starts with a close-up of a vending machine filled with various beverages, then pans out to show the vending machine and its surroundings. It then transitions to a view of a quiet street with a crosswalk and buildings, followed by a series of views of different parts of the street, including sidewalks, buildings, and construction areas. The video concludes with a view of a narrow street with a vending machine and a blue awning.', 'video_length': 180.0, 'video_event_timeline': [{'timestamp_start': 0.0, 'timestamp_end': 24.3, 'description': 'Close-up of a vending machine filled with beverages'}, {'timestamp_start': 24.3, 'timestamp_end': 50.3, 'description': 'Panning shot of a quiet street with a crosswalk and buildings'}, {'timestamp_start': 50.3, 'timestamp_end': 119.3, 'description': 'Views of different parts of the street, including sidewalks, buildings, and construction areas'}, {'timestamp_start': 119.3, 'timestamp_end': 181.2, 'description': 'Narrow street with a vending machine and a blue awning'}]}
-        job2_result = self.run_patched_job(component, job2, json.dumps(json2))
-        
-        self.assertIsInstance(job1_result[0], mpf.VideoTrack)
-        self.assertIn('SEGMENT_SUMMARY', job1_result[0].detection_properties)
-        self.assertEquals(job1_result[0].detection_properties['SEGMENT_ID'], '0-4477')
-        self.assertEquals(job1_result[1].detection_properties['SEGMENT_ID'], '0-4477')
-        self.assertRegexpMatches(job1_result[0].detection_properties['TEXT'], r'city|street|urban|architecture|signs|building|people|pedestrian')
-        self.assertRegexpMatches(job1_result[1].detection_properties['TEXT'], r'vending|machine|drink')
-
-        self.assertIsInstance(job2_result[0], mpf.VideoTrack)
-        self.assertIn('SEGMENT_SUMMARY', job2_result[0].detection_properties)
-        self.assertEquals(job2_result[0].detection_properties['SEGMENT_ID'], '4478-8817')
-        self.assertEquals(job2_result[1].detection_properties['SEGMENT_ID'], '4478-8817')
-        self.assertRegexpMatches(job2_result[0].detection_properties['TEXT'], r'city|street|urban|architecture|signs|building|people|pedestrian')
-
     def test_video_segmentation_24fps(self):
         component = LlamaVideoSummarizationComponent()
+        job_media_properties = {'DURATION': '263765',                                                              
+            'FPS': '23.976023976023978',               
+            'FRAME_COUNT': '6324',
+            'FRAME_HEIGHT': '720',                                                             
+            'FRAME_WIDTH': '1280',                                                             
+            'HAS_CONSTANT_FRAME_RATE': 'true',                                                 
+            'MIME_TYPE': 'video/mp4',                                                          
+            'ROTATION': '0.0'}
+        job1_media_properties = {
+            'DURATION': '180097',      
+            'FPS': '23.976023976023978',                                                          
+            'FRAME_COUNT': '4246',     
+            'FRAME_HEIGHT': '720',     
+            'FRAME_WIDTH': '1280',                                                                
+            'MIME_TYPE': 'video/mp4',                                                             
+            'ROTATION': '0.0'}
         job1 = mpf.VideoJob(
             job_name='24fps-1',
             data_uri=str( TEST_DATA / '9258091-hd_1920_1080_24fps.0m0s-3m0s.mp4'),
@@ -214,10 +223,21 @@ class TestComponent(unittest.TestCase):
                 PROCESS_FPS=1,
                 MAX_FRAMES=180,
                 MAX_NEW_TOKENS=4096,
-                TIMELINE_CHECK_THRESHOLD=-1
+                TIMELINE_CHECK_THRESHOLD=-1,
+                SEGMENT_LENGTH_SPECIFICATION='SECONDS',
+                TARGET_SEGMENT_LENGTH=180
             ),
-            media_properties=dict(),
+            media_properties=job_media_properties,
             feed_forward_track=None)
+        job2_media_properties = {
+            'DURATION': '83755',
+            'FPS': '23.976023976023978',
+            'FRAME_COUNT': '2004',
+            'FRAME_HEIGHT': '720',
+            'FRAME_WIDTH': '1280',
+            'HAS_CONSTANT_FRAME_RATE': 'true',
+            'MIME_TYPE': 'video/mp4',
+            'ROTATION': '0.0'}
         job2 = mpf.VideoJob(
             job_name='24fps-2',
             data_uri=str( TEST_DATA / '9258091-hd_1920_1080_24fps.3m0s-4m23s.mp4'),
@@ -228,9 +248,9 @@ class TestComponent(unittest.TestCase):
                 PROCESS_FPS=1,
                 MAX_FRAMES=180,
                 MAX_NEW_TOKENS=4096,
-                TIMELINE_CHECK_THRESHOLD=-1
+                # TIMELINE_CHECK_THRESHOLD=-1
             ),
-            media_properties=dict(),
+            media_properties=job_media_properties,
             feed_forward_track=None)
         json1 = {'video_summary': 'The video captures a busy city street with various vehicles and pedestrians moving along the road. The scene is set against a backdrop of tall buildings and trees, with a clear sky overhead. The video showcases the continuous flow of traffic, including cars, buses, motorcycles, and bicycles. Pedestrians are seen walking on the sidewalks and crossing the street at designated crosswalks.', 'video_length': 180.0, 'video_event_timeline': [{'timestamp_start': 0.0, 'timestamp_end': 179.9, 'description': 'A busy city street with various vehicles and pedestrians.'}]}
         job1_result = self.run_patched_job(component, job1, json.dumps(json1))
@@ -239,25 +259,35 @@ class TestComponent(unittest.TestCase):
         job2_result = self.run_patched_job(component, job2, json.dumps(json2))
         
         self.assertIsInstance(job1_result[0], mpf.VideoTrack)
-        self.assertIn('SEGMENT_SUMMARY', job1_result[0].detection_properties)
-        self.assertEquals(job1_result[0].detection_properties['SEGMENT_ID'], '0-4314')
-        self.assertEquals(job1_result[1].detection_properties['SEGMENT_ID'], '0-4314')
+        self.assertIn('SEGMENT SUMMARY', job1_result[0].detection_properties)
+        self.assertEquals(job1_result[0].detection_properties['SEGMENT ID'], '0-4314')
+        self.assertEquals(job1_result[1].detection_properties['SEGMENT ID'], '0-4314')
         self.assertRegexpMatches(job1_result[0].detection_properties['TEXT'], r'busy|city|street|urban|architecture|signs|building|people|pedestrian')
         self.assertRegexpMatches(job1_result[1].detection_properties['TEXT'], r'busy|city|street|urban|architecture|signs|building|people|pedestrian')
 
         self.assertIsInstance(job2_result[0], mpf.VideoTrack)
-        self.assertIn('SEGMENT_SUMMARY', job2_result[0].detection_properties)
-        self.assertEquals(job2_result[0].detection_properties['SEGMENT_ID'], '4315-6323')
-        self.assertEquals(job2_result[1].detection_properties['SEGMENT_ID'], '4315-6323')
+        self.assertIn('SEGMENT SUMMARY', job2_result[0].detection_properties)
+        self.assertEquals(job2_result[0].detection_properties['SEGMENT ID'], '4315-6323')
+        self.assertEquals(job2_result[1].detection_properties['SEGMENT ID'], '4315-6323')
         self.assertRegexpMatches(job2_result[0].detection_properties['TEXT'], r'city|street|urban|architecture|signs|building|people|traffic|busy|bike|lane')
 
     def test_video_segmentation_30fps(self):
         component = LlamaVideoSummarizationComponent()
+        job_media_properties = {
+            'DURATION': '301739',                                                                                                                                                                                                              
+            'FPS': '29.97002997002997',                                                                      
+            'FRAME_COUNT': '9043',                                                                           
+            'FRAME_HEIGHT': '1080',                                                                          
+            'FRAME_WIDTH': '1920',                                                                           
+            'HAS_CONSTANT_FRAME_RATE': 'true',                                                               
+            'MIME_TYPE': 'video/mp4',                                                                                                                                                                                                          
+            'ROTATION': '0.0'
+            }
         job1 = mpf.VideoJob(
             job_name='30fps-1',
             data_uri=str( TEST_DATA / '6254278-hd_1920_1080_30fps.0m0s-3m0s.mp4'),
             start_frame=0,
-            stop_frame=4314,
+            stop_frame=5393,
             job_properties=dict(
                 GENERATION_MAX_ATTEMPTS=3,
                 PROCESS_FPS=1,
@@ -265,13 +295,13 @@ class TestComponent(unittest.TestCase):
                 MAX_NEW_TOKENS=4096,
                 TIMELINE_CHECK_THRESHOLD=-1
             ),
-            media_properties=dict(),
+            media_properties=job_media_properties,
             feed_forward_track=None)
         job2 = mpf.VideoJob(
             job_name='30fps-2',
             data_uri=str( TEST_DATA / '6254278-hd_1920_1080_30fps.3m0s-5m1s.mp4'),
-            start_frame=4315,
-            stop_frame=6323,
+            start_frame=5394,
+            stop_frame=9042,
             job_properties=dict(
                 GENERATION_MAX_ATTEMPTS=3,
                 PROCESS_FPS=1,
@@ -279,7 +309,7 @@ class TestComponent(unittest.TestCase):
                 MAX_NEW_TOKENS=4096,
                 TIMELINE_CHECK_THRESHOLD=-1
             ),
-            media_properties=dict(),
+            media_properties=job_media_properties,
             feed_forward_track=None)
        
         json1 = {'video_summary': 'The video shows an aerial view of a city intersection with a Chase bank building in the center. There is a protest happening in front of the building with people holding signs and banners. The traffic is moving smoothly, and there are pedestrians walking on the sidewalks.', 'video_length': 180.0, 'video_event_timeline': [{'timestamp_start': 0.0, 'timestamp_end': 17.5, 'description': 'Aerial view of city intersection with Chase bank building'}, {'timestamp_start': 18.9, 'timestamp_end': 34.7, 'description': 'Protest in front of Chase bank building'}, {'timestamp_start': 36.1, 'timestamp_end': 50.2, 'description': 'People holding signs and banners'}, {'timestamp_start': 51.6, 'timestamp_end': 72.5, 'description': 'Traffic moving smoothly'}, {'timestamp_start': 73.9, 'timestamp_end': 153.6, 'description': 'Pedestrians walking on sidewalks'}]}
@@ -292,25 +322,33 @@ class TestComponent(unittest.TestCase):
         job2_result = self.run_patched_job(component, job2, json.dumps(json2))
         
         self.assertIsInstance(job1_result[0], mpf.VideoTrack)
-        self.assertIn('SEGMENT_SUMMARY', job1_result[0].detection_properties)
-        self.assertEquals(job1_result[0].detection_properties['SEGMENT_ID'], '0-4314')
-        self.assertEquals(job1_result[1].detection_properties['SEGMENT_ID'], '0-4314')
+        self.assertIn('SEGMENT SUMMARY', job1_result[0].detection_properties)
+        self.assertEquals(job1_result[0].detection_properties['SEGMENT ID'], '0-5393')
+        self.assertEquals(job1_result[1].detection_properties['SEGMENT ID'], '0-5393')
         self.assertRegexpMatches(job1_result[0].detection_properties['TEXT'], r'city|street|building|people|fountain|signs|protest|demonstration|traffic')
         self.assertRegexpMatches(job1_result[1].detection_properties['TEXT'], r'city|street|building|people|fountain|signs|protest|demonstration|traffic')
 
         self.assertIsInstance(job2_result[0], mpf.VideoTrack)
-        self.assertIn('SEGMENT_SUMMARY', job2_result[0].detection_properties)
-        self.assertEquals(job2_result[0].detection_properties['SEGMENT_ID'], '4315-6323')
-        self.assertEquals(job2_result[1].detection_properties['SEGMENT_ID'], '4315-6323')
+        self.assertIn('SEGMENT SUMMARY', job2_result[0].detection_properties)
+        self.assertEquals(job2_result[0].detection_properties['SEGMENT ID'], '5394-9042')
+        self.assertEquals(job2_result[1].detection_properties['SEGMENT ID'], '5394-9042')
         self.assertRegexpMatches(job2_result[0].detection_properties['TEXT'], r'aerial|street|protest|banner|flags|signs|people')
     
     def test_video_segmentation_vfr(self):
         component = LlamaVideoSummarizationComponent()
+        job_media_properties = {
+            'DURATION': '301738',
+            'FPS': '29.972655710537218',
+            'FRAME_COUNT': '9043',
+            'FRAME_HEIGHT': '1080',
+            'FRAME_WIDTH': '1920',
+            'MIME_TYPE': 'video/mp4',
+            'ROTATION': '0.0'}
         job1 = mpf.VideoJob(
             job_name='vfr-1',
             data_uri=str( TEST_DATA / '6254278-hd_1920_1080_VFR.0m0s-3m0s.mp4'),
             start_frame=0,
-            stop_frame=180,
+            stop_frame=5393,
             job_properties=dict(
                 GENERATION_MAX_ATTEMPTS=3,
                 PROCESS_FPS=1,
@@ -318,13 +356,13 @@ class TestComponent(unittest.TestCase):
                 MAX_NEW_TOKENS=4096,
                 TIMELINE_CHECK_THRESHOLD=-1
             ),
-            media_properties=dict(FPS=1),
+            media_properties=job_media_properties,
             feed_forward_track=None)
         job2 = mpf.VideoJob(
             job_name='vfr-2',
             data_uri=str( TEST_DATA / '6254278-hd_1920_1080_VFR.3m0s-5m1s.mp4'),
-            start_frame=181,
-            stop_frame=480,
+            start_frame=5394,
+            stop_frame=9042,
             job_properties=dict(
                 GENERATION_MAX_ATTEMPTS=3,
                 PROCESS_FPS=2,
@@ -332,7 +370,7 @@ class TestComponent(unittest.TestCase):
                 MAX_NEW_TOKENS=4096,
                 TIMELINE_CHECK_THRESHOLD=-1
             ),
-            media_properties=dict(FPS=2),
+            media_properties=job_media_properties,
             feed_forward_track=None)
        
         json1 = {'video_summary': 'The video shows an aerial view of a city intersection with a Chase bank building in the center. There is a protest happening in front of the building with people holding signs and banners. The traffic is moving smoothly, and there are pedestrians walking on the sidewalks.', 'video_length': 180.0, 'video_event_timeline': [{'timestamp_start': 0.0, 'timestamp_end': 17.5, 'description': 'Aerial view of city intersection with Chase bank building'}, {'timestamp_start': 18.9, 'timestamp_end': 34.7, 'description': 'Protest in front of Chase bank building'}, {'timestamp_start': 36.1, 'timestamp_end': 50.2, 'description': 'People holding signs and banners'}, {'timestamp_start': 51.6, 'timestamp_end': 72.5, 'description': 'Traffic moving smoothly'}, {'timestamp_start': 73.9, 'timestamp_end': 153.6, 'description': 'Pedestrians walking on sidewalks'}]}
@@ -345,17 +383,330 @@ class TestComponent(unittest.TestCase):
         job2_result = self.run_patched_job(component, job2, json.dumps(json2))
         
         self.assertIsInstance(job1_result[0], mpf.VideoTrack)
-        self.assertIn('SEGMENT_SUMMARY', job1_result[0].detection_properties)
-        self.assertEquals(job1_result[0].detection_properties['SEGMENT_ID'], '0-180')
-        self.assertEquals(job1_result[1].detection_properties['SEGMENT_ID'], '0-180')
+        self.assertIn('SEGMENT SUMMARY', job1_result[0].detection_properties)
+        self.assertEquals(job1_result[0].detection_properties['SEGMENT ID'], '0-5393')
+        self.assertEquals(job1_result[1].detection_properties['SEGMENT ID'], '0-5393')
         self.assertRegexpMatches(job1_result[0].detection_properties['TEXT'], r'city|street|building|people|fountain|signs|protest|demonstration|traffic')
         self.assertRegexpMatches(job1_result[1].detection_properties['TEXT'], r'city|street|building|people|fountain|signs|protest|demonstration|traffic')
 
         self.assertIsInstance(job2_result[0], mpf.VideoTrack)
-        self.assertIn('SEGMENT_SUMMARY', job2_result[0].detection_properties)
-        self.assertEquals(job2_result[0].detection_properties['SEGMENT_ID'], '181-422')
-        self.assertEquals(job2_result[1].detection_properties['SEGMENT_ID'], '181-422')
+        self.assertIn('SEGMENT SUMMARY', job2_result[0].detection_properties)
+        self.assertEquals(job2_result[0].detection_properties['SEGMENT ID'], '5394-9042')
+        self.assertEquals(job2_result[1].detection_properties['SEGMENT ID'], '5394-9042')
         self.assertRegexpMatches(job2_result[0].detection_properties['TEXT'], r'aerial|street|protest|banner|flags|signs|people')
+
+    def test_check_timeline_threshold(self):
+        component = LlamaVideoSummarizationComponent()
+        # 6254278-hd_1920_1080_30fps.mp4
+        job_media_properties = {'DURATION': '301739',                                                              
+            'FPS': '29.97002997002997',               
+            'FRAME_COUNT': '9043',
+            'FRAME_HEIGHT': '1080',                                                             
+            'FRAME_WIDTH': '1920',                                                             
+            'HAS_CONSTANT_FRAME_RATE': 'true',                                                 
+            'MIME_TYPE': 'video/mp4',                                                          
+            'ROTATION': '0.0'}
+
+        job1 = mpf.VideoJob(
+            job_name='24fps-1',
+            data_uri=str( TEST_DATA / '6254278-hd_1920_1080_30fps.0m0s-3m0s.mp4'),
+            start_frame=0,
+            stop_frame=4314,
+            job_properties=dict(
+                GENERATION_MAX_ATTEMPTS=4,
+                PROCESS_FPS=1,
+                MAX_FRAMES=180,
+                MAX_NEW_TOKENS=4096,
+                TIMELINE_CHECK_THRESHOLD=20,
+                SEGMENT_LENGTH_SPECIFICATION='SECONDS',
+                TARGET_SEGMENT_LENGTH=180,
+                SEGMENT_LENGTH_CHECK_THRESHOLD=30
+            ),
+            media_properties=job_media_properties,
+            feed_forward_track=None)
+        json1 = {
+            'video_summary': 'The video captures a busy city street with various vehicles and pedestrians moving along the road. The scene is set against a backdrop of tall buildings and trees, with a clear sky overhead. The video showcases the continuous flow of traffic, including cars, buses, motorcycles, and bicycles. Pedestrians are seen walking on the sidewalks and crossing the street at designated crosswalks.',
+            'video_length': 180.0,
+            'video_event_timeline': [
+                    {
+                      "timestamp_start": 0.0,
+                      "timestamp_end": 36.7,
+                      "description": "Aerial view of the intersection with Chase bank building in the background." 
+                    },
+                    {
+                      "timestamp_start": 37.7,
+                      "timestamp_end": 118.5,
+                      "description": "People are gathered around a fountain, holding signs and flags, seemingly protesting."
+                    },
+                    {
+                      "timestamp_start": 119.5,
+                      "timestamp_end": 201.2,
+                      "description": "Camera pans around the area, showing the surrounding buildings and streets." 
+                    },
+                    {
+                      "timestamp_start": 202.2,
+                      "timestamp_end": 235.7,
+                      "description": "Bus passing by, and some cars waiting at the traffic light."
+                    },
+                    {
+                      "timestamp_start": 236.7,
+                      "timestamp_end": 301.2,
+                      "description": "Protesters are chanting and waving their flags, while others are standing on the sidewalk or sitting on benches."
+                    }
+                ]
+            }
+        with self.assertRaises(mpf.DetectionException) as cm:
+            job1_result = self.run_patched_job(component, job1, json.dumps(json1))
+            self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+            self.assertIn("Video length", str(cm.exception))
+
+        # self.assertIsInstance(job1_result[0], mpf.VideoTrack)
+        # self.assertIn('SEGMENT SUMMARY', job1_result[0].detection_properties)
+        # self.assertEquals(job1_result[0].detection_properties['SEGMENT ID'], '0-4314')
+        # self.assertEquals(job1_result[1].detection_properties['SEGMENT ID'], '0-4314')
+        # self.assertRegexpMatches(job1_result[0].detection_properties['TEXT'], r'busy|city|street|urban|architecture|signs|building|people|pedestrian')
+        # self.assertRegexpMatches(job1_result[1].detection_properties['TEXT'], r'busy|city|street|urban|architecture|signs|building|people|pedestrian')
+
+    def test_check_segment_length_threshold(self):
+        component = LlamaVideoSummarizationComponent()
+        # 6254278-hd_1920_1080_30fps.mp4
+        job_media_properties = {'DURATION': '301739',                                                              
+            'FPS': '29.97002997002997',               
+            'FRAME_COUNT': '9043',
+            'FRAME_HEIGHT': '1080',                                                             
+            'FRAME_WIDTH': '1920',                                                             
+            'HAS_CONSTANT_FRAME_RATE': 'true',                                                 
+            'MIME_TYPE': 'video/mp4',                                                          
+            'ROTATION': '0.0'}
+
+        job1 = mpf.VideoJob(
+            job_name='24fps-1',
+            data_uri=str( TEST_DATA / '6254278-hd_1920_1080_30fps.0m0s-3m0s.mp4'),
+            start_frame=0,
+            stop_frame=1797,
+            job_properties=dict(
+                GENERATION_MAX_ATTEMPTS=3,
+                PROCESS_FPS=1,
+                MAX_FRAMES=180,
+                MAX_NEW_TOKENS=4096,
+                TIMELINE_CHECK_THRESHOLD=15,
+                SEGMENT_LENGTH_SPECIFICATION='SECONDS',
+                TARGET_SEGMENT_LENGTH=90,
+                SEGMENT_LENGTH_CHECK_THRESHOLD=20
+            ),
+            media_properties=job_media_properties,
+            feed_forward_track=None)
+        json1 = {
+            'video_summary': 'The video captures a busy city street with various vehicles and pedestrians moving along the road. The scene is set against a backdrop of tall buildings and trees, with a clear sky overhead. The video showcases the continuous flow of traffic, including cars, buses, motorcycles, and bicycles. Pedestrians are seen walking on the sidewalks and crossing the street at designated crosswalks.',
+            'video_length': 120.0,
+            'video_event_timeline': [
+                    {
+                      "timestamp_start": 0.0,
+                      "timestamp_end": 36.7,
+                      "description": "Aerial view of the intersection with Chase bank building in the background." 
+                    },
+                    {
+                      "timestamp_start": 37.7,
+                      "timestamp_end": 118.5,
+                      "description": "People are gathered around a fountain, holding signs and flags, seemingly protesting."
+                    },
+                    {
+                      "timestamp_start": 119.5,
+                      "timestamp_end": 201.2,
+                      "description": "Camera pans around the area, showing the surrounding buildings and streets." 
+                    },
+                    {
+                      "timestamp_start": 202.2,
+                      "timestamp_end": 235.7,
+                      "description": "Bus passing by, and some cars waiting at the traffic light. Protesters are chanting and waving their flags, while others are standing on the sidewalk or sitting on benches."
+                    }
+                ]
+            }
+        with self.assertRaises(mpf.DetectionException) as cm:
+            job1_result = self.run_patched_job(component, job1, json.dumps(json1))
+            self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+            self.assertIn("Video length", str(cm.exception))
+
+        json1['video_event_timeline'].pop()
+        json1['video_event_timeline'].pop()
+        job1 = mpf.VideoJob(
+            job_name='24fps-1',
+            data_uri=str( TEST_DATA / '6254278-hd_1920_1080_30fps.0m0s-3m0s.mp4'),
+            start_frame=0,
+            stop_frame=3596,
+            job_properties=dict(
+                GENERATION_MAX_ATTEMPTS=3,
+                PROCESS_FPS=1,
+                MAX_FRAMES=180,
+                MAX_NEW_TOKENS=4096,
+                TIMELINE_CHECK_THRESHOLD=15,
+                SEGMENT_LENGTH_SPECIFICATION='SECONDS',
+                TARGET_SEGMENT_LENGTH=120,
+                SEGMENT_LENGTH_CHECK_THRESHOLD=20
+            ),
+            media_properties=job_media_properties,
+            feed_forward_track=None)
+        job1_result = self.run_patched_job(component, job1, json.dumps(json1))
+
+        self.assertIsInstance(job1_result[0], mpf.VideoTrack)
+        self.assertIn('SEGMENT SUMMARY', job1_result[0].detection_properties)
+        self.assertEquals(job1_result[0].detection_properties['SEGMENT ID'], '0-3596')
+        self.assertEquals(job1_result[1].detection_properties['SEGMENT ID'], '0-3596')
+        # self.assertRegexpMatches(job1_result[0].detection_properties['TEXT'], r'busy|city|street|urban|architecture|signs|building|people|pedestrian')
+        # self.assertRegexpMatches(job1_result[1].detection_properties['TEXT'], r'busy|city|street|urban|architecture|signs|building|people|pedestrian')
+
+    def test_video_segmentation_vfr2(self):
+        component = LlamaVideoSummarizationComponent()
+        job_media_properties = {
+            'DURATION': '301738',
+            'FPS': '29.972655710537218',
+            'FRAME_COUNT': '9043',
+            'FRAME_HEIGHT': '1080',
+            'FRAME_WIDTH': '1920',
+            'MIME_TYPE': 'video/mp4',
+            'ROTATION': '0.0'}
+        job1 = mpf.VideoJob(
+            job_name='vfr-1',
+            data_uri=str( TEST_DATA / '6254278-hd_1920_1080_VFR.mp4'),
+            start_frame=0,
+            stop_frame=5394,
+            job_properties=dict(
+                GENERATION_MAX_ATTEMPTS=3,
+                PROCESS_FPS=1,
+                MAX_FRAMES=180,
+                MAX_NEW_TOKENS=4096,
+                TIMELINE_CHECK_THRESHOLD=-1
+            ),
+            media_properties=job_media_properties,
+            feed_forward_track=None)
+        job2 = mpf.VideoJob(
+            job_name='vfr-2',
+            data_uri=str( TEST_DATA / '6254278-hd_1920_1080_VFR.mp4'),
+            start_frame=5395,
+            stop_frame=9042,
+            job_properties=dict(
+                GENERATION_MAX_ATTEMPTS=3,
+                PROCESS_FPS=1,
+                MAX_FRAMES=180,
+                MAX_NEW_TOKENS=4096,
+                TIMELINE_CHECK_THRESHOLD=-1
+            ),
+            media_properties=job_media_properties,
+            feed_forward_track=None)
+       
+        job1_timeline = {
+            "video_summary": "The video shows a large group of people gathered around a fountain in front of a Chase bank. They are holding signs and flags, and some are taking pictures. There is also a camera crew filming the event.",
+            "video_length": 179.96,
+            "video_event_timeline": [
+                {
+                    "timestamp_start": 0.0,
+                    "timestamp_end": 32.88,
+                    "description": "A large group of people are gathered around a fountain in front of a Chase bank."
+                },
+                {
+                    "timestamp_start": 33.88,
+                    "timestamp_end": 47.85,
+                    "description": "The people are holding signs and flags."
+                },
+                {
+                    "timestamp_start": 48.85,
+                    "timestamp_end": 153.81,
+                    "description": "Some people are taking pictures of the event."
+                },
+                {
+                    "timestamp_start": 154.81,
+                    "timestamp_end": 178.79,
+                    "description": "There is a camera crew filming the event."
+                }
+            ]
+        }
+        job1_result = self.run_patched_job(component, job1, json.dumps(job1_timeline))
+
+        job2_timeline = {
+            "video_summary": "A large group of people are protesting in front of a building. They are holding signs and flags. There is a fountain in the middle of the street. Cars are driving by in the background.",
+            "video_length": 121.68,
+            "video_event_timeline": [
+                {
+                    "timestamp_start": 0.0,
+                    "timestamp_end": 37.8,
+                    "description": "A group of people are standing in front of a building holding signs and flags."
+                },
+                {
+                    "timestamp_start": 40.5,
+                    "timestamp_end": 121.68,
+                    "description": "The camera pans around the area showing the protesters and the surrounding buildings."
+                }
+            ]
+        }
+        job2_result = self.run_patched_job(component, job2, json.dumps(job2_timeline))
+        
+        self.assertIsInstance(job1_result[0], mpf.VideoTrack)
+        self.assertIn('SEGMENT SUMMARY', job1_result[0].detection_properties)
+        self.assertEquals(job1_result[0].detection_properties['SEGMENT ID'], '0-5394')
+        self.assertEquals(job1_result[1].detection_properties['SEGMENT ID'], '0-5394')
+        self.assertRegexpMatches(job1_result[0].detection_properties['TEXT'], r'city|street|building|people|fountain|signs|protest|demonstration|traffic')
+        self.assertRegexpMatches(job1_result[1].detection_properties['TEXT'], r'city|street|building|people|fountain|signs|protest|demonstration|traffic')
+
+        self.assertIsInstance(job2_result[0], mpf.VideoTrack)
+        self.assertIn('SEGMENT SUMMARY', job2_result[0].detection_properties)
+        self.assertEquals(job2_result[0].detection_properties['SEGMENT ID'], '5395-9042')
+        self.assertEquals(job2_result[1].detection_properties['SEGMENT ID'], '5395-9042')
+        self.assertRegexpMatches(job2_result[0].detection_properties['TEXT'], r'aerial|street|protest|banner|flags|signs|people')
+
+    @unittest.skip(reason="TODO: Real example of output. LLaMA just set the last event's timestamp_end to the video length.")
+    def test_timeline_integrity(self):
+        job1_timeline = {
+            "video_summary": "The video shows a protest taking place in front of a Chase bank, with protesters holding signs and flags, and a camera crew capturing the event.",
+            "video_length": 179.96,
+            "video_event_timeline": [
+                {
+                    "timestamp_start": 0.0,
+                    "timestamp_end": 34.82,
+                    "description": "An aerial view of a city square with a fountain in the middle."
+                },
+                {
+                    "timestamp_start": 35.82,
+                    "timestamp_end": 64.47,
+                    "description": "A group of protesters gather around the fountain, holding signs and flags."
+                },
+                {
+                    "timestamp_start": 65.47,
+                    "timestamp_end": 154.29,
+                    "description": "The camera captures the protesters from various angles, showing their chants and gestures."
+                },
+                {
+                    "timestamp_start": 155.29,
+                    "timestamp_end": 235.77,
+                    "description": "The camera zooms in on the protesters, showing their faces and the details of their signs."
+                },
+                {
+                    "timestamp_start": 236.77,
+                    "timestamp_end": 179.96,
+                    "description": "The camera pans out to show the entire scene, including the fountain and the surrounding buildings."
+                }
+            ]
+        }
+        job2_timeline = {
+            "video_summary": "A group of people are protesting in front of a building. They are holding signs and flags. There are cars driving by on the street. The camera is stationary and shows the entire scene from a distance.",
+            "video_length": 121.68,
+            "video_event_timeline": [
+                {
+                    "timestamp_start": 0.0,
+                    "timestamp_end": 34.4,
+                    "description": "The video starts with a view of a city street with a fountain in the middle. There are cars driving by and people walking on the sidewalk."
+                },
+                {
+                    "timestamp_start": 34.4,
+                    "timestamp_end": 115.9,
+                    "description": "The camera then zooms in on the fountain and the people who are protesting. They are holding signs and flags and chanting slogans."
+                },
+                {
+                    "timestamp_start": 115.9,
+                    "timestamp_end": 121.68,
+                    "description": "The camera continues to zoom in on the protesters as they continue to chant and hold their signs."
+                }
+            ]
+        }
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
