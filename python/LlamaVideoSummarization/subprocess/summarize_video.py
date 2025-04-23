@@ -57,7 +57,7 @@ class VideoProcessor:
             trust_remote_code=True,
             device_map={"": DEVICE},
             torch_dtype=torch.bfloat16,
-            # tempurature=0.2,
+            tempurature=0.65,
             attn_implementation="flash_attention_2"
         )
         
