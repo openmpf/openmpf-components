@@ -102,6 +102,36 @@
             "description": "Runs LLaMA video summarization.",
             "algorithm": "LLAMAVIDEO",
             "properties": []
+        },
+        {
+            "name": "LLAMA VIDEO SUMMARIZATION ACTION (30 FPS SEGMENTED BY FRAMES)",
+            "description": "Runs LLaMA video summarization on 30 FPS video, segmented by frames.",
+            "algorithm": "LLAMAVIDEO",
+            "properties": [
+                {
+                    "name": "SEGMENT_LENGTH_SPECIFICATION",
+                    "value": "FRAME"
+                },
+                {
+                    "name": "TARGET_SEGMENT_LENGTH",
+                    "value": "5400"
+                }
+            ]
+        },
+        {
+            "name": "LLAMA VIDEO SUMMARIZATION ACTION (24 FPS SEGMENTED BY FRAMES)",
+            "description": "Runs LLaMA video summarization on 24 FPS video, segmented by frames.",
+            "algorithm": "LLAMAVIDEO",
+            "properties": [
+                {
+                    "name": "SEGMENT_LENGTH_SPECIFICATION",
+                    "value": "FRAME"
+                },
+                {
+                    "name": "TARGET_SEGMENT_LENGTH",
+                    "value": "4320"
+                }
+            ]
         }
     ],
     "tasks": [
@@ -111,6 +141,20 @@
             "actions": [
                 "LLAMA VIDEO SUMMARIZATION ACTION"
             ]
+        },
+        {
+            "name": "LLAMA VIDEO SUMMARIZATION (24 FPS SEGMENTED BY FRAMES) TASK",
+            "description": "Segments video by frames, runs LLaMA video summarization on segments of 24 FPS video.",
+            "actions": [
+                "LLAMA VIDEO SUMMARIZATION ACTION (24 FPS SEGMENTED BY FRAMES)"
+            ]
+        },
+        {
+            "name": "LLAMA VIDEO SUMMARIZATION (30 FPS SEGMENTED BY FRAMES) TASK",
+            "description": "Segments video by frames, runs LLaMA video summarization on segments of 30 FPS video.",
+            "actions": [
+                "LLAMA VIDEO SUMMARIZATION ACTION (30 FPS SEGMENTED BY FRAMES)"
+            ]
         }
     ],
     "pipelines": [
@@ -119,6 +163,20 @@
             "description": "Runs LLaMA video summarization.",
             "tasks": [
                 "LLAMA VIDEO SUMMARIZATION TASK"
+            ]
+        },
+        {
+            "name": "LLAMA VIDEO SUMMARIZATION (24 FPS SEGMENTED BY FRAMES) PIPELINE",
+            "description": "Segments video by frames, runs LLaMA video summarization on segments of 24 FPS video.",
+            "tasks": [
+                "LLAMA VIDEO SUMMARIZATION (24 FPS SEGMENTED BY FRAMES) TASK"
+            ]
+        },
+        {
+            "name": "LLAMA VIDEO SUMMARIZATION (30 FPS SEGMENTED BY FRAMES) PIPELINE",
+            "description": "Segments video by frames, runs LLaMA video summarization on segments of 30 FPS video.",
+            "tasks": [
+                "LLAMA VIDEO SUMMARIZATION (30 FPS SEGMENTED BY FRAMES) TASK"
             ]
         }
     ]
