@@ -139,30 +139,30 @@ class LlamaVideoSummarizationComponent:
 
         return response_json
 
-def _create_segment_summary_track(job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
-    start_frame = job.start_frame
-    stop_frame = job.stop_frame
-    
-    segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
-    detection_properties={
-        "SEGMENT ID": segment_id,
-        "SEGMENT LENGTH": response_json['video_length'],
-        "SEGMENT SUMMARY": "TRUE",
-        "TEXT": response_json['video_summary']
-    }
-    frame_width = int(job.media_properties['FRAME_WIDTH'])
-    frame_height = int(job.media_properties['FRAME_HEIGHT'])
-    middle_frame = int((stop_frame - start_frame) / 2) + start_frame
+    def _create_segment_summary_track(self, job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
+        start_frame = job.start_frame
+        stop_frame = job.stop_frame
+        
+        segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
+        detection_properties={
+            "SEGMENT ID": segment_id,
+            "SEGMENT LENGTH": response_json['video_length'],
+            "SEGMENT SUMMARY": "TRUE",
+            "TEXT": response_json['video_summary']
+        }
+        frame_width = int(job.media_properties['FRAME_WIDTH'])
+        frame_height = int(job.media_properties['FRAME_HEIGHT'])
+        middle_frame = int((stop_frame - start_frame) / 2) + start_frame
 
-    track = mpf.VideoTrack(start_frame, stop_frame, 1.0,\
-    # add dummy locations to prevent the Workflow Manager from dropping / truncating track
-    frame_locations = {
-        start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
-        middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
-        stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
-    },
-    detection_properties=detection_properties)
-    return track
+        track = mpf.VideoTrack(start_frame, stop_frame, 1.0,\
+        # add dummy locations to prevent the Workflow Manager from dropping / truncating track
+        frame_locations = {
+            start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+            middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+            stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
+        },
+        detection_properties=detection_properties)
+        return track
 
     def _create_tracks(self, job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
         # segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
