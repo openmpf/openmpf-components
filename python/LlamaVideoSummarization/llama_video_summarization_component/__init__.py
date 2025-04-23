@@ -174,45 +174,45 @@ class LlamaVideoSummarizationComponent:
             tracks.append(summary_track)
             segment_id = summary_track.detection_properties['SEGMENT ID']
 
-        # get FPS
-        video_fps = float(job.media_properties['FPS'])
-        segment_start_time = int((job.start_frame / video_fps)*1000)
-        for event in response_json['video_event_timeline']:
-            # get offset start/stop times
-            event_start_time = int(event['timestamp_start']*1000)
-            event_stop_time = int(event['timestamp_end']*1000)
-            # calculate event duration
-            event_secs = float(event_stop_time - event_start_time)/1000
+            # get FPS
+            video_fps = float(job.media_properties['FPS'])
+            segment_start_time = int((job.start_frame / video_fps)*1000)
+            for event in response_json['video_event_timeline']:
+                # get offset start/stop times
+                event_start_time = int(event['timestamp_start']*1000)
+                event_stop_time = int(event['timestamp_end']*1000)
+                # calculate event duration
+                event_secs = float(event_stop_time - event_start_time)/1000
 
-            # calculate offset start/stop frames
-            event_start_frame = int((event_start_time * video_fps)/1000)
-            offset_start_frame = job.start_frame + event_start_frame
-            offset_stop_frame = (int(event_secs * video_fps) - 1) + offset_start_frame
+                # calculate offset start/stop frames
+                event_start_frame = int((event_start_time * video_fps)/1000)
+                offset_start_frame = job.start_frame + event_start_frame
+                offset_stop_frame = (int(event_secs * video_fps) - 1) + offset_start_frame
 
-            detection_properties={
-                "SEGMENT ID": segment_id,
-                "TEXT": event['description'],
-                "TIMESTAMP START": event["timestamp_start"], # debug only, sanity check track start/stop times
-                "TIMESTAMP END": event["timestamp_end"], # debug only, sanity check track start/stop times
-            }
-            offset_middle_frame = int((offset_stop_frame - offset_start_frame) / 2) + offset_start_frame
-            track = mpf.VideoTrack(offset_start_frame, offset_stop_frame, 1.0,\
-            # add dummy locations to prevent the Workflow Manager from dropping / truncating track
-            frame_locations = {
-                offset_start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
-                offset_middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
-                offset_stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
-            },
-            detection_properties=detection_properties)
-            track.start_time = event_start_time
-            track.stop_time = event_stop_time
-            track.start_offset_time = event_start_time + segment_start_time
-            track.stop_offset_time = event_stop_time + segment_start_time
-            tracks.append(track)
+                detection_properties={
+                    "SEGMENT ID": segment_id,
+                    "TEXT": event['description'],
+                    "TIMESTAMP START": event["timestamp_start"], # debug only, sanity check track start/stop times
+                    "TIMESTAMP END": event["timestamp_end"], # debug only, sanity check track start/stop times
+                }
+                offset_middle_frame = int((offset_stop_frame - offset_start_frame) / 2) + offset_start_frame
+                track = mpf.VideoTrack(offset_start_frame, offset_stop_frame, 1.0,\
+                # add dummy locations to prevent the Workflow Manager from dropping / truncating track
+                frame_locations = {
+                    offset_start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                    offset_middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                    offset_stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
+                },
+                detection_properties=detection_properties)
+                track.start_time = event_start_time
+                track.stop_time = event_stop_time
+                track.start_offset_time = event_start_time + segment_start_time
+                track.stop_offset_time = event_stop_time + segment_start_time
+                tracks.append(track)
 
         else: # no events timeline, create summary only
             tracks.append(self._create_segment_summary_track(job, response_json))
-        
+            
         log.info('Processing complete. Video segment %s summarized in %d tracks.' % (segment_id, len(tracks)))
         return tracks
 
