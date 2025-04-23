@@ -63,7 +63,7 @@ class LlamaVideoSummarizationComponent:
 
             log.info('Processing complete.')
 
-            tracks = _create_tracks(job, response_json)
+            tracks = self._create_tracks(job, response_json)
 
             return tracks
 
@@ -164,14 +164,15 @@ def _create_segment_summary_track(job: mpf.VideoJob, response_json: dict) -> mpf
     detection_properties=detection_properties)
     return track
 
-def _create_tracks(job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
-    tracks = []
-    frame_width = int(job.media_properties['FRAME_WIDTH'])
-    frame_height = int(job.media_properties['FRAME_HEIGHT'])
-    if response_json['video_event_timeline']:
-        summary_track = _create_segment_summary_track(job, response_json)
-        tracks.append(summary_track)
-        segment_id = summary_track.detection_properties['SEGMENT ID']
+    def _create_tracks(self, job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
+        # segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
+        tracks = []
+        frame_width = int(job.media_properties['FRAME_WIDTH'])
+        frame_height = int(job.media_properties['FRAME_HEIGHT'])
+        if response_json['video_event_timeline']:
+            summary_track = self._create_segment_summary_track(job, response_json)
+            tracks.append(summary_track)
+            segment_id = summary_track.detection_properties['SEGMENT ID']
 
         # get FPS
         video_fps = float(job.media_properties['FPS'])
@@ -209,10 +210,11 @@ def _create_tracks(job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.Video
             track.stop_offset_time = event_stop_time + segment_start_time
             tracks.append(track)
 
-    else: # no events timeline, create summary only
-        tracks.append(_create_segment_summary_track(job, response_json))
-    
-    return tracks
+        else: # no events timeline, create summary only
+            tracks.append(self._create_segment_summary_track(job, response_json))
+        
+        log.info('Processing complete. Video segment %s summarized in %d tracks.' % (segment_id, len(tracks)))
+        return tracks
 
 def _parse_properties(props: Mapping[str, str], actual_segment_length) -> dict:
     process_fps = mpf_util.get_property(
