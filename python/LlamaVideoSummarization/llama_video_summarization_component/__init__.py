@@ -123,10 +123,18 @@ class LlamaVideoSummarizationComponent:
 
             if timeline_check_threshold != -1:
                 segment_length = float(response_json['video_length'])
-                last_event_end = float(response_json['video_event_timeline'][-1]['timestamp_end'])
-                if abs(segment_length - last_event_end) > timeline_check_threshold:
+                max_event_end = max(list(map(lambda d: d.get('timestamp_end'), filter(lambda d: 'timestamp_end' in d, response_json['video_event_timeline']))))
+                max_event_start = max(list(map(lambda d: d.get('timestamp_start'), filter(lambda d: 'timestamp_start' in d, response_json['video_event_timeline']))))
+                # last_event_end = float(response_json['video_event_timeline'][-1]['timestamp_end'])
+                if max_event_start > segment_length: # event start time should never be higher than segment length
+                    last_error = (f'Event in timeline starts after video segment. '
+                        f'{max_event_start} > {segment_length}.')
+                    log.warning(last_error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
+                    attempts['timeline'] += 1
+                    continue
+                elif abs(segment_length - max_event_end) > timeline_check_threshold:
                     last_error = (f'Video segment length doesn\'t correspond with last event timestamp end. '
-                        f'abs({segment_length} - {last_event_end}) > {timeline_check_threshold}.')
+                        f'abs({segment_length} - {max_event_end}) > {timeline_check_threshold}.')
                     log.warning(last_error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
                     attempts['timeline'] += 1
                     continue
