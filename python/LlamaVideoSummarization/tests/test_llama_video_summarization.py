@@ -322,15 +322,15 @@ class TestComponent(unittest.TestCase):
     def test_video_segmentation_24fps(self):
         component = LlamaVideoSummarizationComponent()
 
-        job_media_properties = {'DURATION': '263765',                                                              
-            'FPS': '23.976023976023978',               
+        job_media_properties = {'DURATION': '263765',
+            'FPS': '23.976023976023978',
             'FRAME_COUNT': '6324',
-            'FRAME_HEIGHT': '720',                                                             
-            'FRAME_WIDTH': '1280',                                                             
-            'HAS_CONSTANT_FRAME_RATE': 'true',                                                 
-            'MIME_TYPE': 'video/mp4',                                                          
+            'FRAME_HEIGHT': '720',
+            'FRAME_WIDTH': '1280',
+            'HAS_CONSTANT_FRAME_RATE': 'true',
+            'MIME_TYPE': 'video/mp4',
             'ROTATION': '0.0'}
-        
+
         job1 = mpf.VideoJob(
             job_name='24fps-1',
             data_uri=str( TEST_DATA / '9258091-hd_1920_1080_24fps.0m0s-3m0s.mp4'),
@@ -347,7 +347,7 @@ class TestComponent(unittest.TestCase):
             ),
             media_properties=job_media_properties,
             feed_forward_track=None)
-        
+
         job2 = mpf.VideoJob(
             job_name='24fps-2',
             data_uri=str( TEST_DATA / '9258091-hd_1920_1080_24fps.3m0s-4m23s.mp4'),
@@ -361,7 +361,7 @@ class TestComponent(unittest.TestCase):
             ),
             media_properties=job_media_properties,
             feed_forward_track=None)
-        
+
         json1 = {
             'video_summary': 'The video captures a busy city street with various vehicles and pedestrians moving along the road. '
                 'The scene is set against a backdrop of tall buildings and trees, with a clear sky overhead. '
@@ -410,15 +410,15 @@ class TestComponent(unittest.TestCase):
         component = LlamaVideoSummarizationComponent()
 
         job_media_properties = {
-            'DURATION': '301739',                                                                                                                                                                         
-            'FPS': '29.97002997002997',                                                                      
-            'FRAME_COUNT': '9043',                                                                           
-            'FRAME_HEIGHT': '1080',                                                                          
-            'FRAME_WIDTH': '1920',                                                                           
-            'HAS_CONSTANT_FRAME_RATE': 'true',                                                               
-            'MIME_TYPE': 'video/mp4',                  
+            'DURATION': '301739',
+            'FPS': '29.97002997002997',
+            'FRAME_COUNT': '9043',
+            'FRAME_HEIGHT': '1080',
+            'FRAME_WIDTH': '1920',
+            'HAS_CONSTANT_FRAME_RATE': 'true',
+            'MIME_TYPE': 'video/mp4',
             'ROTATION': '0.0'}
-        
+
         job1 = mpf.VideoJob(
             job_name='30fps-1',
             data_uri=str( TEST_DATA / '6254278-hd_1920_1080_30fps.0m0s-3m0s.mp4'),
@@ -533,13 +533,13 @@ class TestComponent(unittest.TestCase):
         component = LlamaVideoSummarizationComponent()
 
         # 6254278-hd_1920_1080_30fps.mp4
-        job_media_properties = {'DURATION': '301739',                                                              
-            'FPS': '29.97002997002997',               
+        job_media_properties = {'DURATION': '301739',
+            'FPS': '29.97002997002997',
             'FRAME_COUNT': '9043',
-            'FRAME_HEIGHT': '1080',                                                             
-            'FRAME_WIDTH': '1920',                                                             
-            'HAS_CONSTANT_FRAME_RATE': 'true',                                                 
-            'MIME_TYPE': 'video/mp4',                                                          
+            'FRAME_HEIGHT': '1080',
+            'FRAME_WIDTH': '1920',
+            'HAS_CONSTANT_FRAME_RATE': 'true',
+            'MIME_TYPE': 'video/mp4',
             'ROTATION': '0.0'}
 
         job1 = mpf.VideoJob(
@@ -596,13 +596,13 @@ class TestComponent(unittest.TestCase):
         component = LlamaVideoSummarizationComponent()
 
         # 6254278-hd_1920_1080_30fps.mp4
-        job_media_properties = {'DURATION': '301739',                                                              
-            'FPS': '29.97002997002997',               
+        job_media_properties = {'DURATION': '301739',
+            'FPS': '29.97002997002997',
             'FRAME_COUNT': '9043',
-            'FRAME_HEIGHT': '1080',                                                             
-            'FRAME_WIDTH': '1920',                                                             
-            'HAS_CONSTANT_FRAME_RATE': 'true',                                                 
-            'MIME_TYPE': 'video/mp4',                                                          
+            'FRAME_HEIGHT': '1080',
+            'FRAME_WIDTH': '1920',
+            'HAS_CONSTANT_FRAME_RATE': 'true',
+            'MIME_TYPE': 'video/mp4',
             'ROTATION': '0.0'}
 
         job1 = mpf.VideoJob(
