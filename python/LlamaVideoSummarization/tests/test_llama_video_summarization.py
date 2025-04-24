@@ -581,16 +581,6 @@ class TestComponent(unittest.TestCase):
                     "timestamp_start": 119.5, 
                     "timestamp_end": 201.2, 
                     "description": "Camera pans around the area, showing the surrounding buildings and streets." 
-                },
-                { 
-                    "timestamp_start": 202.2, 
-                    "timestamp_end": 235.7, 
-                    "description": "Bus passing by, and some cars waiting at the traffic light." 
-                },
-                {
-                    "timestamp_start": 236.7, 
-                    "timestamp_end": 301.2, 
-                    "description": "Protesters are chanting and waving their flags, while others are standing on the sidewalk or sitting on benches." 
                 }
             ]
         }
@@ -682,13 +672,36 @@ class TestComponent(unittest.TestCase):
         self.assertIn('SEGMENT SUMMARY', job2_results[0].detection_properties)
         self.assertEquals(job2_results[0].detection_properties['SEGMENT ID'], '0-3596')
         self.assertEquals(job2_results[1].detection_properties['SEGMENT ID'], '0-3596')
-        # self.assertRegexpMatches(job2_results[0].detection_properties['TEXT'], r'busy|city|street|urban|architecture|signs|building|people|pedestrian')
-        # self.assertRegexpMatches(job2_results[1].detection_properties['TEXT'], r'busy|city|street|urban|architecture|signs|building|people|pedestrian')
 
-
-    @unittest.skip(reason="TODO: Real example of output. LLaMA just set the last event's timestamp_end to the video length.")
     def test_timeline_integrity(self):
-        job1_timeline = {
+        component = LlamaVideoSummarizationComponent()
+
+        job_media_properties = {
+            'DURATION': '301739',
+            'FPS': '29.97002997002997',
+            'FRAME_COUNT': '9043',
+            'FRAME_HEIGHT': '1080',
+            'FRAME_WIDTH': '1920',
+            'HAS_CONSTANT_FRAME_RATE': 'true',
+            'MIME_TYPE': 'video/mp4',
+            'ROTATION': '0.0'}
+
+        job1 = mpf.VideoJob(
+            job_name='30fps-1',
+            data_uri=str( TEST_DATA / '6254278-hd_1920_1080_30fps.0m0s-3m0s.mp4'),
+            start_frame=0,
+            stop_frame=5393,
+            job_properties=dict(
+                GENERATION_MAX_ATTEMPTS=1,
+                PROCESS_FPS=1,
+                MAX_FRAMES=180,
+                MAX_NEW_TOKENS=4096,
+                TIMELINE_CHECK_THRESHOLD=20
+            ),
+            media_properties=job_media_properties,
+            feed_forward_track=None)
+
+        json1 = {
             "video_summary": "The video shows a protest taking place in front of a bank, with protesters holding signs and flags, and a camera crew capturing the event.",
             "video_length": 179.96,
             "video_event_timeline": [
@@ -719,27 +732,12 @@ class TestComponent(unittest.TestCase):
                 }
             ]
         }
-        job2_timeline = {
-            "video_summary": "A group of people are protesting in front of a building. They are holding signs and flags. There are cars driving by on the street. The camera is stationary and shows the entire scene from a distance.",
-            "video_length": 121.68,
-            "video_event_timeline": [
-                {
-                    "timestamp_start": 0.0,
-                    "timestamp_end": 34.4,
-                    "description": "The video starts with a view of a city street with a fountain in the middle. There are cars driving by and people walking on the sidewalk."
-                },
-                {
-                    "timestamp_start": 34.4,
-                    "timestamp_end": 115.9,
-                    "description": "The camera then zooms in on the fountain and the people who are protesting. They are holding signs and flags and chanting slogans."
-                },
-                {
-                    "timestamp_start": 115.9,
-                    "timestamp_end": 121.68,
-                    "description": "The camera continues to zoom in on the protesters as they continue to chant and hold their signs."
-                }
-            ]
-        }
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job1, json.dumps(json1))
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("starts after video segment", str(cm.exception))
+
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
