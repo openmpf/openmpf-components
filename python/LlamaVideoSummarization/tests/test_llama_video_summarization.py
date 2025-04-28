@@ -591,7 +591,6 @@ class TestComponent(unittest.TestCase):
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("last event timestamp", str(cm.exception))
 
-
     def test_check_segment_length_threshold(self):
         component = LlamaVideoSummarizationComponent()
 
@@ -721,14 +720,9 @@ class TestComponent(unittest.TestCase):
                     "description": "The camera captures the protesters from various angles, showing their chants and gestures."
                 },
                 {
-                    "timestamp_start": 155.29,
+                    "timestamp_start": 185.81,
                     "timestamp_end": 235.77,
                     "description": "The camera zooms in on the protesters, showing their faces and the details of their signs."
-                },
-                {
-                    "timestamp_start": 236.77,
-                    "timestamp_end": 179.96,
-                    "description": "The camera pans out to show the entire scene, including the fountain and the surrounding buildings."
                 }
             ]
         }
@@ -737,7 +731,17 @@ class TestComponent(unittest.TestCase):
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("starts after video segment", str(cm.exception))
 
+        # test event timeline integrity check
+        json1["video_event_timeline"].append({
+                    "timestamp_start": 236.77,
+                    "timestamp_end": 179.96,
+                    "description": "The camera pans out to show the entire scene, including the fountain and the surrounding buildings."
+                })
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job1, json.dumps(json1)) # don't care about result
 
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("invalid timestamps", str(cm.exception))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

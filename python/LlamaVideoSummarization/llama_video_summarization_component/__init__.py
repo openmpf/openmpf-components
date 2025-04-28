@@ -122,12 +122,21 @@ class LlamaVideoSummarizationComponent:
                     continue
 
             if timeline_check_threshold != -1:
+                invalid_timeline = False
                 segment_length = float(response_json['video_length'])
+                for event in response_json['video_event_timeline']:
+                    if event["timestamp_end"] < event["timestamp_start"]:
+                        invalid_timeline = True
                 max_event_end = max(list(map(lambda d: d.get('timestamp_end'), filter(lambda d: 'timestamp_end' in d, response_json['video_event_timeline']))))
                 max_event_start = max(list(map(lambda d: d.get('timestamp_start'), filter(lambda d: 'timestamp_start' in d, response_json['video_event_timeline']))))
-                # last_event_end = float(response_json['video_event_timeline'][-1]['timestamp_end'])
-                if max_event_start > segment_length: # event start time should never be higher than segment length
-                    last_error = (f'Event in timeline starts after video segment. '
+                if invalid_timeline:
+                    last_error = (f'Event in timeline contains invalid timestamps. '
+                        f'{max_event_start} > {segment_length}.')
+                    log.warning(last_error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
+                    attempts['timeline'] += 1
+                    continue
+                elif max_event_start > segment_length: # event start time should never be higher than segment length
+                    last_error = (f'Event in timeline starts after video segment ends. '
                         f'{max_event_start} > {segment_length}.')
                     log.warning(last_error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
                     attempts['timeline'] += 1
@@ -173,7 +182,6 @@ class LlamaVideoSummarizationComponent:
         return track
 
     def _create_tracks(self, job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
-        # segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
         tracks = []
         frame_width = int(job.media_properties['FRAME_WIDTH'])
         frame_height = int(job.media_properties['FRAME_HEIGHT'])
