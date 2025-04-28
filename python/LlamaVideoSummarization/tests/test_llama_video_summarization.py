@@ -743,5 +743,39 @@ class TestComponent(unittest.TestCase):
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("invalid timestamps", str(cm.exception))
 
+        job2 = mpf.VideoJob(
+            job_name='30fps-1',
+            data_uri=str( TEST_DATA / '6254278-hd_1920_1080_30fps.0m0s-3m0s.mp4'),
+            start_frame=0,
+            stop_frame=5393,
+            job_properties=dict(
+                GENERATION_MAX_ATTEMPTS=1,
+                PROCESS_FPS=1,
+                MAX_FRAMES=180,
+                MAX_NEW_TOKENS=4096,
+                TIMELINE_CHECK_THRESHOLD=-1
+            ),
+            media_properties=job_media_properties,
+            feed_forward_track=None)
+
+        # event that starts within range but ends outside of valid frames
+        json1["video_event_timeline"][2]["timestamp_end"] = 185.0
+        job2_results = self.run_patched_job(component, job2, json.dumps(json1))
+
+        self.assertIsInstance(job2_results[0], mpf.VideoTrack)
+        self.assertIn('SEGMENT SUMMARY', job2_results[0].detection_properties)
+
+        self.assertEquals(job2_results[0].detection_properties['SEGMENT ID'], '0-5393')
+        self.assertEquals(job2_results[1].detection_properties['SEGMENT ID'], '0-5393')
+        self.assertEquals(job2_results[3].start_frame, 1962)
+        self.assertEquals(job2_results[3].stop_frame, 5393)
+        self.assertIsNotNone(job2_results[3].frame_locations[1962])
+        self.assertIsNotNone(job2_results[3].frame_locations[3752])
+        self.assertIsNotNone(job2_results[3].frame_locations[5393])
+        self.assertEquals(job2_results[4].stop_frame, 5393)
+        self.assertIsNotNone(job2_results[4].frame_locations[5393])
+        self.assertEquals(job2_results[5].stop_frame, 5393)
+        self.assertIsNotNone(job2_results[5].frame_locations[5393])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

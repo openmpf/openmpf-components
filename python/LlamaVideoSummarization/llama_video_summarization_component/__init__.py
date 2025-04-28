@@ -212,6 +212,31 @@ class LlamaVideoSummarizationComponent:
                     "TIMESTAMP END": event["timestamp_end"], # debug only, sanity check track start/stop times
                 }
                 offset_middle_frame = int((offset_stop_frame - offset_start_frame) / 2) + offset_start_frame
+
+                # check offset_stop_frame
+                if offset_stop_frame > job.stop_frame:
+                    log.debug(f'offset_stop_frame outside of acceptable range ({offset_stop_frame} > {job.stop_frame}), setting offset_stop_frame to {job.stop_frame}')
+                    offset_stop_frame = job.stop_frame
+                elif offset_stop_frame < job.start_frame:
+                    log.debug(f'offset_stop_frame outside of acceptable range ({offset_stop_frame} < {job.start_frame}), setting offset_stop_frame to {job.start_frame}')
+                    offset_stop_frame = job.start_frame
+
+                # check offset_middle_frame
+                if offset_middle_frame > job.stop_frame:
+                    log.debug(f'offset_middle_frame outside of acceptable range ({offset_middle_frame} > {job.stop_frame}), setting offset_middle_frame to {job.stop_frame}')
+                    offset_middle_frame = job.stop_frame
+                elif offset_middle_frame < job.start_frame:
+                    log.debug(f'offset_middle_frame outside of acceptable range ({offset_middle_frame} < {job.start_frame}), setting offset_middle_frame to {job.start_frame}')
+                    offset_middle_frame = job.start_frame
+
+                # check offset_start_frame
+                if offset_start_frame > job.stop_frame:
+                    log.debug(f'offset_start_frame outside of acceptable range ({offset_start_frame} > {job.stop_frame}), setting offset_start_frame to {job.stop_frame}')
+                    offset_start_frame = job.stop_frame
+                elif offset_start_frame < job.start_frame:
+                    log.debug(f'offset_start_frame outside of acceptable range ({offset_start_frame} < {job.start_frame}), setting offset_start_frame to {job.start_frame}')
+                    offset_start_frame = job.start_frame
+
                 track = mpf.VideoTrack(offset_start_frame, offset_stop_frame, 1.0,\
                 # add dummy locations to prevent the Workflow Manager from dropping / truncating track
                 frame_locations = {
