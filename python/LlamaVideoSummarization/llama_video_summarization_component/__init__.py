@@ -85,33 +85,33 @@ class LlamaVideoSummarizationComponent:
 
         segment_length_check_threshold = job_config['segment_length_check_threshold']
 
-        last_error = None
+        error_state = None
         while max(attempts.values()) <= max_attempts:
             response = self.child_process.send_job_get_response(job_config)
-            response_json, last_error = self._check_response(job_config, attempts, schema_json, response)
-            if last_error is not None:
+            response_json, error_state = self._check_response(job_config, attempts, schema_json, response)
+            if error_state is not None:
                 continue
 
             if segment_length_check_threshold != -1:
-                last_error = self._check_segment_length(segment_length_check_threshold,
+                error_state = self._check_segment_length(segment_length_check_threshold,
                                                         job_config, attempts,
                                                         response_json['video_length'])
-                if last_error is not None:
+                if error_state is not None:
                     continue
 
             if timeline_check_threshold != -1:
-                last_error = self._check_timeline(segment_length_check_threshold,
+                error_state = self._check_timeline(segment_length_check_threshold,
                                                 job_config, attempts,
                                                 response_json['video_length'],
                                                 response_json['video_event_timeline'])
-                if last_error is not None:
+                if error_state is not None:
                     continue
 
-            last_error = None
+            error_state = None
             break
 
-        if last_error:
-            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {last_error}')
+        if error_state:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error_state}')
 
         return response_json
 
