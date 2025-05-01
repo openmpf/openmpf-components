@@ -234,9 +234,7 @@ class LlamaVideoSummarizationComponent:
 
                 detection_properties={
                     "SEGMENT ID": segment_id,
-                    "TEXT": event['description'],
-                    "TIMESTAMP START": event["timestamp_start"], # debug only, sanity check track start/stop times
-                    "TIMESTAMP END": event["timestamp_end"], # debug only, sanity check track start/stop times
+                    "TEXT": event['description']
                 }
                 offset_middle_frame = int((offset_stop_frame - offset_start_frame) / 2) + offset_start_frame
 
