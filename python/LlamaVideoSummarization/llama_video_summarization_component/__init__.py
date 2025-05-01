@@ -88,64 +88,23 @@ class LlamaVideoSummarizationComponent:
         last_error = None
         while max(attempts.values()) <= max_attempts:
             response = self.child_process.send_job_get_response(job_config)
-
-            if not response:
-                last_error = f'Empty response.'
-                log.warning(last_error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-                attempts['base'] += 1
-                continue
-
-            try:
-                response_json = json.loads(response)
-            except ValueError:
-                last_error = f'Response is not valid JSON.'
-                log.warning(last_error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-                attempts['base'] += 1
-                continue
-
-            try:
-                validate(response_json, schema_json)
-            except ValidationError:
-                last_error = 'Response JSON is not in the desired format.'
-                log.warning(last_error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-                attempts['base'] += 1
+            response_json, last_error = self._check_response(job_config, attempts, schema_json, response)
+            if last_error is not None:
                 continue
 
             if segment_length_check_threshold != -1:
-                segment_length = float(response_json['video_length'])
-                desired_length = float(job_config['desired_length'])
-                if abs(segment_length - desired_length) > segment_length_check_threshold:
-                    last_error = (f'Video segment length doesn\'t match desired segment length. '
-                        f'abs({segment_length} - {desired_length}) > {segment_length_check_threshold}.')
-                    log.warning(last_error, f'Failed {attempts["segment_length"] + 1} of {max_attempts} segment length attempts.')
-                    attempts['segment_length'] += 1
+                last_error = self._check_segment_length(segment_length_check_threshold,
+                                                        job_config, attempts,
+                                                        response_json['video_length'])
+                if last_error is not None:
                     continue
 
             if timeline_check_threshold != -1:
-                invalid_timeline = False
-                segment_length = float(response_json['video_length'])
-                for event in response_json['video_event_timeline']:
-                    if event["timestamp_end"] < event["timestamp_start"]:
-                        invalid_timeline = True
-                max_event_end = max(list(map(lambda d: d.get('timestamp_end'), filter(lambda d: 'timestamp_end' in d, response_json['video_event_timeline']))))
-                max_event_start = max(list(map(lambda d: d.get('timestamp_start'), filter(lambda d: 'timestamp_start' in d, response_json['video_event_timeline']))))
-                if invalid_timeline:
-                    last_error = (f'Event in timeline contains invalid timestamps. '
-                        f'{max_event_start} > {segment_length}.')
-                    log.warning(last_error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
-                    attempts['timeline'] += 1
-                    continue
-                elif max_event_start > segment_length: # event start time should never be higher than segment length
-                    last_error = (f'Event in timeline starts after video segment ends. '
-                        f'{max_event_start} > {segment_length}.')
-                    log.warning(last_error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
-                    attempts['timeline'] += 1
-                    continue
-                elif abs(segment_length - max_event_end) > timeline_check_threshold:
-                    last_error = (f'Video segment length doesn\'t correspond with last event timestamp end. '
-                        f'abs({segment_length} - {max_event_end}) > {timeline_check_threshold}.')
-                    log.warning(last_error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
-                    attempts['timeline'] += 1
+                last_error = self._check_timeline(segment_length_check_threshold,
+                                                job_config, attempts,
+                                                response_json['video_length'],
+                                                response_json['video_event_timeline'])
+                if last_error is not None:
                     continue
 
             last_error = None
@@ -155,6 +114,74 @@ class LlamaVideoSummarizationComponent:
             raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {last_error}')
 
         return response_json
+
+    def _check_response(self, job_config, attempts, schema_json, response) -> Tuple[dict, any]:
+        error = None
+        response_json = {}
+        max_attempts = job_config['generation_max_attempts']
+
+        if not response:
+            error = 'Empty response.'
+            log.warning(error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+            attempts['base'] += 1
+            return response_json, error
+
+        try:
+            response_json = json.loads(response)
+        except ValueError:
+            error = 'Response is not valid JSON.'
+            log.warning(error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+            attempts['base'] += 1
+            return response_json, error
+
+        try:
+            validate(response_json, schema_json)
+        except ValidationError:
+            error = 'Response JSON is not in the desired format.'
+            log.warning(error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+            attempts['base'] += 1
+        return response_json, error
+
+    def _check_segment_length(self, threshold, job_config, attempts, segment_length) -> str:
+        error = None
+        max_attempts = job_config['generation_max_attempts']
+        segment_length = float(segment_length) # response_json['video_length'])
+        desired_length = float(job_config['desired_length'])
+        if abs(segment_length - desired_length) > threshold:
+            error = (f'Video segment length doesn\'t match desired segment length. '
+                f'abs({segment_length} - {desired_length}) > {threshold}.')
+            log.warning(error, f'Failed {attempts["segment_length"] + 1} of {max_attempts} segment length attempts.')
+            attempts['segment_length'] += 1
+        return error
+
+    def _check_timeline(self, threshold, job_config, attempts, segment_length, event_timeline) -> str:
+        error = None
+        invalid_timeline = False
+        max_attempts = job_config['generation_max_attempts']
+        segment_length = float(segment_length)
+        for event in event_timeline:
+            if event["timestamp_end"] < event["timestamp_start"]:
+                invalid_timeline = True
+        max_event_end = max(list(map(lambda d: d.get('timestamp_end'),
+                                     filter(lambda d: 'timestamp_end' in d, event_timeline))))
+        max_event_start = max(list(map(lambda d: d.get('timestamp_start'),
+                                       filter(lambda d: 'timestamp_start' in d, event_timeline))))
+        if invalid_timeline:
+            error = (f'Event in timeline contains invalid timestamps. '
+                f'{max_event_start} > {segment_length}.')
+            log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
+            attempts['timeline'] += 1
+        elif max_event_start > segment_length: # event start time should never be higher than segment length
+            error = (f'Event in timeline starts after video segment ends. '
+                f'{max_event_start} > {segment_length}.')
+            log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
+            attempts['timeline'] += 1
+        elif abs(segment_length - max_event_end) > threshold:
+            error = (f'Video segment length doesn\'t correspond with last event timestamp end. '
+                f'abs({segment_length} - {max_event_end}) > {threshold}.')
+            log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
+            attempts['timeline'] += 1
+        return error
 
     def _create_segment_summary_track(self, job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
         start_frame = job.start_frame
@@ -215,26 +242,32 @@ class LlamaVideoSummarizationComponent:
 
                 # check offset_stop_frame
                 if offset_stop_frame > job.stop_frame:
-                    log.debug(f'offset_stop_frame outside of acceptable range ({offset_stop_frame} > {job.stop_frame}), setting offset_stop_frame to {job.stop_frame}')
+                    log.debug(f'offset_stop_frame outside of acceptable range '
+                              f'({offset_stop_frame} > {job.stop_frame}), setting offset_stop_frame to {job.stop_frame}')
                     offset_stop_frame = job.stop_frame
                 elif offset_stop_frame < job.start_frame:
-                    log.debug(f'offset_stop_frame outside of acceptable range ({offset_stop_frame} < {job.start_frame}), setting offset_stop_frame to {job.start_frame}')
+                    log.debug(f'offset_stop_frame outside of acceptable range '
+                              f'({offset_stop_frame} < {job.start_frame}), setting offset_stop_frame to {job.start_frame}')
                     offset_stop_frame = job.start_frame
 
                 # check offset_middle_frame
                 if offset_middle_frame > job.stop_frame:
-                    log.debug(f'offset_middle_frame outside of acceptable range ({offset_middle_frame} > {job.stop_frame}), setting offset_middle_frame to {job.stop_frame}')
+                    log.debug(f'offset_middle_frame outside of acceptable range '
+                              f'({offset_middle_frame} > {job.stop_frame}), setting offset_middle_frame to {job.stop_frame}')
                     offset_middle_frame = job.stop_frame
                 elif offset_middle_frame < job.start_frame:
-                    log.debug(f'offset_middle_frame outside of acceptable range ({offset_middle_frame} < {job.start_frame}), setting offset_middle_frame to {job.start_frame}')
+                    log.debug(f'offset_middle_frame outside of acceptable range '
+                              f'({offset_middle_frame} < {job.start_frame}), setting offset_middle_frame to {job.start_frame}')
                     offset_middle_frame = job.start_frame
 
                 # check offset_start_frame
                 if offset_start_frame > job.stop_frame:
-                    log.debug(f'offset_start_frame outside of acceptable range ({offset_start_frame} > {job.stop_frame}), setting offset_start_frame to {job.stop_frame}')
+                    log.debug(f'offset_start_frame outside of acceptable range '
+                              f'({offset_start_frame} > {job.stop_frame}), setting offset_start_frame to {job.stop_frame}')
                     offset_start_frame = job.stop_frame
                 elif offset_start_frame < job.start_frame:
-                    log.debug(f'offset_start_frame outside of acceptable range ({offset_start_frame} < {job.start_frame}), setting offset_start_frame to {job.start_frame}')
+                    log.debug(f'offset_start_frame outside of acceptable range '
+                              f'({offset_start_frame} < {job.start_frame}), setting offset_start_frame to {job.start_frame}')
                     offset_start_frame = job.start_frame
 
                 track = mpf.VideoTrack(offset_start_frame, offset_stop_frame, 1.0,\
