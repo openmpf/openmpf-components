@@ -216,6 +216,8 @@ class LlamaVideoSummarizationComponent:
             },
             detection_properties = detection_properties
         )
+        track.frame_locations[middle_frame].detection_properties["EXEMPLAR"] = "1"
+
         return track
 
     def _create_tracks(self, job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
@@ -292,6 +294,7 @@ class LlamaVideoSummarizationComponent:
                     },
                     detection_properties = detection_properties
                 )
+                track.frame_locations[offset_middle_frame].detection_properties["EXEMPLAR"] = "1"
                 track.start_time = event_start_time
                 track.stop_time = event_stop_time
                 track.start_offset_time = event_start_time + segment_start_time
