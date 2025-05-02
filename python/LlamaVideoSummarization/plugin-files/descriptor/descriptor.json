@@ -98,8 +98,13 @@
                     "description": "In the context of videos, when set to true, attempt to merge tracks spanning segment boundaries.",
                     "type": "BOOLEAN",
                     "defaultValue": "false"
+                },
+                {
+                    "name": "QUALITY_SELECTION_PROPERTY",
+                    "description": "The detection property to be used to rank the quality of a track and the quality of the detections in a track. This property would be used, for example, to select the exemplar detection for a track.",
+                    "type": "STRING",
+                    "defaultValue": "EXEMPLAR"
                 }
-          
             ] 
         }
     },
