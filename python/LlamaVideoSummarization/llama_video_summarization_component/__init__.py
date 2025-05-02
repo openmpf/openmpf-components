@@ -75,7 +75,6 @@ class LlamaVideoSummarizationComponent:
         schema_str = job_config['generation_json_schema']
         schema_json = json.loads(schema_str)
 
-        max_attempts = job_config['generation_max_attempts']
         attempts = dict(
             base=0,
             segment_length=0,
@@ -86,8 +85,9 @@ class LlamaVideoSummarizationComponent:
         segment_length_check_threshold = job_config['segment_length_check_threshold']
         desired_length = job_config['desired_length']
 
+        response_json = {}
         error = None
-        while max(attempts.values()) <= max_attempts:
+        while max(attempts.values()) < max_attempts:
             response = self.child_process.send_job_get_response(job_config)
             response_json, error = self._check_response(attempts, max_attempts, schema_json, response)
             if error is not None:
