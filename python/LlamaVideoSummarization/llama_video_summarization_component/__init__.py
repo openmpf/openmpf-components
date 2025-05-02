@@ -59,7 +59,7 @@ class LlamaVideoSummarizationComponent:
             job_config['video_path'] = job.data_uri
             job_config['desired_length'] = actual_segment_length
 
-            response_json = self._get_detections_from_subprocess(job_config)
+            response_json = self._get_response_from_subprocess(job_config)
 
             log.info('Processing complete.')
 
@@ -71,7 +71,7 @@ class LlamaVideoSummarizationComponent:
             log.exception('Failed to complete job due to the following exception:')
             raise
 
-    def _get_detections_from_subprocess(self, job_config: dict) -> dict:
+    def _get_response_from_subprocess(self, job_config: dict) -> dict:
         schema_str = job_config['generation_json_schema']
         schema_json = json.loads(schema_str)
 
@@ -81,50 +81,48 @@ class LlamaVideoSummarizationComponent:
             segment_length=0,
             timeline=0)
 
+        max_attempts = job_config['generation_max_attempts']
         timeline_check_threshold = job_config['timeline_check_threshold']
-
         segment_length_check_threshold = job_config['segment_length_check_threshold']
+        desired_length = job_config['desired_length']
 
-        error_state = None
+        error = None
         while max(attempts.values()) <= max_attempts:
             response = self.child_process.send_job_get_response(job_config)
-            response_json, error_state = self._check_response(job_config, attempts, schema_json, response)
-            if error_state is not None:
+            response_json, error = self._check_response(attempts, max_attempts, schema_json, response)
+            if error is not None:
                 continue
 
+            segment_length = float(response_json['video_length'])
+            event_timeline = response_json['video_event_timeline']
+
             if segment_length_check_threshold != -1:
-                error_state = self._check_segment_length(segment_length_check_threshold,
-                                                        job_config, attempts,
-                                                        response_json['video_length'])
-                if error_state is not None:
+                error = self._check_segment_length(
+                    segment_length_check_threshold, attempts, max_attempts, segment_length, desired_length)
+                if error is not None:
                     continue
 
             if timeline_check_threshold != -1:
-                error_state = self._check_timeline(segment_length_check_threshold,
-                                                job_config, attempts,
-                                                response_json['video_length'],
-                                                response_json['video_event_timeline'])
-                if error_state is not None:
+                error = self._check_timeline(
+                    segment_length_check_threshold, attempts, max_attempts, segment_length, event_timeline)
+                if error is not None:
                     continue
 
-            error_state = None
             break
 
-        if error_state:
-            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error_state}')
+        if error:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
 
         return response_json
 
-    def _check_response(self, job_config, attempts, schema_json, response) -> Tuple[dict, any]:
-        error = None
-        response_json = {}
-        max_attempts = job_config['generation_max_attempts']
+    def _check_response(self, attempts: dict, max_attempts: int, schema_json: dict, response: str) -> Tuple[dict, str]:
+        response_json = None
 
         if not response:
             error = 'Empty response.'
             log.warning(error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
             attempts['base'] += 1
-            return response_json, error
+            return None, error
 
         try:
             response_json = json.loads(response)
@@ -140,48 +138,55 @@ class LlamaVideoSummarizationComponent:
             error = 'Response JSON is not in the desired format.'
             log.warning(error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
             attempts['base'] += 1
-        return response_json, error
+            return response_json, error
+        
+        return response_json, None
 
-    def _check_segment_length(self, threshold, job_config, attempts, segment_length) -> str:
-        error = None
-        max_attempts = job_config['generation_max_attempts']
-        segment_length = float(segment_length) # response_json['video_length'])
-        desired_length = float(job_config['desired_length'])
+    def _check_segment_length(self, threshold: float, attempts: dict, max_attempts: int, segment_length: float,
+                              desired_length: float) -> str:
+        
         if abs(segment_length - desired_length) > threshold:
             error = (f'Video segment length doesn\'t match desired segment length. '
                 f'abs({segment_length} - {desired_length}) > {threshold}.')
             log.warning(error, f'Failed {attempts["segment_length"] + 1} of {max_attempts} segment length attempts.')
             attempts['segment_length'] += 1
-        return error
+            return error
+        
+        return None
 
-    def _check_timeline(self, threshold, job_config, attempts, segment_length, event_timeline) -> str:
-        error = None
-        invalid_timeline = False
-        max_attempts = job_config['generation_max_attempts']
-        segment_length = float(segment_length)
+    def _check_timeline(self, threshold: float, attempts: dict, max_attempts: int, segment_length: float,
+                        event_timeline: list) -> str:
+        
         for event in event_timeline:
-            if event["timestamp_end"] < event["timestamp_start"]:
-                invalid_timeline = True
-        max_event_end = max(list(map(lambda d: d.get('timestamp_end'),
+            timestamp_end = float(event["timestamp_end"])
+            timestamp_start = float(event["timestamp_start"])
+            if timestamp_end < timestamp_start:
+                error = (f'Event in timeline contains invalid timestamps. End time is less than start time. '
+                    f'{timestamp_end} < {timestamp_start}.')
+                log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
+                attempts['timeline'] += 1
+                return error
+
+        max_event_end = max(list(map(lambda d: float(d.get('timestamp_end')),
                                      filter(lambda d: 'timestamp_end' in d, event_timeline))))
-        max_event_start = max(list(map(lambda d: d.get('timestamp_start'),
+        max_event_start = max(list(map(lambda d: float(d.get('timestamp_start')),
                                        filter(lambda d: 'timestamp_start' in d, event_timeline))))
-        if invalid_timeline:
-            error = (f'Event in timeline contains invalid timestamps. '
-                f'{max_event_start} > {segment_length}.')
-            log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
-            attempts['timeline'] += 1
-        elif max_event_start > segment_length: # event start time should never be higher than segment length
+
+        if max_event_start > segment_length: # event start time should never be higher than segment length
             error = (f'Event in timeline starts after video segment ends. '
                 f'{max_event_start} > {segment_length}.')
-            log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
+            log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
             attempts['timeline'] += 1
-        elif abs(segment_length - max_event_end) > threshold:
-            error = (f'Video segment length doesn\'t correspond with last event timestamp end. '
+            return error
+        
+        if abs(segment_length - max_event_end) > threshold:
+            error = (f'Video segment length doesn\'t correspond with last event end time. '
                 f'abs({segment_length} - {max_event_end}) > {threshold}.')
-            log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline length attempts.')
+            log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
             attempts['timeline'] += 1
-        return error
+            return error
+        
+        return None
 
     def _create_segment_summary_track(self, job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
         start_frame = job.start_frame
@@ -198,30 +203,36 @@ class LlamaVideoSummarizationComponent:
         frame_height = int(job.media_properties['FRAME_HEIGHT'])
         middle_frame = int((stop_frame - start_frame) / 2) + start_frame
 
-        track = mpf.VideoTrack(start_frame, stop_frame, 1.0,\
-        # add dummy locations to prevent the Workflow Manager from dropping / truncating track
-        frame_locations = {
-            start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
-            middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
-            stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
-        },
-        detection_properties=detection_properties)
+        track = mpf.VideoTrack(
+            start_frame, 
+            stop_frame, 
+            1.0,
+            # Add start and top frame locations to prevent the Workflow Manager from dropping / truncating track.
+            # Add middle frame for artifact extraction.
+            frame_locations = {
+                start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
+            },
+            detection_properties = detection_properties
+        )
         return track
 
     def _create_tracks(self, job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
         tracks = []
         frame_width = int(job.media_properties['FRAME_WIDTH'])
         frame_height = int(job.media_properties['FRAME_HEIGHT'])
+
         if response_json['video_event_timeline']:
             summary_track = self._create_segment_summary_track(job, response_json)
             tracks.append(summary_track)
-            segment_id = summary_track.detection_properties['SEGMENT ID']
 
-            # get FPS
+            segment_id = summary_track.detection_properties['SEGMENT ID']
             video_fps = float(job.media_properties['FPS'])
             segment_start_time = int((job.start_frame / video_fps)*1000)
+
             for event in response_json['video_event_timeline']:
-                # get offset start/stop times
+                # get offset start/stop times in milliseconds
                 event_start_time = int(event['timestamp_start']*1000)
                 event_stop_time = int(event['timestamp_end']*1000)
                 # calculate event duration
@@ -268,18 +279,24 @@ class LlamaVideoSummarizationComponent:
                               f'({offset_start_frame} < {job.start_frame}), setting offset_start_frame to {job.start_frame}')
                     offset_start_frame = job.start_frame
 
-                track = mpf.VideoTrack(offset_start_frame, offset_stop_frame, 1.0,\
-                # add dummy locations to prevent the Workflow Manager from dropping / truncating track
-                frame_locations = {
-                    offset_start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
-                    offset_middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
-                    offset_stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
-                },
-                detection_properties=detection_properties)
+                track = mpf.VideoTrack(
+                    offset_start_frame, 
+                    offset_stop_frame, 
+                    1.0,
+                    # Add start and top frame locations to prevent the Workflow Manager from dropping / truncating track.
+                    # Add middle frame for artifact extraction.
+                    frame_locations = {
+                        offset_start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                        offset_middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                        offset_stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
+                    },
+                    detection_properties = detection_properties
+                )
                 track.start_time = event_start_time
                 track.stop_time = event_stop_time
                 track.start_offset_time = event_start_time + segment_start_time
                 track.stop_offset_time = event_stop_time + segment_start_time
+                
                 tracks.append(track)
 
         else: # no events timeline, create summary only
@@ -288,7 +305,7 @@ class LlamaVideoSummarizationComponent:
         log.info('Processing complete. Video segment %s summarized in %d tracks.' % (segment_id, len(tracks)))
         return tracks
 
-def _parse_properties(props: Mapping[str, str], actual_segment_length) -> dict:
+def _parse_properties(props: Mapping[str, str], actual_segment_length: float) -> dict:
     process_fps = mpf_util.get_property(
         props, 'PROCESS_FPS', 1)
     max_frames = mpf_util.get_property(
