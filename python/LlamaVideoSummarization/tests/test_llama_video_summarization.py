@@ -311,10 +311,10 @@ class TestComponent(unittest.TestCase):
                 "video_summary": "This is a video of a cat.",
                 "video_length": 500,
                 "video_event_timeline": DUMMY_TIMELINE
-            }))
+            })) # don't care about results
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("desired segment length", str(cm.exception))
+        self.assertIn("Video segment length doesn\'t match desired segment length.", str(cm.exception))
 
         # test disabling time check
         job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000, 
@@ -366,6 +366,7 @@ class TestComponent(unittest.TestCase):
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("Empty response", str(cm.exception))
 
+
     def test_check_segment_length_threshold(self):
         component = LlamaVideoSummarizationComponent()
 
@@ -391,13 +392,13 @@ class TestComponent(unittest.TestCase):
             self.run_patched_job(component, job1, json.dumps(DRONE_TIMELINE_SEGMENT_2)) # don't care about result
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("Video segment length", str(cm.exception))
+        self.assertIn("Video segment length doesn\'t match desired segment length.", str(cm.exception))
 
         job2 = mpf.VideoJob(
             job_name='drone.mp4-segment-2',
             data_uri=str( TEST_DATA / 'drone.3m0s-5m1s.mp4'),
             start_frame=0,
-            stop_frame=3596,
+            stop_frame=3596, # increased compared to job1
             job_properties=dict(
                 GENERATION_MAX_ATTEMPTS=3,
                 PROCESS_FPS=1,
@@ -411,16 +412,17 @@ class TestComponent(unittest.TestCase):
             media_properties=DRONE_VIDEO_PROPERTIES,
             feed_forward_track=None)
 
-        # shorten timeline
+        # shorten timeline so events fall within 120 seconds
         DRONE_TIMELINE_SEGMENT_2['video_event_timeline'].pop()
         DRONE_TIMELINE_SEGMENT_2['video_event_timeline'].pop()
 
         job2_results = self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
+        self.assertEquals(3, len(job2_results))
 
-        self.assertIsInstance(job2_results[0], mpf.VideoTrack)
         self.assertIn('SEGMENT SUMMARY', job2_results[0].detection_properties)
-        self.assertEquals(job2_results[0].detection_properties['SEGMENT ID'], '0-3596')
-        self.assertEquals(job2_results[1].detection_properties['SEGMENT ID'], '0-3596')
+        for track in job2_results:
+            self.assertEquals(track.detection_properties['SEGMENT ID'], '0-3596')
+
 
     def test_timeline_integrity(self):
         component = LlamaVideoSummarizationComponent()
@@ -445,11 +447,12 @@ class TestComponent(unittest.TestCase):
                     "timestamp_start": 155.5,
                     "timestamp_end": 221.2,
                     "description": "Camera pans around the area, showing the surrounding buildings and streets."})
+        
         with self.assertRaises(mpf.DetectionException) as cm:
             self.run_patched_job(component, job1, json.dumps(DRONE_TIMELINE_SEGMENT_1)) # don't care about result
         
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("last event timestamp", str(cm.exception))
+        self.assertIn("Video segment length doesn\'t correspond with last event end time", str(cm.exception))
 
         DRONE_TIMELINE_SEGMENT_1['video_event_timeline'].pop()
         DRONE_TIMELINE_SEGMENT_1['video_event_timeline'].append({
@@ -459,9 +462,10 @@ class TestComponent(unittest.TestCase):
             })
 
         with self.assertRaises(mpf.DetectionException) as cm:
-            self.run_patched_job(component, job1, json.dumps(DRONE_TIMELINE_SEGMENT_1))
+            self.run_patched_job(component, job1, json.dumps(DRONE_TIMELINE_SEGMENT_1)) # don't care about result
+        
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("starts after video segment", str(cm.exception))
+        self.assertIn("Event in timeline starts after video segment ends.", str(cm.exception))
 
         # test event timeline integrity check
         DRONE_TIMELINE_SEGMENT_1["video_event_timeline"].append({
@@ -469,11 +473,12 @@ class TestComponent(unittest.TestCase):
                     "timestamp_end": 179.96,
                     "description": "The camera pans out to show the entire scene, including the fountain and the surrounding buildings."
                 })
+
         with self.assertRaises(mpf.DetectionException) as cm:
             self.run_patched_job(component, job1, json.dumps(DRONE_TIMELINE_SEGMENT_1)) # don't care about result
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("invalid timestamps", str(cm.exception))
+        self.assertIn("Event in timeline contains invalid timestamps. End time is less than start time.", str(cm.exception))
 
         job2 = mpf.VideoJob(
             job_name='drone.mp4-segment-1',
@@ -493,21 +498,28 @@ class TestComponent(unittest.TestCase):
         # event that starts within range but ends outside of valid frames
         DRONE_TIMELINE_SEGMENT_1["video_event_timeline"][2]["timestamp_end"] = 185.0
         job2_results = self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_1))
+        self.assertEquals(6, len(job2_results))
 
-        self.assertIsInstance(job2_results[0], mpf.VideoTrack)
         self.assertIn('SEGMENT SUMMARY', job2_results[0].detection_properties)
+        for track in job2_results:
+            self.assertEquals('0-5393', track.detection_properties['SEGMENT ID'])
+            self.assertGreaterEqual(track.start_frame, 0)
+            self.assertLessEqual(track.stop_frame, 5393)
 
-        self.assertEquals(job2_results[0].detection_properties['SEGMENT ID'], '0-5393')
-        self.assertEquals(job2_results[1].detection_properties['SEGMENT ID'], '0-5393')
-        self.assertEquals(job2_results[3].start_frame, 1962)
-        self.assertEquals(job2_results[3].stop_frame, 5393)
+        self.assertEquals(1962, job2_results[3].start_frame)
+        self.assertEquals(5393, job2_results[3].stop_frame)
         self.assertIsNotNone(job2_results[3].frame_locations[1962])
         self.assertIsNotNone(job2_results[3].frame_locations[3752])
         self.assertIsNotNone(job2_results[3].frame_locations[5393])
-        self.assertEquals(job2_results[4].stop_frame, 5393)
+
+        self.assertEquals(5393, job2_results[4].start_frame)
+        self.assertEquals(5393, job2_results[4].stop_frame)
         self.assertIsNotNone(job2_results[4].frame_locations[5393])
-        self.assertEquals(job2_results[5].stop_frame, 5393)
+
+        self.assertEquals(5393, job2_results[5].start_frame)
+        self.assertEquals(5393, job2_results[5].stop_frame)
         self.assertIsNotNone(job2_results[5].frame_locations[5393])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
