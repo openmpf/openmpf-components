@@ -120,7 +120,8 @@ class LlamaVideoSummarizationComponent:
 
         if not response:
             error = 'Empty response.'
-            log.warning(error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+            log.warning(error)
+            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
             attempts['base'] += 1
             return None, error
 
@@ -128,7 +129,8 @@ class LlamaVideoSummarizationComponent:
             response_json = json.loads(response)
         except ValueError:
             error = 'Response is not valid JSON.'
-            log.warning(error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+            log.warning(error)
+            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
             attempts['base'] += 1
             return response_json, error
 
@@ -136,7 +138,8 @@ class LlamaVideoSummarizationComponent:
             validate(response_json, schema_json)
         except ValidationError:
             error = 'Response JSON is not in the desired format.'
-            log.warning(error, f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+            log.warning(error)
+            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
             attempts['base'] += 1
             return response_json, error
         
@@ -148,7 +151,8 @@ class LlamaVideoSummarizationComponent:
         if abs(segment_length - desired_length) > threshold:
             error = (f'Video segment length doesn\'t match desired segment length. '
                 f'abs({segment_length} - {desired_length}) > {threshold}.')
-            log.warning(error, f'Failed {attempts["segment_length"] + 1} of {max_attempts} segment length attempts.')
+            log.warning(error)
+            log.warning(f'Failed {attempts["segment_length"] + 1} of {max_attempts} segment length attempts.')
             attempts['segment_length'] += 1
             return error
         
@@ -163,7 +167,8 @@ class LlamaVideoSummarizationComponent:
             if timestamp_end < timestamp_start:
                 error = (f'Event in timeline contains invalid timestamps. End time is less than start time. '
                     f'{timestamp_end} < {timestamp_start}.')
-                log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
+                log.warning(error)
+                log.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
                 attempts['timeline'] += 1
                 return error
 
@@ -175,14 +180,16 @@ class LlamaVideoSummarizationComponent:
         if max_event_start > segment_length: # event start time should never be higher than segment length
             error = (f'Event in timeline starts after video segment ends. '
                 f'{max_event_start} > {segment_length}.')
-            log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
+            log.warning(error)
+            log.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
             attempts['timeline'] += 1
             return error
         
         if abs(segment_length - max_event_end) > threshold:
             error = (f'Video segment length doesn\'t correspond with last event end time. '
                 f'abs({segment_length} - {max_event_end}) > {threshold}.')
-            log.warning(error, f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
+            log.warning(error)
+            log.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
             attempts['timeline'] += 1
             return error
         
