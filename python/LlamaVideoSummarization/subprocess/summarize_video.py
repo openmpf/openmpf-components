@@ -76,8 +76,8 @@ class VideoProcessor:
         log.info(f"Processing \"{job['video_path']}\" with "
             f"fps: {job['process_fps']}, "
             f"max_frames: {job['max_frames']}, "
-            f"max_new_tokens: {job['max_new_tokens']}"
-            f"start_time: {job['segment_start_time']}"
+            f"max_new_tokens: {job['max_new_tokens']}, "
+            f"start_time: {job['segment_start_time']}, "
             f"end_time: {job['segment_stop_time']}")
 
         if job['system_prompt'] == job['generation_prompt']:
