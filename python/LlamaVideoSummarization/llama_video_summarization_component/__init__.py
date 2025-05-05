@@ -58,6 +58,8 @@ class LlamaVideoSummarizationComponent:
             job_config = _parse_properties(job.job_properties, actual_segment_length)
             job_config['video_path'] = job.data_uri
             job_config['desired_length'] = actual_segment_length
+            job_config['segment_start_time'] = job.start_frame / float(job.media_properties['FPS'])
+            job_config['segment_stop_time'] = job.stop_frame / float(job.media_properties['FPS'])
 
             response_json = self._get_response_from_subprocess(job_config)
 
