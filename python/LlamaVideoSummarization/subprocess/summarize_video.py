@@ -76,7 +76,9 @@ class VideoProcessor:
         log.info(f"Processing \"{job['video_path']}\" with "
             f"fps: {job['process_fps']}, "
             f"max_frames: {job['max_frames']}, "
-            f"max_new_tokens: {job['max_new_tokens']}")
+            f"max_new_tokens: {job['max_new_tokens']}"
+            f"start_time: {job['segment_start_time']}"
+            f"end_time: {job['segment_stop_time']}")
 
         if job['system_prompt'] == job['generation_prompt']:
             log.debug(f"system_prompt/generation_prompt:\n\n{job['system_prompt']}\n")
@@ -90,7 +92,9 @@ class VideoProcessor:
             {
                 "role": "user",
                 "content": [
-                    {"type": "video", "video": {"video_path": job['video_path'], "fps": job['process_fps'], "max_frames": job['max_frames']}},
+                    {"type": "video", "video": {"video_path": job['video_path'],
+                                                "fps": job['process_fps'], "max_frames": job['max_frames'],
+                                                "start_time": job['segment_start_time'], "end_time": job['segment_stop_time']}},
                     {"type": "text", "text": job['generation_prompt']},
                 ]
             },
