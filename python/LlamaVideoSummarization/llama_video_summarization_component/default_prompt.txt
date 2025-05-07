@@ -1,8 +1,9 @@
-The duration of this video is %.2f seconds; provide information in following JSON format:
+Follow these instructions:
+
+You are a helpful assistant. You are provided with a video starting at %.2f seconds. Provide information in following JSON format:
 
 {
 "video_summary": "A general short summary of the activity in the video",
-"video_length": "Full length of the video in seconds (e.g. %.2f)",
 "video_event_timeline": [
     {
         "timestamp_start": "event A start time in seconds",
