@@ -484,7 +484,7 @@ class TestComponent(unittest.TestCase):
             job_name='drone.mp4-segment-1',
             data_uri=str( TEST_DATA / 'drone.0m0s-3m0s.mp4'),
             start_frame=0,
-            stop_frame=5393,
+            stop_frame=5393, # 5393 + 1 = 5394 --> 179.9798 secs
             job_properties=dict(
                 GENERATION_MAX_ATTEMPTS=1,
                 PROCESS_FPS=1,
@@ -517,7 +517,7 @@ class TestComponent(unittest.TestCase):
         self.assertIsNotNone(job2_results[4].frame_locations[5393])
 
         self.assertEquals(5393, job2_results[5].start_frame)
-        self.assertEquals(5393, job2_results[5].stop_frame)
+        self.assertEquals(5392, job2_results[5].stop_frame) # 179.96 < 179.9798
         self.assertIsNotNone(job2_results[5].frame_locations[5393])
 
 

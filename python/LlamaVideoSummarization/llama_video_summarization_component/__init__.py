@@ -45,6 +45,7 @@ class LlamaVideoSummarizationComponent:
     def __init__(self):
         self.child_process = ChildProcess(['/llama/venv/bin/python3', '/llama/summarize_video.py', str(log.getEffectiveLevel())])
 
+
     def get_detections_from_video(self, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         try:
             log.info('Received video job.')
@@ -53,13 +54,13 @@ class LlamaVideoSummarizationComponent:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                     'Component cannot process feed forward jobs.')
             
-            actual_segment_length = (job.stop_frame - job.start_frame) / float(job.media_properties['FPS'])
+            segment_start_time = job.start_frame / float(job.media_properties['FPS'])
+            segment_stop_time = job.stop_frame / float(job.media_properties['FPS'])
 
-            job_config = _parse_properties(job.job_properties, actual_segment_length)
+            job_config = _parse_properties(job.job_properties, segment_start_time)
             job_config['video_path'] = job.data_uri
-            job_config['desired_length'] = actual_segment_length
-            job_config['segment_start_time'] = job.start_frame / float(job.media_properties['FPS'])
-            job_config['segment_stop_time'] = job.stop_frame / float(job.media_properties['FPS'])
+            job_config['segment_start_time'] = segment_start_time
+            job_config['segment_stop_time'] = segment_stop_time
 
             response_json = self._get_response_from_subprocess(job_config)
 
@@ -73,19 +74,19 @@ class LlamaVideoSummarizationComponent:
             log.exception('Failed to complete job due to the following exception:')
             raise
 
+
     def _get_response_from_subprocess(self, job_config: dict) -> dict:
         schema_str = job_config['generation_json_schema']
         schema_json = json.loads(schema_str)
 
         attempts = dict(
             base=0,
-            segment_length=0,
             timeline=0)
 
         max_attempts = job_config['generation_max_attempts']
         timeline_check_threshold = job_config['timeline_check_threshold']
-        segment_length_check_threshold = job_config['segment_length_check_threshold']
-        desired_length = job_config['desired_length']
+        segment_start_time = job_config['segment_start_time']
+        segment_stop_time = job_config['segment_stop_time']
 
         response_json = {}
         error = None
@@ -95,18 +96,11 @@ class LlamaVideoSummarizationComponent:
             if error is not None:
                 continue
 
-            segment_length = float(response_json['video_length'])
             event_timeline = response_json['video_event_timeline']
-
-            if segment_length_check_threshold != -1:
-                error = self._check_segment_length(
-                    segment_length_check_threshold, attempts, max_attempts, segment_length, desired_length)
-                if error is not None:
-                    continue
 
             if timeline_check_threshold != -1:
                 error = self._check_timeline(
-                    segment_length_check_threshold, attempts, max_attempts, segment_length, event_timeline)
+                    timeline_check_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, event_timeline)
                 if error is not None:
                     continue
 
@@ -116,6 +110,7 @@ class LlamaVideoSummarizationComponent:
             raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
 
         return response_json
+
 
     def _check_response(self, attempts: dict, max_attempts: int, schema_json: dict, response: str) -> Tuple[dict, str]:
         response_json = None
@@ -129,73 +124,82 @@ class LlamaVideoSummarizationComponent:
 
         try:
             response_json = json.loads(response)
-        except ValueError:
+        except ValueError as ve:
             error = 'Response is not valid JSON.'
             log.warning(error)
+            log.warning(str(ve))
             log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
             attempts['base'] += 1
             return response_json, error
 
         try:
             validate(response_json, schema_json)
-        except ValidationError:
+        except ValidationError as ve:
             error = 'Response JSON is not in the desired format.'
             log.warning(error)
+            log.warning(str(ve))
             log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
             attempts['base'] += 1
             return response_json, error
         
         return response_json, None
 
-    def _check_segment_length(self, threshold: float, attempts: dict, max_attempts: int, segment_length: float,
-                              desired_length: float) -> str:
-        
-        if abs(segment_length - desired_length) > threshold:
-            error = (f'Video segment length doesn\'t match desired segment length. '
-                f'abs({segment_length} - {desired_length}) > {threshold}.')
-            log.warning(error)
-            log.warning(f'Failed {attempts["segment_length"] + 1} of {max_attempts} segment length attempts.')
-            attempts['segment_length'] += 1
-            return error
-        
-        return None
 
-    def _check_timeline(self, threshold: float, attempts: dict, max_attempts: int, segment_length: float,
-                        event_timeline: list) -> str:
-        
+    def _check_timeline(self, threshold: float, attempts: dict, max_attempts: int,
+                        segment_start_time: float, segment_stop_time: float, event_timeline: list) -> str:
+
+        error = None
         for event in event_timeline:
-            timestamp_end = float(event["timestamp_end"])
             timestamp_start = float(event["timestamp_start"])
+            timestamp_end = float(event["timestamp_end"])
+
+            if timestamp_start < 0:
+                error = (f'Timeline event start time of {timestamp_start} < 0.')
+                break
+            
+            if timestamp_end < 0:
+                error = (f'Timeline event end time of {timestamp_end} < 0.')
+                break
+
             if timestamp_end < timestamp_start:
-                error = (f'Event in timeline contains invalid timestamps. End time is less than start time. '
-                    f'{timestamp_end} < {timestamp_start}.')
-                log.warning(error)
-                log.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
-                attempts['timeline'] += 1
-                return error
+                error = (f'Timeline event end time is less than event start time. '
+                         f'{timestamp_end} < {timestamp_start}.')
+                break
+            
+            if (segment_start_time - timestamp_start) > threshold:
+                error = (f'Timeline event start time occurs too soon before segment start time. '
+                         f'({segment_start_time} - {timestamp_start}) > {threshold}.')
+                break
 
-        max_event_end = max(list(map(lambda d: float(d.get('timestamp_end')),
-                                     filter(lambda d: 'timestamp_end' in d, event_timeline))))
-        max_event_start = max(list(map(lambda d: float(d.get('timestamp_start')),
-                                       filter(lambda d: 'timestamp_start' in d, event_timeline))))
+            if (timestamp_end - segment_stop_time) > threshold:
+                error = (f'Timeline event end time occurs too late after segment stop time. '
+                         f'({timestamp_end} - {segment_stop_time}) > {threshold}.')
+                break
+        
+        if not error:
+            min_event_start = min(list(map(lambda d: float(d.get('timestamp_start')),
+                                           filter(lambda d: 'timestamp_start' in d, event_timeline))))
 
-        if max_event_start > segment_length: # event start time should never be higher than segment length
-            error = (f'Event in timeline starts after video segment ends. '
-                f'{max_event_start} > {segment_length}.')
+            if abs(segment_start_time - min_event_start) > threshold:
+                error = (f'Min timeline event start time not close enough to segment start time. '
+                         f'abs({segment_start_time} - {min_event_start}) > {threshold}.')
+
+        if not error:
+            max_event_end = max(list(map(lambda d: float(d.get('timestamp_end')),
+                                         filter(lambda d: 'timestamp_end' in d, event_timeline))))
+
+            if abs(max_event_end - segment_stop_time) > threshold:
+                error = (f'Max timeline event end time not close enough to segment stop time. '
+                         f'abs({max_event_end} - {segment_stop_time}) > {threshold}.')
+
+        if error:
             log.warning(error)
             log.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
             attempts['timeline'] += 1
             return error
-        
-        if abs(segment_length - max_event_end) > threshold:
-            error = (f'Video segment length doesn\'t correspond with last event end time. '
-                f'abs({segment_length} - {max_event_end}) > {threshold}.')
-            log.warning(error)
-            log.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
-            attempts['timeline'] += 1
-            return error
-        
+
         return None
+
 
     def _create_segment_summary_track(self, job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
         start_frame = job.start_frame
@@ -204,7 +208,6 @@ class LlamaVideoSummarizationComponent:
         segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
         detection_properties={
             "SEGMENT ID": segment_id,
-            "SEGMENT LENGTH": response_json['video_length'],
             "SEGMENT SUMMARY": "TRUE",
             "TEXT": response_json['video_summary']
         }
@@ -229,6 +232,7 @@ class LlamaVideoSummarizationComponent:
 
         return track
 
+
     def _create_tracks(self, job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
         tracks = []
         frame_width = int(job.media_properties['FRAME_WIDTH'])
@@ -240,24 +244,20 @@ class LlamaVideoSummarizationComponent:
 
             segment_id = summary_track.detection_properties['SEGMENT ID']
             video_fps = float(job.media_properties['FPS'])
-            segment_start_time = int((job.start_frame / video_fps)*1000)
 
             for event in response_json['video_event_timeline']:
                 # get offset start/stop times in milliseconds
-                event_start_time = int(event['timestamp_start']*1000)
-                event_stop_time = int(event['timestamp_end']*1000)
-                # calculate event duration
-                event_secs = float(event_stop_time - event_start_time)/1000
+                event_start_time = int(float(event['timestamp_start']) * 1000)
+                event_stop_time = int(float(event['timestamp_end']) * 1000)
 
-                # calculate offset start/stop frames
-                event_start_frame = int((event_start_time * video_fps)/1000)
-                offset_start_frame = job.start_frame + event_start_frame
-                offset_stop_frame = (int(event_secs * video_fps) - 1) + offset_start_frame
+                offset_start_frame = int((event_start_time * video_fps) / 1000)
+                offset_stop_frame = int((event_stop_time * video_fps) / 1000) - 1
 
                 detection_properties={
                     "SEGMENT ID": segment_id,
                     "TEXT": event['description']
                 }
+                
                 offset_middle_frame = int((offset_stop_frame - offset_start_frame) / 2) + offset_start_frame
 
                 # check offset_stop_frame
@@ -304,10 +304,6 @@ class LlamaVideoSummarizationComponent:
                     detection_properties = detection_properties
                 )
                 track.frame_locations[offset_middle_frame].detection_properties["EXEMPLAR"] = "1"
-                track.start_time = event_start_time
-                track.stop_time = event_stop_time
-                track.start_offset_time = event_start_time + segment_start_time
-                track.stop_offset_time = event_stop_time + segment_start_time
                 
                 tracks.append(track)
 
@@ -317,7 +313,8 @@ class LlamaVideoSummarizationComponent:
         log.info('Processing complete. Video segment %s summarized in %d tracks.' % (segment_id, len(tracks)))
         return tracks
 
-def _parse_properties(props: Mapping[str, str], actual_segment_length: float) -> dict:
+
+def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> dict:
     process_fps = mpf_util.get_property(
         props, 'PROCESS_FPS', 1)
     max_frames = mpf_util.get_property(
@@ -335,11 +332,9 @@ def _parse_properties(props: Mapping[str, str], actual_segment_length: float) ->
         props, 'GENERATION_MAX_ATTEMPTS', 3)
     timeline_check_threshold = mpf_util.get_property(
         props, 'TIMELINE_CHECK_THRESHOLD', 20)
-    
-    segment_length_check_threshold = mpf_util.get_property(
-        props, 'SEGMENT_LENGTH_CHECK_THRESHOLD', 30)
 
-    generation_prompt = _read_file(generation_prompt_path) % (actual_segment_length, actual_segment_length)
+    generation_prompt = _read_file(generation_prompt_path) % (segment_start_time)
+
     generation_json_schema = _read_file(generation_json_schema_path)
 
     system_prompt = generation_prompt
@@ -355,8 +350,8 @@ def _parse_properties(props: Mapping[str, str], actual_segment_length: float) ->
         system_prompt = system_prompt,
         generation_max_attempts = generation_max_attempts,
         timeline_check_threshold = timeline_check_threshold,
-        segment_length_check_threshold = segment_length_check_threshold
     )
+
 
 def _read_file(path: str) -> str:
     try:
