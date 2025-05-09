@@ -61,16 +61,15 @@ DUMMY_TIMELINE = \
 
 CAT_TIMELINE = {
     "video_summary": "A cat is sitting on a cobblestone street, looking around as people walk by.",
-    "video_length": 6.8,
     "video_event_timeline": [
         {
-            "timestamp_start": 0.0,
-            "timestamp_end": 4.9,
+            "timestamp_start": "0.0",
+            "timestamp_end": "4.9",
             "description": "The cat is sitting on the cobblestone street, looking around."
         },
         {
-            "timestamp_start": 5.0,
-            "timestamp_end": 6.8,
+            "timestamp_start": "5.0",
+            "timestamp_end": "6.8",
             "description": "The cat looks back at the camera and then walks away."
         }
     ]
@@ -89,11 +88,10 @@ CAT_VIDEO_PROPERTIES = {
 
 DOG_TIMELINE = {
     "video_summary": "A dog sitting by a window and looking around.",
-    "video_length": 6.12,
     "video_event_timeline": [
         {
-            "timestamp_start": 0.0,
-            "timestamp_end": 6.12,
+            "timestamp_start": "0.0s",
+            "timestamp_end": "6.12s",
             "description": "Dog sitting by the window."
         }
     ]
@@ -112,7 +110,6 @@ DOG_VIDEO_PROPERTIES = {
 
 SHORT_TIMELINE = {
     "video_summary": "A person is running around.",
-    "video_length": 1,
     "video_event_timeline": [
         {
             "timestamp_start": 0.0,
@@ -133,9 +130,9 @@ SHORT_VIDEO_PROPERTIES = {
     'ROTATION': '0.0'
 }
 
+# valid timeline for segment (179.96s)
 DRONE_TIMELINE_SEGMENT_1 = {
     "video_summary": "The video shows a protest taking place in front of a bank, with protesters holding signs and flags, and a camera crew capturing the event.",
-    "video_length": 179.96,
     "video_event_timeline": [
         {
             "timestamp_start": 0.0,
@@ -155,19 +152,18 @@ DRONE_TIMELINE_SEGMENT_1 = {
     ]
 }
 
-# events beyond video length
+# events span before and after video segment (179.96 + 119.9865)
 DRONE_TIMELINE_SEGMENT_2 = {
     'video_summary': 'The video captures a busy city street with various vehicles and pedestrians moving along the road. '
         'The scene is set against a backdrop of tall buildings and trees, with a clear sky overhead. '
         'The video showcases the continuous flow of traffic, including cars, buses, motorcycles, and bicycles. '
         'Pedestrians are seen walking on the sidewalks and crossing the street at designated crosswalks.',
-    'video_length': 120.0,
     'video_event_timeline': [
-        { "timestamp_start": 0.0, "timestamp_end": 36.7, "description": "Aerial view of the intersection with a bank building in the background." },
-        { "timestamp_start": 37.7, "timestamp_end": 118.5, "description": "People are gathered around a fountain, holding signs and flags, seemingly protesting." },
-        { "timestamp_start": 119.5, "timestamp_end": 201.2, "description": "Camera pans around the area, showing the surrounding buildings and streets." },
-        { "timestamp_start": 202.2, "timestamp_end": 235.7, "description": "Bus passing by, and some cars waiting at the traffic light. "
-            "Protesters are chanting and waving their flags, while others are standing on the sidewalk or sitting on benches."}
+        { "timestamp_start": -45.2, "timestamp_end": -30.6, "description": "Aerial view of a street with pedestrians and vehicles." },
+        { "timestamp_start": 0.0, "timestamp_end": 36.64, "description": "Aerial view of the intersection with a bank building in the background." },
+        { "timestamp_start": 179.98, "timestamp_end": 216.6, "description": "Aerial view of the intersection with a bank building in the background." },
+        { "timestamp_start": 217.71, "timestamp_end": 298.46, "description": "People are gathered around a fountain, holding signs and flags, seemingly protesting." },
+        { "timestamp_start": 299.42, "timestamp_end": 381.17, "description": "Camera pans around the area, showing the surrounding buildings and streets." }
     ]
 }
 
@@ -239,7 +235,6 @@ class TestComponent(unittest.TestCase):
         self.assertEquals(3, len(results))
 
         self.assertEquals('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
-        self.assertEquals(6.8, results[0].detection_properties['SEGMENT LENGTH'])
         self.assertIn("looking around as people walk by.", results[0].detection_properties["TEXT"])
         self.assertEquals(0, results[0].start_frame)
         self.assertEquals(171, results[0].stop_frame)
@@ -264,7 +259,6 @@ class TestComponent(unittest.TestCase):
         self.assertEquals(2, len(results))
 
         self.assertEquals('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
-        self.assertEquals(6.12, results[0].detection_properties['SEGMENT LENGTH'])
         self.assertIn("sitting by a window and looking around", results[0].detection_properties["TEXT"])
         self.assertEquals(0, results[0].start_frame)
         self.assertEquals(153, results[0].stop_frame)
@@ -284,7 +278,6 @@ class TestComponent(unittest.TestCase):
         self.assertEquals(2, len(results))
 
         self.assertEquals('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
-        self.assertEquals(1.0, results[0].detection_properties['SEGMENT LENGTH'])
         self.assertIn("A person is running around.", results[0].detection_properties["TEXT"])
         self.assertEquals(0, results[0].start_frame)
         self.assertEquals(0, results[0].stop_frame)
@@ -309,12 +302,11 @@ class TestComponent(unittest.TestCase):
             self.run_patched_job(component, job, json.dumps(
             {
                 "video_summary": "This is a video of a cat.",
-                "video_length": 500,
                 "video_event_timeline": DUMMY_TIMELINE
             })) # don't care about results
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("Video segment length doesn\'t match desired segment length.", str(cm.exception))
+        self.assertIn("Max timeline event end time not close enough to segment stop time.", str(cm.exception))
 
         # test disabling time check
         job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000, 
@@ -328,7 +320,6 @@ class TestComponent(unittest.TestCase):
         results = self.run_patched_job(component, job, json.dumps(
         {
             "video_summary": "This is a video of a cat.",
-            "video_length": 500,
             "video_event_timeline": DUMMY_TIMELINE
         }))
 
@@ -350,7 +341,6 @@ class TestComponent(unittest.TestCase):
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("not valid JSON", str(cm.exception))
 
-
     def test_empty_response(self):
         component = LlamaVideoSummarizationComponent()
 
@@ -366,123 +356,25 @@ class TestComponent(unittest.TestCase):
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("Empty response", str(cm.exception))
 
-
-    def test_check_segment_length_threshold(self):
-        component = LlamaVideoSummarizationComponent()
-
-        job1 = mpf.VideoJob(
-            job_name='drone.mp4-segment-2',
-            data_uri=str( TEST_DATA / 'drone.3m0s-5m1s.mp4'),
-            start_frame=0,
-            stop_frame=1797,
-            job_properties=dict(
-                GENERATION_MAX_ATTEMPTS=3,
-                PROCESS_FPS=1,
-                MAX_FRAMES=180,
-                MAX_NEW_TOKENS=4096,
-                TIMELINE_CHECK_THRESHOLD=15,
-                SEGMENT_LENGTH_SPECIFICATION='SECONDS',
-                TARGET_SEGMENT_LENGTH=90,
-                SEGMENT_LENGTH_CHECK_THRESHOLD=20
-            ),
-            media_properties=DRONE_VIDEO_PROPERTIES,
-            feed_forward_track=None)
-        
-        with self.assertRaises(mpf.DetectionException) as cm:
-            self.run_patched_job(component, job1, json.dumps(DRONE_TIMELINE_SEGMENT_2)) # don't care about result
-
-        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("Video segment length doesn\'t match desired segment length.", str(cm.exception))
-
-        job2 = mpf.VideoJob(
-            job_name='drone.mp4-segment-2',
-            data_uri=str( TEST_DATA / 'drone.3m0s-5m1s.mp4'),
-            start_frame=0,
-            stop_frame=3596, # increased compared to job1
-            job_properties=dict(
-                GENERATION_MAX_ATTEMPTS=3,
-                PROCESS_FPS=1,
-                MAX_FRAMES=180,
-                MAX_NEW_TOKENS=4096,
-                TIMELINE_CHECK_THRESHOLD=15,
-                SEGMENT_LENGTH_SPECIFICATION='SECONDS',
-                TARGET_SEGMENT_LENGTH=120,
-                SEGMENT_LENGTH_CHECK_THRESHOLD=20
-            ),
-            media_properties=DRONE_VIDEO_PROPERTIES,
-            feed_forward_track=None)
-
-        # shorten timeline so events fall within 120 seconds
-        DRONE_TIMELINE_SEGMENT_2['video_event_timeline'].pop()
-        DRONE_TIMELINE_SEGMENT_2['video_event_timeline'].pop()
-
-        job2_results = self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
-        self.assertEquals(3, len(job2_results))
-
-        self.assertIn('SEGMENT SUMMARY', job2_results[0].detection_properties)
-        for track in job2_results:
-            self.assertEquals(track.detection_properties['SEGMENT ID'], '0-3596')
-
-
     def test_timeline_integrity(self):
         component = LlamaVideoSummarizationComponent()
 
-        job1 = mpf.VideoJob(
-            job_name='drone.mp4-segment-1',
-            data_uri=str( TEST_DATA / 'drone.0m0s-3m0s.mp4'),
-            start_frame=0,
-            stop_frame=5393,
-            job_properties=dict(
-                GENERATION_MAX_ATTEMPTS=1,
-                PROCESS_FPS=1,
-                MAX_FRAMES=180,
-                MAX_NEW_TOKENS=4096,
-                TIMELINE_CHECK_THRESHOLD=20,
-                SEGMENT_LENGTH_CHECK_THRESHOLD=30
-            ),
-            media_properties=DRONE_VIDEO_PROPERTIES,
-            feed_forward_track=None)
-
-        DRONE_TIMELINE_SEGMENT_1["video_event_timeline"].append({ 
-                    "timestamp_start": 155.5,
-                    "timestamp_end": 221.2,
-                    "description": "Camera pans around the area, showing the surrounding buildings and streets."})
-        
-        with self.assertRaises(mpf.DetectionException) as cm:
-            self.run_patched_job(component, job1, json.dumps(DRONE_TIMELINE_SEGMENT_1)) # don't care about result
-        
-        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("Video segment length doesn\'t correspond with last event end time", str(cm.exception))
-
-        DRONE_TIMELINE_SEGMENT_1['video_event_timeline'].pop()
         DRONE_TIMELINE_SEGMENT_1['video_event_timeline'].append({
                 "timestamp_start": 185.81,
                 "timestamp_end": 235.77,
                 "description": "The camera zooms in on the protesters, showing their faces and the details of their signs."
             })
 
-        with self.assertRaises(mpf.DetectionException) as cm:
-            self.run_patched_job(component, job1, json.dumps(DRONE_TIMELINE_SEGMENT_1)) # don't care about result
-        
-        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("Event in timeline starts after video segment ends.", str(cm.exception))
-
-        # test event timeline integrity check
+        # test min/max track frame overrides (with TIMELINE_CHECK_THRESHOLD=-1)
         DRONE_TIMELINE_SEGMENT_1["video_event_timeline"].append({
                     "timestamp_start": 236.77,
                     "timestamp_end": 179.96,
                     "description": "The camera pans out to show the entire scene, including the fountain and the surrounding buildings."
                 })
 
-        with self.assertRaises(mpf.DetectionException) as cm:
-            self.run_patched_job(component, job1, json.dumps(DRONE_TIMELINE_SEGMENT_1)) # don't care about result
-
-        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("Event in timeline contains invalid timestamps. End time is less than start time.", str(cm.exception))
-
-        job2 = mpf.VideoJob(
+        job1 = mpf.VideoJob(
             job_name='drone.mp4-segment-1',
-            data_uri=str( TEST_DATA / 'drone.0m0s-3m0s.mp4'),
+            data_uri=str( TEST_DATA / 'drone.mp4'),
             start_frame=0,
             stop_frame=5393, # 5393 + 1 = 5394 --> 179.9798 secs
             job_properties=dict(
@@ -497,28 +389,122 @@ class TestComponent(unittest.TestCase):
 
         # event that starts within range but ends outside of valid frames
         DRONE_TIMELINE_SEGMENT_1["video_event_timeline"][2]["timestamp_end"] = 185.0
-        job2_results = self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_1))
-        self.assertEquals(6, len(job2_results))
+        job1_results = self.run_patched_job(component, job1, json.dumps(DRONE_TIMELINE_SEGMENT_1))
+        self.assertEquals(6, len(job1_results))
 
-        self.assertIn('SEGMENT SUMMARY', job2_results[0].detection_properties)
-        for track in job2_results:
+        self.assertIn('SEGMENT SUMMARY', job1_results[0].detection_properties)
+        for track in job1_results:
             self.assertEquals('0-5393', track.detection_properties['SEGMENT ID'])
             self.assertGreaterEqual(track.start_frame, 0)
             self.assertLessEqual(track.stop_frame, 5393)
 
-        self.assertEquals(1962, job2_results[3].start_frame)
-        self.assertEquals(5393, job2_results[3].stop_frame)
-        self.assertIsNotNone(job2_results[3].frame_locations[1962])
-        self.assertIsNotNone(job2_results[3].frame_locations[3752])
-        self.assertIsNotNone(job2_results[3].frame_locations[5393])
+        self.assertEquals(1962, job1_results[3].start_frame)
+        self.assertEquals(5393, job1_results[3].stop_frame)
+        self.assertIsNotNone(job1_results[3].frame_locations[1962])
+        self.assertIsNotNone(job1_results[3].frame_locations[3752])
+        self.assertIsNotNone(job1_results[3].frame_locations[5393])
 
-        self.assertEquals(5393, job2_results[4].start_frame)
-        self.assertEquals(5393, job2_results[4].stop_frame)
-        self.assertIsNotNone(job2_results[4].frame_locations[5393])
+        self.assertEquals(5393, job1_results[4].start_frame)
+        self.assertEquals(5393, job1_results[4].stop_frame)
+        self.assertIsNotNone(job1_results[4].frame_locations[5393])
 
-        self.assertEquals(5393, job2_results[5].start_frame)
-        self.assertEquals(5392, job2_results[5].stop_frame) # 179.96 < 179.9798
-        self.assertIsNotNone(job2_results[5].frame_locations[5393])
+        self.assertEquals(5393, job1_results[5].start_frame)
+        self.assertEquals(5392, job1_results[5].stop_frame) # 179.96 < 179.9798
+        self.assertIsNotNone(job1_results[5].frame_locations[5393])
+
+        job2 = mpf.VideoJob(
+            job_name='drone.mp4-segment-2',
+            data_uri=str( TEST_DATA / 'drone.mp4'),
+            start_frame=5394,
+            stop_frame=8989, # 8989 - 5394 + 1 = 3596 --> 119.9865 secs
+            job_properties=dict(
+                GENERATION_MAX_ATTEMPTS=1,
+                PROCESS_FPS=1,
+                MAX_FRAMES=180,
+                MAX_NEW_TOKENS=4096,
+                TIMELINE_CHECK_THRESHOLD=20,
+                SEGMENT_LENGTH_CHECK_THRESHOLD=30
+            ),
+            media_properties=DRONE_VIDEO_PROPERTIES,
+            feed_forward_track=None)
+        
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("Timeline event start time of -45.2 < 0.", str(cm.exception))
+
+        DRONE_TIMELINE_SEGMENT_2['video_event_timeline'].pop(0)
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("Timeline event start time occurs too soon before segment start time. (179.9798 - 0.0) > 20.", str(cm.exception))
+
+        DRONE_TIMELINE_SEGMENT_2['video_event_timeline'].pop(0)
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("Timeline event end time occurs too late after segment stop time. (381.17 - 299.9329666666667) > 20.", str(cm.exception))
+
+        DRONE_TIMELINE_SEGMENT_2['video_event_timeline'][-1]["timestamp_end"] = 295.0
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("Timeline event end time is less than event start time. 295.0 < 299.42.", str(cm.exception))
+
+        DRONE_TIMELINE_SEGMENT_2['video_event_timeline'].pop()
+        event1 = DRONE_TIMELINE_SEGMENT_2['video_event_timeline'].pop(0)
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("Min timeline event start time not close enough to segment start time.", str(cm.exception))
+
+        DRONE_TIMELINE_SEGMENT_2['video_event_timeline'].insert(0, event1)
+        DRONE_TIMELINE_SEGMENT_2['video_event_timeline'][1]["timestamp_end"] = -5.0 # 298.46
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("Timeline event end time of -5.0 < 0.", str(cm.exception))
+
+        DRONE_TIMELINE_SEGMENT_2['video_event_timeline'][1]["timestamp_end"] = 250.0
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("Max timeline event end time not close enough to segment stop time.", str(cm.exception))
+
+        DRONE_TIMELINE_SEGMENT_2['video_event_timeline'][1]["timestamp_end"] = 298.46
+        job2_results = self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
+        self.assertEquals(3, len(job2_results))
+
+        self.assertIn('SEGMENT SUMMARY', job2_results[0].detection_properties)
+        for track in job2_results:
+            self.assertEquals('5394-8989', track.detection_properties['SEGMENT ID'])
+            self.assertGreaterEqual(track.start_frame, 5394)
+            self.assertLessEqual(track.stop_frame, 8989)
+
+        self.assertEquals(5394, job2_results[1].start_frame)
+        self.assertEquals(6490, job2_results[1].stop_frame)
+        self.assertIsNotNone(job2_results[1].frame_locations[5394])
+        self.assertIsNotNone(job2_results[1].frame_locations[5942])
+        self.assertIsNotNone(job2_results[1].frame_locations[6490])
+
+        self.assertEquals(6524, job2_results[2].start_frame)
+        self.assertEquals(8943, job2_results[2].stop_frame)
+        self.assertIsNotNone(job2_results[2].frame_locations[6524])
+        self.assertIsNotNone(job2_results[2].frame_locations[7733])
+        self.assertIsNotNone(job2_results[2].frame_locations[8943])
 
 
 if __name__ == "__main__":

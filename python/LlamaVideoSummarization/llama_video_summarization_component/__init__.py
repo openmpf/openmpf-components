@@ -144,14 +144,13 @@ class LlamaVideoSummarizationComponent:
         
         return response_json, None
 
-
     def _check_timeline(self, threshold: float, attempts: dict, max_attempts: int,
                         segment_start_time: float, segment_stop_time: float, event_timeline: list) -> str:
 
         error = None
         for event in event_timeline:
-            timestamp_start = float(event["timestamp_start"])
-            timestamp_end = float(event["timestamp_end"])
+            timestamp_start = _get_timestamp_value(event["timestamp_start"])
+            timestamp_end = _get_timestamp_value(event["timestamp_end"])
 
             if timestamp_start < 0:
                 error = (f'Timeline event start time of {timestamp_start} < 0.')
@@ -177,7 +176,7 @@ class LlamaVideoSummarizationComponent:
                 break
         
         if not error:
-            min_event_start = min(list(map(lambda d: float(d.get('timestamp_start')),
+            min_event_start = min(list(map(lambda d: _get_timestamp_value(d.get('timestamp_start')),
                                            filter(lambda d: 'timestamp_start' in d, event_timeline))))
 
             if abs(segment_start_time - min_event_start) > threshold:
@@ -185,7 +184,7 @@ class LlamaVideoSummarizationComponent:
                          f'abs({segment_start_time} - {min_event_start}) > {threshold}.')
 
         if not error:
-            max_event_end = max(list(map(lambda d: float(d.get('timestamp_end')),
+            max_event_end = max(list(map(lambda d: _get_timestamp_value(d.get('timestamp_end')),
                                          filter(lambda d: 'timestamp_end' in d, event_timeline))))
 
             if abs(max_event_end - segment_stop_time) > threshold:
@@ -211,8 +210,12 @@ class LlamaVideoSummarizationComponent:
             "SEGMENT SUMMARY": "TRUE",
             "TEXT": response_json['video_summary']
         }
-        frame_width = int(job.media_properties['FRAME_WIDTH'])
-        frame_height = int(job.media_properties['FRAME_HEIGHT'])
+        frame_width = 0
+        frame_height = 0
+        if 'FRAME_WIDTH' in job.media_properties:
+            frame_width = int(job.media_properties['FRAME_WIDTH'])
+        if 'FRAME_HEIGHT' in job.media_properties:
+            frame_height = int(job.media_properties['FRAME_HEIGHT'])
         middle_frame = int((stop_frame - start_frame) / 2) + start_frame
 
         track = mpf.VideoTrack(
@@ -235,8 +238,12 @@ class LlamaVideoSummarizationComponent:
 
     def _create_tracks(self, job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
         tracks = []
-        frame_width = int(job.media_properties['FRAME_WIDTH'])
-        frame_height = int(job.media_properties['FRAME_HEIGHT'])
+        frame_width = 0
+        frame_height = 0
+        if 'FRAME_WIDTH' in job.media_properties:
+            frame_width = int(job.media_properties['FRAME_WIDTH'])
+        if 'FRAME_HEIGHT' in job.media_properties:
+            frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
         if response_json['video_event_timeline']:
             summary_track = self._create_segment_summary_track(job, response_json)
@@ -247,8 +254,8 @@ class LlamaVideoSummarizationComponent:
 
             for event in response_json['video_event_timeline']:
                 # get offset start/stop times in milliseconds
-                event_start_time = int(float(event['timestamp_start']) * 1000)
-                event_stop_time = int(float(event['timestamp_end']) * 1000)
+                event_start_time = int(_get_timestamp_value(event['timestamp_start']) * 1000)
+                event_stop_time = int(_get_timestamp_value(event['timestamp_end']) * 1000)
 
                 offset_start_frame = int((event_start_time * video_fps) / 1000)
                 offset_stop_frame = int((event_stop_time * video_fps) / 1000) - 1
@@ -313,6 +320,12 @@ class LlamaVideoSummarizationComponent:
         log.info('Processing complete. Video segment %s summarized in %d tracks.' % (segment_id, len(tracks)))
         return tracks
 
+def _get_timestamp_value(seconds: any) -> float:
+    if isinstance(seconds, str):
+        secval = float(seconds.replace('s', ''))
+    else:
+        secval = float(seconds)
+    return secval
 
 def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> dict:
     process_fps = mpf_util.get_property(
