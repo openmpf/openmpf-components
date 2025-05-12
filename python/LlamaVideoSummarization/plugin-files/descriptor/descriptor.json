@@ -29,7 +29,7 @@
                 },
                 {
                     "name": "MAX_FRAMES",
-                    "description": "Specifies the maximum number of frames to process. NOTE: Doesn't seem to work.",
+                    "description": "Specifies the maximum number of frames to process. NOTE: This is hard-coded to a hard cap of 180 in VideoLLaMA3. When processing videos longer than three minutes, 180 frames are uniformly sampled from an even distribution of video frames.",
                     "type": "INT",
                     "defaultValue": "180"
                 },
