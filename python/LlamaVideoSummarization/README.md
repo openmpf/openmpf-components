@@ -15,8 +15,9 @@ Returned `VideoTrack` objects have the following members in their `detection_pro
 
 | Property Key                     | Description 
 |----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------
-| `TEXT`                 | General summary of the entire video.
-| `VIDEO EVENT TIMELINE` | JSON representation of the video event timeline.
+| `TEXT`            | Description of activity in the range indicated by the `startOffsetFrame`/`startOffsetTime` and `stopOffsetFrame`/`stopOffsetTime`. When `SEGMENT SUMMARY` is `True`, description summarizes the entire entire segment.
+| `SEGMENT ID`      | A unique segment identifier, of the form "<start_offset>-<stop_offset>", where <start_offset> and <stop_offset> are integers indicating the length, in frame counts, of the video (or video segment when a job has been segmented by the Workflow Manager).
+| `SEGMENT SUMMARY` | Indicates that `TEXT` summarizes the activity of the entire video (or video segment when a job has been segmented by the Workflow Manager), rather than a single event in a timeline.
 
 # Custom Prompts
 
@@ -25,10 +26,7 @@ For the default prompt refer to `llama_video_summarization_component/default_pro
 For the default JSON schema refer to `llama_video_summarization_component/default_schema.json`.
 
 Set `GENERATION_PROMPT_PATH` to specify a file containing a generation prompt to provide the model.
-Currently, the code requires this to produce JSON that containts the following fields:
-- `video_summary`
-- `video_event_timeline`
-    - `video_event_timeline.timestamp_end`
+The code requires this to produce JSON that contains all of the fields on the `/default_schema.json`.
 
 Set `GENERATION_JSON_SCHEMA_PATH` to specify a file containing the JSON schema format that
 corresponds to the JSON output that the model is instructed to generate. For more information on 
@@ -36,9 +34,11 @@ how to specify the schema, refer to these resources:
 - https://json-schema.org/learn/getting-started-step-by-step#create-a-schema-definition
 - https://python-jsonschema.readthedocs.io/en/latest/validate/
 
-## Running Component
+*[Note: Changes to the JSON schema may require changes to the component code.]*
 
-### Command Line Interface
+# Running Component
+
+## Command Line Interface
 
 ```bash
 docker run --rm -i --gpus '"device=0"' openmpf/openmpf_llama_video_summarization:latest -t video --end 154 -M FRAME_WIDTH=426 -M FRAME_HEIGHT=240 - < tests/data/dog.mp4 > out.json
