@@ -9,7 +9,7 @@ This repository contains source code for the OpenMPF LLaMa Video Summarization c
 
 Refer to `plugin-files/descriptor.json`.
 
-## Detection Properties
+# Detection Properties
 
 Returned `VideoTrack` objects have the following members in their `detection_properties`:
 
