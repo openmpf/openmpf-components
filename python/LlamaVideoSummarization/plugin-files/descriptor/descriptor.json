@@ -59,9 +59,9 @@
                 },
                 {
                     "name": "GENERATION_MAX_ATTEMPTS",
-                    "description": "Three kinds of checks are performed on the model response: 1) response is not empty and has valid JSON in the correct format, 2) the video segment length determined by the model corresponds to desired length of video segment specified in the OpenMPF job, and 3) response timeline covers the video segment length determined by the model. Each check has a separate counter. This value specifies the maximum number of attempts for each check. Each failed check results in another attempt to regenerate the response.",
+                    "description": "Two kinds of checks are performed on the model response: 1) response is not empty and has valid JSON in the correct format, and 2) the response timeline falls within the video segment length determined by the model. Each check has a separate counter. This value specifies the maximum number of attempts for each check. Each failed check results in another attempt to regenerate the response.",
                     "type": "INT",
-                    "defaultValue": "3"
+                    "defaultValue": "5"
                 },
                 {
                     "name": "TIMELINE_CHECK_THRESHOLD",
