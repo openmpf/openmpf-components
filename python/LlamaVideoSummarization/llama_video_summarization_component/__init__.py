@@ -84,7 +84,7 @@ class LlamaVideoSummarizationComponent:
             timeline=0)
 
         max_attempts = job_config['generation_max_attempts']
-        timeline_check_threshold = job_config['timeline_check_threshold']
+        timeline_check_target_threshold = job_config['timeline_check_target_threshold']
         segment_start_time = job_config['segment_start_time']
         segment_stop_time = job_config['segment_stop_time']
 
@@ -98,9 +98,9 @@ class LlamaVideoSummarizationComponent:
 
             event_timeline = response_json['video_event_timeline']
 
-            if timeline_check_threshold != -1:
+            if timeline_check_target_threshold != -1:
                 error = self._check_timeline(
-                    timeline_check_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, event_timeline)
+                    timeline_check_target_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, event_timeline)
                 if error is not None:
                     continue
 
@@ -342,9 +342,11 @@ def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> di
     system_prompt_path = mpf_util.get_property(
         props, 'SYSTEM_PROMPT_PATH', '')
     generation_max_attempts = mpf_util.get_property(
-        props, 'GENERATION_MAX_ATTEMPTS', 3)
-    timeline_check_threshold = mpf_util.get_property(
-        props, 'TIMELINE_CHECK_THRESHOLD', 20)
+        props, 'GENERATION_MAX_ATTEMPTS', 5)
+    timeline_check_target_threshold = mpf_util.get_property(
+        props, 'TIMELINE_CHECK_TARGET_THRESHOLD', 10)
+    timeline_check_threshold_acceptable = mpf_util.get_property(
+        props, 'TIMELINE_CHECK_THRESHOLD_ACCEPTABLE', 30)
 
     generation_prompt = _read_file(generation_prompt_path) % (segment_start_time)
 
@@ -362,7 +364,7 @@ def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> di
         generation_json_schema = generation_json_schema,
         system_prompt = system_prompt,
         generation_max_attempts = generation_max_attempts,
-        timeline_check_threshold = timeline_check_threshold,
+        timeline_check_target_threshold = timeline_check_target_threshold
     )
 
 
