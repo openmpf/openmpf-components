@@ -312,8 +312,7 @@ class TestComponent(unittest.TestCase):
         job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000, 
             {
                 "GENERATION_MAX_ATTEMPTS" : "1",
-                "TIMELINE_CHECK_THRESHOLD" : "-1",
-                "SEGMENT_LENGTH_CHECK_THRESHOLD": "-1"
+                "TIMELINE_CHECK_TARGET_THRESHOLD" : "-1"
             },
             CAT_VIDEO_PROPERTIES, {})
         
@@ -365,7 +364,7 @@ class TestComponent(unittest.TestCase):
                 "description": "The camera zooms in on the protesters, showing their faces and the details of their signs."
             })
 
-        # test min/max track frame overrides (with TIMELINE_CHECK_THRESHOLD=-1)
+        # test min/max track frame overrides (with TIMELINE_CHECK_TARGET_THRESHOLD=-1)
         DRONE_TIMELINE_SEGMENT_1["video_event_timeline"].append({
                     "timestamp_start": 236.77,
                     "timestamp_end": 179.96,
@@ -382,7 +381,7 @@ class TestComponent(unittest.TestCase):
                 PROCESS_FPS=1,
                 MAX_FRAMES=180,
                 MAX_NEW_TOKENS=4096,
-                TIMELINE_CHECK_THRESHOLD=-1
+                TIMELINE_CHECK_TARGET_THRESHOLD=-1
             ),
             media_properties=DRONE_VIDEO_PROPERTIES,
             feed_forward_track=None)
@@ -422,8 +421,7 @@ class TestComponent(unittest.TestCase):
                 PROCESS_FPS=1,
                 MAX_FRAMES=180,
                 MAX_NEW_TOKENS=4096,
-                TIMELINE_CHECK_THRESHOLD=20,
-                SEGMENT_LENGTH_CHECK_THRESHOLD=30
+                TIMELINE_CHECK_TARGET_THRESHOLD=20
             ),
             media_properties=DRONE_VIDEO_PROPERTIES,
             feed_forward_track=None)

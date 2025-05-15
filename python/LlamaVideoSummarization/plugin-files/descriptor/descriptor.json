@@ -64,7 +64,7 @@
                     "defaultValue": "5"
                 },
                 {
-                    "name": "TIMELINE_CHECK_THRESHOLD",
+                    "name": "TIMELINE_CHECK_TARGET_THRESHOLD",
                     "description": "Specifies the number of seconds that video events can occur before or after video segment bounds. If exceeded, another attempt will be made to generate the output. Set to -1 to disable check.",
                     "type": "INT",
                     "defaultValue": "10"
