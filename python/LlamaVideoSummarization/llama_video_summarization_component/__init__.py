@@ -33,7 +33,7 @@ import socket
 import subprocess
 
 from jsonschema import validate, ValidationError
-from typing import Iterable, Mapping, Tuple
+from typing import Any, Iterable, List, Mapping, Tuple, Union
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -54,8 +54,12 @@ class LlamaVideoSummarizationComponent:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                     'Component cannot process feed forward jobs.')
             
+            if job.stop_frame < 0:
+                raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
+                    'Job stop frame must be >= 0.')
+            
             segment_start_time = job.start_frame / float(job.media_properties['FPS'])
-            segment_stop_time = job.stop_frame / float(job.media_properties['FPS'])
+            segment_stop_time = (job.stop_frame + 1) / float(job.media_properties['FPS'])
 
             job_config = _parse_properties(job.job_properties, segment_start_time)
             job_config['video_path'] = job.data_uri
@@ -96,7 +100,8 @@ class LlamaVideoSummarizationComponent:
             if error is not None:
                 continue
 
-            event_timeline = response_json['video_event_timeline']
+            # if no error, then response_json should be valid
+            event_timeline = response_json['video_event_timeline'] # type: ignore
 
             if timeline_check_target_threshold != -1:
                 error = self._check_timeline(
@@ -109,10 +114,12 @@ class LlamaVideoSummarizationComponent:
         if error:
             raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
 
-        return response_json
+        # if no error, then response_json should be valid
+        return response_json # type: ignore
 
 
-    def _check_response(self, attempts: dict, max_attempts: int, schema_json: dict, response: str) -> Tuple[dict, str]:
+    def _check_response(self, attempts: dict, max_attempts: int, schema_json: dict, response: str
+                        ) -> Tuple[Union[dict, None], Union[str, None]]:
         response_json = None
 
         if not response:
@@ -144,8 +151,10 @@ class LlamaVideoSummarizationComponent:
         
         return response_json, None
 
+
     def _check_timeline(self, threshold: float, attempts: dict, max_attempts: int,
-                        segment_start_time: float, segment_stop_time: float, event_timeline: list) -> str:
+                        segment_start_time: float, segment_stop_time: float, event_timeline: list
+                        ) -> Union[str, None]:
 
         error = None
         for event in event_timeline:
@@ -248,7 +257,7 @@ class LlamaVideoSummarizationComponent:
         if response_json['video_event_timeline']:
             summary_track = self._create_segment_summary_track(job, response_json)
             tracks.append(summary_track)
-
+            
             segment_id = summary_track.detection_properties['SEGMENT ID']
             video_fps = float(job.media_properties['FPS'])
 
@@ -315,12 +324,14 @@ class LlamaVideoSummarizationComponent:
                 tracks.append(track)
 
         else: # no events timeline, create summary only
-            tracks.append(self._create_segment_summary_track(job, response_json))
+            summary_track = self._create_segment_summary_track(job, response_json)
+            tracks.append(summary_track)
+            segment_id = summary_track.detection_properties['SEGMENT ID']
             
         log.info('Processing complete. Video segment %s summarized in %d tracks.' % (segment_id, len(tracks)))
         return tracks
 
-def _get_timestamp_value(seconds: any) -> float:
+def _get_timestamp_value(seconds: Any) -> float:
     if isinstance(seconds, str):
         secval = float(seconds.replace('s', ''))
     else:
@@ -379,7 +390,7 @@ def _read_file(path: str) -> str:
 
 class ChildProcess:
 
-    def __init__(self, start_cmd: Tuple[str, ...]):
+    def __init__(self, start_cmd: List[str]):
         parent_socket, child_socket = socket.socketpair()
         with parent_socket, child_socket:
             env = {**os.environ, 'MPF_SOCKET_FD': str(child_socket.fileno())}
