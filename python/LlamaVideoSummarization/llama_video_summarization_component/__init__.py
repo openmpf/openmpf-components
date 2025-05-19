@@ -345,8 +345,6 @@ def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> di
         props, 'GENERATION_MAX_ATTEMPTS', 5)
     timeline_check_target_threshold = mpf_util.get_property(
         props, 'TIMELINE_CHECK_TARGET_THRESHOLD', 10)
-    timeline_check_threshold_acceptable = mpf_util.get_property(
-        props, 'TIMELINE_CHECK_THRESHOLD_ACCEPTABLE', 30)
 
     generation_prompt = _read_file(generation_prompt_path) % (segment_start_time)
 
