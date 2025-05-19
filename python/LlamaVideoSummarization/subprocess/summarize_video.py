@@ -24,7 +24,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import io
 import logging
 import os
 import pickle
@@ -33,8 +32,7 @@ import socket
 import sys
 import torch
 
-from transformers import AutoModelForCausalLM, AutoProcessor
-from typing import Mapping, Union
+from transformers import AutoModelForCausalLM, AutoProcessor 
 
 DEVICE = "cuda:0"
 MODEL_PATH = "DAMO-NLP-SG/VideoLLaMA3-7B"
@@ -156,7 +154,7 @@ class SocketHandler:
         self._socket_stream.flush()
 
 
-socket_hander : SocketHandler = None
+socket_hander : SocketHandler
 
 def signal_handler(signal, frame):
     if socket_handler:
@@ -180,4 +178,4 @@ if __name__ == '__main__':
             socket_handler.send_response(response)
         except Exception as e:
             log.error(f'Failed to summarize video: {e}')
-            socket_handler.send_error(e)
+            socket_handler.send_error(str(e))

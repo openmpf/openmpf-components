@@ -446,7 +446,7 @@ class TestComponent(unittest.TestCase):
             self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("Timeline event end time occurs too late after segment stop time. (381.17 - 299.9329666666667) > 20.", str(cm.exception))
+        self.assertIn("Timeline event end time occurs too late after segment stop time. (381.17 - 299.96633333333335) > 20.", str(cm.exception))
 
         DRONE_TIMELINE_SEGMENT_2['video_event_timeline'][-1]["timestamp_end"] = 295.0
 
