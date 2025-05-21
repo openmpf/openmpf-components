@@ -1,0 +1,11 @@
+```json
+{
+  "hair_color": "gray",
+  "clothes": {
+    "jacket": "blue",
+    "shirt": "white",
+    "tie": "yellow"
+  },
+  "activity": "shaking hands with another person"
+}
+```
