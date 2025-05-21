@@ -26,7 +26,7 @@
 
 from typing import Iterable
 from typing import Mapping, Sequence
-from hunspell import Hunspell
+from hunspell import HunSpell
 
 import re
 import os
@@ -121,8 +121,7 @@ class HunspellWrapper(object):
     def __init__(self, job_properties: Mapping[str, str]):
         self._job_properties = job_properties
 
-        self._hunspell = Hunspell('en_US')
-        self._hunspell.clear_cache()
+        self._hunspell = HunSpell('/usr/share/hunspell/en_US.dic', '/usr/share/hunspell/en_US.aff')
 
         self._unicode_error = False
 
