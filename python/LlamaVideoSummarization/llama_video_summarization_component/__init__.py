@@ -171,46 +171,48 @@ class LlamaVideoSummarizationComponent:
             after_seg_stop = True,
             after_seg_start = True,
             before_seg_stop = True)
-        error = None
+
+        hard_error = None
+        soft_error = None
         for event in event_timeline:
             timestamp_start = _get_timestamp_value(event["timestamp_start"])
             timestamp_end = _get_timestamp_value(event["timestamp_end"])
 
             if timestamp_start < 0:
-                error = (f'Timeline event start time of {timestamp_start} < 0.')
+                hard_error = (f'Timeline event start time of {timestamp_start} < 0.')
                 break
             
             if timestamp_end < 0:
-                error = (f'Timeline event end time of {timestamp_end} < 0.')
+                hard_error = (f'Timeline event end time of {timestamp_end} < 0.')
                 break
 
             if timestamp_end < timestamp_start:
-                error = (f'Timeline event end time is less than event start time. '
+                hard_error = (f'Timeline event end time is less than event start time. '
                          f'{timestamp_end} < {timestamp_start}.')
                 break
             
             if (segment_start_time - timestamp_start) > target_threshold:
-                error = (f'Timeline event start time occurs too soon before segment start time. '
+                soft_error = (f'Timeline event start time occurs too soon before segment start time. '
                          f'({segment_start_time} - {timestamp_start}) > {target_threshold}.')
                 if (segment_start_time - timestamp_start) > accept_threshold:
                     acceptable_checks['before_seg_start'] = False
                     break
 
             if (timestamp_end - segment_stop_time) > target_threshold:
-                error = (f'Timeline event end time occurs too late after segment stop time. '
+                soft_error = (f'Timeline event end time occurs too late after segment stop time. '
                          f'({timestamp_end} - {segment_stop_time}) > {target_threshold}.')
                 if (timestamp_end - segment_stop_time) > accept_threshold:
                     acceptable_checks['after_seg_stop'] = False
                     break
-        
-        if not error:
+
+        minmax_errors = []
+        if not hard_error:
             min_event_start = min(list(map(lambda d: _get_timestamp_value(d.get('timestamp_start')),
                                            filter(lambda d: 'timestamp_start' in d, event_timeline))))
-
             if abs(segment_start_time - min_event_start) > target_threshold:
 
-                error = (f'Min timeline event start time not close enough to segment start time. '
-                         f'abs({segment_start_time} - {min_event_start}) > {target_threshold}.')
+                minmax_errors.append((f'Min timeline event start time not close enough to segment start time. '
+                         f'abs({segment_start_time} - {min_event_start}) > {target_threshold}.'))
                 if abs(segment_start_time - min_event_start) > accept_threshold:
                     acceptable_checks['after_seg_start'] = False
 
@@ -218,14 +220,23 @@ class LlamaVideoSummarizationComponent:
                                          filter(lambda d: 'timestamp_end' in d, event_timeline))))
 
             if abs(max_event_end - segment_stop_time) > target_threshold:
-                if error: # keep the first encountered error
-                    error = (f'Max timeline event end time not close enough to segment stop time. '
-                            f'abs({max_event_end} - {segment_stop_time}) > {target_threshold}.')
-                if abs(max_event_end - segment_stop_time) > target_threshold:
+                minmax_errors.append((f'Max timeline event end time not close enough to segment stop time. '
+                            f'abs({max_event_end} - {segment_stop_time}) > {target_threshold}.'))
+                if abs(max_event_end - segment_stop_time) > accept_threshold:
                     acceptable_checks['before_seg_stop'] = False
 
-        if list({v for v in acceptable_checks.values()}) == [True]:
-            self._store_acceptable_response(response_json)
+        if not hard_error:
+            if list({v for v in acceptable_checks.values()}) == [True]:
+                self._store_acceptable_response(response_json)
+
+        if len(minmax_errors) > 0:
+            soft_error = minmax_errors.pop()
+
+        error = None
+        if hard_error:
+            error = hard_error
+        elif soft_error:
+            error = soft_error
 
         if error:
             log.warning(error)
