@@ -70,7 +70,7 @@
                     "defaultValue": "10"
                 },
                 {
-                    "name": "TIMELINE_CHECK_THRESHOLD_ACCEPTABLE",
+                    "name": "TIMELINE_CHECK_ACCEPTABLE_THRESHOLD",
                     "description": "A secondary timeline validation threshold, in seconds that specifies the number of seconds video events can occur before or after video segment bounds, which will result in an \"acceptable\" timeline. Additional attempts will be made to generate a timeline within the \"desired\" range of TIMELINE_CHECK_THRESHOLD, until GENERATION_MAX_ATTEMPTS is reached, after which the \"acceptable\" timeline is returned, or the component responds with an error. Set to -1 to disable check.",
                     "type": "INT",
                     "defaultValue": "30"

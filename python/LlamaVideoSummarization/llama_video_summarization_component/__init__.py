@@ -44,7 +44,7 @@ class LlamaVideoSummarizationComponent:
 
     def __init__(self):
         self.child_process = ChildProcess(['/llama/venv/bin/python3', '/llama/summarize_video.py', str(log.getEffectiveLevel())])
-
+        self.acceptable_timeline = None
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         try:
@@ -62,6 +62,11 @@ class LlamaVideoSummarizationComponent:
             segment_stop_time = (job.stop_frame + 1) / float(job.media_properties['FPS'])
 
             job_config = _parse_properties(job.job_properties, segment_start_time)
+
+            if job_config['timeline_check_acceptable_threshold'] < job_config['timeline_check_target_threshold']:
+                raise mpf.DetectionError.INVALID_PROPERTY.exception(
+                    'TIMELINE_CHECK_ACCEPTABLE_THRESHOLD must be >= TIMELINE_CHECK_TARGET_THRESHOLD.')
+
             job_config['video_path'] = job.data_uri
             job_config['segment_start_time'] = segment_start_time
             job_config['segment_stop_time'] = segment_stop_time
@@ -89,6 +94,7 @@ class LlamaVideoSummarizationComponent:
 
         max_attempts = job_config['generation_max_attempts']
         timeline_check_target_threshold = job_config['timeline_check_target_threshold']
+        timeline_check_acceptable_threshold = job_config['timeline_check_acceptable_threshold']
         segment_start_time = job_config['segment_start_time']
         segment_stop_time = job_config['segment_stop_time']
 
@@ -100,19 +106,20 @@ class LlamaVideoSummarizationComponent:
             if error is not None:
                 continue
 
-            # if no error, then response_json should be valid
-            event_timeline = response_json['video_event_timeline'] # type: ignore
-
             if timeline_check_target_threshold != -1:
                 error = self._check_timeline(
-                    timeline_check_target_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, event_timeline)
+                    timeline_check_target_threshold, timeline_check_acceptable_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, response_json)
                 if error is not None:
                     continue
 
             break
 
         if error:
-            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
+            acceptable_timeline = self._fetch_acceptable_response()
+            if acceptable_timeline is not None:
+                return acceptable_timeline
+            else:
+                raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
 
         # if no error, then response_json should be valid
         return response_json # type: ignore
@@ -152,10 +159,18 @@ class LlamaVideoSummarizationComponent:
         return response_json, None
 
 
-    def _check_timeline(self, threshold: float, attempts: dict, max_attempts: int,
-                        segment_start_time: float, segment_stop_time: float, event_timeline: list
+    def _check_timeline(self, target_threshold: float, accept_threshold: float, attempts: dict, max_attempts: int,
+                        segment_start_time: float, segment_stop_time: float, response_json: dict
                         ) -> Union[str, None]:
 
+        event_timeline = response_json['video_event_timeline'] # type: ignore
+
+        # start with passing checks, then fail as secondary checks are conducted
+        acceptable_checks = dict(
+            before_seg_start = True,
+            after_seg_stop = True,
+            after_seg_start = True,
+            before_seg_stop = True)
         error = None
         for event in event_timeline:
             timestamp_start = _get_timestamp_value(event["timestamp_start"])
@@ -174,31 +189,43 @@ class LlamaVideoSummarizationComponent:
                          f'{timestamp_end} < {timestamp_start}.')
                 break
             
-            if (segment_start_time - timestamp_start) > threshold:
+            if (segment_start_time - timestamp_start) > target_threshold:
                 error = (f'Timeline event start time occurs too soon before segment start time. '
-                         f'({segment_start_time} - {timestamp_start}) > {threshold}.')
-                break
+                         f'({segment_start_time} - {timestamp_start}) > {target_threshold}.')
+                if (segment_start_time - timestamp_start) > accept_threshold:
+                    acceptable_checks['before_seg_start'] = False
+                    break
 
-            if (timestamp_end - segment_stop_time) > threshold:
+            if (timestamp_end - segment_stop_time) > target_threshold:
                 error = (f'Timeline event end time occurs too late after segment stop time. '
-                         f'({timestamp_end} - {segment_stop_time}) > {threshold}.')
-                break
+                         f'({timestamp_end} - {segment_stop_time}) > {target_threshold}.')
+                if (timestamp_end - segment_stop_time) > accept_threshold:
+                    acceptable_checks['after_seg_stop'] = False
+                    break
         
         if not error:
             min_event_start = min(list(map(lambda d: _get_timestamp_value(d.get('timestamp_start')),
                                            filter(lambda d: 'timestamp_start' in d, event_timeline))))
 
-            if abs(segment_start_time - min_event_start) > threshold:
-                error = (f'Min timeline event start time not close enough to segment start time. '
-                         f'abs({segment_start_time} - {min_event_start}) > {threshold}.')
+            if abs(segment_start_time - min_event_start) > target_threshold:
 
-        if not error:
+                error = (f'Min timeline event start time not close enough to segment start time. '
+                         f'abs({segment_start_time} - {min_event_start}) > {target_threshold}.')
+                if abs(segment_start_time - min_event_start) > accept_threshold:
+                    acceptable_checks['after_seg_start'] = False
+
             max_event_end = max(list(map(lambda d: _get_timestamp_value(d.get('timestamp_end')),
                                          filter(lambda d: 'timestamp_end' in d, event_timeline))))
 
-            if abs(max_event_end - segment_stop_time) > threshold:
-                error = (f'Max timeline event end time not close enough to segment stop time. '
-                         f'abs({max_event_end} - {segment_stop_time}) > {threshold}.')
+            if abs(max_event_end - segment_stop_time) > target_threshold:
+                if error: # keep the first encountered error
+                    error = (f'Max timeline event end time not close enough to segment stop time. '
+                            f'abs({max_event_end} - {segment_stop_time}) > {target_threshold}.')
+                if abs(max_event_end - segment_stop_time) > target_threshold:
+                    acceptable_checks['before_seg_stop'] = False
+
+        if list({v for v in acceptable_checks.values()}) == [True]:
+            self._store_acceptable_response(response_json)
 
         if error:
             log.warning(error)
@@ -208,6 +235,11 @@ class LlamaVideoSummarizationComponent:
 
         return None
 
+    def _store_acceptable_response(self, response_json: dict) -> None:
+        self.acceptable_timeline = response_json
+
+    def _fetch_acceptable_response(self) -> list:
+        return self.acceptable_timeline
 
     def _create_segment_summary_track(self, job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
         start_frame = job.start_frame
@@ -356,6 +388,8 @@ def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> di
         props, 'GENERATION_MAX_ATTEMPTS', 5)
     timeline_check_target_threshold = mpf_util.get_property(
         props, 'TIMELINE_CHECK_TARGET_THRESHOLD', 10)
+    timeline_check_acceptable_threshold = mpf_util.get_property(
+        props, 'TIMELINE_CHECK_ACCEPTABLE_THRESHOLD', 30)
 
     generation_prompt = _read_file(generation_prompt_path) % (segment_start_time)
 
@@ -373,7 +407,8 @@ def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> di
         generation_json_schema = generation_json_schema,
         system_prompt = system_prompt,
         generation_max_attempts = generation_max_attempts,
-        timeline_check_target_threshold = timeline_check_target_threshold
+        timeline_check_target_threshold = timeline_check_target_threshold,
+        timeline_check_acceptable_threshold = timeline_check_acceptable_threshold
     )
 
 

@@ -504,6 +504,76 @@ class TestComponent(unittest.TestCase):
         self.assertIsNotNone(job2_results[2].frame_locations[7733])
         self.assertIsNotNone(job2_results[2].frame_locations[8943])
 
+    def test_timeline_acceptable_threshold(self):
+        component = LlamaVideoSummarizationComponent()
+
+        job = mpf.VideoJob(
+            job_name='drone.mp4-segment-1',
+            data_uri=str( TEST_DATA / 'drone.mp4'),
+            start_frame=0,
+            stop_frame=5393, # 5393 + 1 = 5394 --> 179.9798 secs
+            job_properties=dict(
+                GENERATION_MAX_ATTEMPTS=2,
+                PROCESS_FPS=1,
+                MAX_FRAMES=180,
+                MAX_NEW_TOKENS=4096,
+                TIMELINE_CHECK_TARGET_THRESHOLD=10,
+                TIMELINE_CHECK_ACCEPTABLE_THRESHOLD=5 # must be higher than 10
+            ),
+            media_properties=DRONE_VIDEO_PROPERTIES,
+            feed_forward_track=None)
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job, json.dumps(DRONE_TIMELINE_SEGMENT_1))
+
+        self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
+        self.assertIn("TIMELINE_CHECK_ACCEPTABLE_THRESHOLD must be >= TIMELINE_CHECK_TARGET_THRESHOLD.", str(cm.exception))
+
+        job1 = mpf.VideoJob(
+            job_name='drone.mp4-segment-1',
+            data_uri=str( TEST_DATA / 'drone.mp4'),
+            start_frame=0,
+            stop_frame=5393, # 5393 + 1 = 5394 --> 179.9798 secs
+            job_properties=dict(
+                GENERATION_MAX_ATTEMPTS=2,
+                PROCESS_FPS=1,
+                MAX_FRAMES=180,
+                MAX_NEW_TOKENS=4096,
+                TIMELINE_CHECK_TARGET_THRESHOLD=10,
+                TIMELINE_CHECK_ACCEPTABLE_THRESHOLD=30
+            ),
+            media_properties=DRONE_VIDEO_PROPERTIES,
+            feed_forward_track=None)
+        
+        DRONE_TIMELINE_SEGMENT_1["video_event_timeline"][0]["timestamp_start"] += 11.0
+        DRONE_TIMELINE_SEGMENT_1["video_event_timeline"][2]["timestamp_end"] += 20.0
+        job1_results = self.run_patched_job(component, job1, json.dumps(DRONE_TIMELINE_SEGMENT_1))
+        self.assertEquals(4, len(job1_results))
+
+
+        job2 = mpf.VideoJob(
+            job_name='drone.mp4-segment-2',
+            data_uri=str( TEST_DATA / 'drone.mp4'),
+            start_frame=5394,
+            stop_frame=8989, # 8989 - 5394 + 1 = 3596 --> 119.9865 secs
+            job_properties=dict(
+                GENERATION_MAX_ATTEMPTS=2,
+                PROCESS_FPS=1,
+                MAX_FRAMES=180,
+                MAX_NEW_TOKENS=4096,
+                TIMELINE_CHECK_TARGET_THRESHOLD=10,
+                TIMELINE_CHECK_ACCEPTABLE_THRESHOLD=30
+            ),
+            media_properties=DRONE_VIDEO_PROPERTIES,
+            feed_forward_track=None)
+        
+        DRONE_TIMELINE_SEGMENT_2["video_event_timeline"].pop(0)
+        DRONE_TIMELINE_SEGMENT_2["video_event_timeline"][0]["timestamp_start"] = 179.98 - 20
+        DRONE_TIMELINE_SEGMENT_2["video_event_timeline"][0]["timestamp_end"] = 178.0
+        DRONE_TIMELINE_SEGMENT_2["video_event_timeline"][-1]["timestamp_end"] = 325.0
+        job2_results = self.run_patched_job(component, job2, json.dumps(DRONE_TIMELINE_SEGMENT_2))
+        self.assertEquals(5, len(job2_results))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
