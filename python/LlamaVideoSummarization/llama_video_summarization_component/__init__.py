@@ -120,25 +120,25 @@ class LlamaVideoSummarizationComponent:
 
     def _check_response(self, attempts: dict, max_attempts: int, schema_json: dict, response: str
                         ) -> Tuple[Union[dict, None], Union[str, None]]:
-        error_msg = None
+        error = None
         response_json = None
 
         if not response:
-            error_msg = 'Empty response.'
+            error = 'Empty response.'
 
-        if not error_msg:
+        if not error:
             try:
                 response_json = json.loads(response)
             except ValueError as ve:
-                error_msg = f'Response is not valid JSON. {str(ve)}'
+                error = f'Response is not valid JSON. {str(ve)}'
 
-        if not error_msg and response_json:
+        if not error and response_json:
             try:
                 validate(response_json, schema_json)
             except ValidationError as ve:
-                error_msg = f'Response JSON is not in the desired format. {str(ve)}'
+                error = f'Response JSON is not in the desired format. {str(ve)}'
         
-        if not error_msg and response_json:
+        if not error and response_json:
             try:
                 event_timeline = response_json['video_event_timeline']
                 for event in event_timeline:
@@ -146,12 +146,14 @@ class LlamaVideoSummarizationComponent:
                     event["timestamp_start"] = _get_timestamp_value(event["timestamp_start"])
                     event["timestamp_end"] = _get_timestamp_value(event["timestamp_end"])
             except ValueError as ve:
-                error_msg = f'Response JSON is not in the desired format. {str(ve)}'
+                error = f'Response JSON is not in the desired format. {str(ve)}'
     
-        log.warning(error_msg)
-        log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-        attempts['base'] += 1
-        return response_json, error_msg
+        if error:
+            log.warning(error)
+            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+            attempts['base'] += 1
+
+        return response_json, error
 
 
     def _check_timeline(self, threshold: float, attempts: dict, max_attempts: int,
