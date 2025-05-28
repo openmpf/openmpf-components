@@ -120,36 +120,38 @@ class LlamaVideoSummarizationComponent:
 
     def _check_response(self, attempts: dict, max_attempts: int, schema_json: dict, response: str
                         ) -> Tuple[Union[dict, None], Union[str, None]]:
+        error_msg = None
         response_json = None
 
         if not response:
-            error = 'Empty response.'
-            log.warning(error)
-            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-            attempts['base'] += 1
-            return None, error
+            error_msg = 'Empty response.'
 
-        try:
-            response_json = json.loads(response)
-        except ValueError as ve:
-            error = 'Response is not valid JSON.'
-            log.warning(error)
-            log.warning(str(ve))
-            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-            attempts['base'] += 1
-            return response_json, error
+        if not error_msg:
+            try:
+                response_json = json.loads(response)
+            except ValueError as ve:
+                error_msg = f'Response is not valid JSON. {str(ve)}'
 
-        try:
-            validate(response_json, schema_json)
-        except ValidationError as ve:
-            error = 'Response JSON is not in the desired format.'
-            log.warning(error)
-            log.warning(str(ve))
-            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-            attempts['base'] += 1
-            return response_json, error
+        if not error_msg and response_json:
+            try:
+                validate(response_json, schema_json)
+            except ValidationError as ve:
+                error_msg = f'Response JSON is not in the desired format. {str(ve)}'
         
-        return response_json, None
+        if not error_msg and response_json:
+            try:
+                event_timeline = response_json['video_event_timeline']
+                for event in event_timeline:
+                    # update values for later use
+                    event["timestamp_start"] = _get_timestamp_value(event["timestamp_start"])
+                    event["timestamp_end"] = _get_timestamp_value(event["timestamp_end"])
+            except ValueError as ve:
+                error_msg = f'Response JSON is not in the desired format. {str(ve)}'
+    
+        log.warning(error_msg)
+        log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+        attempts['base'] += 1
+        return response_json, error_msg
 
 
     def _check_timeline(self, threshold: float, attempts: dict, max_attempts: int,
@@ -158,8 +160,8 @@ class LlamaVideoSummarizationComponent:
 
         error = None
         for event in event_timeline:
-            timestamp_start = _get_timestamp_value(event["timestamp_start"])
-            timestamp_end = _get_timestamp_value(event["timestamp_end"])
+            timestamp_start = event["timestamp_start"]
+            timestamp_end = event["timestamp_end"]
 
             if timestamp_start < 0:
                 error = (f'Timeline event start time of {timestamp_start} < 0.')
@@ -185,7 +187,7 @@ class LlamaVideoSummarizationComponent:
                 break
         
         if not error:
-            min_event_start = min(list(map(lambda d: _get_timestamp_value(d.get('timestamp_start')),
+            min_event_start = min(list(map(lambda d: d.get('timestamp_start'),
                                            filter(lambda d: 'timestamp_start' in d, event_timeline))))
 
             if abs(segment_start_time - min_event_start) > threshold:
@@ -193,7 +195,7 @@ class LlamaVideoSummarizationComponent:
                          f'abs({segment_start_time} - {min_event_start}) > {threshold}.')
 
         if not error:
-            max_event_end = max(list(map(lambda d: _get_timestamp_value(d.get('timestamp_end')),
+            max_event_end = max(list(map(lambda d: d.get('timestamp_end'),
                                          filter(lambda d: 'timestamp_end' in d, event_timeline))))
 
             if abs(max_event_end - segment_stop_time) > threshold:
@@ -263,8 +265,8 @@ class LlamaVideoSummarizationComponent:
 
             for event in response_json['video_event_timeline']:
                 # get offset start/stop times in milliseconds
-                event_start_time = int(_get_timestamp_value(event['timestamp_start']) * 1000)
-                event_stop_time = int(_get_timestamp_value(event['timestamp_end']) * 1000)
+                event_start_time = int(event['timestamp_start'] * 1000)
+                event_stop_time = int(event['timestamp_end'] * 1000)
 
                 offset_start_frame = int((event_start_time * video_fps) / 1000)
                 offset_stop_frame = int((event_stop_time * video_fps) / 1000) - 1
