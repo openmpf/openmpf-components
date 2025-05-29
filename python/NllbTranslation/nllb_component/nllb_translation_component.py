@@ -132,7 +132,7 @@ class NllbTranslationComponent:
             else:
                 # split input values & model
                 wtp_lang: Optional[str] = WtpLanguageSettings.convert_to_iso(config.translate_from_language)
-                test_splitter_model = TextSplitterModel("wtp-bert-mini", "cpu", wtp_lang)
+                text_splitter_model = TextSplitterModel(config.nlp_model_name, config.nlp_model_setting, wtp_lang)
 
                 logger.info(f'Text to translate is larger than the {config.nllb_character_limit} limit, splitting into smaller sentences')
                 input_text_sentences = TextSplitter.split(
@@ -140,7 +140,7 @@ class NllbTranslationComponent:
                     config.nllb_character_limit,
                     0,
                     len,
-                    test_splitter_model)
+                    text_splitter_model)
 
                 text_list = list(input_text_sentences)
 
@@ -240,3 +240,11 @@ class JobConfig:
         
         # set translation limit. default to 360 if no value set
         self.nllb_character_limit = mpf_util.get_property(props, 'SENTENCE_SPLITTER_CHAR_COUNT', 360)
+
+        self.nlp_model_name = mpf_util.get_property(props, "SENTENCE_MODEL", "wtp-bert-mini")
+
+        nlp_model_cpu_only = mpf_util.get_property(props, "SENTENCE_MODEL_CPU_ONLY", True)
+        if not nlp_model_cpu_only:
+            self.nlp_model_setting = "cuda"
+        else:
+            self.nlp_model_setting = "cpu"

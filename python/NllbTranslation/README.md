@@ -22,6 +22,22 @@ The below properties can be optionally provided to alter the behavior of the com
 
 - `TARGET_SCRIPT`: Optional property to define a script to be used in translating a language to. This value defaults to latin.
 
+- `SENTENCE_MODEL`: Specifies the desired WtP or spaCy sentence detection model. For CPU
+  and runtime considerations, the author of WtP recommends using `wtp-bert-mini`. More
+  advanced WtP models that use GPU resources (up to ~8 GB) are also available. See list of
+  WtP model names
+  [here](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#available-models). The
+  only available spaCy model (for text with unknown language) is `xx_sent_ud_sm`.
+
+  Review list of languages supported by WtP
+  [here](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#supported-languages).
+  Review models and languages supported by spaCy [here](https://spacy.io/models).
+
+- `SENTENCE_SPLITTER_CHAR_COUNT`: Specifies maximum number of characters to process
+  through sentence/text splitter. Default to 500 characters as we only need to process a
+  subsection of text to determine an appropriate split. (See discussion of potential char
+  lengths
+  [here](https://discourse.mozilla.org/t/proposal-sentences-lenght-limit-from-14-words-to-100-characters).
 
 # Language Identifiers
 The following are the ISO 639-3 and ISO 15924 codes, and their corresponding languages which Nllb can translate.

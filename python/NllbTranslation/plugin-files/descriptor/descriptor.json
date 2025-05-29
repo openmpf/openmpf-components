@@ -44,11 +44,17 @@
           "type": "STRING",
           "defaultValue": "ISO_SCRIPT,DECODED_SCRIPT,SCRIPT"
         },
-{
+        {
           "name": "SENTENCE_SPLITTER_CHAR_COUNT",
           "description": "Integer value specifying maximum number of characters to process through sentence splitter.",
           "type": "INT",
           "defaultValue": "500"
+        },
+        {
+          "name": "SENTENCE_MODEL",
+          "description": "Name of sentence segmentation model. Supported options are spaCy's multilingual `xx_sent_ud_sm` model and the Where's the Point (WtP) `wtp-bert-mini` model.",
+          "type": "STRING",
+          "defaultValue": "wtp-bert-mini"
         },
         {
           "name": "TARGET_LANGUAGE",

@@ -49,12 +49,14 @@ RUN pip install --no-cache-dir \
     'transformers'
 
 # download nllb model
+ENV MODEL_REVISION=f8d333a098d19b4fd9a8b18f94170487ad3f821d
 RUN --mount=type=tmpfs,target=/tmp/models \
     mkdir -p "/models/facebook"; \
     python -c \
-    "from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; \
-    tokenizer = AutoTokenizer.from_pretrained('facebook/nllb-200-distilled-600M'); \
-    model = AutoModelForSeq2SeqLM.from_pretrained('facebook/nllb-200-distilled-600M'); \
+    "import os; from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; \
+    modelrev = os.environ['MODEL_REVISION']; \
+    tokenizer = AutoTokenizer.from_pretrained('facebook/nllb-200-distilled-600M', revision=modelrev); \
+    model = AutoModelForSeq2SeqLM.from_pretrained('facebook/nllb-200-distilled-600M', revision=modelrev); \
     tokenizer.save_pretrained('/models/facebook/nllb-200-distilled-600M'); \
     model.save_pretrained('/models/facebook/nllb-200-distilled-600M')"
 

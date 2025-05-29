@@ -240,13 +240,22 @@ class TestNllbTranslation(unittest.TestCase):
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
         test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '25'
 
-        #tranlation to split into multiple sentences
+        # translation to split into multiple sentences
+        # with default sentence splitter (wtp-bert-mini)
         long_translation_text = (
             'Das ist Satz eins. Das ist Satz zwei. Und das ist Satz drei.'
         )
         expected_translation = "That's sentence one. That's sentence two. And this is sentence three."
 
         ff_track = mpf.GenericTrack(-1, dict(TEXT=long_translation_text))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(expected_translation, result_props["TEXT TRANSLATION"])
+
+        # test sentence splitter (xx_sent_ud_sm)
+        test_generic_job_props['SENTENCE_MODEL'] = 'xx_sent_ud_sm'
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
