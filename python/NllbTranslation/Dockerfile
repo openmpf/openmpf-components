@@ -29,16 +29,18 @@
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 
-ARG RUN_TESTS=false
+# To enable GPU resources, update
+# below line to BUILD_TYPE=gpu
+ARG BUILD_TYPE=cpu
 
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
-RUN <<eot
-    cd /home/mpf/openmpf-projects/openmpf-python-component-sdk/detection/nlp_text_splitter
-    ./install.sh
-eot
+WORKDIR /home/mpf/openmpf-projects/openmpf-python-component-sdk/detection/nlp_text_splitter
+RUN if [ "${BUILD_TYPE,,}" == "gpu" ]; \
+        then ./install.sh --gpu; \
+    else ./install.sh; fi;
 
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS cpu_component
 
 COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 
@@ -60,6 +62,7 @@ RUN --mount=type=tmpfs,target=/tmp/models \
     tokenizer.save_pretrained('/models/facebook/nllb-200-distilled-600M'); \
     model.save_pretrained('/models/facebook/nllb-200-distilled-600M')"
 
+ARG RUN_TESTS=false
 RUN --mount=target=.,readwrite \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_nllb_translation.py; fi
@@ -71,3 +74,10 @@ LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
+
+FROM cpu_component AS gpu_component
+
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+FROM ${BUILD_TYPE}_component
