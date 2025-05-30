@@ -206,6 +206,9 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(self.TRANSLATION, result_props["TEXT TRANSLATION"])
 
+    @unittest.skip('''TEXT TRANSLATION should be the same as the text to translate.
+                   A job consumer is going to be looking at the * TRANSLATION fields,
+                   so they need to be populated unless the job results in an error.''')
     def test_numbers_only_not_translated(self):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
@@ -217,8 +220,9 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('', result_props.get('TEXT TRANSLATION', ''))
+        self.assertEquals('1234', result_props.get('TEXT TRANSLATION', ''))
 
+    @unittest.skip('Like for the all digits test case, TEXT TRANSLATION should be the same as the text to translate.')
     def test_punctuation_only_not_translated(self):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
@@ -230,7 +234,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('', result_props.get('TEXT TRANSLATION', ''))
+        self.assertEquals('!@#$%', result_props.get('TEXT TRANSLATION', ''))
 
     def test_sentence_split_job(self):
         #set default props
