@@ -38,7 +38,7 @@ from .nllb_utils import NllbLanguageMapper
 from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
 from wtpsplit import WtP
 
-logger = logging.getLogger('Nllb')
+logger = logging.getLogger('NllbTranslationComponent')
 
 class NllbTranslationComponent:
 
