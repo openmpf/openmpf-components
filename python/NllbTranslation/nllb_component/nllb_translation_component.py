@@ -40,11 +40,13 @@ from wtpsplit import WtP
 
 logger = logging.getLogger('NllbTranslationComponent')
 
+DEVICE = "cpu"
+
 class NllbTranslationComponent:
 
     def __init__(self):
         self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
-                                                            token=False, local_files_only=True)
+                                                            token=False, local_files_only=True).to(DEVICE)
     
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
@@ -147,7 +149,7 @@ class NllbTranslationComponent:
             translation = ""
 
             for sentence in text_list:
-                inputs = self._tokenizer(sentence, return_tensors="pt")
+                inputs = self._tokenizer(sentence, return_tensors="pt").to(DEVICE)
                 translated_tokens = self._model.generate(
                     **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
 
