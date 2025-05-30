@@ -46,10 +46,6 @@ COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 
 COPY --from=build /opt/wtp /opt/wtp
 
-RUN pip install --no-cache-dir \
-    'torch' \
-    'transformers'
-
 # download nllb model
 ENV MODEL_REVISION=f8d333a098d19b4fd9a8b18f94170487ad3f821d
 RUN --mount=type=tmpfs,target=/tmp/models \
