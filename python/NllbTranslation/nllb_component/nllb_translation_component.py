@@ -248,9 +248,18 @@ class JobConfig:
 
         self.nlp_model_name = mpf_util.get_property(props, "SENTENCE_MODEL", "wtp-bert-mini")
 
+        cuda_device_id = int(mpf_util.get_property(props, "CUDA_DEVICE_ID", '-1'))
+        if cuda_device_id >= 0:
+            DEVICE = "cuda:" + str(cuda_device_id)
+        else:
+            DEVICE = "cpu"
+
         nlp_model_cpu_only = mpf_util.get_property(props, "SENTENCE_MODEL_CPU_ONLY", True)
         if not nlp_model_cpu_only:
-            self.nlp_model_setting = "cuda"
+            if cuda_device_id >= 0:
+                self.nlp_model_setting = "cuda:" + str(cuda_device_id)
+            else:
+                self.nlp_model_setting = "cuda"
         else:
             self.nlp_model_setting = "cpu"
 
