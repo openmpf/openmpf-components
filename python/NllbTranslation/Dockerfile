@@ -35,9 +35,10 @@ ARG BUILD_TYPE=cpu
 
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
+ARG BUILD_TYPE
 WORKDIR /home/mpf/openmpf-projects/openmpf-python-component-sdk/detection/nlp_text_splitter
-RUN if [ "${BUILD_TYPE,,}" == "gpu" ]; \
-        then ./install.sh --gpu; \
+RUN if [[ "${BUILD_TYPE}" == "gpu" ]]; \
+    then ./install.sh --gpu; \
     else ./install.sh; fi;
 
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS cpu_component
