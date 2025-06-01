@@ -121,7 +121,7 @@ class NllbTranslationComponent:
         for prop_to_translate in config.props_to_translate:
             input_text = ff_track.detection_properties.get(prop_to_translate, None)
             # remove number and punctuation only inputs to prevent bad translations (https://github.com/facebookresearch/fairseq/issues/4854)
-            if input_text and not input_text.isdigit() and not (re.match(("^[" + string.punctuation + "]*$").replace("/","\/"), input_text)):
+            if input_text and not input_text.isdigit() and not (re.match(("^[" + string.punctuation + "]*$").replace("/","/"), input_text)):
                 text_to_translate[prop_to_translate] = input_text
 
         logger.info(f'Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
