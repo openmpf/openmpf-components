@@ -134,6 +134,9 @@ class NllbTranslationComponent:
             else:
                 # split input values & model
                 wtp_lang: Optional[str] = WtpLanguageSettings.convert_to_iso(config.translate_from_language)
+                if wtp_lang is None:
+                    wtp_lang = WtpLanguageSettings.convert_to_iso(config.nlp_model_default_language)
+
                 text_splitter_model = TextSplitterModel(config.nlp_model_name, config.nlp_model_setting, wtp_lang)
 
                 logger.info(f'Text to translate is larger than the {config.nllb_character_limit} limit, splitting into smaller sentences')
@@ -250,3 +253,10 @@ class JobConfig:
             self.nlp_model_setting = "cuda"
         else:
             self.nlp_model_setting = "cpu"
+
+        # SENTENCE_SPLITTER_INCLUDE_INPUT_LANG and SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE
+        sentence_splitter_include_input_lang = mpf_util.get_property(props, "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG", True)
+        if sentence_splitter_include_input_lang:
+            self.nlp_model_default_language = mpf_util.get_property(props, "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE", 'en')
+        else:
+            self.nlp_model_default_language = None

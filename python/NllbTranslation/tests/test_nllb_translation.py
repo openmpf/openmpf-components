@@ -266,5 +266,13 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(expected_translation, result_props["TEXT TRANSLATION"])
 
+        test_generic_job_props['SOURCE_LANGUAGE'] = None
+        test_generic_job_props['SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE'] = 'en'
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(expected_translation, result_props["TEXT TRANSLATION"])
+
 if __name__ == '__main__':
     unittest.main()

@@ -63,6 +63,18 @@
           "defaultValue": "TRUE"
         },
         {
+          "name": "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE",
+          "description": "More advanced WTP models will require a target language. This property sets the default language to use for sentence splitting, unless `SOURCE_LANGUAGE` or `DEFAULT_SOURCE_LANGUAGE` are set to a different, WtP-supported language option.",
+          "type": "STRING",
+          "defaultValue": "en"
+        },
+        {
+          "name": "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG",
+          "description": "Specifies whether to pass input language to sentence splitter algorithm. Currently, only WtP supports model adjustments by input language.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
           "name": "TARGET_LANGUAGE",
           "description": "The ISO-639-3 language code for language and script that the input test should be translated to.",
           "type": "STRING",
