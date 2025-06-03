@@ -38,10 +38,13 @@ from unittest.mock import MagicMock, Mock
 import mpf_component_api as mpf
 
 logging.basicConfig(level=logging.DEBUG)
-USE_MOCKS = True
+USE_MOCKS = False
 
 # Replace with your own API key
-GEMINI_API_KEY = 'your api key here'
+GEMINI_API_KEY = ''
+
+# Replace with your own desired model name
+MODEL_NAME = "gemma-3-27-it"
 
 class TestGemini(unittest.TestCase):
     def run_patched_job(self, component, job, side_effect_function):
@@ -64,7 +67,8 @@ class TestGemini(unittest.TestCase):
             job_name='test-image',
             data_uri=self._get_test_file('person.jpg'),
             job_properties=dict(
-                GEMINI_API_KEY=GEMINI_API_KEY
+                GEMINI_API_KEY=GEMINI_API_KEY,
+                MODEL_NAME=MODEL_NAME
             ),
             media_properties={},
             feed_forward_location=None

@@ -52,6 +52,8 @@ COPY gemini-process-image.py /gemini-subprocess
 RUN pip3 install --upgrade pip
 
 RUN pip3 install opencv-python
+
+RUN pip3 install tenacity
         
 ARG RUN_TESTS=false
 

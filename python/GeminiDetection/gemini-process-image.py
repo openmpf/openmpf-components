@@ -32,7 +32,7 @@ import sys
 def main():
     parser = argparse.ArgumentParser(description='Sends image and prompt to Gemini Client for processing.')
 
-    parser.add_argument("--model", "-m", type=str, default="gemini-1.5-pro", help="The name of the Gemini model to use.")
+    parser.add_argument("--model", "-m", type=str, default="gemma-3-27b-it", help="The name of the Gemini model to use.")
     parser.add_argument("--filepath", "-f", type=str, required=True, help="Path to the media file to process with Gemini.")
     parser.add_argument("--prompt", "-p", type=str, required=True, help="The prompt you want to use with the image.")
     parser.add_argument("--api_key", "-a", type=str, required=True, help="Your API key for Gemini.")
@@ -44,7 +44,11 @@ def main():
         print(content.text)
         sys.exit(0)
     except Exception as e:
-        print(e, file=sys.stderr)
+        err_str = str(e)
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+            print("Caught a ResourceExhausted error (429 Too Many Requests", file=sys.stderr)
+        else:
+            print(err_str, file=sys.stderr)
         sys.exit(1)
 
 

@@ -34,6 +34,8 @@ import re
 import logging
 from typing import Mapping, Iterable
 
+from tenacity import retry, wait_random_exponential, stop_after_delay, retry_if_exception
+
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
@@ -46,7 +48,7 @@ class GeminiComponent:
     detection_type = 'CLASS'
 
     def __init__(self):
-        self.model_name = 'gemini-1.5-pro'
+        self.model_name = ''
         self.gemini_api_key = ''
         self.class_prompts = dict()
         self.json_class_prompts = dict()
@@ -61,6 +63,7 @@ class GeminiComponent:
         self.frame_count = 0
 
         config = JobConfig(image_job.job_properties)
+        self.model_name = config.model_name
         image_reader = mpf_util.ImageReader(image_job)
 
         if image_job.feed_forward_location is None:
@@ -85,6 +88,7 @@ class GeminiComponent:
         self.frame_count = 0
 
         config = JobConfig(video_job.job_properties, video_job.media_properties)
+        self.model_name = config.model_name
         video_capture = mpf_util.VideoCapture(video_job)
 
         if video_job.feed_forward_track is None:
@@ -138,7 +142,7 @@ class GeminiComponent:
             self.video_process_timer.start()
 
             for tag, prompt in self.frame_prompts.items():
-                response = self._get_gemini_response(job.data_uri, prompt)
+                response = self._get_gemini_response(self.model_name, job.data_uri, prompt)
                 detection_properties[tag] = response
             # TODO: detection_properties['CLASSIFICATION'] = classification.upper()
             detection_properties['ANNOTATED BY GEMINI'] = True
@@ -192,7 +196,7 @@ class GeminiComponent:
                     json_attempts, json_failed = 0, True
                     while (json_attempts < self.json_limit) and (json_failed):
                         json_attempts += 1
-                        response = self._get_gemini_response(job.data_uri, prompt)
+                        response = self._get_gemini_response(self.model_name, job.data_uri, prompt)
                         try:
                             response = response.split('```json\n')[1].split('```')[0]
                             response_json = json.loads(response)
@@ -359,14 +363,28 @@ class GeminiComponent:
                 mpf.DetectionError.COULD_NOT_READ_DATAFILE
             )
 
-    def _get_gemini_response(self, data_uri, prompt):
-        
+    def _is_rate_limit_error(self, stderr):
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode(errors="ignore")
+        if "Caught a ResourceExhausted error (429 Too Many Requests" in stderr:
+            return "Caught a ResourceExhausted error (429 Too Many Requests"
+        return None
+
+    @retry(
+        wait=wait_random_exponential(multiplier=4, max=32),
+        stop=stop_after_delay(60),
+        retry=retry_if_exception(lambda e: isinstance(e, mpf.DetectionException) and getattr(e, 'rate_limit', False))
+    )
+
+    def _get_gemini_response(self, model_name, data_uri, prompt):
+    
         process = None
         try:
             # Call subprocess
             process = subprocess.Popen([
                 "/gemini-subprocess/venv/bin/python3",
                 "/gemini-subprocess/gemini-process-image.py",
+                '-m', model_name,
                 "-f", data_uri,
                 "-p", prompt,
                 "-a", self.gemini_api_key],
@@ -381,13 +399,21 @@ class GeminiComponent:
         if process.returncode == 0:
             response = stdout.decode()
             logger.info(response)
+            return response
         else:
+            stderr_decoded = stderr.decode()
+            if self._is_rate_limit_error(stderr):
+                logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
+                ex = mpf.DetectionException(
+                    f"Subprocess failed due to rate limiting: {stderr_decoded}",
+                    mpf.DetectionError.DETECTION_FAILED
+                )
+                ex.rate_limit = True
+                raise ex
             raise mpf.DetectionException(
-                f"Subprocess failed: {stderr}",
-                mpf.DetectionError.DETECTION_FAILED)
-        
-        return response
-
+                f"Subprocess failed: {stderr_decoded}",
+                mpf.DetectionError.DETECTION_FAILED
+            )
     def _get_frames_to_process(self, frame_locations: list, skip: int) -> list:
         if not frame_locations:
             return []
@@ -446,6 +472,7 @@ class JobConfig:
         self.gemini_api_key = self._get_prop(job_properties, "GEMINI_API_KEY", "")
         generate_frame_rate_cap = self._get_prop(job_properties, "GENERATE_FRAME_RATE_CAP", 1.0)
         self.classification = self._get_prop(job_properties, "CLASSIFICATION", "")
+        self.model_name = self._get_prop(job_properties, "MODEL_NAME", "gemma-3-27b-it")
 
         if (media_properties != None) and (generate_frame_rate_cap > 0):
             # Check if fps exists. If not throw mpf.DetectionError.MISSING_PROPERTY exception
