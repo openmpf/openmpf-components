@@ -38,7 +38,6 @@ import mpf_component_api as mpf
 logging.basicConfig(level=logging.DEBUG)
 
 class TestClip(unittest.TestCase):
-
     def test_image_file(self):
         job = mpf.ImageJob(
             job_name='test-image',

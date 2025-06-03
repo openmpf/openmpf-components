@@ -23,7 +23,7 @@
             "properties": [
                 {
                     "name": "MODEL_NAME",
-                    "description": "Specifies which CLIP model to load for inferencing. The available models are 'ViT-L/14' and 'ViT-B/32'.",
+                    "description": "Specifies which CLIP model to load for inferencing. The available models are 'ViT-L/14', 'ViT-B/32', and 'CoOp'.",
                     "type": "STRING",
                     "defaultValue": "ViT-L/14"
                 },
@@ -40,20 +40,20 @@
                     "defaultValue": "openai_80"
                 }, 
                 {
+                    "name": "TEMPLATE_PATH",
+                    "description": "Optionally specifies a path to a custom text file containing templates for use in the CLIP model. Include a single {} where each classification is to be inserted. If MODEL_NAME=='CoOp', then '' is the only supported value.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
                     "name": "CLASSIFICATION_LIST",
-                    "description": "Specifies the classification list that will be tokenized for the text encoder (supports 'imagenet' and 'coco'). By default, the COCO classifications will be used.",
+                    "description": "Specifies the classification list that will be tokenized for the text encoder (supports 'imagenet' and 'coco'). By default, the COCO classifications will be used. If MODEL_NAME=='CoOp', then 'imagenet' is the only supported value.",
                     "type": "STRING",
                     "defaultValue": "coco"
                 },
                 {
                     "name": "CLASSIFICATION_PATH",
-                    "description": "Optionally specifies a path to a custom csv file containing two names for each classification: one is the full name to display and the other to enter into the CLIP text encoding.",
-                    "type": "STRING",
-                    "defaultValue": ""
-                },
-                {
-                    "name": "TEMPLATE_PATH",
-                    "description": "Optionally specifies a path to a custom text file containing templates for use in the CLIP model. Include a single {} where each classification is to be inserted.",
+                    "description": "Optionally specifies a path to a custom csv file containing two names for each classification: one is the full name to display and the other to enter into the CLIP text encoding. If MODEL_NAME=='CoOp', then '' is the only supported value.",
                     "type": "STRING",
                     "defaultValue": ""
                 },
@@ -65,13 +65,7 @@
                 },
                 {
                     "name": "ENABLE_TRITON",
-                    "description": "If true, inferencing will be performed via a configured Triton inference server.",
-                    "type": "BOOLEAN",
-                    "defaultValue": "false"
-                },
-                {
-                    "name": "INCLUDE_FEATURES",
-                    "description": "If true, the detection will have a detection property, FEATURE, which contains the base64-encoded version of the feature vector.",
+                    "description": "If true, inferencing will be performed via a configured Triton inference server. If MODEL_NAME=='CoOp', then 'false' is the only supported value.",
                     "type": "BOOLEAN",
                     "defaultValue": "false"
                 },
@@ -82,10 +76,22 @@
                     "defaultValue": "clip-detection-server:8001"
                 },
                 {
+                    "name": "INCLUDE_FEATURES",
+                    "description": "If true, the detection will have a detection property, FEATURE, which contains the base64-encoded version of the feature vector.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
                     "name": "DETECTION_FRAME_BATCH_SIZE",
                     "description": "Number of frames to batch inference when processing video. GPU VRAM dependant. If ENABLE_CROPPING is set to true, then the value will be ignored and set to 1.",
                     "type": "INT",
                     "defaultValue": "64"
+                },
+                {
+                    "name": "CUDA_DEVICE_ID",
+                    "description": "ID of CUDA device (typically 0) that will be used to run the models. When less than 0 CUDA will be disabled.",
+                    "type": "INT",
+                    "propertiesKey": "detection.cuda.device.id"
                 }
             ] 
         }

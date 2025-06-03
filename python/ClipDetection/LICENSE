@@ -23,10 +23,19 @@ this software is being used.
 
 This software makes use of a data model derived from third party software:
 
---------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 The TensorFlow implementation of the Contrastive Language-Image 
 Pre-Training (CLIP) model used by this component was developed by OpenAI:
 http://www.github.com/openai/CLIP
 
 The OpenAI CLIP model is licensed under the MIT License.
+
+------------------------------------------------------------------------------
+
+The Python implementations of Context Optimization (CoOp) and Dassl.pytorch
+used by this component were developed by Kaiyang Zhou and others:
+https://github.com/KaiyangZhou/CoOp
+https://github.com/KaiyangZhou/Dassl.pytorch
+
+CoOp and Dassl.pytorch are licensed under the MIT License.

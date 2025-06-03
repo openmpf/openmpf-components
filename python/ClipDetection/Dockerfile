@@ -29,11 +29,12 @@
 ARG MODELS_REGISTRY=openmpf/
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:8.0.0 as models
+FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:9.0.0-feature as models
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 COPY --from=models /models/ViT-B-32.pt /models/ViT-B-32.pt
 COPY --from=models /models/ViT-L-14.pt /models/ViT-L-14.pt
+COPY --from=models /models/model.pth.tar-50 /models/prompt_learner/model.pth.tar-50
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
@@ -43,20 +44,32 @@ RUN --mount=type=tmpfs,target=/var/cache/apt \
 
 RUN pip3 install --upgrade pip
 
-RUN pip3 install ftfy regex tqdm 'setuptools<70'
+RUN pip3 install ftfy regex tqdm
+
+RUN pip3 install torch==1.7.1 torchvision==0.8.2 --extra-index-url https://download.pytorch.org/whl/cu102
 
 RUN --mount=type=tmpfs,target=/tmp \
         mkdir /tmp/CLIP; \
         wget -O- 'https://github.com/openai/CLIP/tarball/master' \
             | tar --extract --gzip --directory /tmp/CLIP; \
         cd /tmp/CLIP/*; \
-        pip3 install . 'torchvision==0.14.1'
+        pip3 install .
 
+COPY ./Dassl.pytorch/requirements.txt /tmp/requirements.txt
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+
+RUN --mount=target=.,readwrite \
+    cd ./Dassl.pytorch && pip3 install .
+        
+COPY ./CoOp /opt/coop_src/CoOp
+        
 ARG RUN_TESTS=false
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_clip.py; fi
+
+ENV PYTHONPATH="$PYTHONPATH:/opt/coop_src"
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF CLIP Detection" \

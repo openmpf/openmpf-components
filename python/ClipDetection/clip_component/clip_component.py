@@ -30,6 +30,7 @@ import csv
 from pkg_resources import resource_filename
 from itertools import islice
 from typing import Iterable, Mapping
+import argparse
 
 from PIL import Image
 import cv2
@@ -39,6 +40,7 @@ import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 import clip
+from CoOp.train import get_trainer
 
 import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException, triton_to_np_dtype
@@ -47,7 +49,6 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 logger = logging.getLogger('ClipComponent')
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     detection_type = 'CLASS'
@@ -66,7 +67,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         return prop
 
     def _parse_properties(self, job_properties):
-        model_name = self._get_prop(job_properties, "MODEL_NAME", "ViT-L/14", ["ViT-L/14", "ViT-B/32"])
+        model_name = self._get_prop(job_properties, "MODEL_NAME", "ViT-L/14", ["ViT-L/14", "ViT-B/32", "CoOp"])
         batch_size = self._get_prop(job_properties, "DETECTION_FRAME_BATCH_SIZE", 64)
         classification_list = self._get_prop(job_properties, "CLASSIFICATION_LIST", 'coco', ['coco', 'imagenet'])
         classification_path = os.path.expandvars(self._get_prop(job_properties, "CLASSIFICATION_PATH", ''))
@@ -77,6 +78,7 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         template_type = self._get_prop(job_properties, "TEMPLATE_TYPE", 'openai_80', ['openai_1', 'openai_7', 'openai_80'])
         template_path = os.path.expandvars(self._get_prop(job_properties, "TEMPLATE_PATH", ''))
         triton_server = self._get_prop(job_properties, "TRITON_SERVER", 'clip-detection-server:8001')
+        cuda_device_id = self._get_prop(job_properties, "CUDA_DEVICE_ID", -1)
 
         return dict(
             model_name = model_name,
@@ -89,19 +91,30 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             num_classifications = num_classifications,
             template_type = template_type,
             template_path = template_path,
-            triton_server = triton_server
+            triton_server = triton_server,
+            cuda_device_id = cuda_device_id
         )
 
     def get_detections_from_image_reader(self, image_job, image_reader):
         logger.info("Received image job: %s", image_job)
 
         kwargs = self._parse_properties(image_job.job_properties)
+        if kwargs['cuda_device_id'] >= torch.cuda.device_count():
+            raise mpf.DetectionException(
+                f"Invalid CUDA device ID.",
+                mpf.DetectionError.INVALID_PROPERTY
+            )
+        elif kwargs['cuda_device_id'] >= 0:
+            device = torch.device(f"cuda:{kwargs['cuda_device_id']}")
+        else:
+            device = torch.device('cpu')
+
         image = image_reader.get_image()
 
         num_detections = 0
         try:
-            wrapper = self._get_model_wrapper(kwargs['model_name'])
-            detections = wrapper.get_detections((image,), **kwargs)
+            wrapper = self._get_model_wrapper(model_name=kwargs['model_name'], kwargs=kwargs, device=device)
+            detections = wrapper.get_detections((image,), device, **kwargs)
             for detection in detections:
                 yield detection
                 num_detections += 1
@@ -134,17 +147,26 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
                                           video_capture: mpf_util.VideoCapture) -> Iterable[mpf.VideoTrack]:
         logger.info("Received video job: %s", video_job)
         kwargs = self._parse_properties(video_job.job_properties)
+        if kwargs['cuda_device_id'] >= torch.cuda.device_count():
+            raise mpf.DetectionException(
+                f"Invalid CUDA device ID.",
+                mpf.DetectionError.INVALID_PROPERTY
+            )
+        elif kwargs['cuda_device_id'] >= 0:
+            device = torch.device(f"cuda:{kwargs['cuda_device_id']}")
+        else:
+            device = torch.device('cpu')
         
         # If processing a video where each frame is cropped into 144 images, the batch size is set to one so that the crops aren't split between batches
         batch_size = 1 if kwargs['enable_cropping'] else kwargs['batch_size']
         
         batch_gen = self._batches_from_video_capture(video_capture, batch_size)
         detections = []
-        wrapper = self._get_model_wrapper(kwargs['model_name'])
+        wrapper = self._get_model_wrapper(model_name=kwargs['model_name'], kwargs=kwargs, device=device)
 
         for n, batch in batch_gen:
             try:
-                detections += list(islice(wrapper.get_detections(batch, **kwargs), n))
+                detections += list(islice(wrapper.get_detections(batch, device, **kwargs), n))
             except Exception as e:
                 logger.exception(f"Job failed due to: {e}")
                 raise
@@ -153,14 +175,157 @@ class ClipComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         logger.info(f"Job complete. Found {len(tracks)} tracks.")
         return tracks
 
-    def _get_model_wrapper(self, model_name):
+    def _get_model_wrapper(self, model_name, kwargs, device):   
         if model_name not in self._model_wrappers:
-            self._model_wrappers[model_name] = ClipWrapper(model_name)
+            if model_name == "CoOp":
+                self._model_wrappers['CoOp'] = CoOpWrapper(**kwargs)
+            else:
+                self._model_wrappers[model_name] = ClipWrapper(device, model_name)
 
         return self._model_wrappers[model_name]
 
+class CoOpWrapper(object):
+    def __init__(self, **kwargs):
+        if (kwargs['classification_list'] == 'coco') or (kwargs['template_path'] != '') or (kwargs['classification_path'] != '') or (kwargs['enable_triton'] == True):
+            raise mpf.DetectionException(
+                f"Properties incompatible with CoOp. Make sure that CLASSIFICATION_LIST='imagenet', TEMPLATE_PATH='', CLASSIFICATION_PATH='', and ENABLE_TRITON=False.",
+                mpf.DetectionError.INVALID_PROPERTY
+            )
+        self._manual_args = self._get_coop_args()
+        if kwargs['cuda_device_id'] >= 0:
+            self._manual_args.insert(0, '--cuda')
+            
+        self.args = self._create_arg_parser(self._manual_args)
+        self._class_mapping = self._get_mapping_from_classifications(os.path.realpath(resource_filename(__name__, f'data/imagenet_classification_list.csv')))
+        self.classnames = self._class_mapping.keys()
+        # Create trainer object
+        print("Creating trainer...")
+        self.trainer = get_trainer(self.args, self.classnames, kwargs['cuda_device_id'])
+        print("Trainer created.")
+        self.trainer.load_model(self.args.model_dir, epoch = self.args.load_epoch)
+
+    def get_detections(self, images, device, **kwargs):
+        # Preprocess image
+        self._preprocessor = ImagePreprocessor(enable_cropping=False, image_size=224)
+        images = [Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)) for image in images]
+        image_sizes = [image.size for image in images]
+        torch_imgs = torch.stack([self._preprocessor.preprocess(image).squeeze(0) for image in images]).to(device)
+
+        # Pass image through model
+        output, image_features = self.trainer.test(images=torch_imgs)
+
+        softmax = torch.nn.Softmax(dim=1)(output)
+        values, indices = softmax.topk(kwargs['num_classifications'])
+
+        for detection_values, detection_indices, image_size in zip(values, indices, image_sizes):
+            classification_list = []
+            classification_confidence_list = []
+            count = 0
+            for value, index in zip(detection_values, detection_indices):
+                if count >= kwargs['num_classifications']:
+                    break
+                class_name = self._class_mapping[list(self._class_mapping.keys())[int(index)]]
+                if class_name not in classification_list:
+                    classification_list.append(class_name)
+                    classification_confidence_list.append(str(value.item()))
+                    count += 1
+            
+            classification_list = '; '.join(classification_list)
+            classification_confidence_list = '; '.join(classification_confidence_list)
+            
+            detection_properties = {
+                "CLASSIFICATION": classification_list.split('; ')[0],
+                "CLASSIFICATION CONFIDENCE LIST": classification_confidence_list,
+                "CLASSIFICATION LIST": classification_list
+            }
+            
+            if kwargs['include_features']:
+                detection_properties['FEATURE'] = base64.b64encode(image_features.cpu().numpy()).decode()
+
+            yield mpf.ImageLocation(
+                x_left_upper = 0,
+                y_left_upper = 0,
+                width = image_size[0],
+                height = image_size[1],
+                confidence = float(classification_confidence_list.split('; ')[0]),
+                detection_properties = detection_properties
+            )
+    
+    def _create_arg_parser(self, manual_args):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--root", type=str, default="", help="path to dataset")
+        parser.add_argument("--output-dir", type=str, default="", help="output directory")
+        parser.add_argument(
+            "--resume",
+            type=str,
+            default="",
+            help="checkpoint directory (from which the training resumes)",
+        )
+        parser.add_argument(
+            "--seed", type=int, default=-1, help="only positive value enables a fixed seed"
+        )
+        parser.add_argument(
+            "--source-domains", type=str, nargs="+", help="source domains for DA/DG"
+        )
+        parser.add_argument(
+            "--target-domains", type=str, nargs="+", help="target domains for DA/DG"
+        )
+        parser.add_argument(
+            "--transforms", type=str, nargs="+", help="data augmentation methods"
+        )
+        parser.add_argument(
+            "--config-file", type=str, default="", help="path to config file"
+        )
+        parser.add_argument(
+            "--dataset-config-file",
+            type=str,
+            default="",
+            help="path to config file for dataset setup",
+        )
+        parser.add_argument("--trainer", type=str, default="", help="name of trainer")
+        parser.add_argument("--backbone", type=str, default="", help="name of CNN backbone")
+        parser.add_argument("--head", type=str, default="", help="name of head")
+        parser.add_argument("--eval-only", action="store_true", help="evaluation only")
+        parser.add_argument(
+            "--model-dir",
+            type=str,
+            default="",
+            help="load model from this directory for eval-only mode",
+        )
+        parser.add_argument(
+            "--load-epoch", type=int, help="load model weights at this epoch for evaluation"
+        )
+        parser.add_argument(
+            "--no-train", action="store_true", help="do not call trainer.train()"
+        )
+        parser.add_argument(
+            "opts",
+            default=None,
+            nargs=argparse.REMAINDER,
+            help="modify config options using the command-line",
+        )
+        parser.add_argument("--cuda", action="store_true", help="enable use of CUDA.")
+        args = parser.parse_args(manual_args)
+        return args
+    
+    @staticmethod
+    def _get_mapping_from_classifications(classification_path: str) -> Mapping[str, str]:
+        with open(classification_path) as csvfile:
+            mapping = {}
+            csvreader = csv.reader(csvfile)
+            for row in csvreader:
+                mapping[row[0].strip()] = row[1].strip()
+                
+        return mapping
+    
+    @staticmethod
+    def _get_coop_args():
+        with open(os.path.realpath(resource_filename(__name__, 'data/coop_args.txt'))) as f:
+            args = f.read().strip().split()
+        return args
+
 class ClipWrapper(object):
-    def __init__(self, model_name='ViT-L/14'):
+    def __init__(self, device, model_name='ViT-L/14'):
         logger.info("Loading model...")
         model, _ = clip.load(model_name, device=device, download_root='/models')
         logger.info("Model loaded.")
@@ -179,15 +344,17 @@ class ClipWrapper(object):
         self._text_features = None
 
         self._inferencing_server = None
+        self._device = device
 
-    def get_detections(self, images, **kwargs) -> Iterable[mpf.ImageLocation]:
+    def get_detections(self, images, device, **kwargs) -> Iterable[mpf.ImageLocation]:
+        self._device = device
         templates_changed = self._check_template_list(kwargs['template_path'], kwargs['template_type'])
         self._check_class_list(kwargs['classification_path'], kwargs['classification_list'], templates_changed)
 
         self._preprocessor = ImagePreprocessor(kwargs['enable_cropping'], self._input_resolution)
         images = [Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)) for image in images]
         image_sizes = [image.size for image in images]
-        torch_imgs = torch.stack([self._preprocessor.preprocess(image).squeeze(0) for image in images]).to(device)
+        torch_imgs = torch.stack([self._preprocessor.preprocess(image).squeeze(0) for image in images]).to(self._device)
         if kwargs['enable_cropping']:
             torch_imgs = torch_imgs.squeeze(0)
 
@@ -198,7 +365,7 @@ class ClipWrapper(object):
                 self._inferencing_server = CLIPInferencingServer(kwargs['triton_server'], kwargs['model_name'])
 
             results = self._inferencing_server.get_responses(torch_imgs)
-            image_features = torch.Tensor(np.copy(results)).squeeze(0).to(device=device)
+            image_features = torch.Tensor(np.copy(results)).squeeze(0).to(self._device)
         else:
             with torch.no_grad():
                 image_features = self._model.encode_image(torch_imgs).float()
@@ -206,7 +373,7 @@ class ClipWrapper(object):
         with torch.no_grad():
             image_features /= image_features.norm(dim=-1, keepdim=True)
 
-        similarity = (100.0 * image_features @ self._text_features).softmax(dim=-1).to(device)
+        similarity = (100.0 * image_features @ self._text_features).softmax(dim=-1).to(self._device)
 
         if kwargs['enable_cropping']:
             similarity = torch.mean(similarity, 0).unsqueeze(0)
@@ -300,7 +467,7 @@ class ClipWrapper(object):
 
             try:
                 logger.info("Updating classifications...")
-                self._class_mapping = self._get_mapping_from_classifications(classification_path)
+                self._class_mapping = self._get_mapping_from_classifications(self._classification_path)
                 logger.info("Classifications updated.")
             except Exception:
                 raise mpf.DetectionException(
@@ -313,13 +480,13 @@ class ClipWrapper(object):
                 text_features = []
                 for label in self._class_mapping.keys():
                     text_phrases = [template.format(label) for template in self._templates]
-                    text_tokens = clip.tokenize(text_phrases).to(device)
+                    text_tokens = clip.tokenize(text_phrases).to(self._device)
                     text_embeddings = self._model.encode_text(text_tokens)
                     text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
                     text_embedding = text_embeddings.mean(dim=0)
                     text_embedding /= text_embedding.norm()
                     text_features.append(text_embedding)
-                self._text_features = torch.stack(text_features, dim=1).float().to(device)
+                self._text_features = torch.stack(text_features, dim=1).float().to(self._device)
                 logger.info("Text embeddings created.")
     
     @staticmethod
