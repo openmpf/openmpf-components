@@ -36,11 +36,12 @@ from typing import Optional, Sequence, Mapping
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from .nllb_utils import NllbLanguageMapper
 from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
-from wtpsplit import WtP
 
 logger = logging.getLogger('NllbTranslationComponent')
 
 DEVICE = "cpu"
+# compile this pattern once, generated with ("^[" + string.punctuation + string.digits + string.whitespace + "]*$").replace("/","\\/")
+NO_TRANSLATE_PATTERN = re.compile('^[!"#$%&\'()*+,-.\\/:;<=>?@[\\]^_`{|}~0123456789 \t\n\r\x0b\x0c]*$')
 
 class NllbTranslationComponent:
 
@@ -120,8 +121,7 @@ class NllbTranslationComponent:
 
         for prop_to_translate in config.props_to_translate:
             input_text = ff_track.detection_properties.get(prop_to_translate, None)
-            # remove number and punctuation only inputs to prevent bad translations (https://github.com/facebookresearch/fairseq/issues/4854)
-            if input_text and not input_text.isdigit() and not (re.match(("^[" + string.punctuation + "]*$").replace("/","/"), input_text)):
+            if input_text:
                 text_to_translate[prop_to_translate] = input_text
 
         logger.info(f'Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
@@ -149,20 +149,22 @@ class NllbTranslationComponent:
 
                 text_list = list(input_text_sentences)
 
-            translation = ""
+            translations = []
 
             for sentence in text_list:
-                inputs = self._tokenizer(sentence, return_tensors="pt").to(DEVICE)
-                translated_tokens = self._model.generate(
-                    **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
+                if sentence and not NO_TRANSLATE_PATTERN.match(sentence):
+                    inputs = self._tokenizer(sentence, return_tensors="pt").to(DEVICE)
+                    translated_tokens = self._model.generate(
+                        **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
 
-                sentence_translation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+                    sentence_translation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
 
-                # need to add space between sentences back
-                if translation == "":
-                    translation = sentence_translation
+                    translations.append(sentence_translation)
                 else:
-                    translation = " ".join([translation, sentence_translation])
+                    translations.append(sentence)
+
+            # spaces between sentences are added
+            translation = " ".join(translations)
 
             logger.info(f'{prop_to_translate} translation is: {translation}')
 

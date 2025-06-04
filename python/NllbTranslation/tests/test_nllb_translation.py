@@ -206,9 +206,6 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(self.TRANSLATION, result_props["TEXT TRANSLATION"])
 
-    @unittest.skip('''TEXT TRANSLATION should be the same as the text to translate.
-                   A job consumer is going to be looking at the * TRANSLATION fields,
-                   so they need to be populated unless the job results in an error.''')
     def test_numbers_only_not_translated(self):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
@@ -222,7 +219,6 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEquals('1234', result_props.get('TEXT TRANSLATION', ''))
 
-    @unittest.skip('Like for the all digits test case, TEXT TRANSLATION should be the same as the text to translate.')
     def test_punctuation_only_not_translated(self):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
@@ -273,6 +269,80 @@ class TestNllbTranslation(unittest.TestCase):
 
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(expected_translation, result_props["TEXT TRANSLATION"])
+
+    def test_split_with_non_translate_segments(self):
+        #set default props
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'por'
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+        test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '39'
+
+         # exerpt from https://www.gutenberg.org/ebooks/16443
+        pt_text="Os que são gentis são indispensáveis. 012345678901234567890123456789012345. 123456789012345678901234567890123456. Os caridosos são uma luz pra os outros."
+
+        pt_text_translation = "Those who are kind are indispensable. 012345678901234567890123456789012345.  123456789012345678901234567890123456.  Charitable people are a light to others."
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text,
+                                             LANGUAGE='por',
+                                             ISO_SCRIPT='Latn'))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEquals(pt_text_translation, result_props.get('TEXT TRANSLATION', ''))
+
+    def test_sentence_split_job2(self):
+        #set default props
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        #load source language
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'por'
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+
+        # exerpt from https://www.gutenberg.org/ebooks/16443
+        pt_text="""Teimam de facto estes em que são indispensaveis os vividos raios do
+nosso desanuviado sol, ou a face desassombrada da lua no firmamento
+peninsular, onde não tem, como a de Londres--_a romper a custo um
+plumbeo céo_--para verterem alegrias na alma e mandarem aos semblantes o
+reflexo d'ellas; imaginam fatalmente perseguidos de _spleen_,
+irremediavelmente lugubres e soturnos, como se a cada momento saíssem
+das galerias subterraneas de uma mina de _pit-coul_, os nossos alliados
+inglezes.
+
+Como se enganam ou como pretendem enganar-nos!
+
+É esta uma illusão ou má fé, contra a qual ha muito reclama debalde a
+indelevel e accentuada expressão de beatitude, que transluz no rosto
+illuminado dos homens de além da Mancha, os quaes parece caminharem
+entre nós, envolvidos em densa atmosphera de perenne contentamento,
+satisfeitos do mundo, satisfeitos dos homens e, muito especialmente,
+satisfeitos de si.
+"""
+        pt_text_translation = "They hold these in fact indispensable in which the vivid rays of our sunless sun, or the moon's dim face in the peninsular sky, where it has no, as in London--_a breaking at cost a plumb sky_--to pour joy into the soul and send its reflection to the semblance; imagine fatally pursued by _spleen_, hopelessly gloomy and submerged, as if at every moment they were coming out of the underground galleries of a mine of _pit-coul_, our English allies.  How they deceive themselves or how they intend to deceive us! This is an illusion or bad faith, against which there is much complaint about the indelible and accentuated expression of bliss, which transluces in the illuminated face of men beyond the Channel, the quaes seem to walk among us, enveloped in a dense atmosphere of perennial contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves. "
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(pt_text_translation, result_props["TEXT TRANSLATION"])
+
+    @unittest.skip('Work in progress')
+    def test_sentence_split_job3(self):
+        #set default props
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        #load source language
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'por'
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+
+        job = mpf.GenericJob('Test Plaintext',
+                             str(Path(__file__).parent / 'data' / 'pg16443.txt'),
+                             test_generic_job_props,
+                             {})
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(self.TRANSLATION, result_props["TEXT TRANSLATION"])
 
 if __name__ == '__main__':
     unittest.main()
