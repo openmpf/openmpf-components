@@ -46,7 +46,7 @@ def main():
     except Exception as e:
         err_str = str(e)
         if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
-            print("Caught a ResourceExhausted error (429 Too Many Requests", file=sys.stderr)
+            print("Caught a ResourceExhausted error (429 Too Many Requests)", file=sys.stderr)
         else:
             print(err_str, file=sys.stderr)
         sys.exit(1)

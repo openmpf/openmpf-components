@@ -38,7 +38,7 @@ from unittest.mock import MagicMock, Mock
 import mpf_component_api as mpf
 
 logging.basicConfig(level=logging.DEBUG)
-USE_MOCKS = False
+USE_MOCKS = True
 
 # Replace with your own API key
 GEMINI_API_KEY = ''

@@ -48,7 +48,6 @@ class GeminiComponent:
     detection_type = 'CLASS'
 
     def __init__(self):
-        self.model_name = ''
         self.gemini_api_key = ''
         self.class_prompts = dict()
         self.json_class_prompts = dict()
@@ -366,8 +365,8 @@ class GeminiComponent:
     def _is_rate_limit_error(self, stderr):
         if isinstance(stderr, bytes):
             stderr = stderr.decode(errors="ignore")
-        if "Caught a ResourceExhausted error (429 Too Many Requests" in stderr:
-            return "Caught a ResourceExhausted error (429 Too Many Requests"
+        if "Caught a ResourceExhausted error (429 Too Many Requests)" in stderr:
+            return "Caught a ResourceExhausted error (429 Too Many Requests)"
         return None
 
     @retry(
@@ -400,20 +399,20 @@ class GeminiComponent:
             response = stdout.decode()
             logger.info(response)
             return response
-        else:
-            stderr_decoded = stderr.decode()
-            if self._is_rate_limit_error(stderr):
-                logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
-                ex = mpf.DetectionException(
-                    f"Subprocess failed due to rate limiting: {stderr_decoded}",
-                    mpf.DetectionError.DETECTION_FAILED
-                )
-                ex.rate_limit = True
-                raise ex
-            raise mpf.DetectionException(
-                f"Subprocess failed: {stderr_decoded}",
+        
+        stderr_decoded = stderr.decode()
+        if self._is_rate_limit_error(stderr):
+            logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
+            ex = mpf.DetectionException(
+                f"Subprocess failed due to rate limiting: {stderr_decoded}",
                 mpf.DetectionError.DETECTION_FAILED
             )
+            ex.rate_limit = True
+            raise ex
+        raise mpf.DetectionException(
+            f"Subprocess failed: {stderr_decoded}",
+            mpf.DetectionError.DETECTION_FAILED
+        )
     def _get_frames_to_process(self, frame_locations: list, skip: int) -> list:
         if not frame_locations:
             return []
