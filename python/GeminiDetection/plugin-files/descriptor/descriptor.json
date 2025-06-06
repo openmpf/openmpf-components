@@ -56,6 +56,12 @@
                     "description": "The class of the object(s) in the media. Used to determine the prompt(s). Examples: PERSON, VEHICLE.",
                     "type": "STRING",
                     "defaultValue": ""
+                },
+                {
+                    "name": "MODEL_NAME",
+                    "description": "The model to use for Gemini inference. Examples: 'gemini-1.5-flash', 'gemini-1.5-pro'.",
+                    "type": "STRING",
+                    "defaultValue": "gemma-3-27b-it"
                 }
             ]
         }
