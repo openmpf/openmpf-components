@@ -363,14 +363,12 @@ class GeminiComponent:
             )
 
     def _is_rate_limit_error(self, stderr):
-        if isinstance(stderr, bytes):
-            stderr = stderr.decode(errors="ignore")
-        if "Caught a ResourceExhausted error (429 Too Many Requests)" in stderr:
-            return "Caught a ResourceExhausted error (429 Too Many Requests)"
-        return None
+        return "Caught a ResourceExhausted error (429 Too Many Requests" in stderr
 
     @retry(
-        wait=wait_random_exponential(multiplier=4, max=32),
+        # Each wait is between 4 and multiplier * 2^n seconds, where n is the number of retries. The max wait capped at 32 seconds.
+        wait=wait_random_exponential(multiplier=2, max=32, min=4),
+        # Stops retrying after the total time waiting >=60s, checks after each attempt
         stop=stop_after_delay(60),
         retry=retry_if_exception(lambda e: isinstance(e, mpf.DetectionException) and getattr(e, 'rate_limit', False))
     )
@@ -401,7 +399,7 @@ class GeminiComponent:
             return response
         
         stderr_decoded = stderr.decode()
-        if self._is_rate_limit_error(stderr):
+        if self._is_rate_limit_error(stderr_decoded):
             logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
             ex = mpf.DetectionException(
                 f"Subprocess failed due to rate limiting: {stderr_decoded}",

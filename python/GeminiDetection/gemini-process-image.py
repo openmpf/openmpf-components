@@ -27,6 +27,7 @@
 import argparse
 from google import genai
 from PIL import Image
+from google.genai.errors import ClientError
 import sys
 
 def main():
@@ -43,12 +44,14 @@ def main():
         content = client.models.generate_content(model=args.model, contents=[args.prompt, Image.open(args.filepath)])
         print(content.text)
         sys.exit(0)
+    except ClientError as e:
+        if hasattr(e, 'code') and e.code == 429:
+            print("Caught a ResourceExhausted error (429 Too Many Requests)", file=sys.stderr)
+            sys.exit(1)
+        raise
     except Exception as e:
         err_str = str(e)
-        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
-            print("Caught a ResourceExhausted error (429 Too Many Requests)", file=sys.stderr)
-        else:
-            print(err_str, file=sys.stderr)
+        print(err_str, file=sys.stderr)
         sys.exit(1)
 
 
