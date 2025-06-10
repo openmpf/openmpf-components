@@ -62,7 +62,6 @@ class GeminiComponent:
         self.frame_count = 0
 
         config = JobConfig(image_job.job_properties)
-        self.model_name = config.model_name
         image_reader = mpf_util.ImageReader(image_job)
 
         if image_job.feed_forward_location is None:
@@ -87,7 +86,6 @@ class GeminiComponent:
         self.frame_count = 0
 
         config = JobConfig(video_job.job_properties, video_job.media_properties)
-        self.model_name = config.model_name
         video_capture = mpf_util.VideoCapture(video_job)
 
         if video_job.feed_forward_track is None:
@@ -141,7 +139,7 @@ class GeminiComponent:
             self.video_process_timer.start()
 
             for tag, prompt in self.frame_prompts.items():
-                response = self._get_gemini_response(self.model_name, job.data_uri, prompt)
+                response = self._get_gemini_response(config.model_name, job.data_uri, prompt)
                 detection_properties[tag] = response
             # TODO: detection_properties['CLASSIFICATION'] = classification.upper()
             detection_properties['ANNOTATED BY GEMINI'] = True
@@ -195,7 +193,7 @@ class GeminiComponent:
                     json_attempts, json_failed = 0, True
                     while (json_attempts < self.json_limit) and (json_failed):
                         json_attempts += 1
-                        response = self._get_gemini_response(self.model_name, job.data_uri, prompt)
+                        response = self._get_gemini_response(config.model_name, job.data_uri, prompt)
                         try:
                             response = response.split('```json\n')[1].split('```')[0]
                             response_json = json.loads(response)
@@ -363,7 +361,7 @@ class GeminiComponent:
             )
 
     def _is_rate_limit_error(self, stderr):
-        return "Caught a ResourceExhausted error (429 Too Many Requests" in stderr
+        return "Caught a ResourceExhausted error (429 Too Many Requests)" in stderr
 
     @retry(
         # Each wait is between 4 and multiplier * 2^n seconds, where n is the number of retries. The max wait capped at 32 seconds.
