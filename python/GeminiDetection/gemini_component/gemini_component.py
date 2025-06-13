@@ -96,10 +96,10 @@ class GeminiComponent:
             else:
                 tracks = self._get_frame_detections(video_job, video_capture, config, is_video_job=True)
         else:
-            raise mpf.DetectionException(
-                "Feed forward jobs not supported yet: ",
-                mpf.DetectionError.DETECTION_FAILED
-            )
+            if config.enable_json_prompt_format:
+                tracks = self._get_feed_forward_detections_json(video_job.feed_forward_track, video_capture, config, is_video_job=True)
+            else:
+                tracks = self._get_feed_forward_detections(video_job.feed_forward_track, video_capture, config, is_video_job=True)
 
         decode_time = self.video_decode_timer.get_seconds_elapsed_from_last_pause()
         if decode_time > 0.0:
@@ -226,7 +226,123 @@ class GeminiComponent:
                 reader.reverse_transform(track)
 
         return tracks
+    
+    def _get_feed_forward_detections(self, job_feed_forward, reader, config, is_video_job=False):
+        self._update_prompts(config.prompt_config_path, config.json_prompt_config_path)
+        self.gemini_api_key = config.gemini_api_key
 
+        classification = job_feed_forward.detection_properties["CLASSIFICATION"].lower()
+
+        frame_count = 0
+        self.video_decode_timer = Timer()
+        self.video_process_timer = Timer()
+
+        prompts_to_use = self.json_class_prompts if config.enable_json_prompt_format else self.class_prompts
+        if is_video_job:
+            self.video_decode_timer.start()
+            frame_indices = {i: frame for i, frame in zip(job_feed_forward.frame_locations.keys(), reader)}
+            frames_to_process = self._get_frames_to_process(list(frame_indices.keys()), config.frames_per_second_to_process)
+            for idx in frames_to_process:
+                self.video_decode_timer.pause()
+                frame = frame_indices[idx]
+                ff_location = job_feed_forward.frame_locations[idx]
+                frame_count += 1
+                encoded = self._encode_image(frame)
+
+                if classification in self.class_prompts:
+                    detection_properties = ff_location.detection_properties
+
+                    for tag, prompt in self.class_prompts[classification].items():
+                        response = self._get_gemini_response(config.model_name, encoded, prompt)
+                        detection_properties[tag] = response
+                    detection_properties['CLASSIFICATION'] = classification.upper()
+                    detection_properties['ANNOTATED BY GEMINI'] = True
+
+                self.video_decode_timer.start()
+            return [job_feed_forward]
+        else:
+            if classification in self.class_prompts:
+                detection_properties = job_feed_forward.detection_properties
+                if hasattr(job_feed_forward, 'data_uri'):
+                    image = job_feed_forward.data_uri
+                    if not isinstance(image, str):
+                        image = self._encode_image(image)
+                else:
+                    image = self._encode_image(reader.get_image())
+                for tag, prompt in self.class_prompts[classification].items():
+                    response = self._get_gemini_response(config.model_name, image, prompt)
+                    detection_properties[tag] = response
+                detection_properties['CLASSIFICATION'] = classification.upper()
+                detection_properties['ANNOTATED BY GEMINI'] = True
+            return [job_feed_forward]
+
+    def _get_feed_forward_detections_json(self, job_feed_forward, reader, config, is_video_job=False):
+        self._update_prompts(config.prompt_config_path, config.json_prompt_config_path)
+        self.gemini_api_key = config.gemini_api_key
+
+        classification = job_feed_forward.detection_properties["CLASSIFICATION"].lower()
+        self.frame_count = 0
+        self.video_decode_timer = Timer()
+        self.video_process_timer = Timer()
+        prompts_to_use = self.json_class_prompts if config.enable_json_prompt_format else self.class_prompts
+
+        if is_video_job:
+            self.video_decode_timer.start()
+            frame_indices = {i: frame for i, frame in zip(job_feed_forward.frame_locations.keys(), reader)}
+            for idx in self._get_frames_to_process(list(frame_indices.keys()), config.frames_per_second_to_process):
+                self.video_decode_timer.pause()
+                frame = frame_indices[idx]
+                ff_location = job_feed_forward.frame_locations[idx]
+                self.frame_count += 1
+                encoded = self._encode_image(frame)
+
+                if classification in prompts_to_use:
+                    for tag, prompt in prompts_to_use[classification].items():
+                        json_attempts, json_failed = 0, True
+
+                        while (json_attempts < self.json_limit) and (json_failed):
+                            json_attempts += 1
+                            response = self._get_gemini_response(config.model_name, encoded, prompt)
+                            try:
+                                response = response.split('```json\n')[1].split('```')[0]
+                                response_json = json.loads(response)
+                                self._update_detection_properties(ff_location.detection_properties, response_json, classification)
+                                json_failed = False
+                            except Exception as e:
+                                logger.warning(f"Gemini failed to produce valid JSON output: {e}")
+                                logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
+                                continue
+                        if json_failed:
+                            logger.warning(f"Using last full Gemini response instead of parsed JSON output.")
+                            ff_location.detection_properties['FAILED TO PROCESS GEMINI RESPONSE'] = True
+                            ff_location.detection_properties['FULL GEMINI RESPONSE'] = response
+
+                self.video_decode_timer.start()
+                
+            return [job_feed_forward]
+        else:
+            image = self._encode_image(reader.get_image())
+            if classification in prompts_to_use:
+                for tag, prompt in prompts_to_use[classification].items():
+                    json_attempts, json_failed = 0, True
+                    while (json_attempts < self.json_limit) and (json_failed):
+                        json_attempts += 1
+                        response = self._get_gemini_response(config.model_name, image, prompt)
+                        try:
+                            response = response.split('```json\n')[1].split('```')[0]
+                            response_json = json.loads(response)
+                            self._update_detection_properties(job_feed_forward.detection_properties, response_json, classification)
+                            json_failed = False
+                        except Exception as e:
+                            logger.warning(f"Gemini failed to produce valid JSON output: {e}")
+                            logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
+                            continue
+                    if json_failed:
+                        logger.warning(f"Using last full Gemini response instead of parsed JSON output.")
+                        job_feed_forward.detection_properties['FAILED TO PROCESS GEMINI RESPONSE'] = True
+                        job_feed_forward.detection_properties['FULL GEMINI RESPONSE'] = response
+            return [job_feed_forward]
+        
     def _encode_image(self, frame):
         shape = frame.shape
         dtype = frame.dtype
@@ -433,7 +549,7 @@ class GeminiComponent:
             f"Subprocess failed: {stderr_decoded}",
             mpf.DetectionError.DETECTION_FAILED
         )
-    
+
     def _get_frames_to_process(self, frame_locations: list, skip: int) -> list:
         if not frame_locations:
             return []

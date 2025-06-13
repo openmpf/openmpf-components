@@ -78,7 +78,14 @@ class TestGemini(unittest.TestCase):
 
         expected_response = "The scene appears to be a banquet hall or conference room in a hotel or convention center."
 
-        def side_effect_function(*args, **kwargs):
+        def side_effect_function(*args):
+            if isinstance(args[1], tuple):
+                _, shm = args[1]
+                shm.close()
+                try:
+                    shm.unlink()
+                except FileNotFoundError:
+                    pass
             return expected_response
 
         result = self.run_patched_job(component, job, side_effect_function)[0]
@@ -86,6 +93,48 @@ class TestGemini(unittest.TestCase):
         self.assertTrue("LOCATION" in result.detection_properties)
         self.assertEqual(result.detection_properties["LOCATION"], expected_response)
     
+        
+    def test_feed_forward_image(self):
+        detection_properties = {"CLASSIFICATION": "person"}
+        feed_forward_location = mpf.ImageLocation(
+            x_left_upper=0,
+            y_left_upper=0,
+            width=100,
+            height=100,
+            confidence=-1,
+            detection_properties=detection_properties
+        )
+
+        job = mpf.ImageJob(
+            job_name='test-feed-forward-image',
+            data_uri=self._get_test_file('person.jpg'),
+            job_properties=dict(
+                GEMINI_API_KEY=GEMINI_API_KEY,
+                MODEL_NAME=MODEL_NAME
+            ),
+            media_properties={},
+            feed_forward_location=feed_forward_location
+        )
+        component = GeminiComponent()
+
+        expected_response = "The scene appears to be a banquet hall or conference room in a hotel or convention center."
+
+        def side_effect_function(*args):
+            if isinstance(args[1], tuple):
+                _, shm = args[1]
+                shm.close()
+                try:
+                    shm.unlink()
+                except FileNotFoundError:
+                    pass
+            return expected_response
+
+        with unittest.mock.patch("gemini_component.gemini_component.GeminiComponent._get_gemini_response", side_effect=side_effect_function):
+            result = component.get_detections_from_image(job)
+            result = list(result)
+            self.assertEqual(len(result), 1)
+            self.assertIn("CLASSIFICATION", result[0].detection_properties)
+
     def test_get_frames(self):
         component = GeminiComponent()
         self.assertEqual(component._get_frames_to_process([], 1), [])
