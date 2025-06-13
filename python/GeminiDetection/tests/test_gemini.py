@@ -27,6 +27,7 @@
 import sys
 import os
 import logging
+import numpy as np
 
 # Add gemini_component to path.
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -77,7 +78,7 @@ class TestGemini(unittest.TestCase):
 
         expected_response = "The scene appears to be a banquet hall or conference room in a hotel or convention center."
 
-        def side_effect_function(data_uri, prompt):
+        def side_effect_function(*args, **kwargs):
             return expected_response
 
         result = self.run_patched_job(component, job, side_effect_function)[0]

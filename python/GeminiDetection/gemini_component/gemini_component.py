@@ -29,11 +29,13 @@ import os
 import json
 import math
 import subprocess
-import re
-
 import logging
 from typing import Mapping, Iterable
+from multiprocessing.shared_memory import SharedMemory
+import json
+import re
 
+import numpy as np
 from tenacity import retry, wait_random_exponential, stop_after_delay, retry_if_exception
 
 import mpf_component_api as mpf
@@ -114,7 +116,7 @@ class GeminiComponent:
 
     def _get_frame_detections(self, job, reader, config, is_video_job=False):
         # Check if both frame_rate_cap and generate_frame_rate_cap are set > 0. If so, throw exception
-        if (mpf_util.get_property(job.job_properties, 'FRAME_RATE_CAP', -1) > 0) and (config.frames_per_second_to_process > 0):
+        if (mpf_util.get_property(job.job_properties, 'FRAME_RATE_CAP', -1) > 0) and (config.frames_per_second_to_skip > 0):
             raise mpf.DetectionException(
                 "Cannot have FRAME_RATE_CAP and GENERATE_FRAME_RATE_CAP both set to values greater than zero on jobs without feed forward detections:",
                 mpf.DetectionError.INVALID_PROPERTY
@@ -129,31 +131,32 @@ class GeminiComponent:
         self.video_process_timer = Timer()
 
         self.video_decode_timer.start()
-        for idx, frame in zip(self._get_frames_to_process(list(range(len(reader))), config.frames_per_second_to_process), reader):
-            self.video_decode_timer.pause()
-            self.frame_count += 1
 
-            height, width, _ = frame.shape
-            detection_properties = dict()
+        for idx, frame in enumerate(reader):
+            if (config.frames_per_second_to_skip <= 0) or (idx % config.frames_per_second_to_skip == 0):
 
-            self.video_process_timer.start()
+                self.video_decode_timer.pause()
+                self.frame_count += 1
+                height, width, _ = frame.shape
+                detection_properties = dict()
+                encoded = self._encode_image(frame)
+                self.video_process_timer.start()
 
-            for tag, prompt in self.frame_prompts.items():
-                response = self._get_gemini_response(config.model_name, job.data_uri, prompt)
-                detection_properties[tag] = response
-            # TODO: detection_properties['CLASSIFICATION'] = classification.upper()
-            detection_properties['ANNOTATED BY GEMINI'] = True
+                for tag, prompt in self.frame_prompts.items():
+                    response = self._get_gemini_response(config.model_name, encoded, prompt)
+                    detection_properties[tag] = response
 
-            self.video_process_timer.pause()
+                detection_properties['ANNOTATED BY GEMINI'] = True
+                self.video_process_timer.pause()
+                img_location = mpf.ImageLocation(0, 0, width, height, -1, detection_properties)
 
-            img_location = mpf.ImageLocation(0, 0, width, height, -1, detection_properties)
-            if is_video_job:
-                tracks.append(mpf.VideoTrack(idx, idx, -1, { idx:img_location }, detection_properties))
-            else:
-                tracks.append(img_location)
+                if is_video_job:
+                    tracks.append(mpf.VideoTrack(idx, idx, -1, {idx: img_location}, detection_properties))
+                else:
+                    tracks.append(img_location)
 
-            self.video_decode_timer.start()
-            
+                self.video_decode_timer.start()
+
         if is_video_job:
             for track in tracks:
                 reader.reverse_transform(track)
@@ -162,7 +165,7 @@ class GeminiComponent:
 
     def _get_frame_detections_json(self, job, reader, config, is_video_job=False):
         # Check if both frame_rate_cap and generate_frame_rate_cap are set > 0. If so, throw exception
-        if (mpf_util.get_property(job.job_properties, 'FRAME_RATE_CAP', -1) > 0) and (config.frames_per_second_to_process > 0):
+        if (mpf_util.get_property(job.job_properties, 'FRAME_RATE_CAP', -1) > 0) and (config.frames_per_second_to_skip > 0):
             raise mpf.DetectionException(
                 "Cannot have FRAME_RATE_CAP and GENERATE_FRAME_RATE_CAP both set to values greater than zero on jobs without feed forward detections:",
                 mpf.DetectionError.INVALID_PROPERTY
@@ -177,46 +180,46 @@ class GeminiComponent:
         self.frame_count = 0
         self.video_decode_timer = Timer()
         self.video_process_timer = Timer()
-
         self.video_decode_timer.start()
-        for idx, frame in zip(self._get_frames_to_process(list(range(len(reader))), config.frames_per_second_to_process), reader):
-            self.video_decode_timer.pause()
-            self.frame_count += 1
 
-            height, width, _ = frame.shape
-            detection_properties = dict()
+        for idx, frame in enumerate(reader):
+            if (config.frames_per_second_to_skip <= 0) or (idx % config.frames_per_second_to_skip == 0):
+                self.video_decode_timer.pause()
+                self.frame_count += 1
+                height, width, _ = frame.shape
+                detection_properties = dict()
+                encoded = self._encode_image(frame)
+                self.video_process_timer.start()
 
-            self.video_process_timer.start()
-            if classification in self.json_class_prompts:
-                for tag, prompt in self.json_class_prompts[classification].items():
-                    # re-initialize json_attempts=0 and json_failed=True
-                    json_attempts, json_failed = 0, True
-                    while (json_attempts < self.json_limit) and (json_failed):
-                        json_attempts += 1
-                        response = self._get_gemini_response(config.model_name, job.data_uri, prompt)
-                        try:
-                            response = response.split('```json\n')[1].split('```')[0]
-                            response_json = json.loads(response)
-                            self._update_detection_properties(detection_properties, response_json, classification)
-                            json_failed = False
-                        except Exception as e:
-                            logger.warning(f"Gemini failed to produce valid JSON output: {e}")
-                            logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
-                            continue
-                    if json_failed:
-                        logger.warning(f"Using last full Gemini response instead of parsed JSON output.")
-                        detection_properties['FAILED TO PROCESS GEMINI RESPONSE'] = True
-                        detection_properties['FULL GEMINI RESPONSE'] = response
+                if classification in self.json_class_prompts:
+                    for tag, prompt in self.json_class_prompts[classification].items():
+                        json_attempts, json_failed = 0, True
+                        while (json_attempts < self.json_limit) and (json_failed):
+                            json_attempts += 1
+                            response = self._get_gemini_response(config.model_name, encoded, prompt)
+                            try:
+                                response = response.split('```json\n')[1].split('```')[0]
+                                response_json = json.loads(response)
+                                self._update_detection_properties(detection_properties, response_json, classification)
+                                json_failed = False
+                            except Exception as e:
+                                logger.warning(f"Gemini failed to produce valid JSON output: {e}")
+                                logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
+                                continue
+                        if json_failed:
+                            logger.warning(f"Using last full Gemini response instead of parsed JSON output.")
+                            detection_properties['FAILED TO PROCESS GEMINI RESPONSE'] = True
+                            detection_properties['FULL GEMINI RESPONSE'] = response
 
-            self.video_process_timer.pause()
+                self.video_process_timer.pause()
+                img_location = mpf.ImageLocation(0, 0, width, height, -1, detection_properties)
 
-            img_location = mpf.ImageLocation(0, 0, width, height, -1, detection_properties)
-            if is_video_job:
-                tracks.append(mpf.VideoTrack(idx, idx, -1, { idx:img_location }, detection_properties))
-            else:
-                tracks.append(img_location)
+                if is_video_job:
+                    tracks.append(mpf.VideoTrack(idx, idx, -1, { idx:img_location }, detection_properties))
+                else:
+                    tracks.append(img_location)
 
-            self.video_decode_timer.start()
+                self.video_decode_timer.start()
             
         if is_video_job:
             for track in tracks:
@@ -224,6 +227,14 @@ class GeminiComponent:
 
         return tracks
 
+    def _encode_image(self, frame):
+        shape = frame.shape
+        dtype = frame.dtype
+        shm = SharedMemory(create=True, size=frame.nbytes)
+        np_shm = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+        np_shm[:] = frame[:]
+        return (shm.name, shape, str(dtype)), shm
+        
     def _update_detection_properties(self, detection_properties, response_json, classification):
 
         is_person = (('CLASSIFICATION' in detection_properties) and (detection_properties['CLASSIFICATION'].lower() == 'person')) \
@@ -233,7 +244,7 @@ class GeminiComponent:
         is_vehicle = (('CLASSIFICATION' in detection_properties) and (detection_properties['CLASSIFICATION'].lower() in vehicle_classes)) \
             or (classification in vehicle_classes)
 
-        key_list = self._get_keys(response_json, is_vehicle) # TODO: flatten should be an algorithm property or specified in the prompts file
+        key_list = self._get_keys(response_json, True) # TODO: flatten should be an algorithm property or specified in the prompts file
         key_vals = dict()
         keywords = []
         for key_str in key_list:
@@ -374,19 +385,32 @@ class GeminiComponent:
     def _get_gemini_response(self, model_name, data_uri, prompt):
     
         process = None
+        shm = None
         try:
-            # Call subprocess
-            process = subprocess.Popen([
-                "/gemini-subprocess/venv/bin/python3",
-                "/gemini-subprocess/gemini-process-image.py",
-                '-m', model_name,
-                "-f", data_uri,
-                "-p", prompt,
-                "-a", self.gemini_api_key],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+            if isinstance(data_uri, tuple):
+                shm_info, shm = data_uri
+                shm_name, shape, dtype = shm_info
+                process = subprocess.Popen([
+                    "/gemini-subprocess/venv/bin/python3",
+                    "/gemini-subprocess/gemini-process-image.py",
+                    '-m', model_name,
+                    "--shm-name", shm_name,
+                    "--shm-shape", json.dumps(shape),
+                    "--shm-dtype", dtype,
+                    "-p", prompt,
+                    "-a", self.gemini_api_key],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+            else:
+                raise mpf.DetectionException(
+                    "Expected image data in shared memory format.",
+                    mpf.DetectionError.DETECTION_FAILED
+                )
             stdout, stderr = process.communicate()
         except Exception as e:
+            if shm:
+                shm.close()
+                shm.unlink()
             raise mpf.DetectionException(
                 f"Subprocess error: {e}",
                 mpf.DetectionError.DETECTION_FAILED)
@@ -409,6 +433,7 @@ class GeminiComponent:
             f"Subprocess failed: {stderr_decoded}",
             mpf.DetectionError.DETECTION_FAILED
         )
+    
     def _get_frames_to_process(self, frame_locations: list, skip: int) -> list:
         if not frame_locations:
             return []
@@ -472,14 +497,14 @@ class JobConfig:
         if (media_properties != None) and (generate_frame_rate_cap > 0):
             # Check if fps exists. If not throw mpf.DetectionError.MISSING_PROPERTY exception
             try:
-                self.frames_per_second_to_process = max(1, math.floor(float(media_properties['FPS']) / generate_frame_rate_cap))
+                self.frames_per_second_to_skip = max(1, math.floor(float(media_properties['FPS']) / generate_frame_rate_cap))
             except Exception as e:
                 raise mpf.DetectionException(
                     f"FPS not found for media: {e}",
                     mpf.DetectionError.MISSING_PROPERTY
                 )
         else:
-            self.frames_per_second_to_process = -1
+            self.frames_per_second_to_skip = -1
 	
 
     @staticmethod

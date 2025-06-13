@@ -16,7 +16,7 @@
                 "BUS"
             ],
             "prompts": [
-                "Extract features of the vehicle in JSON format and include answers only if 100% confident for each object if not, provide 'unsure'. The JSON should have the following keys: visible_vehicle (true or false), vehicle (if visible_vehicle is true then provide vehicle object). Vehicle objects should have the following attributes: make (answer with 'unsure' if not confident), type, color, license_plate_state (answer with 'unsure' if not confident), license_plate_number (answer with 'unsure' if not confident), other_notable_characteristics."
+                "Extract features of the vehicle in JSON format and include answers only if 100% confident for each object if not, provide 'unsure'. If an object has no attributes or values, set it to null. The JSON should have the following keys: visible_vehicle (true or false), vehicle (if visible_vehicle is true then provide vehicle object). For each vehicle object, it should have the following attributes: make, type, color, license_plate_state, license_plate_number, other_notable_characteristics."
             ]
         }
     ]
