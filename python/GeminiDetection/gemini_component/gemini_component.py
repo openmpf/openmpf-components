@@ -72,10 +72,10 @@ class GeminiComponent:
             else:
                 detections = self._get_frame_detections(image_job, [image_reader.get_image()], config)
         else:
-            raise mpf.DetectionException(
-                "Feed forward jobs not supported yet: ",
-                mpf.DetectionError.DETECTION_FAILED
-            )
+            if config.enable_json_prompt_format:
+                detections = self._get_feed_forward_detections_json(image_job.feed_forward_location, image_reader, config)
+            else:
+                detections = self._get_feed_forward_detections(image_job.feed_forward_location, image_reader, config)
         
         logger.info(f"Job complete. Found {len(detections)} detections.")
         return detections
@@ -241,7 +241,7 @@ class GeminiComponent:
         if is_video_job:
             self.video_decode_timer.start()
             frame_indices = {i: frame for i, frame in zip(job_feed_forward.frame_locations.keys(), reader)}
-            frames_to_process = self._get_frames_to_process(list(frame_indices.keys()), config.frames_per_second_to_process)
+            frames_to_process = self._get_frames_to_process(list(frame_indices.keys()), config.frames_per_second_to_skip)
             for idx in frames_to_process:
                 self.video_decode_timer.pause()
                 frame = frame_indices[idx]
@@ -289,7 +289,7 @@ class GeminiComponent:
         if is_video_job:
             self.video_decode_timer.start()
             frame_indices = {i: frame for i, frame in zip(job_feed_forward.frame_locations.keys(), reader)}
-            for idx in self._get_frames_to_process(list(frame_indices.keys()), config.frames_per_second_to_process):
+            for idx in self._get_frames_to_process(list(frame_indices.keys()), config.frames_per_second_to_skip):
                 self.video_decode_timer.pause()
                 frame = frame_indices[idx]
                 ff_location = job_feed_forward.frame_locations[idx]
