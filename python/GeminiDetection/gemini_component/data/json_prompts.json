@@ -13,7 +13,8 @@
                 "VEHICLE",
                 "CAR",
                 "TRUCK",
-                "BUS"
+                "BUS",
+                "MOTORBIKE"
             ],
             "prompts": [
                 "Extract features of the vehicle in JSON format and include answers only if 100% confident for each object if not, provide 'unsure'. If an object has no attributes or values, set it to null. The JSON should have the following keys: visible_vehicle (true or false), vehicle (if visible_vehicle is true then provide vehicle object). For each vehicle object, it should have the following attributes: make, type, color, license_plate_state, license_plate_number, other_notable_characteristics."
