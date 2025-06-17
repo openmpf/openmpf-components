@@ -253,6 +253,15 @@
             ]
         },
         {
+            "name": "GEMINI DETECTION (WITH FF REGION FROM TRITON YOLO AND JSON PROMPT AND MARKUP) PIPELINE",
+            "description":"Runs Gemini with prompts that specify JSON object outputs on images and videos at the specified frame rate. Performs markup.",
+            "tasks": [
+                "OCV TRITON YOLO OBJECT DETECTION TASK",
+                "GEMINI DETECTION (WITH FF REGION AND JSON PROMPT) TASK",
+                "OCV GENERIC MARKUP TASK"
+            ]
+        },
+        {
             "name": "GEMINI DETECTION (EXEMPLAR ONLY WITH FF REGION FROM TRITON YOLO) PIPELINE",
             "description": "Runs Gemini with prompts for the class of the detection passed in, only processing the exemplar from each track.",
             "tasks": [
