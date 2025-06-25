@@ -43,6 +43,9 @@ must be provided. Neither has a default value.
   Azure Cognitive Services account. This property can also be configured
   using an environment variable named `MPF_PROP_ACS_SUBSCRIPTION_KEY`.
 
+- `ACS_SUBSCRIPTION_REGION`: Optional Azure subscription region for the Cognitive Services resource, such as 'eastus'.
+  Required for some Azure deployments. If provided, will be set in the 'Ocp-Apim-Subscription-Region' request header.
+
 
 # Primary Job Properties
 - `TO_LANGUAGE`: The BCP-47 language code for the language that the properties
