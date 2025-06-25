@@ -41,7 +41,7 @@ logger = logging.getLogger('NllbTranslationComponent')
 
 DEVICE = "cpu"
 # compile this pattern once
-NO_TRANSLATE_PATTERN = re.compile("^[" + string.punctuation + string.digits + string.whitespace + "]*$").replace("/","\\/")
+NO_TRANSLATE_PATTERN = re.compile(("^[" + string.punctuation + string.digits + string.whitespace + "]*$").replace("/","\\/"))
 
 class NllbTranslationComponent:
 
