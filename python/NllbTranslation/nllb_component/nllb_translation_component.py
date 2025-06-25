@@ -40,8 +40,8 @@ from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettin
 logger = logging.getLogger('NllbTranslationComponent')
 
 DEVICE = "cpu"
-# compile this pattern once, generated with ("^[" + string.punctuation + string.digits + string.whitespace + "]*$").replace("/","\\/")
-NO_TRANSLATE_PATTERN = re.compile('^[!"#$%&\'()*+,-.\\/:;<=>?@[\\]^_`{|}~0123456789 \t\n\r\x0b\x0c]*$')
+# compile this pattern once
+NO_TRANSLATE_PATTERN = re.compile("^[" + string.punctuation + string.digits + string.whitespace + "]*$").replace("/","\\/")
 
 class NllbTranslationComponent:
 
