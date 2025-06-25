@@ -39,6 +39,26 @@ The below properties can be optionally provided to alter the behavior of the com
   lengths
   [here](https://discourse.mozilla.org/t/proposal-sentences-lenght-limit-from-14-words-to-100-characters).
 
+- `SENTENCE_SPLITTER_INCLUDE_INPUT_LANG`: Specifies whether to pass input language to
+  sentence splitter algorithm. Currently, only WtP supports model threshold adjustments by
+  input language.
+
+- `SENTENCE_MODEL_CPU_ONLY`: If set to TRUE, only use CPU resources for the sentence
+  detection model. If set to FALSE, allow sentence model to also use GPU resources.
+  For most runs using spaCy `xx_sent_ud_sm` or `wtp-bert-mini` models, GPU resources
+  are not required. If using more advanced WtP models like `wtp-canine-s-12l`,
+  it is recommended to set `SENTENCE_MODEL_CPU_ONLY=FALSE` to improve performance.
+  That model can use up to ~3.5 GB of GPU memory.
+
+  Please note, to fully enable this option, you must also rebuild the Docker container
+  with the following change: Within the Dockerfile, set `ARG BUILD_TYPE=gpu`.
+  Otherwise, PyTorch will be installed without cuda support and
+  component will always default to CPU processing.
+
+- `SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE`: More advanced WTP models will
+  require a target language. This property sets the default language to use for
+  sentence splitting, and is overwritten by setting `FROM_LANGUAGE` or `SUGGESTED_FROM_LANGUAGE`.
+
 # Language Identifiers
 The following are the ISO 639-3 and ISO 15924 codes, and their corresponding languages which Nllb can translate.
 
