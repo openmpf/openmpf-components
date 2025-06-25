@@ -267,16 +267,15 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(expected_translation, result_props["TEXT TRANSLATION"])
 
-        # test sentence splitter (xx_sent_ud_sm)
-        test_generic_job_props['SENTENCE_MODEL'] = 'xx_sent_ud_sm'
+        test_generic_job_props['SOURCE_LANGUAGE'] = None
+        test_generic_job_props['SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE'] = 'en'
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(expected_translation, result_props["TEXT TRANSLATION"])
-
-        test_generic_job_props['SOURCE_LANGUAGE'] = None
-        test_generic_job_props['SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE'] = 'en'
+        # test sentence splitter (xx_sent_ud_sm)
+        test_generic_job_props['SENTENCE_MODEL'] = 'xx_sent_ud_sm'
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
@@ -291,7 +290,7 @@ class TestNllbTranslation(unittest.TestCase):
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
         test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '39'
 
-         # exerpt from https://www.gutenberg.org/ebooks/16443
+         # excerpt from https://www.gutenberg.org/ebooks/16443
         pt_text="Os que são gentis são indispensáveis. 012345678901234567890123456789012345. 123456789012345678901234567890123456. Os caridosos são uma luz pra os outros."
 
         pt_text_translation = "Those who are kind are indispensable. 012345678901234567890123456789012345.  123456789012345678901234567890123456.  Charitable people are a light to others."

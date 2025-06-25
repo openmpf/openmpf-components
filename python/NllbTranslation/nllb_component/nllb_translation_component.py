@@ -242,7 +242,7 @@ class JobConfig:
         if not self.translate_from_language:
             logger.exception('Unsupported or no source language provided')
             raise mpf.DetectionException(
-                f'Target translation ({sourceLanguage}) language is empty or unsupported',
+                f'Source language ({sourceLanguage}) is empty or unsupported',
                 mpf.DetectionError.INVALID_PROPERTY)
         
         # set translation limit. default to 360 if no value set
