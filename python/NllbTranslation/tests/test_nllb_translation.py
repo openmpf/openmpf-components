@@ -217,7 +217,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('1234', result_props.get('TEXT TRANSLATION', ''))
+        self.assertEquals('1234', result_props["TEXT TRANSLATION"])
 
     def test_punctuation_only_not_translated(self):
         #set default props
@@ -230,7 +230,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('!@#$%', result_props.get('TEXT TRANSLATION', ''))
+        self.assertEquals('!@#$%', result_props["TEXT TRANSLATION"])
 
     def test_eng_to_eng_translation(self):
         #set default props
@@ -243,7 +243,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('This is English text that should not be translated.', result_props.get('TEXT TRANSLATION', ''))
+        self.assertEquals('This is English text that should not be translated.', result_props["TEXT TRANSLATION"])
 
     def test_sentence_split_job(self):
         #set default props
@@ -302,7 +302,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals(pt_text_translation, result_props.get('TEXT TRANSLATION', ''))
+        self.assertEquals(pt_text_translation, result_props["TEXT TRANSLATION"])
 
     def test_sentence_split_job2(self):
         #set default props
@@ -311,7 +311,7 @@ class TestNllbTranslation(unittest.TestCase):
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'por'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
 
-        # exerpt from https://www.gutenberg.org/ebooks/16443
+        # excerpt from https://www.gutenberg.org/ebooks/16443
         pt_text="""Teimam de facto estes em que são indispensaveis os vividos raios do
 nosso desanuviado sol, ou a face desassombrada da lua no firmamento
 peninsular, onde não tem, como a de Londres--_a romper a custo um
