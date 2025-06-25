@@ -48,7 +48,7 @@ COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 COPY --from=build /opt/wtp /opt/wtp
 
 # download nllb model
-ENV MODEL_REVISION=f8d333a098d19b4fd9a8b18f94170487ad3f821d
+ARG MODEL_REVISION=f8d333a098d19b4fd9a8b18f94170487ad3f821d
 RUN --mount=type=tmpfs,target=/tmp/models \
     mkdir -p "/models/facebook"; \
     python -c \
