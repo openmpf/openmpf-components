@@ -232,6 +232,19 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEquals('!@#$%', result_props["TEXT TRANSLATION"])
 
+    def test_zho_punctuation_only_not_translated(self):
+        #set default props
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT='、。〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〞〟',
+                                             LANGUAGE='zho',
+                                             ISO_SCRIPT='Hans'))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEquals('、。〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〞〟', result_props["TEXT TRANSLATION"])
+
     def test_eng_to_eng_translation(self):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)

@@ -25,8 +25,7 @@
 #############################################################################
 
 import logging
-import re
-import string
+import regex as re
 import time
 
 import mpf_component_api as mpf
@@ -41,7 +40,7 @@ logger = logging.getLogger('NllbTranslationComponent')
 
 DEVICE = "cpu"
 # compile this pattern once
-NO_TRANSLATE_PATTERN = re.compile(("^[" + string.punctuation + string.digits + string.whitespace + "]*$").replace("/","\\/"))
+NO_TRANSLATE_PATTERN = re.compile(r'[\p{Whitespace}[:digit:][:punct:]]*')
 
 class NllbTranslationComponent:
 
