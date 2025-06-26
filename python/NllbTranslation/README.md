@@ -57,7 +57,7 @@ The below properties can be optionally provided to alter the behavior of the com
 
 - `SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE`: More advanced WTP models will
   require a target language. This property sets the default language to use for
-  sentence splitting, and is overwritten by setting `FROM_LANGUAGE` or `SUGGESTED_FROM_LANGUAGE`.
+  sentence splitting, and is overwritten by setting `FROM_LANGUAGE`.
 
 # Language Identifiers
 The following are the ISO 639-3 and ISO 15924 codes, and their corresponding languages which Nllb can translate.
