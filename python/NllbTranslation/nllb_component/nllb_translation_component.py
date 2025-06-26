@@ -151,7 +151,7 @@ class NllbTranslationComponent:
             translations = []
 
             for sentence in text_list:
-                if sentence and not NO_TRANSLATE_PATTERN.match(sentence):
+                if sentence and not NO_TRANSLATE_PATTERN.fullmatch(sentence):
                     inputs = self._tokenizer(sentence, return_tensors="pt").to(DEVICE)
                     translated_tokens = self._model.generate(
                         **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
