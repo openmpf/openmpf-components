@@ -75,13 +75,6 @@
           "defaultValue": "TRUE"
         },
         {
-          "name": "CUDA_DEVICE_ID",
-          "description": "ID of CUDA device (typically 0) to be used. When less than 0 CUDA will be disabled.",
-          "type": "INT",
-          "defaultValue": "-1",
-          "propertiesKey": "detection.cuda.device.id"
-        },
-        {
           "name": "TARGET_LANGUAGE",
           "description": "The ISO-639-3 language code for language and script that the input test should be translated to.",
           "type": "STRING",
