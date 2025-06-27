@@ -172,7 +172,11 @@ class NllbTranslationComponent:
 
             logger.info(f'{prop_to_translate} translation is: {translation}')
 
-            ff_prop_name: str = prop_to_translate + " TRANSLATION"
+            if config.translate_all_ff_properties:
+                ff_prop_name: str = prop_to_translate + " TRANSLATION"
+            else:
+                ff_prop_name: str = "TRANSLATION"
+
             ff_track.detection_properties[ff_prop_name] = translation
 
     def get_text_len(self, input_str: str) -> int:
@@ -181,7 +185,9 @@ class NllbTranslationComponent:
 class JobConfig:
     def __init__(self, props: Mapping[str, str], ff_props):
 
-        self.props_to_translate: list[str] = [
+        self.translate_all_ff_properties = mpf_util.get_property(props, 'TRANSLATE_ALL_FF_PROPERTIES', False)
+
+        props_to_translate: list[str] = [
             prop.strip() for prop in
             mpf_util.get_property(
                 properties=props,
@@ -190,6 +196,10 @@ class JobConfig:
                 prop_type=str
             ).split(',')
         ]
+        if self.translate_all_ff_properties:
+            self.props_to_translate = props_to_translate
+        else:
+            self.props_to_translate = [props_to_translate[0]]
 
         # cached model
         self.cached_model_location: str = mpf_util.get_property(props, 'PRETRAINED_MODEL',

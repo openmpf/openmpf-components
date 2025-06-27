@@ -1,6 +1,6 @@
 # Overview
 
-This repository contains source code for the OpenMPF No Language Left Behind component. This component is based on [Meta's No Language Left Behind Project](https://ai.meta.com/research/no-language-left-behind/)and uses the [nllb-200-distilled-600M](https://huggingface.co/facebook/nllb-200-distilled-600M) model.
+This repository contains source code for the OpenMPF No Language Left Behind component. This component is based on [Meta's No Language Left Behind Project] (https://ai.meta.com/research/no-language-left-behind/) and uses the [nllb-200-distilled-600M](https://huggingface.co/facebook/nllb-200-distilled-600M) model.
 
 This component translates the input text from a given source language to English. The source language can be provided as a job property, or be indicated in the detection properties from a feed-forward track.
 
@@ -8,7 +8,9 @@ This component translates the input text from a given source language to English
 # Job Properties
 The below properties can be optionally provided to alter the behavior of the component.
 
-- `FEED_FORWARD_PROP_TO_PROCESS`: Controls which properties of the feed-forward track or detection are considered for translation. This should be a comma-separated list of property names. The default properties are `"TEXT,TRANSCRIPT"`. Each named property in the list that is present is translated and the resulting translations will be added to the feed forward track. The default properties will be saved as `TEXT TRANSLATION` or `TRANSCRIPT TRANSLATION` depending on which (or both) is present. For other property names that are provided, the translation property will follow the same convention and translations will be saved to a `[PROPERTY NAME] TRANSLATION`.
+- `FEED_FORWARD_PROP_TO_PROCESS`: Controls which properties of the feed-forward track or detection are considered for translation. This should be a comma-separated list of property names. The default properties are `"TEXT,TRANSCRIPT"`. If `TRANSLATE_ALL_FF_PROPERTIES` is set to TRUE, then each named property in the list that is present is translated and the resulting translations will be added to the feed forward track. The default properties will be saved as `TEXT TRANSLATION` or `TRANSCRIPT TRANSLATION` depending on which (or both) is present. For other property names that are provided, the translation property will follow the same convention and translations will be saved to a `[PROPERTY NAME] TRANSLATION`.
+
+- `TRANSLATE_ALL_FF_PROPERTIES`: If set to TRUE, translate all properties of the feed-forward track or detection listed in `FEED_FORWARD_PROP_TO_PROCESS`. When set to FALSE, only translate the first property, and the translation is stored in the `TRANSLATION` output property.
 
 - `LANGUAGE_FEED_FORWARD_PROP`: Is an optional feed-forward property that comes from an earlier stage in a pipeline, indicating which language to translate from. The default values are `"ISO_LANGUAGE, DECODED_LANGUAGE, LANGUAGE"`. The ISO 639-3 standard is the expected input for any of these fields. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, the language to translate from will be determined by the DEFAULT_SOURCE_LANGUAGE property instead.
 

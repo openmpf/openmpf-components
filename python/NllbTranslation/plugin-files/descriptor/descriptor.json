@@ -27,6 +27,12 @@
           "defaultValue": "TEXT,TRANSCRIPT"
         },
         {
+          "name": "TRANSLATE_ALL_FF_PROPERTIES",
+          "description": "When set to true, translate all properties in the FEED_FORWARD_PROPS_TO_PROCESS list. When set to false, only translate the first property in the FEED_FORWARD_PROPS_TO_PROCESS list and don't use the prefix in front of TRANSLATION in the output property.",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
           "name": "PRETRAINED_MODEL",
           "description": "Path to offline nllb-200-distilled-600M model.",
           "type": "STRING",

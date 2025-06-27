@@ -77,7 +77,7 @@ class TestNllbTranslation(unittest.TestCase):
         result = self.component.get_detections_from_image(job)
 
         props = result[0].detection_properties
-        self.assertEqual(self.TRANSLATION, props["TEXT TRANSLATION"])
+        self.assertEqual(self.TRANSLATION, props["TRANSLATION"])
 
     def test_audio_job(self):
         #set default props
@@ -93,9 +93,51 @@ class TestNllbTranslation(unittest.TestCase):
         result = self.component.get_detections_from_audio(job)
 
         props = result[0].detection_properties
-        self.assertEqual(self.TRANSLATION, props["TEXT TRANSLATION"])
+        self.assertEqual(self.TRANSLATION, props["TRANSLATION"])
 
     def test_video_job(self):
+
+        TRANSCRIPT_INPUT_1 = (
+           'Wie ist das Wetter?' # "How is the weather?"
+        )
+        EXPECTED_TRANSLATION_1 = (
+            "How's the weather?"
+        )
+        TRANSCRIPT_INPUT_2 = (
+           'Es regnet.' # "It's raining"
+        )
+        EXPECTED_TRANSLATION_2 = (
+            "It's raining."
+        )
+        
+        ff_track = mpf.VideoTrack(
+            0, 1, -1,
+            {
+                0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TRANSCRIPT=TRANSCRIPT_INPUT_1)),
+                1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=TRANSCRIPT_INPUT_2))
+            },
+            dict(TEXT=self.TRANSLATE_THIS_TEXT))
+        
+        #set default props
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        #load source language
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
+        test_generic_job_props['TRANSLATE_ALL_FF_PROPERTIES'] = 'TRUE'
+
+        job = mpf.VideoJob('Test Video',
+                           'test.mp4', 0, 1,
+                           test_generic_job_props,
+                           {}, ff_track)
+        result = self.component.get_detections_from_video(job)
+
+        props = result[0].detection_properties
+        self.assertEqual(self.TRANSLATION, props["TEXT TRANSLATION"])
+        frame_1_props = result[0].frame_locations[0].detection_properties
+        self.assertEqual(EXPECTED_TRANSLATION_1, frame_1_props["TRANSCRIPT TRANSLATION"])
+        frame_2_props = result[0].frame_locations[1].detection_properties
+        self.assertEqual(EXPECTED_TRANSLATION_2, frame_2_props["TRANSCRIPT TRANSLATION"])
+
+    def test_translate_only_text_ff_property_job(self):
 
         TRANSCRIPT_INPUT_1 = (
            'Wie ist das Wetter?' # "How is the weather?"
@@ -130,11 +172,12 @@ class TestNllbTranslation(unittest.TestCase):
         result = self.component.get_detections_from_video(job)
 
         props = result[0].detection_properties
-        self.assertEqual(self.TRANSLATION, props["TEXT TRANSLATION"])
+        self.assertEqual(self.TRANSLATION, props["TRANSLATION"])
+        self.assertNotIn("TEXT TRANSLATION", props)
         frame_1_props = result[0].frame_locations[0].detection_properties
-        self.assertEqual(EXPECTED_TRANSLATION_1, frame_1_props["TRANSCRIPT TRANSLATION"])
+        self.assertNotIn("TRANSCRIPT TRANSLATION", frame_1_props)
         frame_2_props = result[0].frame_locations[1].detection_properties
-        self.assertEqual(EXPECTED_TRANSLATION_2, frame_2_props["TRANSCRIPT TRANSLATION"])
+        self.assertNotIn("TRANSCRIPT TRANSLATION", frame_2_props)
 
     def test_generic_job(self):
         #set default props
@@ -148,7 +191,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(self.TRANSLATION, result_props["TEXT TRANSLATION"])
+        self.assertEqual(self.TRANSLATION, result_props["TRANSLATION"])
 
     def test_plaintext_job(self):
         #set default props
@@ -164,7 +207,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(self.TRANSLATION, result_props["TEXT TRANSLATION"])
+        self.assertEqual(self.TRANSLATION, result_props["TRANSLATION"])
 
     def test_unsupported_source_language(self):
         #set default props
@@ -191,7 +234,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(self.TRANSLATION, result_props["TEXT TRANSLATION"])
+        self.assertEqual(self.TRANSLATION, result_props["TRANSLATION"])
 
     def test_feed_forward_language(self):
         #set default props
@@ -204,7 +247,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(self.TRANSLATION, result_props["TEXT TRANSLATION"])
+        self.assertEqual(self.TRANSLATION, result_props["TRANSLATION"])
 
     def test_numbers_only_not_translated(self):
         #set default props
@@ -217,7 +260,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('1234', result_props["TEXT TRANSLATION"])
+        self.assertEquals('1234', result_props["TRANSLATION"])
 
     def test_punctuation_only_not_translated(self):
         #set default props
@@ -230,7 +273,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('!@#$%', result_props["TEXT TRANSLATION"])
+        self.assertEquals('!@#$%', result_props["TRANSLATION"])
 
     def test_zho_punctuation_only_not_translated(self):
         #set default props
@@ -243,7 +286,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('、。〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〞〟', result_props["TEXT TRANSLATION"])
+        self.assertEquals('、。〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〞〟', result_props["TRANSLATION"])
 
     def test_eng_to_eng_translation(self):
         #set default props
@@ -256,7 +299,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('This is English text that should not be translated.', result_props["TEXT TRANSLATION"])
+        self.assertEquals('This is English text that should not be translated.', result_props["TRANSLATION"])
 
     def test_sentence_split_job(self):
         #set default props
@@ -278,7 +321,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(expected_translation, result_props["TEXT TRANSLATION"])
+        self.assertEqual(expected_translation, result_props["TRANSLATION"])
 
         test_generic_job_props['SOURCE_LANGUAGE'] = None
         test_generic_job_props['SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE'] = 'en'
@@ -286,14 +329,14 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(expected_translation, result_props["TEXT TRANSLATION"])
+        self.assertEqual(expected_translation, result_props["TRANSLATION"])
         # test sentence splitter (xx_sent_ud_sm)
         test_generic_job_props['SENTENCE_MODEL'] = 'xx_sent_ud_sm'
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(expected_translation, result_props["TEXT TRANSLATION"])
+        self.assertEqual(expected_translation, result_props["TRANSLATION"])
 
     def test_split_with_non_translate_segments(self):
         #set default props
@@ -315,7 +358,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals(pt_text_translation, result_props["TEXT TRANSLATION"])
+        self.assertEquals(pt_text_translation, result_props["TRANSLATION"])
 
     def test_sentence_split_job2(self):
         #set default props
@@ -350,7 +393,7 @@ satisfeitos de si.
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(pt_text_translation, result_props["TEXT TRANSLATION"])
+        self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
 
     @unittest.skip('Work in progress')
     def test_sentence_split_job3(self):
@@ -367,7 +410,7 @@ satisfeitos de si.
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(self.TRANSLATION, result_props["TEXT TRANSLATION"])
+        self.assertEqual(self.TRANSLATION, result_props["TRANSLATION"])
 
 if __name__ == '__main__':
     unittest.main()
