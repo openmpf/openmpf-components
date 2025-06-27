@@ -260,7 +260,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('1234', result_props["TRANSLATION"])
+        self.assertEqual('1234', result_props["TRANSLATION"])
 
     def test_punctuation_only_not_translated(self):
         #set default props
@@ -273,7 +273,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('!@#$%', result_props["TRANSLATION"])
+        self.assertEqual('!@#$%', result_props["TRANSLATION"])
 
     def test_zho_punctuation_only_not_translated(self):
         #set default props
@@ -286,7 +286,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('、。〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〞〟', result_props["TRANSLATION"])
+        self.assertEqual('、。〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〞〟', result_props["TRANSLATION"])
 
     def test_eng_to_eng_translation(self):
         #set default props
@@ -299,7 +299,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals('This is English text that should not be translated.', result_props["TRANSLATION"])
+        self.assertEqual('This is English text that should not be translated.', result_props["TRANSLATION"])
 
     def test_sentence_split_job(self):
         #set default props
@@ -358,7 +358,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEquals(pt_text_translation, result_props["TRANSLATION"])
+        self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
 
     def test_sentence_split_job2(self):
         #set default props
