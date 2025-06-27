@@ -1,0 +1,78 @@
+{
+    "componentName": "GeminiVideoSummarization",
+    "componentVersion": "9.0",
+    "middlewareVersion": "9.0",
+    "sourceLanguage": "python",
+    "batchLibrary": "GeminiVideoSummarization",
+    "environmentVariables": [],
+    "algorithm": {
+        "name": "Gemini",
+        "description": "Gemini prompt response generation.",
+        "actionType": "DETECTION",
+        "trackType": "TEXT",
+        "mediaTypes":"VIDEO",
+        "outputChangedCounter": 1,
+        "requiresCollection": {
+            "states": []
+        },
+        "providesCollection": {
+            "states": [
+                "DETECTION",
+                "DETECTION_TEXT",
+                "DETECTION_TEXT_GEMINI_VIDEO"
+            ],
+            "properties": [
+                {
+                    "name": "PROMPT_CONFIGURATION_PATH",
+                    "description": "Path to a custom a file which contains the prompt that Gemini will use on the video.",
+                    "type": "STRING",
+                    "defaultValue": "default_prompt.txt"
+                },
+                {
+                    "name": "GEMINI_API_KEY",
+                    "description": "Gemini API key.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "PROCESS_FPS",
+                    "description": "The frame rate at which to process the video.",
+                    "type": "STRING",
+                    "defaultValue": "1"
+                },
+                {
+                    "name": "MODEL_NAME",
+                    "description": "The model to use for Gemini inference. Examples: 'gemini-1.5-flash', 'gemini-1.5-pro'.",
+                    "type": "STRING",
+                    "defaultValue": "gemini-2.5-flash"
+                }
+            ]
+        }
+    },
+    "actions": [
+        {
+            "name": "GEMINI VIDEO SUMMARIZATION ACTION",
+            "description": "Runs Gemini with prompts for each video frame passed in.",
+            "algorithm": "Gemini",
+            "properties": []
+        }
+    ],
+    "tasks": [
+        {
+            "name": "GEMINI VIDEO SUMMARIZATION TASK",
+            "description": "Runs Gemini video summarization.",
+            "actions": [
+                "GEMINI VIDEO SUMMARIZATION ACTION"
+            ]
+        }
+    ],
+    "pipelines": [
+        {
+            "name": "GEMINI VIDEO SUMMARIZATION PIPELINE",
+            "description": "Runs Gemini video summarization.",
+            "tasks": [
+                "GEMINI VIDEO SUMMARIZATION TASK"
+            ]
+        }
+    ]
+}
