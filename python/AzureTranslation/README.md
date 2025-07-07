@@ -77,6 +77,11 @@ must be provided. Neither has a default value.
   default to translating from Spanish, whenever Azure's language detector fails
   to identify the source language of the incoming text.
 
+- `ACS_SUBSCRIPTION_REGION`: Optional property that specifies the subscription
+  region for the Azure Cognitive Services resource, such as 'eastus'. Required
+  for some Azure deployments. If provided, will be set in the
+  'Ocp-Apim-Subscription-Region' request header.
+
 
 # Text Splitter Job Properties
 The following settings control the behavior of dividing input text into acceptable chunks
