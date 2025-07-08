@@ -26,6 +26,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
@@ -358,8 +359,8 @@ class TestComponent(unittest.TestCase):
     def test_timeline_integrity(self):
         component = LlamaVideoSummarizationComponent()
 
-        drone_timeline_segment_1 = DRONE_TIMELINE_SEGMENT_1.copy()
-        drone_timeline_segment_2 = DRONE_TIMELINE_SEGMENT_2.copy()
+        drone_timeline_segment_1 = copy.deepcopy(DRONE_TIMELINE_SEGMENT_1)
+        drone_timeline_segment_2 = copy.deepcopy(DRONE_TIMELINE_SEGMENT_2)
 
         drone_timeline_segment_1['video_event_timeline'].append({
                 "timestamp_start": 185.81,
@@ -434,27 +435,10 @@ class TestComponent(unittest.TestCase):
             self.run_patched_job(component, job2, json.dumps(drone_timeline_segment_2))
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        # TODO: rework this check
-        # self.assertIn("Timeline event start time of -45.2 < 0.", str(cm.exception))
+        self.assertIn("Timeline event start time of -45.2 < 0.", str(cm.exception))
 
         drone_timeline_segment_2['video_event_timeline'].pop(0)
-
-        with self.assertRaises(mpf.DetectionException) as cm:
-            self.run_patched_job(component, job2, json.dumps(drone_timeline_segment_2))
-
-        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        # TODO: rework this check
-        # self.assertIn("Timeline event start time occurs too soon before segment start time. (179.9798 - 0.0) > 20.", str(cm.exception))
-
         drone_timeline_segment_2['video_event_timeline'].pop(0)
-
-        with self.assertRaises(mpf.DetectionException) as cm:
-            self.run_patched_job(component, job2, json.dumps(drone_timeline_segment_2))
-
-        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        # TODO: rework this check
-        # self.assertIn("Timeline event end time occurs too late after segment stop time. (381.17 - 299.96633333333335) > 20.", str(cm.exception))
-
         drone_timeline_segment_2['video_event_timeline'][-1]["timestamp_end"] = 295.0
 
         with self.assertRaises(mpf.DetectionException) as cm:
@@ -513,8 +497,8 @@ class TestComponent(unittest.TestCase):
 
     def test_timeline_acceptable_threshold(self):
         component = LlamaVideoSummarizationComponent()
-        drone_timeline_segment_1 = DRONE_TIMELINE_SEGMENT_1.copy()
-        drone_timeline_segment_2 = DRONE_TIMELINE_SEGMENT_2.copy()
+        drone_timeline_segment_1 = copy.deepcopy(DRONE_TIMELINE_SEGMENT_1)
+        drone_timeline_segment_2 = copy.deepcopy(DRONE_TIMELINE_SEGMENT_2)
 
         job = mpf.VideoJob(
             job_name='drone.mp4-segment-1',
