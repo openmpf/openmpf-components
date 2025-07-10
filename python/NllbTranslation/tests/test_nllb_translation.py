@@ -58,7 +58,7 @@ class TestNllbTranslation(unittest.TestCase):
     )
     #expected nllb translation
     TRANSLATION = (
-        "Hey, how's it going today?"
+        "Hi, how are you today?"
     )
 
     component = NllbTranslationComponent()
@@ -314,7 +314,7 @@ class TestNllbTranslation(unittest.TestCase):
         long_translation_text = (
             'Das ist Satz eins. Das ist Satz zwei. Und das ist Satz drei.'
         )
-        expected_translation = "That's sentence one. That's sentence two. And this is sentence three."
+        expected_translation = "That's the first sentence. That's the second sentence. And that's the third sentence."
 
         ff_track = mpf.GenericTrack(-1, dict(TEXT=long_translation_text))
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
@@ -349,7 +349,8 @@ class TestNllbTranslation(unittest.TestCase):
          # excerpt from https://www.gutenberg.org/ebooks/16443
         pt_text="Os que são gentis são indispensáveis. 012345678901234567890123456789012345. 123456789012345678901234567890123456. Os caridosos são uma luz pra os outros."
 
-        pt_text_translation = "Those who are kind are indispensable. 012345678901234567890123456789012345.  123456789012345678901234567890123456.  Charitable people are a light to others."
+        small_model_expected = "Those who are kind are indispensable. 012345678901234567890123456789012345.  123456789012345678901234567890123456.  Charitable people are a light to others."
+        large_model_expected = "The kind ones are indispensable. 012345678901234567890123456789012345.  123456789012345678901234567890123456.  Charity workers are a light to others."
 
         ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text,
                                              LANGUAGE='por',
@@ -358,7 +359,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
+        self.assertEqual(large_model_expected, result_props["TRANSLATION"])
 
     def test_sentence_split_job2(self):
         #set default props
@@ -386,14 +387,15 @@ entre nós, envolvidos em densa atmosphera de perenne contentamento,
 satisfeitos do mundo, satisfeitos dos homens e, muito especialmente,
 satisfeitos de si.
 """
-        pt_text_translation = "They hold these in fact indispensable in which the vivid rays of our sunless sun, or the moon's dim face in the peninsular sky, where it has no, as in London--_a breaking at cost a plumb sky_--to pour joy into the soul and send its reflection to the semblance; imagine fatally pursued by _spleen_, hopelessly gloomy and submerged, as if at every moment they were coming out of the underground galleries of a mine of _pit-coul_, our English allies.  How they deceive themselves or how they intend to deceive us! This is an illusion or bad faith, against which there is much complaint about the indelible and accentuated expression of bliss, which transluces in the illuminated face of men beyond the Channel, the quaes seem to walk among us, enveloped in a dense atmosphere of perennial contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves. "
+        small_model_expected = "They hold these in fact indispensable in which the vivid rays of our sunless sun, or the moon's dim face in the peninsular sky, where it has no, as in London--_a breaking at cost a plumb sky_--to pour joy into the soul and send its reflection to the semblance; imagine fatally pursued by _spleen_, hopelessly gloomy and submerged, as if at every moment they were coming out of the underground galleries of a mine of _pit-coul_, our English allies.  How they deceive themselves or how they intend to deceive us! This is an illusion or bad faith, against which there is much complaint about the indelible and accentuated expression of bliss, which transluces in the illuminated face of men beyond the Channel, the quaes seem to walk among us, enveloped in a dense atmosphere of perennial contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves. "
+        large_model_expected = "They fear, indeed, those in whom the vivid rays of our languid sun, or the unclouded face of the moon in the peninsular firmament, where it has not, like that of London--to break at the cost of a plumbeo heaven--to pour joys into the soul and send to the countenances the reflection d'elles; they imagine fatally pursued from spleen, hopelessly gloomy and sullen, as if at every moment they came out of the underground galleries of a mine of coulpit, our English allies. How they deceive themselves or how they try to deceive us! is this an illusion or bad faith, against which there is much complaint in vain the indelevel and accentuated expression of beatitude, which shines through the illuminated face of the men from beyond the Spot, who seem to walk among us, wrapped in a dense atmosphere of perennial contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves."
 
         ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text))
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
+        self.assertEqual(large_model_expected, result_props["TRANSLATION"])
 
     @unittest.skip('Work in progress')
     def test_sentence_split_job3(self):
@@ -411,6 +413,54 @@ satisfeitos de si.
 
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(self.TRANSLATION, result_props["TRANSLATION"])
+
+    def test_arb_eng(self):
+        input_text="أعلن أوريول جونكيراس يوم السبت، وهو أحد القادة التسعة في كتالونيا المودع في السجن رهن المحاكمة منذ أواخر العام الماضي أنه سيرشح نفسه في انتخابات البرلمان الأوروبي في العام القادم."
+        ground_truth_translation =  "On Saturday, Oriol Junqueras, one of nine Catalan leaders in pre-trial jail since late last year, announced he would run in European Parliament elections next year."
+        small_model_expected     =  "O'Reilly Junqueras, one of nine Catalonia leaders jailed since late last year, announced on Saturday that he would run for the European Parliament election next year."
+        large_model_expected     =  "Oriol Junqueras, one of nine leaders in Catalonia who has been in jail on trial since late last year, announced on Saturday that he will run in the European Parliament elections next year."
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=input_text,
+                                             LANGUAGE='arb',
+                                             ISO_SCRIPT='Arab'))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(large_model_expected, result_props["TRANSLATION"])
+
+    def test_eng_aeb(self):
+        input_text="Have you traveled anywhere recently?"
+        small_model_expected = "هل سافر في اي مكان مؤخرا؟"
+        large_model_expected = "سافرتي في أي بلاصة مؤخرا؟"
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        test_generic_job_props['TARGET_LANGUAGE'] = 'aeb'
+        test_generic_job_props['TARGET_SCRIPT'] = 'Arab'
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=input_text,
+                                             LANGUAGE='eng',
+                                             ISO_SCRIPT='Latn'))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(large_model_expected, result_props["TRANSLATION"])
+
+    def test_aeb_eng(self):
+        input_text="و يحبو يقعدوا غادي ولا مذبيهم يرجعوا لتونس؟"
+        ground_truth_translation = "Do they want to stay there, or do they want to come back to Tunisia?"
+        small_model_expected     = "Do they want to stay there or do their clients want to go back to Tunisia ?"
+        large_model_expected     = "Do they want to stay there or do they want to go back to Tunisia ?"
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=input_text,
+                                             LANGUAGE='aeb',
+                                             ISO_SCRIPT='Arab'))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(large_model_expected, result_props["TRANSLATION"])
 
 if __name__ == '__main__':
     unittest.main()

@@ -50,7 +50,7 @@ class NllbTranslationComponent:
             global DEVICE
             DEVICE = "cuda"
 
-        self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
+        self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-3.3B',
                                                             token=False, local_files_only=True).to(DEVICE)
     
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
@@ -203,7 +203,7 @@ class JobConfig:
 
         # cached model
         self.cached_model_location: str = mpf_util.get_property(props, 'PRETRAINED_MODEL',
-                                                                '/models/facebook/nllb-200-distilled-600M')
+                                                                '/models/facebook/nllb-200-3.3B')
 
         # language to translate to
         self.translate_to_language: Optional[str] = NllbLanguageMapper.get_code(
