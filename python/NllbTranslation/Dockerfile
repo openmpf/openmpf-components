@@ -48,16 +48,19 @@ COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 COPY --from=build /opt/wtp /opt/wtp
 
 # download nllb model
-ARG MODEL_REVISION=f8d333a098d19b4fd9a8b18f94170487ad3f821d
+ARG MODEL_NAME=facebook/nllb-200-3.3B
+ARG MODEL_REVISION=1a07f7d195896b2114afcb79b7b57ab512e7b43e
 RUN --mount=type=tmpfs,target=/tmp/models \
     mkdir -p "/models/facebook"; \
     python -c \
     "import os; from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; \
     modelrev = os.environ['MODEL_REVISION']; \
-    tokenizer = AutoTokenizer.from_pretrained('facebook/nllb-200-distilled-600M', revision=modelrev); \
-    model = AutoModelForSeq2SeqLM.from_pretrained('facebook/nllb-200-distilled-600M', revision=modelrev); \
-    tokenizer.save_pretrained('/models/facebook/nllb-200-distilled-600M'); \
-    model.save_pretrained('/models/facebook/nllb-200-distilled-600M')"
+    modelname = os.environ['MODEL_NAME']; \
+    modelpath = r'/models/' + modelname; \
+    tokenizer = AutoTokenizer.from_pretrained(modelname, revision=modelrev); \
+    model = AutoModelForSeq2SeqLM.from_pretrained(modelname, revision=modelrev); \
+    tokenizer.save_pretrained(modelpath); \
+    model.save_pretrained(modelpath)"
 
 ARG RUN_TESTS=false
 RUN --mount=target=.,readwrite \
