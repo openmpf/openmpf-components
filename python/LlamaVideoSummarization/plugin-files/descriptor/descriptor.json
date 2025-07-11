@@ -1,0 +1,131 @@
+{
+    "componentName": "LlamaVideoSummarization",
+    "componentVersion": "9.0",
+    "middlewareVersion": "9.0",
+    "sourceLanguage": "python",
+    "batchLibrary": "LlamaVideoSummarization",
+    "environmentVariables": [],
+    "algorithm": {
+        "name": "LLAMAVIDEO",
+        "description": "LLaMA video summarization",
+        "actionType": "DETECTION",
+        "trackType": "TEXT",
+        "outputChangedCounter": 1,
+        "requiresCollection": {
+            "states": []
+        },
+        "providesCollection": {
+            "states": [
+                "DETECTION",
+                "DETECTION_TEXT",
+                "DETECTION_TEXT_LLAMA_VIDEO"
+            ],
+            "properties": [
+                {
+                    "name": "PROCESS_FPS",
+                    "description": "Specifies the number of frames per second of video to process. Between 0 and 10.",
+                    "type": "INT",
+                    "defaultValue": "1"
+                },
+                {
+                    "name": "MAX_FRAMES",
+                    "description": "Specifies the maximum number of frames to process. NOTE: There is some nuance to VideoLLaMA3's behavior when processing videos longer than 3 minutes. Caution should be used when increasing this property, as doing so may exceed the maximum token indices sequence length of the model.",
+                    "type": "INT",
+                    "defaultValue": "180"
+                },
+                {
+                    "name": "MAX_NEW_TOKENS",
+                    "description": "Specifies the maximum number of output tokens to generate. Ignores the number of tokens in the input prompt. Increase this value if the response is empty. May need to increase for longer videos.",
+                    "type": "INT",
+                    "defaultValue": "1024"
+                },
+                {
+                    "name": "GENERATION_PROMPT_PATH",
+                    "description": "Path to the text file containing the generation prompt.",
+                    "type": "STRING",
+                    "defaultValue": "default_prompt.txt"
+                },
+                {
+                    "name": "GENERATION_JSON_SCHEMA_PATH",
+                    "description": "Path to the JSON file containing the JSON schema format for the model to generate.",
+                    "type": "STRING",
+                    "defaultValue": "default_schema.json"
+                },
+                {
+                    "name": "SYSTEM_PROMPT_PATH",
+                    "description": "Path to the text file containing the system (role) prompt. If empty, the generation prompt is used for the system prompt.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "GENERATION_MAX_ATTEMPTS",
+                    "description": "Two kinds of checks are performed on the model response: 1) response is not empty and has valid JSON in the correct format, and 2) the response timeline falls within the video segment length determined by the model. Each check has a separate counter. This value specifies the maximum number of attempts for each check. Each failed check results in another attempt to regenerate the response.",
+                    "type": "INT",
+                    "defaultValue": "5"
+                },
+                {
+                    "name": "TIMELINE_CHECK_TARGET_THRESHOLD",
+                    "description": "Specifies the number of seconds that video events can occur before or after video segment bounds. If exceeded, another attempt will be made to generate the output. Set to -1 to disable check.",
+                    "type": "INT",
+                    "defaultValue": "10"
+                },
+                {
+                    "name": "TARGET_SEGMENT_LENGTH",
+                    "description": "Default segment length is 180 seconds. Set to -1 to disable segmenting the video.",
+                    "type": "INT",
+                    "defaultValue": "180"
+                },
+                {
+                    "name": "VFR_TARGET_SEGMENT_LENGTH",
+                    "description": "Default segment length is 180 seconds. Set to -1 to disable segmenting the video.",
+                    "type": "INT",
+                    "defaultValue": "180"
+                },
+                {
+                    "name": "SEGMENT_LENGTH_SPECIFICATION",
+                    "description": "The value for determining how to interpret TARGET_SEGMENT_LENGTH, VFR_TARGET_SEGMENT_LENGTH, MIN_SEGMENT_LENGTH, and VFR_MIN_SEGMENT_LENGTH. The value of this property MUST be one of the following choices. FRAME: Segment lengths are specified in number of frames. SECONDS: Segment lengths are specified in number of seconds. When set to SECONDS, the VFR segment lengths use the average video frame rate, not the video PTS values.",
+                    "type": "STRING",
+                    "defaultValue": "SECONDS"
+                },
+                {
+                    "name": "MERGE_TRACKS",
+                    "description": "In the context of videos, when set to true, attempt to merge tracks spanning segment boundaries.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
+                    "name": "QUALITY_SELECTION_PROPERTY",
+                    "description": "The detection property to be used to rank the quality of a track and the quality of the detections in a track. This property would be used, for example, to select the exemplar detection for a track.",
+                    "type": "STRING",
+                    "defaultValue": "EXEMPLAR"
+                }
+            ] 
+        }
+    },
+    "actions": [
+        {
+            "name": "LLAMA VIDEO SUMMARIZATION ACTION",
+            "description": "Runs LLaMA video summarization.",
+            "algorithm": "LLAMAVIDEO",
+            "properties": []
+        }
+    ],
+    "tasks": [
+        {
+            "name": "LLAMA VIDEO SUMMARIZATION TASK",
+            "description": "Runs LLaMA video summarization.",
+            "actions": [
+                "LLAMA VIDEO SUMMARIZATION ACTION"
+            ]
+        }
+    ],
+    "pipelines": [
+        {
+            "name": "LLAMA VIDEO SUMMARIZATION PIPELINE",
+            "description": "Runs LLaMA video summarization.",
+            "tasks": [
+                "LLAMA VIDEO SUMMARIZATION TASK"
+            ]
+        }
+    ]
+}
