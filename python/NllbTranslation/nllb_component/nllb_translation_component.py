@@ -27,7 +27,6 @@
 import logging
 import regex as re
 import time
-import torch
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -46,13 +45,17 @@ NO_TRANSLATE_PATTERN = re.compile(r'[\p{Whitespace}[:digit:][:punct:]]*')
 class NllbTranslationComponent:
 
     def __init__(self):
-        if torch.cuda.is_available():
-            global DEVICE
-            DEVICE = "cuda"
+        # if torch.cuda.is_available():
+        #    global DEVICE
+        #    DEVICE = "cuda"
 
-        self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
-                                                            token=False, local_files_only=True).to(DEVICE)
+        # self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
+        #                                                    token=False, local_files_only=True).to(DEVICE)
     
+        # ImportError: Using `low_cpu_mem_usage=True` or a `device_map` requires Accelerate: `pip install 'accelerate>=0.26.0'`
+        self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
+                                                           token=False, local_files_only=True, device_map="auto")  # DEBUG
+
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
         return self._get_feed_forward_detections(job.job_properties, job.feed_forward_location, video_job=False)
@@ -114,8 +117,12 @@ class NllbTranslationComponent:
 
         # get tokenizer
         start = time.time()
+
+        # self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
+        #                                           use_auth_token=False, local_files_only=True, src_lang=config.translate_from_language)
         self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
-                                                  use_auth_token=False, local_files_only=True, src_lang=config.translate_from_language)
+                                                  use_auth_token=False, local_files_only=True, src_lang=config.translate_from_language, device_map="auto")  # DEBUG
+
         elapsed = time.time() - start
         logger.info(f"Successfully loaded tokenizer in {elapsed} seconds.")
 
@@ -157,7 +164,9 @@ class NllbTranslationComponent:
 
             for sentence in text_list:
                 if sentence and not NO_TRANSLATE_PATTERN.fullmatch(sentence):
-                    inputs = self._tokenizer(sentence, return_tensors="pt").to(DEVICE)
+                    # inputs = self._tokenizer(sentence, return_tensors="pt").to(DEVICE)
+                    inputs = self._tokenizer(sentence, return_tensors="pt").to(self._model.device)  # DEBUG
+
                     translated_tokens = self._model.generate(
                         **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
 
