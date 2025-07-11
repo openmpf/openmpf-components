@@ -53,7 +53,7 @@ RUN --mount=type=tmpfs,target=/tmp/models \
     mkdir -p "/models/facebook"; \
     python -c \
     "import os; from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; \
-    modelrev = os.environ['MODEL_REVISION']; \
+    modelrev = \"${MODEL_REVISION}\"; \
     tokenizer = AutoTokenizer.from_pretrained('facebook/nllb-200-distilled-600M', revision=modelrev); \
     model = AutoModelForSeq2SeqLM.from_pretrained('facebook/nllb-200-distilled-600M', revision=modelrev); \
     tokenizer.save_pretrained('/models/facebook/nllb-200-distilled-600M'); \
