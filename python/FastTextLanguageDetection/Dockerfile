@@ -28,17 +28,27 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
+
+FROM ubuntu:20.04 AS download_model
+
+RUN --mount=type=tmpfs,target=/var/cache/apt \
+    --mount=type=tmpfs,target=/var/lib/apt/lists  \
+    --mount=type=tmpfs,target=/tmp \
+    apt-get update && apt-get install --no-install-recommends -y wget ca-certificates
+
+RUN mkdir --parents /opt/fasttext/models \
+    && wget -O /opt/fasttext/models/glotlid.bin \
+        https://huggingface.co/cis-lmu/glotlid/resolve/main/model.bin
+
+
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
-RUN pip install --no-cache-dir fasttext huggingface_hub
-
-RUN python <<eot
-import huggingface_hub
-huggingface_hub.hf_hub_download(repo_id="cis-lmu/glotlid", filename="model.bin")
-eot
+RUN pip install --no-cache-dir fasttext
 
 ARG RUN_TESTS=false
-RUN --mount=target=.,readwrite <<eot
+RUN --mount=target=.,readwrite \
+    --mount=from=download_model,source=/opt/fasttext/models/glotlid.bin,target=/opt/fasttext/models/glotlid.bin \
+    <<eot
     install-component.sh
     if [ "${RUN_TESTS,,}" == true ]; then
         python tests/test_fast_text_language_detection.py
@@ -50,7 +60,7 @@ FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
 
 COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 
-COPY --from=build /root/.cache/huggingface/hub /root/.cache/huggingface/hub
+COPY --from=download_model /opt/fasttext/ /opt/fasttext/
 
 COPY --from=build $PLUGINS_DIR/FastTextLanguageDetection $PLUGINS_DIR/FastTextLanguageDetection
 
