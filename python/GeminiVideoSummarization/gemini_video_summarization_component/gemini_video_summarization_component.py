@@ -48,7 +48,13 @@ IGNORE_PREFIXES = tuple([s + ' ' for s in IGNORE_WORDS])
 class GeminiVideoSummarizationComponent:
 
     def __init__(self):
-        self.gemini_api_key = ''
+        
+        self.google_application_credentials = ''
+        self.project_id = ''
+        self.bucket_name = ''
+        self.label_prefix = ''
+        self.label_user = ''
+        self.label_purpose = ''
 
     def get_detections_from_video(self, video_job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         logger.info('Received video job: %s', video_job.job_name)
@@ -56,13 +62,20 @@ class GeminiVideoSummarizationComponent:
         tracks = []
 
         config = JobConfig(video_job.job_properties, video_job.media_properties)
-        self.gemini_api_key = config.gemini_api_key
+
+        self.google_application_credentials = config.google_application_credentials
+        self.project_id = config.project_id
+        self.bucket_name = config.bucket_name
+        self.label_prefix = config.label_prefix
+        self.label_user = config.label_user
+        self.label_purpose = config.label_purpose
+
         video_capture = mpf_util.VideoCapture(video_job)
 
         prompt = _read_file(config.prompt_config_path)
 
         if video_job.feed_forward_track is None:
-            response = self._get_gemini_response(config.model_name, video_job.data_uri, config.process_fps, prompt)
+            response = self._get_gemini_response(config.model_name, video_job.data_uri, prompt)
             tracks.append(mpf.VideoTrack(        
                 start_frame=0,
                 stop_frame=video_capture.frame_count - 1,
@@ -88,7 +101,7 @@ class GeminiVideoSummarizationComponent:
         retry=retry_if_exception(lambda e: isinstance(e, mpf.DetectionException) and getattr(e, 'rate_limit', False))
     )
 
-    def _get_gemini_response(self, model_name, data_uri, process_fps, prompt):
+    def _get_gemini_response(self, model_name, data_uri, prompt):
         process = None
         try:
             process = subprocess.Popen([
@@ -96,9 +109,14 @@ class GeminiVideoSummarizationComponent:
                 "/gemini-subprocess/gemini-process-video.py",
                 "-m", model_name,
                 "-d", data_uri,
-                "-f", process_fps,
                 "-p", prompt,
-                "-a", self.gemini_api_key],
+                "-c", self.google_application_credentials,
+                "-i", self.project_id,
+                "-b", self.bucket_name,
+                "-l", self.label_prefix,
+                "-u", self.label_user,
+                "-r", self.label_purpose
+                ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE)
             stdout, stderr = process.communicate()
@@ -139,9 +157,13 @@ def _read_file(path: str) -> str:
 class JobConfig:
     def __init__(self, job_properties: Mapping[str, str], media_properties=None):
         self.prompt_config_path = self._get_prop(job_properties, "PROMPT_CONFIGURATION_PATH", "default_prompt.txt") 
-        self.gemini_api_key = self._get_prop(job_properties, "GEMINI_API_KEY", "")
-        self.process_fps = self._get_prop(job_properties, "PROCESS_FPS", "1")
-        self.model_name = self._get_prop(job_properties, "MODEL_NAME", "gemini-2.5-flash")
+        self.model_name = self._get_prop(job_properties, "MODEL_NAME", "gemini-2.5-pro")
+        self.google_application_credentials = self._get_prop(job_properties, "GOOGLE_APPLICATION_CREDENTIALS", "")
+        self.project_id = self._get_prop(job_properties, "PROJECT_ID", "")
+        self.bucket_name = self._get_prop(job_properties, "BUCKET_NAME", "")
+        self.label_prefix = self._get_prop(job_properties, "LABEL_PREFIX", "")
+        self.label_user = self._get_prop(job_properties, "LABEL_USER", "")
+        self.label_purpose = self._get_prop(job_properties, "LABEL_PURPOSE", "")
 
     @staticmethod
     def _get_prop(job_properties, key, default_value, accept_values=[]):

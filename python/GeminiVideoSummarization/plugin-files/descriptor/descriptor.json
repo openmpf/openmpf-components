@@ -29,22 +29,46 @@
                     "defaultValue": "default_prompt.txt"
                 },
                 {
-                    "name": "GEMINI_API_KEY",
-                    "description": "Gemini API key.",
-                    "type": "STRING",
-                    "defaultValue": ""
-                },
-                {
-                    "name": "PROCESS_FPS",
-                    "description": "The frame rate at which to process the video.",
-                    "type": "STRING",
-                    "defaultValue": "1"
-                },
-                {
                     "name": "MODEL_NAME",
                     "description": "The model to use for Gemini inference. Examples: 'gemini-1.5-flash', 'gemini-1.5-pro'.",
                     "type": "STRING",
                     "defaultValue": "gemini-2.5-flash"
+                },
+                {
+                    "name": "GOOGLE_APPLICATION_CREDENTIALS",
+                    "description": "Path to a JSON file containing your GCP credentials for Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "PROJECT_ID",
+                    "description": "The project identifier to access Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "BUCKET_NAME",
+                    "description": "The name of the bucket to store data for the project.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "LABEL_PREFIX",
+                    "description": "A prefix for labels to show what project is being affected by a call to the Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "LABEL_USER",
+                    "description": "The user accessing the Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "LABEL_PURPOSE",
+                    "description": "The purpose of using the Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
                 }
             ]
         }
