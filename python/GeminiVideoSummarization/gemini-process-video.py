@@ -28,16 +28,13 @@ import argparse
 import json
 import os
 import sys
-import logging
 
 from google import genai
 from google.genai import types
 from google.genai.types import Part
 from google.cloud import storage
-from pytictoc import TicToc
 from google.genai.errors import ClientError
 
-logger = logging.getLogger('GeminiVideoSummarizationComponent')
 
 def main():
     parser = argparse.ArgumentParser(description='Sends image and prompt to Gemini Client for processing.')
@@ -75,8 +72,6 @@ def main():
             project=PROJECT_ID
         )
 
-        logger.info("Uploading file...")
-
         bucket = client.bucket(BUCKET_NAME)
         blob = bucket.blob(STORAGE_PATH)
 
@@ -88,7 +83,6 @@ def main():
         blob.upload_from_filename(FILE_PATH)
 
         file_uri = f"gs://{BUCKET_NAME}/{STORAGE_PATH}"
-        logger.info(f"Completed upload: {file_uri}")
 
         # Automatically uses ADC to authenticate
         client = genai.Client(
@@ -96,25 +90,6 @@ def main():
             location="global",
             vertexai=True
         )
-
-        # Count tokens
-        logger.info(f"\nToken count before query:")
-
-        response = client.models.count_tokens(
-            model=MODEL,
-            contents=[PROMPT])
-        logger.info(f"  Text: {response}")
-
-        response = client.models.count_tokens(
-            model=MODEL,
-            contents=[
-                Part.from_uri(
-                    file_uri=file_uri,
-                    mime_type="video/mp4"
-                )
-            ]
-        )
-        logger.info(f"  Video: {response}")
 
         # Use labels to help track billing and usage
         content_config = types.GenerateContentConfig(
@@ -124,10 +99,6 @@ def main():
                 LABEL_PREFIX + "modality": "video"
             }
         )
-
-        # Query
-        timer = TicToc()
-        timer.tic()
 
         response = client.models.generate_content(
             model=MODEL,
@@ -142,11 +113,6 @@ def main():
         )
         print(f"\n{response.text}")
 
-        timer.toc("\nContent generation took")
-
-        logger.info(f"\nUsage Metadata:")
-        logger.info(response.usage_metadata)
-
         # Set a generation-match precondition to avoid potential race conditions
         # and data corruptions. The request to delete is aborted if the object's
         # generation number does not match your precondition.
@@ -154,7 +120,6 @@ def main():
         generation_match_precondition = blob.generation
 
         blob.delete(if_generation_match=generation_match_precondition)
-        logger.info(f"\nDeleted file: {file_uri}")
 
         sys.exit(0)
     except ClientError as e:

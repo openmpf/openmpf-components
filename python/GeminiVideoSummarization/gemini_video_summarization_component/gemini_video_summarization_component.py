@@ -59,6 +59,13 @@ class GeminiVideoSummarizationComponent:
     def get_detections_from_video(self, video_job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         logger.info('Received video job: %s', video_job.job_name)
 
+        if video_job.feed_forward_track:
+            raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
+                'Component cannot process feed forward jobs.')
+
+        if video_job.stop_frame < 0:
+            raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
+                'Job stop frame must be >= 0.')
         tracks = []
 
         config = JobConfig(video_job.job_properties, video_job.media_properties)
@@ -72,22 +79,17 @@ class GeminiVideoSummarizationComponent:
 
         video_capture = mpf_util.VideoCapture(video_job)
 
+        response_json={}
         prompt = _read_file(config.prompt_config_path)
+        response = self._get_gemini_response(config.model_name, video_job.data_uri, prompt)
+        response = response.split('```json\n')[1].split('```')[0]
+        response_json = json.loads(response)
+        event_timeline = response_json['video_event_timeline']
 
-        if video_job.feed_forward_track is None:
-            response = self._get_gemini_response(config.model_name, video_job.data_uri, prompt)
-            tracks.append(mpf.VideoTrack(        
-                start_frame=0,
-                stop_frame=video_capture.frame_count - 1,
-                detection_properties={"TEXT": response}
-                )
-            )
-        else:
-            raise mpf.DetectionException(
-                f"Feed forward jobs not supported by this component: {e}",
-                mpf.DetectionError.DETECTION_FAILED)
+        logger.info('Processing complete.')
 
-        logger.info(f"Job complete. Found {len(tracks)} tracks.")
+        tracks = self._create_tracks(video_job, response_json)
+
         return tracks
 
     def _is_rate_limit_error(self, stderr):
@@ -100,6 +102,128 @@ class GeminiVideoSummarizationComponent:
         stop=stop_after_delay(60),
         retry=retry_if_exception(lambda e: isinstance(e, mpf.DetectionException) and getattr(e, 'rate_limit', False))
     )
+
+    def _create_tracks(self, job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
+        tracks = []
+        frame_width = 0
+        frame_height = 0
+        if 'FRAME_WIDTH' in job.media_properties:
+            frame_width = int(job.media_properties['FRAME_WIDTH'])
+        if 'FRAME_HEIGHT' in job.media_properties:
+            frame_height = int(job.media_properties['FRAME_HEIGHT'])
+
+        if response_json['video_event_timeline']:
+            summary_track = self._create_segment_summary_track(job, response_json)
+            tracks.append(summary_track)
+
+            segment_id = summary_track.detection_properties['SEGMENT ID']
+
+            for event in response_json['video_event_timeline']:
+                # get offset start/stop times in milliseconds
+                event_start_time = int(float(event['timestamp_start']) * 1000)
+                event_stop_time = int(float(event['timestamp_end']) * 1000)
+
+                offset_start_frame = int((event_start_time) / 1000)
+                offset_stop_frame = int((event_stop_time) / 1000) - 1
+
+                detection_properties={
+                    "SEGMENT ID": segment_id,
+                    "TEXT": event['description']
+                }
+                
+                offset_middle_frame = int((offset_stop_frame - offset_start_frame) / 2) + offset_start_frame
+
+                # check offset_stop_frame
+                if offset_stop_frame > job.stop_frame:
+                    logger.debug(f'offset_stop_frame outside of acceptable range '
+                              f'({offset_stop_frame} > {job.stop_frame}), setting offset_stop_frame to {job.stop_frame}')
+                    offset_stop_frame = job.stop_frame
+                elif offset_stop_frame < job.start_frame:
+                    logger.debug(f'offset_stop_frame outside of acceptable range '
+                              f'({offset_stop_frame} < {job.start_frame}), setting offset_stop_frame to {job.start_frame}')
+                    offset_stop_frame = job.start_frame
+
+                # check offset_middle_frame
+                if offset_middle_frame > job.stop_frame:
+                    logger.debug(f'offset_middle_frame outside of acceptable range '
+                              f'({offset_middle_frame} > {job.stop_frame}), setting offset_middle_frame to {job.stop_frame}')
+                    offset_middle_frame = job.stop_frame
+                elif offset_middle_frame < job.start_frame:
+                    logger.debug(f'offset_middle_frame outside of acceptable range '
+                              f'({offset_middle_frame} < {job.start_frame}), setting offset_middle_frame to {job.start_frame}')
+                    offset_middle_frame = job.start_frame
+
+                # check offset_start_frame
+                if offset_start_frame > job.stop_frame:
+                    logger.debug(f'offset_start_frame outside of acceptable range '
+                              f'({offset_start_frame} > {job.stop_frame}), setting offset_start_frame to {job.stop_frame}')
+                    offset_start_frame = job.stop_frame
+                elif offset_start_frame < job.start_frame:
+                    logger.debug(f'offset_start_frame outside of acceptable range '
+                              f'({offset_start_frame} < {job.start_frame}), setting offset_start_frame to {job.start_frame}')
+                    offset_start_frame = job.start_frame
+
+                track = mpf.VideoTrack(
+                    offset_start_frame, 
+                    offset_stop_frame, 
+                    1.0,
+                    # Add start and top frame locations to prevent the Workflow Manager from dropping / truncating track.
+                    # Add middle frame for artifact extraction.
+                    frame_locations = {
+                        offset_start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                        offset_middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                        offset_stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
+                    },
+                    detection_properties = detection_properties
+                )
+
+                track.frame_locations[offset_middle_frame].detection_properties["EXEMPLAR"] = "1"
+                
+                tracks.append(track)
+
+        else: # no events timeline, create summary only
+            tracks.append(self._create_segment_summary_track(job, response_json))
+            
+        logger.info('Processing complete. Video segment %s summarized in %d tracks.' % (segment_id, len(tracks)))
+        return tracks
+
+    def _create_segment_summary_track(self, job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
+        start_frame = job.start_frame
+        stop_frame = job.stop_frame
+        
+        segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
+        detection_properties={
+            "SEGMENT ID": segment_id,
+            "SEGMENT SUMMARY": "TRUE",
+            "TEXT": response_json['video_summary']
+        }
+        frame_width = 0
+        frame_height = 0
+        if 'FRAME_WIDTH' in job.media_properties:
+            frame_width = int(job.media_properties['FRAME_WIDTH'])
+        if 'FRAME_HEIGHT' in job.media_properties:
+            frame_height = int(job.media_properties['FRAME_HEIGHT'])
+
+        middle_frame = int((stop_frame - start_frame) / 2) + start_frame
+
+        track = mpf.VideoTrack(
+            start_frame, 
+            stop_frame, 
+            1.0,
+            # Add start and top frame locations to prevent the Workflow Manager from dropping / truncating track.
+            # Add middle frame for artifact extraction.
+            frame_locations = {
+                start_frame:  mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                middle_frame: mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0),
+                stop_frame:   mpf.ImageLocation(0, 0, frame_width, frame_height, 1.0)
+            },
+            detection_properties = detection_properties
+        )
+
+        track.frame_locations[middle_frame].detection_properties["EXEMPLAR"] = "1"
+
+        return track
+
 
     def _get_gemini_response(self, model_name, data_uri, prompt):
         process = None
@@ -156,7 +280,7 @@ def _read_file(path: str) -> str:
 
 class JobConfig:
     def __init__(self, job_properties: Mapping[str, str], media_properties=None):
-        self.prompt_config_path = self._get_prop(job_properties, "PROMPT_CONFIGURATION_PATH", "default_prompt.txt") 
+        self.prompt_config_path = self._get_prop(job_properties, "GENERATION_PROMPT_PATH", "default_prompt.txt") 
         self.model_name = self._get_prop(job_properties, "MODEL_NAME", "gemini-2.5-pro")
         self.google_application_credentials = self._get_prop(job_properties, "GOOGLE_APPLICATION_CREDENTIALS", "")
         self.project_id = self._get_prop(job_properties, "PROJECT_ID", "")

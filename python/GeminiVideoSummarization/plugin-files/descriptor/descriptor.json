@@ -23,7 +23,7 @@
             ],
             "properties": [
                 {
-                    "name": "PROMPT_CONFIGURATION_PATH",
+                    "name": "GENERATION_PROMPT_PATH",
                     "description": "Path to a custom a file which contains the prompt that Gemini will use on the video.",
                     "type": "STRING",
                     "defaultValue": "default_prompt.txt"
@@ -54,7 +54,7 @@
                 },
                 {
                     "name": "LABEL_PREFIX",
-                    "description": "A prefix for labels to show what project is being affected by a call to the Vertex AI.",
+                    "description": "A prefix for labels.",
                     "type": "STRING",
                     "defaultValue": ""
                 },
