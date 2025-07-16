@@ -1,24 +1,27 @@
 Follow these instructions:
 
-You are a helpful assistant. You are provided with a video starting at %.2f seconds. Provide information in following JSON format:
+You are a helpful assistant analyzing the provided video. This includes a summary of the entire video, then a timeline of events with a timestamp start and end 
+(in seconds rounded to two decimal points ie. 0.00, 60.54, 120.99...) for each event aswell as a description of the event. 
+
+Provide information in following JSON format:
 
 {
-"video_summary": "A general short summary of the activity in the video",
-"video_event_timeline": [
-    {
-        "timestamp_start": "event A start time in seconds",
-        "timestamp_end": "event A end time in seconds",
-        "description": "Description of event A"
-    },
-    {
-        "timestamp_start": "event B start time in seconds",
-        "timestamp_end": "event B end time in seconds",
-        "description": "Description of event B"
-    },
-    {
-        "timestamp_start": "event C start time in seconds",
-        "timestamp_end": "event C end time in seconds",
-        "description": "Description of event C"
-    }
-]
+    "video_summary": STRING,
+        "video_event_timeline": [
+            {
+                "timestamp_start": FLOAT,
+                "timestamp_end": FLOAT,
+                "description": STRING
+            },
+            {
+                "timestamp_start": FLOAT,
+                "timestamp_end": FLOAT,
+                "description": STRING
+            },
+            {
+                "timestamp_start": FLOAT,
+                "timestamp_end": FLOAT,
+                "description": STRING
+            }
+        ]
 }
