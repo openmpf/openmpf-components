@@ -170,6 +170,8 @@ class TranslationClient:
 
     def __init__(self, job_properties: Mapping[str, str], sentence_model: TextSplitterModel):
         self._subscription_key = get_required_property('ACS_SUBSCRIPTION_KEY', job_properties)
+        self._subscription_region = job_properties.get('ACS_SUBSCRIPTION_REGION', '')
+
         self._http_retry = mpf_util.HttpRetry.from_properties(job_properties, log.warning)
 
         url_builder = AcsTranslateUrlBuilder(job_properties)
@@ -331,7 +333,7 @@ class TranslationClient:
         ]
         encoded_body = json.dumps(request_body).encode('utf-8')
         request = urllib.request.Request(url, encoded_body,
-                                         get_acs_headers(self._subscription_key))
+                                         get_acs_headers(self._subscription_key, self._subscription_region))
         log.info(f'Sending POST to {url}')
         log_json(request_body)
         with self._http_retry.urlopen(
@@ -436,7 +438,7 @@ class TranslationClient:
         ]
         encoded_body = json.dumps(request_body).encode('utf-8')
         request = urllib.request.Request(self._detect_url, encoded_body,
-                                         get_acs_headers(self._subscription_key))
+                                         get_acs_headers(self._subscription_key, self._subscription_region))
         log.info(f'Sending POST {self._detect_url}')
         log_json(request_body)
         with self._http_retry.urlopen(request) as response:
@@ -561,10 +563,15 @@ def set_query_params(url: str, query_params: Mapping[str, str]) -> str:
 
 
 
-def get_acs_headers(subscription_key: str) -> Dict[str, str]:
-    return {'Ocp-Apim-Subscription-Key': subscription_key,
-            'Content-type': 'application/json; charset=UTF-8',
-            'X-ClientTraceId': str(uuid.uuid4())}
+def get_acs_headers(subscription_key: str, region: Optional[str] = None) -> Dict[str, str]:
+    headers = {
+        'Ocp-Apim-Subscription-Key': subscription_key,
+        'Content-type': 'application/json; charset=UTF-8',
+        'X-ClientTraceId': str(uuid.uuid4())
+    }
+    if region:
+        headers['Ocp-Apim-Subscription-Region'] = region
+    return headers
 
 
 class AcsTranslateUrlBuilder:

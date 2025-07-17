@@ -34,6 +34,12 @@
           "defaultValue": ""
         },
         {
+          "name": "ACS_SUBSCRIPTION_REGION",
+          "description": "Azure region for the Cognitive Services resource, such as 'eastus'. Required for some Azure deployments. If provided, will be set in the 'Ocp-Apim-Subscription-Region' request header.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
           "name": "FEED_FORWARD_PROP_TO_PROCESS",
           "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to consider translating. If the first property listed is present, then that property will be translated. If it's not, then the next property in the list is considered. At most, one property will be translated.",
           "type": "STRING",
