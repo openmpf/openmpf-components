@@ -499,7 +499,7 @@ class GeminiComponent:
     )
 
     def _get_gemini_response(self, model_name, data_uri, prompt):
-    
+
         process = None
         shm = None
         try:
@@ -522,33 +522,42 @@ class GeminiComponent:
                     "Expected image data in shared memory format.",
                     mpf.DetectionError.DETECTION_FAILED
                 )
-            stdout, stderr = process.communicate()
-        except Exception as e:
-            if shm:
-                shm.close()
-                shm.unlink()
-            raise mpf.DetectionException(
-                f"Subprocess error: {e}",
-                mpf.DetectionError.DETECTION_FAILED)
 
-        if process.returncode == 0:
-            response = stdout.decode()
-            logger.info(response)
-            return response
-        
-        stderr_decoded = stderr.decode()
-        if self._is_rate_limit_error(stderr_decoded):
-            logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
-            ex = mpf.DetectionException(
-                f"Subprocess failed due to rate limiting: {stderr_decoded}",
+            stdout, stderr = process.communicate()
+
+            if process.returncode == 0:
+                response = stdout.decode()
+                logger.info(response)
+                if shm:
+                    try:
+                        shm.close()
+                        shm.unlink()
+                    except Exception as cleanup_err:
+                        logger.warning(f"Failed to cleanup shared memory: {cleanup_err}")
+                return response
+
+            stderr_decoded = stderr.decode()
+
+            if self._is_rate_limit_error(stderr_decoded):
+                logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
+                ex = mpf.DetectionException(
+                    f"Subprocess failed due to rate limiting: {stderr_decoded}",
+                    mpf.DetectionError.DETECTION_FAILED
+                )
+                ex.rate_limit = True
+                raise ex
+
+            raise mpf.DetectionException(
+                f"Subprocess failed: {stderr_decoded}",
                 mpf.DetectionError.DETECTION_FAILED
             )
-            ex.rate_limit = True
-            raise ex
-        raise mpf.DetectionException(
-            f"Subprocess failed: {stderr_decoded}",
-            mpf.DetectionError.DETECTION_FAILED
-        )
+
+        except Exception as e:
+            if not (hasattr(e, 'rate_limit') and getattr(e, 'rate_limit')):
+                if shm:
+                    shm.close()
+                    shm.unlink()
+            raise
 
     def _get_frames_to_process(self, frame_locations: list, skip: int) -> list:
         if not frame_locations:
