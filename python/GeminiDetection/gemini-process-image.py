@@ -70,9 +70,6 @@ def main():
         err_str = str(e)
         print(err_str, file=sys.stderr)
         sys.exit(1)
-    finally:
-        if shm:
-            shm.close() 
 
 if __name__ == "__main__":
     main()
