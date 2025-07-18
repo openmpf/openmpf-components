@@ -140,11 +140,11 @@ class GeminiComponent:
                 self.frame_count += 1
                 height, width, _ = frame.shape
                 detection_properties = dict()
-                encoded = self._encode_image(frame)
+                # encoded = self._encode_image(frame)
                 self.video_process_timer.start()
 
                 for tag, prompt in self.frame_prompts.items():
-                    response = self._get_gemini_response(config.model_name, encoded, prompt)
+                    response = self._get_gemini_response(config.model_name, frame, prompt)
                     detection_properties[tag] = response
 
                 detection_properties['ANNOTATED BY GEMINI'] = True
@@ -189,7 +189,7 @@ class GeminiComponent:
                 self.frame_count += 1
                 height, width, _ = frame.shape
                 detection_properties = dict()
-                encoded = self._encode_image(frame)
+                # encoded = self._encode_image(frame)
                 self.video_process_timer.start()
 
                 if classification in self.json_class_prompts:
@@ -197,7 +197,7 @@ class GeminiComponent:
                         json_attempts, json_failed = 0, True
                         while (json_attempts < self.json_limit) and (json_failed):
                             json_attempts += 1
-                            response = self._get_gemini_response(config.model_name, encoded, prompt)
+                            response = self._get_gemini_response(config.model_name, frame, prompt)
                             try:
                                 response = response.split('```json\n')[1].split('```')[0]
                                 response_json = json.loads(response)
@@ -248,13 +248,13 @@ class GeminiComponent:
                 frame = frame_indices[idx]
                 ff_location = job_feed_forward.frame_locations[idx]
                 frame_count += 1
-                encoded = self._encode_image(frame)
+                # encoded = self._encode_image(frame)
 
                 if classification in self.class_prompts:
                     detection_properties = ff_location.detection_properties
 
                     for tag, prompt in self.class_prompts[classification].items():
-                        response = self._get_gemini_response(config.model_name, encoded, prompt)
+                        response = self._get_gemini_response(config.model_name, frame, prompt)
                         detection_properties[tag] = response
                     detection_properties['CLASSIFICATION'] = classification.upper()
                     detection_properties['ANNOTATED BY GEMINI'] = True
@@ -266,10 +266,14 @@ class GeminiComponent:
                 detection_properties = job_feed_forward.detection_properties
                 if hasattr(job_feed_forward, 'data_uri'):
                     image = job_feed_forward.data_uri
-                    if not isinstance(image, str):
-                        image = self._encode_image(image)
                 else:
-                    image = self._encode_image(reader.get_image())
+                    image = reader.get_image()
+                # if hasattr(job_feed_forward, 'data_uri'):
+                #     image = job_feed_forward.data_uri
+                #     if not isinstance(image, str):
+                #         image = self._encode_image(image)
+                # else:
+                #     image = self._encode_image(reader.get_image())
                 for tag, prompt in self.class_prompts[classification].items():
                     response = self._get_gemini_response(config.model_name, image, prompt)
                     detection_properties[tag] = response
@@ -295,7 +299,7 @@ class GeminiComponent:
                 frame = frame_indices[idx]
                 ff_location = job_feed_forward.frame_locations[idx]
                 self.frame_count += 1
-                encoded = self._encode_image(frame)
+                # encoded = self._encode_image(frame)
 
                 if classification in prompts_to_use:
                     for tag, prompt in prompts_to_use[classification].items():
@@ -303,7 +307,7 @@ class GeminiComponent:
 
                         while (json_attempts < self.json_limit) and (json_failed):
                             json_attempts += 1
-                            response = self._get_gemini_response(config.model_name, encoded, prompt)
+                            response = self._get_gemini_response(config.model_name, frame, prompt)
                             try:
                                 response = response.split('```json\n')[1].split('```')[0]
                                 response_json = json.loads(response)
@@ -322,7 +326,7 @@ class GeminiComponent:
                 
             return [job_feed_forward]
         else:
-            image = self._encode_image(reader.get_image())
+            image = reader.get_image()
             if classification in prompts_to_use:
                 for tag, prompt in prompts_to_use[classification].items():
                     json_attempts, json_failed = 0, True
@@ -344,7 +348,7 @@ class GeminiComponent:
                         job_feed_forward.detection_properties['FULL GEMINI RESPONSE'] = response
             return [job_feed_forward]
         
-    def _resize_frame(self, frame, max_dim=1000):
+    def _resize_frame(self, frame, max_dim=4500):
         h, w = frame.shape[:2]
         scale = min(max_dim / w, max_dim / h)
         if scale < 1.0:
@@ -369,7 +373,7 @@ class GeminiComponent:
         is_person = (('CLASSIFICATION' in detection_properties) and (detection_properties['CLASSIFICATION'].lower() == 'person')) \
             or (classification == 'person')
 
-        vehicle_classes = ['vehicle', 'car', 'truck', 'bus']
+        vehicle_classes = ['vehicle', 'car', 'truck', 'bus', 'motorbike']
         is_vehicle = (('CLASSIFICATION' in detection_properties) and (detection_properties['CLASSIFICATION'].lower() in vehicle_classes)) \
             or (classification in vehicle_classes)
 
@@ -512,7 +516,7 @@ class GeminiComponent:
     )
 
     def _get_gemini_response(self, model_name, data_uri, prompt):
-
+        data_uri = self._encode_image(data_uri)
         process = None
         shm = None
         try:
@@ -541,12 +545,6 @@ class GeminiComponent:
             if process.returncode == 0:
                 response = stdout.decode()
                 logger.info(response)
-                if shm:
-                    try:
-                        shm.close()
-                        shm.unlink()
-                    except Exception as cleanup_err:
-                        logger.warning(f"Failed to cleanup shared memory: {cleanup_err}")
                 return response
 
             stderr_decoded = stderr.decode()
@@ -566,11 +564,10 @@ class GeminiComponent:
             )
 
         except Exception as e:
-            if not (hasattr(e, 'rate_limit') and getattr(e, 'rate_limit')):
-                if shm:
-                    shm.close()
-                    shm.unlink()
-            raise
+            raise mpf.DetectionException(
+                f"Subprocess error: {e}",
+                mpf.DetectionError.DETECTION_FAILED
+            )
 
     def _get_frames_to_process(self, frame_locations: list, skip: int) -> list:
         if not frame_locations:

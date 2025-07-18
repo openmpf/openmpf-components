@@ -70,6 +70,13 @@ def main():
         err_str = str(e)
         print(err_str, file=sys.stderr)
         sys.exit(1)
+    finally:
+        if shm:
+            try:
+                shm.close()
+                shm.unlink()
+            except Exception as cleanup_err:
+                logger.warning(f"Failed to cleanup shared memory: {cleanup_err}")
 
 if __name__ == "__main__":
     main()
