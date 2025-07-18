@@ -190,9 +190,6 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
 
         std::vector<MPFVideoTrack> tracks = getDetections(job, feedForwardTracker);
 
-        bool output_merge_with_previous_task =
-                DetectionComponentUtils::GetProperty(job.job_properties, "OUTPUT_MERGE_WITH_PREVIOUS_TASK", false);
-
         for (MPFVideoTrack &track : tracks) {
             // Update track props with feed-forward props
             Properties &track_props = track.detection_properties;
@@ -200,9 +197,8 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
                 track_props.insert(feed_forward_track_prop);
             }
             // Determine if we should copy feed-forward confidence
-            if (output_merge_with_previous_task) {
-                track.confidence = job.feed_forward_track.confidence;
-            }
+            track.confidence = job.feed_forward_track.confidence;
+
             // Update location props with corresponding feed-forward props
             for (auto& pair : track.frame_locations) {
                 int frameId = pair.first;
@@ -213,10 +209,8 @@ std::vector<MPFVideoTrack> OcvDnnDetection::GetDetections(const MPFVideoJob &job
                     for (const auto& feed_forward_prop : feed_forward_loc_props) {
                         loc_props.insert(feed_forward_prop);
                     }
-                    // Determine if we should copy feed-forward confidence
-                    if (output_merge_with_previous_task) {
-                        pair.second.confidence = feed_forward_loc_iter->second.confidence;
-                    }
+
+                    pair.second.confidence = feed_forward_loc_iter->second.confidence;
                 }
             }
         }
@@ -290,9 +284,6 @@ std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &
         }
 
         if (job.has_feed_forward_location) {
-            bool output_merge_with_previous_task =
-                    DetectionComponentUtils::GetProperty(job.job_properties, "OUTPUT_MERGE_WITH_PREVIOUS_TASK", false);
-
             // Update location props with feed-forward props
             const Properties &feed_forward_props = job.feed_forward_location.detection_properties;
             for (MPFImageLocation &location : locations) {
@@ -300,10 +291,8 @@ std::vector<MPFImageLocation> OcvDnnDetection::GetDetections(const MPFImageJob &
                 for (const auto& feed_forward_prop : feed_forward_props) {
                     props.insert(feed_forward_prop);
                 }
-                // Determine if we should copy feed-forward confidence
-                if (output_merge_with_previous_task) {
-                    location.confidence = job.feed_forward_location.confidence;
-                }
+                
+                location.confidence = job.feed_forward_location.confidence;
             }
         }
 
