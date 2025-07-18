@@ -34,6 +34,7 @@ from typing import Mapping, Iterable
 from multiprocessing.shared_memory import SharedMemory
 import json
 import re
+import cv2
 
 import numpy as np
 from tenacity import retry, wait_random_exponential, stop_after_delay, retry_if_exception
@@ -343,7 +344,19 @@ class GeminiComponent:
                         job_feed_forward.detection_properties['FULL GEMINI RESPONSE'] = response
             return [job_feed_forward]
         
+    def _resize_frame(self, frame, max_dim=1000):
+        h, w = frame.shape[:2]
+        scale = min(max_dim / w, max_dim / h)
+        if scale < 1.0:
+            new_w = int(w * scale)
+            new_h = int(h * scale)
+            resized_frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            return resized_frame
+        else:
+            return frame
+
     def _encode_image(self, frame):
+        frame = self._resize_frame(frame)
         shape = frame.shape
         dtype = frame.dtype
         shm = SharedMemory(create=True, size=frame.nbytes)
