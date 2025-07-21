@@ -1,7 +1,7 @@
 Follow these instructions:
 
 You are a helpful assistant analyzing the provided video. This includes a summary of the entire video, then a timeline of events with a timestamp start and end 
-(in seconds rounded to two decimal points ie. 0.00, 60.54, 120.99...) for each event aswell as a description of the event. 
+(in seconds ie. 0, 60, 120...) for each event aswell as a description of the event.
 
 Provide information in following JSON format:
 
@@ -9,18 +9,18 @@ Provide information in following JSON format:
     "video_summary": STRING,
         "video_event_timeline": [
             {
-                "timestamp_start": FLOAT,
-                "timestamp_end": FLOAT,
+                "timestamp_start": INT,
+                "timestamp_end": INT,
                 "description": STRING
             },
             {
-                "timestamp_start": FLOAT,
-                "timestamp_end": FLOAT,
+                "timestamp_start": INT,
+                "timestamp_end": INT,
                 "description": STRING
             },
             {
-                "timestamp_start": FLOAT,
-                "timestamp_end": FLOAT,
+                "timestamp_start": INT,
+                "timestamp_end": INT,
                 "description": STRING
             }
         ]

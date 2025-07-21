@@ -6,7 +6,7 @@
     "batchLibrary": "GeminiVideoSummarization",
     "environmentVariables": [],
     "algorithm": {
-        "name": "Gemini",
+        "name": "GeminiVideo",
         "description": "Gemini prompt response generation.",
         "actionType": "DETECTION",
         "trackType": "TEXT",
@@ -26,11 +26,11 @@
                     "name": "GENERATION_PROMPT_PATH",
                     "description": "Path to a custom a file which contains the prompt that Gemini will use on the video.",
                     "type": "STRING",
-                    "defaultValue": "default_prompt.txt"
+                    "defaultValue": ""
                 },
                 {
                     "name": "MODEL_NAME",
-                    "description": "The model to use for Gemini inference. Examples: 'gemini-1.5-flash', 'gemini-1.5-pro'.",
+                    "description": "The model to use for Gemini inference. Examples: 'gemini-1.5-flash', 'gemini-2.5-pro'.",
                     "type": "STRING",
                     "defaultValue": "gemini-2.5-flash"
                 },
@@ -76,8 +76,8 @@
     "actions": [
         {
             "name": "GEMINI VIDEO SUMMARIZATION ACTION",
-            "description": "Runs Gemini with prompts for each video frame passed in.",
-            "algorithm": "Gemini",
+            "description": "Runs Gemini with a prompt for the provided video.",
+            "algorithm": "GeminiVideo",
             "properties": []
         }
     ],

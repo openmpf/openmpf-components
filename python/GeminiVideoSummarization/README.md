@@ -6,10 +6,10 @@ This component utilizes a text file with a prompt to use on a provided video for
 
 # Job Properties
 
-The following are the properties that can be specified for the component. The first two properties have default values, but the other properties has to be specified for this component.
+The following are the properties that can be specified for the component. The first three properties have default values, but the other properties have to be specified for this component.
 
-- `GENERATION_PROMPT_PATH`: Path to txt file which contains prompt.
 - `MODEL_NAME`: The model name for which Gemini model to use.
+- `GENERATION_PROMPT_PATH`: Path to txt file which contains prompt.
 - `GOOGLE_APPLICATION_CREDENTIALS`: Your gcloud CLI credentials in a json file.
 - `PROJECT_ID`: The project ID for your GCP project.
 - `BUCKET_NAME`: The GCP bucket that holds the data for processing.
@@ -19,11 +19,17 @@ The following are the properties that can be specified for the component. The fi
 
 # Custom Prompts
 
-For the default prompt refer to gemini_video_summarization_component/default_prompt.txt. 
+For the default prompt refer to gemini_video_summarization_component/data/default_prompt.txt. 
 
 Set GENERATION_PROMPT_PATH to specify the path to a txt file containing a generation prompt to provide the model. 
 
 When making a custom prompt, refer to Vertex AI's structured output for JSON files: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/control-generated-output#googlegenaisdk_ctrlgen_with_resp_schema-python_genai_sdk
+
+# GCP Certificate
+
+For the file to enter your GCP credentials refer to gemini_video_summarization_component/data/gcpCert.json. 
+
+Set GOOGLE_APPLICAITION_CREDENTIALS to specify a path to a json file with your credentials if you want it in another file. 
 
 # Command Line Interface
 

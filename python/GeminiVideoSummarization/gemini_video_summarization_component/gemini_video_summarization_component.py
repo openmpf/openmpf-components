@@ -42,9 +42,6 @@ import mpf_component_util as mpf_util
 
 logger = logging.getLogger('GeminiVideoSummarizationComponent')
 
-IGNORE_WORDS = ['unsure', 'none', 'false', 'no', 'unclear', 'n/a', 'unspecified', 'unknown', 'unreadable', 'not visible', 'none visible']
-IGNORE_PREFIXES = tuple([s + ' ' for s in IGNORE_WORDS])
-
 class GeminiVideoSummarizationComponent:
 
     def __init__(self):
@@ -80,16 +77,15 @@ class GeminiVideoSummarizationComponent:
         video_capture = mpf_util.VideoCapture(video_job)
 
         response_json={}
-        prompt = _read_file(config.prompt_config_path)
+        prompt = _read_file(config.generation_prompt_path)
         response = self._get_gemini_response(config.model_name, video_job.data_uri, prompt)
         response = response.split('```json\n')[1].split('```')[0]
         response_json = json.loads(response)
         event_timeline = response_json['video_event_timeline']
 
-        logger.info('Processing complete.')
-
         tracks = self._create_tracks(video_job, response_json)
 
+        logger.info(f"Job complete. Found {len(tracks)} tracks.")
         return tracks
 
     def _is_rate_limit_error(self, stderr):
@@ -275,14 +271,34 @@ def _read_file(path: str) -> str:
             path = os.path.join(base_dir, path)
         with open(path, 'r') as file:
             return file.read()
-    except:
-        raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(f"Could not read \"{path}\".")
+    except Exception as e:
+        raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
+            f"Could not read \"{path}\": {e}"
+        ) from e
 
 class JobConfig:
     def __init__(self, job_properties: Mapping[str, str], media_properties=None):
-        self.prompt_config_path = self._get_prop(job_properties, "GENERATION_PROMPT_PATH", "default_prompt.txt") 
-        self.model_name = self._get_prop(job_properties, "MODEL_NAME", "gemini-2.5-pro")
+
+        self.generation_prompt_path = self._get_prop(job_properties, "GENERATION_PROMPT_PATH", "")
+        if self.generation_prompt_path == "":
+            self.generation_prompt_path= os.path.join(os.path.dirname(__file__), 'data', 'default_prompt.txt')
+        if not os.path.exists(self.generation_prompt_path):
+            raise mpf.DetectionException(
+                "Invalid path provided for prompt file: ",
+                mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
+            )
+
         self.google_application_credentials = self._get_prop(job_properties, "GOOGLE_APPLICATION_CREDENTIALS", "")
+        logger.info(self.google_application_credentials)
+        if self.google_application_credentials == "":
+            self.google_application_credentials = os.path.join(os.path.dirname(__file__), 'data', 'gcpCert.json')
+        if not os.path.exists(self.google_application_credentials):
+            raise mpf.DetectionException(
+                "Invalid path provided for GCP credential file: ",
+                mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
+            )
+
+        self.model_name = self._get_prop(job_properties, "MODEL_NAME", "gemini-2.5-flash")
         self.project_id = self._get_prop(job_properties, "PROJECT_ID", "")
         self.bucket_name = self._get_prop(job_properties, "BUCKET_NAME", "")
         self.label_prefix = self._get_prop(job_properties, "LABEL_PREFIX", "")
