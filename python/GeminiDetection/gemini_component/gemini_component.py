@@ -140,7 +140,6 @@ class GeminiComponent:
                 self.frame_count += 1
                 height, width, _ = frame.shape
                 detection_properties = dict()
-                # encoded = self._encode_image(frame)
                 self.video_process_timer.start()
 
                 for tag, prompt in self.frame_prompts.items():
@@ -189,7 +188,6 @@ class GeminiComponent:
                 self.frame_count += 1
                 height, width, _ = frame.shape
                 detection_properties = dict()
-                # encoded = self._encode_image(frame)
                 self.video_process_timer.start()
 
                 if classification in self.json_class_prompts:
@@ -248,7 +246,6 @@ class GeminiComponent:
                 frame = frame_indices[idx]
                 ff_location = job_feed_forward.frame_locations[idx]
                 frame_count += 1
-                # encoded = self._encode_image(frame)
 
                 if classification in self.class_prompts:
                     detection_properties = ff_location.detection_properties
@@ -268,12 +265,7 @@ class GeminiComponent:
                     image = job_feed_forward.data_uri
                 else:
                     image = reader.get_image()
-                # if hasattr(job_feed_forward, 'data_uri'):
-                #     image = job_feed_forward.data_uri
-                #     if not isinstance(image, str):
-                #         image = self._encode_image(image)
-                # else:
-                #     image = self._encode_image(reader.get_image())
+
                 for tag, prompt in self.class_prompts[classification].items():
                     response = self._get_gemini_response(config.model_name, image, prompt)
                     detection_properties[tag] = response
@@ -299,7 +291,6 @@ class GeminiComponent:
                 frame = frame_indices[idx]
                 ff_location = job_feed_forward.frame_locations[idx]
                 self.frame_count += 1
-                # encoded = self._encode_image(frame)
 
                 if classification in prompts_to_use:
                     for tag, prompt in prompts_to_use[classification].items():
