@@ -24,22 +24,16 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import time
 import os
 import json
-import math
 import subprocess
 import logging
-from typing import Mapping, Iterable
-import json
-import re
-import importlib.resources
+from typing import Iterable, Mapping, Tuple, Union
 
 from tenacity import retry, wait_random_exponential, stop_after_delay, retry_if_exception
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
-
 logger = logging.getLogger('GeminiVideoSummarizationComponent')
 
 class GeminiVideoSummarizationComponent:
@@ -74,15 +68,42 @@ class GeminiVideoSummarizationComponent:
         self.label_user = config.label_user
         self.label_purpose = config.label_purpose
 
+        prompt = _read_file(config.generation_prompt_path)
+        model_name = config.model_name
+        max_attempts = int(config.generation_max_attempts)
+        timeline_check_target_threshold = int(config.timeline_check_target_threshold)
+        
+        error = None
+        attempts = dict(
+            base=0,
+            timeline=0)
+
         video_capture = mpf_util.VideoCapture(video_job)
 
-        response_json={}
-        prompt = _read_file(config.generation_prompt_path)
-        response = self._get_gemini_response(config.model_name, video_job.data_uri, prompt)
-        response = response.split('```json\n')[1].split('```')[0]
-        response_json = json.loads(response)
-        event_timeline = response_json['video_event_timeline']
+        while max(attempts.values()) < max_attempts:
+            response = self._get_gemini_response(config.model_name, video_job.data_uri, prompt)
+            response = response.split('```json\n')[1].split('```')[0]
+            response_json, error = self._check_response(attempts, max_attempts, response)
+            if error is not None:
+                continue
 
+            # if no error, then response_json should be valid
+            event_timeline = response_json['video_event_timeline'] 
+
+            start_time = video_job.start_frame / float(video_job.media_properties['FPS'])
+            stop_time = (video_job.stop_frame+1) / float(video_job.media_properties['FPS'])
+
+            if timeline_check_target_threshold != -1:
+                error = self._check_timeline(
+                    timeline_check_target_threshold, attempts, max_attempts, start_time, stop_time, event_timeline)
+                if error is not None:
+                    continue
+
+            break
+
+        if error:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Failed to produce valid JSON file: {error}')
+            
         tracks = self._create_tracks(video_job, response_json)
 
         logger.info(f"Job complete. Found {len(tracks)} tracks.")
@@ -113,14 +134,15 @@ class GeminiVideoSummarizationComponent:
             tracks.append(summary_track)
 
             segment_id = summary_track.detection_properties['SEGMENT ID']
+            video_fps = float(job.media_properties['FPS'])
 
             for event in response_json['video_event_timeline']:
                 # get offset start/stop times in milliseconds
                 event_start_time = int(float(event['timestamp_start']) * 1000)
                 event_stop_time = int(float(event['timestamp_end']) * 1000)
 
-                offset_start_frame = int((event_start_time) / 1000)
-                offset_stop_frame = int((event_stop_time) / 1000) - 1
+                offset_start_frame = int((event_start_time * video_fps) / 1000)
+                offset_stop_frame = int((event_stop_time * video_fps) / 1000) - 1
 
                 detection_properties={
                     "SEGMENT ID": segment_id,
@@ -220,6 +242,85 @@ class GeminiVideoSummarizationComponent:
 
         return track
 
+    def _check_response(self, attempts: dict, max_attempts: int, response: str
+                        ) -> Tuple[Union[dict, None], Union[str, None]]:
+        response_json = None
+
+        if not response:
+            error = 'Empty response.'
+            logger.warning(error)
+            logger.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+            attempts['base'] += 1
+            return None, error
+
+        try:
+            response_json = json.loads(response)
+        except ValueError as ve:
+            error = 'Response is not valid JSON.'
+            logger.warning(error)
+            logger.warning(str(ve))
+            logger.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+            attempts['base'] += 1
+            return response_json, error
+        
+        return response_json, None
+
+
+    def _check_timeline(self, threshold: float, attempts: dict, max_attempts: int,
+                        segment_start_time: float, segment_stop_time: float, event_timeline: list
+                        ) -> Union[str, None]:
+
+        error = None
+
+        for event in event_timeline:
+            timestamp_start = float(event["timestamp_start"])
+            timestamp_end = float(event["timestamp_end"])
+
+            if timestamp_start < 0:
+                error = (f'Timeline event start time of {timestamp_start} < 0.')
+                break
+            
+            if timestamp_end < 0:
+                error = (f'Timeline event end time of {timestamp_end} < 0.')
+                break
+
+            if timestamp_end < timestamp_start:
+                error = (f'Timeline event end time is less than event start time. '
+                         f'{timestamp_end} < {timestamp_start}.')
+                break
+            
+            if (segment_start_time - timestamp_start) > threshold:
+                error = (f'Timeline event start time occurs too soon before segment start time. '
+                         f'({segment_start_time} - {timestamp_start}) > {threshold}.')
+                break
+
+            if (timestamp_end - segment_stop_time) > threshold:
+                error = (f'Timeline event end time occurs too late after segment stop time. '
+                         f'({timestamp_end} - {segment_stop_time}) > {threshold}.')
+                break
+        
+        if not error:
+            min_event_start = min(list(map(lambda d: float(d.get('timestamp_start')),
+                                           filter(lambda d: 'timestamp_start' in d, event_timeline))))
+
+            if abs(segment_start_time - min_event_start) > threshold:
+                error = (f'Min timeline event start time not close enough to segment start time. '
+                         f'abs({segment_start_time} - {min_event_start}) > {threshold}.')
+
+        if not error:
+            max_event_end = max(list(map(lambda d: float(d.get('timestamp_end')),
+                                         filter(lambda d: 'timestamp_end' in d, event_timeline))))
+
+            if abs(max_event_end - segment_stop_time) > threshold:
+                error = (f'Max timeline event end time not close enough to segment stop time. '
+                         f'abs({max_event_end} - {segment_stop_time}) > {threshold}.')
+        if error:
+            logger.warning(error)
+            logger.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
+            attempts['timeline'] += 1
+            return error
+
+        return None
 
     def _get_gemini_response(self, model_name, data_uri, prompt):
         process = None
@@ -304,6 +405,8 @@ class JobConfig:
         self.label_prefix = self._get_prop(job_properties, "LABEL_PREFIX", "")
         self.label_user = self._get_prop(job_properties, "LABEL_USER", "")
         self.label_purpose = self._get_prop(job_properties, "LABEL_PURPOSE", "")
+        self.generation_max_attempts = self._get_prop(job_properties, "GENERATION_MAX_ATTEMPTS", "5")
+        self.timeline_check_target_threshold = self._get_prop(job_properties, "TIMELINE_CHECK_TARGET_THRESHOLD", "10")
 
     @staticmethod
     def _get_prop(job_properties, key, default_value, accept_values=[]):

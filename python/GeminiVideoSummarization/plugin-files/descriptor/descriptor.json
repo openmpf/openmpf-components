@@ -69,6 +69,42 @@
                     "description": "The purpose of using the Vertex AI.",
                     "type": "STRING",
                     "defaultValue": ""
+                },
+                {
+                    "name": "GENERATION_MAX_ATTEMPTS",
+                    "description": "Two kinds of checks are performed on the model response: 1) response is not empty and has valid JSON in the correct format, and 2) the response timeline falls within the video segment length determined by the model. Each check has a separate counter. This value specifies the maximum number of attempts for each check. Each failed check results in another attempt to regenerate the response.",
+                    "type": "INT",
+                    "defaultValue": "5"
+                },
+                {
+                    "name": "TIMELINE_CHECK_TARGET_THRESHOLD",
+                    "description": "Specifies the number of seconds that video events can occur before or after video bounds. If exceeded, another attempt will be made to generate the output. Set to -1 to disable check.",
+                    "type": "INT",
+                    "defaultValue": "10"
+                },
+                {
+                    "name": "TARGET_SEGMENT_LENGTH",
+                    "description": "Segmentation is not supported by this component. Set to -1 to disable segmenting the video.",
+                    "type": "INT",
+                    "defaultValue": "-1"
+                },
+                {
+                    "name": "VFR_TARGET_SEGMENT_LENGTH",
+                    "description": "Segmentation is not supported by this component. Set to -1 to disable segmenting the video.",
+                    "type": "INT",
+                    "defaultValue": "-1"
+                },
+                {
+                    "name": "MERGE_TRACKS",
+                    "description": "In the context of videos, when set to true, attempt to merge tracks from the entire video.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
+                    "name": "QUALITY_SELECTION_PROPERTY",
+                    "description": "The detection property to be used to rank the quality of a track and the quality of the detections in a track. This property would be used, for example, to select the exemplar detection for a track.",
+                    "type": "STRING",
+                    "defaultValue": "EXEMPLAR"
                 }
             ]
         }
