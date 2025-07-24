@@ -137,9 +137,10 @@ class GeminiVideoSummarizationComponent:
             video_fps = float(job.media_properties['FPS'])
 
             for event in response_json['video_event_timeline']:
+
                 # get offset start/stop times in milliseconds
-                event_start_time = int(float(event['timestamp_start']) * 1000)
-                event_stop_time = int(float(event['timestamp_end']) * 1000)
+                event_start_time = int(float(self.convert_mmss_to_total_seconds(event["timestamp_start"])) * 1000)
+                event_stop_time = int(float(self.convert_mmss_to_total_seconds(event["timestamp_end"])) * 1000)
 
                 offset_start_frame = int((event_start_time * video_fps) / 1000)
                 offset_stop_frame = int((event_stop_time * video_fps) / 1000) - 1
@@ -273,8 +274,8 @@ class GeminiVideoSummarizationComponent:
         error = None
 
         for event in event_timeline:
-            timestamp_start = float(event["timestamp_start"])
-            timestamp_end = float(event["timestamp_end"])
+            timestamp_start = float(self.convert_mmss_to_total_seconds(event["timestamp_start"]))
+            timestamp_end = float(self.convert_mmss_to_total_seconds(event["timestamp_end"]))
 
             if timestamp_start < 0:
                 error = (f'Timeline event start time of {timestamp_start} < 0.')
@@ -321,6 +322,11 @@ class GeminiVideoSummarizationComponent:
             return error
 
         return None
+        
+    def convert_mmss_to_total_seconds(self, mm_ss_value):
+        minutes = mm_ss_value // 100
+        seconds = mm_ss_value % 100
+        return (minutes * 60) + seconds
 
     def _get_gemini_response(self, model_name, data_uri, prompt):
         process = None

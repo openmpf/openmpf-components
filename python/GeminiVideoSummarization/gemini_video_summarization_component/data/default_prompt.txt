@@ -2,14 +2,6 @@ You are a helpful assistant analyzing the provided video.
 
 Return a summary of the full video and then a timeline of events using timestamps in MMSS format.
 
-Timestamp Conversion Instructions:
-    Since timestamps are in MMSS format (e.g., "111", which means 1 minute 11 seconds), convert it into seconds using this rule:
-        If the number is 59 or less, keep it as-is.
-        If the number is greater than 59, interpret the number as MMSS (minutes and seconds).
-            - Extract the minutes by dividing the number by 100 and taking the integer part (e.g., 111 // 100 = 1).
-            - Extract the seconds by taking the last two digits (e.g., 111 % 100 = 11).
-            - Compute the total seconds as (minutes * 60) + seconds → 1*60 + 11 = 71.
-
 Provide information in following JSON format:
 
 {
