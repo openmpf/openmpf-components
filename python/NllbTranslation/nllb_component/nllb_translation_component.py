@@ -41,7 +41,7 @@ logger = logging.getLogger('NllbTranslationComponent')
 
 DEVICE = "cpu"
 # compile this pattern once
-NO_TRANSLATE_PATTERN = re.compile(r'[\p{Whitespace}[:digit:][:punct:]]*')
+NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Mark}\u1734\p{Spacing_Mark}\p{Enclosing_Mark}\p{Decimal_Number}\p{Letter_Number}\p{Other_Number}\p{Format}]*')
 
 class NllbTranslationComponent:
 
@@ -156,7 +156,7 @@ class NllbTranslationComponent:
             translations = []
 
             for sentence in text_list:
-                if sentence and not NO_TRANSLATE_PATTERN.fullmatch(sentence):
+                if should_translate(sentence):
                     inputs = self._tokenizer(sentence, return_tensors="pt").to(DEVICE)
                     translated_tokens = self._model.generate(
                         **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
@@ -276,3 +276,10 @@ class JobConfig:
             self.nlp_model_default_language = mpf_util.get_property(props, "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE", 'en')
         else:
             self.nlp_model_default_language = None
+
+def should_translate(sentence: any) -> bool:
+    # if not NO_TRANSLATE_PATTERN.fullmatch(sentence):
+    if sentence and not NO_TRANSLATE_PATTERN.fullmatch(sentence):
+        return True
+    else:
+        return False
