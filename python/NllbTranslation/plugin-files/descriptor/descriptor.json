@@ -54,7 +54,7 @@
           "name": "SENTENCE_SPLITTER_CHAR_COUNT",
           "description": "Integer value specifying maximum number of characters to process through sentence splitter.",
           "type": "INT",
-          "defaultValue": "500"
+          "defaultValue": "360"
         },
         {
           "name": "SENTENCE_MODEL",
