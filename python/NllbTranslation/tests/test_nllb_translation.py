@@ -327,6 +327,7 @@ class TestNllbTranslation(unittest.TestCase):
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
         test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '25'
+        test_generic_job_props['SENTENCE_MODEL'] = 'wtp-bert-mini'
 
         # translation to split into multiple sentences
         # with default sentence splitter (wtp-bert-mini)
