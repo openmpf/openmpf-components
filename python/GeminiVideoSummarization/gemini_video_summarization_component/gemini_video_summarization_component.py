@@ -303,6 +303,7 @@ class GeminiVideoSummarizationComponent:
         if not error:
             min_event_start = min(list(map(lambda d: float(d.get('timestamp_start')),
                                            filter(lambda d: 'timestamp_start' in d, event_timeline))))
+            min_event_start = float(self.convert_mmss_to_total_seconds(min_event_start))
 
             if abs(segment_start_time - min_event_start) > threshold:
                 error = (f'Min timeline event start time not close enough to segment start time. '
@@ -311,6 +312,7 @@ class GeminiVideoSummarizationComponent:
         if not error:
             max_event_end = max(list(map(lambda d: float(d.get('timestamp_end')),
                                          filter(lambda d: 'timestamp_end' in d, event_timeline))))
+            max_event_end = float(self.convert_mmss_to_total_seconds(max_event_end))
 
             if abs(max_event_end - segment_stop_time) > threshold:
                 error = (f'Max timeline event end time not close enough to segment stop time. '
