@@ -27,7 +27,6 @@
 import logging
 import regex as re
 import time
-import torch
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -46,12 +45,9 @@ NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Ma
 class NllbTranslationComponent:
 
     def __init__(self):
-        if torch.cuda.is_available():
-            global DEVICE
-            DEVICE = "cuda"
 
         self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
-                                                            token=False, local_files_only=True).to(DEVICE)
+                                                            token=False, local_files_only=True, device_map="auto")
     
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
@@ -157,7 +153,7 @@ class NllbTranslationComponent:
 
             for sentence in text_list:
                 if should_translate(sentence):
-                    inputs = self._tokenizer(sentence, return_tensors="pt").to(DEVICE)
+                    inputs = self._tokenizer(sentence, return_tensors="pt", device_map="auto")
                     translated_tokens = self._model.generate(
                         **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
 
