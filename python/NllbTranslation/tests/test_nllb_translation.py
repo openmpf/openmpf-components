@@ -406,8 +406,8 @@ entre nós, envolvidos em densa atmosphera de perenne contentamento,
 satisfeitos do mundo, satisfeitos dos homens e, muito especialmente,
 satisfeitos de si.
 """
-        # pt_text_translation = "They hold these in fact indispensable in which the vivid rays of our sunless sun, or the moon's dim face in the peninsular sky, where it has no, as in London--_a breaking at cost a plumb sky_--to pour joy into the soul and send its reflection to the semblance; imagine fatally pursued by _spleen_, hopelessly gloomy and submerged, as if at every moment they were coming out of the underground galleries of a mine of _pit-coul_, our English allies.  How they deceive themselves or how they intend to deceive us! This is an illusion or bad faith, against which there is much complaint about the indelible and accentuated expression of bliss, which transluces in the illuminated face of men beyond the Channel, the quaes seem to walk among us, enveloped in a dense atmosphere of perennial contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves. "
         pt_text_translation = "They do hold these in fact indispensable in that the vivid rays of our sunless sun, or the moon's dim face in the peninsular sky, where it has no, as in London--_a breaking at cost a plumb sky_--to pour joy into the soul and send to the semblance the reflection of it; imagine fatally pursued by _spleen_, The British allies are so desperately grim and subtle, as if at every moment they were coming out of the underground galleries of a pit-coul mine, our English allies, how they are deceiving or trying to deceive us! Enlightened by men beyond the Channel, the quaes seem to walk among us, engaged in a dense atmosphere of perennial contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves. "
+
         ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text))
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
@@ -461,8 +461,6 @@ satisfeitos de si.
         self.assertTrue(should_translate("Mo ní ẹ̀pàlà márùn-ún (5).")) # yor_Latn (Yoruba)
         self.assertTrue(should_translate("我有五 (5) 個蘋果。")) # yue_Hant (Yue Chinese / Cantonese)
 
-
-
         # do not send to nllb
         self.assertFalse(should_translate('、。〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〞〟')) # Chinese punctuation and special characters
         self.assertFalse(should_translate("123.456 !"))         # Digits, punctuation, whitespace
@@ -470,7 +468,6 @@ satisfeitos de si.
         self.assertFalse(should_translate("()[]{}"))            # Only punctuation
         self.assertFalse(should_translate(" \n "))              # Only whitespace
         self.assertFalse(should_translate(""))                  # Empty string
-
 
         # A selection of test strings to cover all non-letter unicode character categories
         # see https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-4/#G134153
@@ -549,31 +546,26 @@ satisfeitos de si.
         self.assertFalse(should_translate(enclosing_marks))
 
         # Connector_Punctuation: a connecting punctuation mark, like a tie
-        connector_punct = "_‿⁀⁔︳︴﹍﹎﹏＿" # \u005F\u203F\u2040\u2054\uFE33\uFE34\uFE4D\uFE4E\uFE4F\uFF3F
+        connector_punct = "_‿⁀⁔︳︴﹍﹎﹏＿"
         self.assertFalse(should_translate(connector_punct))
 
         # Dash_Punctuation: a dash or hyphen punctuation mark
-        # teststr8 = "\u002D\u058A\u05BE\u1400\u1806\u2010\u2011\u2012\u2013\u2014\u2015\u2E17\u2E1A\u2E3A\u2E3B\u2E40\u301C\u3030\u30A0\uFE31\uFE32\uFE58\uFE63\uFF0D"
         dash_punct = "-֊־᐀᠆‐‑‒–—―⸗⸚⸺⸻⹀〜〰゠︱︲﹘﹣－"
         self.assertFalse(should_translate(dash_punct))
 
-        # Open_Punctuation: an opening punctuation mark (of a pair) (count: 75)
-        # open_punct = "\u0028\u005B\u007B\u0F3A\u0F3C\u169B\u201A\u201E\u2045\u207D\u208D\u2308\u230A\u2329\u2768\u276A\u276C\u276E\u2770\u2772\u2774\u27C5\u27E6\u27E8\u27EA\u27EC\u27EE\u2983\u2985\u2987\u2989\u298B\u298D\u298F\u2991\u2993\u2995\u2997\u29D8\u29DA\u29FC\u2E22\u2E24\u2E26\u2E28\u2E42\u3008\u300A\u300C\u300E\u3010\u3014\u3016\u3018\u301A\u301D\uFD3F\uFE17\uFE35\uFE37\uFE39\uFE3B\uFE3D\uFE3F\uFE41\uFE43\uFE47\uFE59\uFE5B\uFE5D\uFF08\uFF3B\uFF5B\uFF5F\uFF62"
+        # Open_Punctuation: an opening punctuation mark (of a pair)
         open_punct = "([{༺༼᚛‚„⁅⁽₍⌈⌊〈❨❪❬❮❰❲❴⟅⟦⟨⟪⟬⟮⦃⦅⦇⦉⦋⦍⦏⦑⦓⦕⦗⧘⧚⧼⸢⸤⸦⸨⹂〈《「『【〔〖〘〚〝﴿︗︵︷︹︻︽︿﹁﹃﹇﹙﹛﹝（［｛｟｢"
         self.assertFalse(should_translate(open_punct))
 
-        # Close_Punctuation: a closing punctuation mark (of a pair) (count: 73)
-        # close_punct = "\u0029\u005D\u007D\u0F3B\u0F3D\u169C\u2046\u207E\u208E\u2309\u230B\u232A\u2769\u276B\u276D\u276F\u2771\u2773\u2775\u27C6\u27E7\u27E9\u27EB\u27ED\u27EF\u2984\u2986\u2988\u298A\u298C\u298E\u2990\u2992\u2994\u2996\u2998\u29D9\u29DB\u29FD\u2E23\u2E25\u2E27\u2E29\u3009\u300B\u300D\u300F\u3011\u3015\u3017\u3019\u301B\u301E\u301F\uFD3E\uFE18\uFE36\uFE38\uFE3A\uFE3C\uFE3E\uFE40\uFE42\uFE44\uFE48\uFE5A\uFE5C\uFE5E\uFF09\uFF3D\uFF5D\uFF60\uFF63"
+        # Close_Punctuation: a closing punctuation mark (of a pair)
         close_punct = ")]}༻༽᚜⁆⁾₎⌉⌋〉❩❫❭❯❱❳❵⟆⟧⟩⟫⟭⟯⦄⦆⦈⦊⦌⦎⦐⦒⦔⦖⦘⧙⧛⧽⸣⸥⸧⸩〉》」』】〕〗〙〛〞〟﴾︘︶︸︺︼︾﹀﹂﹄﹈﹚﹜﹞）］｝｠｣"
         self.assertFalse(should_translate(close_punct))
 
-        # Initial_Punctuation: an initial quotation mark (count: 12)
-        # initial_punct = "\u00AB\u2018\u201B\u201C\u201F\u2039\u2E02\u2E04\u2E09\u2E0C\u2E1C\u2E20"
+        # Initial_Punctuation: an initial quotation mark
         initial_punct = "«‘‛“‟‹⸂⸄⸉⸌⸜⸠"
         self.assertFalse(should_translate(initial_punct))
 
-        # Final_Punctuation: a final quotation mark (count: 10)
-        # final_punct = "\u00BB\u2019\u201D\u203A\u2E03\u2E05\u2E0A\u2E0D\u2E1D\u2E21"
+        # Final_Punctuation: a final quotation mark
         final_punct = "»’”›⸃⸅⸊⸍⸝⸡"
         self.assertFalse(should_translate(final_punct))
 
@@ -609,6 +601,12 @@ satisfeitos de si.
                           "\u206F\uFEFF\uFFF9\uFFFA\uFFFB")
         self.assertFalse(should_translate(format_control))
 
+        # test combinations of character categories
+        do_not_translate = "\uFEFF₷႑႒႓\u0483\u093B\u2028\u0488︳︴\u0489〜\u2029༼༽\u3000⸠˽⸡꧁∑⓼Ⅷ꧂"
+        self.assertFalse(should_translate(do_not_translate))
+
+        do_translate = "ゴールドシップ は、日本の競走馬、種牡馬。" + do_not_translate
+        self.assertTrue(should_translate(do_translate))
 
 if __name__ == '__main__':
     unittest.main()
