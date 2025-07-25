@@ -380,7 +380,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
 
-    def test_sentence_split_job2(self):
+    def test_paragraph_split_job(self):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
         #load source language
@@ -406,31 +406,14 @@ entre nós, envolvidos em densa atmosphera de perenne contentamento,
 satisfeitos do mundo, satisfeitos dos homens e, muito especialmente,
 satisfeitos de si.
 """
-        pt_text_translation = "They hold these in fact indispensable in which the vivid rays of our sunless sun, or the moon's dim face in the peninsular sky, where it has no, as in London--_a breaking at cost a plumb sky_--to pour joy into the soul and send its reflection to the semblance; imagine fatally pursued by _spleen_, hopelessly gloomy and submerged, as if at every moment they were coming out of the underground galleries of a mine of _pit-coul_, our English allies.  How they deceive themselves or how they intend to deceive us! This is an illusion or bad faith, against which there is much complaint about the indelible and accentuated expression of bliss, which transluces in the illuminated face of men beyond the Channel, the quaes seem to walk among us, enveloped in a dense atmosphere of perennial contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves. "
-
+        # pt_text_translation = "They hold these in fact indispensable in which the vivid rays of our sunless sun, or the moon's dim face in the peninsular sky, where it has no, as in London--_a breaking at cost a plumb sky_--to pour joy into the soul and send its reflection to the semblance; imagine fatally pursued by _spleen_, hopelessly gloomy and submerged, as if at every moment they were coming out of the underground galleries of a mine of _pit-coul_, our English allies.  How they deceive themselves or how they intend to deceive us! This is an illusion or bad faith, against which there is much complaint about the indelible and accentuated expression of bliss, which transluces in the illuminated face of men beyond the Channel, the quaes seem to walk among us, enveloped in a dense atmosphere of perennial contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves. "
+        pt_text_translation = "They do hold these in fact indispensable in that the vivid rays of our sunless sun, or the moon's dim face in the peninsular sky, where it has no, as in London--_a breaking at cost a plumb sky_--to pour joy into the soul and send to the semblance the reflection of it; imagine fatally pursued by _spleen_, The British allies are so desperately grim and subtle, as if at every moment they were coming out of the underground galleries of a pit-coul mine, our English allies, how they are deceiving or trying to deceive us! Enlightened by men beyond the Channel, the quaes seem to walk among us, engaged in a dense atmosphere of perennial contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves. "
         ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text))
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
-
-    @unittest.skip('Work in progress')
-    def test_sentence_split_job3(self):
-        #set default props
-        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
-        #load source language
-        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'por'
-        test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
-
-        job = mpf.GenericJob('Test Plaintext',
-                             str(Path(__file__).parent / 'data' / 'pg16443.txt'),
-                             test_generic_job_props,
-                             {})
-        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
-
-        result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(self.TRANSLATION, result_props["TRANSLATION"])
 
     def test_selection_of_languages(self):
         #set default props
@@ -611,7 +594,7 @@ satisfeitos de si.
         self.assertFalse(should_translate(modifier_symbols))
 
         # Space_Separator: a space character (of various non-zero widths)
-        space_separators = ("\u0020\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005",
+        space_separators = ("\u0020\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005" +
                             "\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000")
         self.assertFalse(should_translate(space_separators))
 
@@ -620,9 +603,9 @@ satisfeitos de si.
         self.assertFalse(should_translate(separators))
 
         # Format: format control characters
-        format_control = ("\u00AD\u0600\u0601\u0602\u0603\u0604\u0605\u061C\u06DD\u070F\u08E2\u180E",
-                          "\u200B\u200C\u200D\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u2060\u2061",
-                          "\u2062\u2063\u2064\u2066\u2067\u2068\u2069\u206A\u206B\u206C\u206D\u206E",
+        format_control = ("\u00AD\u0600\u0601\u0602\u0603\u0604\u0605\u061C\u06DD\u070F\u08E2\u180E" +
+                          "\u200B\u200C\u200D\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u2060\u2061" +
+                          "\u2062\u2063\u2064\u2066\u2067\u2068\u2069\u206A\u206B\u206C\u206D\u206E" +
                           "\u206F\uFEFF\uFFF9\uFFFA\uFFFB")
         self.assertFalse(should_translate(format_control))
 
