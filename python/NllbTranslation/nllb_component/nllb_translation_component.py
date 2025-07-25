@@ -48,6 +48,8 @@ class NllbTranslationComponent:
 
         self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
                                                             token=False, local_files_only=True, device_map="auto")
+        global DEVICE
+        DEVICE = self._model.device
     
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
@@ -111,7 +113,8 @@ class NllbTranslationComponent:
         # get tokenizer
         start = time.time()
         self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
-                                                  use_auth_token=False, local_files_only=True, src_lang=config.translate_from_language)
+                                                  use_auth_token=False, local_files_only=True,
+                                                  src_lang=config.translate_from_language, device_map=DEVICE)
         elapsed = time.time() - start
         logger.info(f"Successfully loaded tokenizer in {elapsed} seconds.")
 
@@ -153,7 +156,7 @@ class NllbTranslationComponent:
 
             for sentence in text_list:
                 if should_translate(sentence):
-                    inputs = self._tokenizer(sentence, return_tensors="pt")
+                    inputs = self._tokenizer(sentence, return_tensors="pt").to(DEVICE)
                     translated_tokens = self._model.generate(
                         **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
 
