@@ -153,7 +153,7 @@ class NllbTranslationComponent:
 
             for sentence in text_list:
                 if should_translate(sentence):
-                    inputs = self._tokenizer(sentence, return_tensors="pt", device_map="auto")
+                    inputs = self._tokenizer(sentence, return_tensors="pt")
                     translated_tokens = self._model.generate(
                         **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
 
