@@ -178,8 +178,6 @@ class NllbTranslationComponent:
 
             ff_track.detection_properties[ff_prop_name] = translation
 
-    def get_text_len(self, input_str: str) -> int:
-        return len(input_str)
 
 class JobConfig:
     def __init__(self, props: Mapping[str, str], ff_props):
