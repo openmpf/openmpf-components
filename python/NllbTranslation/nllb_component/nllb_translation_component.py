@@ -38,7 +38,6 @@ from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettin
 
 logger = logging.getLogger('NllbTranslationComponent')
 
-DEVICE = "cpu"
 # compile this pattern once
 NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Mark}\u1734\p{Spacing_Mark}\p{Enclosing_Mark}\p{Decimal_Number}\p{Letter_Number}\p{Other_Number}\p{Format}]*')
 
@@ -48,8 +47,6 @@ class NllbTranslationComponent:
 
         self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
                                                             token=False, local_files_only=True, device_map="auto")
-        global DEVICE
-        DEVICE = self._model.device
     
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
@@ -114,7 +111,7 @@ class NllbTranslationComponent:
         start = time.time()
         self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
                                                   use_auth_token=False, local_files_only=True,
-                                                  src_lang=config.translate_from_language, device_map=DEVICE)
+                                                  src_lang=config.translate_from_language, device_map=self._model.device)
         elapsed = time.time() - start
         logger.info(f"Successfully loaded tokenizer in {elapsed} seconds.")
 
@@ -156,7 +153,7 @@ class NllbTranslationComponent:
 
             for sentence in text_list:
                 if should_translate(sentence):
-                    inputs = self._tokenizer(sentence, return_tensors="pt").to(DEVICE)
+                    inputs = self._tokenizer(sentence, return_tensors="pt").to(self._model.device)
                     translated_tokens = self._model.generate(
                         **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
 
