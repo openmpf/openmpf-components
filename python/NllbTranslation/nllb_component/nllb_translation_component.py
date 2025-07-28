@@ -275,7 +275,6 @@ class JobConfig:
             self.nlp_model_default_language = None
 
 def should_translate(sentence: any) -> bool:
-    # if not NO_TRANSLATE_PATTERN.fullmatch(sentence):
     if sentence and not NO_TRANSLATE_PATTERN.fullmatch(sentence):
         return True
     else:
