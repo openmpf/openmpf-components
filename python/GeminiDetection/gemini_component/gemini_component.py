@@ -351,13 +351,14 @@ class GeminiComponent:
             return frame
 
     def _encode_image(self, frame):
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = self._resize_frame(frame)
         shape = frame.shape
         dtype = frame.dtype
         shm = SharedMemory(create=True, size=frame.nbytes)
         np_shm = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
         np_shm[:] = frame[:]
-        return (shm.name, shape, str(dtype)), shm
+        return shm.name, shape, str(dtype)
         
     def _update_detection_properties(self, detection_properties, response_json, classification):
 
@@ -506,30 +507,21 @@ class GeminiComponent:
         retry=retry_if_exception(lambda e: isinstance(e, mpf.DetectionException) and getattr(e, 'rate_limit', False))
     )
 
-    def _get_gemini_response(self, model_name, data_uri, prompt):
-        data_uri = self._encode_image(data_uri)
-        process = None
-        shm = None
+    def _get_gemini_response(self, model_name, frame, prompt):
+        shm_name, shape, dtype = self._encode_image(frame)
+
         try:
-            if isinstance(data_uri, tuple):
-                shm_info, shm = data_uri
-                shm_name, shape, dtype = shm_info
-                process = subprocess.Popen([
-                    "/gemini-subprocess/venv/bin/python3",
-                    "/gemini-subprocess/gemini-process-image.py",
-                    '-m', model_name,
-                    "--shm-name", shm_name,
-                    "--shm-shape", json.dumps(shape),
-                    "--shm-dtype", dtype,
-                    "-p", prompt,
-                    "-a", self.gemini_api_key],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
-            else:
-                raise mpf.DetectionException(
-                    "Expected image data in shared memory format.",
-                    mpf.DetectionError.DETECTION_FAILED
-                )
+            process = subprocess.Popen([
+                "/gemini-subprocess/venv/bin/python3",
+                "/gemini-subprocess/gemini-process-image.py",
+                '-m', model_name,
+                "--shm-name", shm_name,
+                "--shm-shape", json.dumps(shape),
+                "--shm-dtype", dtype,
+                "-p", prompt,
+                "-a", self.gemini_api_key],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
 
             stdout, stderr = process.communicate()
 

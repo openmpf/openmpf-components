@@ -51,10 +51,6 @@ def main():
         dtype = np.dtype(args.shm_dtype)
         shm = SharedMemory(name=args.shm_name)
         np_img = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
-
-         # Convert BGR to RGB
-        if len(np_img.shape) == 3 and np_img.shape[2] == 3:
-            np_img = np_img[..., ::-1]
         image = Image.fromarray(np_img)
 
         client = genai.Client(api_key=args.api_key)
