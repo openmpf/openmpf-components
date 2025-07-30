@@ -47,7 +47,7 @@ RUN mkdir -p /gemini-subprocess/venv; \
     python3.9 -m venv /gemini-subprocess/venv; \
     /gemini-subprocess/venv/bin/pip3 install google-genai pillow numpy
 
-COPY gemini-process-image.py /gemini-subprocess
+COPY gemini-process-image.py gemini_component/resource_tracker_monkeypatch.py /gemini-subprocess
 
 RUN pip3 install --upgrade pip
 

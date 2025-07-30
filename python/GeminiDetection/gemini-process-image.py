@@ -28,10 +28,13 @@ import argparse
 import json
 import sys
 import numpy as np
+
 from google import genai
 from multiprocessing.shared_memory import SharedMemory
 from google.genai.errors import ClientError
 from PIL import Image
+
+from resource_tracker_monkeypatch import remove_shm_from_resource_tracker 
 
 def main():
     parser = argparse.ArgumentParser(description='Sends image and prompt to Gemini Client for processing.')
@@ -44,12 +47,15 @@ def main():
     parser.add_argument("--api_key", "-a", type=str, required=True, help="Your API key for Gemini.")
     args = parser.parse_args()
 
+    remove_shm_from_resource_tracker()
+
     shm = None
 
     try:
         shape = tuple(json.loads(args.shm_shape))
         dtype = np.dtype(args.shm_dtype)
         shm = SharedMemory(name=args.shm_name)
+
         np_img = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
         image = Image.fromarray(np_img)
 
@@ -57,22 +63,21 @@ def main():
         content = client.models.generate_content(model=args.model, contents=[args.prompt, image])
         print(content.text)
         sys.exit(0)
+
     except ClientError as e:
         if hasattr(e, 'code') and e.code == 429:
             print("Caught a ResourceExhausted error (429 Too Many Requests)", file=sys.stderr)
-            sys.exit(1)
-        raise
-    except Exception as e:
-        err_str = str(e)
-        print(err_str, file=sys.stderr)
+        else:
+            print(e, file=sys.stderr)
         sys.exit(1)
+
+    except Exception as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
+
     finally:
         if shm:
-            try:
-                shm.close()
-                shm.unlink()
-            except Exception as cleanup_err:
-                logger.warning(f"Failed to cleanup shared memory: {cleanup_err}")
+            shm.close()
 
 if __name__ == "__main__":
     main()

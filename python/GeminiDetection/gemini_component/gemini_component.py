@@ -30,17 +30,20 @@ import json
 import math
 import subprocess
 import logging
-from typing import Mapping, Iterable
-from multiprocessing.shared_memory import SharedMemory
 import json
 import re
 import cv2
 
+from typing import Mapping, Iterable
+from multiprocessing.shared_memory import SharedMemory
+
 import numpy as np
-from tenacity import retry, wait_random_exponential, stop_after_delay, retry_if_exception
+from tenacity import retry, wait_random_exponential, stop_after_delay, retry_if_exception, before_sleep_log
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
+from .resource_tracker_monkeypatch import remove_shm_from_resource_tracker 
 
 logger = logging.getLogger('GeminiComponent')
 
@@ -56,6 +59,8 @@ class GeminiComponent:
         self.json_class_prompts = dict()
         self.frame_prompts = dict()
         self.json_limit = 3
+
+        remove_shm_from_resource_tracker()
 
     def get_detections_from_image(self, image_job: mpf.ImageJob) -> Iterable[mpf.ImageLocation]:
         logger.info('Received image job: %s', image_job.job_name)
@@ -349,17 +354,7 @@ class GeminiComponent:
             return resized_frame
         else:
             return frame
-
-    def _encode_image(self, frame):
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = self._resize_frame(frame)
-        shape = frame.shape
-        dtype = frame.dtype
-        shm = SharedMemory(create=True, size=frame.nbytes)
-        np_shm = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
-        np_shm[:] = frame[:]
-        return shm.name, shape, str(dtype)
-        
+ 
     def _update_detection_properties(self, detection_properties, response_json, classification):
 
         is_person = (('CLASSIFICATION' in detection_properties) and (detection_properties['CLASSIFICATION'].lower() == 'person')) \
@@ -504,36 +499,55 @@ class GeminiComponent:
         wait=wait_random_exponential(multiplier=2, max=32, min=4),
         # Stops retrying after the total time waiting >=60s, checks after each attempt
         stop=stop_after_delay(60),
-        retry=retry_if_exception(lambda e: isinstance(e, mpf.DetectionException) and getattr(e, 'rate_limit', False))
+        retry=retry_if_exception(lambda e: isinstance(e, mpf.DetectionException) and getattr(e, 'rate_limit', False)),
+        before_sleep=before_sleep_log(logger, logging.WARNING)
     )
-
     def _get_gemini_response(self, model_name, frame, prompt):
-        shm_name, shape, dtype = self._encode_image(frame)
+        mod_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        mod_frame = self._resize_frame(mod_frame)
+
+        shape = mod_frame.shape
+        dtype = mod_frame.dtype
+
+        shm = None
+        stderr_decoded = None
 
         try:
-            process = subprocess.Popen([
-                "/gemini-subprocess/venv/bin/python3",
-                "/gemini-subprocess/gemini-process-image.py",
-                '-m', model_name,
-                "--shm-name", shm_name,
-                "--shm-shape", json.dumps(shape),
-                "--shm-dtype", dtype,
-                "-p", prompt,
-                "-a", self.gemini_api_key],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+            shm = SharedMemory(create=True, size=mod_frame.nbytes)
+            np_shm = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+            np_shm[:] = mod_frame[:]
 
-            stdout, stderr = process.communicate()
+            logger.debug(f"Shared memory created: {shm.name}")
 
-            if process.returncode == 0:
-                response = stdout.decode()
-                logger.info(response)
-                return response
+            try:
+                process = subprocess.Popen([
+                    "/gemini-subprocess/venv/bin/python3",
+                    "/gemini-subprocess/gemini-process-image.py",
+                    '-m', model_name,
+                    "--shm-name", shm.name,
+                    "--shm-shape", json.dumps(shape),
+                    "--shm-dtype", str(dtype),
+                    "-p", prompt,
+                    "-a", self.gemini_api_key],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+                
+                stdout, stderr = process.communicate()
 
-            stderr_decoded = stderr.decode()
+                if process.returncode == 0:
+                    response = stdout.decode()
+                    logger.info(response)
+                    return response
+                
+                stderr_decoded = stderr.decode()
+                                
+            except Exception as e:
+                raise mpf.DetectionException(
+                    f"Subprocess error: {e}",
+                    mpf.DetectionError.DETECTION_FAILED
+                )
 
             if self._is_rate_limit_error(stderr_decoded):
-                logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
                 ex = mpf.DetectionException(
                     f"Subprocess failed due to rate limiting: {stderr_decoded}",
                     mpf.DetectionError.DETECTION_FAILED
@@ -546,11 +560,18 @@ class GeminiComponent:
                 mpf.DetectionError.DETECTION_FAILED
             )
 
-        except Exception as e:
-            raise mpf.DetectionException(
-                f"Subprocess error: {e}",
-                mpf.DetectionError.DETECTION_FAILED
-            )
+        finally:
+            if shm:
+                shm.close()
+                try:
+                    shm.unlink()
+                except FileNotFoundError:
+                    logger.info(f"Shared memory '{shm.name}' already unlinked or does not exist.")
+                except Exception as e:
+                    raise mpf.DetectionException(
+                        f"Shared memory '{shm.name}' error: {e}",
+                        mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE
+                    )
 
     def _get_frames_to_process(self, frame_locations: list, skip: int) -> list:
         if not frame_locations:
