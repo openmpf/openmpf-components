@@ -1,0 +1,83 @@
+{
+    "timeStart": "2025-07-31T13:39:49.777483+00:00",
+    "timeStop": "2025-07-31T13:39:56.759879+00:00",
+    "jobProperties": {
+        "CLASSIFICATION": "vehicle",
+        "ENABLE_JSON_PROMPT_FORMAT": "true",
+        "GEMINI_API_KEY": "AIzaSyA9Be-OkzW6N5dGUws1WuNUZr1BfXiPvrU",
+        "GENERATE_FRAME_RATE_CAP": "1.0",
+        "GENERATION_MAX_ATTEMPTS": "5",
+        "JSON_PROMPT_CONFIGURATION_PATH": "",
+        "MODEL_NAME": "gemma-3-27b-it",
+        "PROMPT_CONFIGURATION_PATH": ""
+    },
+    "media": [
+        {
+            "path": "/workspace/tests/data/temp-data/super-high-res.jpg",
+            "mimeType": "image/jpeg",
+            "mediaMetadata": {
+                "MIME_TYPE": "image/jpeg"
+            },
+            "output": {
+                "CLASS": [
+                    {
+                        "tracks": [
+                            {
+                                "startOffsetFrame": 0,
+                                "stopOffsetFrame": 0,
+                                "startOffsetTime": 0,
+                                "stopOffsetTime": 0,
+                                "type": "CLASS",
+                                "confidence": -1,
+                                "trackProperties": {
+                                    "ANNOTATED BY GEMINI": true,
+                                    "CLASSIFICATION": "VEHICLE",
+                                    "GEMINI VEHICLE COLOR": "red",
+                                    "GEMINI VEHICLE MAKE": "Genesis",
+                                    "GEMINI VEHICLE OTHER NOTABLE CHARACTERISTICS": "G80 model, distinctive taillight design, sleek profile",
+                                    "GEMINI VEHICLE TYPE": "sedan"
+                                },
+                                "exemplar": {
+                                    "offsetFrame": 0,
+                                    "offsetTime": 0,
+                                    "x": 0,
+                                    "y": 0,
+                                    "width": 8192,
+                                    "height": 8192,
+                                    "confidence": -1,
+                                    "detectionProperties": {
+                                        "ANNOTATED BY GEMINI": true,
+                                        "CLASSIFICATION": "VEHICLE",
+                                        "GEMINI VEHICLE COLOR": "red",
+                                        "GEMINI VEHICLE MAKE": "Genesis",
+                                        "GEMINI VEHICLE OTHER NOTABLE CHARACTERISTICS": "G80 model, distinctive taillight design, sleek profile",
+                                        "GEMINI VEHICLE TYPE": "sedan"
+                                    }
+                                },
+                                "detections": [
+                                    {
+                                        "offsetFrame": 0,
+                                        "offsetTime": 0,
+                                        "x": 0,
+                                        "y": 0,
+                                        "width": 8192,
+                                        "height": 8192,
+                                        "confidence": -1,
+                                        "detectionProperties": {
+                                            "ANNOTATED BY GEMINI": true,
+                                            "CLASSIFICATION": "VEHICLE",
+                                            "GEMINI VEHICLE COLOR": "red",
+                                            "GEMINI VEHICLE MAKE": "Genesis",
+                                            "GEMINI VEHICLE OTHER NOTABLE CHARACTERISTICS": "G80 model, distinctive taillight design, sleek profile",
+                                            "GEMINI VEHICLE TYPE": "sedan"
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

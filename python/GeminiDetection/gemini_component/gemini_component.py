@@ -58,7 +58,6 @@ class GeminiComponent:
         self.class_prompts = dict()
         self.json_class_prompts = dict()
         self.frame_prompts = dict()
-        self.json_limit = 3
 
         remove_shm_from_resource_tracker()
 
@@ -194,11 +193,12 @@ class GeminiComponent:
                 height, width, _ = frame.shape
                 detection_properties = dict()
                 self.video_process_timer.start()
+                json_limit = config.generation_max_attempts
 
                 if classification in self.json_class_prompts:
                     for tag, prompt in self.json_class_prompts[classification].items():
                         json_attempts, json_failed = 0, True
-                        while (json_attempts < self.json_limit) and (json_failed):
+                        while (json_attempts < json_limit) and (json_failed):
                             json_attempts += 1
                             response = self._get_gemini_response(config.model_name, frame, prompt)
                             try:
@@ -208,7 +208,7 @@ class GeminiComponent:
                                 json_failed = False
                             except Exception as e:
                                 logger.warning(f"Gemini failed to produce valid JSON output: {e}")
-                                logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
+                                logger.warning(f"Failed {json_attempts} of {json_limit} attempts.")
                                 continue
                         if json_failed:
                             logger.warning(f"Using last full Gemini response instead of parsed JSON output.")
@@ -241,7 +241,6 @@ class GeminiComponent:
         self.video_decode_timer = Timer()
         self.video_process_timer = Timer()
 
-        prompts_to_use = self.json_class_prompts if config.enable_json_prompt_format else self.class_prompts
         if is_video_job:
             self.video_decode_timer.start()
             frame_indices = {i: frame for i, frame in zip(job_feed_forward.frame_locations.keys(), reader)}
@@ -281,6 +280,7 @@ class GeminiComponent:
     def _get_feed_forward_detections_json(self, job_feed_forward, reader, config, is_video_job=False):
         self._update_prompts(config.prompt_config_path, config.json_prompt_config_path)
         self.gemini_api_key = config.gemini_api_key
+        json_limit = config.generation_max_attempts
 
         classification = job_feed_forward.detection_properties["CLASSIFICATION"].lower()
         self.frame_count = 0
@@ -301,7 +301,7 @@ class GeminiComponent:
                     for tag, prompt in prompts_to_use[classification].items():
                         json_attempts, json_failed = 0, True
 
-                        while (json_attempts < self.json_limit) and (json_failed):
+                        while (json_attempts < json_limit) and (json_failed):
                             json_attempts += 1
                             response = self._get_gemini_response(config.model_name, frame, prompt)
                             try:
@@ -311,7 +311,7 @@ class GeminiComponent:
                                 json_failed = False
                             except Exception as e:
                                 logger.warning(f"Gemini failed to produce valid JSON output: {e}")
-                                logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
+                                logger.warning(f"Failed {json_attempts} of {json_limit} attempts.")
                                 continue
                         if json_failed:
                             logger.warning(f"Using last full Gemini response instead of parsed JSON output.")
@@ -326,7 +326,7 @@ class GeminiComponent:
             if classification in prompts_to_use:
                 for tag, prompt in prompts_to_use[classification].items():
                     json_attempts, json_failed = 0, True
-                    while (json_attempts < self.json_limit) and (json_failed):
+                    while (json_attempts < json_limit) and (json_failed):
                         json_attempts += 1
                         response = self._get_gemini_response(config.model_name, image, prompt)
                         try:
@@ -336,7 +336,7 @@ class GeminiComponent:
                             json_failed = False
                         except Exception as e:
                             logger.warning(f"Gemini failed to produce valid JSON output: {e}")
-                            logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
+                            logger.warning(f"Failed {json_attempts} of {json_limit} attempts.")
                             continue
                     if json_failed:
                         logger.warning(f"Using last full Gemini response instead of parsed JSON output.")
@@ -629,10 +629,11 @@ class JobConfig:
         self.enable_json_prompt_format = self._get_prop(job_properties, "ENABLE_JSON_PROMPT_FORMAT", False)
         
         self.gemini_api_key = self._get_prop(job_properties, "GEMINI_API_KEY", "")
-        generate_frame_rate_cap = self._get_prop(job_properties, "GENERATE_FRAME_RATE_CAP", 1.0)
         self.classification = self._get_prop(job_properties, "CLASSIFICATION", "")
         self.model_name = self._get_prop(job_properties, "MODEL_NAME", "gemma-3-27b-it")
+        self.generation_max_attempts = self._get_prop(job_properties, "GENERATION_MAX_ATTEMPTS", 5)
 
+        generate_frame_rate_cap = self._get_prop(job_properties, "GENERATE_FRAME_RATE_CAP", 1.0)
         if (media_properties != None) and (generate_frame_rate_cap > 0):
             # Check if fps exists. If not throw mpf.DetectionError.MISSING_PROPERTY exception
             try:

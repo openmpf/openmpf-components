@@ -62,6 +62,12 @@
                     "description": "The model to use for Gemini inference. Examples: 'gemini-1.5-flash', 'gemini-1.5-pro'.",
                     "type": "STRING",
                     "defaultValue": "gemma-3-27b-it"
+                },
+                {
+                    "name": "GENERATION_MAX_ATTEMPTS",
+                    "description": "The maximum number of times the component will attempt to generate valid JSON output.",
+                    "type": "INT",
+                    "defaultValue": "5"
                 }
             ]
         }
