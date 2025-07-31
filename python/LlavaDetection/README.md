@@ -15,6 +15,7 @@ The following are the properties that can be specified for the component. Each p
 - `ENABLE_JSON_PROMPT_FORMAT`: Boolean that enables JSON outputs.
 - `OLLAMA_SERVER`: The Ollama server `<host>`:`<port>` to use for inferencing.
 - `GENERATE_FRAME_RATE_CAP`: Specifies the maximum number of frames to process every second.
+- `GENERATION_MAX_ATTEMPTS`: The maximum number of times the Llava will attempt to generate valid JSON output.
 
 # Config File
 

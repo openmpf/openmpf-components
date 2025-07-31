@@ -55,8 +55,6 @@ class LlavaComponent:
         self.json_class_prompts = dict()
         self.frame_prompts = dict()
 
-        self.json_limit = 3
-
     def get_detections_from_image(self, image_job: mpf.ImageJob) -> Iterable[mpf.ImageLocation]:
         logger.info('Received image job: %s', image_job.job_name)
 
@@ -154,6 +152,8 @@ class LlavaComponent:
 
         classification = job_feed_forward.detection_properties["CLASSIFICATION"].lower()
 
+        json_limit=config.generation_max_attempts
+
         # Send prompts to ollama to generate responses
         self.frame_count = 0
         self.video_decode_timer = Timer()
@@ -174,7 +174,7 @@ class LlavaComponent:
                     for tag, prompt in prompts_to_use[classification].items():
                         # re-initialize json_attempts=0 and json_failed=True
                         json_attempts, json_failed = 0, True
-                        while (json_attempts < self.json_limit) and (json_failed):
+                        while (json_attempts < json_limit) and (json_failed):
                             json_attempts += 1
                             response = self._get_ollama_response_json(prompt, encoded)
                             try:
@@ -184,7 +184,7 @@ class LlavaComponent:
                                 json_failed = False
                             except Exception as e:
                                 logger.warning(f"LLaVA failed to produce valid JSON output: {e}")
-                                logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
+                                logger.warning(f"Failed {json_attempts} of {json_limit} attempts.")
                                 continue
                         if json_failed:
                             logger.warning(f"Using last full LLaVA response instead of parsed JSON output.")
@@ -197,7 +197,7 @@ class LlavaComponent:
             if classification in prompts_to_use:
                 for tag, prompt in prompts_to_use[classification].items():
                     json_attempts, json_failed = 0, True
-                    while (json_attempts < self.json_limit) and (json_failed):
+                    while (json_attempts < json_limit) and (json_failed):
                         json_attempts += 1
                         response = self._get_ollama_response_json(prompt, encoded)
                         try:
@@ -207,7 +207,7 @@ class LlavaComponent:
                             json_failed = False
                         except Exception as e:
                             logger.warning(f"LLaVA failed to produce valid JSON output: {e}")
-                            logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
+                            logger.warning(f"Failed {json_attempts} of {json_limit} attempts.")
                             continue
                     if json_failed:
                         logger.warning(f"Using last full LLaVA response instead of parsed JSON output.")
@@ -469,6 +469,8 @@ class JobConfig:
             self.json_prompt_config_path = os.path.join(os.path.dirname(__file__), 'data', 'json_prompts.json')
         
         self.enable_json_prompt_format = self._get_prop(job_properties, "ENABLE_JSON_PROMPT_FORMAT", False)
+
+        self.generation_max_attempts = self._get_prop(job_properties, "GENERATION_MAX_ATTEMPTS", 5)
 
         self.ollama_server = self._get_prop(job_properties, "OLLAMA_SERVER", "llava-detection-server:11434")
         if not os.path.exists(self.prompt_config_path):

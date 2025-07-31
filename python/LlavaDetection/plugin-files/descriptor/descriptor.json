@@ -50,6 +50,12 @@
                     "description": "The threshold on the maximum number of frames to process in the video segment within one second of the native video time. If set to a value > 0, then an internal frame interval is calculated as max(1, floor(mediaNativeFPS / GENERATE_FRAME_RATE_CAP)). If set <= 0, property is disabled and every frame is used. Throws exception if FRAME_RATE_CAP and GENERATE_FRAME_RATE_CAP both set > 0.",
                     "type": "DOUBLE",
                     "defaultValue": "1.0"
+                },
+                {
+                    "name": "GENERATION_MAX_ATTEMPTS",
+                    "description": "The maximum number of times the component will attempt to generate valid JSON output.",
+                    "type": "INT",
+                    "defaultValue": "5"
                 }
             ]
         }
