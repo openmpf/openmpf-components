@@ -6,10 +6,16 @@ This component utilizes a config file that contains any number of prompts for an
 
 # Job Properties
 
-The following are the properties that can be specified for the component. Each property has a default value and so none of them necessarily need to be specified for processing jobs.
+The following are the properties that can be specified for the component. All properties except for GEMINI_API_KEY and CLASSIFICATION have default values, making them optional to set.
 
-- `PROMPT_CONFIGURATION_PATH`: Path to JSON file which contains prompts for specified classifications.
 - `GEMINI_API_KEY`: Your API key to send requests to Google Gemini
+- `CLASSIFICATION`: The class of the object(s) in the media. Used to determine the prompt(s). Examples: PERSON and VEHICLE.
+- `PROMPT_CONFIGURATION_PATH`: The path to JSON file which contains prompts for specified classifications.
+- `JSON_PROMPT_CONFIGURATION_PATH`: The path to a JSON file which contains classes and prompts that specify Gemini to return a JSON object.
+- `ENABLE_JSON_PROMPT_FORMAT`: Enables returning a JSON formatted response from Gemini, with the prompt specified at PROMPT_JSON_CONFIGURATION_PATH job property. By default set to false.
+- `GENERATE_FRAME_RATE_CAP`: The threshold on the maximum number of frames to process in the video segment within one second of the native video time.
+- `MODEL_NAME`: The model to use for Gemini inference. By default it is set to `"gemma-3-27b-it"`.
+- `GENERATION_MAX_ATTEMPTS`: The maximum number of times the component will attempt to generate valid JSON output.
 
 # Config File
 
@@ -54,6 +60,4 @@ Once the responses are generated, they are added onto the `detection_properties`
 
 # TODO
 
-- Implement feed forward jobs
-- Implement JSON response jobs
-- Fix mocking unittests so API key isn't required to test component
+- Add functionality for generic class property detection
