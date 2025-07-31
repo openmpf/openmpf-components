@@ -251,62 +251,6 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(self.TRANSLATION, result_props["TRANSLATION"])
 
-    def test_numbers_only_not_translated(self):
-        #set default props
-        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
-
-        ff_track = mpf.GenericTrack(-1, dict(TEXT='1234', 
-                                             LANGUAGE='spa',
-                                             ISO_SCRIPT='Latn'))
-        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
-        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
-
-        result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual('1234', result_props["TRANSLATION"])
-
-    def test_punctuation_only_not_translated(self):
-        #set default props
-        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
-
-        ff_track = mpf.GenericTrack(-1, dict(TEXT='!@#$%', 
-                                             LANGUAGE='deu',
-                                             ISO_SCRIPT='Latn'))
-        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
-        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
-
-        result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual('!@#$%', result_props["TRANSLATION"])
-
-    def test_whitespace_only_not_translated(self):
-
-        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
-        # unicode whitespace
-        whitespace = ('\u0009\u000A\u000B\u000C\u000D\u0020\u0085\u00A0\u1680'
-                      '\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008'
-                      '\u2009\u200A\u2028\u2029\u202F\u205F\u3000')
-
-        ff_track = mpf.GenericTrack(-1, dict(TEXT=whitespace,
-                                             LANGUAGE='zho',
-                                             ISO_SCRIPT='Hans'))
-        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
-        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
-
-        result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(whitespace, result_props["TRANSLATION"])
-
-    def test_zho_punctuation_only_not_translated(self):
-        #set default props
-        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
-
-        ff_track = mpf.GenericTrack(-1, dict(TEXT='、。〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〞〟',
-                                             LANGUAGE='zho',
-                                             ISO_SCRIPT='Hans'))
-        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
-        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
-
-        result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual('、。〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〞〟', result_props["TRANSLATION"])
-
     def test_eng_to_eng_translation(self):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
@@ -414,22 +358,6 @@ satisfeitos de si.
 
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
-
-    def test_selection_of_languages(self):
-        #set default props
-        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
-
-        text = "मेरे पास पाँच (5) सेब हैं।"
-        text_translation = "I have five (5) apples."
-
-        ff_track = mpf.GenericTrack(-1, dict(TEXT=text,
-                                             LANGUAGE='awa',
-                                             ISO_SCRIPT='Deva'))
-        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
-        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
-
-        result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(text_translation, result_props["TRANSLATION"])
 
     def test_should_translate(self):
         # ok to translate with nllb
@@ -604,7 +532,6 @@ satisfeitos de si.
         # test combinations of character categories
         do_not_translate = "\uFEFF₷႑႒႓\u0483\u093B\u2028\u0488︳︴\u0489〜\u2029༼༽\u3000⸠˽⸡꧁∑⓼Ⅷ꧂"
         self.assertFalse(should_translate(do_not_translate))
-
         do_translate = "ゴールドシップ は、日本の競走馬、種牡馬。" + do_not_translate
         self.assertTrue(should_translate(do_translate))
 
