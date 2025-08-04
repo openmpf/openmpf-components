@@ -62,6 +62,18 @@ class TestNllbTranslation(unittest.TestCase):
     TRANSLATION = (
         "Hey, how's it going today?"
     )
+    TRANSCRIPT_INPUT_1 = (
+        'Wie ist das Wetter?' # "How is the weather?"
+    )
+    EXPECTED_TRANSLATION_1 = (
+        "How's the weather?"
+    )
+    TRANSCRIPT_INPUT_2 = (
+        'Es regnet.' # "It's raining"
+    )
+    EXPECTED_TRANSLATION_2 = (
+        "It's raining."
+    )
 
     component = NllbTranslationComponent()
 
@@ -98,25 +110,12 @@ class TestNllbTranslation(unittest.TestCase):
         self.assertEqual(self.TRANSLATION, props["TRANSLATION"])
 
     def test_video_job(self):
-
-        TRANSCRIPT_INPUT_1 = (
-           'Wie ist das Wetter?' # "How is the weather?"
-        )
-        EXPECTED_TRANSLATION_1 = (
-            "How's the weather?"
-        )
-        TRANSCRIPT_INPUT_2 = (
-           'Es regnet.' # "It's raining"
-        )
-        EXPECTED_TRANSLATION_2 = (
-            "It's raining."
-        )
         
         ff_track = mpf.VideoTrack(
             0, 1, -1,
             {
-                0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TRANSCRIPT=TRANSCRIPT_INPUT_1)),
-                1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=TRANSCRIPT_INPUT_2))
+                0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TRANSCRIPT=self.TRANSCRIPT_INPUT_1)),
+                1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=self.TRANSCRIPT_INPUT_2))
             },
             dict(TEXT=self.TRANSLATE_THIS_TEXT))
         
@@ -135,51 +134,9 @@ class TestNllbTranslation(unittest.TestCase):
         props = result[0].detection_properties
         self.assertEqual(self.TRANSLATION, props["TEXT TRANSLATION"])
         frame_1_props = result[0].frame_locations[0].detection_properties
-        self.assertEqual(EXPECTED_TRANSLATION_1, frame_1_props["TRANSCRIPT TRANSLATION"])
+        self.assertEqual(self.EXPECTED_TRANSLATION_1, frame_1_props["TRANSCRIPT TRANSLATION"])
         frame_2_props = result[0].frame_locations[1].detection_properties
-        self.assertEqual(EXPECTED_TRANSLATION_2, frame_2_props["TRANSCRIPT TRANSLATION"])
-
-    def test_translate_only_text_ff_property_job(self):
-
-        TRANSCRIPT_INPUT_1 = (
-           'Wie ist das Wetter?' # "How is the weather?"
-        )
-        EXPECTED_TRANSLATION_1 = (
-            "How's the weather?"
-        )
-        TRANSCRIPT_INPUT_2 = (
-           'Es regnet.' # "It's raining"
-        )
-        EXPECTED_TRANSLATION_2 = (
-            "It's raining."
-        )
-        
-        ff_track = mpf.VideoTrack(
-            0, 1, -1,
-            {
-                0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TRANSCRIPT=TRANSCRIPT_INPUT_1)),
-                1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=TRANSCRIPT_INPUT_2))
-            },
-            dict(TEXT=self.TRANSLATE_THIS_TEXT))
-        
-        #set default props
-        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
-        #load source language
-        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
-
-        job = mpf.VideoJob('Test Video',
-                           'test.mp4', 0, 1,
-                           test_generic_job_props,
-                           {}, ff_track)
-        result = self.component.get_detections_from_video(job)
-
-        props = result[0].detection_properties
-        self.assertEqual(self.TRANSLATION, props["TRANSLATION"])
-        self.assertNotIn("TEXT TRANSLATION", props)
-        frame_1_props = result[0].frame_locations[0].detection_properties
-        self.assertNotIn("TRANSCRIPT TRANSLATION", frame_1_props)
-        frame_2_props = result[0].frame_locations[1].detection_properties
-        self.assertNotIn("TRANSCRIPT TRANSLATION", frame_2_props)
+        self.assertEqual(self.EXPECTED_TRANSLATION_2, frame_2_props["TRANSCRIPT TRANSLATION"])
 
     def test_generic_job(self):
         #set default props
@@ -210,6 +167,100 @@ class TestNllbTranslation(unittest.TestCase):
 
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(self.TRANSLATION, result_props["TRANSLATION"])
+
+    def test_translate_all_ff_properties_job(self):
+
+        # set default props
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        test_generic_job_props['TRANSLATE_ALL_FF_PROPERTIES'] = 'FALSE' # default
+        # set source language
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
+
+        # expected: TRANSLATION property for TEXT only
+        with self.subTest('Translate first available FF property only (TEXT)'):
+            test_generic_job_props['FEED_FORWARD_PROP_TO_PROCESS'] = 'TEXT,TRANSCRIPT' # default
+            # default setting TRANSLATE_ALL_FF_PROPERTIES = 'FALSE'
+            test_generic_job_props['TRANSLATE_ALL_FF_PROPERTIES'] = 'FALSE'
+
+            ff_track = mpf.VideoTrack(
+                0, 1, -1,
+                {
+                    0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TRANSCRIPT=self.TRANSCRIPT_INPUT_1)),
+                    1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=self.TRANSCRIPT_INPUT_2))
+                },
+                dict(TEXT=self.TRANSLATE_THIS_TEXT))
+            
+            job = mpf.VideoJob('Test Video',
+                            'test.mp4', 0, 1,
+                            test_generic_job_props,
+                            {}, ff_track)
+            result = self.component.get_detections_from_video(job)
+
+            props = result[0].detection_properties
+            self.assertIn("TRANSLATION", props)
+            self.assertEqual(self.TRANSLATION, props["TRANSLATION"])
+            frame_1_props = result[0].frame_locations[0].detection_properties
+            self.assertNotIn("TRANSCRIPT TRANSLATION", frame_1_props)
+            frame_2_props = result[0].frame_locations[1].detection_properties
+            self.assertNotIn("TRANSCRIPT TRANSLATION", frame_2_props)
+
+        # expected: TRANSLATION property for each TRANSCRIPT property (one per frame)
+        with self.subTest('Translate first available FF property only (TRANSCRIPT)'):
+            test_generic_job_props['FEED_FORWARD_PROP_TO_PROCESS'] = 'TRANSCRIPT,TEXT' # reverse order
+            # default setting
+            test_generic_job_props['TRANSLATE_ALL_FF_PROPERTIES'] = 'FALSE'
+
+            ff_track = mpf.VideoTrack(
+                0, 1, -1,
+                {
+                    0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TRANSCRIPT=self.TRANSCRIPT_INPUT_1)),
+                    1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=self.TRANSCRIPT_INPUT_2))
+                },
+                dict(TEXT=self.TRANSLATE_THIS_TEXT))
+            
+            job = mpf.VideoJob('Test Video',
+                            'test.mp4', 0, 1,
+                            test_generic_job_props,
+                            {}, ff_track)
+            result = self.component.get_detections_from_video(job)
+
+            props = result[0].detection_properties
+            self.assertNotIn("TRANSLATION", props)
+            frame_1_props = result[0].frame_locations[0].detection_properties
+            self.assertIn("TRANSLATION", frame_1_props)
+            self.assertEqual(self.EXPECTED_TRANSLATION_1, frame_1_props["TRANSLATION"])
+            frame_2_props = result[0].frame_locations[1].detection_properties
+            self.assertIn("TRANSLATION", frame_2_props)
+            self.assertEqual(self.EXPECTED_TRANSLATION_2, frame_2_props["TRANSLATION"])
+
+        # expected: 'TEXT TRANSLATION' result for TEXT property,
+        #     'TRANSCRIPT TRANSLATION' results for each frame's TRANSCRIPT property
+        with self.subTest('Translate all available FF properties'):
+            # set TRANSLATE_ALL_FF_PROPERTIES = 'TRUE'
+            test_generic_job_props['TRANSLATE_ALL_FF_PROPERTIES'] = 'TRUE'
+            ff_track = mpf.VideoTrack(
+                0, 1, -1,
+                {
+                    0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(TRANSCRIPT=self.TRANSCRIPT_INPUT_1)),
+                    1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=self.TRANSCRIPT_INPUT_2))
+                },
+                dict(TEXT=self.TRANSLATE_THIS_TEXT))
+
+            job = mpf.VideoJob('Test Video',
+                            'test.mp4', 0, 1,
+                            test_generic_job_props,
+                            {}, ff_track)
+            result = self.component.get_detections_from_video(job)
+
+            props = result[0].detection_properties
+            self.assertIn("TEXT TRANSLATION", props)
+            self.assertEqual(self.TRANSLATION, props["TEXT TRANSLATION"])
+            frame_1_props = result[0].frame_locations[0].detection_properties
+            self.assertIn("TRANSCRIPT TRANSLATION", frame_1_props)
+            self.assertEqual(self.EXPECTED_TRANSLATION_1, frame_1_props["TRANSCRIPT TRANSLATION"])
+            frame_2_props = result[0].frame_locations[1].detection_properties
+            self.assertIn("TRANSCRIPT TRANSLATION", frame_2_props)
+            self.assertEqual(self.EXPECTED_TRANSLATION_2, frame_2_props["TRANSCRIPT TRANSLATION"])
 
     def test_unsupported_source_language(self):
         #set default props
