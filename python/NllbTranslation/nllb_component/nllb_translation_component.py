@@ -44,7 +44,7 @@ NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Ma
 class NllbTranslationComponent:
 
     def __init__(self):
-
+        self._tokenizer = None
         self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
                                                             token=False, local_files_only=True, device_map="auto")
     
@@ -92,40 +92,63 @@ class NllbTranslationComponent:
             # load config
             config = JobConfig(job_properties, ff_track.detection_properties)
 
-            self._get_translation(ff_track, config)
-
-            if video_job:
-                for ff_location in ff_track.frame_locations.values():
-                    self._get_translation(ff_location, config)
-
+            # set ff_property_translation_counters to 0
+            self._reset_ff_property_translation_count(config.props_to_translate)
+            # perform translations on ff_tracks
+            self._add_translations(ff_track, config, video_job=video_job)
+            # reset ff_property_translation_counters to 0
+            self._reset_ff_property_translation_count(config.props_to_translate)
             return [ff_track]
 
         except Exception:
             logger.exception(
                 f'Failed to complete job due to the following exception:')
             raise
-        
-    def _get_translation(self, ff_track, config):
 
-        # get tokenizer
+    def _load_tokenizer(self, src_lang, config) -> AutoTokenizer:
         start = time.time()
-        self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
-                                                  use_auth_token=False, local_files_only=True,
-                                                  src_lang=config.translate_from_language, device_map=self._model.device)
-        elapsed = time.time() - start
-        logger.info(f"Successfully loaded tokenizer in {elapsed} seconds.")
+        if self._tokenizer is None:
+            self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
+                                            use_auth_token=False, local_files_only=True,
+                                            src_lang=config.translate_from_language, device_map=self._model.device)
+        elif self._tokenizer.src_lang != src_lang: # reload with updated src_lang
+            logger.info(f"Detected a change in tokenizer source language ({self._tokenizer.src_lang} -> {src_lang}). Re-initializing tokenizer...")
+            self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
+                                                use_auth_token=False, local_files_only=True,
+                                                src_lang=config.translate_from_language, device_map=self._model.device)
+            elapsed = time.time() - start
+            logger.info(f"Successfully loaded tokenizer in {elapsed} seconds.")
+
+    def _add_translations(self, ff_track, config, video_job=False):
+
+        for prop_to_translate in self.props_to_translate:
+            if self._should_translate_prop(prop_to_translate):
+                # check track detection properties first
+                input_text = ff_track.detection_properties.get(prop_to_translate, None)
+                if input_text:
+                    translation = self._get_translation(config, {prop_to_translate: input_text})
+                    ff_prop_name = self._get_ff_prop_name(prop_to_translate, config)
+                    ff_track.detection_properties[ff_prop_name] = translation
+                    self._increment_ff_property_translation_count(config, prop_to_translate)
+                # then check frame detection properties
+                if video_job:
+                    for ff_location in ff_track.frame_locations.values():
+                        input_text = ff_location.detection_properties.get(prop_to_translate, None)
+                        if input_text:
+                            translation = self._get_translation(config, {prop_to_translate: input_text})
+                            ff_prop_name = self._get_ff_prop_name(prop_to_translate, config)
+                            ff_location.detection_properties[ff_prop_name] = translation
+                            self._increment_ff_property_translation_count(config, prop_to_translate)
+
+    def _get_translation(self, config, text_to_translate):
+        if config.translate_from_language == 'por_Latn':
+            a = 1
+        self._load_tokenizer(src_lang=config.translate_from_language, config=config)
 
         logger.info(f'Getting translation....')
 
-        text_to_translate: dict = {}
-
-        for prop_to_translate in config.props_to_translate:
-            input_text = ff_track.detection_properties.get(prop_to_translate, None)
-            if input_text:
-                text_to_translate[prop_to_translate] = input_text
-
-        logger.info(f'Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
         for prop_to_translate, text in text_to_translate.items():
+            logger.info(f'Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
 
             # split input text into a list of sentences to support max translation length of 360 characters
             logger.info(f'Translating character limit set to: {config.nllb_character_limit}')
@@ -168,20 +191,39 @@ class NllbTranslationComponent:
 
             logger.info(f'{prop_to_translate} translation is: {translation}')
 
-            if config.translate_all_ff_properties:
-                ff_prop_name: str = prop_to_translate + " TRANSLATION"
-            else:
-                ff_prop_name: str = "TRANSLATION"
+            return translation
 
-            ff_track.detection_properties[ff_prop_name] = translation
+    def _increment_ff_property_translation_count(self, config, prop_to_translate):
+        self.ff_property_translation_counts[prop_to_translate] += 1
+        if not config.translate_all_ff_properties: # prevent other properties from being translated
+            self.ff_property_translation_counts = dict(
+                [(prop, count) for prop, count in self.ff_property_translation_counts.items() if prop == prop_to_translate])
+            self.props_to_translate = [prop for prop in self.ff_property_translation_counts.keys()]
 
+    def _reset_ff_property_translation_count(self, config_props):
+        self.props_to_translate = config_props.copy()
+        self.ff_property_translation_counts = {}
+        for prop in self.props_to_translate:
+            self.ff_property_translation_counts[prop] = 0
+
+    def _should_translate_prop(self, prop):
+        if prop in self.ff_property_translation_counts.keys():
+            return True
+        return False
+    
+    def _get_ff_prop_name(self, prop_to_translate, config):
+        if config.translate_all_ff_properties:
+            ff_prop_name: str = prop_to_translate + " TRANSLATION"
+        else:
+            ff_prop_name: str = "TRANSLATION"
+        return ff_prop_name
 
 class JobConfig:
     def __init__(self, props: Mapping[str, str], ff_props):
 
         self.translate_all_ff_properties = mpf_util.get_property(props, 'TRANSLATE_ALL_FF_PROPERTIES', False)
 
-        props_to_translate: list[str] = [
+        self.props_to_translate: list[str] = [
             prop.strip() for prop in
             mpf_util.get_property(
                 properties=props,
@@ -190,10 +232,6 @@ class JobConfig:
                 prop_type=str
             ).split(',')
         ]
-        if self.translate_all_ff_properties:
-            self.props_to_translate = props_to_translate
-        else:
-            self.props_to_translate = [props_to_translate[0]]
 
         # cached model
         self.cached_model_location: str = mpf_util.get_property(props, 'PRETRAINED_MODEL',
@@ -252,7 +290,7 @@ class JobConfig:
             raise mpf.DetectionException(
                 f'Source language ({sourceLanguage}) is empty or unsupported',
                 mpf.DetectionError.INVALID_PROPERTY)
-        
+
         # set translation limit. default to 360 if no value set
         self.nllb_character_limit = mpf_util.get_property(props, 'SENTENCE_SPLITTER_CHAR_COUNT', 360)
 
