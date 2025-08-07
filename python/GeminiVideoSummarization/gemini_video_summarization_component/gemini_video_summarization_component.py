@@ -159,8 +159,6 @@ class GeminiVideoSummarizationComponent:
                     "SEGMENT ID": segment_id,
                     "TEXT": event['description']
                 }
-                
-                offset_middle_frame = int((offset_stop_frame - offset_start_frame) / 2) + offset_start_frame
 
                 # check offset_stop_frame
                 if offset_stop_frame > job.stop_frame:
@@ -172,16 +170,6 @@ class GeminiVideoSummarizationComponent:
                               f'({offset_stop_frame} < {job.start_frame}), setting offset_stop_frame to {job.start_frame}')
                     offset_stop_frame = job.start_frame
 
-                # check offset_middle_frame
-                if offset_middle_frame > job.stop_frame:
-                    logger.debug(f'offset_middle_frame outside of acceptable range '
-                              f'({offset_middle_frame} > {job.stop_frame}), setting offset_middle_frame to {job.stop_frame}')
-                    offset_middle_frame = job.stop_frame
-                elif offset_middle_frame < job.start_frame:
-                    logger.debug(f'offset_middle_frame outside of acceptable range '
-                              f'({offset_middle_frame} < {job.start_frame}), setting offset_middle_frame to {job.start_frame}')
-                    offset_middle_frame = job.start_frame
-
                 # check offset_start_frame
                 if offset_start_frame > job.stop_frame:
                     logger.debug(f'offset_start_frame outside of acceptable range '
@@ -191,6 +179,18 @@ class GeminiVideoSummarizationComponent:
                     logger.debug(f'offset_start_frame outside of acceptable range '
                               f'({offset_start_frame} < {job.start_frame}), setting offset_start_frame to {job.start_frame}')
                     offset_start_frame = job.start_frame
+
+                offset_middle_frame = int((offset_stop_frame - offset_start_frame) / 2) + offset_start_frame
+
+                # check offset_middle_frame
+                if offset_middle_frame > job.stop_frame:
+                    logger.debug(f'offset_middle_frame outside of acceptable range '
+                              f'({offset_middle_frame} > {job.stop_frame}), setting offset_middle_frame to {job.stop_frame}')
+                    offset_middle_frame = job.stop_frame
+                elif offset_middle_frame < job.start_frame:
+                    logger.debug(f'offset_middle_frame outside of acceptable range '
+                              f'({offset_middle_frame} < {job.start_frame}), setting offset_middle_frame to {job.start_frame}')
+                    offset_middle_frame = job.start_frame
 
                 track = mpf.VideoTrack(
                     offset_start_frame, 
