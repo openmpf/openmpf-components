@@ -48,13 +48,18 @@ def main():
     parser.add_argument("--label_prefix", "-l", type=str, required=True, help="Label prefix to use when uploading the video to GCP.")
     parser.add_argument("--label_user", "-u", type=str, required=True, help="User of whom is accessing the GCP resources.")
     parser.add_argument("--label_purpose", "-r", type=str, required=True, help="Purpose of accessing the GCP resources.")
+    parser.add_argument("--segment_start", "-s", type=str, required=True, help="Start time of the current segment.")
+    parser.add_argument("--segment_stop", "-e", type=str, required=True, help="End time of the current segment.")
+    parser.add_argument("--fps", "-f", type=str, default="1.0", help="Specifies the number of frames per second of video to process.")
+
     args = parser.parse_args()
 
     try:
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = args.google_application_credientials
 
+        # GCP resources
         USER = args.label_user
-
+        PURPOSE = args.label_purpose
         LABEL_PREFIX = args.label_prefix
         PROJECT_ID = args.project_id
         BUCKET_NAME = args.bucket_name
@@ -62,16 +67,21 @@ def main():
         PROMPT = args.prompt
         MODEL = args.model
 
-
+        # Video segment storage information
         FILE_PATH = args.data_uri
         FILE_NAME = os.path.basename(FILE_PATH)
         STORAGE_PATH = USER + "/" + FILE_NAME
+
+        SEGMENT_START = int(float(args.segment_start))
+        SEGMENT_STOP = int(float(args.segment_stop))
+        FPS = float(args.fps)
 
         # Automatically uses ADC to authenticate
         client = storage.Client(
             project=PROJECT_ID
         )
 
+        # Uploads file to GCP bucket
         bucket = client.bucket(BUCKET_NAME)
         blob = bucket.blob(STORAGE_PATH)
 
@@ -91,24 +101,38 @@ def main():
             vertexai=True
         )
 
-        # Use labels to help track billing and usage
-        content_config = types.GenerateContentConfig(
-        labels={
-                LABEL_PREFIX + "user": USER,
-                LABEL_PREFIX + "purpose": args.label_purpose,
-                LABEL_PREFIX + "modality": "video"
-            }
-        )
+        content_config = None
+        if(USER != "" and LABEL_PREFIX != "" and PURPOSE != ""):
+            # Use labels to help track billing and usage
+            content_config = types.GenerateContentConfig(
+                labels={
+                    LABEL_PREFIX + "user": USER,
+                    LABEL_PREFIX + "purpose": PURPOSE,
+                    LABEL_PREFIX + "modality": "video"
+                }
+            )
 
         response = client.models.generate_content(
             model=MODEL,
-            contents=[
-                Part.from_uri(
-                    file_uri=file_uri,
-                    mime_type="video/mp4"
-                ),
-                PROMPT
-            ],
+            contents=types.Content(
+                role='user',
+                parts=[
+                    Part(
+                        file_data=types.FileData(
+                            file_uri=file_uri,
+                            mime_type='video/mp4'
+                        ),
+                        video_metadata=types.VideoMetadata(
+                            start_offset=str(SEGMENT_START) + "s", 
+                            end_offset=str(SEGMENT_STOP) + "s", 
+                            fps=FPS
+                        )
+                    ),
+                    Part(
+                        text=PROMPT
+                    )
+                ],
+            ),
             config=content_config
         )
         print(f"\n{response.text}")

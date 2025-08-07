@@ -29,11 +29,11 @@ import json
 import subprocess
 import logging
 from typing import Iterable, Mapping, Tuple, Union
-
 from tenacity import retry, wait_random_exponential, stop_after_delay, retry_if_exception
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
 logger = logging.getLogger('GeminiVideoSummarizationComponent')
 
 class GeminiVideoSummarizationComponent:
@@ -47,19 +47,19 @@ class GeminiVideoSummarizationComponent:
         self.label_user = ''
         self.label_purpose = ''
 
-    def get_detections_from_video(self, video_job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
-        logger.info('Received video job: %s', video_job.job_name)
+    def get_detections_from_video(self, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
+        logger.info('Received video job: %s', job.job_name)
 
-        if video_job.feed_forward_track:
+        if job.feed_forward_track:
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                 'Component cannot process feed forward jobs.')
 
-        if video_job.stop_frame < 0:
+        if job.stop_frame < 0:
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                 'Job stop frame must be >= 0.')
         tracks = []
 
-        config = JobConfig(video_job.job_properties, video_job.media_properties)
+        config = JobConfig(job.job_properties, job.media_properties)
 
         self.google_application_credentials = config.google_application_credentials
         self.project_id = config.project_id
@@ -67,8 +67,13 @@ class GeminiVideoSummarizationComponent:
         self.label_prefix = config.label_prefix
         self.label_user = config.label_user
         self.label_purpose = config.label_purpose
+        fps = config.process_fps
 
+        segment_start_time = job.start_frame / float(job.media_properties['FPS'])
+        segment_stop_time = (job.stop_frame + 1) / float(job.media_properties['FPS'])
+        
         prompt = _read_file(config.generation_prompt_path)
+
         model_name = config.model_name
         max_attempts = int(config.generation_max_attempts)
         timeline_check_target_threshold = int(config.timeline_check_target_threshold)
@@ -78,11 +83,16 @@ class GeminiVideoSummarizationComponent:
             base=0,
             timeline=0)
 
-        video_capture = mpf_util.VideoCapture(video_job)
-
         while max(attempts.values()) < max_attempts:
-            response = self._get_gemini_response(config.model_name, video_job.data_uri, prompt)
-            response = response.split('```json\n')[1].split('```')[0]
+            error= None
+            response = self._get_gemini_response(model_name, job.data_uri, prompt, segment_start_time, segment_stop_time, fps)
+            if '```json\n' in response and '```' in response:
+                try:
+                    response = response.split('```json\n')[1].split('```')[0]
+                except IndexError:
+                    # Fallback if splitting fails unexpectedly
+                    error = "Invalid response format"
+                    continue
             response_json, error = self._check_response(attempts, max_attempts, response)
             if error is not None:
                 continue
@@ -90,21 +100,17 @@ class GeminiVideoSummarizationComponent:
             # if no error, then response_json should be valid
             event_timeline = response_json['video_event_timeline'] 
 
-            start_time = video_job.start_frame / float(video_job.media_properties['FPS'])
-            stop_time = (video_job.stop_frame+1) / float(video_job.media_properties['FPS'])
-
-            if timeline_check_target_threshold != -1:
-                error = self._check_timeline(
-                    timeline_check_target_threshold, attempts, max_attempts, start_time, stop_time, event_timeline)
-                if error is not None:
-                    continue
-
+            error = self._check_timeline(
+                timeline_check_target_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, event_timeline)
+            if error is not None:
+                continue
+            
             break
 
         if error:
             raise mpf.DetectionError.DETECTION_FAILED.exception(f'Failed to produce valid JSON file: {error}')
             
-        tracks = self._create_tracks(video_job, response_json)
+        tracks = self._create_tracks(job, response_json)
 
         logger.info(f"Job complete. Found {len(tracks)} tracks.")
         return tracks
@@ -121,7 +127,11 @@ class GeminiVideoSummarizationComponent:
     )
 
     def _create_tracks(self, job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
+        logger.info('Creating tracks.')
         tracks = []
+
+        segment_start_time = job.start_frame / float(job.media_properties['FPS'])
+        
         frame_width = 0
         frame_height = 0
         if 'FRAME_WIDTH' in job.media_properties:
@@ -139,8 +149,8 @@ class GeminiVideoSummarizationComponent:
             for event in response_json['video_event_timeline']:
 
                 # get offset start/stop times in milliseconds
-                event_start_time = int(float(self.convert_mmss_to_total_seconds(event["timestamp_start"])) * 1000)
-                event_stop_time = int(float(self.convert_mmss_to_total_seconds(event["timestamp_end"])) * 1000)
+                event_start_time = self.convert_mm_ss_to_seconds(event["timestamp_start"], segment_start_time) * 1000
+                event_stop_time = self.convert_mm_ss_to_seconds(event["timestamp_end"], segment_start_time) * 1000
 
                 offset_start_frame = int((event_start_time * video_fps) / 1000)
                 offset_stop_frame = int((event_stop_time * video_fps) / 1000) - 1
@@ -273,50 +283,64 @@ class GeminiVideoSummarizationComponent:
 
         error = None
 
+        if not event_timeline:
+            error = 'No timeline events found in response.'
+            logger.warning(error)
+            logger.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
+            attempts['timeline'] += 1
+            return error
+        
         for event in event_timeline:
-            timestamp_start = float(self.convert_mmss_to_total_seconds(event["timestamp_start"]))
-            timestamp_end = float(self.convert_mmss_to_total_seconds(event["timestamp_end"]))
 
-            if timestamp_start < 0:
-                error = (f'Timeline event start time of {timestamp_start} < 0.')
-                break
+            try:
+                timestamp_start = self.convert_mm_ss_to_seconds(event["timestamp_start"], segment_start_time)
+                timestamp_end = self.convert_mm_ss_to_seconds(event["timestamp_end"], segment_start_time)
+
+                if timestamp_start < 0:
+                    error = (f'Timeline event start time of {timestamp_start} < 0.')
+                    break
             
-            if timestamp_end < 0:
-                error = (f'Timeline event end time of {timestamp_end} < 0.')
-                break
+                if timestamp_end < 0:
+                    error = (f'Timeline event end time of {timestamp_end} < 0.')
+                    break
 
-            if timestamp_end < timestamp_start:
-                error = (f'Timeline event end time is less than event start time. '
-                         f'{timestamp_end} < {timestamp_start}.')
-                break
-            
-            if (segment_start_time - timestamp_start) > threshold:
-                error = (f'Timeline event start time occurs too soon before segment start time. '
-                         f'({segment_start_time} - {timestamp_start}) > {threshold}.')
-                break
+                if timestamp_end < timestamp_start:
+                    error = (f'Timeline event end time is less than event start time. '
+                            f'{timestamp_end} < {timestamp_start}.')
+                    break
+                
+                if threshold != -1:
 
-            if (timestamp_end - segment_stop_time) > threshold:
-                error = (f'Timeline event end time occurs too late after segment stop time. '
-                         f'({timestamp_end} - {segment_stop_time}) > {threshold}.')
+                    if (segment_start_time - timestamp_start) > threshold:
+                        error = (f'Timeline event start time occurs too soon before segment start time. '
+                                f'({segment_start_time} - {timestamp_start}) > {threshold}.')
+                        break
+
+                    if (timestamp_end - segment_stop_time) > threshold:
+                        error = (f'Timeline event end time occurs too late after segment stop time. '
+                                f'({timestamp_end} - {segment_stop_time}) > {threshold}.')
+                        break
+                    
+            except Exception as e:
+                error = (f'Timestamps could not be converted: {e}')
                 break
         
-        if not error:
-            min_event_start = min(list(map(lambda d: float(d.get('timestamp_start')),
-                                           filter(lambda d: 'timestamp_start' in d, event_timeline))))
-            min_event_start = float(self.convert_mmss_to_total_seconds(min_event_start))
+        if threshold != -1:
+            if not error:
+                min_event_start = min(list(map(lambda d: float(self.convert_mm_ss_to_seconds(d.get('timestamp_start'), segment_start_time)),
+                                            filter(lambda d: 'timestamp_start' in d, event_timeline))))
 
-            if abs(segment_start_time - min_event_start) > threshold:
-                error = (f'Min timeline event start time not close enough to segment start time. '
-                         f'abs({segment_start_time} - {min_event_start}) > {threshold}.')
+                if abs(segment_start_time - min_event_start) > threshold:
+                    error = (f'Min timeline event start time not close enough to segment start time. '
+                            f'abs({segment_start_time} - {min_event_start}) > {threshold}.')
 
-        if not error:
-            max_event_end = max(list(map(lambda d: float(d.get('timestamp_end')),
-                                         filter(lambda d: 'timestamp_end' in d, event_timeline))))
-            max_event_end = float(self.convert_mmss_to_total_seconds(max_event_end))
+            if not error:
+                max_event_end = max(list(map(lambda d: float(self.convert_mm_ss_to_seconds(d.get('timestamp_end'), segment_start_time)),
+                                            filter(lambda d: 'timestamp_end' in d, event_timeline))))
 
-            if abs(max_event_end - segment_stop_time) > threshold:
-                error = (f'Max timeline event end time not close enough to segment stop time. '
-                         f'abs({max_event_end} - {segment_stop_time}) > {threshold}.')
+                if abs(max_event_end - segment_stop_time) > threshold:
+                    error = (f'Max timeline event end time not close enough to segment stop time. '
+                            f'abs({max_event_end} - {segment_stop_time}) > {threshold}.')
         if error:
             logger.warning(error)
             logger.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
@@ -324,13 +348,21 @@ class GeminiVideoSummarizationComponent:
             return error
 
         return None
-        
-    def convert_mmss_to_total_seconds(self, mm_ss_value):
-        minutes = mm_ss_value // 100
-        seconds = mm_ss_value % 100
-        return (minutes * 60) + seconds
 
-    def _get_gemini_response(self, model_name, data_uri, prompt):
+    def convert_mm_ss_to_seconds(self, timestamp_str, segment_start_time):
+        try:
+            minutes_str, seconds_str = timestamp_str.split(':')
+            minutes = int(minutes_str)
+            seconds = int(seconds_str)
+
+            total_seconds = (minutes * 60) + seconds + segment_start_time
+            return total_seconds
+        except ValueError:
+            raise ValueError("Invalid timestamp format.")
+        except Exception as e:
+            raise Exception(f"An unexpected error occurred: {e}") 
+
+    def _get_gemini_response(self, model_name, data_uri, prompt, start, stop, fps):
         process = None
         try:
             process = subprocess.Popen([
@@ -344,7 +376,10 @@ class GeminiVideoSummarizationComponent:
                 "-b", self.bucket_name,
                 "-l", self.label_prefix,
                 "-u", self.label_user,
-                "-r", self.label_purpose
+                "-r", self.label_purpose,
+                "-s", str(start),
+                "-e", str(stop),
+                "-f", str(fps)
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE)
@@ -398,9 +433,6 @@ class JobConfig:
             )
 
         self.google_application_credentials = self._get_prop(job_properties, "GOOGLE_APPLICATION_CREDENTIALS", "")
-        logger.info(self.google_application_credentials)
-        if self.google_application_credentials == "":
-            self.google_application_credentials = os.path.join(os.path.dirname(__file__), 'data', 'gcpCert.json')
         if not os.path.exists(self.google_application_credentials):
             raise mpf.DetectionException(
                 "Invalid path provided for GCP credential file: ",
@@ -415,6 +447,7 @@ class JobConfig:
         self.label_purpose = self._get_prop(job_properties, "LABEL_PURPOSE", "")
         self.generation_max_attempts = self._get_prop(job_properties, "GENERATION_MAX_ATTEMPTS", "5")
         self.timeline_check_target_threshold = self._get_prop(job_properties, "TIMELINE_CHECK_TARGET_THRESHOLD", "10")
+        self.process_fps = self._get_prop(job_properties, "PROCESS_FPS", 1.0)
 
     @staticmethod
     def _get_prop(job_properties, key, default_value, accept_values=[]):

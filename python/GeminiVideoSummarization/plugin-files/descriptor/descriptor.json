@@ -78,21 +78,27 @@
                 },
                 {
                     "name": "TIMELINE_CHECK_TARGET_THRESHOLD",
-                    "description": "Specifies the number of seconds that video events can occur before or after video bounds. If exceeded, another attempt will be made to generate the output. Set to -1 to disable check.",
+                    "description": "Specifies the number of seconds that video events can occur before or after a segments' bounds. If exceeded, another attempt will be made to generate the output. Set to -1 to disable check.",
                     "type": "INT",
                     "defaultValue": "10"
                 },
                 {
                     "name": "TARGET_SEGMENT_LENGTH",
-                    "description": "Segmentation is not supported by this component. Set to -1 to disable segmenting the video.",
+                    "description": "Default segment length is 120 seconds. Set to -1 to disable segmenting the video.",
                     "type": "INT",
-                    "defaultValue": "-1"
+                    "defaultValue": "120"
                 },
                 {
                     "name": "VFR_TARGET_SEGMENT_LENGTH",
-                    "description": "Segmentation is not supported by this component. Set to -1 to disable segmenting the video.",
+                    "description": "Default segment length is 120 seconds. Set to -1 to disable segmenting the video.",
                     "type": "INT",
-                    "defaultValue": "-1"
+                    "defaultValue": "120"
+                },
+                {
+                    "name": "SEGMENT_LENGTH_SPECIFICATION",
+                    "description": "The value for determining how to interpret TARGET_SEGMENT_LENGTH, VFR_TARGET_SEGMENT_LENGTH, MIN_SEGMENT_LENGTH, and VFR_MIN_SEGMENT_LENGTH. The value has to be SECONDS for this component.",
+                    "type": "STRING",
+                    "defaultValue": "SECONDS"
                 },
                 {
                     "name": "MERGE_TRACKS",
@@ -105,6 +111,12 @@
                     "description": "The detection property to be used to rank the quality of a track and the quality of the detections in a track. This property would be used, for example, to select the exemplar detection for a track.",
                     "type": "STRING",
                     "defaultValue": "EXEMPLAR"
+                },
+                {
+                    "name": "PROCESS_FPS",
+                    "description": "Specifies the number of frames per second of video to process.",
+                    "type": "FLOAT",
+                    "defaultValue": "1.0"
                 }
             ]
         }
