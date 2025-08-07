@@ -45,8 +45,11 @@ If you'd prefer more cohesive summaries over timeline accuracy, you can pass the
 Keep in mind the maximum length of a video that can be processed is 45 minutes(2700s). 
 This means TARGET_SEGMENT_LENGTH and VFR_TARGET_SEGMENT_LENGTH both have a max of 2700 and are REQUIRED to be set for videos longer than 45 minutes.
 
-To prevent further inaccuracies, Gemini does timestamps best when formatting them in MM:SS.MS format. This means the component does conversions between that format to seconds and back itself. 
+To prevent further inaccuracies, Gemini does timestamps best when formatting them in MM:SS format. This means the component does conversions between that format to seconds and back itself. 
 So, if altering the prompt, leave in instructions about timestamp formatting.
+
+Another cause of timestamp inaccuracies is the model you are using. Not only does descriptions and summaries lower in quality with Gemini flash models, the timestamps are also become more inaccurate.
+For the most accurate timestamps, use segmentation and the latest Gemini pro model.
 
 # Docker Container
   gemini-video-summarization:
