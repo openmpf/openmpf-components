@@ -45,7 +45,7 @@ If you'd prefer more cohesive summaries over timeline accuracy, you can pass the
 Keep in mind the maximum length of a video that can be processed is 45 minutes(2700s). 
 This means TARGET_SEGMENT_LENGTH and VFR_TARGET_SEGMENT_LENGTH both have a max of 2700 and are REQUIRED to be set for videos longer than 45 minutes.
 
-To prevent further inaccuracies, Gemini does timestamps best when formatting them in MM:SS format. This means the component does conversions between that format to seconds and back itself. 
+To prevent further inaccuracies, Gemini does timestamps best when formatting them in MM:SS.MS format. This means the component does conversions between that format to seconds and back itself. 
 So, if altering the prompt, leave in instructions about timestamp formatting.
 
 # Docker Container
@@ -62,7 +62,3 @@ So, if altering the prompt, leave in instructions about timestamp formatting.
     ... # Add more properties here
       - MPF_PROP_GOOGLE_APPLICATION_CREDENTIALS=container_directory/cert_name.json
       - MPF_PROP_GENERATION_PROMPT_PATH=container_directory/prompt_file.txt # OPTIONAL, but needed if mounted a custom prompt file
-
-# Command Line Interface
-
-docker run --rm -i openmpf_gemini_video_summarization:latest -t video --end (INSERT HERE) -M MIME_TYPE=video/mp4 -P GOOGLE_APPLICATION_CREDENTIALS=(INSERT HERE) -P PROJECT_ID=(INSERT HERE) -P LABEL_PREFIX=(INSERT HERE) -P BUCKET_NAME=(INSERT HERE) -P LABEL_USER=(INSERT HERE) -P LABEL_PURPOSE=(INSERT HERE) test_video.mp4 > output.json

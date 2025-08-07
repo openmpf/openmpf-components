@@ -352,10 +352,12 @@ class GeminiVideoSummarizationComponent:
     def convert_mm_ss_to_seconds(self, timestamp_str, segment_start_time):
         try:
             minutes_str, seconds_str = timestamp_str.split(':')
+            seconds_str, ms_str = seconds_str.split('.')
             minutes = int(minutes_str)
             seconds = int(seconds_str)
+            milliseconds = int(ms_str)
 
-            total_seconds = (minutes * 60) + seconds + segment_start_time
+            total_seconds = (minutes * 60) + seconds + segment_start_time + (milliseconds / 1000.0)
             return total_seconds
         except ValueError:
             raise ValueError("Invalid timestamp format.")

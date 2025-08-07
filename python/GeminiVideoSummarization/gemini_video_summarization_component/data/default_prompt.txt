@@ -2,15 +2,15 @@ You are a helpful assistant analyzing the provided video.
 
 First, write a brief summary of the video content.
 
-Next, create a timeline of key events that spans the full duration of the video. Include at least one event.
+Next, create a timeline of events that spans the full duration of the video. Include at least one event.
 For each event, provide 
     - a short description
     - the start time
     - the end time.
 
-Use MM:SS format for all timestamps, even if the total time exceeds 60 minutes. DO NOT USE HH:MM:SS. For example, use 75:30 instead of 01:15:30.
+Use MM:SS.MS format for all timestamps, even if the total time exceeds 60 minutes. DO NOT USE HH:MM:SS.MS. For example, use 75:30.240 instead of 01:15:30.240.
 
-Assume the video starts at 00:00, even if it is a segment from a longer recording.
+Assume the video starts at 00:00.000, even if it is a segment from a longer recording.
 
 Respond only with a JSON object in the following format. Do not include any extra text, commentary, or explanations:
 {

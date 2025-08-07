@@ -56,7 +56,7 @@ RUN pip3 install tenacity
 ARG RUN_TESTS=false
 
 RUN --mount=target=.,readwrite \
-    install-component.sh;
+    install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_gemini.py; fi
 
 LABEL org.label-schema.license="Apache 2.0" \
