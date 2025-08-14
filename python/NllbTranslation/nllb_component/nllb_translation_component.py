@@ -147,7 +147,7 @@ class NllbTranslationComponent:
         logger.info(f'Getting translation....')
 
         for prop_to_translate, text in text_to_translate.items():
-            logger.info(f'Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
+            logger.debug(f'Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
 
             # split input text into a list of sentences to support max translation length of 360 characters
             logger.info(f'Translating character limit set to: {config.nllb_character_limit}')
