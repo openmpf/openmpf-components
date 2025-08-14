@@ -141,8 +141,7 @@ class NllbTranslationComponent:
                             self._increment_ff_property_translation_count(config, prop_to_translate)
 
     def _get_translation(self, config, text_to_translate):
-        if config.translate_from_language == 'por_Latn':
-            a = 1
+
         self._load_tokenizer(src_lang=config.translate_from_language, config=config)
 
         logger.info(f'Getting translation....')
