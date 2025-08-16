@@ -31,19 +31,22 @@ import time
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-from typing import Optional, Sequence, Mapping
+from typing import Dict, Optional, Sequence, Mapping, TypeVar
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from .nllb_utils import NllbLanguageMapper
 from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
 
 logger = logging.getLogger('NllbTranslationComponent')
 
+# Roll-up TypeDef for different track types
+T_FF_OBJ = TypeVar('T_FF_OBJ', mpf.AudioTrack, mpf.GenericTrack, mpf.ImageLocation, mpf.VideoTrack)
+
 # compile this pattern once
 NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Mark}\u1734\p{Spacing_Mark}\p{Enclosing_Mark}\p{Decimal_Number}\p{Letter_Number}\p{Other_Number}\p{Format}]*')
 
 class NllbTranslationComponent:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._tokenizer = None
         self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
                                                             token=False, local_files_only=True, device_map="auto")
@@ -82,7 +85,9 @@ class NllbTranslationComponent:
 
             return self._get_feed_forward_detections(new_job_props, ff_track)
 
-    def _get_feed_forward_detections(self, job_properties, ff_track, video_job=False):
+    def _get_feed_forward_detections(self, job_properties: Dict[str, str],
+                                     ff_track: T_FF_OBJ,
+                                     video_job: bool = False) -> Sequence[T_FF_OBJ]:
         try:
             if ff_track is None:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
@@ -92,12 +97,12 @@ class NllbTranslationComponent:
             # load config
             config = JobConfig(job_properties, ff_track.detection_properties)
 
-            # set ff_property_translation_counters to 0
-            self._reset_ff_property_translation_count(config.props_to_translate)
-            # perform translations on ff_tracks
-            self._add_translations(ff_track, config, video_job=video_job)
-            # reset ff_property_translation_counters to 0
-            self._reset_ff_property_translation_count(config.props_to_translate)
+            self._add_translations(ff_track, config)
+
+            if video_job:
+                for ff_location in ff_track.frame_locations.values():
+                    self._add_translations(ff_location, config)
+
             return [ff_track]
 
         except Exception:
@@ -105,7 +110,7 @@ class NllbTranslationComponent:
                 f'Failed to complete job due to the following exception:')
             raise
 
-    def _load_tokenizer(self, src_lang, config) -> AutoTokenizer:
+    def _load_tokenizer(self, src_lang: str, config: Dict[str, str]) -> AutoTokenizer:
         start = time.time()
         if self._tokenizer is None:
             self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
@@ -119,28 +124,21 @@ class NllbTranslationComponent:
             elapsed = time.time() - start
             logger.info(f"Successfully loaded tokenizer in {elapsed} seconds.")
 
-    def _add_translations(self, ff_track, config, video_job=False):
+    def _add_translations(self, ff_track: T_FF_OBJ, config: Dict[str, str]) -> None:
+        # iterate over static list of props since we modify detection properties in place
+        detection_props = list(ff_track.detection_properties.keys())
+        translation_count = 0
+        for prop_name in detection_props:
+            if prop_name in config.props_to_translate:
+                if translation_count == 0 or config.translate_all_ff_properties:
+                    text_to_translate = ff_track.detection_properties.get(prop_name, None)
+                    if text_to_translate:
+                        translation = self._get_translation(config, {prop_name: text_to_translate})
+                        ff_prop_name = self._get_ff_prop_name(prop_name, config)
+                        ff_track.detection_properties[ff_prop_name] = translation
+                        translation_count += 1
 
-        for prop_to_translate in self.props_to_translate:
-            if self._should_translate_prop(prop_to_translate):
-                # check track detection properties first
-                input_text = ff_track.detection_properties.get(prop_to_translate, None)
-                if input_text:
-                    translation = self._get_translation(config, {prop_to_translate: input_text})
-                    ff_prop_name = self._get_ff_prop_name(prop_to_translate, config)
-                    ff_track.detection_properties[ff_prop_name] = translation
-                    self._increment_ff_property_translation_count(config, prop_to_translate)
-                # then check frame detection properties
-                if video_job:
-                    for ff_location in ff_track.frame_locations.values():
-                        input_text = ff_location.detection_properties.get(prop_to_translate, None)
-                        if input_text:
-                            translation = self._get_translation(config, {prop_to_translate: input_text})
-                            ff_prop_name = self._get_ff_prop_name(prop_to_translate, config)
-                            ff_location.detection_properties[ff_prop_name] = translation
-                            self._increment_ff_property_translation_count(config, prop_to_translate)
-
-    def _get_translation(self, config, text_to_translate):
+    def _get_translation(self, config: Dict[str, str], text_to_translate: str) -> str:
 
         self._load_tokenizer(src_lang=config.translate_from_language, config=config)
 
@@ -192,25 +190,7 @@ class NllbTranslationComponent:
 
             return translation
 
-    def _increment_ff_property_translation_count(self, config, prop_to_translate):
-        self.ff_property_translation_counts[prop_to_translate] += 1
-        if not config.translate_all_ff_properties: # prevent other properties from being translated
-            self.ff_property_translation_counts = dict(
-                [(prop, count) for prop, count in self.ff_property_translation_counts.items() if prop == prop_to_translate])
-            self.props_to_translate = [prop for prop in self.ff_property_translation_counts.keys()]
-
-    def _reset_ff_property_translation_count(self, config_props):
-        self.props_to_translate = config_props.copy()
-        self.ff_property_translation_counts = {}
-        for prop in self.props_to_translate:
-            self.ff_property_translation_counts[prop] = 0
-
-    def _should_translate_prop(self, prop):
-        if prop in self.ff_property_translation_counts.keys():
-            return True
-        return False
-    
-    def _get_ff_prop_name(self, prop_to_translate, config):
+    def _get_ff_prop_name(self, prop_to_translate: str, config: Dict[str, str]) -> str:
         if config.translate_all_ff_properties:
             ff_prop_name: str = prop_to_translate + " TRANSLATION"
         else:
@@ -218,7 +198,7 @@ class NllbTranslationComponent:
         return ff_prop_name
 
 class JobConfig:
-    def __init__(self, props: Mapping[str, str], ff_props):
+    def __init__(self, props: Mapping[str, str], ff_props: Dict[str, str]):
 
         self.translate_all_ff_properties = mpf_util.get_property(props, 'TRANSLATE_ALL_FF_PROPERTIES', False)
 
