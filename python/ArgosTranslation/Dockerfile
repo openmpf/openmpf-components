@@ -77,7 +77,6 @@ RUN --mount=target=.,readwrite \
     --mount=from=setup_models,source=/root/.local/share/argos-translate,target=/root/.local/share/argos-translate \
 <<eot
     if [ "${RUN_TESTS,,}" == true ]; then
-        echo test
         python tests/test_argos_translation.py
     fi
 eot
