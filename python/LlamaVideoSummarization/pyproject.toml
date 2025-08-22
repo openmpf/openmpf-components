@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:experimental
-
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -26,49 +24,24 @@
 # limitations under the License.                                            #
 #############################################################################
 
-ARG MODELS_REGISTRY=openmpf/
-ARG BUILD_REGISTRY
-ARG BUILD_TAG=latest
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
 
-FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:8.0.0 AS models
+[project]
+name = "LlamaVideoSummarization"
+version = "9.0"
+dependencies = [
+    "mpf_component_api>=9.0",
+    "mpf_component_util>=9.0",
+    "jsonschema"
+]
 
-FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
+[project.entry-points."mpf.exported_component"]
+component = "llama_video_summarization_component:LlamaVideoSummarizationComponent"
 
-RUN --mount=type=tmpfs,target=/var/cache/apt \
-    --mount=type=tmpfs,target=/var/lib/apt/lists  \
-    --mount=type=tmpfs,target=/tmp \
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y wget
+[tool.setuptools.package-data]
+llama_video_summarization_component = ["*"]
 
-RUN pip3 install --upgrade pip
-
-RUN --mount=type=tmpfs,target=/tmp \
-    mkdir /tmp/CLIP; \
-    wget -O- 'https://github.com/openai/CLIP/tarball/master' \
-        | tar --extract --gzip --directory /tmp/CLIP; \
-    cd /tmp/CLIP/*; \
-    pip3 install . 'torchvision==0.14.1' 'tritonclient[grpc]==2.40'
-
-ARG RUN_TESTS=false
-
-RUN --mount=target=.,readwrite \
-    --mount=from=models,source=/models,target=/models \
-    install-component.sh; \
-    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_clip.py; fi
-
-
-FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
-
-COPY --from=models /models/ViT-B-32.pt /models/ViT-B-32.pt
-COPY --from=models /models/ViT-L-14.pt /models/ViT-L-14.pt
-
-COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
-
-COPY --from=build $PLUGINS_DIR/ClipDetection $PLUGINS_DIR/ClipDetection
-
-LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF CLIP Detection" \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.url="https://openmpf.github.io" \
-      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
-      org.label-schema.vendor="MITRE"
+[tool.setuptools.packages.find]
+exclude = ["subprocess"]

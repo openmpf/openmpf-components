@@ -27,6 +27,12 @@
           "defaultValue": "TEXT,TRANSCRIPT"
         },
         {
+          "name": "TRANSLATE_ALL_FF_PROPERTIES",
+          "description": "When set to true, translate all properties in the FEED_FORWARD_PROPS_TO_PROCESS list. When set to false, only translate the first available property in the FEED_FORWARD_PROPS_TO_PROCESS list and don't use the prefix in front of TRANSLATION in the output property.",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
           "name": "PRETRAINED_MODEL",
           "description": "Path to offline nllb-200-distilled-600M model.",
           "type": "STRING",
@@ -45,6 +51,36 @@
           "defaultValue": "ISO_SCRIPT,DECODED_SCRIPT,SCRIPT"
         },
         {
+          "name": "SENTENCE_SPLITTER_CHAR_COUNT",
+          "description": "Integer value specifying maximum number of characters to process through sentence splitter.",
+          "type": "INT",
+          "defaultValue": "360"
+        },
+        {
+          "name": "SENTENCE_MODEL",
+          "description": "Name of sentence segmentation model. Supported options are spaCy's multilingual `xx_sent_ud_sm` model and the Where's the Point (WtP) `wtp-bert-mini` model.",
+          "type": "STRING",
+          "defaultValue": "wtp-bert-mini"
+        },
+        {
+          "name": "SENTENCE_MODEL_CPU_ONLY",
+          "description": "If set to true, only use CPU resources for the sentence detection model. If set to False, allow sentence model to also use GPU resources (for Docker deployments, please consult README for more info).",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE",
+          "description": "More advanced WTP models will require a target language. This property sets the default language to use for sentence splitting, unless `SOURCE_LANGUAGE` or `DEFAULT_SOURCE_LANGUAGE` are set to a different, WtP-supported language option.",
+          "type": "STRING",
+          "defaultValue": "en"
+        },
+        {
+          "name": "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG",
+          "description": "Specifies whether to pass input language to sentence splitter algorithm. Currently, only WtP supports model adjustments by input language.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
           "name": "TARGET_LANGUAGE",
           "description": "The ISO-639-3 language code for language and script that the input test should be translated to.",
           "type": "STRING",
@@ -58,7 +94,7 @@
         },
         {
           "name": "DEFAULT_SOURCE_LANGUAGE",
-          "description": "The ISO-639-2 language code for language and script that the input text should be translated from.",
+          "description": "The ISO-639-3 language code for language and script that the input text should be translated from.",
           "type": "STRING",
           "defaultValue": ""
         },

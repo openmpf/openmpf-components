@@ -1,6 +1,6 @@
 # Overview
 
-This repository contains source code for the OpenMPF No Language Left Behind component. This component is based on [Meta's No Language Left Behind Project](https://ai.meta.com/research/no-language-left-behind/)and uses the [nllb-200-distilled-600M](https://huggingface.co/facebook/nllb-200-distilled-600M) model.
+This repository contains source code for the OpenMPF No Language Left Behind component. This component is based on [Meta's No Language Left Behind Project] (https://ai.meta.com/research/no-language-left-behind/) and uses the [nllb-200-distilled-600M](https://huggingface.co/facebook/nllb-200-distilled-600M) model.
 
 This component translates the input text from a given source language to English. The source language can be provided as a job property, or be indicated in the detection properties from a feed-forward track.
 
@@ -8,23 +8,61 @@ This component translates the input text from a given source language to English
 # Job Properties
 The below properties can be optionally provided to alter the behavior of the component.
 
-- `FEED_FORWARD_PROP_TO_PROCESS`: Controls which properties of the feed-forward track or detection are considered for translation. This should be a comma-separated list of property names. The default properties are `"TEXT,TRANSCRIPT"`. Each named property in the list that is present is translated and the resulting translations will be added to the feed forward track. The defaul properties will be saved as `TEXT TRANSLATION` or `TRANSCRIPT TRANSLATION` depending on which (or both) is present. For other property names that are provided, the tranlastion property will follow the same convention and tranlastions will be saved to a `[PROPERTY NAME] TRANSLATION`.
+- `FEED_FORWARD_PROP_TO_PROCESS`: Controls which properties of the feed-forward track or detection are considered for translation. This should be a comma-separated list of property names. The default properties are `"TEXT,TRANSCRIPT"`. If `TRANSLATE_ALL_FF_PROPERTIES` is set to TRUE, then each named property in the list that is present is translated and the resulting translations will be added to the feed forward track. The default properties will be saved as `TEXT TRANSLATION` or `TRANSCRIPT TRANSLATION` depending on which (or both) is present. For other property names that are provided, the translation property will follow the same convention and translations will be saved to a `[PROPERTY NAME] TRANSLATION`.
 
-- `LANGUAGE_FEED_FORWARD_PROP`: Is an optional feed-forward property that comes from an earlier stage in a pipeline, indicating which language to translate from. The default values are `"ISO_LANGUAGE, DECODED_LANGUAGE, LANGUAGE"`. The ISO 639-3 standard is the expected input for any of these fields. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, the languge to translate from will be determiend by the DEFAULT_SOURCE_LANGUAGE property instead.
+- `TRANSLATE_ALL_FF_PROPERTIES`: If set to TRUE, translate all properties of the feed-forward track or detection listed in `FEED_FORWARD_PROP_TO_PROCESS`. When set to FALSE, only translate the first property, and the translation is stored in the `TRANSLATION` output property.
 
-- `SCRIPT_FEED_FORWARD_PROP`: Is an optional feed-forward property that is set from an earleir stage in the a pipeline, indicating which source script to use during translation. The default values are `"ISO_SCRIPT, DECODED_SCRIPT, SCRIPT"`. The ISO 15925 is expected as the input for these fields. The first property that is found in the list will be used, otherwise the the DEFAULT_SOURCE_SCRIPT property will be used to select the script to be used for translation.
+- `LANGUAGE_FEED_FORWARD_PROP`: Is an optional feed-forward property that comes from an earlier stage in a pipeline, indicating which language to translate from. The default values are `"ISO_LANGUAGE, DECODED_LANGUAGE, LANGUAGE"`. The ISO 639-3 standard is the expected input for any of these fields. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, the language to translate from will be determined by the DEFAULT_SOURCE_LANGUAGE property instead.
+
+- `SCRIPT_FEED_FORWARD_PROP`: Is an optional feed-forward property that is set from an earlier stage in the a pipeline, indicating which source script to use during translation. The default values are `"ISO_SCRIPT, DECODED_SCRIPT, SCRIPT"`. The ISO 15924 is expected as the input for these fields. The first property that is found in the list will be used, otherwise the the DEFAULT_SOURCE_SCRIPT property will be used to select the script to be used for translation.
 
 - `DEFAULT_SOURCE_LANGUAGE`: The default source language to use if none of the property names listed in `LANGUAGE_FEED_FORWARD_PROP` are present in a feed-forward track or detection. Values should be in the ISO 639-3 standard.
 
-- `DEFAULT_SOURCE_SCRIPT`: The default source script to use if none of the property names listed in the `SCRIPT_FEED_FORWARD_PROP` are present in a feed-forward track or detection. Values should be in the ISO 15925 standard.
+- `DEFAULT_SOURCE_SCRIPT`: The default source script to use if none of the property names listed in the `SCRIPT_FEED_FORWARD_PROP` are present in a feed-forward track or detection. Values should be in the ISO 15924 standard.
 
 - `TARGET_LANGUAGE`: Optional property to define a language to translate to. This value defaults to english if the property is not present.
 
-- `TARGET_SCRIPT`: Optional property to define a script to be used in tranlating a language to. This value defaults to latin.
+- `TARGET_SCRIPT`: Optional property to define a script to be used in translating a language to. This value defaults to latin.
 
+- `SENTENCE_MODEL`: Specifies the desired WtP or spaCy sentence detection model. For CPU
+  and runtime considerations, the author of WtP recommends using `wtp-bert-mini`. More
+  advanced WtP models that use GPU resources (up to ~8 GB) are also available. See list of
+  WtP model names
+  [here](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#available-models). The
+  only available spaCy model (for text with unknown language) is `xx_sent_ud_sm`.
+
+  Review list of languages supported by WtP
+  [here](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#supported-languages).
+  Review models and languages supported by spaCy [here](https://spacy.io/models).
+
+- `SENTENCE_SPLITTER_CHAR_COUNT`: Specifies maximum number of characters to process
+  through sentence/text splitter. Default to 500 characters as we only need to process a
+  subsection of text to determine an appropriate split. (See discussion of potential char
+  lengths
+  [here](https://discourse.mozilla.org/t/proposal-sentences-lenght-limit-from-14-words-to-100-characters).
+
+- `SENTENCE_SPLITTER_INCLUDE_INPUT_LANG`: Specifies whether to pass input language to
+  sentence splitter algorithm. Currently, only WtP supports model threshold adjustments by
+  input language.
+
+- `SENTENCE_MODEL_CPU_ONLY`: If set to TRUE, only use CPU resources for the sentence
+  detection model. If set to FALSE, allow sentence model to also use GPU resources.
+  For most runs using spaCy `xx_sent_ud_sm` or `wtp-bert-mini` models, GPU resources
+  are not required. If using more advanced WtP models like `wtp-canine-s-12l`,
+  it is recommended to set `SENTENCE_MODEL_CPU_ONLY=FALSE` to improve performance.
+  That model can use up to ~3.5 GB of GPU memory.
+
+  Please note, to fully enable this option, you must also rebuild the Docker container
+  with the following change: Within the Dockerfile, set `ARG BUILD_TYPE=gpu`.
+  Otherwise, PyTorch will be installed without cuda support and
+  component will always default to CPU processing.
+
+- `SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE`: More advanced WTP models will
+  require a target language. This property sets the default language to use for
+  sentence splitting, and is overwritten by setting `FROM_LANGUAGE`.
 
 # Language Identifiers
-The following are the ISO 639-3 and ISO 15925 codes, and their corresponding languages which Nllb can translate.
+The following are the ISO 639-3 and ISO 15924 codes, and their corresponding languages which Nllb can translate.
 
 | ISO-639-3 | ISO-15924  |              Language              
 | --------- | ---------- | ----------------------------------

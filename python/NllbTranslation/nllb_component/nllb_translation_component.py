@@ -25,27 +25,31 @@
 #############################################################################
 
 import logging
-import re
-import string
+import regex as re
 import time
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-from typing import Sequence, Dict, Mapping
+from typing import Dict, Optional, Sequence, Mapping, TypeVar
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from .nllb_utils import NllbLanguageMapper
 from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
-from wtpsplit import WtP
 
-logger = logging.getLogger('Nllb')
+logger = logging.getLogger('NllbTranslationComponent')
+
+# Roll-up TypeDef for different track types
+T_FF_OBJ = TypeVar('T_FF_OBJ', mpf.AudioTrack, mpf.GenericTrack, mpf.ImageLocation, mpf.VideoTrack)
+
+# compile this pattern once
+NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Mark}\u1734\p{Spacing_Mark}\p{Enclosing_Mark}\p{Decimal_Number}\p{Letter_Number}\p{Other_Number}\p{Format}]*')
 
 class NllbTranslationComponent:
 
-    def __init__(self):
-        # get nllb-200-distilled-600M model
+    def __init__(self) -> None:
+        self._tokenizer = None
         self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
-                                                            token=False, local_files_only=True)
+                                                            token=False, local_files_only=True, device_map="auto")
     
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
@@ -81,7 +85,9 @@ class NllbTranslationComponent:
 
             return self._get_feed_forward_detections(new_job_props, ff_track)
 
-    def _get_feed_forward_detections(self, job_properties, ff_track, video_job=False):
+    def _get_feed_forward_detections(self, job_properties: Dict[str, str],
+                                     ff_track: T_FF_OBJ,
+                                     video_job: bool = False) -> Sequence[T_FF_OBJ]:
         try:
             if ff_track is None:
                 raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
@@ -91,11 +97,11 @@ class NllbTranslationComponent:
             # load config
             config = JobConfig(job_properties, ff_track.detection_properties)
 
-            self._get_translation(ff_track, config)
+            self._add_translations(ff_track, config)
 
             if video_job:
                 for ff_location in ff_track.frame_locations.values():
-                    self._get_translation(ff_location, config)
+                    self._add_translations(ff_location, config)
 
             return [ff_track]
 
@@ -103,37 +109,55 @@ class NllbTranslationComponent:
             logger.exception(
                 f'Failed to complete job due to the following exception:')
             raise
-        
-    def _get_translation(self, ff_track, config):
 
-        # get tokenizer
+    def _load_tokenizer(self, src_lang: str, config: Dict[str, str]) -> AutoTokenizer:
         start = time.time()
-        self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
-                                                  use_auth_token=False, local_files_only=True, src_lang=config.translate_from_language)
-        elapsed = time.time() - start
-        logger.info(f"Successfully loaded tokenizer in {elapsed} seconds.")
+        if self._tokenizer is None:
+            self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
+                                            use_auth_token=False, local_files_only=True,
+                                            src_lang=config.translate_from_language, device_map=self._model.device)
+        elif self._tokenizer.src_lang != src_lang: # reload with updated src_lang
+            logger.info(f"Detected a change in tokenizer source language ({self._tokenizer.src_lang} -> {src_lang}). Re-initializing tokenizer...")
+            self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
+                                                use_auth_token=False, local_files_only=True,
+                                                src_lang=config.translate_from_language, device_map=self._model.device)
+            elapsed = time.time() - start
+            logger.info(f"Successfully loaded tokenizer in {elapsed} seconds.")
 
-        logger.info(f'Getting Translation....')
+    def _add_translations(self, ff_track: T_FF_OBJ, config: Dict[str, str]) -> None:
+        # iterate over static list of props since we modify detection properties in place
+        detection_props = list(ff_track.detection_properties.keys())
+        translation_count = 0
+        for prop_name in detection_props:
+            if prop_name in config.props_to_translate:
+                if translation_count == 0 or config.translate_all_ff_properties:
+                    text_to_translate = ff_track.detection_properties.get(prop_name, None)
+                    if text_to_translate:
+                        translation = self._get_translation(config, {prop_name: text_to_translate})
+                        ff_prop_name = self._get_ff_prop_name(prop_name, config)
+                        ff_track.detection_properties[ff_prop_name] = translation
+                        translation_count += 1
 
-        text_to_translate: dict = {}
+    def _get_translation(self, config: Dict[str, str], text_to_translate: str) -> str:
 
-        for prop_to_translate in config.props_to_translate:
-            input_text = ff_track.detection_properties.get(prop_to_translate, None)
-            # remove number and punctuation only inputs to prevent bad translations (https://github.com/facebookresearch/fairseq/issues/4854)
-            if input_text and not input_text.isdigit() and not (re.match(("^[" + string.punctuation + "]*$").replace("/","\/"), input_text)):
-                text_to_translate[prop_to_translate] = input_text
+        self._load_tokenizer(src_lang=config.translate_from_language, config=config)
 
-        logger.info(f' Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
+        logger.info(f'Getting translation....')
+
         for prop_to_translate, text in text_to_translate.items():
+            logger.debug(f'Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
 
             # split input text into a list of sentences to support max translation length of 360 characters
-            logger.info(f' Translating character limit set to: {config.nllb_character_limit}')
+            logger.info(f'Translating character limit set to: {config.nllb_character_limit}')
             if len(text) < config.nllb_character_limit:
                 text_list = [text]
             else:
                 # split input values & model
-                wtp_lang: str = WtpLanguageSettings.convert_to_iso(config.translate_from_language)
-                test_splitter_model = TextSplitterModel("wtp-bert-mini", "cpu", wtp_lang)
+                wtp_lang: Optional[str] = WtpLanguageSettings.convert_to_iso(config.translate_from_language)
+                if wtp_lang is None:
+                    wtp_lang = WtpLanguageSettings.convert_to_iso(config.nlp_model_default_language)
+
+                text_splitter_model = TextSplitterModel(config.nlp_model_name, config.nlp_model_setting, wtp_lang)
 
                 logger.info(f'Text to translate is larger than the {config.nllb_character_limit} limit, splitting into smaller sentences')
                 input_text_sentences = TextSplitter.split(
@@ -141,36 +165,42 @@ class NllbTranslationComponent:
                     config.nllb_character_limit,
                     0,
                     len,
-                    test_splitter_model)
+                    text_splitter_model)
 
                 text_list = list(input_text_sentences)
 
-            translation = ""
+            translations = []
 
             for sentence in text_list:
-                inputs = self._tokenizer(sentence, return_tensors="pt")
-                translated_tokens = self._model.generate(
-                    **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
+                if should_translate(sentence):
+                    inputs = self._tokenizer(sentence, return_tensors="pt").to(self._model.device)
+                    translated_tokens = self._model.generate(
+                        **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
 
-                sentence_tranlsation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+                    sentence_translation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
 
-                # need to add space between sentences back
-                if translation == "":
-                    translation += sentence_tranlsation
+                    translations.append(sentence_translation)
                 else:
-                    translation = " ".join([translation, sentence_tranlsation])
-                    #translation = (translation + " " + sentence_tranlsation)
+                    translations.append(sentence)
+
+            # spaces between sentences are added
+            translation = " ".join(translations)
 
             logger.info(f'{prop_to_translate} translation is: {translation}')
 
-            ff_prop_name: str = prop_to_translate + " TRANSLATION"
-            ff_track.detection_properties[ff_prop_name] = translation
+            return translation
 
-    def get_text_len(self, input_str: str) -> int:
-        return len(input_str)
+    def _get_ff_prop_name(self, prop_to_translate: str, config: Dict[str, str]) -> str:
+        if config.translate_all_ff_properties:
+            ff_prop_name: str = prop_to_translate + " TRANSLATION"
+        else:
+            ff_prop_name: str = "TRANSLATION"
+        return ff_prop_name
 
 class JobConfig:
-    def __init__(self, props: Mapping[str, str], ff_props):
+    def __init__(self, props: Mapping[str, str], ff_props: Dict[str, str]):
+
+        self.translate_all_ff_properties = mpf_util.get_property(props, 'TRANSLATE_ALL_FF_PROPERTIES', False)
 
         self.props_to_translate: list[str] = [
             prop.strip() for prop in
@@ -187,7 +217,7 @@ class JobConfig:
                                                                 '/models/facebook/nllb-200-distilled-600M')
 
         # language to translate to
-        self.translate_to_language: str = NllbLanguageMapper.get_code(
+        self.translate_to_language: Optional[str] = NllbLanguageMapper.get_code(
             mpf_util.get_property(props, 'TARGET_LANGUAGE', 'eng'),
             mpf_util.get_property(props, 'TARGET_SCRIPT', 'Latn'))
 
@@ -234,12 +264,32 @@ class JobConfig:
             sourceLanguage,
             sourceScript)
         
-        # set translation limit. default to 360 if no value set
-        self.nllb_character_limit = mpf_util.get_property(props, 'TRANSLATION_CHARACTER_LIMIT', 360)
-
-        # if no source language is provided or language is not supported, no translation can be done
-        if not bool(self.translate_from_language):
+        if not self.translate_from_language:
             logger.exception('Unsupported or no source language provided')
             raise mpf.DetectionException(
-                f'Target translation ({sourceLanguage}) language is empty or unsupported',
+                f'Source language ({sourceLanguage}) is empty or unsupported',
                 mpf.DetectionError.INVALID_PROPERTY)
+
+        # set translation limit. default to 360 if no value set
+        self.nllb_character_limit = mpf_util.get_property(props, 'SENTENCE_SPLITTER_CHAR_COUNT', 360)
+
+        self.nlp_model_name = mpf_util.get_property(props, "SENTENCE_MODEL", "wtp-bert-mini")
+
+        nlp_model_cpu_only = mpf_util.get_property(props, "SENTENCE_MODEL_CPU_ONLY", True)
+        if not nlp_model_cpu_only:
+            self.nlp_model_setting = "cuda"
+        else:
+            self.nlp_model_setting = "cpu"
+
+        # SENTENCE_SPLITTER_INCLUDE_INPUT_LANG and SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE
+        sentence_splitter_include_input_lang = mpf_util.get_property(props, "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG", True)
+        if sentence_splitter_include_input_lang:
+            self.nlp_model_default_language = mpf_util.get_property(props, "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE", 'en')
+        else:
+            self.nlp_model_default_language = None
+
+def should_translate(sentence: any) -> bool:
+    if sentence and not NO_TRANSLATE_PATTERN.fullmatch(sentence):
+        return True
+    else:
+        return False
