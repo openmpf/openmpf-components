@@ -185,8 +185,7 @@ class NllbTranslationComponent:
                         translation_count += 1
 
     def _get_translation(self, config: Dict[str, str], text_to_translate: str) -> str:
-
-        # make sure the model loaded matches the one in the job config
+        # make sure the model loaded matches model set in job config
         self._check_model(config)
         self._load_tokenizer(src_lang=config.translate_from_language, config=config)
 
