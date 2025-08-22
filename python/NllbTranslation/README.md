@@ -1,6 +1,6 @@
 # Overview
 
-This repository contains source code for the OpenMPF No Language Left Behind component. This component is based on [Meta's No Language Left Behind Project] (https://ai.meta.com/research/no-language-left-behind/) and uses the [nllb-200-distilled-600M](https://huggingface.co/facebook/nllb-200-distilled-600M) model.
+This repository contains source code for the OpenMPF No Language Left Behind component. This component is based on [Meta's No Language Left Behind Project] (https://ai.meta.com/research/no-language-left-behind/) and uses the [nllb-200-3.3B] (https://huggingface.co/facebook/nllb-200-3.3B) model. To accommodate smaller deployment enviroments, this component can use smaller NLLB models (e.g. [nllb-200-distilled-600M](https://huggingface.co/facebook/nllb-200-distilled-600M).
 
 This component translates the input text from a given source language to English. The source language can be provided as a job property, or be indicated in the detection properties from a feed-forward track.
 

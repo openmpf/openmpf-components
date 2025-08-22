@@ -60,7 +60,7 @@ class TestNllbTranslation(unittest.TestCase):
     )
     #expected nllb translation
     TRANSLATION = (
-        "Hey, how's it going today?"
+        "Hi, how are you today?"
     )
     TRANSCRIPT_INPUT_0 = (
         'Wie ist das Wetter?' # "How is the weather?"
@@ -380,7 +380,7 @@ class TestNllbTranslation(unittest.TestCase):
         long_translation_text = (
             'Das ist Satz eins. Das ist Satz zwei. Und das ist Satz drei.'
         )
-        expected_translation = "That's sentence one. That's sentence two. And this is sentence three."
+        expected_translation = "That's the first sentence. That's the second sentence. And that's the third sentence."
 
         ff_track = mpf.GenericTrack(-1, dict(TEXT=long_translation_text))
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
@@ -415,7 +415,7 @@ class TestNllbTranslation(unittest.TestCase):
          # excerpt from https://www.gutenberg.org/ebooks/16443
         pt_text="Os que são gentis são indispensáveis. 012345678901234567890123456789012345. 123456789012345678901234567890123456. Os caridosos são uma luz pra os outros."
 
-        pt_text_translation = "Those who are kind are indispensable. 012345678901234567890123456789012345.  123456789012345678901234567890123456.  Charitable people are a light to others."
+        pt_text_translation = "The kind ones are indispensable. 012345678901234567890123456789012345.  123456789012345678901234567890123456.  Charity workers are a light to others."
 
         ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text,
                                              LANGUAGE='por',
@@ -452,7 +452,7 @@ entre nós, envolvidos em densa atmosphera de perenne contentamento,
 satisfeitos do mundo, satisfeitos dos homens e, muito especialmente,
 satisfeitos de si.
 """
-        pt_text_translation = "They do hold these in fact indispensable in that the vivid rays of our sunless sun, or the moon's dim face in the peninsular sky, where it has no, as in London--_a breaking at cost a plumb sky_--to pour joy into the soul and send to the semblance the reflection of it; imagine fatally pursued by _spleen_, The British allies are so desperately grim and subtle, as if at every moment they were coming out of the underground galleries of a pit-coul mine, our English allies, how they are deceiving or trying to deceive us! Enlightened by men beyond the Channel, the quaes seem to walk among us, engaged in a dense atmosphere of perennial contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves. "
+        pt_text_translation = "They fear, indeed, those in whom the vivid rays of our unblinking sun, or the unclouded face of the moon in the peninsular firmament, where it has not, like that of London--to break at the cost of a plumbeo heaven--are indispensable, to pour joy into the soul and send to the semblances the reflection of them; they imagine fatally pursued from _spleen_,  hopelessly gloomy and sullen, as if at every moment they were emerging from the subterranean galleries of a pit-coal mine, our British allies. How they deceive themselves or how they intend to deceive us! This is an illusion or bad faith, against which much is vainly complained the unlevel and accentuated expression of bliss, which shines through on the face. The European Parliament has been a great help to the people of Europe in the past, and it is a great help to us in the present."
 
         ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text))
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)

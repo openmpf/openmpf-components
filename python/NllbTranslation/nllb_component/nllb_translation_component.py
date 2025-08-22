@@ -43,7 +43,7 @@ logger = logging.getLogger('NllbTranslationComponent')
 T_FF_OBJ = TypeVar('T_FF_OBJ', mpf.AudioTrack, mpf.GenericTrack, mpf.ImageLocation, mpf.VideoTrack)
 
 # default NLLB model
-NLLB_MODEL = 'facebook/nllb-200-distilled-600M'
+NLLB_MODEL = 'facebook/nllb-200-3.3B'
 
 # compile this pattern once
 NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Mark}\u1734\p{Spacing_Mark}\p{Enclosing_Mark}\p{Decimal_Number}\p{Letter_Number}\p{Other_Number}\p{Format}]*')

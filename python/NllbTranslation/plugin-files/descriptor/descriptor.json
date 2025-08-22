@@ -34,9 +34,9 @@
         },
         {
           "name": "NLLB_MODEL",
-          "description": "Name of NLLB model to use (e.g. facebook/nllb-200-distilled-600M).",
+          "description": "Name of NLLB model to use (e.g. facebook/nllb-200-3.3B).",
           "type": "STRING",
-          "defaultValue": "facebook/nllb-200-distilled-600M"
+          "defaultValue": "facebook/nllb-200-3.3B"
         },
         {
           "name": "LANGUAGE_FEED_FORWARD_PROP",
