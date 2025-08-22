@@ -143,21 +143,18 @@ class NllbTranslationComponent:
             if os.path.isdir(model_path) and os.path.isfile(os.path.join(model_path, "config.json")):
                 # model is stored locally; we do not need to load the tokenizer here
                 logger.info(f"Loading model from local directory: {model_path}")
-                self._model = AutoModelForSeq2SeqLM.from_pretrained(model_path, token=False, local_files_only=True, device_map="auto", offload_folder=offload_folder)
+                self._model = AutoModelForSeq2SeqLM.from_pretrained(model_path, token=False, local_files_only=True,
+                                                                    device_map="auto", offload_folder=offload_folder)
             else:
+                # model is not stored locally, download and save
                 logger.info(f"Downloading model from Hugging Face: {model_name}")
-                # model is not stored locally, download and save tokenizer/model, load model
-                tokenizer = AutoTokenizer.from_pretrained(model_name)
-                model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-                #os.makedirs(model_path, exist_ok=True)
-                tokenizer.save_pretrained(model_path)
-                model.save_pretrained(model_path)
-                self._model = AutoModelForSeq2SeqLM.from_pretrained(model_path, token=False, local_files_only=True, device_map="auto", offload_folder=offload_folder)
-                # if config is not None:
-                #     if config.translate_from_language is not None:
-                #         self._tokenizer = AutoTokenizer.from_pretrained(model_path,
-                #                 use_auth_token=False, local_files_only=True,
-                #                 src_lang=config.translate_from_language, device_map=self._model.device)
+                self._model = AutoModelForSeq2SeqLM.from_pretrained(model_name, token=False, local_files_only=False,
+                                                                    device_map="auto", offload_folder=offload_folder)
+                self._tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=False, local_files_only=False,
+                                                                device_map=self._model.device)
+                logger.debug(f"Saving model in {model_path}")
+                self._model.save_pretrained(model_path)
+                self._tokenizer.save_pretrained(model_path)
     
         except Exception:
             logger.exception(
@@ -166,10 +163,9 @@ class NllbTranslationComponent:
 
     def _check_model(self, config: Dict[str, str]) -> None:
         loaded_model = self._model.name_or_path
-        #config_model = _model_name_to_path(config.nllb_model)
         config_model = '/models/' + config.nllb_model
         if loaded_model != config_model:
-            logger.info(f"Current model '{_model_path_to_name(loaded_model)}' does not match JobConfig model. Loading '{config.nllb_model}'...")
+            logger.info(f"Current model '{loaded_model}' does not match JobConfig model. Loading '{config.nllb_model}'...")
             self._model = None
             self._tokenizer = None
             self._load_model(config=config)
@@ -264,7 +260,7 @@ class JobConfig:
         ]
 
         # default model, cached
-        self.nllb_model = mpf_util.get_property(props, "NLLB_MODEL", "facebook/nllb-200-distilled-600M")
+        self.nllb_model = mpf_util.get_property(props, "NLLB_MODEL", NLLB_MODEL)
 
         # language to translate to
         self.translate_to_language: Optional[str] = NllbLanguageMapper.get_code(
@@ -338,20 +334,8 @@ class JobConfig:
         else:
             self.nlp_model_default_language = None
 
-    def model_path(self) -> str:
-        logger.info(f'model_path = {"/models/" + self.nllb_model}')
-        return '/models/' + self.nllb_model
-        # return _model_name_to_path(self.nllb_model)
-
 def should_translate(sentence: any) -> bool:
     if sentence and not NO_TRANSLATE_PATTERN.fullmatch(sentence):
         return True
     else:
         return False
-
-def _model_name_to_path(name: str) -> str:
-    return '/'.join(['/models', name.replace('/', '__')])
-
-def _model_path_to_name(path: str) -> str:
-    path = re.sub('^/models/', '', path)
-    return path.replace('__', '/')
