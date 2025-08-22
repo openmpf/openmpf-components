@@ -49,7 +49,8 @@ ARG MODEL_REVISION=1a07f7d195896b2114afcb79b7b57ab512e7b43e
 RUN pip install -U "huggingface_hub[cli]"; \
     hf download $MODEL_NAME \
     --local-dir /models/$MODEL_NAME \
-    --revision $MODEL_REVISION;
+    --revision $MODEL_REVISION; \
+    rm -rf /models/$MODEL_NAME/.[^.]*;
 
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS cpu_component
 
