@@ -33,6 +33,10 @@ ARG BUILD_TAG=latest
 # below line to BUILD_TYPE=gpu
 ARG BUILD_TYPE=cpu
 
+# To create image without a saved model,
+# update CACHE_MODEL=false
+ARG CACHE_MODEL=true
+
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
 ARG BUILD_TYPE
@@ -41,25 +45,53 @@ RUN if [[ "${BUILD_TYPE}" == "gpu" ]]; \
     then ./install.sh --gpu; \
     else ./install.sh; fi;
 
+FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS download_model
+# download nllb model
+# ARG CACHE_MODEL
+ARG MODEL_NAME=facebook/nllb-200-distilled-600M
+ARG MODEL_REVISION=f8d333a098d19b4fd9a8b18f94170487ad3f821d
+RUN pip install -U "huggingface_hub[cli]"; \
+    hf download $MODEL_NAME \
+    --local-dir /models/$MODEL_NAME \
+    --revision $MODEL_REVISION;
+# #RUN --mount=target=/models,readwrite \
+# RUN if [[ "${CACHE_MODEL}" == "true" ]]; then \
+#         mkdir -p "/models"; \
+#         python -c \
+#         "from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; \
+#         modelrev = \"${MODEL_REVISION}\"; \
+#         modelname = \"${MODEL_NAME}\"; \
+#         modelpath = '/'.join(['/models', modelname.replace('/', '__')]); \
+#         tokenizer = AutoTokenizer.from_pretrained(modelname, revision=modelrev); \
+#         model = AutoModelForSeq2SeqLM.from_pretrained(modelname, revision=modelrev); \
+#         tokenizer.save_pretrained(modelpath); \
+#         model.save_pretrained(modelpath)"; \
+#     fi
+
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS cpu_component
 
 COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
 
 COPY --from=build /opt/wtp /opt/wtp
 
-# download nllb model
-ARG MODEL_NAME=facebook/nllb-200-distilled-600M
-ARG MODEL_REVISION=f8d333a098d19b4fd9a8b18f94170487ad3f821d
-RUN --mount=type=tmpfs,target=/tmp/models \
-    mkdir -p "/models/facebook"; \
-    python -c \
-    "from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; \
-    modelrev = \"${MODEL_REVISION}\"; \
-    modelname = \"${MODEL_NAME}\"; \
-    tokenizer = AutoTokenizer.from_pretrained(modelname, revision=modelrev); \
-    model = AutoModelForSeq2SeqLM.from_pretrained(modelname, revision=modelrev); \
-    tokenizer.save_pretrained(r'/models/' + modelname); \
-    model.save_pretrained(r'/models/' + modelname)"
+COPY --from=download_model /models /models
+
+# # download nllb model
+# ARG CACHE_MODEL
+# ARG MODEL_NAME=facebook/nllb-200-distilled-600M
+# ARG MODEL_REVISION=f8d333a098d19b4fd9a8b18f94170487ad3f821d
+# RUN if [[ "${CACHE_MODEL}" == "true" ]]; then \
+#         mkdir -p "/models"; \
+#         python -c \
+#         "from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; \
+#         modelrev = \"${MODEL_REVISION}\"; \
+#         modelname = \"${MODEL_NAME}\"; \
+#         modelpath = '/'.join(['/models', modelname.replace('/', '__')]); \
+#         tokenizer = AutoTokenizer.from_pretrained(modelname, revision=modelrev); \
+#         model = AutoModelForSeq2SeqLM.from_pretrained(modelname, revision=modelrev); \
+#         tokenizer.save_pretrained(modelpath); \
+#         model.save_pretrained(modelpath)"; \
+#     fi
 
 ARG RUN_TESTS=false
 RUN --mount=target=.,readwrite \
@@ -80,3 +112,10 @@ ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 FROM ${BUILD_TYPE}_component
+
+# FROM cpu_component_no_model AS gpu_component_no_model
+
+# ENV NVIDIA_VISIBLE_DEVICES=all
+# ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# FROM ${BUILD_TYPE}_component_no_model

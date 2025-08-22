@@ -27,6 +27,7 @@
 import logging
 import regex as re
 import time
+import os
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -41,16 +42,18 @@ logger = logging.getLogger('NllbTranslationComponent')
 # Roll-up TypeDef for different track types
 T_FF_OBJ = TypeVar('T_FF_OBJ', mpf.AudioTrack, mpf.GenericTrack, mpf.ImageLocation, mpf.VideoTrack)
 
+# default NLLB model
+NLLB_MODEL = 'facebook/nllb-200-distilled-600M'
+
 # compile this pattern once
 NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Mark}\u1734\p{Spacing_Mark}\p{Enclosing_Mark}\p{Decimal_Number}\p{Letter_Number}\p{Other_Number}\p{Format}]*')
 
 class NllbTranslationComponent:
 
     def __init__(self) -> None:
+        self._load_model()
         self._tokenizer = None
-        self._model = AutoModelForSeq2SeqLM.from_pretrained('/models/facebook/nllb-200-distilled-600M',
-                                                            token=False, local_files_only=True, device_map="auto")
-    
+
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
         return self._get_feed_forward_detections(job.job_properties, job.feed_forward_location, video_job=False)
@@ -110,22 +113,69 @@ class NllbTranslationComponent:
                 f'Failed to complete job due to the following exception:')
             raise
 
-    def _load_tokenizer(self, src_lang: str, config: Dict[str, str]) -> AutoTokenizer:
+    def _load_tokenizer(self, src_lang: str, config: Dict[str, str]) -> None:
         start = time.time()
+        model_path = '/models/' + config.nllb_model
         if self._tokenizer is None:
-            self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
+            self._tokenizer = AutoTokenizer.from_pretrained(model_path,
                                             use_auth_token=False, local_files_only=True,
                                             src_lang=config.translate_from_language, device_map=self._model.device)
         elif self._tokenizer.src_lang != src_lang: # reload with updated src_lang
             logger.info(f"Detected a change in tokenizer source language ({self._tokenizer.src_lang} -> {src_lang}). Re-initializing tokenizer...")
-            self._tokenizer = AutoTokenizer.from_pretrained(config.cached_model_location,
+            self._tokenizer = AutoTokenizer.from_pretrained(model_path,
                                                 use_auth_token=False, local_files_only=True,
                                                 src_lang=config.translate_from_language, device_map=self._model.device)
             elapsed = time.time() - start
-            logger.info(f"Successfully loaded tokenizer in {elapsed} seconds.")
+            logger.debug(f"Successfully loaded tokenizer in {elapsed} seconds.")
+    
+    def _load_model(self, model_name: str = None, config: Dict[str, str] = None) -> None:
+        try:
+            if model_name is None:
+                if config is None:
+                    model_name = NLLB_MODEL
+                else:
+                    model_name = config.nllb_model
+            
+            #model_path = _model_name_to_path(model_name)
+            model_path = '/models/' + model_name
+            offload_folder = model_path + '/.weights'
+            
+            if os.path.isdir(model_path) and os.path.isfile(os.path.join(model_path, "config.json")):
+                # model is stored locally; we do not need to load the tokenizer here
+                logger.info(f"Loading model from local directory: {model_path}")
+                self._model = AutoModelForSeq2SeqLM.from_pretrained(model_path, token=False, local_files_only=True, device_map="auto", offload_folder=offload_folder)
+            else:
+                logger.info(f"Downloading model from Hugging Face: {model_name}")
+                # model is not stored locally, download and save tokenizer/model, load model
+                tokenizer = AutoTokenizer.from_pretrained(model_name)
+                model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+                #os.makedirs(model_path, exist_ok=True)
+                tokenizer.save_pretrained(model_path)
+                model.save_pretrained(model_path)
+                self._model = AutoModelForSeq2SeqLM.from_pretrained(model_path, token=False, local_files_only=True, device_map="auto", offload_folder=offload_folder)
+                # if config is not None:
+                #     if config.translate_from_language is not None:
+                #         self._tokenizer = AutoTokenizer.from_pretrained(model_path,
+                #                 use_auth_token=False, local_files_only=True,
+                #                 src_lang=config.translate_from_language, device_map=self._model.device)
+    
+        except Exception:
+            logger.exception(
+                f'Failed to complete job due to the following exception:')
+            raise
+
+    def _check_model(self, config: Dict[str, str]) -> None:
+        loaded_model = self._model.name_or_path
+        #config_model = _model_name_to_path(config.nllb_model)
+        config_model = '/models/' + config.nllb_model
+        if loaded_model != config_model:
+            logger.info(f"Current model '{_model_path_to_name(loaded_model)}' does not match JobConfig model. Loading '{config.nllb_model}'...")
+            self._model = None
+            self._tokenizer = None
+            self._load_model(config=config)
 
     def _add_translations(self, ff_track: T_FF_OBJ, config: Dict[str, str]) -> None:
-        # iterate over static list of props since we modify detection properties in place
+        # iterate over static props list; we modify detection properties in place
         detection_props = list(ff_track.detection_properties.keys())
         translation_count = 0
         for prop_name in detection_props:
@@ -140,10 +190,11 @@ class NllbTranslationComponent:
 
     def _get_translation(self, config: Dict[str, str], text_to_translate: str) -> str:
 
+        # make sure the model loaded matches the one in the job config
+        self._check_model(config)
         self._load_tokenizer(src_lang=config.translate_from_language, config=config)
 
         logger.info(f'Getting translation....')
-
         for prop_to_translate, text in text_to_translate.items():
             logger.debug(f'Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
 
@@ -198,7 +249,7 @@ class NllbTranslationComponent:
         return ff_prop_name
 
 class JobConfig:
-    def __init__(self, props: Mapping[str, str], ff_props: Dict[str, str]):
+    def __init__(self, props: Mapping[str, str], ff_props: Dict[str, str]) -> None:
 
         self.translate_all_ff_properties = mpf_util.get_property(props, 'TRANSLATE_ALL_FF_PROPERTIES', False)
 
@@ -212,9 +263,8 @@ class JobConfig:
             ).split(',')
         ]
 
-        # cached model
-        self.cached_model_location: str = mpf_util.get_property(props, 'PRETRAINED_MODEL',
-                                                                '/models/facebook/nllb-200-distilled-600M')
+        # default model, cached
+        self.nllb_model = mpf_util.get_property(props, "NLLB_MODEL", "facebook/nllb-200-distilled-600M")
 
         # language to translate to
         self.translate_to_language: Optional[str] = NllbLanguageMapper.get_code(
@@ -288,8 +338,20 @@ class JobConfig:
         else:
             self.nlp_model_default_language = None
 
+    def model_path(self) -> str:
+        logger.info(f'model_path = {"/models/" + self.nllb_model}')
+        return '/models/' + self.nllb_model
+        # return _model_name_to_path(self.nllb_model)
+
 def should_translate(sentence: any) -> bool:
     if sentence and not NO_TRANSLATE_PATTERN.fullmatch(sentence):
         return True
     else:
         return False
+
+def _model_name_to_path(name: str) -> str:
+    return '/'.join(['/models', name.replace('/', '__')])
+
+def _model_path_to_name(path: str) -> str:
+    path = re.sub('^/models/', '', path)
+    return path.replace('__', '/')
