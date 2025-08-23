@@ -41,6 +41,17 @@ RUN if [[ "${BUILD_TYPE}" == "gpu" ]]; \
     then ./install.sh --gpu; \
     else ./install.sh; fi;
 
+RUN apt-get update; apt-get -y install --no-install-recommends git gnupg2 wget; \
+    wget -O- https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
+        | apt-key add -; \
+    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" \
+        > /etc/apt/sources.list.d/cuda.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends cuda-minimal-build-12-8 libcusparse-dev-12-8 \
+        libcublas-dev-12-8 libcusolver-dev-12-8 libnpp-dev-12-8 libcufft-dev-12-8 libcutensor2-dev-cuda-12; \
+    pip install packaging ninja psutil; \
+    pip install -U flash-attn --no-build-isolation;
+
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS download_model
 
 # download nllb model
