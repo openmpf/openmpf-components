@@ -170,18 +170,14 @@ class NllbTranslationComponent:
             self._load_model(config=config)
 
     def _add_translations(self, ff_track: T_FF_OBJ, config: Dict[str, str]) -> None:
-        # iterate over static props list; we modify detection properties in place
-        detection_props = list(ff_track.detection_properties.keys())
-        translation_count = 0
-        for prop_name in detection_props:
-            if prop_name in config.props_to_translate:
-                if translation_count == 0 or config.translate_all_ff_properties:
-                    text_to_translate = ff_track.detection_properties.get(prop_name, None)
-                    if text_to_translate:
-                        translation = self._get_translation(config, {prop_name: text_to_translate})
-                        ff_prop_name = self._get_ff_prop_name(prop_name, config)
-                        ff_track.detection_properties[ff_prop_name] = translation
-                        translation_count += 1
+        for prop_name in config.props_to_translate:
+            text_to_translate = ff_track.detection_properties.get(prop_name, None)
+            if text_to_translate:
+                translation = self._get_translation(config, {prop_name: text_to_translate})
+                ff_prop_name = self._get_ff_prop_name(prop_name, config)
+                ff_track.detection_properties[ff_prop_name] = translation
+                if not config.translate_all_ff_properties:
+                    break
 
     def _get_translation(self, config: Dict[str, str], text_to_translate: str) -> str:
         # make sure the model loaded matches model set in job config
