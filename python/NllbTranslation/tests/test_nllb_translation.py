@@ -168,7 +168,7 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(self.OUTPUT_0, result_props["TRANSLATION"])
 
-    def test_translate_first_available_ff_property(self):
+    def test_translate_first_ff_property(self):
         # set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
         test_generic_job_props['TRANSLATE_ALL_FF_PROPERTIES'] = 'FALSE' # default
@@ -245,7 +245,7 @@ class TestNllbTranslation(unittest.TestCase):
         frame_2_props = result[0].frame_locations[2].detection_properties
         self.assertNotIn("OTHER TRANSLATION", frame_2_props)
     
-    def test_translate_first_available_frame_location_property(self):
+    def test_translate_first_frame_location_property(self):
         # set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
         test_generic_job_props['TRANSLATE_ALL_FF_PROPERTIES'] = 'FALSE' # default
