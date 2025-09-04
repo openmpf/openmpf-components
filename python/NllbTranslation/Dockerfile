@@ -29,9 +29,9 @@
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 
-# To enable GPU resources, update
-# below line to BUILD_TYPE=gpu
-ARG BUILD_TYPE=cpu
+# To only use CPU resources, update
+# below line to BUILD_TYPE=cpu
+ARG BUILD_TYPE=gpu
 
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
