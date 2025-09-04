@@ -136,7 +136,6 @@ class NllbTranslationComponent:
                 else:
                     model_name = config.nllb_model
             
-            #model_path = _model_name_to_path(model_name)
             model_path = '/models/' + model_name
             offload_folder = model_path + '/.weights'
             
