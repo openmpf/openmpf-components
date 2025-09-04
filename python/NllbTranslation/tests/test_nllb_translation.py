@@ -124,7 +124,6 @@ class TestNllbTranslation(unittest.TestCase):
         #load source language
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
         test_generic_job_props['TRANSLATE_ALL_FF_PROPERTIES'] = 'TRUE'
-        #test_generic_job_props['NLLB_MODEL'] = 'facebook/nllb-200-distilled-600M'
 
         job = mpf.VideoJob('Test Video',
                            'test.mp4', 0, 1,
