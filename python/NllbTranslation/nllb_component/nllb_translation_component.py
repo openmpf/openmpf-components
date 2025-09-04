@@ -43,7 +43,7 @@ logger = logging.getLogger('NllbTranslationComponent')
 T_FF_OBJ = TypeVar('T_FF_OBJ', mpf.AudioTrack, mpf.GenericTrack, mpf.ImageLocation, mpf.VideoTrack)
 
 # default NLLB model
-NLLB_MODEL = 'facebook/nllb-200-3.3B'
+DEFAULT_NLLB_MODEL = 'facebook/nllb-200-3.3B'
 
 # compile this pattern once
 NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Mark}\u1734\p{Spacing_Mark}\p{Enclosing_Mark}\p{Decimal_Number}\p{Letter_Number}\p{Other_Number}\p{Format}]*')
@@ -132,7 +132,7 @@ class NllbTranslationComponent:
         try:
             if model_name is None:
                 if config is None:
-                    model_name = NLLB_MODEL
+                    model_name = DEFAULT_NLLB_MODEL
                 else:
                     model_name = config.nllb_model
             
@@ -259,7 +259,7 @@ class JobConfig:
         ]
 
         # default model, cached
-        self.nllb_model = mpf_util.get_property(props, "NLLB_MODEL", NLLB_MODEL)
+        self.nllb_model = mpf_util.get_property(props, "NLLB_MODEL", DEFAULT_NLLB_MODEL)
 
         # language to translate to
         self.translate_to_language: Optional[str] = NllbLanguageMapper.get_code(
