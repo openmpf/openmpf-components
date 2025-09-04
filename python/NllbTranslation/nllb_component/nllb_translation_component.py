@@ -113,15 +113,15 @@ class NllbTranslationComponent:
                 f'Failed to complete job due to the following exception:')
             raise
 
-    def _load_tokenizer(self, src_lang: str, config: Dict[str, str]) -> None:
+    def _load_tokenizer(self, config: Dict[str, str]) -> None:
         start = time.time()
         model_path = '/models/' + config.nllb_model
         if self._tokenizer is None:
             self._tokenizer = AutoTokenizer.from_pretrained(model_path,
                                             use_auth_token=False, local_files_only=True,
                                             src_lang=config.translate_from_language, device_map=self._model.device)
-        elif self._tokenizer.src_lang != src_lang: # reload with updated src_lang
-            logger.info(f"Detected a change in tokenizer source language ({self._tokenizer.src_lang} -> {src_lang}). Re-initializing tokenizer...")
+        elif self._tokenizer.src_lang != config.translate_from_language: # reload with updated src_lang
+            logger.info(f"Detected a change in tokenizer source language ({self._tokenizer.src_lang} -> {config.translate_from_language}). Re-initializing tokenizer...")
             self._tokenizer = AutoTokenizer.from_pretrained(model_path,
                                                 use_auth_token=False, local_files_only=True,
                                                 src_lang=config.translate_from_language, device_map=self._model.device)
@@ -186,7 +186,7 @@ class NllbTranslationComponent:
     def _get_translation(self, config: Dict[str, str], text_to_translate: str) -> str:
         # make sure the model loaded matches model set in job config
         self._check_model(config)
-        self._load_tokenizer(src_lang=config.translate_from_language, config=config)
+        self._load_tokenizer(config)
 
         logger.info(f'Getting translation....')
         for prop_to_translate, text in text_to_translate.items():
