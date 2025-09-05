@@ -209,10 +209,10 @@ class NllbTranslationComponent:
                     text_splitter_model)
 
                 text_list = list(input_text_sentences)
+                logger.debug(f'Input text split into {len(text_list)} segments.')
 
             translations = []
 
-            logger.debug(f'Input text split into {len(text_list)} segments for translation. Translating...')
             for sentence in text_list:
                 if should_translate(sentence):
                     inputs = self._tokenizer(sentence, return_tensors="pt").to(self._model.device)
