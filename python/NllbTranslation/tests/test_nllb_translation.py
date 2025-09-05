@@ -283,7 +283,21 @@ class TestNllbTranslation(unittest.TestCase):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE']="ABC"
-        test_generic_job_props['DEFAULT_SOURCE_SCRIPT']="DEF" 
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT']="Latn"
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0))
+        job = mpf.GenericJob('Test Plaintext', 'test.txt', test_generic_job_props, {}, ff_track)
+        comp = NllbTranslationComponent()
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(comp.get_detections_from_generic(job))
+        self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
+
+    def test_unsupported_source_script(self):
+        #set default props
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE']="deu"
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT']="BadScript"
 
         ff_track = mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0))
         job = mpf.GenericJob('Test Plaintext', 'test.txt', test_generic_job_props, {}, ff_track)

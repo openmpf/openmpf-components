@@ -301,9 +301,16 @@ class JobConfig:
         if not sourceScript:
             sourceScript = mpf_util.get_property(props, 'DEFAULT_SOURCE_SCRIPT', '')
 
-        self.translate_from_language = NllbLanguageMapper.get_code(
-            sourceLanguage,
-            sourceScript)
+        try:
+            self.translate_from_language = NllbLanguageMapper.get_code(
+                sourceLanguage,
+                sourceScript)
+        except KeyError:
+            logger.exception(
+                f'Unsupported or no source script provided')
+            raise mpf.DetectionException(
+                 f'Source script ({sourceScript}) is empty or unsupported',
+                mpf.DetectionError.INVALID_PROPERTY)
         
         if not self.translate_from_language:
             logger.exception('Unsupported or no source language provided')
