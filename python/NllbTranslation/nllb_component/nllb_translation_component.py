@@ -184,7 +184,7 @@ class NllbTranslationComponent:
         self._check_model(config)
         self._load_tokenizer(config)
 
-        logger.info(f'Getting translation....')
+        logger.info(f'Performing translation...')
         for prop_to_translate, text in text_to_translate.items():
             logger.debug(f'Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
 
@@ -200,7 +200,7 @@ class NllbTranslationComponent:
 
                 text_splitter_model = TextSplitterModel(config.nlp_model_name, config.nlp_model_setting, wtp_lang)
 
-                logger.info(f'Text to translate is larger than the {config.nllb_character_limit} limit, splitting into smaller sentences')
+                logger.debug(f'Text to translate is larger than the {config.nllb_character_limit} limit, splitting into smaller sentences')
                 input_text_sentences = TextSplitter.split(
                     text,
                     config.nllb_character_limit,
@@ -212,6 +212,7 @@ class NllbTranslationComponent:
 
             translations = []
 
+            logger.debug(f'Input text split into {len(text_list)} segments for translation. Translating...')
             for sentence in text_list:
                 if should_translate(sentence):
                     inputs = self._tokenizer(sentence, return_tensors="pt").to(self._model.device)
@@ -227,7 +228,7 @@ class NllbTranslationComponent:
             # spaces between sentences are added
             translation = " ".join(translations)
 
-            logger.info(f'{prop_to_translate} translation is: {translation}')
+            logger.debug(f'{prop_to_translate} translation is: {translation}')
 
             return translation
 
