@@ -1,9 +1,30 @@
 # Overview
 
-This repository contains source code for the OpenMPF No Language Left Behind component. This component is based on [Meta's No Language Left Behind Project](https://ai.meta.com/research/no-language-left-behind/) and uses the [nllb-200-3.3B](https://huggingface.co/facebook/nllb-200-3.3B) model. To accommodate smaller deployment enviroments, this component can use smaller NLLB models (e.g. [nllb-200-distilled-600M](https://huggingface.co/facebook/nllb-200-distilled-600M).
+This repository contains source code for the OpenMPF No Language Left Behind component and is based on [Meta's No Language Left Behind Project](https://ai.meta.com/research/no-language-left-behind/). The component translates input text from a given source language to English. The source language can be provided as a job property, or be indicated in the detection properties from a feed-forward track.
 
-This component translates the input text from a given source language to English. The source language can be provided as a job property, or be indicated in the detection properties from a feed-forward track.
+By default, this component is configured to use the **`facebook/nllb-200-3.3B` model**, the largest of Meta’s [No Language Left Behind (NLLB)](https://huggingface.co/models?search=facebook/nllb) models. This provides the highest translation quality, but also requires significant hardware resources.
 
+To accommodate smaller deployment enviroments, this component can use smaller NLLB models, such as [nllb-200-distilled-1.3B](https://huggingface.co/facebook/nllb-200-distilled-1.3B) or [nllb-200-distilled-600M](https://huggingface.co/facebook/nllb-200-distilled-600M).
+
+# Recommended System Requirements
+
+- **GPU (recommended for default 3.3B model)**  
+  - NVIDIA GPU with CUDA support  
+  - At least **24 GB of GPU VRAM**  
+
+- **CPU-only (not recommended for 3.3B model unless sufficient memory is available)**  
+  - At least **32 GB of system RAM**  
+
+### Example Model Requirements
+
+| Model Name                              | Parameters | Minimum RAM (CPU) | Minimum GPU VRAM |
+|-----------------------------------------|------------|-------------------|------------------|
+| `facebook/nllb-200-3.3B` (default)      | 3.3B       | 32 GB             | 24 GB            |
+| `facebook/nllb-200-1.3B`                | 1.3B       | 16 GB             | 12 GB            |
+| `facebook/nllb-200-distilled-1.3B`      | 1.3B       | 16 GB             | 12 GB            |
+| `facebook/nllb-200-distilled-600M`      | 0.6B       | 8 GB              | 8 GB             |
+
+> ⚠️ **Note**: The listed memory requirements are approximate and may vary depending on your environment, framework version, and batch size. For production deployments, allocate additional memory beyond the minimums.
 
 # Job Properties
 The below properties can be optionally provided to alter the behavior of the component.
@@ -23,6 +44,8 @@ The below properties can be optionally provided to alter the behavior of the com
 - `TARGET_LANGUAGE`: Optional property to define a language to translate to. This value defaults to english if the property is not present.
 
 - `TARGET_SCRIPT`: Optional property to define a script to be used in translating a language to. This value defaults to latin.
+
+- `NLLB_MODEL`: Specifies which No Language Left Behind (NLLB) model to use. The default model is `facebook/nllb-200-3.3B` and is included in the pre-built NLLB Translation docker image. If this property is configured with a different model, the component will attempt to download the specified model from Hugging Face. See [Recommended System Requirements](#recommended-system-requirements) for additional information.
 
 - `SENTENCE_MODEL`: Specifies the desired WtP or spaCy sentence detection model. For CPU
   and runtime considerations, the author of WtP recommends using `wtp-bert-mini`. More
