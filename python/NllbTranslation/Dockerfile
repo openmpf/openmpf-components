@@ -73,7 +73,6 @@ LABEL org.label-schema.license="Apache 2.0" \
 
 FROM cpu_component AS gpu_component
 
-ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 FROM ${BUILD_TYPE}_component
