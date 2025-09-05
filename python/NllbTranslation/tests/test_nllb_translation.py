@@ -272,6 +272,7 @@ class TestNllbTranslation(unittest.TestCase):
         self.assertNotIn("TRANSLATION", props)
         frame_0_props = result[0].frame_locations[0].detection_properties
         self.assertIn("TRANSLATION", frame_0_props)
+        self.assertIn("OTHER_PROPERTY", frame_0_props)
         self.assertEqual(self.OUTPUT_1, frame_0_props["TRANSLATION"])
         frame_1_props = result[0].frame_locations[1].detection_properties
         self.assertIn("TRANSLATION", frame_1_props)
