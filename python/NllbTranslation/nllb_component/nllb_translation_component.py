@@ -274,7 +274,6 @@ class JobConfig:
         ]
         sourceLanguage: str = ''
         # first try getting LANGUAGE_FEED_FORWARD_PROP otherwise use DEFAULT_SOURCE_LANGUAGE
-        language = ff_props.get("LANGUAGE", None)
         for lang in ff_lang_props:
             if ff_props.get(lang, ''):
                 sourceLanguage = ff_props.get(lang, '')
