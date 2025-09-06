@@ -35,8 +35,10 @@ import unittest
 from nllb_component import NllbTranslationComponent
 from pathlib import Path
 from typing import Sequence
+from nlp_text_splitter import WtpLanguageSettings
 
 from nllb_component.nllb_translation_component import should_translate
+from nllb_component.nllb_utils import NllbLanguageMapper
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -441,6 +443,26 @@ satisfeitos de si.
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
 
+    def test_wtp_with_flores_iso_lookup(self):
+        #set default props
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        #load source language
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'arz'
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Arab'
+        test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '100'
+        test_generic_job_props['SENTENCE_SPLITTER_INCLUDE_INPUT_LANG'] = 'True'
+
+        arz_text="هناك استياء بين بعض أعضاء جمعية ويلز الوطنية من الاقتراح بتغيير مسماهم الوظيفي إلى MWPs (أعضاء في برلمان ويلز). وقد نشأ ذلك بسبب وجود خطط لتغيير اسم الجمعية إلى برلمان ويلز."
+
+        arz_text_translation = 'Some members of the National Assembly for Wales were dissatisfied with the proposal to change their functional designation to MWPs. (Members of the Parliament of Wales). This arose from there being plans to change the name of the assembly to the Parliament of Wales.'
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=arz_text))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(arz_text_translation, result_props["TRANSLATION"])
+
     def test_should_translate(self):
 
         with self.subTest('OK to translate'):
@@ -619,6 +641,207 @@ satisfeitos de si.
             self.assertFalse(should_translate(do_not_translate))
             do_translate = "ゴールドシップ は、日本の競走馬、種牡馬。" + do_not_translate
             self.assertTrue(should_translate(do_translate))
+
+    def test_wtp_iso_conversion(self):
+        # checks ISO normalization and WTP ("Where's The Point" Sentence Splitter) lookup
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ace_Latn')), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ace_Arab')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('acm_Arab')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('acq_Arab')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('aeb_Arab')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('afr_Latn')), 'af')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ajp_Arab')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('amh_Ethi')), 'am')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('apc_Arab')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('arb_Arab')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ars_Arab')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ary_Arab')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('arz_Arab')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('asm_Beng')), 'bn')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ast_Latn')), 'es')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('awa_Deva')), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ayr_Latn')), 'es')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('azb_Arab')), 'az')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('azj_Latn')), 'az')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bak_Cyrl')), 'ru')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bam_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ban_Latn')), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bel_Cyrl')), 'be')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ben_Beng')), 'bn')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bho_Deva')), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bjn_Latn')), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bug_Latn')), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bul_Cyrl')), 'bg')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('cat_Latn')), 'ca')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ceb_Latn')), 'ceb')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ces_Latn')), 'cs')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('cjk_Latn')), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ckb_Arab')), 'ku')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('crh_Latn')), 'tr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('cym_Latn')), 'cy')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('dan_Latn')), 'da')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('deu_Latn')), 'de')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('dik_Latn')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('dyu_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ell_Grek')), 'el')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('eng_Latn')), 'en')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('epo_Latn')), 'eo')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('est_Latn')), 'et')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('eus_Latn')), 'eu')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fin_Latn')), 'fi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fon_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fra_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fur_Latn')), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fuv_Latn')), 'ha')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('gla_Latn')), 'gd')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('gle_Latn')), 'ga')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('glg_Latn')), 'gl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('grn_Latn')), 'es')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('guj_Gujr')), 'gu')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hat_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hau_Latn')), 'ha')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('heb_Hebr')), 'he')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hin_Deva')), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hne_Deva')), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hun_Latn')), 'hu')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hye_Armn')), 'hy')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ibo_Latn')), 'ig')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ind_Latn')), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('isl_Latn')), 'is')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ita_Latn')), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('jav_Latn')), 'jv')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('jpn_Jpan')), 'ja')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kab_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kac_Latn')), 'my')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kan_Knda')), 'kn')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kas_Deva')), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kat_Geor')), 'ka')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kbp_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kea_Latn')), 'pt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('khm_Khmr')), 'km')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('khk_Cyrl')), 'mn')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kir_Cyrl')), 'ky')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kmb_Latn')), 'pt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kmr_Latn')), 'ku')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('knc_Latn')), 'ha')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kon_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kor_Hang')), 'ko')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lij_Latn')), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lim_Latn')), 'nl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lin_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lit_Latn')), 'lt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lmo_Latn')), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ltg_Latn')), 'lv')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lua_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lus_Latn')), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lvs_Latn')), 'lv')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mag_Deva')), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mai_Deva')), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mal_Mlym')), 'ml')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mar_Deva')), 'mr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('min_Latn')), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mkd_Cyrl')), 'mk')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mlt_Latn')), 'mt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mni_Beng')), 'bn')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mos_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mya_Mymr')), 'my')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nld_Latn')), 'nl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nno_Latn')), 'no')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nob_Latn')), 'no')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('npi_Deva')), 'ne')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nus_Latn')), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pan_Guru')), 'pa')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pap_Latn')), 'es')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pbt_Arab')), 'ps')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pes_Arab')), 'fa')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('plt_Latn')), 'mg')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pol_Latn')), 'pl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('por_Latn')), 'pt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('prs_Arab')), 'fa')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ron_Latn')), 'ro')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('rus_Cyrl')), 'ru')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sag_Latn')), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sat_Olck')), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('scn_Latn')), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('shn_Mymr')), 'my')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sin_Sinh')), 'si')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('slk_Latn')), 'sk')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('slv_Latn')), 'sl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('spa_Latn')), 'es')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('als_Latn')), 'sq')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('srp_Cyrl')), 'sr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('swe_Latn')), 'sv')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('szl_Latn')), 'pl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tam_Taml')), 'ta')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tel_Telu')), 'te')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tgk_Cyrl')), 'tg')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tha_Thai')), 'th')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tur_Latn')), 'tr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ukr_Cyrl')), 'uk')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('umb_Latn')), 'pt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('urd_Arab')), 'ur')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('uzn_Latn')), 'uz')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('vec_Latn')), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('vie_Latn')), 'vi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('xho_Latn')), 'xh')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ydd_Hebr')), 'yi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('yor_Latn')), 'yo')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('yue_Hant')), 'zh')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('zho_Hans')), 'zh')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('zsm_Latn')), 'ms')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('zul_Latn')), 'zu')
+
+        # languages supported by NLLB but not supported by WTP Splitter
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('aka_Latn'))) # 'ak'  Akan                
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bem_Latn'))) # 'sw'  Bemba
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bod_Tibt'))) # 'bo'  Tibetan
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bos_Latn'))) # 'bs'  Bosnian
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('dzo_Tibt'))) # 'dz'  Dzongkha
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ewe_Latn'))) # 'ee'  Ewe
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fao_Latn'))) # 'fo'  Faroese
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fij_Latn'))) # 'fj'  Fijian
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('gaz_Latn'))) # 'om'  Oromo
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hrv_Latn'))) # 'hr'  Croatian
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ilo_Latn'))) # 'tl'  Ilocano
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kam_Latn'))) # 'sw'  Kamba
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kik_Latn'))) # 'sw'  Kikuyu
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kin_Latn'))) # 'rw'  Kinyarwanda
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lao_Laoo'))) # 'lo'  Lao
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ltz_Latn'))) # 'lb'  Luxembourgish
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lug_Latn'))) # 'lg'  Ganda
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('luo_Latn'))) # 'luo' Luo
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mri_Latn'))) # 'mi'  Maori
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nso_Latn'))) # 'st'  Northern Sotho
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nya_Latn'))) # 'ny'  Chichewa
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('oci_Latn'))) # 'oc'  Occitan
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ory_Orya'))) # 'or'  Odia
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pag_Latn'))) # 'tl'  Pangasinan
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('quy_Latn'))) # 'qu'  Quechua
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('run_Latn'))) # 'rn'  Rundi
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('san_Deva'))) # 'sa'  Sanskrit
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('smo_Latn'))) # 'sm'  Samoan
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sna_Latn'))) # 'sn'  Shona
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('snd_Arab'))) # 'sd'  Sindhi
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('som_Latn'))) # 'so'  Somali
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sot_Latn'))) # 'st'  Southern Sotho
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('srd_Latn'))) # 'sc'  Sardinian
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ssw_Latn'))) # 'ss'  Swati
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sun_Latn'))) # 'su'  Sundanese
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('swh_Latn'))) # 'sw'  Swahili
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('taq_Latn'))) # 'ber' Tamasheq
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tat_Cyrl'))) # 'tt'  Tatar
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tgl_Latn'))) # 'tl'  Tagalog
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tir_Ethi'))) # 'ti'  Tigrinya
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tpi_Latn'))) # 'tpi' Tok Pisin
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tsn_Latn'))) # 'tn'  Tswana
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tso_Latn'))) # 'ts'  Tsonga
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tuk_Latn'))) # 'tk'  Turkmen
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tum_Latn'))) # 'ny'  Tumbuka
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('twi_Latn'))) # 'ak'  Twi
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tzm_Tfng'))) # 'ber' Central Atlas Tamazight (Berber)
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('uig_Arab'))) # 'ug'  Uyghur
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('war_Latn'))) # 'tl'  Waray
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('wol_Latn'))) # 'wo'  Wolof
 
 if __name__ == '__main__':
     unittest.main()
