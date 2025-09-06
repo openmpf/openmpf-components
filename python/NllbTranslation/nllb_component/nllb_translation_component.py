@@ -194,19 +194,29 @@ class NllbTranslationComponent:
                 text_list = [text]
             else:
                 # split input values & model
-                wtp_lang: Optional[str] = WtpLanguageSettings.convert_to_iso(config.translate_from_language)
+                wtp_lang: Optional[str] = WtpLanguageSettings.convert_to_iso(
+                    NllbLanguageMapper.get_normalized_iso(config.translate_from_language))
                 if wtp_lang is None:
                     wtp_lang = WtpLanguageSettings.convert_to_iso(config.nlp_model_default_language)
 
                 text_splitter_model = TextSplitterModel(config.nlp_model_name, config.nlp_model_setting, wtp_lang)
 
-                logger.debug(f'Text to translate is larger than the {config.nllb_character_limit} limit, splitting into smaller sentences')
-                input_text_sentences = TextSplitter.split(
-                    text,
-                    config.nllb_character_limit,
-                    0,
-                    len,
-                    text_splitter_model)
+                logger.debug(f'Text to translate is larger than the {config.nllb_character_limit} character limit, splitting into smaller sentences')
+                if config._incl_input_lang:
+                    input_text_sentences = TextSplitter.split(
+                        text,
+                        config.nllb_character_limit,
+                        0,
+                        len,
+                        text_splitter_model,
+                        wtp_lang)
+                else:
+                    input_text_sentences = TextSplitter.split(
+                        text,
+                        config.nllb_character_limit,
+                        0,
+                        len,
+                        text_splitter_model)
 
                 text_list = list(input_text_sentences)
                 logger.debug(f'Input text split into {len(text_list)} segments.')
@@ -331,9 +341,11 @@ class JobConfig:
         # SENTENCE_SPLITTER_INCLUDE_INPUT_LANG and SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE
         sentence_splitter_include_input_lang = mpf_util.get_property(props, "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG", True)
         if sentence_splitter_include_input_lang:
+            self._incl_input_lang = True
             self.nlp_model_default_language = mpf_util.get_property(props, "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE", 'en')
         else:
             self.nlp_model_default_language = None
+            self._incl_input_lang = False
 
 def should_translate(sentence: any) -> bool:
     if sentence and not NO_TRANSLATE_PATTERN.fullmatch(sentence):
