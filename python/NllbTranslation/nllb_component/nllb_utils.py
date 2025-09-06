@@ -435,8 +435,147 @@ class NllbLanguageMapper:
     'zul' : 'zul_Latn'	# Zulu
     }
 
+    # iso mappings for Flores-200 not recognized by
+    # WtpLanguageSettings.convert_to_iso()
+    _flores_to_wtpsplit_iso_639_1 = {
+    'ace_Arab': 'ar',   # Acehnese Arabic
+    'ace_Latn': 'id',   # Acehnese Latin
+    'acm_Arab': 'ar',   # Mesopotamian Arabic
+    'acq_Arab': 'ar',   # Ta’izzi-Adeni Arabic
+    'aeb_Arab': 'ar',   # Tunisian Arabic
+    'ajp_Arab': 'ar',   # South Levantine Arabic
+    'aka_Latn': 'ak',   # Akan
+    'als_Latn': 'sq',   # Albanian (Gheg)
+    'apc_Arab': 'ar',   # North Levantine Arabic
+    'arb_Arab': 'ar',   # Standard Arabic
+    'ars_Arab': 'ar',   # Najdi Arabic
+    'ary_Arab': 'ar',   # Moroccan Arabic
+    'arz_Arab': 'ar',   # Egyptian Arabic
+    'asm_Beng': 'bn',   # Assamese
+    'ast_Latn': 'es',   # Asturian
+    'awa_Deva': 'hi',   # Awadhi
+    'ayr_Latn': 'es',   # Aymara
+    'azb_Arab': 'az',   # South Azerbaijani
+    'azj_Latn': 'az',   # North Azerbaijani
+    'bak_Cyrl': 'ru',   # Bashkir
+    'bam_Latn': 'fr',   # Bambara
+    'ban_Latn': 'id',   # Balinese
+    'bem_Latn': 'sw',   # Bemba
+    'bho_Deva': 'hi',   # Bhojpuri
+    'bjn_Latn': 'id',   # Banjar
+    'bod_Tibt': 'bo',   # Tibetan
+    'bos_Latn': 'bs',   # Bosnian
+    'bug_Latn': 'id',   # Buginese
+    'cjk_Latn': 'id',   # Chokwe (approx)
+    'ckb_Arab': 'ku',   # Central Kurdish (Sorani)
+    'crh_Latn': 'tr',   # Crimean Tatar
+    'dik_Latn': 'ar',   # Dinka
+    'dyu_Latn': 'fr',   # Dyula
+    'dzo_Tibt': 'dz',   # Dzongkha
+    'ewe_Latn': 'ee',   # Ewe
+    'fao_Latn': 'fo',   # Faroese
+    'fij_Latn': 'fj',   # Fijian
+    'fon_Latn': 'fr',   # Fon
+    'fur_Latn': 'it',   # Friulian
+    'fuv_Latn': 'ha',   # Nigerian Fulfulde
+    'gaz_Latn': 'om',   # Oromo
+    'grn_Latn': 'es',   # Guarani
+    'hat_Latn': 'fr',   # Haitian Creole
+    'hne_Deva': 'hi',   # Chhattisgarhi
+    'hrv_Latn': 'hr',   # Croatian
+    'ilo_Latn': 'tl',   # Ilocano
+    'kab_Latn': 'fr',   # Kabyle
+    'kac_Latn': 'my',   # Jingpho/Kachin
+    'kam_Latn': 'sw',   # Kamba
+    'kas_Deva': 'hi',   # Kashmiri
+    'kbp_Latn': 'fr',   # Kabiyè
+    'kea_Latn': 'pt',   # Cape Verdean Creole
+    'khk_Cyrl': 'mn',   # Halh Mongolian
+    'kik_Latn': 'sw',   # Kikuyu
+    'kin_Latn': 'rw',   # Kinyarwanda
+    'kmb_Latn': 'pt',   # Kimbundu
+    'kmr_Latn': 'ku',   # Kurmanji Kurdish
+    'knc_Latn': 'ha',   # Kanuri
+    'kon_Latn': 'fr',   # Kongo
+    'lao_Laoo': 'lo',   # Lao
+    'lij_Latn': 'it',   # Ligurian
+    'lim_Latn': 'nl',   # Limburgish
+    'lin_Latn': 'fr',   # Lingala
+    'lmo_Latn': 'it',   # Lombard
+    'ltg_Latn': 'lv',   # Latgalian
+    'ltz_Latn': 'lb',   # Luxembourgish
+    'lua_Latn': 'fr',   # Luba-Kasai
+    'lug_Latn': 'lg',   # Ganda
+    'luo_Latn': 'luo',  # Luo
+    'lus_Latn': 'hi',   # Mizo
+    'lvs_Latn': 'lv',   # Latvian
+    'mag_Deva': 'hi',   # Magahi
+    'mai_Deva': 'hi',   # Maithili
+    'min_Latn': 'id',   # Minangkabau
+    'mni_Beng': 'bn',   # Manipuri (Meitei)
+    'mos_Latn': 'fr',   # Mossi
+    'mri_Latn': 'mi',   # Maori
+    'nno_Latn': 'no',   # Norwegian Nynorsk
+    'nob_Latn': 'no',   # Norwegian Bokmål
+    'npi_Deva': 'ne',   # Nepali
+    'nso_Latn': 'st',   # Northern Sotho
+    'nus_Latn': 'ar',   # Nuer
+    'nya_Latn': 'ny',   # Chichewa
+    'oci_Latn': 'oc',   # Occitan
+    'ory_Orya': 'or',   # Odia
+    'pag_Latn': 'tl',   # Pangasinan
+    'pap_Latn': 'es',   # Papiamento
+    'pbt_Arab': 'ps',   # Southern Pashto
+    'pes_Arab': 'fa',   # Iranian Persian (Farsi)
+    'plt_Latn': 'mg',   # Plateau Malagasy
+    'prs_Arab': 'fa',   # Dari Persian
+    'quy_Latn': 'qu',   # Quechua
+    'run_Latn': 'rn',   # Rundi
+    'sag_Latn': 'fr',   # Sango
+    'san_Deva': 'sa',   # Sanskrit
+    'sat_Olck': 'hi',   # Santali
+    'scn_Latn': 'it',   # Sicilian
+    'shn_Mymr': 'my',   # Shan
+    'smo_Latn': 'sm',   # Samoan
+    'sna_Latn': 'sn',   # Shona
+    'snd_Arab': 'sd',   # Sindhi
+    'som_Latn': 'so',   # Somali
+    'sot_Latn': 'st',   # Southern Sotho
+    'srd_Latn': 'sc',   # Sardinian
+    'ssw_Latn': 'ss',   # Swati
+    'sun_Latn': 'su',   # Sundanese
+    'swh_Latn': 'sw',   # Swahili
+    'szl_Latn': 'pl',   # Silesian
+    'taq_Latn': 'ber',  # Tamasheq
+    'tat_Cyrl': 'tt',   # Tatar
+    'tgl_Latn': 'tl',   # Tagalog
+    'tir_Ethi': 'ti',   # Tigrinya
+    'tpi_Latn': 'tpi',  # Tok Pisin
+    'tsn_Latn': 'tn',   # Tswana
+    'tso_Latn': 'ts',   # Tsonga
+    'tuk_Latn': 'tk',   # Turkmen
+    'tum_Latn': 'ny',   # Tumbuka
+    'twi_Latn': 'ak',   # Twi
+    'tzm_Tfng': 'ber',  # Central Atlas Tamazight
+    'uig_Arab': 'ug',   # Uyghur
+    'umb_Latn': 'pt',   # Umbundu
+    'uzn_Latn': 'uz',   # Uzbek
+    'vec_Latn': 'it',   # Venetian
+    'war_Latn': 'tl',   # Waray
+    'wol_Latn': 'wo',   # Wolof
+    'ydd_Hebr': 'yi',   # Yiddish
+    'yue_Hant': 'zh',   # Yue Chinese (Cantonese)
+    'zsm_Latn': 'ms',   # Malay
+    }
+
     @classmethod
     def get_code(cls, lang : str, script : str):
         if script and lang in cls._iso_to_flores200:
             return cls._iso_to_flores200[lang][script]
         return cls._iso_default_script_flores200.get(lang)
+
+    @classmethod
+    def get_normalized_iso(cls, code : str):
+        if code in cls._flores_to_wtpsplit_iso_639_1:
+            return cls._flores_to_wtpsplit_iso_639_1[code]
+        return code
