@@ -207,7 +207,7 @@ class TestNlpCorrection(unittest.TestCase):
             feed_forward_track=None
         )
 
-        expected_text = "Hun spell doesn\'t recognize SQ or D.Q. as words. Other variations: D.Q, SQ., .D.Q.!"
+        expected_text = "Hunspell doesn\'t recognize SQ or D.Q. as words. Other variations: D.Q, SQ., .D.Q.!"
 
         results = list(NlpCorrectionComponent().get_detections_from_generic(job))
 
@@ -225,7 +225,7 @@ class TestNlpCorrection(unittest.TestCase):
             feed_forward_track=None
         )
 
-        expected_text = "Hun spell doesn\'t recognize DQ or D.Q. as words. Other variations: DQ, DQ., .D.Q.!"
+        expected_text = "Hunspell doesn\'t recognize DQ or D.Q. as words. Other variations: DQ, DQ., .D.Q.!"
 
         results = list(NlpCorrectionComponent().get_detections_from_generic(job_2))
 
