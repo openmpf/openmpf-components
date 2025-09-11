@@ -43,11 +43,11 @@ RUN --mount=type=tmpfs,target=/var/cache/apt \
 RUN pip3 install --upgrade pip
 
 RUN --mount=type=tmpfs,target=/tmp \
-    mkdir /tmp/CLIP; \
-    wget -O- 'https://github.com/openai/CLIP/tarball/master' \
-        | tar --extract --gzip --directory /tmp/CLIP; \
-    cd /tmp/CLIP/*; \
-    pip3 install . 'torchvision==0.14.1' 'tritonclient[grpc]==2.40'
+        mkdir /tmp/CLIP; \
+        wget -O- 'https://github.com/openai/CLIP/tarball/master' \
+            | tar --extract --gzip --directory /tmp/CLIP; \
+        cd /tmp/CLIP/*; \
+        pip3 install .
 
 ARG RUN_TESTS=false
 
