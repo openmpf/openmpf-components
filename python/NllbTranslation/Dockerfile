@@ -6,7 +6,7 @@
 # This software (or technical data) was produced for the U.S. Government    #
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
-#                                                                           #
+#                                                                            #
 # Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
@@ -46,7 +46,7 @@ FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS download_mo
 # download nllb model
 ARG MODEL_NAME=facebook/nllb-200-3.3B
 ARG MODEL_REVISION=1a07f7d195896b2114afcb79b7b57ab512e7b43e
-RUN pip install -U "huggingface_hub[cli]"; \
+RUN pip install -U "huggingface_hub[cli] numpy<2"; \
     hf download $MODEL_NAME \
     --local-dir /models/$MODEL_NAME \
     --revision $MODEL_REVISION; \
