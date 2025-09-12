@@ -238,7 +238,7 @@ class NllbTranslationComponent:
             # spaces between sentences are added
             translation = " ".join(translations)
 
-            logger.debug(f'Translated {prop_to_translate} property to:\n{sentence_translation.strip()}')
+            logger.debug(f'Translated {prop_to_translate} property to:\n{translation.strip()}')
 
             return translation
 
