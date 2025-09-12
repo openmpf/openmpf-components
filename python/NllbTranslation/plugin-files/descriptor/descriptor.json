@@ -109,13 +109,13 @@
   },
   "actions": [
     {
-      "name": "NO LANGUAGE LEFT BEHIND TRANSLATION TEXT FILE ACTION",
+      "name": "NLLB TEXT FILE ACTION",
       "description": "Performs Nllb translation on a plain text file.",
       "algorithm": "NLLBTRANSLATION",
       "properties": []
     },
     {
-      "name": "NO LANGUAGE LEFT BEHIND TRANSLATION (WITH FF REGION) ACTION",
+      "name": "NLLB (WITH FF REGION) ACTION",
       "description": "Performs Nllb translation on feed-forward tracks and detections.",
       "algorithm": "NLLBTRANSLATION",
       "properties": [
@@ -132,26 +132,26 @@
   ],
   "tasks": [
     {
-      "name": "NO LANGUAGE LEFT BEHIND TRANSLATION TEXT FILE TASK",
+      "name": "NLLB TEXT FILE TASK",
       "description": "Uses No Language Left Behind to perform translation on a plain text file.",
       "actions": [
-        "NO LANGUAGE LEFT BEHIND TRANSLATION TEXT FILE ACTION"
+        "NLLB TEXT FILE ACTION"
       ]
     },
     {
-      "name": "NO LANGUAGE LEFT BEHIND TRANSLATION (WITH FF REGION) TASK",
+      "name": "NLLB (WITH FF REGION) TASK",
       "description": "Uses No Language Left Behindto perform translation on feed-forward tracks and detections.",
       "actions": [
-        "NO LANGUAGE LEFT BEHIND TRANSLATION (WITH FF REGION) ACTION"
+        "NLLB (WITH FF REGION) ACTION"
       ]
     }
   ],
   "pipelines": [
     {
-      "name": "NO LANGUAGE LEFT BEHIND TRANSLATION TEXT FILE PIPELINE",
+      "name": "NLLB TEXT FILE PIPELINE",
       "description": "Performs Nllb translation on a plain text file.",
       "tasks": [
-        "NO LANGUAGE LEFT BEHIND TRANSLATION TEXT FILE TASK"
+        "NLLB TEXT FILE TASK"
       ]
     }
   ]
