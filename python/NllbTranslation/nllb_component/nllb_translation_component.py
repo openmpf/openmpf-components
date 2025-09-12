@@ -217,7 +217,7 @@ class NllbTranslationComponent:
                         text_splitter_model)
 
                 text_list = list(input_text_sentences)
-                logger.info(f'Input text split into {len(text_list)} segments.')
+                logger.info(f'Input text split into {len(text_list)} sentences.')
 
             translations = []
 
@@ -230,15 +230,15 @@ class NllbTranslationComponent:
                     sentence_translation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
 
                     translations.append(sentence_translation)
-                    logger.debug(f'Translated:\n\n{sentence}\n\nto:\n\n{sentence_translation}')
+                    logger.debug(f'Translated:\n{sentence.strip()}\nto:\n{sentence_translation.strip()}')
                 else:
                     translations.append(sentence)
-                    logger.debug(f'Skipping translation for:\n\n{sentence}')
+                    logger.debug(f'Skipping translation for:\n{sentence.strip()}')
 
             # spaces between sentences are added
             translation = " ".join(translations)
 
-            logger.debug(f'Translated property {prop_to_translate} to:\n\n{sentence_translation}')
+            logger.debug(f'Translated {prop_to_translate} property to:\n{sentence_translation.strip()}')
 
             return translation
 
