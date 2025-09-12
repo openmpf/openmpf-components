@@ -44,13 +44,15 @@ RUN if [[ "${BUILD_TYPE}" == "gpu" ]]; \
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS download_model
 
 # download nllb model
-ARG MODEL_NAME=facebook/nllb-200-3.3B
-ARG MODEL_REVISION=1a07f7d195896b2114afcb79b7b57ab512e7b43e
-RUN pip install -U "huggingface_hub[cli]"; \
+ARG MODEL_NAME=OpenNMT/nllb-200-3.3B-ct2-int8
+ARG MODEL_REVISION=28d998cc8548ad62f4f98cf8860928c3af99b97b
+RUN pip install -U "huggingface_hub[cli]" ctranslate2 sentencepiece; \
     hf download $MODEL_NAME \
     --local-dir /models/$MODEL_NAME \
     --revision $MODEL_REVISION; \
-    rm -rf /models/$MODEL_NAME/.[^.]*;
+    rm -rf /models/$MODEL_NAME/.[^.]*; \
+    wget https://huggingface.co/OpenNMT/nllb-200-onmt/resolve/065b96d3e3c453f4433f2a83456b8b864e8a09d6/flores200_sacrebleu_tokenizer_spm.model \
+        -O /models/OpenNMT/flores200_sacrebleu_tokenizer_spm.model;
 
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS cpu_component
 

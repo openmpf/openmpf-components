@@ -33,7 +33,9 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 from typing import Dict, Optional, Sequence, Mapping, TypeVar
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+# from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+import ctranslate2
+import sentencepiece as spm
 from .nllb_utils import NllbLanguageMapper
 from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
 
@@ -43,7 +45,8 @@ logger = logging.getLogger('NllbTranslationComponent')
 T_FF_OBJ = TypeVar('T_FF_OBJ', mpf.AudioTrack, mpf.GenericTrack, mpf.ImageLocation, mpf.VideoTrack)
 
 # default NLLB model
-DEFAULT_NLLB_MODEL = 'facebook/nllb-200-3.3B'
+DEFAULT_NLLB_MODEL = 'OpenNMT/nllb-200-3.3B-ct2-int8'
+SP_MODEL_PATH = '/models/OpenNMT/flores200_sacrebleu_tokenizer_spm.model'
 
 # compile this pattern once
 NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Mark}\u1734\p{Spacing_Mark}\p{Enclosing_Mark}\p{Decimal_Number}\p{Letter_Number}\p{Other_Number}\p{Format}]*')
@@ -115,18 +118,21 @@ class NllbTranslationComponent:
 
     def _load_tokenizer(self, config: Dict[str, str]) -> None:
         start = time.time()
-        model_path = '/models/' + config.nllb_model
-        if self._tokenizer is None:
-            self._tokenizer = AutoTokenizer.from_pretrained(model_path,
-                                            use_auth_token=False, local_files_only=True,
-                                            src_lang=config.translate_from_language, device_map=self._model.device)
-        elif self._tokenizer.src_lang != config.translate_from_language: # reload with updated src_lang
-            logger.info(f"Detected a change in tokenizer source language ({self._tokenizer.src_lang} -> {config.translate_from_language}). Re-initializing tokenizer...")
-            self._tokenizer = AutoTokenizer.from_pretrained(model_path,
-                                                use_auth_token=False, local_files_only=True,
-                                                src_lang=config.translate_from_language, device_map=self._model.device)
-            elapsed = time.time() - start
-            logger.debug(f"Successfully loaded tokenizer in {elapsed} seconds.")
+        self._tokenizer = spm.SentencePieceProcessor()
+        self._tokenizer.load(SP_MODEL_PATH)
+        # if self._tokenizer is None:
+        #     self._tokenizer = spm.SentencePieceProcessor()
+        #     self._tokenizer.load(sp_model_path)
+        #     # self._tokenizer = AutoTokenizer.from_pretrained(model_path,
+        #     #                                 use_auth_token=False, local_files_only=True,
+        #     #                                 src_lang=config.translate_from_language, device_map=self._model.device)
+        # elif self._tokenizer.src_lang != config.translate_from_language: # reload with updated src_lang
+        #     logger.info(f"Detected a change in tokenizer source language ({self._tokenizer.src_lang} -> {config.translate_from_language}). Re-initializing tokenizer...")
+        #     self._tokenizer = AutoTokenizer.from_pretrained(model_path,
+        #                                         use_auth_token=False, local_files_only=True,
+        #                                         src_lang=config.translate_from_language, device_map=self._model.device)
+        elapsed = time.time() - start
+        logger.debug(f"Successfully loaded tokenizer in {elapsed} seconds.")
     
     def _load_model(self, model_name: str = None, config: Dict[str, str] = None) -> None:
         try:
@@ -138,22 +144,24 @@ class NllbTranslationComponent:
             
             model_path = '/models/' + model_name
             offload_folder = model_path + '/.weights'
-            
+            # TODO check params, functions
             if os.path.isdir(model_path) and os.path.isfile(os.path.join(model_path, "config.json")):
                 # model is stored locally; we do not need to load the tokenizer here
                 logger.info(f"Loading model from local directory: {model_path}")
-                self._model = AutoModelForSeq2SeqLM.from_pretrained(model_path, token=False, local_files_only=True,
-                                                                    device_map="auto", offload_folder=offload_folder)
+                # self._model = AutoModelForSeq2SeqLM.from_pretrained(model_path, token=False, local_files_only=True,
+                #                                                     device_map="auto", offload_folder=offload_folder)
+                self._model = ctranslate2.Translator(model_path, device="auto")
             else:
                 # model is not stored locally, download and save
                 logger.info(f"Downloading model from Hugging Face: {model_name}")
-                self._model = AutoModelForSeq2SeqLM.from_pretrained(model_name, token=False, local_files_only=False,
-                                                                    device_map="auto", offload_folder=offload_folder)
-                self._tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=False, local_files_only=False,
-                                                                device_map=self._model.device)
+                # self._model = AutoModelForSeq2SeqLM.from_pretrained(model_name, token=False, local_files_only=False,
+                                                                    # device_map="auto", offload_folder=offload_folder)
+                self._model = ctranslate2.Translator(model_path, device="auto")
+                # self._tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=False, local_files_only=False,
+                #                                                 device_map=self._model.device)
                 logger.debug(f"Saving model in {model_path}")
                 self._model.save_pretrained(model_path)
-                self._tokenizer.save_pretrained(model_path)
+                # self._tokenizer.save_pretrained(model_path)
     
         except Exception:
             logger.exception(
@@ -161,13 +169,16 @@ class NllbTranslationComponent:
             raise
 
     def _check_model(self, config: Dict[str, str]) -> None:
-        loaded_model = self._model.name_or_path
-        config_model = '/models/' + config.nllb_model
-        if loaded_model != config_model:
-            logger.info(f"Current model '{loaded_model}' does not match JobConfig model. Loading '{config.nllb_model}'...")
-            self._model = None
-            self._tokenizer = None
+        # TODO: see if there's a way to verify which model is loaded
+        if not self._model.model_is_loaded:
             self._load_model(config=config)
+        # loaded_model = self._model.name_or_path
+        # config_model = '/models/' + config.nllb_model
+        # if loaded_model != config_model:
+        #     logger.info(f"Current model '{loaded_model}' does not match JobConfig model. Loading '{config.nllb_model}'...")
+        #     self._model = None
+        #     self._tokenizer = None
+        #     self._load_model(config=config)
 
     def _add_translations(self, ff_track: T_FF_OBJ, config: Dict[str, str]) -> None:
         for prop_name in config.props_to_translate:
@@ -221,21 +232,47 @@ class NllbTranslationComponent:
                 text_list = list(input_text_sentences)
                 logger.debug(f'Input text split into {len(text_list)} segments.')
 
-            translations = []
+            #translations = []
 
-            for sentence in text_list:
-                if should_translate(sentence):
-                    inputs = self._tokenizer(sentence, return_tensors="pt").to(self._model.device)
-                    translated_tokens = self._model.generate(
-                        **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
+            # TODO: check behavior of engine if sent strings that don't pass should_translate()
+            beam_size = 4
+            target_prefix = [[config.translate_to_language]] * len(text_list)
+            sentences_subworded = self._tokenizer.encode_as_pieces(text_list)
+            sentences_subworded = [[config.translate_from_language] + sent + ["</s>"] for sent in sentences_subworded]
+            translations_subworded = self._model.translate_batch(sentences_subworded, batch_type="tokens",
+                                                                 max_batch_size=2024, beam_size=beam_size, target_prefix=target_prefix)
+            translations_subworded = [translation.hypotheses[0] for translation in translations_subworded]
+            for t in translations_subworded:
+                if config.translate_to_language in t:
+                    t.remove(config.translate_to_language)
+            # Desubword the target sentences
+            translations = self._tokenizer.decode(translations_subworded)
 
-                    sentence_translation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+            # for sentence in text_list:
+            #     if should_translate(sentence):
+            #         beam_size = 4
+            #         target_prefix = [[config.translate_to_language]] * len(sentence)
+            #         sentence_subworded = self._tokenizer.encode_as_pieces(sentence)
+            #         sentence_subworded = [[config.translate_from_language] + sent + ["</s>"] for sent in sentence_subworded]
+            #         #print("First subworded source sentence:", source_sents_subworded[0], sep="\n")
+            #         translations_subworded = self._model.translate_batch(sentence_subworded, batch_type="tokens", max_batch_size=2024, beam_size=beam_size, target_prefix=target_prefix)
+            #         translations_subworded = [translation.hypotheses[0] for translation in translations_subworded]
+            #         for t in translations_subworded:
+            #             if config.translate_to_language in t:
+            #                 t.remove(config.translate_to_language)
+            #         # Desubword the target sentences
+            #         sentence_translation = self._tokenizer.decode(translations_subworded)
+            #         # inputs = self._tokenizer(sentence, return_tensors="pt").to(self._model.device)
+            #         # translated_tokens = self._model.generate(
+            #         #     **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
 
-                    translations.append(sentence_translation)
-                else:
-                    translations.append(sentence)
+            #         # sentence_translation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
 
-            # spaces between sentences are added
+            #         translations.append(sentence_translation)
+            #     else:
+            #         translations.append(sentence)
+
+            # # spaces between sentences are added
             translation = " ".join(translations)
 
             logger.debug(f'{prop_to_translate} translation is: {translation}')

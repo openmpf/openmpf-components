@@ -34,9 +34,9 @@
         },
         {
           "name": "NLLB_MODEL",
-          "description": "Name of NLLB model to use (e.g. facebook/nllb-200-3.3B).",
+          "description": "Name of NLLB model to use (e.g. OpenNMT/nllb-200-3.3B-ct2-int8).",
           "type": "STRING",
-          "defaultValue": "facebook/nllb-200-3.3B"
+          "defaultValue": "OpenNMT/nllb-200-3.3B-ct2-int8"
         },
         {
           "name": "LANGUAGE_FEED_FORWARD_PROP",
