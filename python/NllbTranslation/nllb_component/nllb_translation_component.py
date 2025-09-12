@@ -184,10 +184,8 @@ class NllbTranslationComponent:
         self._check_model(config)
         self._load_tokenizer(config)
 
-        logger.info(f'Performing translation...')
+        logger.info(f'Translating from {config.translate_from_language} to {config.translate_to_language}')
         for prop_to_translate, text in text_to_translate.items():
-            logger.debug(f'Translating from {config.translate_from_language} to {config.translate_to_language}: {text_to_translate}')
-
             # split input text into a list of sentences to support max translation length of 360 characters
             logger.info(f'Translating character limit set to: {config.nllb_character_limit}')
             if len(text) < config.nllb_character_limit:
@@ -201,7 +199,7 @@ class NllbTranslationComponent:
 
                 text_splitter_model = TextSplitterModel(config.nlp_model_name, config.nlp_model_setting, wtp_lang)
 
-                logger.debug(f'Text to translate is larger than the {config.nllb_character_limit} character limit, splitting into smaller sentences')
+                logger.info(f'Text to translate is larger than the {config.nllb_character_limit} character limit, splitting into smaller sentences.')
                 if config._incl_input_lang:
                     input_text_sentences = TextSplitter.split(
                         text,
@@ -219,26 +217,28 @@ class NllbTranslationComponent:
                         text_splitter_model)
 
                 text_list = list(input_text_sentences)
-                logger.debug(f'Input text split into {len(text_list)} segments.')
+                logger.info(f'Input text split into {len(text_list)} segments.')
 
             translations = []
 
+            logger.info(f'Translating sentences...')
             for sentence in text_list:
                 if should_translate(sentence):
                     inputs = self._tokenizer(sentence, return_tensors="pt").to(self._model.device)
                     translated_tokens = self._model.generate(
                         **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
-
                     sentence_translation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
 
                     translations.append(sentence_translation)
+                    logger.debug(f'Translated:\n\n{sentence}\n\nto:\n\n{sentence_translation}')
                 else:
                     translations.append(sentence)
+                    logger.debug(f'Skipping translation for:\n\n{sentence}')
 
             # spaces between sentences are added
             translation = " ".join(translations)
 
-            logger.debug(f'{prop_to_translate} translation is: {translation}')
+            logger.debug(f'Translated property {prop_to_translate} to:\n\n{sentence_translation}')
 
             return translation
 
