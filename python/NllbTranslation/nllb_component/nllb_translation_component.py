@@ -310,7 +310,7 @@ class JobConfig:
                 break
         if not sourceScript:
             sourceScript = mpf_util.get_property(props, 'DEFAULT_SOURCE_SCRIPT', '')
-        sourceLanguage = sourceLanguage.title()  # TODO: make all language and script checks case-insensitive
+        sourceScript = sourceScript.title()  # TODO: make all language and script checks case-insensitive
 
         try:
             self.translate_from_language = NllbLanguageMapper.get_code(
