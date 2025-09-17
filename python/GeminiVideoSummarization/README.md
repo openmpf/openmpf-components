@@ -16,6 +16,7 @@ The following are the properties that can be specified for the component. The fi
 - `TARGET_SEGMENT_LENGTH`: The length of segments the video is divided into.
 - `VFR_TARGET_SEGMENT_LENGTH`: The length of segments the video is divided into.
 - `PROCESS_FPS`: The amount of frames to process per second. The FPS processing limit for Gemini is (0.0, 24.0]
+- `ENABLE_TIMELINE`: When set to 1, this enables the creation of timelines. If there is no custom prompt file, it will use default_prompt.txt. When set to 0, this disables timelines. If there is no custom prompt file, it will use default_prompt_no_tl.txt.
 
 REQUIRED PROPERTIES:
 - `PROJECT_ID`: The project ID for your GCP project.
@@ -27,11 +28,13 @@ REQUIRED PROPERTIES:
 
 # Custom Prompts
 
-For the default prompt refer to gemini_video_summarization_component/data/default_prompt.txt. 
+For the default prompt with timelines enabled refer to gemini_video_summarization_component/data/default_prompt.txt. 
+
+For the default prompt WITHOUT timelines enabled refer to gemini_video_summarization_component/data/default_prompt_no_tl.txt.
 
 Set GENERATION_PROMPT_PATH to specify the path to a txt file containing a generation prompt to provide the model. 
 
-When making a custom prompt or altering the default prompt. It is required that the parts about timestamp formatting, timestamp offsets and the JSON structured output are included in your prompt.
+When making a custom prompt or altering the default prompt with timelines enabled, it is required that the parts about timestamp formatting, timestamp offsets and the JSON structured output are included in your prompt.
 
 # GCP Certificate
 

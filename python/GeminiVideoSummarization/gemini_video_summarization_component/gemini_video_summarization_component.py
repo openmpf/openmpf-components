@@ -68,6 +68,7 @@ class GeminiVideoSummarizationComponent:
         self.label_user = config.label_user
         self.label_purpose = config.label_purpose
         fps = config.process_fps
+        enable_timeline=config.enable_timeline
 
         segment_start_time = job.start_frame / float(job.media_properties['FPS'])
         segment_stop_time = (job.stop_frame + 1) / float(job.media_properties['FPS'])
@@ -97,20 +98,19 @@ class GeminiVideoSummarizationComponent:
             if error is not None:
                 continue
 
-            # if no error, then response_json should be valid
-            event_timeline = response_json['video_event_timeline'] 
+            if enable_timeline == 1:
+                event_timeline = response_json['video_event_timeline'] 
+                error = self._check_timeline(
+                    timeline_check_target_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, event_timeline)
+                if error is not None:
+                    continue
 
-            error = self._check_timeline(
-                timeline_check_target_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, event_timeline)
-            if error is not None:
-                continue
-            
             break
 
         if error:
             raise mpf.DetectionError.DETECTION_FAILED.exception(f'Failed to produce valid JSON file: {error}')
             
-        tracks = self._create_tracks(job, response_json)
+        tracks = self._create_tracks(job, response_json, enable_timeline)
 
         logger.info(f"Job complete. Found {len(tracks)} tracks.")
         return tracks
@@ -126,10 +126,12 @@ class GeminiVideoSummarizationComponent:
         retry=retry_if_exception(lambda e: isinstance(e, mpf.DetectionException) and getattr(e, 'rate_limit', False))
     )
 
-    def _create_tracks(self, job: mpf.VideoJob, response_json: dict) -> Iterable[mpf.VideoTrack]:
+    def _create_tracks(self, job: mpf.VideoJob, response_json: dict, enable_timeline) -> Iterable[mpf.VideoTrack]:
         logger.info('Creating tracks.')
         tracks = []
 
+        segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
+        video_fps = float(job.media_properties['FPS'])
         segment_start_time = job.start_frame / float(job.media_properties['FPS'])
         
         frame_width = 0
@@ -139,12 +141,9 @@ class GeminiVideoSummarizationComponent:
         if 'FRAME_HEIGHT' in job.media_properties:
             frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
-        if response_json['video_event_timeline']:
+        if enable_timeline == 1:
             summary_track = self._create_segment_summary_track(job, response_json)
             tracks.append(summary_track)
-
-            segment_id = summary_track.detection_properties['SEGMENT ID']
-            video_fps = float(job.media_properties['FPS'])
 
             for event in response_json['video_event_timeline']:
 
@@ -424,8 +423,12 @@ class JobConfig:
     def __init__(self, job_properties: Mapping[str, str], media_properties=None):
 
         self.generation_prompt_path = self._get_prop(job_properties, "GENERATION_PROMPT_PATH", "")
-        if self.generation_prompt_path == "":
+        self.enable_timeline = int(self._get_prop(job_properties, "ENABLE_TIMELINE", "1"))
+        if self.generation_prompt_path == "" and self.enable_timeline == 1:
             self.generation_prompt_path= os.path.join(os.path.dirname(__file__), 'data', 'default_prompt.txt')
+        else:
+            self.generation_prompt_path= os.path.join(os.path.dirname(__file__), 'data', 'default_prompt_no_tl.txt')
+
         if not os.path.exists(self.generation_prompt_path):
             raise mpf.DetectionException(
                 "Invalid path provided for prompt file: ",

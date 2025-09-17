@@ -117,7 +117,13 @@
                     "description": "Specifies the number of frames per second of video to process.",
                     "type": "FLOAT",
                     "defaultValue": "1.0"
-                }
+                },
+                {
+                    "name": "ENABLE_TIMELINE",
+                    "description": "When set to 1, generate a timeline of events for the video. When set to 0, does not generate a timeline.",
+                    "type": "INT",
+                    "defaultValue": "1"
+                }                
             ]
         }
     },
