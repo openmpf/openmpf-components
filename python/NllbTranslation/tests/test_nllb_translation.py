@@ -322,6 +322,20 @@ class TestNllbTranslation(unittest.TestCase):
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(self.OUTPUT_0, result_props["TRANSLATION"])
 
+    def test_language_script_codes_case(self):
+        #set default props
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        #load source language but no script
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'DEU'
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'LATN'
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(self.OUTPUT_0, result_props["TRANSLATION"])
+
     def test_feed_forward_language(self):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
