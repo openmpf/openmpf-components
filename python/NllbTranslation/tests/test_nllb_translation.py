@@ -309,6 +309,20 @@ class TestNllbTranslation(unittest.TestCase):
             list(comp.get_detections_from_generic(job))
         self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
 
+    def test_invalid_script_lang_combination(self):
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE']="spa"
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT']="Cyrl"
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0))
+        job = mpf.GenericJob('Test Plaintext', 'test.txt', test_generic_job_props, {}, ff_track)
+        comp = NllbTranslationComponent()
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(comp.get_detections_from_generic(job))
+        self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
+        self.assertEqual('Source language/script combination (spa_Cyrl) is invalid or not supported', cm.exception.args[0])
+
     def test_no_script_prop(self):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)

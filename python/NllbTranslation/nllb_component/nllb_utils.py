@@ -570,8 +570,13 @@ class NllbLanguageMapper:
 
     @classmethod
     def get_code(cls, lang : str, script : str):
-        if script.lower() and lang.lower() in cls._iso_to_flores200:
-            return cls._iso_to_flores200[lang.lower()][script.lower()]
+        if script and lang.lower() in cls._iso_to_flores200:
+            if script.lower() in cls._iso_to_flores200[lang.lower()]:
+                return cls._iso_to_flores200[lang.lower()][script.lower()]
+            else:
+                raise mpf.DetectionException(
+                    f'Source language/script combination ({lang}_{script}) is invalid or not supported',
+                mpf.DetectionError.INVALID_PROPERTY)
         return cls._iso_default_script_flores200.get(lang.lower())
 
     @classmethod

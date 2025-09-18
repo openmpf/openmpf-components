@@ -320,6 +320,11 @@ class JobConfig:
             raise mpf.DetectionException(
                  f'Source script ({sourceScript}) is empty or unsupported',
                 mpf.DetectionError.INVALID_PROPERTY)
+        except:
+            logger.exception(
+                f'Failed to complete job due to the following exception:')
+            raise
+
         
         if not self.translate_from_language:
             logger.exception('Unsupported or no source language provided')
