@@ -31,6 +31,7 @@ import os
 import pickle
 import socket
 import subprocess
+import re
 
 from jsonschema import validate, ValidationError
 from typing import Any, Iterable, List, Mapping, Tuple, Union
@@ -376,7 +377,10 @@ class LlamaVideoSummarizationComponent:
 
 def _get_timestamp_value(seconds: Any) -> float:
     if isinstance(seconds, str):
-        secval = float(seconds.replace('s', ''))
+        if re.match(r"\s*\d+(\.\d*)?\s*[Ss]", seconds):
+            secval = float(re.sub('s', '', seconds, flags=re.IGNORECASE))
+        else:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Invalid timestamp: {seconds}')
     else:
         secval = float(seconds)
     return secval
